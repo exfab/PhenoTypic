@@ -18,10 +18,43 @@ phenotypic.abc\_.GridCorrector
    
       ~GridCorrector.__init__
       ~GridCorrector.apply
+      ~GridCorrector.construct
+      ~GridCorrector.copy
+      ~GridCorrector.dict
+      ~GridCorrector.from_orm
+      ~GridCorrector.json
+      ~GridCorrector.model_construct
+      ~GridCorrector.model_copy
+      ~GridCorrector.model_dump
+      ~GridCorrector.model_dump_json
+      ~GridCorrector.model_json_schema
+      ~GridCorrector.model_parametrized_name
+      ~GridCorrector.model_post_init
+      ~GridCorrector.model_rebuild
+      ~GridCorrector.model_validate
+      ~GridCorrector.model_validate_json
+      ~GridCorrector.model_validate_strings
+      ~GridCorrector.parse_file
+      ~GridCorrector.parse_obj
+      ~GridCorrector.parse_raw
+      ~GridCorrector.schema
+      ~GridCorrector.schema_json
+      ~GridCorrector.update_forward_refs
+      ~GridCorrector.validate
       ~GridCorrector.widget
    
    
 
    
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~GridCorrector.model_computed_fields
+      ~GridCorrector.model_config
+      ~GridCorrector.model_extra
+      ~GridCorrector.model_fields
+      ~GridCorrector.model_fields_set
    
    

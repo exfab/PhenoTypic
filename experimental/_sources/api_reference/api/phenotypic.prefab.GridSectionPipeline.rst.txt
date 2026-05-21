@@ -23,19 +23,42 @@ phenotypic.prefab.GridSectionPipeline
       ~GridSectionPipeline.apply_napari
       ~GridSectionPipeline.apply_with_intermediates
       ~GridSectionPipeline.benchmark_results
+      ~GridSectionPipeline.construct
+      ~GridSectionPipeline.copy
+      ~GridSectionPipeline.dict
       ~GridSectionPipeline.from_json
+      ~GridSectionPipeline.from_orm
       ~GridSectionPipeline.get_filters
       ~GridSectionPipeline.get_meas
       ~GridSectionPipeline.get_model
       ~GridSectionPipeline.get_ops
       ~GridSectionPipeline.get_post
+      ~GridSectionPipeline.json
       ~GridSectionPipeline.measure
+      ~GridSectionPipeline.model_construct
+      ~GridSectionPipeline.model_copy
+      ~GridSectionPipeline.model_dump
+      ~GridSectionPipeline.model_dump_json
+      ~GridSectionPipeline.model_json_schema
+      ~GridSectionPipeline.model_parametrized_name
+      ~GridSectionPipeline.model_post_init
+      ~GridSectionPipeline.model_rebuild
+      ~GridSectionPipeline.model_validate
+      ~GridSectionPipeline.model_validate_json
+      ~GridSectionPipeline.model_validate_strings
+      ~GridSectionPipeline.parse_file
+      ~GridSectionPipeline.parse_obj
+      ~GridSectionPipeline.parse_raw
+      ~GridSectionPipeline.schema
+      ~GridSectionPipeline.schema_json
       ~GridSectionPipeline.set_filters
       ~GridSectionPipeline.set_meas
       ~GridSectionPipeline.set_model
       ~GridSectionPipeline.set_ops
       ~GridSectionPipeline.set_post
       ~GridSectionPipeline.to_json
+      ~GridSectionPipeline.update_forward_refs
+      ~GridSectionPipeline.validate
       ~GridSectionPipeline.widget
    
    
@@ -47,7 +70,22 @@ phenotypic.prefab.GridSectionPipeline
    .. autosummary::
    
       ~GridSectionPipeline.desc
-      ~GridSectionPipeline.ncols
+      ~GridSectionPipeline.model_computed_fields
+      ~GridSectionPipeline.model_config
+      ~GridSectionPipeline.model_extra
+      ~GridSectionPipeline.model_fields
+      ~GridSectionPipeline.model_fields_set
+      ~GridSectionPipeline.name
+      ~GridSectionPipeline.desc_value
+      ~GridSectionPipeline.benchmark
+      ~GridSectionPipeline.verbose
+      ~GridSectionPipeline.reset
       ~GridSectionPipeline.nrows
+      ~GridSectionPipeline.ncols
+      ~GridSectionPipeline.ops
+      ~GridSectionPipeline.meas
+      ~GridSectionPipeline.post
+      ~GridSectionPipeline.filters
+      ~GridSectionPipeline.model
    
    

@@ -533,7 +533,9 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">matplotlib.figure</span><span class="w"> </span><span class="kn">import</span> <span class="n">Figure</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColumnRef</span><span class="p">,</span> <span class="n">ColumnRefList</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">field_validator</span><span class="p">,</span> <span class="n">PrivateAttr</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColumnRef</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">EDGE_CORRECTION</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">SetAnalyzer</span>
 
@@ -584,112 +586,68 @@
 
     <span class="n">_measurement_infoclass</span> <span class="o">=</span> <span class="n">EDGE_CORRECTION</span>
 
-<div class="viewcode-block" id="EdgeCorrector.__init__">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.analysis.html#phenotypic.analysis.EdgeCorrector.__init__">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
-            <span class="bp">self</span><span class="p">,</span>
-            <span class="n">on</span><span class="p">:</span> <span class="n">ColumnRef</span><span class="p">,</span>
-            <span class="n">groupby</span><span class="p">:</span> <span class="n">ColumnRefList</span><span class="p">,</span>
-            <span class="n">time_label</span><span class="p">:</span> <span class="n">ColumnRef</span> <span class="o">=</span> <span class="s2">&quot;Metadata_Time&quot;</span><span class="p">,</span>
-            <span class="n">nrows</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">,</span>
-            <span class="n">ncols</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">12</span><span class="p">,</span>
-            <span class="n">top_n</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
-            <span class="n">pvalue</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">,</span>
-            <span class="n">connectivity</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span>
-            <span class="n">agg_func</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;mean&quot;</span><span class="p">,</span>
-            <span class="n">n_jobs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
-    <span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize EdgeCorrector with grid layout and correction parameters.</span>
+    <span class="n">time_label</span><span class="p">:</span> <span class="n">ColumnRef</span> <span class="o">=</span> <span class="s2">&quot;Metadata_Time&quot;</span>
+    <span class="n">nrows</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">8</span>
+    <span class="n">ncols</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">12</span>
+    <span class="n">top_n</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span>
+    <span class="n">pvalue</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.05</span>
+    <span class="n">connectivity</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">4</span>
+
+    <span class="n">_original_data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">=</span> <span class="n">PrivateAttr</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span>
+
+    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;connectivity&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_validate_connectivity</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Reject connectivity patterns other than 4 or 8.</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">            on (str): Name of the measurement column to analyze (e.g., &#39;Area&#39;, &#39;Intensity&#39;).</span>
-<span class="sd">                Corrected values will be placed in a new column EDGE_CORRECTION.NEW_VAL-{on}.</span>
-<span class="sd">                Original column is preserved unchanged.</span>
-<span class="sd">            groupby (list[str]): Column names for grouping data independently (e.g.,</span>
-<span class="sd">                [&#39;ImageName&#39;, &#39;Condition&#39;]). Each group gets its own threshold calculation.</span>
-<span class="sd">            time_label (str, optional): Column name containing time point information.</span>
-<span class="sd">                Defaults to &quot;Metadata_Time&quot;. The maximum time point per group is used</span>
-<span class="sd">                to identify interior vs. edge colonies.</span>
-<span class="sd">            nrows (int, optional): Number of rows in the grid layout. Defaults to 8</span>
-<span class="sd">                (standard 96-well plate). Must be positive. Affects edge detection logic.</span>
-<span class="sd">            ncols (int, optional): Number of columns in the grid layout. Defaults to 12</span>
-<span class="sd">                (standard 96-well plate). Must be positive. Affects edge detection logic.</span>
-<span class="sd">            top_n (int, optional): Number of top-valued interior colonies to use for</span>
-<span class="sd">                threshold calculation. Defaults to 3. The threshold is the mean of the</span>
-<span class="sd">                top_n interior colonies; larger values give more stable thresholds but</span>
-<span class="sd">                may miss subtle edge effects.</span>
-<span class="sd">            pvalue (float, optional): P-value threshold for permutation test comparing</span>
-<span class="sd">                interior vs. edge distributions. Defaults to 0.05. Set to 0.0 to disable</span>
-<span class="sd">                statistical testing and apply correction to all groups. Values are passed</span>
-<span class="sd">                to scipy.stats.permutation_test with 1000 resamples.</span>
-<span class="sd">            connectivity (int, optional): Neighbor pattern for interior cell detection.</span>
-<span class="sd">                Defaults to 4 (orthogonal: North, South, East, West). Set to 8 to include</span>
-<span class="sd">                diagonal neighbors. Affects how strictly &quot;surrounded&quot; is defined.</span>
-<span class="sd">            agg_func (str, optional): Aggregation function for multiple measurements per</span>
-<span class="sd">                section (well). Defaults to &quot;mean&quot;. See pandas.DataFrame.agg for options.</span>
-<span class="sd">            n_jobs (int, optional): Number of parallel workers for group processing.</span>
-<span class="sd">                Defaults to 1 (serial). Use -1 for all CPU cores via joblib.Parallel.</span>
+<span class="sd">            value: The candidate neighbor-connectivity pattern.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The validated connectivity value.</span>
 
 <span class="sd">        Raises:</span>
-<span class="sd">            ValueError: If connectivity is not 4 or 8.</span>
-<span class="sd">            ValueError: If nrows or ncols are not positive integers.</span>
-<span class="sd">            ValueError: If top_n is not a positive integer.</span>
-
-<span class="sd">        Examples:</span>
-<span class="sd">            Basic initialization with 96-well plate defaults:</span>
-
-<span class="sd">            &gt;&gt;&gt; from phenotypic.analysis import EdgeCorrector</span>
-<span class="sd">            &gt;&gt;&gt; corrector = EdgeCorrector(</span>
-<span class="sd">            ...     on=&#39;Area&#39;,</span>
-<span class="sd">            ...     groupby=[&#39;ImageName&#39;],</span>
-<span class="sd">            ...     top_n=3,</span>
-<span class="sd">            ...     pvalue=0.05</span>
-<span class="sd">            ... )</span>
-<span class="sd">            &gt;&gt;&gt; # nrows=8, ncols=12 are defaults for 96-well format</span>
-
-<span class="sd">            Custom grid layout (384-well format, 16x24):</span>
-
-<span class="sd">            &gt;&gt;&gt; corrector = EdgeCorrector(</span>
-<span class="sd">            ...     on=&#39;ColonyIntensity&#39;,</span>
-<span class="sd">            ...     groupby=[&#39;Plate&#39;, &#39;Condition&#39;],</span>
-<span class="sd">            ...     nrows=16,</span>
-<span class="sd">            ...     ncols=24,</span>
-<span class="sd">            ...     top_n=3,</span>
-<span class="sd">            ...     connectivity=8,  # Include diagonal neighbors</span>
-<span class="sd">            ...     n_jobs=4</span>
-<span class="sd">            ... )</span>
-
-<span class="sd">            Aggressive correction (no statistical test):</span>
-
-<span class="sd">            &gt;&gt;&gt; corrector = EdgeCorrector(</span>
-<span class="sd">            ...     on=&#39;Area&#39;,</span>
-<span class="sd">            ...     groupby=[&#39;ImageName&#39;],</span>
-<span class="sd">            ...     pvalue=0.0,  # Apply to all groups regardless of stats</span>
-<span class="sd">            ...     top_n=1  # Use single top value as threshold</span>
-<span class="sd">            ... )</span>
+<span class="sd">            ValueError: If ``connectivity`` is not 4 or 8.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
-                <span class="n">on</span><span class="o">=</span><span class="n">on</span><span class="p">,</span> <span class="n">groupby</span><span class="o">=</span><span class="n">groupby</span><span class="p">,</span> <span class="n">agg_func</span><span class="o">=</span><span class="n">agg_func</span><span class="p">,</span> <span class="n">n_jobs</span><span class="o">=</span><span class="n">n_jobs</span>
-        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">value</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">8</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;connectivity must be 4 or 8, got </span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">value</span>
 
-        <span class="k">if</span> <span class="n">connectivity</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">8</span><span class="p">):</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;connectivity must be 4 or 8, got </span><span class="si">{</span><span class="n">connectivity</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">nrows</span> <span class="o">&lt;=</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">ncols</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;nrows and ncols must be positive, got nrows=</span><span class="si">{</span><span class="n">nrows</span><span class="si">}</span><span class="s2">, ncols=</span><span class="si">{</span><span class="n">ncols</span><span class="si">}</span><span class="s2">&quot;</span>
-            <span class="p">)</span>
-        <span class="k">if</span> <span class="n">top_n</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;top_n must be positive, got </span><span class="si">{</span><span class="n">top_n</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;nrows&quot;</span><span class="p">,</span> <span class="s2">&quot;ncols&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_validate_grid_dim</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Reject non-positive grid dimensions.</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">nrows</span> <span class="o">=</span> <span class="n">nrows</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">ncols</span> <span class="o">=</span> <span class="n">ncols</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">top_n</span> <span class="o">=</span> <span class="n">top_n</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">connectivity</span> <span class="o">=</span> <span class="n">connectivity</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">time_label</span> <span class="o">=</span> <span class="n">time_label</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">pvalue</span> <span class="o">=</span> <span class="n">pvalue</span>
+<span class="sd">        Args:</span>
+<span class="sd">            value: A candidate ``nrows`` or ``ncols`` grid dimension.</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">_original_data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span></div>
+<span class="sd">        Returns:</span>
+<span class="sd">            The validated dimension.</span>
 
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If the dimension is not positive.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">value</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;nrows and ncols must be positive, got </span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">value</span>
+
+    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;top_n&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_validate_top_n</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Reject non-positive ``top_n`` values.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            value: The candidate ``top_n`` count.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The validated ``top_n`` value.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If ``top_n`` is not positive.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">value</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;top_n must be positive, got </span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">value</span>
 
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_surrounded_positions</span><span class="p">(</span>

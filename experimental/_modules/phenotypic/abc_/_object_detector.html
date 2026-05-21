@@ -645,13 +645,10 @@
 <span class="sd">           from phenotypic import Image</span>
 
 <span class="sd">           class MyDetector(ObjectDetector):</span>
-<span class="sd">               def __init__(self, param1: float, param2: int = 10):</span>
-<span class="sd">                   super().__init__()</span>
-<span class="sd">                   self.param1 = param1</span>
-<span class="sd">                   self.param2 = param2</span>
+<span class="sd">               param1: float  # Annotated class-level fields</span>
+<span class="sd">               param2: int = 10</span>
 
-<span class="sd">               @staticmethod</span>
-<span class="sd">               def _operate(image: Image, param1: float, param2: int = 10) -&gt; Image:</span>
+<span class="sd">               def _operate(self, image: Image) -&gt; Image:</span>
 <span class="sd">                   # Detection logic here</span>
 <span class="sd">                   return image</span>
 

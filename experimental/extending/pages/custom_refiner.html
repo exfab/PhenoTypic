@@ -559,16 +559,21 @@
                   
   <section class="tex2jax_ignore mathjax_ignore" id="custom-refiner">
 <h1>Custom Refiner<a class="headerlink" href="#custom-refiner" title="Link to this heading">#</a></h1>
-<p>Subclass <code class="docutils literal notranslate"><span class="pre">ObjectRefiner</span></code> to clean up detection masks.</p>
+<p>Subclass <code class="docutils literal notranslate"><span class="pre">ObjectRefiner</span></code> to clean up detection masks. Operations are
+pydantic models: declare each parameter as an annotated class-level
+field — there is no hand-written <code class="docutils literal notranslate"><span class="pre">__init__</span></code>.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ObjectRefiner</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">skimage.measure</span><span class="w"> </span><span class="kn">import</span> <span class="n">label</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 
 <span class="k">class</span><span class="w"> </span><span class="nc">RemoveLargeObjects</span><span class="p">(</span><span class="n">ObjectRefiner</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Remove objects larger than a maximum area.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Remove objects larger than a maximum area.</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">max_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10000</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">max_size</span> <span class="o">=</span> <span class="n">max_size</span>
+<span class="sd">    Args:</span>
+<span class="sd">        max_size: Maximum object area (pixels); larger objects are removed.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">max_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10000</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">):</span>
         <span class="n">objmap</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span>

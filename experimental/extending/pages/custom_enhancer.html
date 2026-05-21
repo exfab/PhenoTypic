@@ -559,15 +559,20 @@
                   
   <section class="tex2jax_ignore mathjax_ignore" id="custom-enhancer">
 <h1>Custom Enhancer<a class="headerlink" href="#custom-enhancer" title="Link to this heading">#</a></h1>
-<p>Subclass <code class="docutils literal notranslate"><span class="pre">ImageEnhancer</span></code> to create an operation that modifies <code class="docutils literal notranslate"><span class="pre">detect_mat</span></code>.</p>
+<p>Subclass <code class="docutils literal notranslate"><span class="pre">ImageEnhancer</span></code> to create an operation that modifies <code class="docutils literal notranslate"><span class="pre">detect_mat</span></code>.
+Operations are pydantic models: declare each parameter as an annotated
+class-level field — there is no hand-written <code class="docutils literal notranslate"><span class="pre">__init__</span></code>.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageEnhancer</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 
 <span class="k">class</span><span class="w"> </span><span class="nc">LogTransform</span><span class="p">(</span><span class="n">ImageEnhancer</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Apply a log transform to compress the dynamic range of detect_mat.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Apply a log transform to compress the dynamic range of detect_mat.</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">c</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">c</span> <span class="o">=</span> <span class="n">c</span>
+<span class="sd">    Args:</span>
+<span class="sd">        c: Scaling coefficient applied after the log transform.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">c</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">):</span>
         <span class="n">mat</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">detect_mat</span><span class="p">[:]</span>

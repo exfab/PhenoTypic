@@ -526,7 +526,7 @@
   <h1>Source code for phenotypic.measure._measure_color</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">ClassVar</span><span class="p">,</span> <span class="n">TYPE_CHECKING</span>
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
@@ -594,17 +594,12 @@
 <span class="sd">        interpreting color metrics in a biological context.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="n">_measurement_infoclasses</span> <span class="o">=</span> <span class="p">[</span><span class="n">ColorXYZ</span><span class="p">,</span> <span class="n">Colorxy</span><span class="p">,</span> <span class="n">ColorLab</span><span class="p">,</span> <span class="n">ColorHSV</span><span class="p">]</span>
+    <span class="n">_measurement_infoclasses</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">type</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">ColorXYZ</span><span class="p">,</span> <span class="n">Colorxy</span><span class="p">,</span> <span class="n">ColorLab</span><span class="p">,</span> <span class="n">ColorHSV</span><span class="p">]</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
-            <span class="bp">self</span><span class="p">,</span>
-            <span class="n">white_chroma_max</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">4.0</span><span class="p">,</span>
-            <span class="n">chroma_min</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">8.0</span><span class="p">,</span>
-            <span class="n">include_XYZ</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
-    <span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">white_chroma_max</span> <span class="o">=</span> <span class="n">white_chroma_max</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">chroma_min</span> <span class="o">=</span> <span class="n">chroma_min</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">include_XYZ</span> <span class="o">=</span> <span class="n">include_XYZ</span>
+    <span class="n">white_chroma_max</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">4.0</span>
+    <span class="n">chroma_min</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">8.0</span>
+    <span class="n">include_XYZ</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">):</span>
         <span class="n">data</span> <span class="o">=</span> <span class="p">{}</span>

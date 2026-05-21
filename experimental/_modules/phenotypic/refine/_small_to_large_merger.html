@@ -532,6 +532,7 @@
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">field_validator</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">scipy.spatial</span><span class="w"> </span><span class="kn">import</span> <span class="n">cKDTree</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">skimage.measure</span><span class="w"> </span><span class="kn">import</span> <span class="n">regionprops_table</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
@@ -593,27 +594,30 @@
 <span class="sd">        merging strategies.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-<div class="viewcode-block" id="SmallToLargeMerger.__init__">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.refine.html#phenotypic.refine.SmallToLargeMerger.__init__">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">distance_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">30.0</span><span class="p">,</span> <span class="n">size_threshold</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize the merger.</span>
+    <span class="n">distance_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">30.0</span>
+    <span class="n">size_threshold</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span>
 
-<span class="sd">        Args:</span>
-<span class="sd">            distance_threshold (float): Maximum distance from small fragment to</span>
-<span class="sd">                large colony for merging (pixels).</span>
-<span class="sd">            size_threshold (int): Minimum area for an object to be considered a</span>
-<span class="sd">                &quot;large&quot; anchor colony. Smaller objects are candidates for merging.</span>
+    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;distance_threshold&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_validate_distance_threshold</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">distance_threshold</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Reject a non-positive ``distance_threshold``.</span>
 
-<span class="sd">        Raises:</span>
-<span class="sd">            ValueError: If distance_threshold or size_threshold are not positive.</span>
+<span class="sd">        Reproduces the pre-migration ``__init__`` guard verbatim.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">distance_threshold</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;distance_threshold must be positive&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">distance_threshold</span>
+
+    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;size_threshold&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_validate_size_threshold</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">size_threshold</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Reject a non-positive ``size_threshold``.</span>
+
+<span class="sd">        Reproduces the pre-migration ``__init__`` guard verbatim.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">size_threshold</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;size_threshold must be positive&quot;</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">distance_threshold</span> <span class="o">=</span> <span class="n">distance_threshold</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">size_threshold</span> <span class="o">=</span> <span class="n">size_threshold</span></div>
-
+        <span class="k">return</span> <span class="n">size_threshold</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply small-to-large hierarchical merging to objmap.</span>

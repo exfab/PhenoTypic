@@ -18,10 +18,45 @@ phenotypic.detect.LiDetector
    
       ~LiDetector.__init__
       ~LiDetector.apply
+      ~LiDetector.construct
+      ~LiDetector.copy
+      ~LiDetector.dict
+      ~LiDetector.from_orm
+      ~LiDetector.json
+      ~LiDetector.model_construct
+      ~LiDetector.model_copy
+      ~LiDetector.model_dump
+      ~LiDetector.model_dump_json
+      ~LiDetector.model_json_schema
+      ~LiDetector.model_parametrized_name
+      ~LiDetector.model_post_init
+      ~LiDetector.model_rebuild
+      ~LiDetector.model_validate
+      ~LiDetector.model_validate_json
+      ~LiDetector.model_validate_strings
+      ~LiDetector.parse_file
+      ~LiDetector.parse_obj
+      ~LiDetector.parse_raw
+      ~LiDetector.schema
+      ~LiDetector.schema_json
+      ~LiDetector.update_forward_refs
+      ~LiDetector.validate
       ~LiDetector.widget
    
    
 
    
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~LiDetector.model_computed_fields
+      ~LiDetector.model_config
+      ~LiDetector.model_extra
+      ~LiDetector.model_fields
+      ~LiDetector.model_fields_set
+      ~LiDetector.ignore_zeros
+      ~LiDetector.ignore_borders
    
    

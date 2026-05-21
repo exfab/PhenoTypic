@@ -18,10 +18,52 @@ phenotypic.enhance.BM3DDenoiser
    
       ~BM3DDenoiser.__init__
       ~BM3DDenoiser.apply
+      ~BM3DDenoiser.construct
+      ~BM3DDenoiser.copy
+      ~BM3DDenoiser.dict
+      ~BM3DDenoiser.from_orm
+      ~BM3DDenoiser.json
+      ~BM3DDenoiser.model_construct
+      ~BM3DDenoiser.model_copy
+      ~BM3DDenoiser.model_dump
+      ~BM3DDenoiser.model_dump_json
+      ~BM3DDenoiser.model_json_schema
+      ~BM3DDenoiser.model_parametrized_name
+      ~BM3DDenoiser.model_post_init
+      ~BM3DDenoiser.model_rebuild
+      ~BM3DDenoiser.model_validate
+      ~BM3DDenoiser.model_validate_json
+      ~BM3DDenoiser.model_validate_strings
+      ~BM3DDenoiser.parse_file
+      ~BM3DDenoiser.parse_obj
+      ~BM3DDenoiser.parse_raw
+      ~BM3DDenoiser.schema
+      ~BM3DDenoiser.schema_json
+      ~BM3DDenoiser.update_forward_refs
+      ~BM3DDenoiser.validate
       ~BM3DDenoiser.widget
    
    
 
    
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~BM3DDenoiser.model_computed_fields
+      ~BM3DDenoiser.model_config
+      ~BM3DDenoiser.model_extra
+      ~BM3DDenoiser.model_fields
+      ~BM3DDenoiser.model_fields_set
+      ~BM3DDenoiser.sigma_psd
+      ~BM3DDenoiser.block_size
+      ~BM3DDenoiser.stage_arg
+      ~BM3DDenoiser.clip
+      ~BM3DDenoiser.use_gat
+      ~BM3DDenoiser.gat_gain
+      ~BM3DDenoiser.gat_mu
+      ~BM3DDenoiser.gat_read_sigma
+      ~BM3DDenoiser.gat_scale_factor
    
    

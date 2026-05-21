@@ -532,8 +532,10 @@
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConfigDict</span><span class="p">,</span> <span class="n">Field</span><span class="p">,</span> <span class="n">model_validator</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">scipy.ndimage</span><span class="w"> </span><span class="kn">import</span> <span class="n">gaussian_filter</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">skimage.feature</span><span class="w"> </span><span class="kn">import</span> <span class="n">structure_tensor_eigenvalues</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing_extensions</span><span class="w"> </span><span class="kn">import</span> <span class="n">Self</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">..abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageEnhancer</span>
 
@@ -603,85 +605,57 @@
 <span class="sd">        anisotropic diffusion and structure tensor analysis.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-<div class="viewcode-block" id="CoherenceEnhancingDiffusion.__init__">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.enhance.html#phenotypic.enhance.CoherenceEnhancingDiffusion.__init__">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
-            <span class="bp">self</span><span class="p">,</span>
-            <span class="n">num_iter</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span>
-            <span class="n">sigma</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.5</span><span class="p">,</span>
-            <span class="n">rho</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-            <span class="n">dt</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">,</span>
-            <span class="o">*</span><span class="p">,</span>
-            <span class="n">alpha</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.001</span><span class="p">,</span>
-            <span class="n">C</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">99.0</span><span class="p">,</span>
-    <span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Parameters:</span>
-<span class="sd">            num_iter (int): Number of diffusion iterations. Controls the total</span>
-<span class="sd">                amount of smoothing applied. Small values (5-10) give subtle enhancement;</span>
-<span class="sd">                medium values (15-30) are typical; large values (50-100) provide heavy</span>
-<span class="sd">                smoothing. Computational cost scales linearly with iterations.</span>
-<span class="sd">                Recommended: 20 for balanced enhancement.</span>
-<span class="sd">            sigma (float): Noise/derivative scale (Gaussian derivative σ). Controls the</span>
-<span class="sd">                scale at which image gradients are computed for orientation estimation.</span>
-<span class="sd">                Match to the width of structures you want to enhance: ~1.5 for fine</span>
-<span class="sd">                hyphae (~3px wide), ~3.0 for coarser structures. Recommended: 1.5.</span>
-<span class="sd">            rho (float | None): Integration scale for structure tensor smoothing. Controls</span>
-<span class="sd">                the neighborhood over which gradient products are averaged. Must be</span>
-<span class="sd">                &gt;= sigma. When None (default), equals sigma (single-scale mode). Larger</span>
-<span class="sd">                values produce smoother orientation fields. Typical: 2-3x sigma.</span>
-<span class="sd">            dt (float): Time step for each diffusion iteration. Must satisfy the</span>
-<span class="sd">                2D forward-Euler stability bound of 1/8 (0.125). Smaller values</span>
-<span class="sd">                require more iterations for equivalent smoothing. Recommended:</span>
-<span class="sd">                0.1 for stable, efficient diffusion.</span>
-<span class="sd">            alpha (float): Minimum diffusivity parameter (0 &lt; alpha &lt; 1). Ensures some</span>
-<span class="sd">                diffusion even in uniform regions, preventing numerical issues. Small</span>
-<span class="sd">                values (0.001) maximize anisotropy; larger values (0.01-0.1) add more</span>
-<span class="sd">                isotropic smoothing. Recommended: 0.001 for strong directional bias.</span>
-<span class="sd">            C (float): Contrast percentile for the diffusivity function</span>
-<span class="sd">                (0 &lt; C &lt;= 100). The Cth percentile of the coherence histogram</span>
-<span class="sd">                (lambda1 - lambda2)^2 from the original image is used as the</span>
-<span class="sd">                contrast threshold, adapting to image content. Higher values</span>
-<span class="sd">                restrict anisotropy to the most coherent structures.</span>
-<span class="sd">                Default: 99.</span>
+    <span class="c1"># ``num_iter`` is the public constructor keyword; the algorithm body</span>
+    <span class="c1"># (``_operate``) reads it as ``self.num_iterations``. The field keeps</span>
+    <span class="c1"># the algorithm-facing name and accepts the public ``num_iter`` kwarg</span>
+    <span class="c1"># via a validation alias, so neither the call sites nor ``_operate``</span>
+    <span class="c1"># change. ``populate_by_name`` lets the field also be set/dumped under</span>
+    <span class="c1"># its own name (used by JSON round-trips of migrated pipelines).</span>
+    <span class="n">model_config</span> <span class="o">=</span> <span class="n">ConfigDict</span><span class="p">(</span><span class="n">populate_by_name</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">num_iterations</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">validation_alias</span><span class="o">=</span><span class="s2">&quot;num_iter&quot;</span><span class="p">)</span>
+    <span class="n">sigma</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.5</span>
+    <span class="n">rho</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">dt</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span>
+    <span class="n">alpha</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.001</span>
+    <span class="n">C</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">99.0</span>
+
+    <span class="nd">@model_validator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;after&quot;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_check_diffusion_params</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Reproduce the pre-migration ``__init__`` parameter guards.</span>
+
+<span class="sd">        Several checks (notably ``rho &gt;= sigma``) span more than one</span>
+<span class="sd">        field, so all guards live in a single model validator rather than</span>
+<span class="sd">        per-field validators.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If any diffusion parameter is outside its valid</span>
+<span class="sd">                range (see the class ``Args:`` block).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="n">num_iter</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_iterations</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;num_iter must be &gt;= 1&quot;</span><span class="p">)</span>
-
-        <span class="k">if</span> <span class="n">dt</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dt</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;dt must be &gt; 0&quot;</span><span class="p">)</span>
-
-        <span class="k">if</span> <span class="n">dt</span> <span class="o">&gt;</span> <span class="mf">0.125</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dt</span> <span class="o">&gt;</span> <span class="mf">0.125</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                    <span class="s2">&quot;dt &gt; 0.125 exceeds the 2D forward-Euler stability bound (1/8); &quot;</span>
-                    <span class="s2">&quot;use smaller values&quot;</span>
+                <span class="s2">&quot;dt &gt; 0.125 exceeds the 2D forward-Euler stability bound (1/8); &quot;</span>
+                <span class="s2">&quot;use smaller values&quot;</span>
             <span class="p">)</span>
-
-        <span class="k">if</span> <span class="n">sigma</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigma</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;sigma must be &gt; 0&quot;</span><span class="p">)</span>
-
-        <span class="k">if</span> <span class="n">rho</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">rho</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rho</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rho</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;rho must be &gt; 0&quot;</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">rho</span> <span class="o">&lt;</span> <span class="n">sigma</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rho</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigma</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                        <span class="sa">f</span><span class="s2">&quot;rho (</span><span class="si">{</span><span class="n">rho</span><span class="si">}</span><span class="s2">) must be &gt;= sigma (</span><span class="si">{</span><span class="n">sigma</span><span class="si">}</span><span class="s2">); the integration &quot;</span>
-                        <span class="s2">&quot;scale cannot be smaller than the noise scale&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;rho (</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">rho</span><span class="si">}</span><span class="s2">) must be &gt;= sigma (</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">sigma</span><span class="si">}</span><span class="s2">); the &quot;</span>
+                    <span class="s2">&quot;integration scale cannot be smaller than the noise scale&quot;</span>
                 <span class="p">)</span>
-
-        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mi">0</span> <span class="o">&lt;</span> <span class="n">alpha</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mi">0</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">):</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;alpha must be in (0, 1)&quot;</span><span class="p">)</span>
-
-        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mi">0</span> <span class="o">&lt;</span> <span class="n">C</span> <span class="o">&lt;=</span> <span class="mi">100</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mi">0</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">C</span> <span class="o">&lt;=</span> <span class="mi">100</span><span class="p">):</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;C must be in (0, 100]&quot;</span><span class="p">)</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">num_iterations</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">num_iter</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">dt</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">dt</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">sigma</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">sigma</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">rho</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">rho</span><span class="p">)</span> <span class="k">if</span> <span class="n">rho</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">alpha</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">C</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">C</span><span class="p">)</span></div>
-
+        <span class="k">return</span> <span class="bp">self</span>
 
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_central_diff</span><span class="p">(</span><span class="n">arr</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">axis</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>

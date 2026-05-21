@@ -540,6 +540,7 @@
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">numpy.fft</span><span class="w"> </span><span class="kn">import</span> <span class="n">fft2</span><span class="p">,</span> <span class="n">ifft2</span><span class="p">,</span> <span class="n">ifftshift</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">field_validator</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">..abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageEnhancer</span>
 
@@ -635,78 +636,84 @@
 <span class="sd">        phase congruency and the Local Energy Model.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-<div class="viewcode-block" id="PhaseCongruencyEnhancer.__init__">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.enhance.html#phenotypic.enhance.PhaseCongruencyEnhancer.__init__">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
-            <span class="bp">self</span><span class="p">,</span>
-            <span class="n">n_scale</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span>
-            <span class="n">n_orient</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">6</span><span class="p">,</span>
-            <span class="n">min_wavelength</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">3.0</span><span class="p">,</span>
-            <span class="n">mult</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.1</span><span class="p">,</span>
-            <span class="n">sigma_onf</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.55</span><span class="p">,</span>
-            <span class="n">k</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.0</span><span class="p">,</span>
-            <span class="n">cutoff</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">,</span>
-            <span class="n">g</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">10.0</span><span class="p">,</span>
-            <span class="n">noise_method</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span>
-            <span class="n">output</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;M&quot;</span><span class="p">,</span> <span class="s2">&quot;m&quot;</span><span class="p">,</span> <span class="s2">&quot;pc_sum&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;pc_sum&quot;</span><span class="p">,</span>
-    <span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize phase congruency enhancer.</span>
+    <span class="n">n_scale</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">4</span>
+    <span class="n">n_orient</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">6</span>
+    <span class="n">min_wavelength</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">3.0</span>
+    <span class="n">mult</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.1</span>
+    <span class="n">sigma_onf</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.55</span>
+    <span class="n">k</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.0</span>
+    <span class="n">cutoff</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span>
+    <span class="n">g</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">10.0</span>
+    <span class="n">noise_method</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1.0</span>
+    <span class="n">output</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;M&quot;</span><span class="p">,</span> <span class="s2">&quot;m&quot;</span><span class="p">,</span> <span class="s2">&quot;pc_sum&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;pc_sum&quot;</span>
 
-<span class="sd">        Args:</span>
-<span class="sd">            n_scale: Number of wavelet scales. Range [3, 6] typical.</span>
-<span class="sd">            n_orient: Number of filter orientations. 6 gives 30 degree spacing.</span>
-<span class="sd">            min_wavelength: Wavelength of smallest scale filter in pixels.</span>
-<span class="sd">                Should match minimum expected feature width (default 3.0).</span>
-<span class="sd">            mult: Scaling factor between successive filter wavelengths.</span>
-<span class="sd">                Controls spectral overlap between scales (default 2.1).</span>
-<span class="sd">            sigma_onf: Ratio of Gaussian standard deviation to filter center</span>
-<span class="sd">                frequency. Controls filter bandwidth. 0.55 gives ~2 octave</span>
-<span class="sd">                bandwidth; 0.75 gives ~1 octave (default 0.55).</span>
-<span class="sd">            k: Number of noise standard deviations for threshold. Higher values</span>
-<span class="sd">                increase noise rejection (default 2.0, range [2, 20]).</span>
-<span class="sd">            cutoff: Frequency spread measure below which PC values are penalized</span>
-<span class="sd">                (default 0.5).</span>
-<span class="sd">            g: Sharpness of sigmoid transition for frequency spread weighting</span>
-<span class="sd">                (default 10.0).</span>
-<span class="sd">            noise_method: Method for noise statistics estimation. -1 uses median</span>
-<span class="sd">                of smallest scale responses (default), -2 uses mode (Rayleigh),</span>
-<span class="sd">                values &gt;= 0 are used as fixed noise threshold.</span>
-<span class="sd">            output: Which result to store in detect_mat. &quot;pc_sum&quot; for scalar phase</span>
-<span class="sd">                congruency (default), &quot;M&quot; for edge strength, &quot;m&quot; for corners.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
-
-        <span class="c1"># Validate parameters</span>
+    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;n_scale&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_check_n_scale</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">n_scale</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Require at least one wavelet scale (matches the legacy guard).&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">n_scale</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;n_scale must be &gt;= 1, got </span><span class="si">{</span><span class="n">n_scale</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">n_scale</span>
+
+    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;n_orient&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_check_n_orient</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">n_orient</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Require at least one filter orientation (matches the legacy guard).&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">n_orient</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;n_orient must be &gt;= 1, got </span><span class="si">{</span><span class="n">n_orient</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">n_orient</span>
+
+    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;min_wavelength&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_check_min_wavelength</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">min_wavelength</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Require a minimum wavelength of at least 2 (matches the legacy guard).&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">min_wavelength</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;min_wavelength must be &gt;= 2, got </span><span class="si">{</span><span class="n">min_wavelength</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;min_wavelength must be &gt;= 2, got </span><span class="si">{</span><span class="n">min_wavelength</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">min_wavelength</span>
+
+    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;mult&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_check_mult</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">mult</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Require a wavelength scaling factor &gt; 1 (matches the legacy guard).&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">mult</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;mult must be &gt; 1, got </span><span class="si">{</span><span class="n">mult</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">mult</span>
+
+    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;sigma_onf&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_check_sigma_onf</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">sigma_onf</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Require ``sigma_onf`` within [0.1, 1.0] (matches the legacy guard).&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="mf">0.1</span> <span class="o">&lt;=</span> <span class="n">sigma_onf</span> <span class="o">&lt;=</span> <span class="mf">1.0</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;sigma_onf must be in [0.1, 1.0], got </span><span class="si">{</span><span class="n">sigma_onf</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;sigma_onf must be in [0.1, 1.0], got </span><span class="si">{</span><span class="n">sigma_onf</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">sigma_onf</span>
+
+    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;k&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_check_k</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">k</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Require a non-negative noise multiplier (matches the legacy guard).&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">k</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;k must be &gt;= 0, got </span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">k</span>
+
+    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;cutoff&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_check_cutoff</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">cutoff</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Require ``cutoff`` within (0, 1) (matches the legacy guard).&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="mi">0</span> <span class="o">&lt;</span> <span class="n">cutoff</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;cutoff must be in (0, 1), got </span><span class="si">{</span><span class="n">cutoff</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">cutoff</span>
+
+    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;g&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_check_g</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">g</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Require a positive sigmoid sharpness (matches the legacy guard).&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">g</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;g must be &gt; 0, got </span><span class="si">{</span><span class="n">g</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">output</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;M&quot;</span><span class="p">,</span> <span class="s2">&quot;m&quot;</span><span class="p">,</span> <span class="s2">&quot;pc_sum&quot;</span><span class="p">):</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;output must be &#39;M&#39;, &#39;m&#39;, or &#39;pc_sum&#39;, got </span><span class="si">{</span><span class="n">output</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">n_scale</span> <span class="o">=</span> <span class="n">n_scale</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">n_orient</span> <span class="o">=</span> <span class="n">n_orient</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">min_wavelength</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">min_wavelength</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">mult</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">mult</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">sigma_onf</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">sigma_onf</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">k</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">cutoff</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">cutoff</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">g</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">g</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">noise_method</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">noise_method</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">output</span> <span class="o">=</span> <span class="n">output</span></div>
-
+        <span class="k">return</span> <span class="n">g</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply phase congruency enhancement to the detection matrix channel.&quot;&quot;&quot;</span>

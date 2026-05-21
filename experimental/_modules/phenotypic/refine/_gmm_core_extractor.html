@@ -598,37 +598,11 @@
 <span class="sd">        refinement approaches including GMM-based extraction.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-<div class="viewcode-block" id="GMMCoreExtractor.__init__">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.refine.html#phenotypic.refine.GMMCoreExtractor.__init__">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="n">n_components</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
-        <span class="n">separation_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.8</span><span class="p">,</span>
-        <span class="n">min_core_area</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">30</span><span class="p">,</span>
-        <span class="n">morph_open_radius</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
-        <span class="n">morph_close_radius</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
-    <span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialise the GMM core extractor.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            n_components (int): Number of Gaussian components to fit per</span>
-<span class="sd">                labelled region (default 2 — core vs. surround).</span>
-<span class="sd">            separation_threshold (float): Normalised mean separation</span>
-<span class="sd">                below which the region is left unchanged (0.0–1.0+).</span>
-<span class="sd">            min_core_area (int): Minimum core area in pixels.  Regions</span>
-<span class="sd">                or connected components below this size are kept as-is</span>
-<span class="sd">                or discarded.</span>
-<span class="sd">            morph_open_radius (int): Radius for morphological opening</span>
-<span class="sd">                (0 disables).</span>
-<span class="sd">            morph_close_radius (int): Radius for morphological closing</span>
-<span class="sd">                (0 disables).</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">n_components</span> <span class="o">=</span> <span class="n">n_components</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">separation_threshold</span> <span class="o">=</span> <span class="n">separation_threshold</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">min_core_area</span> <span class="o">=</span> <span class="n">min_core_area</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">morph_open_radius</span> <span class="o">=</span> <span class="n">morph_open_radius</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">morph_close_radius</span> <span class="o">=</span> <span class="n">morph_close_radius</span></div>
-
+    <span class="n">n_components</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span>
+    <span class="n">separation_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.8</span>
+    <span class="n">min_core_area</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">30</span>
+    <span class="n">morph_open_radius</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">morph_close_radius</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span>
 
     <span class="c1"># ------------------------------------------------------------------</span>
     <span class="c1"># Static helpers</span>

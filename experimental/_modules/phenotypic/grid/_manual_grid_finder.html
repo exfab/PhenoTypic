@@ -526,13 +526,14 @@
   <h1>Source code for phenotypic.grid._manual_grid_finder</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Any</span>
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">field_validator</span><span class="p">,</span> <span class="n">model_validator</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridFinder</span>
 
@@ -550,8 +551,21 @@
 <span class="sd">    Attributes:</span>
 <span class="sd">        nrows (int): Number of rows in the grid (derived from row_edges).</span>
 <span class="sd">        ncols (int): Number of columns in the grid (derived from col_edges).</span>
-<span class="sd">        row_edges (np.ndarray): Array of row edge coordinates defining grid rows.</span>
-<span class="sd">        col_edges (np.ndarray): Array of column edge coordinates defining grid columns.</span>
+<span class="sd">        row_edges (list[int]): Sorted row edge coordinates defining grid rows.</span>
+<span class="sd">        col_edges (list[int]): Sorted column edge coordinates defining grid columns.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        row_edges: Row edge coordinates. Length should be nrows + 1.</span>
+<span class="sd">            Example: ``[0, 100, 200, 300]`` defines 3 rows. A list,</span>
+<span class="sd">            tuple, or ``np.ndarray`` is accepted; values are cast to</span>
+<span class="sd">            ``int`` and sorted ascending.</span>
+<span class="sd">        col_edges: Column edge coordinates. Length should be ncols + 1.</span>
+<span class="sd">            Example: ``[0, 80, 160, 240, 320]`` defines 4 columns. A</span>
+<span class="sd">            list, tuple, or ``np.ndarray`` is accepted; values are cast</span>
+<span class="sd">            to ``int`` and sorted ascending.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If row_edges or col_edges have fewer than 2 elements.</span>
 
 <span class="sd">    Example:</span>
 <span class="sd">        Create a 3x4 grid with specific coordinates:</span>
@@ -565,41 +579,60 @@
 <span class="sd">        &gt;&gt;&gt; grid_info = finder.measure(image)  # doctest: +SKIP</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-<div class="viewcode-block" id="ManualGridFinder.__init__">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.grid.html#phenotypic.grid.ManualGridFinder.__init__">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">row_edges</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">col_edges</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Initialize a ManualGridFinder with explicit row and column edge coordinates.</span>
+    <span class="c1"># ``nrows`` / ``ncols`` are required fields on the ``GridFinder`` ABC,</span>
+    <span class="c1"># but ``ManualGridFinder`` derives them from the edge arrays instead of</span>
+    <span class="c1"># taking them as constructor parameters. Declaring defaults here lets</span>
+    <span class="c1"># pydantic build the model; ``_derive_grid_shape`` (a post-validator)</span>
+    <span class="c1"># overwrites them from the validated edges, reproducing the legacy</span>
+    <span class="c1"># ``__init__`` behaviour.</span>
+    <span class="n">nrows</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">ncols</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">row_edges</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
+    <span class="n">col_edges</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
 
-<span class="sd">        Args:</span>
-<span class="sd">            row_edges (np.ndarray): Array of row edge coordinates. Length should be nrows + 1.</span>
-<span class="sd">                Example: [0, 100, 200, 300] defines 3 rows.</span>
-<span class="sd">            col_edges (np.ndarray): Array of column edge coordinates. Length should be ncols + 1.</span>
-<span class="sd">                Example: [0, 80, 160, 240, 320] defines 4 columns.</span>
+    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;row_edges&quot;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;before&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_normalize_row_edges</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Coerce row edges to a sorted ``list[int]``.</span>
 
-<span class="sd">        Raises:</span>
-<span class="sd">            ValueError: If row_edges or col_edges have fewer than 2 elements.</span>
+<span class="sd">        Accepts a list, tuple, or ``np.ndarray`` (the legacy constructor</span>
+<span class="sd">        took an ``np.ndarray``); reproduces the pre-migration</span>
+<span class="sd">        ``np.asarray(row_edges, dtype=int)`` cast followed by ``.sort()``.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">row_edges</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="n">edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">edges</span><span class="o">.</span><span class="n">ndim</span> <span class="o">!=</span> <span class="mi">1</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">edges</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
                 <span class="s2">&quot;row_edges must have at least 2 elements to define at least 1 row&quot;</span>
             <span class="p">)</span>
-        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">col_edges</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">edges</span><span class="p">)</span>
+
+    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;col_edges&quot;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;before&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_normalize_col_edges</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Coerce column edges to a sorted ``list[int]``.</span>
+
+<span class="sd">        Accepts a list, tuple, or ``np.ndarray`` (the legacy constructor</span>
+<span class="sd">        took an ``np.ndarray``); reproduces the pre-migration</span>
+<span class="sd">        ``np.asarray(col_edges, dtype=int)`` cast followed by ``.sort()``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">edges</span><span class="o">.</span><span class="n">ndim</span> <span class="o">!=</span> <span class="mi">1</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">edges</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
                 <span class="s2">&quot;col_edges must have at least 2 elements to define at least 1 column&quot;</span>
             <span class="p">)</span>
+        <span class="k">return</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">edges</span><span class="p">)</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">_row_edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">row_edges</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_col_edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">col_edges</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+    <span class="nd">@model_validator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;after&quot;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_derive_grid_shape</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ManualGridFinder</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Derive ``nrows`` / ``ncols`` from the validated edge arrays.</span>
 
-        <span class="c1"># Ensure edges are sorted</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_row_edges</span><span class="o">.</span><span class="n">sort</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_col_edges</span><span class="o">.</span><span class="n">sort</span><span class="p">()</span>
-
-        <span class="c1"># Set nrows and ncols based on edge arrays</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">nrows</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_row_edges</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">ncols</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_col_edges</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span></div>
-
+<span class="sd">        Reproduces the legacy ``__init__`` lines</span>
+<span class="sd">        ``self.nrows = len(self._row_edges) - 1`` and</span>
+<span class="sd">        ``self.ncols = len(self._col_edges) - 1``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">object</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;nrows&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">row_edges</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="nb">object</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;ncols&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">col_edges</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
@@ -614,7 +647,9 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># Use base class method to assemble grid info with our predefined edges</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_grid_info</span><span class="p">(</span>
-            <span class="n">image</span><span class="o">=</span><span class="n">image</span><span class="p">,</span> <span class="n">row_edges</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_row_edges</span><span class="p">,</span> <span class="n">col_edges</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_col_edges</span>
+            <span class="n">image</span><span class="o">=</span><span class="n">image</span><span class="p">,</span>
+            <span class="n">row_edges</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">row_edges</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">),</span>
+            <span class="n">col_edges</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">col_edges</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">),</span>
         <span class="p">)</span>
 
 <div class="viewcode-block" id="ManualGridFinder.get_row_edges">
@@ -629,7 +664,7 @@
 <span class="sd">        Returns:</span>
 <span class="sd">            np.ndarray: Array of row edge coordinates.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_row_edges</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span></div>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">row_edges</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="ManualGridFinder.get_col_edges">
@@ -644,7 +679,7 @@
 <span class="sd">        Returns:</span>
 <span class="sd">            np.ndarray: Array of column edge coordinates.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_col_edges</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span></div>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">col_edges</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span></div>
 </div>
 
 </pre></div>

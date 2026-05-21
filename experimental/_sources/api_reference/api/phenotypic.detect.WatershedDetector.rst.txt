@@ -18,10 +18,49 @@ phenotypic.detect.WatershedDetector
    
       ~WatershedDetector.__init__
       ~WatershedDetector.apply
+      ~WatershedDetector.construct
+      ~WatershedDetector.copy
+      ~WatershedDetector.dict
+      ~WatershedDetector.from_orm
+      ~WatershedDetector.json
+      ~WatershedDetector.model_construct
+      ~WatershedDetector.model_copy
+      ~WatershedDetector.model_dump
+      ~WatershedDetector.model_dump_json
+      ~WatershedDetector.model_json_schema
+      ~WatershedDetector.model_parametrized_name
+      ~WatershedDetector.model_post_init
+      ~WatershedDetector.model_rebuild
+      ~WatershedDetector.model_validate
+      ~WatershedDetector.model_validate_json
+      ~WatershedDetector.model_validate_strings
+      ~WatershedDetector.parse_file
+      ~WatershedDetector.parse_obj
+      ~WatershedDetector.parse_raw
+      ~WatershedDetector.schema
+      ~WatershedDetector.schema_json
+      ~WatershedDetector.update_forward_refs
+      ~WatershedDetector.validate
       ~WatershedDetector.widget
    
    
 
    
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~WatershedDetector.model_computed_fields
+      ~WatershedDetector.model_config
+      ~WatershedDetector.model_extra
+      ~WatershedDetector.model_fields
+      ~WatershedDetector.model_fields_set
+      ~WatershedDetector.footprint
+      ~WatershedDetector.min_size
+      ~WatershedDetector.compactness
+      ~WatershedDetector.connectivity
+      ~WatershedDetector.relabel
+      ~WatershedDetector.ignore_zeros
    
    

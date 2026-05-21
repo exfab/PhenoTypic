@@ -18,10 +18,46 @@ phenotypic.detect.RankOtsuDetector
    
       ~RankOtsuDetector.__init__
       ~RankOtsuDetector.apply
+      ~RankOtsuDetector.construct
+      ~RankOtsuDetector.copy
+      ~RankOtsuDetector.dict
+      ~RankOtsuDetector.from_orm
+      ~RankOtsuDetector.json
+      ~RankOtsuDetector.model_construct
+      ~RankOtsuDetector.model_copy
+      ~RankOtsuDetector.model_dump
+      ~RankOtsuDetector.model_dump_json
+      ~RankOtsuDetector.model_json_schema
+      ~RankOtsuDetector.model_parametrized_name
+      ~RankOtsuDetector.model_post_init
+      ~RankOtsuDetector.model_rebuild
+      ~RankOtsuDetector.model_validate
+      ~RankOtsuDetector.model_validate_json
+      ~RankOtsuDetector.model_validate_strings
+      ~RankOtsuDetector.parse_file
+      ~RankOtsuDetector.parse_obj
+      ~RankOtsuDetector.parse_raw
+      ~RankOtsuDetector.schema
+      ~RankOtsuDetector.schema_json
+      ~RankOtsuDetector.update_forward_refs
+      ~RankOtsuDetector.validate
       ~RankOtsuDetector.widget
    
    
 
    
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~RankOtsuDetector.model_computed_fields
+      ~RankOtsuDetector.model_config
+      ~RankOtsuDetector.model_extra
+      ~RankOtsuDetector.model_fields
+      ~RankOtsuDetector.model_fields_set
+      ~RankOtsuDetector.shape
+      ~RankOtsuDetector.width
+      ~RankOtsuDetector.ignore_zeros
    
    

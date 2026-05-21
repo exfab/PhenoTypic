@@ -559,22 +559,23 @@
 <span class="sd">        &gt;&gt;&gt; from phenotypic.abc_ import PostMeasurement</span>
 <span class="sd">        &gt;&gt;&gt; import pandas as pd</span>
 <span class="sd">        &gt;&gt;&gt; class AddConstant(PostMeasurement):</span>
-<span class="sd">        ...     def __init__(self, column, value):</span>
-<span class="sd">        ...         super().__init__()</span>
-<span class="sd">        ...         self.column = column</span>
-<span class="sd">        ...         self.value = value</span>
+<span class="sd">        ...     &#39;&#39;&#39;Add a constant-valued column.</span>
+<span class="sd">        ...</span>
+<span class="sd">        ...     Args:</span>
+<span class="sd">        ...         column: Name of the column to add.</span>
+<span class="sd">        ...         value: Constant value to assign to every row.</span>
+<span class="sd">        ...     &#39;&#39;&#39;</span>
+<span class="sd">        ...     column: str</span>
+<span class="sd">        ...     value: str</span>
 <span class="sd">        ...     def _operate(self, df):</span>
 <span class="sd">        ...         df[self.column] = self.value</span>
 <span class="sd">        ...         return df</span>
-<span class="sd">        &gt;&gt;&gt; post = AddConstant(&quot;Metadata_Flag&quot;, &quot;OK&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; post = AddConstant(column=&quot;Metadata_Flag&quot;, value=&quot;OK&quot;)</span>
 <span class="sd">        &gt;&gt;&gt; df = pd.DataFrame({&quot;ObjectLabel&quot;: [1, 2]})</span>
 <span class="sd">        &gt;&gt;&gt; result = post.apply(df)</span>
 <span class="sd">        &gt;&gt;&gt; list(result.columns)</span>
 <span class="sd">        [&#39;ObjectLabel&#39;, &#39;Metadata_Flag&#39;]</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
 
     <span class="nd">@abstractmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>

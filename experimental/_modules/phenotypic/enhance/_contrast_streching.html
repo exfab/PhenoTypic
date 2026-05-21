@@ -574,21 +574,8 @@
 <span class="sd">        into the pipeline model.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-<div class="viewcode-block" id="ContrastStretching.__init__">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.enhance.html#phenotypic.enhance.ContrastStretching.__init__">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lower_percentile</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="n">upper_percentile</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">98</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Parameters:</span>
-<span class="sd">            lower_percentile (int): Dark clipping point. Increase to suppress</span>
-<span class="sd">                deep shadows/edge artifacts; too high may remove meaningful dark</span>
-<span class="sd">                background structure. Typical range: 1–5.</span>
-<span class="sd">            upper_percentile (int): Bright clipping point. Decrease to suppress</span>
-<span class="sd">                glare/highlights; too low may flatten bright colonies. Typical</span>
-<span class="sd">                range: 95–99.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">lower_percentile</span> <span class="o">=</span> <span class="n">lower_percentile</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">upper_percentile</span> <span class="o">=</span> <span class="n">upper_percentile</span></div>
-
+    <span class="n">lower_percentile</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span>
+    <span class="n">upper_percentile</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">98</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
         <span class="n">p_lower</span><span class="p">,</span> <span class="n">p_upper</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span>

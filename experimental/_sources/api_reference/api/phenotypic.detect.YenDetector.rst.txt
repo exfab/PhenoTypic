@@ -18,10 +18,45 @@ phenotypic.detect.YenDetector
    
       ~YenDetector.__init__
       ~YenDetector.apply
+      ~YenDetector.construct
+      ~YenDetector.copy
+      ~YenDetector.dict
+      ~YenDetector.from_orm
+      ~YenDetector.json
+      ~YenDetector.model_construct
+      ~YenDetector.model_copy
+      ~YenDetector.model_dump
+      ~YenDetector.model_dump_json
+      ~YenDetector.model_json_schema
+      ~YenDetector.model_parametrized_name
+      ~YenDetector.model_post_init
+      ~YenDetector.model_rebuild
+      ~YenDetector.model_validate
+      ~YenDetector.model_validate_json
+      ~YenDetector.model_validate_strings
+      ~YenDetector.parse_file
+      ~YenDetector.parse_obj
+      ~YenDetector.parse_raw
+      ~YenDetector.schema
+      ~YenDetector.schema_json
+      ~YenDetector.update_forward_refs
+      ~YenDetector.validate
       ~YenDetector.widget
    
    
 
    
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~YenDetector.model_computed_fields
+      ~YenDetector.model_config
+      ~YenDetector.model_extra
+      ~YenDetector.model_fields
+      ~YenDetector.model_fields_set
+      ~YenDetector.ignore_zeros
+      ~YenDetector.ignore_borders
    
    

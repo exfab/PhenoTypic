@@ -17,10 +17,47 @@ phenotypic.measure.MeasureTexture
       :nosignatures:
    
       ~MeasureTexture.__init__
+      ~MeasureTexture.construct
+      ~MeasureTexture.copy
+      ~MeasureTexture.dict
+      ~MeasureTexture.from_orm
+      ~MeasureTexture.json
       ~MeasureTexture.measure
+      ~MeasureTexture.model_construct
+      ~MeasureTexture.model_copy
+      ~MeasureTexture.model_dump
+      ~MeasureTexture.model_dump_json
+      ~MeasureTexture.model_json_schema
+      ~MeasureTexture.model_parametrized_name
+      ~MeasureTexture.model_post_init
+      ~MeasureTexture.model_rebuild
+      ~MeasureTexture.model_validate
+      ~MeasureTexture.model_validate_json
+      ~MeasureTexture.model_validate_strings
+      ~MeasureTexture.parse_file
+      ~MeasureTexture.parse_obj
+      ~MeasureTexture.parse_raw
+      ~MeasureTexture.schema
+      ~MeasureTexture.schema_json
+      ~MeasureTexture.update_forward_refs
+      ~MeasureTexture.validate
    
    
 
    
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~MeasureTexture.model_computed_fields
+      ~MeasureTexture.model_config
+      ~MeasureTexture.model_extra
+      ~MeasureTexture.model_fields
+      ~MeasureTexture.model_fields_set
+      ~MeasureTexture.scale
+      ~MeasureTexture.quant_lvl
+      ~MeasureTexture.enhance
+      ~MeasureTexture.warn
    
    

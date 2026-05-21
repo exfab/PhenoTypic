@@ -18,10 +18,55 @@ phenotypic.detect.SinePeakDetector
    
       ~SinePeakDetector.__init__
       ~SinePeakDetector.apply
+      ~SinePeakDetector.construct
+      ~SinePeakDetector.copy
+      ~SinePeakDetector.dict
+      ~SinePeakDetector.from_orm
+      ~SinePeakDetector.json
+      ~SinePeakDetector.model_construct
+      ~SinePeakDetector.model_copy
+      ~SinePeakDetector.model_dump
+      ~SinePeakDetector.model_dump_json
+      ~SinePeakDetector.model_json_schema
+      ~SinePeakDetector.model_parametrized_name
+      ~SinePeakDetector.model_post_init
+      ~SinePeakDetector.model_rebuild
+      ~SinePeakDetector.model_validate
+      ~SinePeakDetector.model_validate_json
+      ~SinePeakDetector.model_validate_strings
+      ~SinePeakDetector.parse_file
+      ~SinePeakDetector.parse_obj
+      ~SinePeakDetector.parse_raw
+      ~SinePeakDetector.schema
+      ~SinePeakDetector.schema_json
+      ~SinePeakDetector.update_forward_refs
+      ~SinePeakDetector.validate
       ~SinePeakDetector.widget
    
    
 
    
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~SinePeakDetector.model_computed_fields
+      ~SinePeakDetector.model_config
+      ~SinePeakDetector.model_extra
+      ~SinePeakDetector.model_fields
+      ~SinePeakDetector.model_fields_set
+      ~SinePeakDetector.thresh_method
+      ~SinePeakDetector.subtract_background
+      ~SinePeakDetector.remove_noise
+      ~SinePeakDetector.footprint_width
+      ~SinePeakDetector.noise_radius
+      ~SinePeakDetector.smoothing_sigma
+      ~SinePeakDetector.min_peak_distance
+      ~SinePeakDetector.peak_prominence
+      ~SinePeakDetector.edge_refinement
+      ~SinePeakDetector.correlation_threshold
+      ~SinePeakDetector.selection_mode
+      ~SinePeakDetector.split_merged
    
    

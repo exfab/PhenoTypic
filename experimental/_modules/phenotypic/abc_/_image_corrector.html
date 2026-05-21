@@ -629,14 +629,11 @@
 <span class="sd">        from phenotypic import Image</span>
 
 <span class="sd">        class MyRotator(ImageCorrector):</span>
-<span class="sd">            def __init__(self, angle: float):</span>
-<span class="sd">                super().__init__()</span>
-<span class="sd">                self.angle = angle  # Instance attribute, matched to _operate()</span>
+<span class="sd">            angle: float  # Annotated class-level field</span>
 
-<span class="sd">            @staticmethod</span>
-<span class="sd">            def _operate(image: Image, angle: float) -&gt; Image:</span>
+<span class="sd">            def _operate(self, image: Image) -&gt; Image:</span>
 <span class="sd">                # Rotate ALL image components together</span>
-<span class="sd">                image.rotate(angle_of_rotation=angle, mode=&#39;edge&#39;)</span>
+<span class="sd">                image.rotate(angle_of_rotation=self.angle, mode=&#39;edge&#39;)</span>
 <span class="sd">                return image</span>
 
 <span class="sd">        # Usage</span>
@@ -646,39 +643,24 @@
 <span class="sd">    **Key Implementation Rules**</span>
 
 <span class="sd">    1. ``_operate()`` must be an **instance method** (access parameters via ``self``).</span>
-<span class="sd">    2. All parameters must be stored as instance attributes.</span>
+<span class="sd">    2. All parameters must be declared as annotated class-level fields.</span>
 <span class="sd">    3. The method must transform **all components equally** (rgb, gray, detect_mat, objmask, objmap).</span>
 <span class="sd">    4. Never modify only one component—this breaks the &quot;whole-image transformation&quot; contract.</span>
 <span class="sd">    5. Use the Image class&#39;s helper methods (``image.rotate()``) whenever possible for consistency.</span>
 <span class="sd">    6. Always return the modified Image object after transformation.</span>
 
-<span class="sd">    **Parameter Matching Example**</span>
+<span class="sd">    **Parameter Declaration Example**</span>
 
-<span class="sd">    When instance attributes don&#39;t match ``_operate()`` parameters, serialization and parallelization fail:</span>
+<span class="sd">    Operation parameters are declared as annotated class-level fields; pydantic</span>
+<span class="sd">    generates the constructor and handles serialization automatically:</span>
 
 <span class="sd">    .. code-block:: python</span>
 
-<span class="sd">        # CORRECT: attribute names match parameter names</span>
-<span class="sd">        class GoodRotator(ImageCorrector):</span>
-<span class="sd">            def __init__(self, angle: float):</span>
-<span class="sd">                super().__init__()</span>
-<span class="sd">                self.angle = angle  # Matches _operate() parameter</span>
+<span class="sd">        class RotatorCorrector(ImageCorrector):</span>
+<span class="sd">            angle: float  # Annotated class-level field</span>
 
-<span class="sd">            @staticmethod</span>
-<span class="sd">            def _operate(image: Image, angle: float) -&gt; Image:</span>
-<span class="sd">                image.rotate(angle_of_rotation=angle, mode=&#39;edge&#39;)</span>
-<span class="sd">                return image</span>
-
-<span class="sd">        # WRONG: attribute name doesn&#39;t match parameter name</span>
-<span class="sd">        class BadRotator(ImageCorrector):</span>
-<span class="sd">            def __init__(self, angle: float):</span>
-<span class="sd">                super().__init__()</span>
-<span class="sd">                self.rotation_angle = angle  # Mismatch!</span>
-
-<span class="sd">            @staticmethod</span>
-<span class="sd">            def _operate(image: Image, angle: float) -&gt; Image:  # Parameter is &#39;angle&#39;</span>
-<span class="sd">                # This will fail—no &#39;angle&#39; attribute on self</span>
-<span class="sd">                image.rotate(angle_of_rotation=angle, mode=&#39;edge&#39;)</span>
+<span class="sd">            def _operate(self, image: Image) -&gt; Image:</span>
+<span class="sd">                image.rotate(angle_of_rotation=self.angle, mode=&#39;edge&#39;)</span>
 <span class="sd">                return image</span>
 
 <span class="sd">    **Critical Implementation Detail: Updating All Components**</span>
@@ -688,10 +670,9 @@
 
 <span class="sd">    .. code-block:: python</span>
 
-<span class="sd">        @staticmethod</span>
-<span class="sd">        def _operate(image: Image, angle: float) -&gt; Image:</span>
+<span class="sd">        def _operate(self, image: Image) -&gt; Image:</span>
 <span class="sd">            # Rotate rgb and gray (color representation)</span>
-<span class="sd">            image.rotate(angle_of_rotation=angle, mode=&#39;edge&#39;)</span>
+<span class="sd">            image.rotate(angle_of_rotation=self.angle, mode=&#39;edge&#39;)</span>
 
 <span class="sd">            # The following are automatically handled by image.rotate():</span>
 <span class="sd">            # - Rotate detect_mat (enhanced version for detection)</span>
@@ -782,7 +763,7 @@
 <span class="sd">    **Notes**</span>
 
 <span class="sd">    - **Instance method:** ``_operate()`` is an instance method; access parameters via ``self``.</span>
-<span class="sd">    - **Parameter matching:** All ``_operate()`` parameters (except ``image``) must exist as instance attributes.</span>
+<span class="sd">    - **Field declaration:** Operation parameters are declared as annotated class-level fields.</span>
 <span class="sd">    - **No copy by default:** Operations return modified copies by default (inplace=False).</span>
 <span class="sd">    - **Coordinate system changes:** Downstream operations may need re-detection after transformation.</span>
 <span class="sd">    - **Grid alignment workflow:** [GridAligner](src/phenotypic/correction/_grid_aligner.py) is the canonical example.</span>
@@ -795,12 +776,9 @@
 <span class="sd">    &gt;&gt;&gt; from phenotypic.data import load_synth_yeast_plate</span>
 <span class="sd">    &gt;&gt;&gt;</span>
 <span class="sd">    &gt;&gt;&gt; class SimpleRotator(ImageCorrector):</span>
-<span class="sd">    ...     def __init__(self, angle=5.0):</span>
-<span class="sd">    ...         super().__init__()</span>
-<span class="sd">    ...         self.angle = angle</span>
-<span class="sd">    ...     @staticmethod</span>
-<span class="sd">    ...     def _operate(image, angle):</span>
-<span class="sd">    ...         image.rotate(angle_of_rotation=angle, mode=&#39;edge&#39;)</span>
+<span class="sd">    ...     angle: float = 5.0</span>
+<span class="sd">    ...     def _operate(self, image):</span>
+<span class="sd">    ...         image.rotate(angle_of_rotation=self.angle, mode=&#39;edge&#39;)</span>
 <span class="sd">    ...         return image</span>
 <span class="sd">    &gt;&gt;&gt;</span>
 <span class="sd">    &gt;&gt;&gt; image = load_synth_yeast_plate()</span>
@@ -817,13 +795,10 @@
 <span class="sd">    &gt;&gt;&gt; import numpy as np</span>
 <span class="sd">    &gt;&gt;&gt;</span>
 <span class="sd">    &gt;&gt;&gt; class PerspectiveCorrector(ImageCorrector):</span>
-<span class="sd">    ...     def __init__(self, tilt_angle=10.0):</span>
-<span class="sd">    ...         super().__init__()</span>
-<span class="sd">    ...         self.tilt_angle = tilt_angle</span>
-<span class="sd">    ...     @staticmethod</span>
-<span class="sd">    ...     def _operate(image, tilt_angle):</span>
+<span class="sd">    ...     tilt_angle: float = 10.0</span>
+<span class="sd">    ...     def _operate(self, image):</span>
 <span class="sd">    ...         # Apply perspective transform to all components</span>
-<span class="sd">    ...         image.rotate(angle_of_rotation=tilt_angle, mode=&#39;edge&#39;)</span>
+<span class="sd">    ...         image.rotate(angle_of_rotation=self.tilt_angle, mode=&#39;edge&#39;)</span>
 <span class="sd">    ...         return image</span>
 <span class="sd">    &gt;&gt;&gt;</span>
 <span class="sd">    &gt;&gt;&gt; image = load_synth_yeast_plate()</span>

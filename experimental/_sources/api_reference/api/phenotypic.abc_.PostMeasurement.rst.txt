@@ -18,9 +18,42 @@ phenotypic.abc\_.PostMeasurement
    
       ~PostMeasurement.__init__
       ~PostMeasurement.apply
+      ~PostMeasurement.construct
+      ~PostMeasurement.copy
+      ~PostMeasurement.dict
+      ~PostMeasurement.from_orm
+      ~PostMeasurement.json
+      ~PostMeasurement.model_construct
+      ~PostMeasurement.model_copy
+      ~PostMeasurement.model_dump
+      ~PostMeasurement.model_dump_json
+      ~PostMeasurement.model_json_schema
+      ~PostMeasurement.model_parametrized_name
+      ~PostMeasurement.model_post_init
+      ~PostMeasurement.model_rebuild
+      ~PostMeasurement.model_validate
+      ~PostMeasurement.model_validate_json
+      ~PostMeasurement.model_validate_strings
+      ~PostMeasurement.parse_file
+      ~PostMeasurement.parse_obj
+      ~PostMeasurement.parse_raw
+      ~PostMeasurement.schema
+      ~PostMeasurement.schema_json
+      ~PostMeasurement.update_forward_refs
+      ~PostMeasurement.validate
    
    
 
    
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~PostMeasurement.model_computed_fields
+      ~PostMeasurement.model_config
+      ~PostMeasurement.model_extra
+      ~PostMeasurement.model_fields
+      ~PostMeasurement.model_fields_set
    
    

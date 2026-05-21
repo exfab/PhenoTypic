@@ -532,6 +532,7 @@
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">bm3d</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">bm3d.profiles</span><span class="w"> </span><span class="kn">import</span> <span class="n">BM3DStages</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">field_validator</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">..abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageDenoiser</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..tools_.mixin</span><span class="w"> </span><span class="kn">import</span> <span class="n">_GATSupportMixin</span>
@@ -614,53 +615,18 @@
     <span class="n">_GAT_NOISE_PARAMS</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;sigma_psd&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">}</span>
     <span class="n">_GAT_DEFER_ATTRS</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]]</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;clip&quot;</span><span class="p">,)</span>
 
-<div class="viewcode-block" id="BM3DDenoiser.__init__">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.enhance.html#phenotypic.enhance.BM3DDenoiser.__init__">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
-            <span class="bp">self</span><span class="p">,</span>
-            <span class="n">sigma_psd</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.02</span><span class="p">,</span>
-            <span class="n">block_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">,</span>
-            <span class="o">*</span><span class="p">,</span>
-            <span class="n">stage_arg</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;all_stages&quot;</span><span class="p">,</span> <span class="s2">&quot;hard_thresholding&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;all_stages&quot;</span><span class="p">,</span>
-            <span class="n">clip</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-            <span class="n">use_gat</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
-            <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
-    <span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Parameters:</span>
-<span class="sd">            sigma_psd (float): Noise level estimate in [0, 1] normalized</span>
-<span class="sd">                scale. Start with 0.02-0.05 for typical scanner noise on</span>
-<span class="sd">                plates (equivalent to σ=5-12 on 8-bit).</span>
-<span class="sd">                Higher value -&gt; more noise.</span>
-<span class="sd">            block_size (int): Block size for BM3D denoising. Default is 8.</span>
-<span class="sd">            stage_arg (Literal[&quot;all_stages&quot;, &quot;hard_thresholding&quot;]): Denoising</span>
-<span class="sd">                stages to run. &#39;all_stages&#39; gives best quality at the cost of</span>
-<span class="sd">                speed; &#39;hard_thresholding&#39; is faster and adequate for routine</span>
-<span class="sd">                plate analysis.</span>
-<span class="sd">            clip (bool): Whether to clip output to [0, 1] range. Default True.</span>
-<span class="sd">                Automatically deferred when ``use_gat=True``.</span>
-<span class="sd">            use_gat (bool): Wrap denoising in the Generalized Anscombe</span>
-<span class="sd">                Transform for Poisson-Gaussian noise. Default False. See</span>
-<span class="sd">                :class:`phenotypic.tools_.mixin._GATSupportMixin`.</span>
-<span class="sd">            **kwargs: GAT tuning parameters forwarded to</span>
-<span class="sd">                :class:`_GATSupportMixin` (``gat_gain``, ``gat_mu``,</span>
-<span class="sd">                ``gat_read_sigma``, ``gat_scale_factor``).</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sigma_psd</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)):</span>
-            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;sigma_psd must be a number or None&quot;</span><span class="p">)</span>
+    <span class="n">sigma_psd</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.02</span>
+    <span class="n">block_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">8</span>
+    <span class="n">stage_arg</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;all_stages&quot;</span><span class="p">,</span> <span class="s2">&quot;hard_thresholding&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;all_stages&quot;</span>
+    <span class="n">clip</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;sigma_psd&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_check_sigma_psd</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">sigma_psd</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Require a non-negative noise estimate (matches the legacy guard).&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">sigma_psd</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;sigma_psd must be non-negative&quot;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">stage_arg</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;all_stages&quot;</span><span class="p">,</span> <span class="s2">&quot;hard_thresholding&quot;</span><span class="p">]:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="s2">&quot;stage_arg must be &#39;all_stages&#39; or &#39;hard_thresholding&#39;&quot;</span>
-            <span class="p">)</span>
-
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">use_gat</span><span class="o">=</span><span class="n">use_gat</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">sigma_psd</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">sigma_psd</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">stage_arg</span> <span class="o">=</span> <span class="n">stage_arg</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">block_size</span> <span class="o">=</span> <span class="n">block_size</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">clip</span> <span class="o">=</span> <span class="n">clip</span></div>
-
+        <span class="k">return</span> <span class="n">sigma_psd</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
         <span class="c1"># detect_mat is guaranteed to be in [0, 1] range, which BM3D expects</span>

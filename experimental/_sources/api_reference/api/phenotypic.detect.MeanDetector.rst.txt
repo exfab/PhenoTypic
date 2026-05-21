@@ -18,10 +18,45 @@ phenotypic.detect.MeanDetector
    
       ~MeanDetector.__init__
       ~MeanDetector.apply
+      ~MeanDetector.construct
+      ~MeanDetector.copy
+      ~MeanDetector.dict
+      ~MeanDetector.from_orm
+      ~MeanDetector.json
+      ~MeanDetector.model_construct
+      ~MeanDetector.model_copy
+      ~MeanDetector.model_dump
+      ~MeanDetector.model_dump_json
+      ~MeanDetector.model_json_schema
+      ~MeanDetector.model_parametrized_name
+      ~MeanDetector.model_post_init
+      ~MeanDetector.model_rebuild
+      ~MeanDetector.model_validate
+      ~MeanDetector.model_validate_json
+      ~MeanDetector.model_validate_strings
+      ~MeanDetector.parse_file
+      ~MeanDetector.parse_obj
+      ~MeanDetector.parse_raw
+      ~MeanDetector.schema
+      ~MeanDetector.schema_json
+      ~MeanDetector.update_forward_refs
+      ~MeanDetector.validate
       ~MeanDetector.widget
    
    
 
    
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~MeanDetector.model_computed_fields
+      ~MeanDetector.model_config
+      ~MeanDetector.model_extra
+      ~MeanDetector.model_fields
+      ~MeanDetector.model_fields_set
+      ~MeanDetector.ignore_zeros
+      ~MeanDetector.ignore_borders
    
    

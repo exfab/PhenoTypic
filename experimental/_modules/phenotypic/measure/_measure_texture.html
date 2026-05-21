@@ -527,23 +527,25 @@
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">functools</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">TYPE_CHECKING</span>
-
-<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
-
 <span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">ClassVar</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">TYPE_CHECKING</span>
 
-<span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s1">&#39;ignore&#39;</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="ne">SyntaxWarning</span><span class="p">,</span> <span class="n">module</span><span class="o">=</span><span class="s1">&#39;mahotas&#39;</span><span class="p">)</span>
-
-<span class="kn">import</span><span class="w"> </span><span class="nn">mahotas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">mh</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">field_validator</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">skimage</span><span class="w"> </span><span class="kn">import</span> <span class="n">exposure</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasureFeatures</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.constants_</span><span class="w"> </span><span class="kn">import</span> <span class="n">OBJECT</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..tools_.measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">TEXTURE</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
+
+<span class="c1"># Suppress mahotas&#39; module-load SyntaxWarning before importing it.</span>
+<span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s1">&#39;ignore&#39;</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="ne">SyntaxWarning</span><span class="p">,</span> <span class="n">module</span><span class="o">=</span><span class="s1">&#39;mahotas&#39;</span><span class="p">)</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">mahotas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">mh</span>  <span class="c1"># noqa: E402 - must follow the filterwarnings call above</span>
 
 
 <div class="viewcode-block" id="MeasureTexture">
@@ -610,42 +612,27 @@
 <span class="sd">        interpreting texture metrics in a biological context.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="n">_measurement_infoclass</span> <span class="o">=</span> <span class="n">TEXTURE</span>
+    <span class="n">_measurement_infoclass</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">type</span><span class="p">]</span> <span class="o">=</span> <span class="n">TEXTURE</span>
 
-<div class="viewcode-block" id="MeasureTexture.__init__">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.measure.html#phenotypic.measure.MeasureTexture.__init__">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
-            <span class="bp">self</span><span class="p">,</span>
-            <span class="n">scale</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
-            <span class="n">quant_lvl</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="mi">8</span><span class="p">,</span> <span class="mi">16</span><span class="p">,</span> <span class="mi">32</span><span class="p">,</span> <span class="mi">64</span><span class="p">]</span> <span class="o">=</span> <span class="mi">32</span><span class="p">,</span>
-            <span class="n">enhance</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
-            <span class="n">warn</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
-    <span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Initializes an object with specific configurations for scale, quantization level,</span>
-<span class="sd">        enhance, and warning behaviors. This constructor ensures that the &#39;scale&#39;</span>
-<span class="sd">        parameter is always stored as a list.</span>
+    <span class="n">scale</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="mi">5</span><span class="p">]</span>
+    <span class="n">quant_lvl</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="mi">8</span><span class="p">,</span> <span class="mi">16</span><span class="p">,</span> <span class="mi">32</span><span class="p">,</span> <span class="mi">64</span><span class="p">]</span> <span class="o">=</span> <span class="mi">32</span>
+    <span class="n">enhance</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">warn</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
 
-<span class="sd">        Args:</span>
-<span class="sd">            scale (int | List[int]): A single integer or a list of integers representing</span>
-<span class="sd">                the scale configuration. If a single integer is provided, it will be</span>
-<span class="sd">                converted into a list containing that integer.</span>
-<span class="sd">            quant_lvl (Literal[8, 16, 32, 64]): The quantization level. A higher level adds</span>
-<span class="sd">                more computational complexity but captures more discrete texture changes. A higher value is</span>
-<span class="sd">                not always more meaningful. Think of this like sensitivity to texture. Acceptable values are either 8, 16, 32, or 64.</span>
-<span class="sd">            enhance (bool): A flag indicating whether to enhance the image before measuring texture. This can</span>
-<span class="sd">                increase the amount of detail captured but can bias the measurements in cases where the relative</span>
-<span class="sd">                variance between pixel intensities of an object is small.</span>
-<span class="sd">            warn (bool): A flag indicating whether warnings should be issued.</span>
+    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;scale&quot;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;before&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_coerce_scale_to_list</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">scale</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Normalize a bare integer ``scale`` to a single-element list.</span>
+
+<span class="sd">        The legacy constructor stored ``scale`` as a list regardless of</span>
+<span class="sd">        whether the caller passed an ``int`` or a ``list[int]`` (the</span>
+<span class="sd">        ``_operate`` body indexes ``self.scale[0]`` / ``self.scale[1:]``).</span>
+<span class="sd">        This validator reproduces that coercion so both call styles keep</span>
+<span class="sd">        working while the declared field type stays an honest list.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">scale</span><span class="p">,</span> <span class="s2">&quot;__getitem__&quot;</span><span class="p">):</span>  <span class="c1"># coerce iterable input</span>
-            <span class="n">scale</span> <span class="o">=</span> <span class="p">[</span><span class="n">scale</span><span class="p">]</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">scale</span> <span class="o">=</span> <span class="n">scale</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">quant_lvl</span> <span class="o">=</span> <span class="n">quant_lvl</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">enhance</span> <span class="o">=</span> <span class="n">enhance</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">warn</span> <span class="o">=</span> <span class="n">warn</span></div>
-
+            <span class="k">return</span> <span class="p">[</span><span class="n">scale</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">scale</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Performs texture measurements on the image objects.</span>

@@ -18,10 +18,45 @@ phenotypic.detect.OtsuDetector
    
       ~OtsuDetector.__init__
       ~OtsuDetector.apply
+      ~OtsuDetector.construct
+      ~OtsuDetector.copy
+      ~OtsuDetector.dict
+      ~OtsuDetector.from_orm
+      ~OtsuDetector.json
+      ~OtsuDetector.model_construct
+      ~OtsuDetector.model_copy
+      ~OtsuDetector.model_dump
+      ~OtsuDetector.model_dump_json
+      ~OtsuDetector.model_json_schema
+      ~OtsuDetector.model_parametrized_name
+      ~OtsuDetector.model_post_init
+      ~OtsuDetector.model_rebuild
+      ~OtsuDetector.model_validate
+      ~OtsuDetector.model_validate_json
+      ~OtsuDetector.model_validate_strings
+      ~OtsuDetector.parse_file
+      ~OtsuDetector.parse_obj
+      ~OtsuDetector.parse_raw
+      ~OtsuDetector.schema
+      ~OtsuDetector.schema_json
+      ~OtsuDetector.update_forward_refs
+      ~OtsuDetector.validate
       ~OtsuDetector.widget
    
    
 
    
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~OtsuDetector.model_computed_fields
+      ~OtsuDetector.model_config
+      ~OtsuDetector.model_extra
+      ~OtsuDetector.model_fields
+      ~OtsuDetector.model_fields_set
+      ~OtsuDetector.ignore_zeros
+      ~OtsuDetector.ignore_borders
    
    

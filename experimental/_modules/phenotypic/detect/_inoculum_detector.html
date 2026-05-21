@@ -536,6 +536,8 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Literal</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">field_validator</span><span class="p">,</span> <span class="n">model_validator</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing_extensions</span><span class="w"> </span><span class="kn">import</span> <span class="n">Self</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ObjectDetector</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect._round_peaks_detector</span><span class="w"> </span><span class="kn">import</span> <span class="n">RoundPeaksDetector</span>
@@ -635,55 +637,55 @@
 <span class="sd">            In-depth comparison of all detection strategies.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-<div class="viewcode-block" id="InoculumDetector.__init__">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.detect.html#phenotypic.detect.InoculumDetector.__init__">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
-            <span class="bp">self</span><span class="p">,</span>
-            <span class="n">min_diameter</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">30.0</span><span class="p">,</span>
-            <span class="n">max_diameter</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">100.0</span><span class="p">,</span>
-            <span class="n">thresh_method</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span>
-                <span class="s2">&quot;otsu&quot;</span><span class="p">,</span> <span class="s2">&quot;mean&quot;</span><span class="p">,</span> <span class="s2">&quot;local&quot;</span><span class="p">,</span> <span class="s2">&quot;triangle&quot;</span><span class="p">,</span> <span class="s2">&quot;minimum&quot;</span><span class="p">,</span> <span class="s2">&quot;isodata&quot;</span><span class="p">,</span> <span class="s2">&quot;li&quot;</span>
-            <span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;otsu&quot;</span><span class="p">,</span>
-            <span class="n">enable_gmm</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-            <span class="n">gmm_n_components</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
-            <span class="n">gmm_separation_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.9</span><span class="p">,</span>
-            <span class="n">validate_obj_count</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-    <span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialise InoculumDetector with biology-driven parameters.</span>
+    <span class="n">min_diameter</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">30.0</span>
+    <span class="n">max_diameter</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">100.0</span>
+    <span class="n">thresh_method</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span>
+        <span class="s2">&quot;otsu&quot;</span><span class="p">,</span> <span class="s2">&quot;mean&quot;</span><span class="p">,</span> <span class="s2">&quot;local&quot;</span><span class="p">,</span> <span class="s2">&quot;triangle&quot;</span><span class="p">,</span> <span class="s2">&quot;minimum&quot;</span><span class="p">,</span> <span class="s2">&quot;isodata&quot;</span><span class="p">,</span> <span class="s2">&quot;li&quot;</span>
+    <span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;otsu&quot;</span>
+    <span class="n">enable_gmm</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">gmm_n_components</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span>
+    <span class="n">gmm_separation_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.9</span>
+    <span class="n">validate_obj_count</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
 
-<span class="sd">        Args:</span>
-<span class="sd">            min_diameter: Smallest expected inoculum diameter (pixels).</span>
-<span class="sd">                Default: 30.0.</span>
-<span class="sd">            max_diameter: Largest expected inoculum diameter (pixels).</span>
-<span class="sd">                Default: 100.0.</span>
-<span class="sd">            thresh_method: Thresholding method. Default: ``&#39;otsu&#39;``.</span>
-<span class="sd">            enable_gmm: Apply GMM core extraction. Default: True.</span>
-<span class="sd">            gmm_n_components: GMM components per region. Default: 2.</span>
-<span class="sd">            gmm_separation_threshold: GMM mean separation threshold.</span>
-<span class="sd">                Default: 0.9.</span>
-<span class="sd">            validate_obj_count: Validate object count for GridImage.</span>
-<span class="sd">                Default: True.</span>
+    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;min_diameter&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_check_min_diameter_positive</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Require ``min_diameter`` to be strictly positive.</span>
+
+<span class="sd">        Reproduces the ``min_diameter &lt;= 0`` guard from the pre-migration</span>
+<span class="sd">        ``__init__`` (kept as a validator, not a ``Field(gt=0)``</span>
+<span class="sd">        constraint, so the original error message is preserved).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">value</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;min_diameter must be positive, got </span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">value</span>
 
-        <span class="k">if</span> <span class="n">min_diameter</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;min_diameter must be positive, got </span><span class="si">{</span><span class="n">min_diameter</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">max_diameter</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;max_diameter must be positive, got </span><span class="si">{</span><span class="n">max_diameter</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">min_diameter</span> <span class="o">&gt;=</span> <span class="n">max_diameter</span><span class="p">:</span>
+    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;max_diameter&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_check_max_diameter_positive</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Require ``max_diameter`` to be strictly positive.</span>
+
+<span class="sd">        Reproduces the ``max_diameter &lt;= 0`` guard from the pre-migration</span>
+<span class="sd">        ``__init__``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">value</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;max_diameter must be positive, got </span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">value</span>
+
+    <span class="nd">@model_validator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;after&quot;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_check_diameter_order</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Require ``min_diameter`` to be strictly less than ``max_diameter``.</span>
+
+<span class="sd">        Reproduces the cross-field guard from the pre-migration</span>
+<span class="sd">        ``__init__``; the per-field positivity checks live in the</span>
+<span class="sd">        ``min_diameter`` / ``max_diameter`` field validators above.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_diameter</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_diameter</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;min_diameter (</span><span class="si">{</span><span class="n">min_diameter</span><span class="si">}</span><span class="s2">) must be less than &quot;</span>
-                    <span class="sa">f</span><span class="s2">&quot;max_diameter (</span><span class="si">{</span><span class="n">max_diameter</span><span class="si">}</span><span class="s2">)&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;min_diameter (</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">min_diameter</span><span class="si">}</span><span class="s2">) must be less than &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;max_diameter (</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">max_diameter</span><span class="si">}</span><span class="s2">)&quot;</span>
             <span class="p">)</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">min_diameter</span> <span class="o">=</span> <span class="n">min_diameter</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">max_diameter</span> <span class="o">=</span> <span class="n">max_diameter</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">thresh_method</span> <span class="o">=</span> <span class="n">thresh_method</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">enable_gmm</span> <span class="o">=</span> <span class="n">enable_gmm</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">gmm_n_components</span> <span class="o">=</span> <span class="n">gmm_n_components</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">gmm_separation_threshold</span> <span class="o">=</span> <span class="n">gmm_separation_threshold</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">validate_obj_count</span> <span class="o">=</span> <span class="n">validate_obj_count</span></div>
-
+        <span class="k">return</span> <span class="bp">self</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Detect inoculation sites via composable Gaussian pipeline.</span>

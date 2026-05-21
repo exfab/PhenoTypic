@@ -18,14 +18,37 @@ phenotypic.analysis.ExpectedVsDetectedCount
    
       ~ExpectedVsDetectedCount.__init__
       ~ExpectedVsDetectedCount.analyze
+      ~ExpectedVsDetectedCount.construct
+      ~ExpectedVsDetectedCount.copy
       ~ExpectedVsDetectedCount.dash
+      ~ExpectedVsDetectedCount.dict
       ~ExpectedVsDetectedCount.flag_col
       ~ExpectedVsDetectedCount.flagged_keys
+      ~ExpectedVsDetectedCount.from_orm
+      ~ExpectedVsDetectedCount.json
+      ~ExpectedVsDetectedCount.model_construct
+      ~ExpectedVsDetectedCount.model_copy
+      ~ExpectedVsDetectedCount.model_dump
+      ~ExpectedVsDetectedCount.model_dump_json
+      ~ExpectedVsDetectedCount.model_json_schema
+      ~ExpectedVsDetectedCount.model_parametrized_name
+      ~ExpectedVsDetectedCount.model_post_init
+      ~ExpectedVsDetectedCount.model_rebuild
+      ~ExpectedVsDetectedCount.model_validate
+      ~ExpectedVsDetectedCount.model_validate_json
+      ~ExpectedVsDetectedCount.model_validate_strings
+      ~ExpectedVsDetectedCount.parse_file
+      ~ExpectedVsDetectedCount.parse_obj
+      ~ExpectedVsDetectedCount.parse_raw
       ~ExpectedVsDetectedCount.results
+      ~ExpectedVsDetectedCount.schema
+      ~ExpectedVsDetectedCount.schema_json
       ~ExpectedVsDetectedCount.severity_col
       ~ExpectedVsDetectedCount.show
       ~ExpectedVsDetectedCount.status_col
       ~ExpectedVsDetectedCount.summary
+      ~ExpectedVsDetectedCount.update_forward_refs
+      ~ExpectedVsDetectedCount.validate
    
    
 
@@ -35,8 +58,19 @@ phenotypic.analysis.ExpectedVsDetectedCount
 
    .. autosummary::
    
+      ~ExpectedVsDetectedCount.model_computed_fields
+      ~ExpectedVsDetectedCount.model_config
+      ~ExpectedVsDetectedCount.model_extra
+      ~ExpectedVsDetectedCount.model_fields
+      ~ExpectedVsDetectedCount.model_fields_set
       ~ExpectedVsDetectedCount.name
       ~ExpectedVsDetectedCount.severity_fail
       ~ExpectedVsDetectedCount.severity_warn
+      ~ExpectedVsDetectedCount.on
+      ~ExpectedVsDetectedCount.agg_func
+      ~ExpectedVsDetectedCount.metadata
+      ~ExpectedVsDetectedCount.unmatched_groups
+      ~ExpectedVsDetectedCount.groupby
+      ~ExpectedVsDetectedCount.n_jobs
    
    

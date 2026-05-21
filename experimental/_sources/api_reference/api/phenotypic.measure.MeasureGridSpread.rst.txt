@@ -17,10 +17,43 @@ phenotypic.measure.MeasureGridSpread
       :nosignatures:
    
       ~MeasureGridSpread.__init__
+      ~MeasureGridSpread.construct
+      ~MeasureGridSpread.copy
+      ~MeasureGridSpread.dict
+      ~MeasureGridSpread.from_orm
+      ~MeasureGridSpread.json
       ~MeasureGridSpread.measure
+      ~MeasureGridSpread.model_construct
+      ~MeasureGridSpread.model_copy
+      ~MeasureGridSpread.model_dump
+      ~MeasureGridSpread.model_dump_json
+      ~MeasureGridSpread.model_json_schema
+      ~MeasureGridSpread.model_parametrized_name
+      ~MeasureGridSpread.model_post_init
+      ~MeasureGridSpread.model_rebuild
+      ~MeasureGridSpread.model_validate
+      ~MeasureGridSpread.model_validate_json
+      ~MeasureGridSpread.model_validate_strings
+      ~MeasureGridSpread.parse_file
+      ~MeasureGridSpread.parse_obj
+      ~MeasureGridSpread.parse_raw
+      ~MeasureGridSpread.schema
+      ~MeasureGridSpread.schema_json
+      ~MeasureGridSpread.update_forward_refs
+      ~MeasureGridSpread.validate
    
    
 
    
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~MeasureGridSpread.model_computed_fields
+      ~MeasureGridSpread.model_config
+      ~MeasureGridSpread.model_extra
+      ~MeasureGridSpread.model_fields
+      ~MeasureGridSpread.model_fields_set
    
    

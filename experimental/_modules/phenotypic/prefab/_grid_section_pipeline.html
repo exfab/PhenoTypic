@@ -692,8 +692,8 @@
             <span class="s2">&quot;align&quot;</span>                           <span class="p">:</span> <span class="n">GridAligner</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="n">aligner_axis</span><span class="p">,</span>
                                                             <span class="n">mode</span><span class="o">=</span><span class="n">aligner_mode</span><span class="p">),</span>
             <span class="s2">&quot;section-level detect&quot;</span>            <span class="p">:</span> <span class="n">GridApply</span><span class="p">(</span>
-                    <span class="n">ImagePipeline</span><span class="p">(</span>
-                            <span class="p">{</span>
+                    <span class="n">image_op</span><span class="o">=</span><span class="n">ImagePipeline</span><span class="p">(</span>
+                            <span class="n">pipe_cfgs</span><span class="o">=</span><span class="p">{</span>
                                 <span class="s2">&quot;blur&quot;</span>               <span class="p">:</span> <span class="n">GaussianBlur</span><span class="p">(</span>
                                         <span class="n">sigma</span><span class="o">=</span><span class="n">section_blur_sigma</span><span class="p">,</span>
                                         <span class="n">mode</span><span class="o">=</span><span class="n">section_blur_mode</span><span class="p">,</span>

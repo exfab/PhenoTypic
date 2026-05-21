@@ -18,10 +18,44 @@ phenotypic.refine.BorderObjectRemover
    
       ~BorderObjectRemover.__init__
       ~BorderObjectRemover.apply
+      ~BorderObjectRemover.construct
+      ~BorderObjectRemover.copy
+      ~BorderObjectRemover.dict
+      ~BorderObjectRemover.from_orm
+      ~BorderObjectRemover.json
+      ~BorderObjectRemover.model_construct
+      ~BorderObjectRemover.model_copy
+      ~BorderObjectRemover.model_dump
+      ~BorderObjectRemover.model_dump_json
+      ~BorderObjectRemover.model_json_schema
+      ~BorderObjectRemover.model_parametrized_name
+      ~BorderObjectRemover.model_post_init
+      ~BorderObjectRemover.model_rebuild
+      ~BorderObjectRemover.model_validate
+      ~BorderObjectRemover.model_validate_json
+      ~BorderObjectRemover.model_validate_strings
+      ~BorderObjectRemover.parse_file
+      ~BorderObjectRemover.parse_obj
+      ~BorderObjectRemover.parse_raw
+      ~BorderObjectRemover.schema
+      ~BorderObjectRemover.schema_json
+      ~BorderObjectRemover.update_forward_refs
+      ~BorderObjectRemover.validate
       ~BorderObjectRemover.widget
    
    
 
    
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~BorderObjectRemover.model_computed_fields
+      ~BorderObjectRemover.model_config
+      ~BorderObjectRemover.model_extra
+      ~BorderObjectRemover.model_fields
+      ~BorderObjectRemover.model_fields_set
+      ~BorderObjectRemover.border_size
    
    

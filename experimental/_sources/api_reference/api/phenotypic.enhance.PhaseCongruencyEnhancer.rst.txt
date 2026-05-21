@@ -18,10 +18,53 @@ phenotypic.enhance.PhaseCongruencyEnhancer
    
       ~PhaseCongruencyEnhancer.__init__
       ~PhaseCongruencyEnhancer.apply
+      ~PhaseCongruencyEnhancer.construct
+      ~PhaseCongruencyEnhancer.copy
+      ~PhaseCongruencyEnhancer.dict
+      ~PhaseCongruencyEnhancer.from_orm
+      ~PhaseCongruencyEnhancer.json
+      ~PhaseCongruencyEnhancer.model_construct
+      ~PhaseCongruencyEnhancer.model_copy
+      ~PhaseCongruencyEnhancer.model_dump
+      ~PhaseCongruencyEnhancer.model_dump_json
+      ~PhaseCongruencyEnhancer.model_json_schema
+      ~PhaseCongruencyEnhancer.model_parametrized_name
+      ~PhaseCongruencyEnhancer.model_post_init
+      ~PhaseCongruencyEnhancer.model_rebuild
+      ~PhaseCongruencyEnhancer.model_validate
+      ~PhaseCongruencyEnhancer.model_validate_json
+      ~PhaseCongruencyEnhancer.model_validate_strings
+      ~PhaseCongruencyEnhancer.parse_file
+      ~PhaseCongruencyEnhancer.parse_obj
+      ~PhaseCongruencyEnhancer.parse_raw
+      ~PhaseCongruencyEnhancer.schema
+      ~PhaseCongruencyEnhancer.schema_json
+      ~PhaseCongruencyEnhancer.update_forward_refs
+      ~PhaseCongruencyEnhancer.validate
       ~PhaseCongruencyEnhancer.widget
    
    
 
    
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~PhaseCongruencyEnhancer.model_computed_fields
+      ~PhaseCongruencyEnhancer.model_config
+      ~PhaseCongruencyEnhancer.model_extra
+      ~PhaseCongruencyEnhancer.model_fields
+      ~PhaseCongruencyEnhancer.model_fields_set
+      ~PhaseCongruencyEnhancer.n_scale
+      ~PhaseCongruencyEnhancer.n_orient
+      ~PhaseCongruencyEnhancer.min_wavelength
+      ~PhaseCongruencyEnhancer.mult
+      ~PhaseCongruencyEnhancer.sigma_onf
+      ~PhaseCongruencyEnhancer.k
+      ~PhaseCongruencyEnhancer.cutoff
+      ~PhaseCongruencyEnhancer.g
+      ~PhaseCongruencyEnhancer.noise_method
+      ~PhaseCongruencyEnhancer.output
    
    

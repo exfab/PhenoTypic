@@ -17,10 +17,44 @@ phenotypic.measure.MeasureGridLinRegStats
       :nosignatures:
    
       ~MeasureGridLinRegStats.__init__
+      ~MeasureGridLinRegStats.construct
+      ~MeasureGridLinRegStats.copy
+      ~MeasureGridLinRegStats.dict
+      ~MeasureGridLinRegStats.from_orm
+      ~MeasureGridLinRegStats.json
       ~MeasureGridLinRegStats.measure
+      ~MeasureGridLinRegStats.model_construct
+      ~MeasureGridLinRegStats.model_copy
+      ~MeasureGridLinRegStats.model_dump
+      ~MeasureGridLinRegStats.model_dump_json
+      ~MeasureGridLinRegStats.model_json_schema
+      ~MeasureGridLinRegStats.model_parametrized_name
+      ~MeasureGridLinRegStats.model_post_init
+      ~MeasureGridLinRegStats.model_rebuild
+      ~MeasureGridLinRegStats.model_validate
+      ~MeasureGridLinRegStats.model_validate_json
+      ~MeasureGridLinRegStats.model_validate_strings
+      ~MeasureGridLinRegStats.parse_file
+      ~MeasureGridLinRegStats.parse_obj
+      ~MeasureGridLinRegStats.parse_raw
+      ~MeasureGridLinRegStats.schema
+      ~MeasureGridLinRegStats.schema_json
+      ~MeasureGridLinRegStats.update_forward_refs
+      ~MeasureGridLinRegStats.validate
    
    
 
    
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~MeasureGridLinRegStats.model_computed_fields
+      ~MeasureGridLinRegStats.model_config
+      ~MeasureGridLinRegStats.model_extra
+      ~MeasureGridLinRegStats.model_fields
+      ~MeasureGridLinRegStats.model_fields_set
+      ~MeasureGridLinRegStats.section_num
    
    

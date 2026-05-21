@@ -18,10 +18,47 @@ phenotypic.enhance.RankMedianEnhancer
    
       ~RankMedianEnhancer.__init__
       ~RankMedianEnhancer.apply
+      ~RankMedianEnhancer.construct
+      ~RankMedianEnhancer.copy
+      ~RankMedianEnhancer.dict
+      ~RankMedianEnhancer.from_orm
+      ~RankMedianEnhancer.json
+      ~RankMedianEnhancer.model_construct
+      ~RankMedianEnhancer.model_copy
+      ~RankMedianEnhancer.model_dump
+      ~RankMedianEnhancer.model_dump_json
+      ~RankMedianEnhancer.model_json_schema
+      ~RankMedianEnhancer.model_parametrized_name
+      ~RankMedianEnhancer.model_post_init
+      ~RankMedianEnhancer.model_rebuild
+      ~RankMedianEnhancer.model_validate
+      ~RankMedianEnhancer.model_validate_json
+      ~RankMedianEnhancer.model_validate_strings
+      ~RankMedianEnhancer.parse_file
+      ~RankMedianEnhancer.parse_obj
+      ~RankMedianEnhancer.parse_raw
+      ~RankMedianEnhancer.schema
+      ~RankMedianEnhancer.schema_json
+      ~RankMedianEnhancer.update_forward_refs
+      ~RankMedianEnhancer.validate
       ~RankMedianEnhancer.widget
    
    
 
    
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~RankMedianEnhancer.model_computed_fields
+      ~RankMedianEnhancer.model_config
+      ~RankMedianEnhancer.model_extra
+      ~RankMedianEnhancer.model_fields
+      ~RankMedianEnhancer.model_fields_set
+      ~RankMedianEnhancer.shape
+      ~RankMedianEnhancer.width
+      ~RankMedianEnhancer.shift_x
+      ~RankMedianEnhancer.shift_y
    
    

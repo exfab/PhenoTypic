@@ -18,10 +18,46 @@ phenotypic.refine.ResidualOutlierRemover
    
       ~ResidualOutlierRemover.__init__
       ~ResidualOutlierRemover.apply
+      ~ResidualOutlierRemover.construct
+      ~ResidualOutlierRemover.copy
+      ~ResidualOutlierRemover.dict
+      ~ResidualOutlierRemover.from_orm
+      ~ResidualOutlierRemover.json
+      ~ResidualOutlierRemover.model_construct
+      ~ResidualOutlierRemover.model_copy
+      ~ResidualOutlierRemover.model_dump
+      ~ResidualOutlierRemover.model_dump_json
+      ~ResidualOutlierRemover.model_json_schema
+      ~ResidualOutlierRemover.model_parametrized_name
+      ~ResidualOutlierRemover.model_post_init
+      ~ResidualOutlierRemover.model_rebuild
+      ~ResidualOutlierRemover.model_validate
+      ~ResidualOutlierRemover.model_validate_json
+      ~ResidualOutlierRemover.model_validate_strings
+      ~ResidualOutlierRemover.parse_file
+      ~ResidualOutlierRemover.parse_obj
+      ~ResidualOutlierRemover.parse_raw
+      ~ResidualOutlierRemover.schema
+      ~ResidualOutlierRemover.schema_json
+      ~ResidualOutlierRemover.update_forward_refs
+      ~ResidualOutlierRemover.validate
       ~ResidualOutlierRemover.widget
    
    
 
    
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ResidualOutlierRemover.model_computed_fields
+      ~ResidualOutlierRemover.model_config
+      ~ResidualOutlierRemover.model_extra
+      ~ResidualOutlierRemover.model_fields
+      ~ResidualOutlierRemover.model_fields_set
+      ~ResidualOutlierRemover.axis
+      ~ResidualOutlierRemover.cutoff_multiplier
+      ~ResidualOutlierRemover.max_coeff_variance
    
    

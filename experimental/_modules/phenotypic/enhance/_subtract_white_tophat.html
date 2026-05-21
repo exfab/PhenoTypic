@@ -582,23 +582,8 @@
 <span class="sd">        visual walkthrough of artifact removal on plate images.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-<div class="viewcode-block" id="SubtractWhiteTophat.__init__">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.enhance.html#phenotypic.enhance.SubtractWhiteTophat.__init__">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">shape</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;diamond&quot;</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Parameters:</span>
-<span class="sd">            shape (str): Footprint geometry controlling which bright features are</span>
-<span class="sd">                removed. &#39;diamond&#39; or &#39;disk&#39; provide isotropic behavior on plates;</span>
-<span class="sd">                &#39;square&#39; can align with sensor grid artifacts. Advanced: &#39;sphere&#39;</span>
-<span class="sd">                or &#39;cube&#39; for volumetric data.</span>
-<span class="sd">            width (int | None): Maximum bright-object width (in pixels) targeted</span>
-<span class="sd">                for removal. Set slightly smaller than the smallest colonies to</span>
-<span class="sd">                avoid suppressing real colonies. None picks a small default based</span>
-<span class="sd">                on image dimensions.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="n">shape</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">width</span> <span class="o">=</span> <span class="n">width</span></div>
-
+    <span class="n">shape</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;diamond&quot;</span>
+    <span class="n">width</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
         <span class="n">white_tophat_results</span> <span class="o">=</span> <span class="n">white_tophat</span><span class="p">(</span>

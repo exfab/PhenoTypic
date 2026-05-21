@@ -605,47 +605,11 @@
     <span class="n">_GAT_NOISE_PARAMS</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;h&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span> <span class="s2">&quot;sigma&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">}</span>
     <span class="n">_GAT_DEFER_ATTRS</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]]</span> <span class="o">=</span> <span class="p">()</span>
 
-<div class="viewcode-block" id="NonLocalMeansDenoiser.__init__">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.enhance.html#phenotypic.enhance.NonLocalMeansDenoiser.__init__">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
-            <span class="bp">self</span><span class="p">,</span>
-            <span class="n">patch_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
-            <span class="n">search_dist</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">11</span><span class="p">,</span>
-            <span class="n">h</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">,</span>
-            <span class="o">*</span><span class="p">,</span>
-            <span class="n">fast_mode</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
-            <span class="n">sigma</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
-            <span class="n">use_gat</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
-            <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
-    <span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Parameters:</span>
-<span class="sd">            patch_size (int): Size of patches used for comparison.</span>
-<span class="sd">                Default: 5.</span>
-<span class="sd">            search_dist (int): Maximal distance in pixels to search for</span>
-<span class="sd">                similar patches. Default: 11.</span>
-<span class="sd">            h (float): Cut-off distance controlling smoothness. Rule of</span>
-<span class="sd">                thumb: ``h`` ≈ ``sigma``. Default: 0.5. Retargets to 1.0</span>
-<span class="sd">                when ``use_gat=True``.</span>
-<span class="sd">            fast_mode (bool): If True, use faster variant with uniform</span>
-<span class="sd">                spatial weighting. Default: False.</span>
-<span class="sd">            sigma (float): Noise standard deviation. If provided (&gt; 0),</span>
-<span class="sd">                improves patch weighting. Default: 0.0. Retargets to 1.0</span>
-<span class="sd">                when ``use_gat=True``.</span>
-<span class="sd">            use_gat (bool): Wrap denoising in the Generalized Anscombe</span>
-<span class="sd">                Transform for Poisson-Gaussian noise. Default False. See</span>
-<span class="sd">                :class:`phenotypic.tools_.mixin._GATSupportMixin`.</span>
-<span class="sd">            **kwargs: GAT tuning parameters forwarded to</span>
-<span class="sd">                :class:`_GATSupportMixin` (``gat_gain``, ``gat_mu``,</span>
-<span class="sd">                ``gat_read_sigma``, ``gat_scale_factor``).</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">use_gat</span><span class="o">=</span><span class="n">use_gat</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">patch_size</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">patch_size</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">search_dist</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">search_dist</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">h</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">h</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">fast_mode</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">fast_mode</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">sigma</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">sigma</span><span class="p">)</span></div>
-
+    <span class="n">patch_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span>
+    <span class="n">search_dist</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">11</span>
+    <span class="n">h</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span>
+    <span class="n">fast_mode</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">sigma</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply non-local means denoising to detection matrix.&quot;&quot;&quot;</span>

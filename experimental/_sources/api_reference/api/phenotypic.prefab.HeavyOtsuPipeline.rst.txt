@@ -23,19 +23,42 @@ phenotypic.prefab.HeavyOtsuPipeline
       ~HeavyOtsuPipeline.apply_napari
       ~HeavyOtsuPipeline.apply_with_intermediates
       ~HeavyOtsuPipeline.benchmark_results
+      ~HeavyOtsuPipeline.construct
+      ~HeavyOtsuPipeline.copy
+      ~HeavyOtsuPipeline.dict
       ~HeavyOtsuPipeline.from_json
+      ~HeavyOtsuPipeline.from_orm
       ~HeavyOtsuPipeline.get_filters
       ~HeavyOtsuPipeline.get_meas
       ~HeavyOtsuPipeline.get_model
       ~HeavyOtsuPipeline.get_ops
       ~HeavyOtsuPipeline.get_post
+      ~HeavyOtsuPipeline.json
       ~HeavyOtsuPipeline.measure
+      ~HeavyOtsuPipeline.model_construct
+      ~HeavyOtsuPipeline.model_copy
+      ~HeavyOtsuPipeline.model_dump
+      ~HeavyOtsuPipeline.model_dump_json
+      ~HeavyOtsuPipeline.model_json_schema
+      ~HeavyOtsuPipeline.model_parametrized_name
+      ~HeavyOtsuPipeline.model_post_init
+      ~HeavyOtsuPipeline.model_rebuild
+      ~HeavyOtsuPipeline.model_validate
+      ~HeavyOtsuPipeline.model_validate_json
+      ~HeavyOtsuPipeline.model_validate_strings
+      ~HeavyOtsuPipeline.parse_file
+      ~HeavyOtsuPipeline.parse_obj
+      ~HeavyOtsuPipeline.parse_raw
+      ~HeavyOtsuPipeline.schema
+      ~HeavyOtsuPipeline.schema_json
       ~HeavyOtsuPipeline.set_filters
       ~HeavyOtsuPipeline.set_meas
       ~HeavyOtsuPipeline.set_model
       ~HeavyOtsuPipeline.set_ops
       ~HeavyOtsuPipeline.set_post
       ~HeavyOtsuPipeline.to_json
+      ~HeavyOtsuPipeline.update_forward_refs
+      ~HeavyOtsuPipeline.validate
       ~HeavyOtsuPipeline.widget
    
    
@@ -47,7 +70,22 @@ phenotypic.prefab.HeavyOtsuPipeline
    .. autosummary::
    
       ~HeavyOtsuPipeline.desc
-      ~HeavyOtsuPipeline.ncols
+      ~HeavyOtsuPipeline.model_computed_fields
+      ~HeavyOtsuPipeline.model_config
+      ~HeavyOtsuPipeline.model_extra
+      ~HeavyOtsuPipeline.model_fields
+      ~HeavyOtsuPipeline.model_fields_set
+      ~HeavyOtsuPipeline.name
+      ~HeavyOtsuPipeline.desc_value
+      ~HeavyOtsuPipeline.benchmark
+      ~HeavyOtsuPipeline.verbose
+      ~HeavyOtsuPipeline.reset
       ~HeavyOtsuPipeline.nrows
+      ~HeavyOtsuPipeline.ncols
+      ~HeavyOtsuPipeline.ops
+      ~HeavyOtsuPipeline.meas
+      ~HeavyOtsuPipeline.post
+      ~HeavyOtsuPipeline.filters
+      ~HeavyOtsuPipeline.model
    
    

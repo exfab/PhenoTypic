@@ -647,7 +647,8 @@ wrapping a <code class="docutils literal notranslate"><span class="pre">Sweep</s
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>operation_class</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><em>type</em></a>) – The operation <strong>class</strong> (not an instance). Must be a
-class with an <code class="docutils literal notranslate"><span class="pre">__init__</span></code> accepting the provided parameter names.</p></li>
+pydantic operation class whose <code class="docutils literal notranslate"><span class="pre">model_fields</span></code> include the
+provided parameter names.</p></li>
 <li><p><strong>**params</strong> (<em>Any</em>) – <p>Keyword arguments specifying parameter values.</p>
 <ul>
 <li><p><strong>Tuple</strong> values are swept (each element becomes one combination).</p></li>
@@ -661,8 +662,8 @@ class with an <code class="docutils literal notranslate"><span class="pre">__ini
 <dt class="field-even">Raises<span class="colon">:</span></dt>
 <dd class="field-even"><ul class="simple">
 <li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#TypeError" title="(in Python v3.14)"><strong>TypeError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">operation_class</span></code> is an instance rather than a class.</p></li>
-<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If a parameter name does not exist in the operation
-    class constructor.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If a parameter name is not a field on the operation
+    class.</p></li>
 </ul>
 </dd>
 </dl>

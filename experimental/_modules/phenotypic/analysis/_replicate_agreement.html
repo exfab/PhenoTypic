@@ -544,7 +544,7 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">plotly.graph_objects</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">go</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.analysis.abc_._quality_check</span><span class="w"> </span><span class="kn">import</span> <span class="n">QualityCheck</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColumnRef</span><span class="p">,</span> <span class="n">ColumnRefList</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColumnRef</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">QUALITY_SE</span>
 
 
@@ -652,60 +652,9 @@
     <span class="n">_exposes_agg_func</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
     <span class="n">_measurement_infoclass</span> <span class="o">=</span> <span class="n">QUALITY_SE</span>
 
-<div class="viewcode-block" id="ReplicateAgreement.__init__">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.analysis.html#phenotypic.analysis.ReplicateAgreement.__init__">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="n">on</span><span class="p">:</span> <span class="n">ColumnRef</span><span class="p">,</span>
-        <span class="n">groupby</span><span class="p">:</span> <span class="n">ColumnRefList</span><span class="p">,</span>
-        <span class="n">time_label</span><span class="p">:</span> <span class="n">ColumnRef</span> <span class="o">=</span> <span class="s2">&quot;Metadata_Time&quot;</span><span class="p">,</span>
-        <span class="o">*</span><span class="p">,</span>
-        <span class="n">severity_warn</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">severity_fail</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">min_replicates</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
-        <span class="n">eps</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-9</span><span class="p">,</span>
-        <span class="n">agg_func</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;mean&quot;</span><span class="p">,</span>
-        <span class="n">n_jobs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Construct a replicate-agreement check.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            on: Measurement column whose replicate dispersion is</span>
-<span class="sd">                evaluated.</span>
-<span class="sd">            groupby: Columns that define a comparison unit. Replicates</span>
-<span class="sd">                are pooled within each ``(group, time)`` bin.</span>
-<span class="sd">            time_label: Column carrying the timepoint within each</span>
-<span class="sd">                group. Defaults to ``&quot;Metadata_Time&quot;``. When absent</span>
-<span class="sd">                from the data, the whole group is treated as one bin.</span>
-<span class="sd">            severity_warn: Per-instance override for ``severity_warn``.</span>
-<span class="sd">                ``None`` falls back to the class default (``0.10``).</span>
-<span class="sd">            severity_fail: Per-instance override for ``severity_fail``.</span>
-<span class="sd">                ``None`` falls back to the class default (``0.20``).</span>
-<span class="sd">            min_replicates: Minimum replicate count per bin before SE</span>
-<span class="sd">                is reported as a number. Bins with fewer replicates</span>
-<span class="sd">                receive ``severity = NaN``. Defaults to ``2``.</span>
-<span class="sd">            eps: Floor on ``|mean|`` below which the relative-SE ratio</span>
-<span class="sd">                is considered undefined. Bins whose mean falls below</span>
-<span class="sd">                this floor receive ``severity = NaN``. Defaults to</span>
-<span class="sd">                ``1e-9``.</span>
-<span class="sd">            agg_func: Forwarded to :class:`SetAnalyzer`. The check does</span>
-<span class="sd">                not aggregate measurement values itself; the parameter</span>
-<span class="sd">                is preserved for signature parity.</span>
-<span class="sd">            n_jobs: Worker count. Currently unused by the base</span>
-<span class="sd">                ``analyze`` loop.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
-            <span class="n">on</span><span class="o">=</span><span class="n">on</span><span class="p">,</span>
-            <span class="n">groupby</span><span class="o">=</span><span class="n">groupby</span><span class="p">,</span>
-            <span class="n">severity_warn</span><span class="o">=</span><span class="n">severity_warn</span><span class="p">,</span>
-            <span class="n">severity_fail</span><span class="o">=</span><span class="n">severity_fail</span><span class="p">,</span>
-            <span class="n">agg_func</span><span class="o">=</span><span class="n">agg_func</span><span class="p">,</span>
-            <span class="n">n_jobs</span><span class="o">=</span><span class="n">n_jobs</span><span class="p">,</span>
-        <span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">time_label</span> <span class="o">=</span> <span class="n">time_label</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">min_replicates</span> <span class="o">=</span> <span class="n">min_replicates</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">eps</span> <span class="o">=</span> <span class="n">eps</span></div>
-
+    <span class="n">time_label</span><span class="p">:</span> <span class="n">ColumnRef</span> <span class="o">=</span> <span class="s2">&quot;Metadata_Time&quot;</span>
+    <span class="n">min_replicates</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span>
+    <span class="n">eps</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-9</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_compute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute per-``(group, time)`` SE statistics and broadcast back.</span>

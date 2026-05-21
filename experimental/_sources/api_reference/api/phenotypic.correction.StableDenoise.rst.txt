@@ -18,10 +18,49 @@ phenotypic.correction.StableDenoise
    
       ~StableDenoise.__init__
       ~StableDenoise.apply
+      ~StableDenoise.construct
+      ~StableDenoise.copy
+      ~StableDenoise.dict
+      ~StableDenoise.from_orm
+      ~StableDenoise.json
+      ~StableDenoise.model_construct
+      ~StableDenoise.model_copy
+      ~StableDenoise.model_dump
+      ~StableDenoise.model_dump_json
+      ~StableDenoise.model_json_schema
+      ~StableDenoise.model_parametrized_name
+      ~StableDenoise.model_post_init
+      ~StableDenoise.model_rebuild
+      ~StableDenoise.model_validate
+      ~StableDenoise.model_validate_json
+      ~StableDenoise.model_validate_strings
+      ~StableDenoise.parse_file
+      ~StableDenoise.parse_obj
+      ~StableDenoise.parse_raw
+      ~StableDenoise.schema
+      ~StableDenoise.schema_json
+      ~StableDenoise.update_forward_refs
+      ~StableDenoise.validate
       ~StableDenoise.widget
    
    
 
    
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~StableDenoise.model_computed_fields
+      ~StableDenoise.model_config
+      ~StableDenoise.model_extra
+      ~StableDenoise.model_fields
+      ~StableDenoise.model_fields_set
+      ~StableDenoise.block_size
+      ~StableDenoise.stage_arg
+      ~StableDenoise.gain
+      ~StableDenoise.mu
+      ~StableDenoise.sigma
+      ~StableDenoise.scale_factor
    
    

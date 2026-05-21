@@ -18,10 +18,43 @@ phenotypic.abc\_.ObjectRefiner
    
       ~ObjectRefiner.__init__
       ~ObjectRefiner.apply
+      ~ObjectRefiner.construct
+      ~ObjectRefiner.copy
+      ~ObjectRefiner.dict
+      ~ObjectRefiner.from_orm
+      ~ObjectRefiner.json
+      ~ObjectRefiner.model_construct
+      ~ObjectRefiner.model_copy
+      ~ObjectRefiner.model_dump
+      ~ObjectRefiner.model_dump_json
+      ~ObjectRefiner.model_json_schema
+      ~ObjectRefiner.model_parametrized_name
+      ~ObjectRefiner.model_post_init
+      ~ObjectRefiner.model_rebuild
+      ~ObjectRefiner.model_validate
+      ~ObjectRefiner.model_validate_json
+      ~ObjectRefiner.model_validate_strings
+      ~ObjectRefiner.parse_file
+      ~ObjectRefiner.parse_obj
+      ~ObjectRefiner.parse_raw
+      ~ObjectRefiner.schema
+      ~ObjectRefiner.schema_json
+      ~ObjectRefiner.update_forward_refs
+      ~ObjectRefiner.validate
       ~ObjectRefiner.widget
    
    
 
    
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ObjectRefiner.model_computed_fields
+      ~ObjectRefiner.model_config
+      ~ObjectRefiner.model_extra
+      ~ObjectRefiner.model_fields
+      ~ObjectRefiner.model_fields_set
    
    

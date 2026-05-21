@@ -28,8 +28,7 @@ For operations defined in your own package:
 from phenotypic.abc_ import ImageEnhancer
 
 class MyCustomEnhancer(ImageEnhancer):
-    def __init__(self, strength: float = 1.0):
-        self.strength = strength
+    strength: float = 1.0
 
     def _operate(self, image):
         ...

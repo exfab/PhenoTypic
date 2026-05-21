@@ -18,10 +18,44 @@ phenotypic.enhance.SetDetectMode
    
       ~SetDetectMode.__init__
       ~SetDetectMode.apply
+      ~SetDetectMode.construct
+      ~SetDetectMode.copy
+      ~SetDetectMode.dict
+      ~SetDetectMode.from_orm
+      ~SetDetectMode.json
+      ~SetDetectMode.model_construct
+      ~SetDetectMode.model_copy
+      ~SetDetectMode.model_dump
+      ~SetDetectMode.model_dump_json
+      ~SetDetectMode.model_json_schema
+      ~SetDetectMode.model_parametrized_name
+      ~SetDetectMode.model_post_init
+      ~SetDetectMode.model_rebuild
+      ~SetDetectMode.model_validate
+      ~SetDetectMode.model_validate_json
+      ~SetDetectMode.model_validate_strings
+      ~SetDetectMode.parse_file
+      ~SetDetectMode.parse_obj
+      ~SetDetectMode.parse_raw
+      ~SetDetectMode.schema
+      ~SetDetectMode.schema_json
+      ~SetDetectMode.update_forward_refs
+      ~SetDetectMode.validate
       ~SetDetectMode.widget
    
    
 
    
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~SetDetectMode.model_computed_fields
+      ~SetDetectMode.model_config
+      ~SetDetectMode.model_extra
+      ~SetDetectMode.model_fields
+      ~SetDetectMode.model_fields_set
+      ~SetDetectMode.mode
    
    

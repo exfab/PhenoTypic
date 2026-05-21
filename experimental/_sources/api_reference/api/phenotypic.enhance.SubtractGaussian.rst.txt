@@ -18,10 +18,49 @@ phenotypic.enhance.SubtractGaussian
    
       ~SubtractGaussian.__init__
       ~SubtractGaussian.apply
+      ~SubtractGaussian.construct
+      ~SubtractGaussian.copy
+      ~SubtractGaussian.dict
+      ~SubtractGaussian.from_orm
+      ~SubtractGaussian.json
+      ~SubtractGaussian.model_construct
+      ~SubtractGaussian.model_copy
+      ~SubtractGaussian.model_dump
+      ~SubtractGaussian.model_dump_json
+      ~SubtractGaussian.model_json_schema
+      ~SubtractGaussian.model_parametrized_name
+      ~SubtractGaussian.model_post_init
+      ~SubtractGaussian.model_rebuild
+      ~SubtractGaussian.model_validate
+      ~SubtractGaussian.model_validate_json
+      ~SubtractGaussian.model_validate_strings
+      ~SubtractGaussian.parse_file
+      ~SubtractGaussian.parse_obj
+      ~SubtractGaussian.parse_raw
+      ~SubtractGaussian.schema
+      ~SubtractGaussian.schema_json
+      ~SubtractGaussian.update_forward_refs
+      ~SubtractGaussian.validate
       ~SubtractGaussian.widget
    
    
 
    
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~SubtractGaussian.model_computed_fields
+      ~SubtractGaussian.model_config
+      ~SubtractGaussian.model_extra
+      ~SubtractGaussian.model_fields
+      ~SubtractGaussian.model_fields_set
+      ~SubtractGaussian.sigma
+      ~SubtractGaussian.mode
+      ~SubtractGaussian.cval
+      ~SubtractGaussian.truncate
+      ~SubtractGaussian.preserve_range
+      ~SubtractGaussian.n_iter
    
    

@@ -18,10 +18,43 @@ phenotypic.abc\_.ImageCorrector
    
       ~ImageCorrector.__init__
       ~ImageCorrector.apply
+      ~ImageCorrector.construct
+      ~ImageCorrector.copy
+      ~ImageCorrector.dict
+      ~ImageCorrector.from_orm
+      ~ImageCorrector.json
+      ~ImageCorrector.model_construct
+      ~ImageCorrector.model_copy
+      ~ImageCorrector.model_dump
+      ~ImageCorrector.model_dump_json
+      ~ImageCorrector.model_json_schema
+      ~ImageCorrector.model_parametrized_name
+      ~ImageCorrector.model_post_init
+      ~ImageCorrector.model_rebuild
+      ~ImageCorrector.model_validate
+      ~ImageCorrector.model_validate_json
+      ~ImageCorrector.model_validate_strings
+      ~ImageCorrector.parse_file
+      ~ImageCorrector.parse_obj
+      ~ImageCorrector.parse_raw
+      ~ImageCorrector.schema
+      ~ImageCorrector.schema_json
+      ~ImageCorrector.update_forward_refs
+      ~ImageCorrector.validate
       ~ImageCorrector.widget
    
    
 
    
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ImageCorrector.model_computed_fields
+      ~ImageCorrector.model_config
+      ~ImageCorrector.model_extra
+      ~ImageCorrector.model_fields
+      ~ImageCorrector.model_fields_set
    
    

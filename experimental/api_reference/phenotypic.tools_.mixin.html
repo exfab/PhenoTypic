@@ -580,7 +580,7 @@ allowing the copy to operate without output clipping.</p>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImagePipeline</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.enhance</span><span class="w"> </span><span class="kn">import</span> <span class="n">GaussianBlur</span><span class="p">,</span> <span class="n">BilateralDenoise</span>
 <span class="gp">&gt;&gt;&gt;</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">pipeline</span> <span class="o">=</span> <span class="n">ImagePipeline</span><span class="p">([</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">pipeline</span> <span class="o">=</span> <span class="n">ImagePipeline</span><span class="p">(</span><span class="n">pipe_cfgs</span><span class="o">=</span><span class="p">[</span>
 <span class="gp">... </span>    <span class="n">GaussianBlur</span><span class="p">(</span><span class="n">sigma</span><span class="o">=</span><span class="mf">1.0</span><span class="p">),</span>
 <span class="gp">... </span>    <span class="n">BilateralDenoise</span><span class="p">(</span><span class="n">sigma_spatial</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">clip</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="gp">... </span><span class="p">])</span>
@@ -633,6 +633,15 @@ post-detection refinement directly.</p>
 <p>Mixin providing a lazy ipywidget interface.</p>
 <p>This mixin allows ImageOperation classes to automatically generate a Jupyter
 widget interface for parameter tuning and visualization.</p>
+<p>The six lazily-populated UI handles this mixin uses (<code class="docutils literal notranslate"><span class="pre">_ui</span></code>,
+<code class="docutils literal notranslate"><span class="pre">_param_widgets</span></code>, <code class="docutils literal notranslate"><span class="pre">_view_dropdown</span></code>, <code class="docutils literal notranslate"><span class="pre">_update_button</span></code>,
+<code class="docutils literal notranslate"><span class="pre">_output_widget</span></code>, <code class="docutils literal notranslate"><span class="pre">_image_ref</span></code>) are declared as <code class="docutils literal notranslate"><span class="pre">PrivateAttr</span></code>
+on <a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.ImageOperation" title="phenotypic.abc_.ImageOperation"><code class="xref py py-class docutils literal notranslate"><span class="pre">ImageOperation</span></code></a> rather than here. A plain
+(non-<code class="docutils literal notranslate"><span class="pre">BaseModel</span></code>) mixin’s <code class="docutils literal notranslate"><span class="pre">PrivateAttr</span></code> declarations are not
+collected by pydantic, so this mixin stays a stateless methods-only
+class and the private attrs live on the pydantic model that mixes it
+in. This keeps the mixin safe to combine with any <code class="docutils literal notranslate"><span class="pre">BaseModel</span></code> in
+any MRO position.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tools_.mixin.LazyWidgetMixin.__getstate__">
 <span class="sig-name descname"><span class="pre">__getstate__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/mixin/_lazy_widget_mixin.html#LazyWidgetMixin.__getstate__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.mixin.LazyWidgetMixin.__getstate__" title="Link to this definition">#</a></dt>
@@ -680,29 +689,28 @@ visualization controls will be added to the widget.</p></li>
 <p>Operations that take a list of point coordinates as a primary parameter
 (currently <a class="reference internal" href="phenotypic.detect.html#phenotypic.detect.ManualPointDetector" title="phenotypic.detect.ManualPointDetector"><code class="xref py py-class docutils literal notranslate"><span class="pre">ManualPointDetector</span></code></a> and
 <a class="reference internal" href="phenotypic.refine.html#phenotypic.refine.ManualSelector" title="phenotypic.refine.ManualSelector"><code class="xref py py-class docutils literal notranslate"><span class="pre">ManualSelector</span></code></a>) inherit from this mixin to
-pick up three things at once:</p>
+pick up two things at once:</p>
 <ul class="simple">
-<li><p><strong>Coordinate coercion.</strong> <code class="docutils literal notranslate"><span class="pre">__setattr__</span></code> converts list/tuple input
-assigned to the centres parameter into a NumPy array, so downstream
-<code class="docutils literal notranslate"><span class="pre">_operate</span></code> code can treat it uniformly. <code class="docutils literal notranslate"><span class="pre">None</span></code> passes through
-unchanged so that “no points yet” remains a valid state.</p></li>
 <li><p><strong>A blocking napari picker.</strong> <a class="reference internal" href="#phenotypic.tools_.mixin.PointPickerMixin.napari" title="phenotypic.tools_.mixin.PointPickerMixin.napari"><code class="xref py py-meth docutils literal notranslate"><span class="pre">napari()</span></code></a> opens a desktop
 <a class="reference internal" href="phenotypic.tools_.napari_.html#phenotypic.tools_.napari_.PointPickerWidget" title="phenotypic.tools_.napari_.PointPickerWidget"><code class="xref py py-class docutils literal notranslate"><span class="pre">PointPickerWidget</span></code></a> and writes the
 confirmed picks back to the operation. Closing the viewer without
 confirming is a no-op (existing centres are preserved).</p></li>
 <li><p><strong>A GUI introspection hook.</strong> The <code class="docutils literal notranslate"><span class="pre">_point_picker_param_name</span></code> class
-attribute tells the Dash builder which <code class="docutils literal notranslate"><span class="pre">__init__</span></code> parameter to
-replace with an interactive picker button instead of a free-form text
-input.</p></li>
+attribute tells the Dash builder which field to replace with an
+interactive picker button instead of a free-form text input.</p></li>
 </ul>
 <p>Subclasses that store coordinates under a name other than <code class="docutils literal notranslate"><span class="pre">&quot;centers&quot;</span></code>
-can override <a class="reference internal" href="#phenotypic.tools_.mixin.PointPickerMixin._point_picker_param_name" title="phenotypic.tools_.mixin.PointPickerMixin._point_picker_param_name"><code class="xref py py-attr docutils literal notranslate"><span class="pre">_point_picker_param_name</span></code></a>; both <code class="docutils literal notranslate"><span class="pre">__setattr__</span></code> and
-<a class="reference internal" href="#phenotypic.tools_.mixin.PointPickerMixin.napari" title="phenotypic.tools_.mixin.PointPickerMixin.napari"><code class="xref py py-meth docutils literal notranslate"><span class="pre">napari()</span></code></a> use that attribute.</p>
+can override <a class="reference internal" href="#phenotypic.tools_.mixin.PointPickerMixin._point_picker_param_name" title="phenotypic.tools_.mixin.PointPickerMixin._point_picker_param_name"><code class="xref py py-attr docutils literal notranslate"><span class="pre">_point_picker_param_name</span></code></a>; <a class="reference internal" href="#phenotypic.tools_.mixin.PointPickerMixin.napari" title="phenotypic.tools_.mixin.PointPickerMixin.napari"><code class="xref py py-meth docutils literal notranslate"><span class="pre">napari()</span></code></a> uses that
+attribute.</p>
+<p>Coordinate coercion (list/tuple/<code class="docutils literal notranslate"><span class="pre">np.ndarray</span></code> → a canonical form)
+moves to a <code class="docutils literal notranslate"><span class="pre">field_validator</span></code> on the coordinate field of each
+consuming operation as part of the pydantic migration — this mixin no
+longer overrides <code class="docutils literal notranslate"><span class="pre">__setattr__</span></code> (which would clash with pydantic’s).</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="phenotypic.tools_.mixin.PointPickerMixin._point_picker_param_name">
 <span class="sig-name descname"><span class="pre">_point_picker_param_name</span></span><a class="headerlink" href="#phenotypic.tools_.mixin.PointPickerMixin._point_picker_param_name" title="Link to this definition">#</a></dt>
-<dd><p>Name of the <code class="docutils literal notranslate"><span class="pre">__init__</span></code> parameter holding
-the picked <code class="docutils literal notranslate"><span class="pre">(y,</span> <span class="pre">x)</span></code> coordinates. Defaults to <code class="docutils literal notranslate"><span class="pre">&quot;centers&quot;</span></code>.</p>
+<dd><p>Name of the field holding the picked
+<code class="docutils literal notranslate"><span class="pre">(y,</span> <span class="pre">x)</span></code> coordinates. Defaults to <code class="docutils literal notranslate"><span class="pre">&quot;centers&quot;</span></code>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>ClassVar[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a>]</p>

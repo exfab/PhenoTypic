@@ -531,6 +531,7 @@
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">field_validator</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">skimage.filters</span><span class="w"> </span><span class="kn">import</span> <span class="n">unsharp_mask</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">..abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageEnhancer</span>
@@ -589,50 +590,26 @@
 <span class="sd">        unsharp masking and sharpening strategies.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-<div class="viewcode-block" id="UnsharpMask.__init__">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.enhance.html#phenotypic.enhance.UnsharpMask.__init__">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
-            <span class="bp">self</span><span class="p">,</span>
-            <span class="n">radius</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.0</span><span class="p">,</span>
-            <span class="n">amount</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
-            <span class="n">preserve_range</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
-            <span class="n">n_iter</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
-    <span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Parameters:</span>
-<span class="sd">            radius (float): Standard deviation (sigma) of the Gaussian blur in pixels.</span>
-<span class="sd">                Defines the scale of features to enhance. Small values (0.5–2) sharpen</span>
-<span class="sd">                fine details (thin colony edges, small morphologies); larger values</span>
-<span class="sd">                (5–15) enhance broad features (large colonies, colony-background</span>
-<span class="sd">                separation). Must be &gt; 0. For fungal colonies, keep below the typical</span>
-<span class="sd">                colony width to avoid merging adjacent colonies. Recommended: 2.0–3.0</span>
-<span class="sd">                for general-purpose use, 1.0 for high-density plates, 5.0+ for</span>
-<span class="sd">                emphasizing large-scale features on low-resolution images.</span>
-<span class="sd">            amount (float): Amplification factor for the sharpening effect. Controls</span>
-<span class="sd">                how much the edge enhancement contributes to the output. Typical range:</span>
-<span class="sd">                0.3–2.5. Low values (0.3–0.7) produce subtle enhancement suitable for</span>
-<span class="sd">                noisy images; standard values (1.0–1.5) give balanced sharpening;</span>
-<span class="sd">                high values (2.0+) create aggressive enhancement for very low-contrast</span>
-<span class="sd">                colonies. Can be negative to produce blurring instead. Excessive amounts</span>
-<span class="sd">                risk visible artifacts and noise amplification.</span>
-<span class="sd">            preserve_range (bool): If False (default), output may be rescaled if</span>
-<span class="sd">                necessary. If True, the original range of input values is preserved.</span>
-<span class="sd">                Keep as False for consistency with other enhancers.</span>
-<span class="sd">            n_iter (int): Number of successive unsharp mask passes to apply. Must be &gt;= 1.</span>
-<span class="sd">                One pass (default) applies the filter once. Multiple passes (2+) compound</span>
-<span class="sd">                the sharpening effect for progressively more aggressive enhancement, but</span>
-<span class="sd">                at increased risk of noise amplification and halo artifacts.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="n">radius</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.0</span>
+    <span class="n">amount</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span>
+    <span class="n">preserve_range</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">n_iter</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span>
+
+    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;radius&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_check_radius</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">radius</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Require a positive blur radius (matches the legacy guard).&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">radius</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;width must be &gt; 0&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">radius</span>
+
+    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;n_iter&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_check_n_iter</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">n_iter</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Require at least one sharpening pass (matches the legacy guard).&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">n_iter</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;n_iter must be &gt;= 1&quot;</span><span class="p">)</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">radius</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">radius</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">amount</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">amount</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">preserve_range</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">preserve_range</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">n_iter</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">n_iter</span><span class="p">)</span></div>
-
+        <span class="k">return</span> <span class="n">n_iter</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply unsharp masking to enhance colony edges in the detection matrix channel.&quot;&quot;&quot;</span>

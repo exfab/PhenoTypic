@@ -525,7 +525,7 @@
                   
   <h1>Source code for phenotypic.abc_._object_refiner</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">overload</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">ClassVar</span><span class="p">,</span> <span class="n">overload</span>
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
@@ -711,15 +711,14 @@
 <span class="sd">        from skimage.morphology import remove_small_objects</span>
 
 <span class="sd">        class MyCustomRefiner(ObjectRefiner):</span>
-<span class="sd">            def __init__(self, min_size: int = 50):</span>
-<span class="sd">                super().__init__()</span>
-<span class="sd">                self.min_size = min_size  # Instance attribute matched to _operate()</span>
+<span class="sd">            min_size: int = 50  # Annotated class-level field</span>
 
-<span class="sd">            @staticmethod</span>
-<span class="sd">            def _operate(image: Image, min_size: int = 50) -&gt; Image:</span>
+<span class="sd">            def _operate(self, image: Image) -&gt; Image:</span>
 <span class="sd">                # Modify ONLY objmap; read, process, write back</span>
 <span class="sd">                # objmask will be auto-updated from objmap via relabel()</span>
-<span class="sd">                refined_map = remove_small_objects(image.objmap[:], min_size=min_size)</span>
+<span class="sd">                refined_map = remove_small_objects(</span>
+<span class="sd">                    image.objmap[:], min_size=self.min_size</span>
+<span class="sd">                )</span>
 <span class="sd">                image.objmap[:] = refined_map</span>
 <span class="sd">                return image</span>
 
@@ -736,16 +735,14 @@
 <span class="sd">        from skimage.morphology import dilation</span>
 
 <span class="sd">        class MyMorphRefiner(ObjectRefiner, FootprintMixin):</span>
-<span class="sd">            def __init__(self, footprint_shape: str = &#39;disk&#39;, footprint_width: int = 2):</span>
-<span class="sd">                super().__init__()</span>
-<span class="sd">                self.footprint_shape = footprint_shape</span>
-<span class="sd">                self.footprint_width = footprint_width</span>
+<span class="sd">            footprint_shape: str = &#39;disk&#39;  # Annotated class-level fields</span>
+<span class="sd">            footprint_width: int = 2</span>
 
-<span class="sd">            @staticmethod</span>
-<span class="sd">            def _operate(image: Image, footprint_shape: str = &#39;disk&#39;,</span>
-<span class="sd">                        footprint_width: int = 2) -&gt; Image:</span>
+<span class="sd">            def _operate(self, image: Image) -&gt; Image:</span>
 <span class="sd">                # Use _make_footprint from ObjectRefiner or FootprintMixin</span>
-<span class="sd">                fp = ObjectRefiner._make_footprint(footprint_shape, footprint_width)</span>
+<span class="sd">                fp = ObjectRefiner._make_footprint(</span>
+<span class="sd">                    self.footprint_shape, self.footprint_width</span>
+<span class="sd">                )</span>
 <span class="sd">                dilated = dilation(image.objmask[:], footprint=fp)</span>
 <span class="sd">                image.objmask[:] = dilated</span>
 <span class="sd">                # Reconstruct objmap from dilated mask</span>
@@ -757,8 +754,7 @@
 <span class="sd">    **Key Rules for Implementation:**</span>
 
 <span class="sd">    1. ``_operate()`` must be an **instance method** (access parameters via ``self``).</span>
-<span class="sd">    2. All parameters except `image` must exist as instance attributes with matching names</span>
-<span class="sd">       (enables automatic parameter matching via `_get_matched_operation_args()`).</span>
+<span class="sd">    2. All parameters except `image` must be declared as annotated class-level fields.</span>
 <span class="sd">    3. **Only modify ``image.objmask[:]`` and ``image.objmap[:]``**—all other components are</span>
 <span class="sd">       protected. Reading image data is allowed but modifications will trigger integrity errors.</span>
 <span class="sd">    4. Always use the accessor pattern: ``image.objmap[:] = new_data`` (never direct attribute</span>
@@ -912,9 +908,9 @@
 <span class="sd">        - **Instance _operate() method:** The ``_operate()`` method is an instance method;</span>
 <span class="sd">          access parameters via ``self``.</span>
 
-<span class="sd">        - **Parameter matching for parallelization:** All ``_operate()`` parameters except</span>
-<span class="sd">          ``image`` must exist as instance attributes. When ``apply()`` is called, these</span>
-<span class="sd">          values are extracted and passed to ``_operate()``.</span>
+<span class="sd">        - **Field-based parameters:** All ``_operate()`` parameters except ``image``</span>
+<span class="sd">          are declared as annotated class-level fields. ``_operate()`` accesses them</span>
+<span class="sd">          via ``self``; pydantic handles construction and serialization.</span>
 
 <span class="sd">        - **Accessor pattern:** Always use ``image.objmap[:] = new_data`` to modify</span>
 <span class="sd">          object maps. Never use direct attribute assignment.</span>
@@ -936,17 +932,14 @@
 <span class="sd">        &gt;&gt;&gt; class SimpleSmallObjectRemover(ObjectRefiner):</span>
 <span class="sd">        ...     &#39;&#39;&#39;Remove objects smaller than a minimum size threshold.&#39;&#39;&#39;</span>
 <span class="sd">        ...</span>
-<span class="sd">        ...     def __init__(self, min_size: int = 50):</span>
-<span class="sd">        ...         super().__init__()</span>
-<span class="sd">        ...         self.min_size = min_size</span>
+<span class="sd">        ...     min_size: int = 50</span>
 <span class="sd">        ...</span>
-<span class="sd">        ...     @staticmethod</span>
-<span class="sd">        ...     def _operate(image: Image, min_size: int = 50) -&gt; Image:</span>
+<span class="sd">        ...     def _operate(self, image: Image) -&gt; Image:</span>
 <span class="sd">        ...         &#39;&#39;&#39;Remove small objects from labeled map.&#39;&#39;&#39;</span>
 <span class="sd">        ...         # Get current labeled map</span>
 <span class="sd">        ...         objmap = image.objmap[:]</span>
 <span class="sd">        ...         # Remove small objects (automatically updates objmap)</span>
-<span class="sd">        ...         refined = remove_small_objects(objmap, min_size=min_size)</span>
+<span class="sd">        ...         refined = remove_small_objects(objmap, min_size=self.min_size)</span>
 <span class="sd">        ...         # Set refined result</span>
 <span class="sd">        ...         image.objmap[:] = refined</span>
 <span class="sd">        ...         return image</span>
@@ -971,12 +964,9 @@
 <span class="sd">        &gt;&gt;&gt; class CircularityFilter(ObjectRefiner):</span>
 <span class="sd">        ...     &#39;&#39;&#39;Remove objects with low circularity (merged colonies, artifacts).&#39;&#39;&#39;</span>
 <span class="sd">        ...</span>
-<span class="sd">        ...     def __init__(self, min_circularity: float = 0.7):</span>
-<span class="sd">        ...         super().__init__()</span>
-<span class="sd">        ...         self.min_circularity = min_circularity</span>
+<span class="sd">        ...     min_circularity: float = 0.7</span>
 <span class="sd">        ...</span>
-<span class="sd">        ...     @staticmethod</span>
-<span class="sd">        ...     def _operate(image: Image, min_circularity: float = 0.7) -&gt; Image:</span>
+<span class="sd">        ...     def _operate(self, image: Image) -&gt; Image:</span>
 <span class="sd">        ...         &#39;&#39;&#39;Filter objects by circularity using Polsby-Popper metric.&#39;&#39;&#39;</span>
 <span class="sd">        ...         objmap = image.objmap[:]</span>
 <span class="sd">        ...         # Measure shape properties</span>
@@ -988,7 +978,9 @@
 <span class="sd">        ...         # Calculate circularity (Polsby-Popper: 4*pi*area / perimeter^2)</span>
 <span class="sd">        ...         df[&#39;circularity&#39;] = (4 * math.pi * df[&#39;area&#39;]) / (df[&#39;perimeter&#39;] ** 2)</span>
 <span class="sd">        ...         # Keep only circular objects</span>
-<span class="sd">        ...         keep_labels = df[df[&#39;circularity&#39;] &gt;= min_circularity][&#39;label&#39;].values</span>
+<span class="sd">        ...         keep_labels = df[</span>
+<span class="sd">        ...             df[&#39;circularity&#39;] &gt;= self.min_circularity</span>
+<span class="sd">        ...         ][&#39;label&#39;].values</span>
 <span class="sd">        ...         # Filter map: keep only selected labels</span>
 <span class="sd">        ...         refined_map = np.where(np.isin(objmap, keep_labels), objmap, 0)</span>
 <span class="sd">        ...         image.objmap[:] = refined_map</span>
@@ -1010,11 +1002,7 @@
 <span class="sd">        &gt;&gt;&gt; class HoleFiller(ObjectRefiner):</span>
 <span class="sd">        ...     &#39;&#39;&#39;Fill holes within colony masks for solid shape representation.&#39;&#39;&#39;</span>
 <span class="sd">        ...</span>
-<span class="sd">        ...     def __init__(self):</span>
-<span class="sd">        ...         super().__init__()</span>
-<span class="sd">        ...</span>
-<span class="sd">        ...     @staticmethod</span>
-<span class="sd">        ...     def _operate(image: Image) -&gt; Image:</span>
+<span class="sd">        ...     def _operate(self, image: Image) -&gt; Image:</span>
 <span class="sd">        ...         &#39;&#39;&#39;Fill holes in binary mask.&#39;&#39;&#39;</span>
 <span class="sd">        ...         mask = image.objmask[:]</span>
 <span class="sd">        ...         # Fill holes (interior voids within objects)</span>
@@ -1046,16 +1034,13 @@
 <span class="sd">        &gt;&gt;&gt; class FragmentMerger(ObjectRefiner):</span>
 <span class="sd">        ...     &#39;&#39;&#39;Merge fragmented colonies via morphological dilation and relabeling.&#39;&#39;&#39;</span>
 <span class="sd">        ...</span>
-<span class="sd">        ...     def __init__(self, dilation_radius: int = 2):</span>
-<span class="sd">        ...         super().__init__()</span>
-<span class="sd">        ...         self.dilation_radius = dilation_radius</span>
+<span class="sd">        ...     dilation_radius: int = 2</span>
 <span class="sd">        ...</span>
-<span class="sd">        ...     @staticmethod</span>
-<span class="sd">        ...     def _operate(image: Image, dilation_radius: int = 2) -&gt; Image:</span>
+<span class="sd">        ...     def _operate(self, image: Image) -&gt; Image:</span>
 <span class="sd">        ...         &#39;&#39;&#39;Dilate mask and relabel to merge nearby fragments.&#39;&#39;&#39;</span>
 <span class="sd">        ...         mask = image.objmask[:]</span>
 <span class="sd">        ...         # Create disk shape for isotropic dilation</span>
-<span class="sd">        ...         fp = ObjectRefiner._make_footprint(&#39;disk&#39;, dilation_radius)</span>
+<span class="sd">        ...         fp = ObjectRefiner._make_footprint(&#39;disk&#39;, self.dilation_radius)</span>
 <span class="sd">        ...         # Dilate to bridge fragmented regions</span>
 <span class="sd">        ...         dilated = dilation(mask, footprint=fp)</span>
 <span class="sd">        ...         # Relabel connected components</span>
@@ -1083,18 +1068,15 @@
 <span class="sd">        &gt;&gt;&gt; class TransitiveDistanceMerger(ObjectRefiner):</span>
 <span class="sd">        ...     &#39;&#39;&#39;Merge objects within specified distance via distance transform.&#39;&#39;&#39;</span>
 <span class="sd">        ...</span>
-<span class="sd">        ...     def __init__(self, merge_distance: int = 5):</span>
-<span class="sd">        ...         super().__init__()</span>
-<span class="sd">        ...         self.merge_distance = merge_distance</span>
+<span class="sd">        ...     merge_distance: int = 5</span>
 <span class="sd">        ...</span>
-<span class="sd">        ...     @staticmethod</span>
-<span class="sd">        ...     def _operate(image: Image, merge_distance: int = 5) -&gt; Image:</span>
+<span class="sd">        ...     def _operate(self, image: Image) -&gt; Image:</span>
 <span class="sd">        ...         &#39;&#39;&#39;Merge objects closer than merge_distance via dilation of distance map.&#39;&#39;&#39;</span>
 <span class="sd">        ...         mask = image.objmask[:]</span>
 <span class="sd">        ...         # Compute distance transform from object interior</span>
 <span class="sd">        ...         dist_map = distance_transform_edt(mask)</span>
 <span class="sd">        ...         # Dilate distance map to bridge nearby objects</span>
-<span class="sd">        ...         fp = ObjectRefiner._make_footprint(&#39;disk&#39;, merge_distance)</span>
+<span class="sd">        ...         fp = ObjectRefiner._make_footprint(&#39;disk&#39;, self.merge_distance)</span>
 <span class="sd">        ...         dilated_dist = dilation(dist_map &gt; 0, footprint=fp)</span>
 <span class="sd">        ...         # Relabel connected components in dilated region</span>
 <span class="sd">        ...         relabeled, _ = ndi_label(dilated_dist)</span>
@@ -1143,7 +1125,7 @@
 <span class="sd">        &gt;&gt;&gt; print(f&quot;Detected and cleaned: {len(colonies)} colonies&quot;)</span>
 <span class="sd">        &gt;&gt;&gt; print(f&quot;Color measurements: {measurements.shape}&quot;)</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">_footprint_shapes</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;square&quot;</span><span class="p">,</span> <span class="s2">&quot;diamond&quot;</span><span class="p">,</span> <span class="s2">&quot;disk&quot;</span><span class="p">}</span>
+    <span class="n">_footprint_shapes</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">set</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;square&quot;</span><span class="p">,</span> <span class="s2">&quot;diamond&quot;</span><span class="p">,</span> <span class="s2">&quot;disk&quot;</span><span class="p">}</span>
 
     <span class="nd">@overload</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">,</span> <span class="n">inplace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span> <span class="o">...</span>

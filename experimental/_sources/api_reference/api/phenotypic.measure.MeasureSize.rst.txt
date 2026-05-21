@@ -17,10 +17,43 @@ phenotypic.measure.MeasureSize
       :nosignatures:
    
       ~MeasureSize.__init__
+      ~MeasureSize.construct
+      ~MeasureSize.copy
+      ~MeasureSize.dict
+      ~MeasureSize.from_orm
+      ~MeasureSize.json
       ~MeasureSize.measure
+      ~MeasureSize.model_construct
+      ~MeasureSize.model_copy
+      ~MeasureSize.model_dump
+      ~MeasureSize.model_dump_json
+      ~MeasureSize.model_json_schema
+      ~MeasureSize.model_parametrized_name
+      ~MeasureSize.model_post_init
+      ~MeasureSize.model_rebuild
+      ~MeasureSize.model_validate
+      ~MeasureSize.model_validate_json
+      ~MeasureSize.model_validate_strings
+      ~MeasureSize.parse_file
+      ~MeasureSize.parse_obj
+      ~MeasureSize.parse_raw
+      ~MeasureSize.schema
+      ~MeasureSize.schema_json
+      ~MeasureSize.update_forward_refs
+      ~MeasureSize.validate
    
    
 
    
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~MeasureSize.model_computed_fields
+      ~MeasureSize.model_config
+      ~MeasureSize.model_extra
+      ~MeasureSize.model_fields
+      ~MeasureSize.model_fields_set
    
    

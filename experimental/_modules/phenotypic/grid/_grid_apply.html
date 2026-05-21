@@ -525,34 +525,56 @@
                   
   <h1>Source code for phenotypic.grid._grid_apply</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span>
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._grid_image</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridImage</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image_pipeline</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImagePipeline</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageOperation</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridCorrector</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">OperationField</span>
 
 
 <div class="viewcode-block" id="GridApply">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.grid.html#phenotypic.grid.GridApply">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">GridApply</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Accepts a PhenoTypic operation as a parameter and applies it to the individual grid sectionss of an image.</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">GridApply</span><span class="p">(</span><span class="n">GridCorrector</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Apply a PhenoTypic operation to each grid section of a plate image.</span>
 
-<span class="sd">    Parameters:</span>
-<span class="sd">        image_op (ImageOperation): A PhenoTypic operation to be applied to each grid section.</span>
-<span class="sd">        reset_enh_matrix (bool): Whether to reset the detect_mat attribute of the image before applying the operation.</span>
+<span class="sd">    ``GridApply`` slices a :class:`GridImage` into its individual grid</span>
+<span class="sd">    sections (wells), applies the wrapped operation to each section in</span>
+<span class="sd">    isolation, and writes the transformed sections back into the parent</span>
+<span class="sd">    image. It is the building block prefab pipelines use to run a</span>
+<span class="sd">    per-well detection or enhancement sub-pipeline.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        image_op: The operation (or nested :class:`~phenotypic.ImagePipeline`)</span>
+<span class="sd">            applied to every grid section. Serialized as a class-tagged</span>
+<span class="sd">            payload so the concrete operation type round-trips through</span>
+<span class="sd">            JSON.</span>
+<span class="sd">        reset_enh_matrix: Whether to reset the ``detect_mat`` attribute of</span>
+<span class="sd">            each section before applying ``image_op``. Defaults to True.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        GridImage: The input image with every grid section transformed by</span>
+<span class="sd">        ``image_op``.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> <span class="n">image_op</span><span class="p">:</span> <span class="n">ImageOperation</span> <span class="o">|</span> <span class="n">ImagePipeline</span><span class="p">,</span> <span class="n">reset_enh_matrix</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
-    <span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">operation</span> <span class="o">=</span> <span class="n">image_op</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">reset_enh_matrix</span> <span class="o">=</span> <span class="n">reset_enh_matrix</span>
+    <span class="n">image_op</span><span class="p">:</span> <span class="n">OperationField</span>
+    <span class="n">reset_enh_matrix</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
 
-<div class="viewcode-block" id="GridApply.apply">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.grid.html#phenotypic.grid.GridApply.apply">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">GridImage</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">GridImage</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GridImage</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply ``image_op`` to every grid section of ``image``.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            image: The grid image whose sections are transformed.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            GridImage: The image with each section transformed in place.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            RuntimeError: If ``image_op`` raises while processing a</span>
+<span class="sd">                section; the offending ``(row, col)`` index is reported.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">row_edges</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">get_row_edges</span><span class="p">()</span>
         <span class="n">col_edges</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">get_col_edges</span><span class="p">()</span>
         <span class="k">for</span> <span class="n">row_i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">row_edges</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
@@ -562,7 +584,7 @@
                     <span class="n">col_edges</span><span class="p">[</span><span class="n">col_i</span><span class="p">]</span> <span class="p">:</span> <span class="n">col_edges</span><span class="p">[</span><span class="n">col_i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">],</span>
                 <span class="p">]</span>
                 <span class="k">try</span><span class="p">:</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">operation</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">subimage</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">image_op</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">subimage</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
                 <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
                     <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
                         <span class="sa">f</span><span class="s2">&quot;Error applying operation to section </span><span class="si">{</span><span class="n">row_i</span><span class="p">,</span><span class="w"> </span><span class="n">col_i</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span>
@@ -574,8 +596,10 @@
                 <span class="p">]</span> <span class="o">=</span> <span class="n">subimage</span>
 
         <span class="k">return</span> <span class="n">image</span></div>
-</div>
 
+
+
+<span class="n">GridApply</span><span class="o">.</span><span class="n">apply</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="n">GridApply</span><span class="o">.</span><span class="n">_operate</span><span class="o">.</span><span class="vm">__doc__</span>
 </pre></div>
 
                 </article>

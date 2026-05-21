@@ -17,12 +17,47 @@ phenotypic.abc\_.GridFinder
       :nosignatures:
    
       ~GridFinder.__init__
+      ~GridFinder.construct
+      ~GridFinder.copy
+      ~GridFinder.dict
+      ~GridFinder.from_orm
       ~GridFinder.get_col_edges
       ~GridFinder.get_row_edges
+      ~GridFinder.json
       ~GridFinder.measure
+      ~GridFinder.model_construct
+      ~GridFinder.model_copy
+      ~GridFinder.model_dump
+      ~GridFinder.model_dump_json
+      ~GridFinder.model_json_schema
+      ~GridFinder.model_parametrized_name
+      ~GridFinder.model_post_init
+      ~GridFinder.model_rebuild
+      ~GridFinder.model_validate
+      ~GridFinder.model_validate_json
+      ~GridFinder.model_validate_strings
+      ~GridFinder.parse_file
+      ~GridFinder.parse_obj
+      ~GridFinder.parse_raw
+      ~GridFinder.schema
+      ~GridFinder.schema_json
+      ~GridFinder.update_forward_refs
+      ~GridFinder.validate
    
    
 
    
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~GridFinder.model_computed_fields
+      ~GridFinder.model_config
+      ~GridFinder.model_extra
+      ~GridFinder.model_fields
+      ~GridFinder.model_fields_set
+      ~GridFinder.nrows
+      ~GridFinder.ncols
    
    

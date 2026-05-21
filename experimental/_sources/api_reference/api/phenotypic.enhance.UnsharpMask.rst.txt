@@ -18,10 +18,47 @@ phenotypic.enhance.UnsharpMask
    
       ~UnsharpMask.__init__
       ~UnsharpMask.apply
+      ~UnsharpMask.construct
+      ~UnsharpMask.copy
+      ~UnsharpMask.dict
+      ~UnsharpMask.from_orm
+      ~UnsharpMask.json
+      ~UnsharpMask.model_construct
+      ~UnsharpMask.model_copy
+      ~UnsharpMask.model_dump
+      ~UnsharpMask.model_dump_json
+      ~UnsharpMask.model_json_schema
+      ~UnsharpMask.model_parametrized_name
+      ~UnsharpMask.model_post_init
+      ~UnsharpMask.model_rebuild
+      ~UnsharpMask.model_validate
+      ~UnsharpMask.model_validate_json
+      ~UnsharpMask.model_validate_strings
+      ~UnsharpMask.parse_file
+      ~UnsharpMask.parse_obj
+      ~UnsharpMask.parse_raw
+      ~UnsharpMask.schema
+      ~UnsharpMask.schema_json
+      ~UnsharpMask.update_forward_refs
+      ~UnsharpMask.validate
       ~UnsharpMask.widget
    
    
 
    
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~UnsharpMask.model_computed_fields
+      ~UnsharpMask.model_config
+      ~UnsharpMask.model_extra
+      ~UnsharpMask.model_fields
+      ~UnsharpMask.model_fields_set
+      ~UnsharpMask.radius
+      ~UnsharpMask.amount
+      ~UnsharpMask.preserve_range
+      ~UnsharpMask.n_iter
    
    

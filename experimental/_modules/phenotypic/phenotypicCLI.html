@@ -717,11 +717,10 @@
     <span class="n">JobMetadataKey</span><span class="p">,</span>
     <span class="n">dashboard_html_path</span><span class="p">,</span>
     <span class="n">dataset_measurements_dir</span><span class="p">,</span>
-    <span class="n">resolve_execution_mode</span><span class="p">,</span>
     <span class="n">load_image_from_hdf</span><span class="p">,</span>
     <span class="n">processing_report_html_path</span><span class="p">,</span>
 <span class="p">)</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExecutionMode</span><span class="p">,</span> <span class="n">ImageTypeName</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageTypeName</span>
 
 <span class="c1"># Set up logger</span>
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
@@ -2234,8 +2233,6 @@
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._cli._cli_output_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">aggregate_measurements</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._cli._cli_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_job_metadata</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._cli._dashboard</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-        <span class="n">build_manifest</span><span class="p">,</span>
-        <span class="n">generate_dashboard</span><span class="p">,</span>
         <span class="n">regenerate_dashboard_artifacts</span><span class="p">,</span>
     <span class="p">)</span>
 

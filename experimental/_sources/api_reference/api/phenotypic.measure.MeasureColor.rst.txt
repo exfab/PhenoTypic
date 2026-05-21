@@ -17,10 +17,46 @@ phenotypic.measure.MeasureColor
       :nosignatures:
    
       ~MeasureColor.__init__
+      ~MeasureColor.construct
+      ~MeasureColor.copy
+      ~MeasureColor.dict
+      ~MeasureColor.from_orm
+      ~MeasureColor.json
       ~MeasureColor.measure
+      ~MeasureColor.model_construct
+      ~MeasureColor.model_copy
+      ~MeasureColor.model_dump
+      ~MeasureColor.model_dump_json
+      ~MeasureColor.model_json_schema
+      ~MeasureColor.model_parametrized_name
+      ~MeasureColor.model_post_init
+      ~MeasureColor.model_rebuild
+      ~MeasureColor.model_validate
+      ~MeasureColor.model_validate_json
+      ~MeasureColor.model_validate_strings
+      ~MeasureColor.parse_file
+      ~MeasureColor.parse_obj
+      ~MeasureColor.parse_raw
+      ~MeasureColor.schema
+      ~MeasureColor.schema_json
+      ~MeasureColor.update_forward_refs
+      ~MeasureColor.validate
    
    
 
    
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~MeasureColor.model_computed_fields
+      ~MeasureColor.model_config
+      ~MeasureColor.model_extra
+      ~MeasureColor.model_fields
+      ~MeasureColor.model_fields_set
+      ~MeasureColor.white_chroma_max
+      ~MeasureColor.chroma_min
+      ~MeasureColor.include_XYZ
    
    

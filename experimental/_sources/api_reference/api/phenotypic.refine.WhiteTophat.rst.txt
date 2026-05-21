@@ -18,10 +18,45 @@ phenotypic.refine.WhiteTophat
    
       ~WhiteTophat.__init__
       ~WhiteTophat.apply
+      ~WhiteTophat.construct
+      ~WhiteTophat.copy
+      ~WhiteTophat.dict
+      ~WhiteTophat.from_orm
+      ~WhiteTophat.json
+      ~WhiteTophat.model_construct
+      ~WhiteTophat.model_copy
+      ~WhiteTophat.model_dump
+      ~WhiteTophat.model_dump_json
+      ~WhiteTophat.model_json_schema
+      ~WhiteTophat.model_parametrized_name
+      ~WhiteTophat.model_post_init
+      ~WhiteTophat.model_rebuild
+      ~WhiteTophat.model_validate
+      ~WhiteTophat.model_validate_json
+      ~WhiteTophat.model_validate_strings
+      ~WhiteTophat.parse_file
+      ~WhiteTophat.parse_obj
+      ~WhiteTophat.parse_raw
+      ~WhiteTophat.schema
+      ~WhiteTophat.schema_json
+      ~WhiteTophat.update_forward_refs
+      ~WhiteTophat.validate
       ~WhiteTophat.widget
    
    
 
    
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~WhiteTophat.model_computed_fields
+      ~WhiteTophat.model_config
+      ~WhiteTophat.model_extra
+      ~WhiteTophat.model_fields
+      ~WhiteTophat.model_fields_set
+      ~WhiteTophat.shape
+      ~WhiteTophat.width
    
    

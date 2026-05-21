@@ -18,10 +18,47 @@ phenotypic.enhance.MedianFilter
    
       ~MedianFilter.__init__
       ~MedianFilter.apply
+      ~MedianFilter.construct
+      ~MedianFilter.copy
+      ~MedianFilter.dict
+      ~MedianFilter.from_orm
+      ~MedianFilter.json
+      ~MedianFilter.model_construct
+      ~MedianFilter.model_copy
+      ~MedianFilter.model_dump
+      ~MedianFilter.model_dump_json
+      ~MedianFilter.model_json_schema
+      ~MedianFilter.model_parametrized_name
+      ~MedianFilter.model_post_init
+      ~MedianFilter.model_rebuild
+      ~MedianFilter.model_validate
+      ~MedianFilter.model_validate_json
+      ~MedianFilter.model_validate_strings
+      ~MedianFilter.parse_file
+      ~MedianFilter.parse_obj
+      ~MedianFilter.parse_raw
+      ~MedianFilter.schema
+      ~MedianFilter.schema_json
+      ~MedianFilter.update_forward_refs
+      ~MedianFilter.validate
       ~MedianFilter.widget
    
    
 
    
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~MedianFilter.model_computed_fields
+      ~MedianFilter.model_config
+      ~MedianFilter.model_extra
+      ~MedianFilter.model_fields
+      ~MedianFilter.model_fields_set
+      ~MedianFilter.mode
+      ~MedianFilter.shape
+      ~MedianFilter.width
+      ~MedianFilter.cval
    
    

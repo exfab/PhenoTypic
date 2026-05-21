@@ -1,7 +1,8 @@
 # Custom Detector
 
 Subclass `ObjectDetector` to create a detector that writes to `objmask`
-and `objmap`.
+and `objmap`. Operations are pydantic models: declare each parameter as
+an annotated class-level field — there is no hand-written `__init__`.
 
 ```python
 from phenotypic.abc_ import ObjectDetector
@@ -9,10 +10,13 @@ import numpy as np
 from skimage.measure import label
 
 class MyDetector(ObjectDetector):
-    """Detect colonies using a fixed intensity threshold."""
+    """Detect colonies using a fixed intensity threshold.
 
-    def __init__(self, threshold: float = 0.5):
-        self.threshold = threshold
+    Args:
+        threshold: Intensity cutoff; pixels above it are marked as colony.
+    """
+
+    threshold: float = 0.5
 
     def _operate(self, image):
         mask = image.detect_mat[:] > self.threshold

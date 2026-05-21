@@ -608,10 +608,8 @@
 <span class="sd">        class GridAligner(GridCorrector):</span>
 <span class="sd">            &#39;&#39;&#39;Rotate GridImage to align colonies with grid rows/columns.&#39;&#39;&#39;</span>
 
-<span class="sd">            def __init__(self, axis: int = 0, max_rotation: float = 45.0):</span>
-<span class="sd">                super().__init__()</span>
-<span class="sd">                self.axis = axis</span>
-<span class="sd">                self.max_rotation = max_rotation</span>
+<span class="sd">            axis: int = 0  # Annotated class-level fields</span>
+<span class="sd">            max_rotation: float = 45.0</span>
 
 <span class="sd">            def _operate(self, image: GridImage) -&gt; GridImage:</span>
 <span class="sd">                # image is guaranteed to be GridImage with valid grid structure</span>
@@ -765,9 +763,7 @@
 <span class="sd">        &gt;&gt;&gt; class GridPerspectiveCorrector(GridCorrector):</span>
 <span class="sd">        ...     &#39;&#39;&#39;Correct camera tilt or lens distortion on grid plate.&#39;&#39;&#39;</span>
 <span class="sd">        ...</span>
-<span class="sd">        ...     def __init__(self, tilt_angle: float):</span>
-<span class="sd">        ...         super().__init__()</span>
-<span class="sd">        ...         self.tilt_angle = tilt_angle</span>
+<span class="sd">        ...     tilt_angle: float  # Annotated class-level field</span>
 <span class="sd">        ...</span>
 <span class="sd">        ...     def _operate(self, image: GridImage) -&gt; GridImage:</span>
 <span class="sd">        ...         # Apply perspective transform to all components</span>

@@ -23,19 +23,42 @@ phenotypic.prefab.HeavyWatershedPipeline
       ~HeavyWatershedPipeline.apply_napari
       ~HeavyWatershedPipeline.apply_with_intermediates
       ~HeavyWatershedPipeline.benchmark_results
+      ~HeavyWatershedPipeline.construct
+      ~HeavyWatershedPipeline.copy
+      ~HeavyWatershedPipeline.dict
       ~HeavyWatershedPipeline.from_json
+      ~HeavyWatershedPipeline.from_orm
       ~HeavyWatershedPipeline.get_filters
       ~HeavyWatershedPipeline.get_meas
       ~HeavyWatershedPipeline.get_model
       ~HeavyWatershedPipeline.get_ops
       ~HeavyWatershedPipeline.get_post
+      ~HeavyWatershedPipeline.json
       ~HeavyWatershedPipeline.measure
+      ~HeavyWatershedPipeline.model_construct
+      ~HeavyWatershedPipeline.model_copy
+      ~HeavyWatershedPipeline.model_dump
+      ~HeavyWatershedPipeline.model_dump_json
+      ~HeavyWatershedPipeline.model_json_schema
+      ~HeavyWatershedPipeline.model_parametrized_name
+      ~HeavyWatershedPipeline.model_post_init
+      ~HeavyWatershedPipeline.model_rebuild
+      ~HeavyWatershedPipeline.model_validate
+      ~HeavyWatershedPipeline.model_validate_json
+      ~HeavyWatershedPipeline.model_validate_strings
+      ~HeavyWatershedPipeline.parse_file
+      ~HeavyWatershedPipeline.parse_obj
+      ~HeavyWatershedPipeline.parse_raw
+      ~HeavyWatershedPipeline.schema
+      ~HeavyWatershedPipeline.schema_json
       ~HeavyWatershedPipeline.set_filters
       ~HeavyWatershedPipeline.set_meas
       ~HeavyWatershedPipeline.set_model
       ~HeavyWatershedPipeline.set_ops
       ~HeavyWatershedPipeline.set_post
       ~HeavyWatershedPipeline.to_json
+      ~HeavyWatershedPipeline.update_forward_refs
+      ~HeavyWatershedPipeline.validate
       ~HeavyWatershedPipeline.widget
    
    
@@ -47,7 +70,22 @@ phenotypic.prefab.HeavyWatershedPipeline
    .. autosummary::
    
       ~HeavyWatershedPipeline.desc
-      ~HeavyWatershedPipeline.ncols
+      ~HeavyWatershedPipeline.model_computed_fields
+      ~HeavyWatershedPipeline.model_config
+      ~HeavyWatershedPipeline.model_extra
+      ~HeavyWatershedPipeline.model_fields
+      ~HeavyWatershedPipeline.model_fields_set
+      ~HeavyWatershedPipeline.name
+      ~HeavyWatershedPipeline.desc_value
+      ~HeavyWatershedPipeline.benchmark
+      ~HeavyWatershedPipeline.verbose
+      ~HeavyWatershedPipeline.reset
       ~HeavyWatershedPipeline.nrows
+      ~HeavyWatershedPipeline.ncols
+      ~HeavyWatershedPipeline.ops
+      ~HeavyWatershedPipeline.meas
+      ~HeavyWatershedPipeline.post
+      ~HeavyWatershedPipeline.filters
+      ~HeavyWatershedPipeline.model
    
    

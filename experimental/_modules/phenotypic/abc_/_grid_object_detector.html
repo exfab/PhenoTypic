@@ -601,12 +601,9 @@
 <span class="sd">        class GridAdaptiveDetector(GridObjectDetector):</span>
 <span class="sd">            &#39;&#39;&#39;Detect colonies using per-well adaptive thresholding.&#39;&#39;&#39;</span>
 
-<span class="sd">            def __init__(self, neighborhood_size: int = 15):</span>
-<span class="sd">                super().__init__()</span>
-<span class="sd">                self.neighborhood_size = neighborhood_size</span>
+<span class="sd">            neighborhood_size: int = 15  # Annotated class-level field</span>
 
-<span class="sd">            @staticmethod</span>
-<span class="sd">            def _operate(image: GridImage, neighborhood_size: int = 15) -&gt; GridImage:</span>
+<span class="sd">            def _operate(self, image: GridImage) -&gt; GridImage:</span>
 <span class="sd">                # image is guaranteed to be GridImage with grid structure</span>
 <span class="sd">                # Use well positions to apply per-well detection</span>
 <span class="sd">                from scipy.ndimage import label</span>
@@ -616,7 +613,7 @@
 <span class="sd">                grid = image.grid  # Access grid structure</span>
 
 <span class="sd">                # Apply adaptive threshold per well</span>
-<span class="sd">                mask = threshold_local(enh, neighborhood_size) &gt; enh</span>
+<span class="sd">                mask = threshold_local(enh, self.neighborhood_size) &gt; enh</span>
 
 <span class="sd">                # Label connected components</span>
 <span class="sd">                labeled, _ = label(mask)</span>
@@ -709,9 +706,7 @@
 <span class="sd">        &gt;&gt;&gt; class GridAdaptiveDetector(GridObjectDetector):</span>
 <span class="sd">        ...     &#39;&#39;&#39;Adaptive per-well detection using well center positions.&#39;&#39;&#39;</span>
 <span class="sd">        ...</span>
-<span class="sd">        ...     def __init__(self, neighborhood_size: int = 31):</span>
-<span class="sd">        ...         super().__init__()</span>
-<span class="sd">        ...         self.neighborhood_size = neighborhood_size</span>
+<span class="sd">        ...     neighborhood_size: int = 31</span>
 <span class="sd">        ...</span>
 <span class="sd">        ...     def _operate(self, image: GridImage) -&gt; GridImage:</span>
 <span class="sd">        ...         enh = image.detect_mat[:]</span>

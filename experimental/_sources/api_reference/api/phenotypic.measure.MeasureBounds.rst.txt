@@ -17,10 +17,43 @@ phenotypic.measure.MeasureBounds
       :nosignatures:
    
       ~MeasureBounds.__init__
+      ~MeasureBounds.construct
+      ~MeasureBounds.copy
+      ~MeasureBounds.dict
+      ~MeasureBounds.from_orm
+      ~MeasureBounds.json
       ~MeasureBounds.measure
+      ~MeasureBounds.model_construct
+      ~MeasureBounds.model_copy
+      ~MeasureBounds.model_dump
+      ~MeasureBounds.model_dump_json
+      ~MeasureBounds.model_json_schema
+      ~MeasureBounds.model_parametrized_name
+      ~MeasureBounds.model_post_init
+      ~MeasureBounds.model_rebuild
+      ~MeasureBounds.model_validate
+      ~MeasureBounds.model_validate_json
+      ~MeasureBounds.model_validate_strings
+      ~MeasureBounds.parse_file
+      ~MeasureBounds.parse_obj
+      ~MeasureBounds.parse_raw
+      ~MeasureBounds.schema
+      ~MeasureBounds.schema_json
+      ~MeasureBounds.update_forward_refs
+      ~MeasureBounds.validate
    
    
 
    
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~MeasureBounds.model_computed_fields
+      ~MeasureBounds.model_config
+      ~MeasureBounds.model_extra
+      ~MeasureBounds.model_fields
+      ~MeasureBounds.model_fields_set
    
    

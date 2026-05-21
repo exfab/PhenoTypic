@@ -18,10 +18,45 @@ phenotypic.enhance.SubtractWhiteTophat
    
       ~SubtractWhiteTophat.__init__
       ~SubtractWhiteTophat.apply
+      ~SubtractWhiteTophat.construct
+      ~SubtractWhiteTophat.copy
+      ~SubtractWhiteTophat.dict
+      ~SubtractWhiteTophat.from_orm
+      ~SubtractWhiteTophat.json
+      ~SubtractWhiteTophat.model_construct
+      ~SubtractWhiteTophat.model_copy
+      ~SubtractWhiteTophat.model_dump
+      ~SubtractWhiteTophat.model_dump_json
+      ~SubtractWhiteTophat.model_json_schema
+      ~SubtractWhiteTophat.model_parametrized_name
+      ~SubtractWhiteTophat.model_post_init
+      ~SubtractWhiteTophat.model_rebuild
+      ~SubtractWhiteTophat.model_validate
+      ~SubtractWhiteTophat.model_validate_json
+      ~SubtractWhiteTophat.model_validate_strings
+      ~SubtractWhiteTophat.parse_file
+      ~SubtractWhiteTophat.parse_obj
+      ~SubtractWhiteTophat.parse_raw
+      ~SubtractWhiteTophat.schema
+      ~SubtractWhiteTophat.schema_json
+      ~SubtractWhiteTophat.update_forward_refs
+      ~SubtractWhiteTophat.validate
       ~SubtractWhiteTophat.widget
    
    
 
    
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~SubtractWhiteTophat.model_computed_fields
+      ~SubtractWhiteTophat.model_config
+      ~SubtractWhiteTophat.model_extra
+      ~SubtractWhiteTophat.model_fields
+      ~SubtractWhiteTophat.model_fields_set
+      ~SubtractWhiteTophat.shape
+      ~SubtractWhiteTophat.width
    
    

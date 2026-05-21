@@ -534,25 +534,77 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Iterable</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Mapping</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">AliasChoices</span><span class="p">,</span>
+    <span class="n">BaseModel</span><span class="p">,</span>
+    <span class="n">ConfigDict</span><span class="p">,</span>
+    <span class="n">Field</span><span class="p">,</span>
+    <span class="n">PrivateAttr</span><span class="p">,</span>
+<span class="p">)</span>
+
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColumnRef</span><span class="p">,</span> <span class="n">ColumnRefList</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_._docstring_params</span><span class="w"> </span><span class="kn">import</span> <span class="n">apply_docstring_descriptions</span>
 
 
 <div class="viewcode-block" id="SetAnalyzer">
 <a class="viewcode-back" href="../../../../api_reference/phenotypic.analysis.abc_.html#phenotypic.analysis.abc_.SetAnalyzer">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">SetAnalyzer</span><span class="p">(</span><span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="n">on</span><span class="p">:</span> <span class="n">ColumnRef</span><span class="p">,</span>
-        <span class="n">groupby</span><span class="p">:</span> <span class="n">ColumnRefList</span><span class="p">,</span>
-        <span class="n">agg_func</span><span class="p">:</span> <span class="n">Callable</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">list</span> <span class="o">|</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="s2">&quot;mean&quot;</span><span class="p">,</span>
-        <span class="o">*</span><span class="p">,</span>
-        <span class="n">n_jobs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
-    <span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">groupby</span> <span class="o">=</span> <span class="n">groupby</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">agg_func</span> <span class="o">=</span> <span class="n">agg_func</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">on</span> <span class="o">=</span> <span class="n">on</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">n_jobs</span> <span class="o">=</span> <span class="n">n_jobs</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_latest_measurements</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">SetAnalyzer</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">,</span> <span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Abstract base for grouped analyses over a measurement DataFrame.</span>
+
+<span class="sd">    ``SetAnalyzer`` is the root of PhenoTypic&#39;s analyzer hierarchy. It is a</span>
+<span class="sd">    separate pydantic ``BaseModel`` root — it is **not** a</span>
+<span class="sd">    :class:`~phenotypic.abc_.BaseOperation`. Subclasses operate on an</span>
+<span class="sd">    already-assembled measurement DataFrame via :meth:`analyze` (analyzers</span>
+<span class="sd">    use ``.analyze()``, not ``.apply()``).</span>
+
+<span class="sd">    Analyzer parameters are declared as annotated class-level fields;</span>
+<span class="sd">    pydantic generates the constructor and validates inputs.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        on: Measurement column the analysis operates on.</span>
+<span class="sd">        groupby: Columns that define the per-group iteration unit.</span>
+<span class="sd">        agg_func: Aggregation applied within each group. A ``Callable`` is</span>
+<span class="sd">            accepted at runtime but cannot round-trip through JSON; only</span>
+<span class="sd">            the ``str``/``list``/``dict`` forms serialize losslessly.</span>
+<span class="sd">            Defaults to ``&quot;mean&quot;``.</span>
+<span class="sd">        n_jobs: Worker count for parallel group processing. The legacy</span>
+<span class="sd">            ``num_workers`` keyword is accepted as an alias. Defaults to 1.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">model_config</span> <span class="o">=</span> <span class="n">ConfigDict</span><span class="p">(</span>
+        <span class="n">arbitrary_types_allowed</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">validate_assignment</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">extra</span><span class="o">=</span><span class="s2">&quot;forbid&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">on</span><span class="p">:</span> <span class="n">ColumnRef</span>
+    <span class="n">groupby</span><span class="p">:</span> <span class="n">ColumnRefList</span>
+    <span class="n">agg_func</span><span class="p">:</span> <span class="n">Callable</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">list</span> <span class="o">|</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="s2">&quot;mean&quot;</span>
+    <span class="n">n_jobs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+        <span class="n">default</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="n">validation_alias</span><span class="o">=</span><span class="n">AliasChoices</span><span class="p">(</span><span class="s2">&quot;n_jobs&quot;</span><span class="p">,</span> <span class="s2">&quot;num_workers&quot;</span><span class="p">),</span>
+    <span class="p">)</span>
+
+    <span class="n">_latest_measurements</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">=</span> <span class="n">PrivateAttr</span><span class="p">(</span>
+        <span class="n">default_factory</span><span class="o">=</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span>
+    <span class="p">)</span>
+
+<div class="viewcode-block" id="SetAnalyzer.__pydantic_init_subclass__">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.analysis.abc_.html#phenotypic.analysis.abc_.SetAnalyzer.__pydantic_init_subclass__">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">__pydantic_init_subclass__</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Populate field descriptions from the subclass docstring.</span>
+
+<span class="sd">        Runs once per concrete subclass after pydantic has built its</span>
+<span class="sd">        model, copying parameter descriptions parsed from the Google-style</span>
+<span class="sd">        ``Args:`` docstring block onto each field&#39;s ``description`` slot.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            **kwargs: Class-keyword arguments forwarded by pydantic.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__pydantic_init_subclass__</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">apply_docstring_descriptions</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span></div>
+
 
 <div class="viewcode-block" id="SetAnalyzer.analyze">
 <a class="viewcode-back" href="../../../../api_reference/phenotypic.analysis.abc_.html#phenotypic.analysis.abc_.SetAnalyzer.analyze">[docs]</a>
@@ -677,13 +729,16 @@
 <span class="sd">        2    P2     WT    2    9.7</span>
 <span class="sd">        3    P2     KO    2   11.2</span>
 
-<span class="sd">        Match NA values explicitly:</span>
+<span class="sd">        Match NA values explicitly. With ``match_na=True`` the criterion</span>
+<span class="sd">        ``[pd.NA, &#39;WT&#39;]`` keeps every ``&#39;WT&#39;`` row *and* every NA row, so</span>
+<span class="sd">        all three matching rows are returned:</span>
 <span class="sd">        &gt;&gt;&gt; data2 = data.copy()</span>
 <span class="sd">        &gt;&gt;&gt; data2.loc[1, &#39;strain&#39;] = pd.NA</span>
 <span class="sd">        &gt;&gt;&gt; SetAnalyzer._filter_by(data2, {&#39;strain&#39;: [pd.NA, &#39;WT&#39;]}, match_na=True)</span>
 <span class="sd">          plate strain  rep  value</span>
 <span class="sd">        0    P1     WT    1   10.0</span>
 <span class="sd">        1    P1   &lt;NA&gt;    1   12.5</span>
+<span class="sd">        2    P2     WT    2    9.7</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="k">def</span><span class="w"> </span><span class="nf">_is_list_like</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>

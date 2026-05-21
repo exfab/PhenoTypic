@@ -611,9 +611,7 @@
 <span class="sd">        class GridMeasureWellOccupancy(GridMeasureFeatures):</span>
 <span class="sd">            &#39;&#39;&#39;Measure fraction of well area occupied by colonies.&#39;&#39;&#39;</span>
 
-<span class="sd">            def __init__(self, normalize: bool = True):</span>
-<span class="sd">                super().__init__()</span>
-<span class="sd">                self.normalize = normalize</span>
+<span class="sd">            normalize: bool = True  # Annotated class-level field</span>
 
 <span class="sd">            def _operate(self, image: GridImage) -&gt; pd.DataFrame:</span>
 <span class="sd">                # image is guaranteed to be GridImage with validated grid structure</span>

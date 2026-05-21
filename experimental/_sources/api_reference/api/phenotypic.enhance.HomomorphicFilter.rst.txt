@@ -18,10 +18,47 @@ phenotypic.enhance.HomomorphicFilter
    
       ~HomomorphicFilter.__init__
       ~HomomorphicFilter.apply
+      ~HomomorphicFilter.construct
+      ~HomomorphicFilter.copy
+      ~HomomorphicFilter.dict
+      ~HomomorphicFilter.from_orm
+      ~HomomorphicFilter.json
+      ~HomomorphicFilter.model_construct
+      ~HomomorphicFilter.model_copy
+      ~HomomorphicFilter.model_dump
+      ~HomomorphicFilter.model_dump_json
+      ~HomomorphicFilter.model_json_schema
+      ~HomomorphicFilter.model_parametrized_name
+      ~HomomorphicFilter.model_post_init
+      ~HomomorphicFilter.model_rebuild
+      ~HomomorphicFilter.model_validate
+      ~HomomorphicFilter.model_validate_json
+      ~HomomorphicFilter.model_validate_strings
+      ~HomomorphicFilter.parse_file
+      ~HomomorphicFilter.parse_obj
+      ~HomomorphicFilter.parse_raw
+      ~HomomorphicFilter.schema
+      ~HomomorphicFilter.schema_json
+      ~HomomorphicFilter.update_forward_refs
+      ~HomomorphicFilter.validate
       ~HomomorphicFilter.widget
    
    
 
    
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~HomomorphicFilter.model_computed_fields
+      ~HomomorphicFilter.model_config
+      ~HomomorphicFilter.model_extra
+      ~HomomorphicFilter.model_fields
+      ~HomomorphicFilter.model_fields_set
+      ~HomomorphicFilter.sigma
+      ~HomomorphicFilter.gamma_low
+      ~HomomorphicFilter.gamma_high
+      ~HomomorphicFilter.eps
    
    

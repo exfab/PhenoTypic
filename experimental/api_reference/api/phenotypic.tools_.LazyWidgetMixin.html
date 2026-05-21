@@ -953,6 +953,15 @@
 <p>Mixin providing a lazy ipywidget interface.</p>
 <p>This mixin allows ImageOperation classes to automatically generate a Jupyter
 widget interface for parameter tuning and visualization.</p>
+<p>The six lazily-populated UI handles this mixin uses (<code class="docutils literal notranslate"><span class="pre">_ui</span></code>,
+<code class="docutils literal notranslate"><span class="pre">_param_widgets</span></code>, <code class="docutils literal notranslate"><span class="pre">_view_dropdown</span></code>, <code class="docutils literal notranslate"><span class="pre">_update_button</span></code>,
+<code class="docutils literal notranslate"><span class="pre">_output_widget</span></code>, <code class="docutils literal notranslate"><span class="pre">_image_ref</span></code>) are declared as <code class="docutils literal notranslate"><span class="pre">PrivateAttr</span></code>
+on <a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.ImageOperation" title="phenotypic.abc_.ImageOperation"><code class="xref py py-class docutils literal notranslate"><span class="pre">ImageOperation</span></code></a> rather than here. A plain
+(non-<code class="docutils literal notranslate"><span class="pre">BaseModel</span></code>) mixin’s <code class="docutils literal notranslate"><span class="pre">PrivateAttr</span></code> declarations are not
+collected by pydantic, so this mixin stays a stateless methods-only
+class and the private attrs live on the pydantic model that mixes it
+in. This keeps the mixin safe to combine with any <code class="docutils literal notranslate"><span class="pre">BaseModel</span></code> in
+any MRO position.</p>
 <p class="rubric">Methods</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>

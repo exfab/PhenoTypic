@@ -569,6 +569,54 @@ are internal to the core library and don’t need a Literal partner yet.</p>
 </dd></dl>
 
 <dl class="py data">
+<dt class="sig sig-object py" id="phenotypic.tools_.typing_.NdArrayField">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.typing_.</span></span><span class="sig-name descname"><span class="pre">NdArrayField</span></span><a class="headerlink" href="#phenotypic.tools_.typing_.NdArrayField" title="Link to this definition">#</a></dt>
+<dd><p>Annotated <code class="docutils literal notranslate"><span class="pre">np.ndarray</span></code> usable as a pydantic field annotation.</p>
+<p>Accepts a <code class="docutils literal notranslate"><span class="pre">list</span></code> / nested list or an <code class="docutils literal notranslate"><span class="pre">np.ndarray</span></code> as input,
+serializes to a JSON-native nested list, and reports an <code class="docutils literal notranslate"><span class="pre">&quot;array&quot;</span></code>
+JSON schema. The host model <strong>must</strong> declare <code class="docutils literal notranslate"><span class="pre">model_config</span></code> with
+<code class="docutils literal notranslate"><span class="pre">arbitrary_types_allowed=True</span></code> (the field type is the arbitrary,
+non-pydantic <code class="docutils literal notranslate"><span class="pre">np.ndarray</span></code>).</p>
+<div class="admonition-example admonition">
+<p class="admonition-title">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span><span class="p">,</span> <span class="n">ConfigDict</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools</span>\<span class="n">_</span><span class="o">.</span><span class="n">typing_</span> <span class="kn">import</span><span class="w"> </span><span class="nn">NdArrayField</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">class</span><span class="w"> </span><span class="nc">KernelOp</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="gp">... </span>    <span class="n">model_config</span> <span class="o">=</span> <span class="n">ConfigDict</span><span class="p">(</span><span class="n">arbitrary_types_allowed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="n">kernel</span><span class="p">:</span> <span class="n">NdArrayField</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">op</span> <span class="o">=</span> <span class="n">KernelOp</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="p">[[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">isinstance</span><span class="p">(</span><span class="n">op</span><span class="o">.</span><span class="n">kernel</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span>
+<span class="go">True</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">op</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;json&quot;</span><span class="p">)[</span><span class="s2">&quot;kernel&quot;</span><span class="p">]</span>
+<span class="go">[[1, 0], [0, 1]]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">KernelOp</span><span class="o">.</span><span class="n">model_json_schema</span><span class="p">()[</span><span class="s2">&quot;properties&quot;</span><span class="p">][</span><span class="s2">&quot;kernel&quot;</span><span class="p">][</span><span class="s2">&quot;type&quot;</span><span class="p">]</span>
+<span class="go">&#39;array&#39;</span>
+</pre></div>
+</div>
+</div>
+<p>alias of <code class="xref py py-class docutils literal notranslate"><span class="pre">Annotated</span></code>[<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ndarray</span></code></a>, <code class="xref py py-class docutils literal notranslate"><span class="pre">BeforeValidator</span></code>(func=<code class="xref py py-class docutils literal notranslate"><span class="pre">_coerce_to_ndarray</span></code>, json_schema_input_type=PydanticUndefined), <code class="xref py py-class docutils literal notranslate"><span class="pre">PlainSerializer</span></code>(func=<code class="xref py py-class docutils literal notranslate"><span class="pre">_ndarray_to_list</span></code>, return_type=<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">list</span></code></a>, when_used=always), <code class="xref py py-class docutils literal notranslate"><span class="pre">WithJsonSchema</span></code>(json_schema={‘items’: {}, ‘type’: ‘array’}, mode=<a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a>)]</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="phenotypic.tools_.typing_.OperationField">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.typing_.</span></span><span class="sig-name descname"><span class="pre">OperationField</span></span><a class="headerlink" href="#phenotypic.tools_.typing_.OperationField" title="Link to this definition">#</a></dt>
+<dd><p>Annotated operation type usable as a pydantic field annotation for a
+parameter that holds another operation or a nested pipeline.</p>
+<p>Serializes to a class-tagged dict so the concrete subclass survives a
+JSON round-trip; deserializes by resolving the class through the
+<code class="docutils literal notranslate"><span class="pre">phenotypic</span></code> registry. Use it directly (<code class="docutils literal notranslate"><span class="pre">OperationField</span></code>) or inside
+a container — e.g. <code class="docutils literal notranslate"><span class="pre">list[OperationField]</span></code> — when the field must
+accept several operation types and round-trip each losslessly.</p>
+<p>The core type is <code class="docutils literal notranslate"><span class="pre">Any</span></code> (naming the operation base classes here would
+create an import cycle through <code class="docutils literal notranslate"><span class="pre">tools_</span></code>); an <code class="docutils literal notranslate"><span class="pre">AfterValidator</span></code>
+restores the operation/pipeline type guard. The trailing
+<code class="xref py py-class docutils literal notranslate"><span class="pre">_OperationFieldMarker</span></code> lets the GUI <code class="docutils literal notranslate"><span class="pre">OperationRegistry</span></code>
+recognise the field despite the <code class="docutils literal notranslate"><span class="pre">Any</span></code> erasure.</p>
+<p>alias of <code class="xref py py-class docutils literal notranslate"><span class="pre">Annotated</span></code>[<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Any</span></code></a>, <code class="xref py py-class docutils literal notranslate"><span class="pre">BeforeValidator</span></code>(func=<code class="xref py py-class docutils literal notranslate"><span class="pre">_deserialize_operation_value</span></code>, json_schema_input_type=PydanticUndefined), <code class="xref py py-class docutils literal notranslate"><span class="pre">AfterValidator</span></code>(func=<code class="xref py py-class docutils literal notranslate"><span class="pre">_require_operation_value</span></code>), <code class="xref py py-class docutils literal notranslate"><span class="pre">PlainSerializer</span></code>(func=<code class="xref py py-class docutils literal notranslate"><span class="pre">_serialize_operation_value</span></code>, return_type=PydanticUndefined, when_used=always), _OperationFieldMarker()]</p>
+</dd></dl>
+
+<dl class="py data">
 <dt class="sig sig-object py" id="phenotypic.tools_.typing_.ProcessingStatus">
 <span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.typing_.</span></span><span class="sig-name descname"><span class="pre">ProcessingStatus</span></span><a class="headerlink" href="#phenotypic.tools_.typing_.ProcessingStatus" title="Link to this definition">#</a></dt>
 <dd><p>Per-image processing-events log statuses. Used by <code class="docutils literal notranslate"><span class="pre">_cli_update_state</span></code>
@@ -613,6 +661,8 @@ the bare-string <code class="docutils literal notranslate"><span class="pre">TAS
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.typing_.ExecutionMode"><code class="docutils literal notranslate"><span class="pre">ExecutionMode</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.typing_.FailureSource"><code class="docutils literal notranslate"><span class="pre">FailureSource</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.typing_.ImageTypeName"><code class="docutils literal notranslate"><span class="pre">ImageTypeName</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.typing_.NdArrayField"><code class="docutils literal notranslate"><span class="pre">NdArrayField</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.typing_.OperationField"><code class="docutils literal notranslate"><span class="pre">OperationField</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.typing_.ProcessingStatus"><code class="docutils literal notranslate"><span class="pre">ProcessingStatus</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.typing_.RecompileTaskType"><code class="docutils literal notranslate"><span class="pre">RecompileTaskType</span></code></a></li>
 </ul>

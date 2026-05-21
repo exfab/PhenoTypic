@@ -18,10 +18,43 @@ phenotypic.abc\_.ImageOperation
    
       ~ImageOperation.__init__
       ~ImageOperation.apply
+      ~ImageOperation.construct
+      ~ImageOperation.copy
+      ~ImageOperation.dict
+      ~ImageOperation.from_orm
+      ~ImageOperation.json
+      ~ImageOperation.model_construct
+      ~ImageOperation.model_copy
+      ~ImageOperation.model_dump
+      ~ImageOperation.model_dump_json
+      ~ImageOperation.model_json_schema
+      ~ImageOperation.model_parametrized_name
+      ~ImageOperation.model_post_init
+      ~ImageOperation.model_rebuild
+      ~ImageOperation.model_validate
+      ~ImageOperation.model_validate_json
+      ~ImageOperation.model_validate_strings
+      ~ImageOperation.parse_file
+      ~ImageOperation.parse_obj
+      ~ImageOperation.parse_raw
+      ~ImageOperation.schema
+      ~ImageOperation.schema_json
+      ~ImageOperation.update_forward_refs
+      ~ImageOperation.validate
       ~ImageOperation.widget
    
    
 
    
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ImageOperation.model_computed_fields
+      ~ImageOperation.model_config
+      ~ImageOperation.model_extra
+      ~ImageOperation.model_fields
+      ~ImageOperation.model_fields_set
    
    

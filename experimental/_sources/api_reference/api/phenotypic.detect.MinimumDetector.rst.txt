@@ -18,10 +18,45 @@ phenotypic.detect.MinimumDetector
    
       ~MinimumDetector.__init__
       ~MinimumDetector.apply
+      ~MinimumDetector.construct
+      ~MinimumDetector.copy
+      ~MinimumDetector.dict
+      ~MinimumDetector.from_orm
+      ~MinimumDetector.json
+      ~MinimumDetector.model_construct
+      ~MinimumDetector.model_copy
+      ~MinimumDetector.model_dump
+      ~MinimumDetector.model_dump_json
+      ~MinimumDetector.model_json_schema
+      ~MinimumDetector.model_parametrized_name
+      ~MinimumDetector.model_post_init
+      ~MinimumDetector.model_rebuild
+      ~MinimumDetector.model_validate
+      ~MinimumDetector.model_validate_json
+      ~MinimumDetector.model_validate_strings
+      ~MinimumDetector.parse_file
+      ~MinimumDetector.parse_obj
+      ~MinimumDetector.parse_raw
+      ~MinimumDetector.schema
+      ~MinimumDetector.schema_json
+      ~MinimumDetector.update_forward_refs
+      ~MinimumDetector.validate
       ~MinimumDetector.widget
    
    
 
    
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~MinimumDetector.model_computed_fields
+      ~MinimumDetector.model_config
+      ~MinimumDetector.model_extra
+      ~MinimumDetector.model_fields
+      ~MinimumDetector.model_fields_set
+      ~MinimumDetector.ignore_zeros
+      ~MinimumDetector.ignore_borders
    
    

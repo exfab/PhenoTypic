@@ -23,19 +23,42 @@ phenotypic.prefab.HeavyRoundPeaksPipeline
       ~HeavyRoundPeaksPipeline.apply_napari
       ~HeavyRoundPeaksPipeline.apply_with_intermediates
       ~HeavyRoundPeaksPipeline.benchmark_results
+      ~HeavyRoundPeaksPipeline.construct
+      ~HeavyRoundPeaksPipeline.copy
+      ~HeavyRoundPeaksPipeline.dict
       ~HeavyRoundPeaksPipeline.from_json
+      ~HeavyRoundPeaksPipeline.from_orm
       ~HeavyRoundPeaksPipeline.get_filters
       ~HeavyRoundPeaksPipeline.get_meas
       ~HeavyRoundPeaksPipeline.get_model
       ~HeavyRoundPeaksPipeline.get_ops
       ~HeavyRoundPeaksPipeline.get_post
+      ~HeavyRoundPeaksPipeline.json
       ~HeavyRoundPeaksPipeline.measure
+      ~HeavyRoundPeaksPipeline.model_construct
+      ~HeavyRoundPeaksPipeline.model_copy
+      ~HeavyRoundPeaksPipeline.model_dump
+      ~HeavyRoundPeaksPipeline.model_dump_json
+      ~HeavyRoundPeaksPipeline.model_json_schema
+      ~HeavyRoundPeaksPipeline.model_parametrized_name
+      ~HeavyRoundPeaksPipeline.model_post_init
+      ~HeavyRoundPeaksPipeline.model_rebuild
+      ~HeavyRoundPeaksPipeline.model_validate
+      ~HeavyRoundPeaksPipeline.model_validate_json
+      ~HeavyRoundPeaksPipeline.model_validate_strings
+      ~HeavyRoundPeaksPipeline.parse_file
+      ~HeavyRoundPeaksPipeline.parse_obj
+      ~HeavyRoundPeaksPipeline.parse_raw
+      ~HeavyRoundPeaksPipeline.schema
+      ~HeavyRoundPeaksPipeline.schema_json
       ~HeavyRoundPeaksPipeline.set_filters
       ~HeavyRoundPeaksPipeline.set_meas
       ~HeavyRoundPeaksPipeline.set_model
       ~HeavyRoundPeaksPipeline.set_ops
       ~HeavyRoundPeaksPipeline.set_post
       ~HeavyRoundPeaksPipeline.to_json
+      ~HeavyRoundPeaksPipeline.update_forward_refs
+      ~HeavyRoundPeaksPipeline.validate
       ~HeavyRoundPeaksPipeline.widget
    
    
@@ -47,7 +70,22 @@ phenotypic.prefab.HeavyRoundPeaksPipeline
    .. autosummary::
    
       ~HeavyRoundPeaksPipeline.desc
-      ~HeavyRoundPeaksPipeline.ncols
+      ~HeavyRoundPeaksPipeline.model_computed_fields
+      ~HeavyRoundPeaksPipeline.model_config
+      ~HeavyRoundPeaksPipeline.model_extra
+      ~HeavyRoundPeaksPipeline.model_fields
+      ~HeavyRoundPeaksPipeline.model_fields_set
+      ~HeavyRoundPeaksPipeline.name
+      ~HeavyRoundPeaksPipeline.desc_value
+      ~HeavyRoundPeaksPipeline.benchmark
+      ~HeavyRoundPeaksPipeline.verbose
+      ~HeavyRoundPeaksPipeline.reset
       ~HeavyRoundPeaksPipeline.nrows
+      ~HeavyRoundPeaksPipeline.ncols
+      ~HeavyRoundPeaksPipeline.ops
+      ~HeavyRoundPeaksPipeline.meas
+      ~HeavyRoundPeaksPipeline.post
+      ~HeavyRoundPeaksPipeline.filters
+      ~HeavyRoundPeaksPipeline.model
    
    

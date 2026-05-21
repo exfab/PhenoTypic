@@ -18,10 +18,43 @@ phenotypic.abc\_.ObjectDetector
    
       ~ObjectDetector.__init__
       ~ObjectDetector.apply
+      ~ObjectDetector.construct
+      ~ObjectDetector.copy
+      ~ObjectDetector.dict
+      ~ObjectDetector.from_orm
+      ~ObjectDetector.json
+      ~ObjectDetector.model_construct
+      ~ObjectDetector.model_copy
+      ~ObjectDetector.model_dump
+      ~ObjectDetector.model_dump_json
+      ~ObjectDetector.model_json_schema
+      ~ObjectDetector.model_parametrized_name
+      ~ObjectDetector.model_post_init
+      ~ObjectDetector.model_rebuild
+      ~ObjectDetector.model_validate
+      ~ObjectDetector.model_validate_json
+      ~ObjectDetector.model_validate_strings
+      ~ObjectDetector.parse_file
+      ~ObjectDetector.parse_obj
+      ~ObjectDetector.parse_raw
+      ~ObjectDetector.schema
+      ~ObjectDetector.schema_json
+      ~ObjectDetector.update_forward_refs
+      ~ObjectDetector.validate
       ~ObjectDetector.widget
    
    
 
    
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ObjectDetector.model_computed_fields
+      ~ObjectDetector.model_config
+      ~ObjectDetector.model_extra
+      ~ObjectDetector.model_fields
+      ~ObjectDetector.model_fields_set
    
    

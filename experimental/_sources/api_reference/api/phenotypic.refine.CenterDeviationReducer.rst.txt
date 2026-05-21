@@ -18,10 +18,43 @@ phenotypic.refine.CenterDeviationReducer
    
       ~CenterDeviationReducer.__init__
       ~CenterDeviationReducer.apply
+      ~CenterDeviationReducer.construct
+      ~CenterDeviationReducer.copy
+      ~CenterDeviationReducer.dict
+      ~CenterDeviationReducer.from_orm
+      ~CenterDeviationReducer.json
+      ~CenterDeviationReducer.model_construct
+      ~CenterDeviationReducer.model_copy
+      ~CenterDeviationReducer.model_dump
+      ~CenterDeviationReducer.model_dump_json
+      ~CenterDeviationReducer.model_json_schema
+      ~CenterDeviationReducer.model_parametrized_name
+      ~CenterDeviationReducer.model_post_init
+      ~CenterDeviationReducer.model_rebuild
+      ~CenterDeviationReducer.model_validate
+      ~CenterDeviationReducer.model_validate_json
+      ~CenterDeviationReducer.model_validate_strings
+      ~CenterDeviationReducer.parse_file
+      ~CenterDeviationReducer.parse_obj
+      ~CenterDeviationReducer.parse_raw
+      ~CenterDeviationReducer.schema
+      ~CenterDeviationReducer.schema_json
+      ~CenterDeviationReducer.update_forward_refs
+      ~CenterDeviationReducer.validate
       ~CenterDeviationReducer.widget
    
    
 
    
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~CenterDeviationReducer.model_computed_fields
+      ~CenterDeviationReducer.model_config
+      ~CenterDeviationReducer.model_extra
+      ~CenterDeviationReducer.model_fields
+      ~CenterDeviationReducer.model_fields_set
    
    

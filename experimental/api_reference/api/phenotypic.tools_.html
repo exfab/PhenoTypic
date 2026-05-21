@@ -1232,7 +1232,7 @@ allowing the copy to operate without output clipping.</p>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImagePipeline</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.enhance</span><span class="w"> </span><span class="kn">import</span> <span class="n">GaussianBlur</span><span class="p">,</span> <span class="n">BilateralDenoise</span>
 <span class="gp">&gt;&gt;&gt;</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">pipeline</span> <span class="o">=</span> <span class="n">ImagePipeline</span><span class="p">([</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">pipeline</span> <span class="o">=</span> <span class="n">ImagePipeline</span><span class="p">(</span><span class="n">pipe_cfgs</span><span class="o">=</span><span class="p">[</span>
 <span class="gp">... </span>    <span class="n">GaussianBlur</span><span class="p">(</span><span class="n">sigma</span><span class="o">=</span><span class="mf">1.0</span><span class="p">),</span>
 <span class="gp">... </span>    <span class="n">BilateralDenoise</span><span class="p">(</span><span class="n">sigma_spatial</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">clip</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="gp">... </span><span class="p">])</span>
@@ -2406,6 +2406,15 @@ should fail fast at every site.</p>
 <p>Mixin providing a lazy ipywidget interface.</p>
 <p>This mixin allows ImageOperation classes to automatically generate a Jupyter
 widget interface for parameter tuning and visualization.</p>
+<p>The six lazily-populated UI handles this mixin uses (<code class="docutils literal notranslate"><span class="pre">_ui</span></code>,
+<code class="docutils literal notranslate"><span class="pre">_param_widgets</span></code>, <code class="docutils literal notranslate"><span class="pre">_view_dropdown</span></code>, <code class="docutils literal notranslate"><span class="pre">_update_button</span></code>,
+<code class="docutils literal notranslate"><span class="pre">_output_widget</span></code>, <code class="docutils literal notranslate"><span class="pre">_image_ref</span></code>) are declared as <code class="docutils literal notranslate"><span class="pre">PrivateAttr</span></code>
+on <a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.ImageOperation" title="phenotypic.abc_.ImageOperation"><code class="xref py py-class docutils literal notranslate"><span class="pre">ImageOperation</span></code></a> rather than here. A plain
+(non-<code class="docutils literal notranslate"><span class="pre">BaseModel</span></code>) mixin’s <code class="docutils literal notranslate"><span class="pre">PrivateAttr</span></code> declarations are not
+collected by pydantic, so this mixin stays a stateless methods-only
+class and the private attrs live on the pydantic model that mixes it
+in. This keeps the mixin safe to combine with any <code class="docutils literal notranslate"><span class="pre">BaseModel</span></code> in
+any MRO position.</p>
 <dl class="py method">
 <dt class="sig sig-object py">
 <span class="sig-name descname"><span class="pre">__getstate__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/tools_/mixin/_lazy_widget_mixin.html#LazyWidgetMixin.__getstate__"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>

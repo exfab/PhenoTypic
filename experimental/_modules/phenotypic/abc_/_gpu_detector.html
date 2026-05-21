@@ -583,15 +583,16 @@
 
 <span class="sd">    Use a ``_ensure_model_loaded()`` pattern::</span>
 
+<span class="sd">        from pydantic import PrivateAttr</span>
+
 <span class="sd">        class MyGpuDetector(GpuDetector):</span>
-<span class="sd">            def __init__(self, model_size=&quot;small&quot;, device=&quot;auto&quot;):</span>
-<span class="sd">                super().__init__()</span>
-<span class="sd">                self.model_size = model_size</span>
-<span class="sd">                self.device = device</span>
-<span class="sd">                self._model = None  # underscore prefix → skipped by serialization</span>
+<span class="sd">            model_size: str = &quot;small&quot;  # Annotated class-level fields</span>
+<span class="sd">            device: str = &quot;auto&quot;</span>
+<span class="sd">            # underscore-prefixed private attr → skipped by serialization</span>
+<span class="sd">            _model: object = PrivateAttr(default=None)</span>
 
 <span class="sd">            def _ensure_model_loaded(self):</span>
-<span class="sd">                if getattr(self, &quot;_model&quot;, None) is not None:</span>
+<span class="sd">                if self._model is not None:</span>
 <span class="sd">                    return</span>
 <span class="sd">                import torch  # lazy import</span>
 <span class="sd">                # ... build model ...</span>

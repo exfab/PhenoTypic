@@ -18,10 +18,44 @@ phenotypic.refine.TransitiveDistanceMerger
    
       ~TransitiveDistanceMerger.__init__
       ~TransitiveDistanceMerger.apply
+      ~TransitiveDistanceMerger.construct
+      ~TransitiveDistanceMerger.copy
+      ~TransitiveDistanceMerger.dict
+      ~TransitiveDistanceMerger.from_orm
+      ~TransitiveDistanceMerger.json
+      ~TransitiveDistanceMerger.model_construct
+      ~TransitiveDistanceMerger.model_copy
+      ~TransitiveDistanceMerger.model_dump
+      ~TransitiveDistanceMerger.model_dump_json
+      ~TransitiveDistanceMerger.model_json_schema
+      ~TransitiveDistanceMerger.model_parametrized_name
+      ~TransitiveDistanceMerger.model_post_init
+      ~TransitiveDistanceMerger.model_rebuild
+      ~TransitiveDistanceMerger.model_validate
+      ~TransitiveDistanceMerger.model_validate_json
+      ~TransitiveDistanceMerger.model_validate_strings
+      ~TransitiveDistanceMerger.parse_file
+      ~TransitiveDistanceMerger.parse_obj
+      ~TransitiveDistanceMerger.parse_raw
+      ~TransitiveDistanceMerger.schema
+      ~TransitiveDistanceMerger.schema_json
+      ~TransitiveDistanceMerger.update_forward_refs
+      ~TransitiveDistanceMerger.validate
       ~TransitiveDistanceMerger.widget
    
    
 
    
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~TransitiveDistanceMerger.model_computed_fields
+      ~TransitiveDistanceMerger.model_config
+      ~TransitiveDistanceMerger.model_extra
+      ~TransitiveDistanceMerger.model_fields
+      ~TransitiveDistanceMerger.model_fields_set
+      ~TransitiveDistanceMerger.distance_threshold
    
    

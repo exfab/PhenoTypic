@@ -583,27 +583,7 @@
 <span class="sd">        morphological refinement methods.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-<div class="viewcode-block" id="Skeletonize.__init__">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.refine.html#phenotypic.refine.Skeletonize.__init__">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">method</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;zhang&quot;</span><span class="p">,</span> <span class="s2">&quot;lee&quot;</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize the skeletonizer.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            method (Literal[&quot;zhang&quot;, &quot;lee&quot;] | None): Algorithm for skeletonization.</span>
-
-<span class="sd">                - &quot;zhang&quot;: Optimized for 2D images; fast, produces thin skeletons.</span>
-<span class="sd">                  Best for well-defined colony boundaries.</span>
-<span class="sd">                - &quot;lee&quot;: Works on 2D/3D; more robust to noisy or irregular boundaries.</span>
-<span class="sd">                  Slightly slower but preserves topology better on challenging images.</span>
-<span class="sd">                - None: Automatically selects Zhang for 2D and Lee for 3D.</span>
-
-<span class="sd">                Choosing the right method depends on image quality: clean, binary</span>
-<span class="sd">                masks benefit from Zhang; noisier masks or fungal hyphae benefit</span>
-<span class="sd">                from Lee.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">method</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;zhang&quot;</span><span class="p">,</span> <span class="s2">&quot;lee&quot;</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="n">method</span></div>
-
+    <span class="n">method</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;zhang&quot;</span><span class="p">,</span> <span class="s2">&quot;lee&quot;</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
         <span class="n">image</span><span class="o">.</span><span class="n">objmask</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">skeletonize</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">objmask</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span> <span class="n">method</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">method</span><span class="p">)</span>

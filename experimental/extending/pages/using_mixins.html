@@ -566,15 +566,16 @@ operations without duplicating code.</p>
 <p>Adds structuring element (footprint) handling to operations that need
 morphological kernels.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ObjectRefiner</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.mixins_</span><span class="w"> </span><span class="kn">import</span> <span class="n">FootprintMixin</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.mixin</span><span class="w"> </span><span class="kn">import</span> <span class="n">FootprintMixin</span>
 
 <span class="k">class</span><span class="w"> </span><span class="nc">MyRefiner</span><span class="p">(</span><span class="n">FootprintMixin</span><span class="p">,</span> <span class="n">ObjectRefiner</span><span class="p">):</span>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="s2">&quot;disk&quot;</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="mi">5</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="n">shape</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">width</span> <span class="o">=</span> <span class="n">width</span>
+    <span class="c1"># Parameters are annotated class-level fields (operations are</span>
+    <span class="c1"># pydantic models); the mixin contributes helper methods.</span>
+    <span class="n">shape</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;disk&quot;</span>
+    <span class="n">width</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">):</span>
-        <span class="n">footprint</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_footprint</span><span class="p">()</span>
+        <span class="n">footprint</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_footprint</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">width</span><span class="p">)</span>
         <span class="c1"># Use footprint for morphological operations</span>
         <span class="o">...</span>
         <span class="k">return</span> <span class="n">image</span>

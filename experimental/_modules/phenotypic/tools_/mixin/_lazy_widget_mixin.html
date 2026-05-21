@@ -526,10 +526,9 @@
   <h1>Source code for phenotypic.tools_.mixin._lazy_widget_mixin</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
-<span class="kn">import</span><span class="w"> </span><span class="nn">inspect</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">typing</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">get_args</span><span class="p">,</span> <span class="n">get_origin</span><span class="p">,</span> <span class="n">Literal</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic_core</span><span class="w"> </span><span class="kn">import</span> <span class="n">PydanticUndefined</span>
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
@@ -543,14 +542,17 @@
 
 <span class="sd">    This mixin allows ImageOperation classes to automatically generate a Jupyter</span>
 <span class="sd">    widget interface for parameter tuning and visualization.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="n">_ui</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Widget</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">_param_widgets</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Widget</span><span class="p">]</span>
-    <span class="n">_view_dropdown</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Widget</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">_update_button</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Widget</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">_output_widget</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Widget</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">_image_ref</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Image</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="sd">    The six lazily-populated UI handles this mixin uses (``_ui``,</span>
+<span class="sd">    ``_param_widgets``, ``_view_dropdown``, ``_update_button``,</span>
+<span class="sd">    ``_output_widget``, ``_image_ref``) are declared as ``PrivateAttr``</span>
+<span class="sd">    on :class:`~phenotypic.abc_.ImageOperation` rather than here. A plain</span>
+<span class="sd">    (non-``BaseModel``) mixin&#39;s ``PrivateAttr`` declarations are not</span>
+<span class="sd">    collected by pydantic, so this mixin stays a stateless methods-only</span>
+<span class="sd">    class and the private attrs live on the pydantic model that mixes it</span>
+<span class="sd">    in. This keeps the mixin safe to combine with any ``BaseModel`` in</span>
+<span class="sd">    any MRO position.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
 
 <div class="viewcode-block" id="LazyWidgetMixin.widget">
 <a class="viewcode-back" href="../../../../api_reference/phenotypic.tools_.mixin.html#phenotypic.tools_.LazyWidgetMixin.widget">[docs]</a>
@@ -676,49 +678,51 @@
         <span class="k">if</span> <span class="n">doc_widget</span><span class="p">:</span>
             <span class="n">controls</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">doc_widget</span><span class="p">)</span>
 
-        <span class="c1"># 1. Introspect __init__ parameters</span>
-        <span class="c1"># Skip for ImagePipeline</span>
+        <span class="c1"># 1. Introspect pydantic model fields</span>
+        <span class="c1"># Skip for ImagePipeline.</span>
+        <span class="c1">#</span>
+        <span class="c1"># Operations are pydantic ``BaseModel``s after the v2 migration,</span>
+        <span class="c1"># so ``inspect.signature(self.__init__)`` no longer yields the</span>
+        <span class="c1"># parameters (it returns the generic ``(self, data)`` signature).</span>
+        <span class="c1"># The contract now lives in ``type(self).model_fields`` — a</span>
+        <span class="c1"># ``dict[str, FieldInfo]`` whose entries carry ``.annotation``,</span>
+        <span class="c1"># ``.default`` and ``.description``.</span>
 
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pht</span><span class="o">.</span><span class="n">ImagePipeline</span><span class="p">):</span>
-            <span class="n">sig</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">signature</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="fm">__init__</span><span class="p">)</span>
-            <span class="n">hints</span> <span class="o">=</span> <span class="n">typing</span><span class="o">.</span><span class="n">get_type_hints</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="fm">__init__</span><span class="p">)</span>
+            <span class="n">model_fields</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">),</span> <span class="s2">&quot;model_fields&quot;</span><span class="p">,</span> <span class="p">{})</span>
 
-            <span class="c1"># Parse docstring for parameter descriptions</span>
-            <span class="n">doc_params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parse_docstring</span><span class="p">()</span>
-
-            <span class="k">for</span> <span class="n">param_name</span><span class="p">,</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">sig</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-                <span class="k">if</span> <span class="p">(</span>
-                        <span class="n">param_name</span> <span class="o">==</span> <span class="s2">&quot;self&quot;</span>
-                        <span class="ow">or</span> <span class="n">param_name</span> <span class="o">==</span> <span class="s2">&quot;args&quot;</span>
-                        <span class="ow">or</span> <span class="n">param_name</span> <span class="o">==</span> <span class="s2">&quot;kwargs&quot;</span>
-                <span class="p">):</span>
-                    <span class="k">continue</span>
-
-                <span class="c1"># Get current value from instance</span>
+            <span class="k">for</span> <span class="n">param_name</span><span class="p">,</span> <span class="n">field</span> <span class="ow">in</span> <span class="n">model_fields</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="c1"># Resolve the current instance value, falling back to the</span>
+                <span class="c1"># field default (``PydanticUndefined`` marks a required</span>
+                <span class="c1"># field with no default).</span>
                 <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">param_name</span><span class="p">):</span>
                     <span class="n">current_val</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">param_name</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="n">field</span><span class="o">.</span><span class="n">default</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">PydanticUndefined</span><span class="p">:</span>
+                    <span class="n">current_val</span> <span class="o">=</span> <span class="n">field</span><span class="o">.</span><span class="n">default</span>
                 <span class="k">else</span><span class="p">:</span>
-                    <span class="c1"># Fallback to default if attribute missing (shouldn&#39;t happen for well-behaved ops)</span>
-                    <span class="n">current_val</span> <span class="o">=</span> <span class="p">(</span>
-                        <span class="n">param</span><span class="o">.</span><span class="n">default</span>
-                        <span class="k">if</span> <span class="n">param</span><span class="o">.</span><span class="n">default</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">inspect</span><span class="o">.</span><span class="n">Parameter</span><span class="o">.</span><span class="n">empty</span>
-                        <span class="k">else</span> <span class="kc">None</span>
-                    <span class="p">)</span>
+                    <span class="n">current_val</span> <span class="o">=</span> <span class="kc">None</span>
 
-                <span class="c1"># Skip if we can&#39;t determine value or it&#39;s private</span>
-                <span class="k">if</span> <span class="n">current_val</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">param</span><span class="o">.</span><span class="n">default</span> <span class="ow">is</span> <span class="n">inspect</span><span class="o">.</span><span class="n">Parameter</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+                <span class="c1"># Skip if we can&#39;t determine a value for a required field.</span>
+                <span class="k">if</span> <span class="n">current_val</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">field</span><span class="o">.</span><span class="n">default</span> <span class="ow">is</span> <span class="n">PydanticUndefined</span><span class="p">:</span>
                     <span class="k">continue</span>
+
+                <span class="c1"># Type comes straight from the field annotation; the</span>
+                <span class="c1"># ``_create_*_widget`` helpers already handle ``Optional``</span>
+                <span class="c1"># / ``Union`` / ``Literal`` forms.</span>
+                <span class="n">type_hint</span> <span class="o">=</span> <span class="n">field</span><span class="o">.</span><span class="n">annotation</span> <span class="k">if</span> <span class="n">field</span><span class="o">.</span><span class="n">annotation</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">Any</span>
 
                 <span class="c1"># Determine widget type</span>
                 <span class="n">widget</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_widget_for_param</span><span class="p">(</span>
-                        <span class="n">param_name</span><span class="p">,</span> <span class="n">hints</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">param_name</span><span class="p">,</span> <span class="n">Any</span><span class="p">),</span> <span class="n">current_val</span>
+                        <span class="n">param_name</span><span class="p">,</span> <span class="n">type_hint</span><span class="p">,</span> <span class="n">current_val</span>
                 <span class="p">)</span>
                 <span class="k">if</span> <span class="n">widget</span><span class="p">:</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">_param_widgets</span><span class="p">[</span><span class="n">param_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">widget</span>
 
-                    <span class="c1"># Check for help text from docstring</span>
-                    <span class="k">if</span> <span class="n">param_name</span> <span class="ow">in</span> <span class="n">doc_params</span><span class="p">:</span>
-                        <span class="n">help_text</span> <span class="o">=</span> <span class="n">doc_params</span><span class="p">[</span><span class="n">param_name</span><span class="p">]</span>
+                    <span class="c1"># Help text comes from the field description, which</span>
+                    <span class="c1"># ``BaseOperation``&#39;s docstring hook populated from</span>
+                    <span class="c1"># the class ``Args:`` block.</span>
+                    <span class="n">help_text</span> <span class="o">=</span> <span class="n">field</span><span class="o">.</span><span class="n">description</span>
+                    <span class="k">if</span> <span class="n">help_text</span><span class="p">:</span>
                         <span class="c1"># Create help label</span>
                         <span class="n">help_label</span> <span class="o">=</span> <span class="n">widgets</span><span class="o">.</span><span class="n">HTML</span><span class="p">(</span>
                                 <span class="n">value</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;&lt;span style=&#39;color: #666; font-size: 0.85em; font-style: italic; margin-left: 2px;&#39;&gt;</span><span class="si">{</span><span class="n">help_text</span><span class="si">}</span><span class="s2">&lt;/span&gt;&quot;</span>
@@ -1000,125 +1004,19 @@
 
 <span class="sd">        Supports Google, NumPy, and Sphinx/ReST styles.</span>
 
+<span class="sd">        Thin wrapper around the shared</span>
+<span class="sd">        :func:`~phenotypic.tools_._docstring_params.parse_param_descriptions`</span>
+<span class="sd">        — the canonical home of this parser since the pydantic v2</span>
+<span class="sd">        migration. Operation parameter descriptions are now read straight</span>
+<span class="sd">        from ``FieldInfo.description`` during widget generation; this</span>
+<span class="sd">        method is retained as a stable, instance-level entry point.</span>
+
 <span class="sd">        Returns:</span>
 <span class="sd">            dict: A dictionary mapping parameter names to their description strings.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">doc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__doc__</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">doc</span><span class="p">:</span>
-            <span class="k">return</span> <span class="p">{}</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_._docstring_params</span><span class="w"> </span><span class="kn">import</span> <span class="n">parse_param_descriptions</span>
 
-        <span class="n">params</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="n">lines</span> <span class="o">=</span> <span class="n">doc</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
-
-        <span class="c1"># State machine variables</span>
-        <span class="n">in_param_section</span> <span class="o">=</span> <span class="kc">False</span>
-        <span class="n">current_param</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="n">current_desc</span> <span class="o">=</span> <span class="p">[]</span>
-
-        <span class="c1"># Regex patterns</span>
-        <span class="c1"># Google: &quot;Args:&quot;, &quot;Attributes:&quot;, &quot;Parameters:&quot;</span>
-        <span class="n">section_header_re</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span>
-                <span class="sa">r</span><span class="s2">&quot;^\s*(Args|Attributes|Parameters)\s*:\s*$&quot;</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">IGNORECASE</span>
-        <span class="p">)</span>
-        <span class="c1"># NumPy: &quot;Parameters\n----------&quot;</span>
-        <span class="n">numpy_header_re</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;^\s*Parameters\s*$&quot;</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">IGNORECASE</span><span class="p">)</span>
-        <span class="n">numpy_underline_re</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;^\s*-+\s*$&quot;</span><span class="p">)</span>
-
-        <span class="c1"># Param patterns</span>
-        <span class="c1"># Google: &quot;name (type): description&quot; or &quot;name: description&quot;</span>
-        <span class="n">google_param_re</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;^\s*(\w+)\s*(\(.*?\))?\s*:\s*(.+)$&quot;</span><span class="p">)</span>
-        <span class="c1"># NumPy: &quot;name : type&quot;</span>
-        <span class="n">numpy_param_re</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;^\s*(\w+)\s*:\s*(.*)$&quot;</span><span class="p">)</span>
-        <span class="c1"># Sphinx: &quot;:param name: description&quot; (can appear anywhere)</span>
-        <span class="n">sphinx_param_re</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;^\s*:param\s+(\w+)\s*:\s*(.+)$&quot;</span><span class="p">)</span>
-
-        <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="k">while</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">lines</span><span class="p">):</span>
-            <span class="n">line</span> <span class="o">=</span> <span class="n">lines</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
-            <span class="n">stripped_line</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
-
-            <span class="c1"># Check for Sphinx style (line by line, no section needed)</span>
-            <span class="n">sphinx_match</span> <span class="o">=</span> <span class="n">sphinx_param_re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">sphinx_match</span><span class="p">:</span>
-                <span class="c1"># Save previous param if exists</span>
-                <span class="k">if</span> <span class="n">current_param</span><span class="p">:</span>
-                    <span class="n">params</span><span class="p">[</span><span class="n">current_param</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">current_desc</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
-
-                <span class="n">current_param</span> <span class="o">=</span> <span class="n">sphinx_match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
-                <span class="n">current_desc</span> <span class="o">=</span> <span class="p">[</span><span class="n">sphinx_match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">2</span><span class="p">)]</span>
-                <span class="n">in_param_section</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1"># Sphinx doesn&#39;t strictly enforce sections</span>
-                <span class="n">i</span> <span class="o">+=</span> <span class="mi">1</span>
-                <span class="k">continue</span>
-
-            <span class="c1"># Check for section headers</span>
-            <span class="k">if</span> <span class="n">section_header_re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">stripped_line</span><span class="p">):</span>
-                <span class="n">in_param_section</span> <span class="o">=</span> <span class="kc">True</span>
-                <span class="c1"># If previous param was pending, save it</span>
-                <span class="k">if</span> <span class="n">current_param</span><span class="p">:</span>
-                    <span class="n">params</span><span class="p">[</span><span class="n">current_param</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">current_desc</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
-                    <span class="n">current_param</span> <span class="o">=</span> <span class="kc">None</span>
-                    <span class="n">current_desc</span> <span class="o">=</span> <span class="p">[]</span>
-                <span class="n">i</span> <span class="o">+=</span> <span class="mi">1</span>
-                <span class="k">continue</span>
-
-            <span class="k">if</span> <span class="n">numpy_header_re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">stripped_line</span><span class="p">):</span>
-                <span class="c1"># Check next line for underline</span>
-                <span class="k">if</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span> <span class="ow">and</span> <span class="n">numpy_underline_re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">lines</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]):</span>
-                    <span class="n">in_param_section</span> <span class="o">=</span> <span class="kc">True</span>
-                    <span class="n">i</span> <span class="o">+=</span> <span class="mi">2</span>
-                    <span class="k">continue</span>
-
-            <span class="k">if</span> <span class="n">in_param_section</span><span class="p">:</span>
-                <span class="c1"># End of section detection</span>
-                <span class="c1"># Heuristic: if line is unindented and not empty, and doesn&#39;t match param pattern, section might be over</span>
-                <span class="k">if</span> <span class="p">(</span>
-                        <span class="n">line</span>
-                        <span class="ow">and</span> <span class="ow">not</span> <span class="n">line</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">isspace</span><span class="p">()</span>
-                        <span class="ow">and</span> <span class="ow">not</span> <span class="n">google_param_re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
-                        <span class="ow">and</span> <span class="ow">not</span> <span class="n">numpy_param_re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
-                <span class="p">):</span>
-                    <span class="n">in_param_section</span> <span class="o">=</span> <span class="kc">False</span>
-                    <span class="k">if</span> <span class="n">current_param</span><span class="p">:</span>
-                        <span class="n">params</span><span class="p">[</span><span class="n">current_param</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">current_desc</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
-                        <span class="n">current_param</span> <span class="o">=</span> <span class="kc">None</span>
-                        <span class="n">current_desc</span> <span class="o">=</span> <span class="p">[]</span>
-                    <span class="n">i</span> <span class="o">+=</span> <span class="mi">1</span>
-                    <span class="k">continue</span>
-
-                <span class="c1"># Check for new parameter definition</span>
-                <span class="c1"># Google style</span>
-                <span class="n">g_match</span> <span class="o">=</span> <span class="n">google_param_re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
-                <span class="k">if</span> <span class="n">g_match</span><span class="p">:</span>
-                    <span class="k">if</span> <span class="n">current_param</span><span class="p">:</span>
-                        <span class="n">params</span><span class="p">[</span><span class="n">current_param</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">current_desc</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
-
-                    <span class="n">current_param</span> <span class="o">=</span> <span class="n">g_match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
-                    <span class="n">current_desc</span> <span class="o">=</span> <span class="p">[</span><span class="n">g_match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">3</span><span class="p">)]</span>
-                    <span class="n">i</span> <span class="o">+=</span> <span class="mi">1</span>
-                    <span class="k">continue</span>
-
-                <span class="c1"># NumPy style</span>
-                <span class="n">n_match</span> <span class="o">=</span> <span class="n">numpy_param_re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
-                <span class="k">if</span> <span class="n">n_match</span><span class="p">:</span>
-                    <span class="k">if</span> <span class="n">current_param</span><span class="p">:</span>
-                        <span class="n">params</span><span class="p">[</span><span class="n">current_param</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">current_desc</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
-
-                    <span class="n">current_param</span> <span class="o">=</span> <span class="n">n_match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
-                    <span class="n">current_desc</span> <span class="o">=</span> <span class="p">[]</span>  <span class="c1"># NumPy desc starts on next line</span>
-                    <span class="n">i</span> <span class="o">+=</span> <span class="mi">1</span>
-                    <span class="k">continue</span>
-
-                <span class="c1"># Continuation of description</span>
-                <span class="k">if</span> <span class="n">current_param</span> <span class="ow">and</span> <span class="n">stripped_line</span><span class="p">:</span>
-                    <span class="n">current_desc</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">stripped_line</span><span class="p">)</span>
-
-            <span class="n">i</span> <span class="o">+=</span> <span class="mi">1</span>
-
-        <span class="c1"># End of loop, save last param</span>
-        <span class="k">if</span> <span class="n">current_param</span><span class="p">:</span>
-            <span class="n">params</span><span class="p">[</span><span class="n">current_param</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">current_desc</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
-
-        <span class="k">return</span> <span class="n">params</span>
+        <span class="k">return</span> <span class="n">parse_param_descriptions</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="vm">__doc__</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_create_viz_widgets</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">Widget</span><span class="p">]:</span>
         <span class="kn">import</span><span class="w"> </span><span class="nn">ipywidgets</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">widgets</span>

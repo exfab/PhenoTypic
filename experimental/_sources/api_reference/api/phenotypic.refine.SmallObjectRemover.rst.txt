@@ -18,10 +18,44 @@ phenotypic.refine.SmallObjectRemover
    
       ~SmallObjectRemover.__init__
       ~SmallObjectRemover.apply
+      ~SmallObjectRemover.construct
+      ~SmallObjectRemover.copy
+      ~SmallObjectRemover.dict
+      ~SmallObjectRemover.from_orm
+      ~SmallObjectRemover.json
+      ~SmallObjectRemover.model_construct
+      ~SmallObjectRemover.model_copy
+      ~SmallObjectRemover.model_dump
+      ~SmallObjectRemover.model_dump_json
+      ~SmallObjectRemover.model_json_schema
+      ~SmallObjectRemover.model_parametrized_name
+      ~SmallObjectRemover.model_post_init
+      ~SmallObjectRemover.model_rebuild
+      ~SmallObjectRemover.model_validate
+      ~SmallObjectRemover.model_validate_json
+      ~SmallObjectRemover.model_validate_strings
+      ~SmallObjectRemover.parse_file
+      ~SmallObjectRemover.parse_obj
+      ~SmallObjectRemover.parse_raw
+      ~SmallObjectRemover.schema
+      ~SmallObjectRemover.schema_json
+      ~SmallObjectRemover.update_forward_refs
+      ~SmallObjectRemover.validate
       ~SmallObjectRemover.widget
    
    
 
    
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~SmallObjectRemover.model_computed_fields
+      ~SmallObjectRemover.model_config
+      ~SmallObjectRemover.model_extra
+      ~SmallObjectRemover.model_fields
+      ~SmallObjectRemover.model_fields_set
+      ~SmallObjectRemover.min_size
    
    

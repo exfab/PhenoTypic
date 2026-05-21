@@ -17,10 +17,43 @@ phenotypic.measure.MeasureShape
       :nosignatures:
    
       ~MeasureShape.__init__
+      ~MeasureShape.construct
+      ~MeasureShape.copy
+      ~MeasureShape.dict
+      ~MeasureShape.from_orm
+      ~MeasureShape.json
       ~MeasureShape.measure
+      ~MeasureShape.model_construct
+      ~MeasureShape.model_copy
+      ~MeasureShape.model_dump
+      ~MeasureShape.model_dump_json
+      ~MeasureShape.model_json_schema
+      ~MeasureShape.model_parametrized_name
+      ~MeasureShape.model_post_init
+      ~MeasureShape.model_rebuild
+      ~MeasureShape.model_validate
+      ~MeasureShape.model_validate_json
+      ~MeasureShape.model_validate_strings
+      ~MeasureShape.parse_file
+      ~MeasureShape.parse_obj
+      ~MeasureShape.parse_raw
+      ~MeasureShape.schema
+      ~MeasureShape.schema_json
+      ~MeasureShape.update_forward_refs
+      ~MeasureShape.validate
    
    
 
    
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~MeasureShape.model_computed_fields
+      ~MeasureShape.model_config
+      ~MeasureShape.model_extra
+      ~MeasureShape.model_fields
+      ~MeasureShape.model_fields_set
    
    

@@ -18,10 +18,45 @@ phenotypic.enhance.WhiteTophatEnhance
    
       ~WhiteTophatEnhance.__init__
       ~WhiteTophatEnhance.apply
+      ~WhiteTophatEnhance.construct
+      ~WhiteTophatEnhance.copy
+      ~WhiteTophatEnhance.dict
+      ~WhiteTophatEnhance.from_orm
+      ~WhiteTophatEnhance.json
+      ~WhiteTophatEnhance.model_construct
+      ~WhiteTophatEnhance.model_copy
+      ~WhiteTophatEnhance.model_dump
+      ~WhiteTophatEnhance.model_dump_json
+      ~WhiteTophatEnhance.model_json_schema
+      ~WhiteTophatEnhance.model_parametrized_name
+      ~WhiteTophatEnhance.model_post_init
+      ~WhiteTophatEnhance.model_rebuild
+      ~WhiteTophatEnhance.model_validate
+      ~WhiteTophatEnhance.model_validate_json
+      ~WhiteTophatEnhance.model_validate_strings
+      ~WhiteTophatEnhance.parse_file
+      ~WhiteTophatEnhance.parse_obj
+      ~WhiteTophatEnhance.parse_raw
+      ~WhiteTophatEnhance.schema
+      ~WhiteTophatEnhance.schema_json
+      ~WhiteTophatEnhance.update_forward_refs
+      ~WhiteTophatEnhance.validate
       ~WhiteTophatEnhance.widget
    
    
 
    
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~WhiteTophatEnhance.model_computed_fields
+      ~WhiteTophatEnhance.model_config
+      ~WhiteTophatEnhance.model_extra
+      ~WhiteTophatEnhance.model_fields
+      ~WhiteTophatEnhance.model_fields_set
+      ~WhiteTophatEnhance.shape
+      ~WhiteTophatEnhance.width
    
    

@@ -18,10 +18,47 @@ phenotypic.correction.ImageCropper
    
       ~ImageCropper.__init__
       ~ImageCropper.apply
+      ~ImageCropper.construct
+      ~ImageCropper.copy
+      ~ImageCropper.dict
+      ~ImageCropper.from_orm
+      ~ImageCropper.json
+      ~ImageCropper.model_construct
+      ~ImageCropper.model_copy
+      ~ImageCropper.model_dump
+      ~ImageCropper.model_dump_json
+      ~ImageCropper.model_json_schema
+      ~ImageCropper.model_parametrized_name
+      ~ImageCropper.model_post_init
+      ~ImageCropper.model_rebuild
+      ~ImageCropper.model_validate
+      ~ImageCropper.model_validate_json
+      ~ImageCropper.model_validate_strings
+      ~ImageCropper.parse_file
+      ~ImageCropper.parse_obj
+      ~ImageCropper.parse_raw
+      ~ImageCropper.schema
+      ~ImageCropper.schema_json
+      ~ImageCropper.update_forward_refs
+      ~ImageCropper.validate
       ~ImageCropper.widget
    
    
 
    
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ImageCropper.model_computed_fields
+      ~ImageCropper.model_config
+      ~ImageCropper.model_extra
+      ~ImageCropper.model_fields
+      ~ImageCropper.model_fields_set
+      ~ImageCropper.left
+      ~ImageCropper.right
+      ~ImageCropper.top
+      ~ImageCropper.bottom
    
    

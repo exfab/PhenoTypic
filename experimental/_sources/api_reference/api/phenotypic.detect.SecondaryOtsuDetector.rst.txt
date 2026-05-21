@@ -18,10 +18,43 @@ phenotypic.detect.SecondaryOtsuDetector
    
       ~SecondaryOtsuDetector.__init__
       ~SecondaryOtsuDetector.apply
+      ~SecondaryOtsuDetector.construct
+      ~SecondaryOtsuDetector.copy
+      ~SecondaryOtsuDetector.dict
+      ~SecondaryOtsuDetector.from_orm
+      ~SecondaryOtsuDetector.json
+      ~SecondaryOtsuDetector.model_construct
+      ~SecondaryOtsuDetector.model_copy
+      ~SecondaryOtsuDetector.model_dump
+      ~SecondaryOtsuDetector.model_dump_json
+      ~SecondaryOtsuDetector.model_json_schema
+      ~SecondaryOtsuDetector.model_parametrized_name
+      ~SecondaryOtsuDetector.model_post_init
+      ~SecondaryOtsuDetector.model_rebuild
+      ~SecondaryOtsuDetector.model_validate
+      ~SecondaryOtsuDetector.model_validate_json
+      ~SecondaryOtsuDetector.model_validate_strings
+      ~SecondaryOtsuDetector.parse_file
+      ~SecondaryOtsuDetector.parse_obj
+      ~SecondaryOtsuDetector.parse_raw
+      ~SecondaryOtsuDetector.schema
+      ~SecondaryOtsuDetector.schema_json
+      ~SecondaryOtsuDetector.update_forward_refs
+      ~SecondaryOtsuDetector.validate
       ~SecondaryOtsuDetector.widget
    
    
 
    
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~SecondaryOtsuDetector.model_computed_fields
+      ~SecondaryOtsuDetector.model_config
+      ~SecondaryOtsuDetector.model_extra
+      ~SecondaryOtsuDetector.model_fields
+      ~SecondaryOtsuDetector.model_fields_set
    
    

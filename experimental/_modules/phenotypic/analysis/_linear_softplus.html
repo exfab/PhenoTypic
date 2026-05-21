@@ -532,8 +532,6 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.analysis.abc_._linear_softplus_base</span><span class="w"> </span><span class="kn">import</span> <span class="n">_LinearSoftplusBase</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.analysis.abc_._model_fitter</span><span class="w"> </span><span class="kn">import</span> <span class="n">LossKind</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColumnRef</span><span class="p">,</span> <span class="n">ColumnRefList</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">LINEAR_SOFTPLUS_MODEL</span><span class="p">,</span>
     <span class="n">MODEL_METRICS</span><span class="p">,</span>
@@ -614,95 +612,7 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Extra rows past the saturation index kept so the fit still sees</span>
 <span class="sd">    some plateau evidence. Subclass override to tune.&quot;&quot;&quot;</span>
 
-<div class="viewcode-block" id="LinearSoftplus.__init__">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.analysis.html#phenotypic.analysis.LinearSoftplus.__init__">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
-            <span class="bp">self</span><span class="p">,</span>
-            <span class="n">on</span><span class="p">:</span> <span class="n">ColumnRef</span><span class="p">,</span>
-            <span class="n">groupby</span><span class="p">:</span> <span class="n">ColumnRefList</span><span class="p">,</span>
-            <span class="n">time_label</span><span class="p">:</span> <span class="n">ColumnRef</span> <span class="o">=</span> <span class="s2">&quot;Metadata_Time&quot;</span><span class="p">,</span>
-            <span class="o">*</span><span class="p">,</span>
-            <span class="n">stderr_label</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-            <span class="n">s0_prior</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">|</span> <span class="nb">float</span> <span class="o">|</span> <span class="nb">int</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-            <span class="n">s0_prior_cv</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-            <span class="n">s0_prior_sigma</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-            <span class="n">s0_prior_groupby</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-            <span class="n">prune_saturated</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-            <span class="n">n_jobs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
-            <span class="n">loss</span><span class="p">:</span> <span class="n">LossKind</span> <span class="o">=</span> <span class="s2">&quot;huber&quot;</span><span class="p">,</span>
-            <span class="n">f_scale</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
-            <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
-    <span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize the linear-softplus fitter.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            on: Target column (size measurement) to fit.</span>
-<span class="sd">            groupby: Columns defining the per-fit grouping structure.</span>
-<span class="sd">            time_label: Column name representing time. Defaults to</span>
-<span class="sd">                ``&quot;Metadata_Time&quot;``.</span>
-<span class="sd">            stderr_label: Column providing per-timepoint standard</span>
-<span class="sd">                errors used as weights. When ``None``, replicate SE is</span>
-<span class="sd">                computed automatically during aggregation.</span>
-<span class="sd">            s0_prior: Unified prior-mean source, dispatched by type:</span>
-
-<span class="sd">                - ``None`` / ``False``: no prior (default).</span>
-<span class="sd">                - ``True``: ground on data — ``µ`` is the median of</span>
-<span class="sd">                  ``self.on`` at the earliest observed timepoint</span>
-<span class="sd">                  within the effective group.</span>
-<span class="sd">                - ``str``: ground on the named column — ``µ`` is the</span>
-<span class="sd">                  median of ``data[s0_prior]`` at the earliest</span>
-<span class="sd">                  timepoint.</span>
-<span class="sd">                - positive ``int`` / ``float``: scalar ``µ`` applied</span>
-<span class="sd">                  uniformly.</span>
-
-<span class="sd">                Raises :class:`TypeError` on anything else, and</span>
-<span class="sd">                :class:`ValueError` on non-positive scalars.</span>
-<span class="sd">            s0_prior_cv: CV coefficient for the prior σ</span>
-<span class="sd">                (``σ = cv × µ``). Mutually exclusive with</span>
-<span class="sd">                ``s0_prior_sigma``. Defaults to ``None``; if neither</span>
-<span class="sd">                knob is set and the prior is engaged, the helper applies</span>
-<span class="sd">                CV=0.05 as a moderately informative default.</span>
-<span class="sd">            s0_prior_sigma: Absolute σ for the prior. Mutually exclusive</span>
-<span class="sd">                with ``s0_prior_cv``. Defaults to ``None``.</span>
-<span class="sd">            s0_prior_groupby: Coarser grouping (subset of ``groupby``)</span>
-<span class="sd">                for empirical-Bayes pooling of the per-group ``µ``.</span>
-<span class="sd">                Only meaningful when ``s0_prior`` is ``True`` or a</span>
-<span class="sd">                string. Subset-of-``groupby`` constraint is verified</span>
-<span class="sd">                at ``analyze`` time.</span>
-<span class="sd">            prune_saturated: Whether to drop post-saturation timepoints</span>
-<span class="sd">                before fitting. Defaults to ``True``.</span>
-<span class="sd">            n_jobs: Number of parallel workers for per-group fits.</span>
-<span class="sd">            loss: Loss method passed through to</span>
-<span class="sd">                :func:`scipy.optimize.least_squares`. One of</span>
-<span class="sd">                ``&quot;linear&quot;``, ``&quot;soft_l1&quot;``, ``&quot;huber&quot;``, ``&quot;cauchy&quot;``,</span>
-<span class="sd">                ``&quot;arctan&quot;``. Defaults to ``&quot;huber&quot;`` — behaves like</span>
-<span class="sd">                standard least-squares on inlier residuals (below</span>
-<span class="sd">                ``f_scale``) but downweights large residuals from</span>
-<span class="sd">                outlier timepoints.</span>
-<span class="sd">            f_scale: Soft margin between inlier and outlier residuals.</span>
-<span class="sd">                Residuals well below ``f_scale`` behave like the</span>
-<span class="sd">                standard squared loss; residuals well above it are</span>
-<span class="sd">                downweighted according to the chosen robust ``loss``.</span>
-<span class="sd">                No effect when ``loss=&quot;linear&quot;``. Must be positive;</span>
-<span class="sd">                defaults to ``1.0``.</span>
-<span class="sd">            verbose: If ``True``, enables optimizer verbose output.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
-                <span class="n">on</span><span class="o">=</span><span class="n">on</span><span class="p">,</span>
-                <span class="n">groupby</span><span class="o">=</span><span class="n">groupby</span><span class="p">,</span>
-                <span class="n">time_label</span><span class="o">=</span><span class="n">time_label</span><span class="p">,</span>
-                <span class="n">stderr_label</span><span class="o">=</span><span class="n">stderr_label</span><span class="p">,</span>
-                <span class="n">s0_prior</span><span class="o">=</span><span class="n">s0_prior</span><span class="p">,</span>
-                <span class="n">s0_prior_cv</span><span class="o">=</span><span class="n">s0_prior_cv</span><span class="p">,</span>
-                <span class="n">s0_prior_sigma</span><span class="o">=</span><span class="n">s0_prior_sigma</span><span class="p">,</span>
-                <span class="n">s0_prior_groupby</span><span class="o">=</span><span class="n">s0_prior_groupby</span><span class="p">,</span>
-                <span class="n">n_jobs</span><span class="o">=</span><span class="n">n_jobs</span><span class="p">,</span>
-                <span class="n">loss</span><span class="o">=</span><span class="n">loss</span><span class="p">,</span>
-                <span class="n">f_scale</span><span class="o">=</span><span class="n">f_scale</span><span class="p">,</span>
-                <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">,</span>
-        <span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">prune_saturated</span> <span class="o">=</span> <span class="n">prune_saturated</span></div>
-
+    <span class="n">prune_saturated</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
 
     <span class="c1"># ------------------------------------------------------------------ #</span>
     <span class="c1"># Model math</span>

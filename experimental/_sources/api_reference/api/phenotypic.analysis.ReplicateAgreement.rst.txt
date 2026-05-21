@@ -18,14 +18,37 @@ phenotypic.analysis.ReplicateAgreement
    
       ~ReplicateAgreement.__init__
       ~ReplicateAgreement.analyze
+      ~ReplicateAgreement.construct
+      ~ReplicateAgreement.copy
       ~ReplicateAgreement.dash
+      ~ReplicateAgreement.dict
       ~ReplicateAgreement.flag_col
       ~ReplicateAgreement.flagged_keys
+      ~ReplicateAgreement.from_orm
+      ~ReplicateAgreement.json
+      ~ReplicateAgreement.model_construct
+      ~ReplicateAgreement.model_copy
+      ~ReplicateAgreement.model_dump
+      ~ReplicateAgreement.model_dump_json
+      ~ReplicateAgreement.model_json_schema
+      ~ReplicateAgreement.model_parametrized_name
+      ~ReplicateAgreement.model_post_init
+      ~ReplicateAgreement.model_rebuild
+      ~ReplicateAgreement.model_validate
+      ~ReplicateAgreement.model_validate_json
+      ~ReplicateAgreement.model_validate_strings
+      ~ReplicateAgreement.parse_file
+      ~ReplicateAgreement.parse_obj
+      ~ReplicateAgreement.parse_raw
       ~ReplicateAgreement.results
+      ~ReplicateAgreement.schema
+      ~ReplicateAgreement.schema_json
       ~ReplicateAgreement.severity_col
       ~ReplicateAgreement.show
       ~ReplicateAgreement.status_col
       ~ReplicateAgreement.summary
+      ~ReplicateAgreement.update_forward_refs
+      ~ReplicateAgreement.validate
    
    
 
@@ -35,8 +58,21 @@ phenotypic.analysis.ReplicateAgreement
 
    .. autosummary::
    
+      ~ReplicateAgreement.model_computed_fields
+      ~ReplicateAgreement.model_config
+      ~ReplicateAgreement.model_extra
+      ~ReplicateAgreement.model_fields
+      ~ReplicateAgreement.model_fields_set
       ~ReplicateAgreement.name
       ~ReplicateAgreement.severity_fail
       ~ReplicateAgreement.severity_warn
+      ~ReplicateAgreement.time_label
+      ~ReplicateAgreement.min_replicates
+      ~ReplicateAgreement.eps
+      ~ReplicateAgreement.unmatched_groups
+      ~ReplicateAgreement.on
+      ~ReplicateAgreement.groupby
+      ~ReplicateAgreement.agg_func
+      ~ReplicateAgreement.n_jobs
    
    

@@ -568,7 +568,7 @@
 <span class="sd">        &gt;&gt;&gt; from phenotypic import ImagePipeline</span>
 <span class="sd">        &gt;&gt;&gt; from phenotypic.enhance import GaussianBlur, BilateralDenoise</span>
 <span class="sd">        &gt;&gt;&gt;</span>
-<span class="sd">        &gt;&gt;&gt; pipeline = ImagePipeline([</span>
+<span class="sd">        &gt;&gt;&gt; pipeline = ImagePipeline(pipe_cfgs=[</span>
 <span class="sd">        ...     GaussianBlur(sigma=1.0),</span>
 <span class="sd">        ...     BilateralDenoise(sigma_spatial=5, clip=True)</span>
 <span class="sd">        ... ])</span>

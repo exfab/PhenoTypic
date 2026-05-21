@@ -582,40 +582,9 @@
 <span class="sd">        visual walkthrough of enhancement pipelines on plate images.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-<div class="viewcode-block" id="GrayOpening.__init__">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.enhance.html#phenotypic.enhance.GrayOpening.__init__">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">shape</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;square&quot;</span><span class="p">,</span> <span class="s2">&quot;diamond&quot;</span><span class="p">,</span> <span class="s2">&quot;disk&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;square&quot;</span><span class="p">,</span>
-                 <span class="n">width</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span> <span class="n">n_iter</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        A kernel configuration class for image processing tasks, particularly suited for applications</span>
-<span class="sd">        such as analyzing and processing images of microbe colonies on solid media agar. This class</span>
-<span class="sd">        enables the definition of a kernel shape and size, which significantly impacts the morphological</span>
-<span class="sd">        operations applied to the image (e.g., filtering, dilation, erosion). Adjusting these parameters</span>
-<span class="sd">        can enhance or hinder the detection and analysis of colony boundaries, shapes, and distribution.</span>
-
-<span class="sd">        Attributes:</span>
-<span class="sd">            shape (Literal[&quot;square&quot;, &quot;diamond&quot;, &quot;disk&quot;]): The geometric shape of the kernel. This attribute</span>
-<span class="sd">                governs the pattern and extent of neighboring pixels involved in the processing operation.</span>
-<span class="sd">                Choosing &quot;square&quot; results in a uniform rectangular influence, which may be suitable for</span>
-<span class="sd">                isotropic features but could introduce angular artifacts in circular features like microbe</span>
-<span class="sd">                colonies. The &quot;diamond&quot; shape provides a more angular neighborhood pattern that helps</span>
-<span class="sd">                preserve diagonal structures. On the other hand, &quot;disk&quot; introduces a circular pattern</span>
-<span class="sd">                that can align well with colony boundaries and reduce distortions in rounded features.</span>
-
-<span class="sd">            width (int): The size (diameter) of the kernel in pixels. A larger width increases the</span>
-<span class="sd">                area of influence during image processing, which can smooth out smaller features like</span>
-<span class="sd">                noise but potentially merge closely spaced microbe colonies into larger regions. Smaller</span>
-<span class="sd">                values offer finer detail and greater distinction between colonies but may leave noise</span>
-<span class="sd">                unprocessed or small artifacts unchanged.</span>
-
-<span class="sd">            n_iter (int): Number of times to apply the opening operation.</span>
-<span class="sd">                Repeated opening with a small element produces smoother results</span>
-<span class="sd">                than a single pass with a larger element. Default: 1.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="n">shape</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">width</span> <span class="o">=</span> <span class="n">width</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">n_iter</span> <span class="o">=</span> <span class="n">n_iter</span></div>
-
+    <span class="n">shape</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;square&quot;</span><span class="p">,</span> <span class="s2">&quot;diamond&quot;</span><span class="p">,</span> <span class="s2">&quot;disk&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;square&quot;</span>
+    <span class="n">width</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span>
+    <span class="n">n_iter</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
         <span class="n">footprint</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_footprint</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">width</span><span class="p">)</span>

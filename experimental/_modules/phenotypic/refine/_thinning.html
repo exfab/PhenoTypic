@@ -583,26 +583,7 @@
 <span class="sd">        morphological refinement methods.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-<div class="viewcode-block" id="Thinning.__init__">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.refine.html#phenotypic.refine.Thinning.__init__">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">max_num_iter</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize the thinner.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            max_num_iter (int | None): Upper limit on iterations. Use:</span>
-
-<span class="sd">                - None (default) to iterate until convergence, yielding a full skeleton.</span>
-<span class="sd">                - A small int (e.g., 1-3) for gentle boundary cleanup while preserving</span>
-<span class="sd">                  colony bulk.</span>
-<span class="sd">                - A large int (e.g., 10-50) for aggressive thinning to single-pixel structures.</span>
-
-<span class="sd">                Choosing max_num_iter is a trade-off: few iterations preserve colony</span>
-<span class="sd">                size/robustness but may leave overlaps; many iterations separate more</span>
-<span class="sd">                aggressively but risk removing small filaments or creating fragmentation.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">max_num_iter</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="n">max_num_iter</span></div>
-
+    <span class="n">max_num_iter</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
         <span class="n">image</span><span class="o">.</span><span class="n">objmask</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">thin</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">objmask</span><span class="p">[:],</span> <span class="n">max_num_iter</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">max_num_iter</span><span class="p">)</span>

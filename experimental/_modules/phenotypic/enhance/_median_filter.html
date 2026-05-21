@@ -579,57 +579,10 @@
 <span class="sd">        into the pipeline model.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-<div class="viewcode-block" id="MedianFilter.__init__">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.enhance.html#phenotypic.enhance.MedianFilter.__init__">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
-            <span class="bp">self</span><span class="p">,</span>
-            <span class="n">mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span>
-                <span class="s2">&quot;nearest&quot;</span><span class="p">,</span> <span class="s2">&quot;reflect&quot;</span><span class="p">,</span> <span class="s2">&quot;constant&quot;</span><span class="p">,</span> <span class="s2">&quot;mirror&quot;</span><span class="p">,</span> <span class="s2">&quot;wrap&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;nearest&quot;</span><span class="p">,</span>
-            <span class="n">shape</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;disk&quot;</span><span class="p">,</span> <span class="s2">&quot;square&quot;</span><span class="p">,</span> <span class="s2">&quot;diamond&quot;</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-            <span class="n">width</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
-            <span class="n">cval</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
-    <span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        This class is designed to facilitate image processing tasks, particularly for analyzing microbe</span>
-<span class="sd">        colonies on solid media agar. By adjusting the mode, shape, width, and cval attributes,</span>
-<span class="sd">        users can modify the processing behavior and results to suit their specific requirements for</span>
-<span class="sd">        studying spatial arrangements, colony boundaries, and other morphological features.</span>
-
-<span class="sd">        Attributes:</span>
-<span class="sd">            mode (Literal[&quot;nearest&quot;, &quot;reflect&quot;, &quot;constant&quot;, &quot;mirror&quot;, &quot;wrap&quot;]):</span>
-<span class="sd">                Determines how boundaries of the image are handled during processing.</span>
-<span class="sd">                For instance, &quot;reflect&quot; can help minimize edge artifacts when analyzing</span>
-<span class="sd">                colonies near the edge of the image by mirroring boundary pixels, while</span>
-<span class="sd">                &quot;constant&quot; fills with a value (cval), which might highlight isolated colonies.</span>
-<span class="sd">                Adjusting this can significantly affect how edge regions are interpreted.</span>
-
-<span class="sd">            shape (Literal[&quot;disk&quot;, &quot;square&quot;, &quot;diamond&quot;] | None):</span>
-<span class="sd">                Specifies the shape of the structuring element used in morphological</span>
-<span class="sd">                operations. For instance, &quot;disk&quot; simulates circular neighborhood which works</span>
-<span class="sd">                well for circular colonies, whereas &quot;square&quot; gives a grid-like neighborhood.</span>
-<span class="sd">                This can directly impact how structures are identified or segmented.</span>
-
-<span class="sd">            width (int):</span>
-<span class="sd">                Size of the structuring element. Larger widths result in broader neighborhoods</span>
-<span class="sd">                being considered, which may smooth or connect distant colonies, while smaller</span>
-<span class="sd">                widths preserve finer details but may miss larger structural relationships. Only</span>
-<span class="sd">                if shape is not None.</span>
-
-<span class="sd">            cval (float):</span>
-<span class="sd">                Value used to fill borders when mode is set to &quot;constant&quot;. This directly affects</span>
-<span class="sd">                colony recognition at the edges; for example, setting a high cval compared to</span>
-<span class="sd">                colony intensity might obscure colonies near the borders.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="n">mode</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;nearest&quot;</span><span class="p">,</span> <span class="s2">&quot;reflect&quot;</span><span class="p">,</span> <span class="s2">&quot;constant&quot;</span><span class="p">,</span> <span class="s2">&quot;mirror&quot;</span><span class="p">,</span> <span class="s2">&quot;wrap&quot;</span><span class="p">]:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="o">=</span> <span class="n">mode</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="n">shape</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">width</span> <span class="o">=</span> <span class="n">width</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">cval</span> <span class="o">=</span> <span class="n">cval</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                    <span class="s1">&#39;mode must be one of &quot;nearest&quot;,&quot;reflect&quot;,&quot;constant&quot;,&quot;mirror&quot;,&quot;wrap&quot;&#39;</span>
-            <span class="p">)</span></div>
-
+    <span class="n">mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;nearest&quot;</span><span class="p">,</span> <span class="s2">&quot;reflect&quot;</span><span class="p">,</span> <span class="s2">&quot;constant&quot;</span><span class="p">,</span> <span class="s2">&quot;mirror&quot;</span><span class="p">,</span> <span class="s2">&quot;wrap&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;nearest&quot;</span>
+    <span class="n">shape</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;disk&quot;</span><span class="p">,</span> <span class="s2">&quot;square&quot;</span><span class="p">,</span> <span class="s2">&quot;diamond&quot;</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">width</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span>
+    <span class="n">cval</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
         <span class="n">image</span><span class="o">.</span><span class="n">detect_mat</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">median</span><span class="p">(</span>

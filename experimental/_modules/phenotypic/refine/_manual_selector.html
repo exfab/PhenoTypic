@@ -526,9 +526,10 @@
   <h1>Source code for phenotypic.refine._manual_selector</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Literal</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Literal</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">field_validator</span>
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
@@ -624,13 +625,16 @@
 <span class="sd">        &gt;&gt;&gt; from phenotypic.data import load_synth_yeast_plate</span>
 <span class="sd">        &gt;&gt;&gt; from phenotypic.detect import OtsuDetector</span>
 <span class="sd">        &gt;&gt;&gt; from phenotypic.refine import ManualSelector</span>
+<span class="sd">        &gt;&gt;&gt; from scipy.ndimage import center_of_mass</span>
 <span class="sd">        &gt;&gt;&gt; import numpy as np</span>
 <span class="sd">        &gt;&gt;&gt; image = load_synth_yeast_plate()</span>
 <span class="sd">        &gt;&gt;&gt; detected = OtsuDetector().apply(image)</span>
-<span class="sd">        &gt;&gt;&gt; # Pick any pixel known to lie on an object</span>
-<span class="sd">        &gt;&gt;&gt; ys, xs = np.where(detected.objmap[:] &gt; 0)</span>
-<span class="sd">        &gt;&gt;&gt; cy, cx = int(ys[0]), int(xs[0])</span>
-<span class="sd">        &gt;&gt;&gt; selector = ManualSelector(centers=[(cy, cx)], width=15)</span>
+<span class="sd">        &gt;&gt;&gt; # Pick the centroid of one colony — a pixel well inside its body</span>
+<span class="sd">        &gt;&gt;&gt; # so a small footprint stamp stays on that single colony.</span>
+<span class="sd">        &gt;&gt;&gt; target_label = int(np.unique(detected.objmap[:])[1])</span>
+<span class="sd">        &gt;&gt;&gt; cy, cx = center_of_mass(detected.objmap[:] == target_label)</span>
+<span class="sd">        &gt;&gt;&gt; cy, cx = int(round(cy)), int(round(cx))</span>
+<span class="sd">        &gt;&gt;&gt; selector = ManualSelector(centers=[(cy, cx)], width=3)</span>
 <span class="sd">        &gt;&gt;&gt; curated = selector.apply(detected)</span>
 <span class="sd">        &gt;&gt;&gt; # Only the target label survives; its original ID is preserved</span>
 <span class="sd">        &gt;&gt;&gt; surviving = set(np.unique(curated.objmap[:])) - {0}</span>
@@ -641,26 +645,36 @@
 
 <span class="sd">        &gt;&gt;&gt; from phenotypic import ImagePipeline</span>
 <span class="sd">        &gt;&gt;&gt; from phenotypic.enhance import GaussianBlur</span>
-<span class="sd">        &gt;&gt;&gt; pipeline = ImagePipeline([</span>
+<span class="sd">        &gt;&gt;&gt; pipeline = ImagePipeline(ops=[</span>
 <span class="sd">        ...     GaussianBlur(sigma=1.0),</span>
 <span class="sd">        ...     OtsuDetector(),</span>
-<span class="sd">        ...     ManualSelector(centers=[(cy, cx)], width=20),</span>
+<span class="sd">        ...     ManualSelector(centers=[(cy, cx)], width=3),</span>
 <span class="sd">        ... ])</span>
 <span class="sd">        &gt;&gt;&gt; result = pipeline.apply(image)</span>
 <span class="sd">        &gt;&gt;&gt; result.objmap[:].max() &gt; 0</span>
 <span class="sd">        True</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="n">centers</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="nb">list</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">shape</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;square&quot;</span><span class="p">,</span> <span class="s2">&quot;diamond&quot;</span><span class="p">,</span> <span class="s2">&quot;disk&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;disk&quot;</span><span class="p">,</span>
-        <span class="n">width</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">15</span><span class="p">,</span>
-    <span class="p">):</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">centers</span> <span class="o">=</span> <span class="n">centers</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="n">shape</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">width</span> <span class="o">=</span> <span class="n">width</span>
+    <span class="n">centers</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">shape</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;square&quot;</span><span class="p">,</span> <span class="s2">&quot;diamond&quot;</span><span class="p">,</span> <span class="s2">&quot;disk&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;disk&quot;</span>
+    <span class="n">width</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">15</span>
+
+    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;centers&quot;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;before&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_coerce_centers</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">centers</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Normalize picked-point input to a JSON-native list of ``(y, x)`` pairs.</span>
+
+<span class="sd">        Accepts ``None``, an ``np.ndarray``, or any list/tuple of</span>
+<span class="sd">        coordinate pairs. This replaces the coordinate coercion that the</span>
+<span class="sd">        :class:`PointPickerMixin` previously performed in a</span>
+<span class="sd">        ``__setattr__`` override (removed in the pydantic migration so it</span>
+<span class="sd">        no longer clashes with pydantic&#39;s own ``__setattr__``).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">centers</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">centers</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">centers</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">centers</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>  <span class="c1"># type: ignore[override]</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">centers</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">centers</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>

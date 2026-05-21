@@ -526,15 +526,16 @@
   <h1>Source code for phenotypic.abc_._base_operation</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span>
-
-<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
-    <span class="k">pass</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">importlib.util</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">tracemalloc</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">ABC</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span><span class="p">,</span> <span class="n">ConfigDict</span><span class="p">,</span> <span class="n">PrivateAttr</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_._docstring_params</span><span class="w"> </span><span class="kn">import</span> <span class="n">apply_docstring_descriptions</span>
 
 <span class="c1"># Check for optional dependencies</span>
 <span class="n">PYMPLER_AVAILABLE</span> <span class="o">=</span> <span class="n">importlib</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">find_spec</span><span class="p">(</span><span class="s2">&quot;pympler&quot;</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
@@ -549,7 +550,7 @@
 
 <div class="viewcode-block" id="BaseOperation">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.BaseOperation">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">BaseOperation</span><span class="p">(</span><span class="n">ABC</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">BaseOperation</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">,</span> <span class="n">ABC</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Root abstract base class for all operations in PhenoTypic.</span>
 
 <span class="sd">    BaseOperation is the foundation of PhenoTypic&#39;s operation system. It provides</span>
@@ -560,6 +561,11 @@
 <span class="sd">    This class is a blueprint for extending the framework: when you create a new</span>
 <span class="sd">    operation, BaseOperation automatically handles memory profiling and logging so</span>
 <span class="sd">    you can focus on the algorithm implementation.</span>
+
+<span class="sd">    BaseOperation is a pydantic v2 ``BaseModel``. Operation parameters are declared</span>
+<span class="sd">    as **annotated class-level fields** — pydantic generates the constructor,</span>
+<span class="sd">    validates inputs, and exposes a machine-readable contract via</span>
+<span class="sd">    ``model_json_schema()``. There is no hand-written ``__init__``.</span>
 
 <span class="sd">    What it provides automatically:</span>
 
@@ -579,9 +585,9 @@
 <span class="sd">      class with the name format: `module.ClassName`. Subclasses can log messages</span>
 <span class="sd">      and memory usage without additional setup.</span>
 
-<span class="sd">    - **Parallel Execution Support:** Operations are serialized with all instance</span>
-<span class="sd">      attributes (`op.__dict__`) for parallel execution. Worker processes unpickle</span>
-<span class="sd">      the complete operation object and execute it.</span>
+<span class="sd">    - **Parallel Execution Support:** Operations are serialized via pydantic</span>
+<span class="sd">      (``model_dump()``/``model_validate()``) for parallel execution. Worker</span>
+<span class="sd">      processes reconstruct the complete operation object and execute it.</span>
 
 <span class="sd">    Inheritance hierarchy:</span>
 
@@ -608,13 +614,9 @@
 <span class="sd">        import logging</span>
 
 <span class="sd">        class MyCustomOperation(BaseOperation):</span>
-<span class="sd">            def __init__(self, param1, param2=5):</span>
-<span class="sd">                # Always call parent __init__ first</span>
-<span class="sd">                super().__init__()</span>
-
-<span class="sd">                # Store your parameters as attributes</span>
-<span class="sd">                self.param1 = param1</span>
-<span class="sd">                self.param2 = param2</span>
+<span class="sd">            # Parameters are declared as annotated class-level fields.</span>
+<span class="sd">            param1: int</span>
+<span class="sd">            param2: int = 5</span>
 
 <span class="sd">            def _operate(self, data):</span>
 <span class="sd">                # Your algorithm here</span>
@@ -672,29 +674,68 @@
 <span class="sd">        &gt;&gt;&gt; enhanced = blur.apply(image)</span>
 <span class="sd">        # Memory tracking happens automatically during operation</span>
 
-<span class="sd">        Custom operation with parameter matching for parallel execution:</span>
+<span class="sd">        Custom operation with declared fields for parallel execution:</span>
 
 <span class="sd">        &gt;&gt;&gt; from phenotypic.abc_ import ImageOperation</span>
 <span class="sd">        &gt;&gt;&gt; from phenotypic import Image</span>
 <span class="sd">        &gt;&gt;&gt; class CustomThreshold(ImageOperation):</span>
-<span class="sd">        ...     def __init__(self, threshold_value: int):</span>
-<span class="sd">        ...         super().__init__()</span>
-<span class="sd">        ...         self.threshold_value = threshold_value</span>
+<span class="sd">        ...     threshold_value: int</span>
 <span class="sd">        ...</span>
-<span class="sd">        ...     @staticmethod</span>
-<span class="sd">        ...     def _operate(image: Image, threshold_value: int = 128) -&gt; Image:</span>
+<span class="sd">        ...     def _operate(self, image: Image) -&gt; Image:</span>
 <span class="sd">        ...         # Apply threshold algorithm</span>
-<span class="sd">        ...         image.detect_mat[:] = image.detect_mat[:] &gt; threshold_value</span>
+<span class="sd">        ...         image.detect_mat[:] = (</span>
+<span class="sd">        ...             image.detect_mat[:] &gt; self.threshold_value</span>
+<span class="sd">        ...         )</span>
 <span class="sd">        ...         return image</span>
 <span class="sd">        &gt;&gt;&gt; # When operation is applied via pipeline:</span>
 <span class="sd">        &gt;&gt;&gt; operation = CustomThreshold(threshold_value=100)</span>
-<span class="sd">        # The operation object is serialized with all attributes</span>
+<span class="sd">        # The operation object is serialized with all fields</span>
 <span class="sd">        # for parallel execution in worker processes</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">model_config</span> <span class="o">=</span> <span class="n">ConfigDict</span><span class="p">(</span>
+        <span class="n">arbitrary_types_allowed</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">validate_assignment</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">extra</span><span class="o">=</span><span class="s2">&quot;forbid&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">_logger</span><span class="p">:</span> <span class="n">logging</span><span class="o">.</span><span class="n">Logger</span> <span class="o">=</span> <span class="n">PrivateAttr</span><span class="p">()</span>
+    <span class="n">_tracemalloc_started</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="n">PrivateAttr</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+<div class="viewcode-block" id="BaseOperation.__pydantic_init_subclass__">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.BaseOperation.__pydantic_init_subclass__">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">__pydantic_init_subclass__</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Populate field descriptions from the subclass docstring.</span>
+
+<span class="sd">        Runs once per concrete subclass after pydantic has built its</span>
+<span class="sd">        model. Copies parameter descriptions parsed from the Google-style</span>
+<span class="sd">        ``Args:`` docstring block onto each field&#39;s ``description`` slot</span>
+<span class="sd">        so they surface in ``model_json_schema()`` — the machine-readable</span>
+<span class="sd">        contract used by downstream tooling (e.g. an MCP server).</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            **kwargs: Class-keyword arguments forwarded by pydantic.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__pydantic_init_subclass__</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">apply_docstring_descriptions</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="BaseOperation.model_post_init">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.BaseOperation.model_post_init">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">model_post_init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">__context</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize logging and memory tracking after model construction.</span>
+
+<span class="sd">        Replaces the legacy ``__init__`` body: creates the per-class</span>
+<span class="sd">        logger and, when that logger is enabled for INFO level or higher,</span>
+<span class="sd">        starts ``tracemalloc`` so per-operation memory usage can be</span>
+<span class="sd">        logged.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            __context: Pydantic post-init context (unused).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__module__</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__module__</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span>
         <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_tracemalloc_started</span> <span class="o">=</span> <span class="kc">False</span>
 
@@ -702,7 +743,8 @@
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_logger</span><span class="o">.</span><span class="n">isEnabledFor</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">):</span>
             <span class="n">tracemalloc</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_tracemalloc_started</span> <span class="o">=</span> <span class="kc">True</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Tracemalloc started for memory logging&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Tracemalloc started for memory logging&quot;</span><span class="p">)</span></div>
+
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_log_memory_usage</span><span class="p">(</span>
             <span class="bp">self</span><span class="p">,</span>

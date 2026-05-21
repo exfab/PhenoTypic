@@ -18,11 +18,47 @@ phenotypic.detect.ManualPointDetector
    
       ~ManualPointDetector.__init__
       ~ManualPointDetector.apply
+      ~ManualPointDetector.construct
+      ~ManualPointDetector.copy
+      ~ManualPointDetector.dict
+      ~ManualPointDetector.from_orm
+      ~ManualPointDetector.json
+      ~ManualPointDetector.model_construct
+      ~ManualPointDetector.model_copy
+      ~ManualPointDetector.model_dump
+      ~ManualPointDetector.model_dump_json
+      ~ManualPointDetector.model_json_schema
+      ~ManualPointDetector.model_parametrized_name
+      ~ManualPointDetector.model_post_init
+      ~ManualPointDetector.model_rebuild
+      ~ManualPointDetector.model_validate
+      ~ManualPointDetector.model_validate_json
+      ~ManualPointDetector.model_validate_strings
       ~ManualPointDetector.napari
+      ~ManualPointDetector.parse_file
+      ~ManualPointDetector.parse_obj
+      ~ManualPointDetector.parse_raw
+      ~ManualPointDetector.schema
+      ~ManualPointDetector.schema_json
+      ~ManualPointDetector.update_forward_refs
+      ~ManualPointDetector.validate
       ~ManualPointDetector.widget
    
    
 
    
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ManualPointDetector.model_computed_fields
+      ~ManualPointDetector.model_config
+      ~ManualPointDetector.model_extra
+      ~ManualPointDetector.model_fields
+      ~ManualPointDetector.model_fields_set
+      ~ManualPointDetector.centers
+      ~ManualPointDetector.shape
+      ~ManualPointDetector.width
    
    

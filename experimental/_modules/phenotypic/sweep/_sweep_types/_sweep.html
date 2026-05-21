@@ -528,7 +528,6 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
-<span class="kn">import</span><span class="w"> </span><span class="nn">inspect</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span>
 
 <span class="n">_ABSENT</span> <span class="o">=</span> <span class="nb">object</span><span class="p">()</span>  <span class="c1"># Sentinel: operation is omitted from the pipeline</span>
@@ -572,7 +571,8 @@
 
 <span class="sd">    Args:</span>
 <span class="sd">        operation_class: The operation **class** (not an instance). Must be a</span>
-<span class="sd">            class with an ``__init__`` accepting the provided parameter names.</span>
+<span class="sd">            pydantic operation class whose ``model_fields`` include the</span>
+<span class="sd">            provided parameter names.</span>
 <span class="sd">        **params: Keyword arguments specifying parameter values.</span>
 
 <span class="sd">            - **Tuple** values are swept (each element becomes one combination).</span>
@@ -582,8 +582,8 @@
 
 <span class="sd">    Raises:</span>
 <span class="sd">        TypeError: If ``operation_class`` is an instance rather than a class.</span>
-<span class="sd">        ValueError: If a parameter name does not exist in the operation</span>
-<span class="sd">            class constructor.</span>
+<span class="sd">        ValueError: If a parameter name is not a field on the operation</span>
+<span class="sd">            class.</span>
 
 <span class="sd">    Examples:</span>
 <span class="sd">        &gt;&gt;&gt; from phenotypic.sweep import Sweep, Fixed</span>
@@ -625,34 +625,33 @@
                 <span class="bp">self</span><span class="o">.</span><span class="n">fixed_params</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_validate_param_names</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check that all param names exist in the operation class constructor.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check that all param names exist as fields on the operation class.</span>
+
+<span class="sd">        Operations are pydantic v2 ``BaseModel`` subclasses, so the</span>
+<span class="sd">        accepted parameter names are ``operation_class.model_fields``.</span>
+<span class="sd">        pydantic models do not accept ``**kwargs`` — unknown kwargs are</span>
+<span class="sd">        rejected at construction via ``extra=&quot;forbid&quot;`` — so there is no</span>
+<span class="sd">        var-keyword escape hatch to honour.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            params: Parameter names to validate.</span>
 
 <span class="sd">        Raises:</span>
-<span class="sd">            ValueError: If a parameter name is not accepted by the constructor.</span>
+<span class="sd">            ValueError: If a parameter name is not a field on the</span>
+<span class="sd">                operation class.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="n">sig</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">signature</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">operation_class</span><span class="o">.</span><span class="fm">__init__</span><span class="p">)</span>
-        <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">):</span>
-            <span class="c1"># If we can&#39;t inspect the signature, skip validation</span>
+        <span class="n">model_fields</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">operation_class</span><span class="p">,</span> <span class="s2">&quot;model_fields&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">model_fields</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># Not a pydantic model (or fields not yet built) — skip</span>
+            <span class="c1"># validation rather than reject every name.</span>
             <span class="k">return</span>
 
-        <span class="n">valid_params</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">sig</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span> <span class="o">-</span> <span class="p">{</span><span class="s2">&quot;self&quot;</span><span class="p">}</span>
-        <span class="n">has_var_keyword</span> <span class="o">=</span> <span class="nb">any</span><span class="p">(</span>
-            <span class="n">p</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="n">inspect</span><span class="o">.</span><span class="n">Parameter</span><span class="o">.</span><span class="n">VAR_KEYWORD</span>
-            <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">sig</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
-        <span class="p">)</span>
-
-        <span class="k">if</span> <span class="n">has_var_keyword</span><span class="p">:</span>
-            <span class="c1"># Constructor accepts **kwargs, so any param name is valid</span>
-            <span class="k">return</span>
+        <span class="n">valid_params</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">model_fields</span><span class="p">)</span>
 
         <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">params</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">valid_params</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">operation_class</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">.__init__() has no &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">operation_class</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> has no &quot;</span>
                     <span class="sa">f</span><span class="s2">&quot;parameter &#39;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39;. Valid parameters: &quot;</span>
                     <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">valid_params</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
                 <span class="p">)</span>

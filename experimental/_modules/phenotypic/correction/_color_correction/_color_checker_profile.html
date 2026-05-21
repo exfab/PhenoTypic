@@ -534,10 +534,19 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Any</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Annotated</span><span class="p">,</span> <span class="n">Any</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">colour</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">BaseModel</span><span class="p">,</span>
+    <span class="n">ConfigDict</span><span class="p">,</span>
+    <span class="n">PrivateAttr</span><span class="p">,</span>
+    <span class="n">WithJsonSchema</span><span class="p">,</span>
+    <span class="n">field_validator</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">NdArrayField</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">._helpers</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">_normalize_to_unit_float</span><span class="p">,</span>
@@ -555,6 +564,27 @@
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
 
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># ROI-slice field annotation</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1">#: A single ``slice`` ROI bound. ``slice`` is a Python-native object that</span>
+<span class="c1">#: pydantic accepts under ``arbitrary_types_allowed`` but cannot describe in</span>
+<span class="c1">#: JSON Schema, so ``WithJsonSchema`` supplies a descriptive entry. The</span>
+<span class="c1">#: ``rois`` field is transient (set at construction, deliberately dropped by</span>
+<span class="c1">#: :meth:`ColorCheckerProfile.to_dict`); the schema entry exists only so</span>
+<span class="c1">#: ``model_json_schema()`` succeeds for downstream tooling.</span>
+<span class="n">_RoiSlice</span> <span class="o">=</span> <span class="n">Annotated</span><span class="p">[</span>
+    <span class="nb">slice</span><span class="p">,</span>
+    <span class="n">WithJsonSchema</span><span class="p">(</span>
+        <span class="p">{</span>
+            <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;A Python slice (start, stop, step) bounding a &quot;</span>
+            <span class="s2">&quot;color-checker ROI along one image axis.&quot;</span><span class="p">,</span>
+        <span class="p">}</span>
+    <span class="p">),</span>
+<span class="p">]</span>
 
 
 <span class="c1"># ---------------------------------------------------------------------------</span>
@@ -669,7 +699,7 @@
 
 <div class="viewcode-block" id="ColorCheckerProfile">
 <a class="viewcode-back" href="../../../../api_reference/phenotypic.correction.html#phenotypic.correction.ColorCheckerProfile">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">ColorCheckerProfile</span><span class="p">:</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ColorCheckerProfile</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Profile fitted from a colour checker card for root-polynomial correction.</span>
 
 <span class="sd">    Measures patch colours from one or more ROIs in an image, matches them</span>
@@ -677,6 +707,11 @@
 <span class="sd">    outlier patches, and solves for a root-polynomial colour correction</span>
 <span class="sd">    matrix (Finlayson 2015).  The resulting matrix can be applied to entire</span>
 <span class="sd">    images via :class:`ColorCorrector`.</span>
+
+<span class="sd">    This is a pydantic v2 ``BaseModel``: the constructor parameters and the</span>
+<span class="sd">    post-fit state are declared as annotated class-level fields, so an</span>
+<span class="sd">    unfitted profile still constructs (``correction_matrix`` is ``None``,</span>
+<span class="sd">    ``is_fitted`` is ``False`` until :meth:`fit` runs).</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        checker_type: Key in ``colour.CCS_COLOURCHECKERS``.  Defaults to the</span>
@@ -701,69 +736,70 @@
 
 <span class="sd">    Attributes:</span>
 <span class="sd">        correction_matrix: Fitted correction matrix once :meth:`fit`</span>
-<span class="sd">            or :meth:`_fit_from_patch_colors` has been called.</span>
+<span class="sd">            or :meth:`_fit_from_patch_colors` has been called; ``None``</span>
+<span class="sd">            on an unfitted profile.</span>
 <span class="sd">        diagnostics: Per-patch and aggregate quality metrics.</span>
 <span class="sd">        is_fitted: ``True`` after a successful fit.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="n">checker_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;ColorChecker24 - After November 2014&quot;</span><span class="p">,</span>
-        <span class="n">degree</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
-        <span class="n">target_illuminant</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;D65&quot;</span><span class="p">,</span>
-        <span class="n">median_filter_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
-        <span class="n">stddev_mag_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">15.0</span><span class="p">,</span>
-        <span class="n">border_distance_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">12.0</span><span class="p">,</span>
-        <span class="n">core_fraction</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">,</span>
-        <span class="n">ridge_lambda</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-3</span><span class="p">,</span>
-        <span class="n">outlier_sigma</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.0</span><span class="p">,</span>
-        <span class="n">rois</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">slice</span><span class="p">,</span> <span class="nb">slice</span><span class="p">]]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">model_config</span> <span class="o">=</span> <span class="n">ConfigDict</span><span class="p">(</span>
+        <span class="n">arbitrary_types_allowed</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">validate_assignment</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="c1"># -- constructor parameters --------------------------------------------</span>
+    <span class="n">checker_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;ColorChecker24 - After November 2014&quot;</span>
+    <span class="n">degree</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span>
+    <span class="n">target_illuminant</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;D65&quot;</span>
+    <span class="n">median_filter_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span>
+    <span class="n">stddev_mag_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">15.0</span>
+    <span class="n">border_distance_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">12.0</span>
+    <span class="n">core_fraction</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span>
+    <span class="n">ridge_lambda</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-3</span>
+    <span class="n">outlier_sigma</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.0</span>
+    <span class="n">rois</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="n">_RoiSlice</span><span class="p">,</span> <span class="n">_RoiSlice</span><span class="p">]]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="c1"># -- post-fit state (defaults so an unfitted profile still constructs) --</span>
+    <span class="n">correction_matrix</span><span class="p">:</span> <span class="n">NdArrayField</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">diagnostics</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">is_fitted</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="c1"># -- transient (set by fit(), never serialized) ------------------------</span>
+    <span class="n">_image</span><span class="p">:</span> <span class="s2">&quot;Image | None&quot;</span> <span class="o">=</span> <span class="n">PrivateAttr</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+
+    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;degree&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_validate_degree</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">degree</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Require ``degree`` in ``{1, 2, 3, 4}`` (pre-migration guard).&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">degree</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">}:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;degree must be 1, 2, 3, or 4, got </span><span class="si">{</span><span class="n">degree</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">degree</span>
+
+    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;core_fraction&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_validate_core_fraction</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">core_fraction</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Require ``core_fraction`` in ``(0, 1]`` (pre-migration guard).&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mf">0.0</span> <span class="o">&lt;</span> <span class="n">core_fraction</span> <span class="o">&lt;=</span> <span class="mf">1.0</span><span class="p">):</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;core_fraction must be in (0, 1], got </span><span class="si">{</span><span class="n">core_fraction</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;core_fraction must be in (0, 1], got </span><span class="si">{</span><span class="n">core_fraction</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">core_fraction</span>
+
+    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;ridge_lambda&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_validate_ridge_lambda</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">ridge_lambda</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Require ``ridge_lambda`` to be non-negative (pre-migration guard).&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">ridge_lambda</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;ridge_lambda must be &gt;= 0, got </span><span class="si">{</span><span class="n">ridge_lambda</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">ridge_lambda</span>
+
+    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;outlier_sigma&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_validate_outlier_sigma</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">outlier_sigma</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Require ``outlier_sigma`` to be positive (pre-migration guard).&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">outlier_sigma</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;outlier_sigma must be &gt; 0, got </span><span class="si">{</span><span class="n">outlier_sigma</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">checker_type</span> <span class="o">=</span> <span class="n">checker_type</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">degree</span> <span class="o">=</span> <span class="n">degree</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">target_illuminant</span> <span class="o">=</span> <span class="n">target_illuminant</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">median_filter_size</span> <span class="o">=</span> <span class="n">median_filter_size</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">stddev_mag_threshold</span> <span class="o">=</span> <span class="n">stddev_mag_threshold</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">border_distance_threshold</span> <span class="o">=</span> <span class="n">border_distance_threshold</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">core_fraction</span> <span class="o">=</span> <span class="n">core_fraction</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">ridge_lambda</span> <span class="o">=</span> <span class="n">ridge_lambda</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">outlier_sigma</span> <span class="o">=</span> <span class="n">outlier_sigma</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">_correction_matrix</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_diagnostics</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_is_fitted</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_rois</span> <span class="o">=</span> <span class="n">rois</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_image</span><span class="p">:</span> <span class="n">Image</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-
-    <span class="c1"># -- properties ---------------------------------------------------------</span>
-
-    <span class="nd">@property</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">correction_matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Root-polynomial correction matrix (shape ``(3, F)``).&quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_correction_matrix</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
-                <span class="s2">&quot;Profile is not fitted. Call fit() first.&quot;</span>
-            <span class="p">)</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_correction_matrix</span>
-
-    <span class="nd">@property</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">diagnostics</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Diagnostic metrics from the most recent fit.&quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_diagnostics</span>
-
-    <span class="nd">@property</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">is_fitted</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Whether a correction matrix has been fitted.&quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_fitted</span>
+        <span class="k">return</span> <span class="n">outlier_sigma</span>
 
     <span class="c1"># -- high-level fitting -------------------------------------------------</span>
 
@@ -781,12 +817,12 @@
 <span class="sd">        Raises:</span>
 <span class="sd">            ValueError: If no ROIs were provided at initialisation.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rois</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rois</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
                 <span class="s2">&quot;No ROIs available. Pass rois= to the constructor.&quot;</span>
             <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_image</span> <span class="o">=</span> <span class="n">image</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fit_from_rois</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rois</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fit_from_rois</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">rois</span><span class="p">)</span></div>
 
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_fit_from_rois</span><span class="p">(</span>
@@ -1071,7 +1107,7 @@
             <span class="c1"># Fallback: manual ridge regression.</span>
             <span class="n">CCM</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fit_ridge</span><span class="p">(</span><span class="n">measured_arr</span><span class="p">,</span> <span class="n">reference_arr</span><span class="p">)</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">_correction_matrix</span> <span class="o">=</span> <span class="n">CCM</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">correction_matrix</span> <span class="o">=</span> <span class="n">CCM</span>
 
         <span class="c1"># --- Compute after-correction Delta-E 2000 -------------------------</span>
         <span class="n">corrected_Lab</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
@@ -1133,7 +1169,7 @@
         <span class="p">]</span>
         <span class="n">after_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">after_values</span><span class="p">)</span> <span class="k">if</span> <span class="n">after_values</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.0</span><span class="p">])</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">_diagnostics</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">diagnostics</span> <span class="o">=</span> <span class="p">{</span>
             <span class="s2">&quot;checker_type&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">checker_type</span><span class="p">,</span>
             <span class="s2">&quot;degree&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">degree</span><span class="p">,</span>
             <span class="s2">&quot;target_illuminant&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_illuminant</span><span class="p">,</span>
@@ -1151,14 +1187,14 @@
             <span class="s2">&quot;warnings&quot;</span><span class="p">:</span> <span class="n">warnings_list</span><span class="p">,</span>
         <span class="p">}</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">_is_fitted</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">is_fitted</span> <span class="o">=</span> <span class="kc">True</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
             <span class="s2">&quot;ColorCheckerProfile fitted: </span><span class="si">%d</span><span class="s2">/</span><span class="si">%d</span><span class="s2"> patches, &quot;</span>
             <span class="s2">&quot;mean dE00 </span><span class="si">%.2f</span><span class="s2"> -&gt; </span><span class="si">%.2f</span><span class="s2">&quot;</span><span class="p">,</span>
             <span class="nb">len</span><span class="p">(</span><span class="n">measured_Lab</span><span class="p">),</span>
             <span class="nb">len</span><span class="p">(</span><span class="n">all_patch_names</span><span class="p">),</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_diagnostics</span><span class="p">[</span><span class="s2">&quot;mean_deltaE00_before&quot;</span><span class="p">],</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_diagnostics</span><span class="p">[</span><span class="s2">&quot;mean_deltaE00_after&quot;</span><span class="p">],</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">diagnostics</span><span class="p">[</span><span class="s2">&quot;mean_deltaE00_before&quot;</span><span class="p">],</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">diagnostics</span><span class="p">[</span><span class="s2">&quot;mean_deltaE00_after&quot;</span><span class="p">],</span>
         <span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_fit_ridge</span><span class="p">(</span>
@@ -1230,7 +1266,7 @@
 <span class="sd">            RuntimeError: If the profile has not been fitted.</span>
 <span class="sd">            ImportError: If Panel is not installed.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_fitted</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_fitted</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
                 <span class="s2">&quot;Cannot create dashboard for an unfitted profile.&quot;</span>
             <span class="p">)</span>
@@ -1241,7 +1277,7 @@
         <span class="kn">from</span><span class="w"> </span><span class="nn">._diagnostic_dashboard</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColorCorrectionDashboard</span>
 
         <span class="n">dashboard</span> <span class="o">=</span> <span class="n">ColorCorrectionDashboard</span><span class="p">(</span>
-            <span class="n">profile</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_image</span><span class="p">,</span> <span class="n">rois</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_rois</span><span class="p">,</span>
+            <span class="n">profile</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_image</span><span class="p">,</span> <span class="n">rois</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">rois</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="n">panel_layout</span> <span class="o">=</span> <span class="n">dashboard</span><span class="o">.</span><span class="n">panel</span><span class="p">()</span>
 
@@ -1269,12 +1305,12 @@
             <span class="s2">&quot;core_fraction&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">core_fraction</span><span class="p">,</span>
             <span class="s2">&quot;ridge_lambda&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">ridge_lambda</span><span class="p">,</span>
             <span class="s2">&quot;outlier_sigma&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">outlier_sigma</span><span class="p">,</span>
-            <span class="s2">&quot;is_fitted&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_fitted</span><span class="p">,</span>
+            <span class="s2">&quot;is_fitted&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_fitted</span><span class="p">,</span>
         <span class="p">}</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_correction_matrix</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">data</span><span class="p">[</span><span class="s2">&quot;correction_matrix&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_correction_matrix</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_diagnostics</span><span class="p">:</span>
-            <span class="n">data</span><span class="p">[</span><span class="s2">&quot;diagnostics&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_diagnostics</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">correction_matrix</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">data</span><span class="p">[</span><span class="s2">&quot;correction_matrix&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">correction_matrix</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">diagnostics</span><span class="p">:</span>
+            <span class="n">data</span><span class="p">[</span><span class="s2">&quot;diagnostics&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">diagnostics</span>
         <span class="k">return</span> <span class="n">data</span></div>
 
 
@@ -1302,20 +1338,20 @@
             <span class="n">outlier_sigma</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;outlier_sigma&quot;</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">),</span>
         <span class="p">)</span>
         <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;correction_matrix&quot;</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">profile</span><span class="o">.</span><span class="n">_correction_matrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span>
+            <span class="n">profile</span><span class="o">.</span><span class="n">correction_matrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span>
                 <span class="n">data</span><span class="p">[</span><span class="s2">&quot;correction_matrix&quot;</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span>
             <span class="p">)</span>
         <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;diagnostics&quot;</span><span class="p">):</span>
-            <span class="n">profile</span><span class="o">.</span><span class="n">_diagnostics</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;diagnostics&quot;</span><span class="p">]</span>
-        <span class="n">profile</span><span class="o">.</span><span class="n">_is_fitted</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;is_fitted&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
-        <span class="n">profile</span><span class="o">.</span><span class="n">_rois</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="n">profile</span><span class="o">.</span><span class="n">diagnostics</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;diagnostics&quot;</span><span class="p">]</span>
+        <span class="n">profile</span><span class="o">.</span><span class="n">is_fitted</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;is_fitted&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+        <span class="n">profile</span><span class="o">.</span><span class="n">rois</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="n">profile</span><span class="o">.</span><span class="n">_image</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="k">return</span> <span class="n">profile</span></div>
 
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-        <span class="n">status</span> <span class="o">=</span> <span class="s2">&quot;fitted&quot;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_fitted</span> <span class="k">else</span> <span class="s2">&quot;unfitted&quot;</span>
-        <span class="n">n_rois</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_rois</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rois</span> <span class="k">else</span> <span class="mi">0</span>
+        <span class="n">status</span> <span class="o">=</span> <span class="s2">&quot;fitted&quot;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_fitted</span> <span class="k">else</span> <span class="s2">&quot;unfitted&quot;</span>
+        <span class="n">n_rois</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rois</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rois</span> <span class="k">else</span> <span class="mi">0</span>
         <span class="k">return</span> <span class="p">(</span>
             <span class="sa">f</span><span class="s2">&quot;ColorCheckerProfile(checker_type=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">checker_type</span><span class="si">!r}</span><span class="s2">, &quot;</span>
             <span class="sa">f</span><span class="s2">&quot;degree=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">degree</span><span class="si">}</span><span class="s2">, target_illuminant=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">target_illuminant</span><span class="si">!r}</span><span class="s2">, &quot;</span>

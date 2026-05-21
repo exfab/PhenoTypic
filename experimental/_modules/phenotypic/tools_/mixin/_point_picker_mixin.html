@@ -530,8 +530,6 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">ClassVar</span><span class="p">,</span> <span class="n">TypeVar</span>
 
-<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
 
@@ -547,36 +545,31 @@
 <span class="sd">    Operations that take a list of point coordinates as a primary parameter</span>
 <span class="sd">    (currently :class:`~phenotypic.detect.ManualPointDetector` and</span>
 <span class="sd">    :class:`~phenotypic.refine.ManualSelector`) inherit from this mixin to</span>
-<span class="sd">    pick up three things at once:</span>
+<span class="sd">    pick up two things at once:</span>
 
-<span class="sd">    * **Coordinate coercion.** ``__setattr__`` converts list/tuple input</span>
-<span class="sd">      assigned to the centres parameter into a NumPy array, so downstream</span>
-<span class="sd">      ``_operate`` code can treat it uniformly. ``None`` passes through</span>
-<span class="sd">      unchanged so that &quot;no points yet&quot; remains a valid state.</span>
 <span class="sd">    * **A blocking napari picker.** :meth:`napari` opens a desktop</span>
 <span class="sd">      :class:`~phenotypic.tools_.napari_.PointPickerWidget` and writes the</span>
 <span class="sd">      confirmed picks back to the operation. Closing the viewer without</span>
 <span class="sd">      confirming is a no-op (existing centres are preserved).</span>
 <span class="sd">    * **A GUI introspection hook.** The ``_point_picker_param_name`` class</span>
-<span class="sd">      attribute tells the Dash builder which ``__init__`` parameter to</span>
-<span class="sd">      replace with an interactive picker button instead of a free-form text</span>
-<span class="sd">      input.</span>
+<span class="sd">      attribute tells the Dash builder which field to replace with an</span>
+<span class="sd">      interactive picker button instead of a free-form text input.</span>
 
 <span class="sd">    Subclasses that store coordinates under a name other than ``&quot;centers&quot;``</span>
-<span class="sd">    can override :attr:`_point_picker_param_name`; both ``__setattr__`` and</span>
-<span class="sd">    :meth:`napari` use that attribute.</span>
+<span class="sd">    can override :attr:`_point_picker_param_name`; :meth:`napari` uses that</span>
+<span class="sd">    attribute.</span>
+
+<span class="sd">    Coordinate coercion (list/tuple/``np.ndarray`` → a canonical form)</span>
+<span class="sd">    moves to a ``field_validator`` on the coordinate field of each</span>
+<span class="sd">    consuming operation as part of the pydantic migration — this mixin no</span>
+<span class="sd">    longer overrides ``__setattr__`` (which would clash with pydantic&#39;s).</span>
 
 <span class="sd">    Attributes:</span>
-<span class="sd">        _point_picker_param_name: Name of the ``__init__`` parameter holding</span>
-<span class="sd">            the picked ``(y, x)`` coordinates. Defaults to ``&quot;centers&quot;``.</span>
+<span class="sd">        _point_picker_param_name: Name of the field holding the picked</span>
+<span class="sd">            ``(y, x)`` coordinates. Defaults to ``&quot;centers&quot;``.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">_point_picker_param_name</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;centers&quot;</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="fm">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">object</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">_point_picker_param_name</span> <span class="ow">and</span> <span class="n">value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">value</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
 
 <div class="viewcode-block" id="PointPickerMixin.napari">
 <a class="viewcode-back" href="../../../../api_reference/phenotypic.tools_.mixin.html#phenotypic.tools_.mixin.PointPickerMixin.napari">[docs]</a>

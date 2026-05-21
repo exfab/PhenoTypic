@@ -528,7 +528,7 @@
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">contextlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">contextmanager</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">ClassVar</span>
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
@@ -625,41 +625,62 @@
 <span class="sd">            )</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="n">_MAX_OBJECTS_PER_CELL</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">250</span>
+    <span class="c1"># ``ClassVar`` so pydantic treats these as class-level constants rather</span>
+    <span class="c1"># than model fields (the project convention for operation constants --</span>
+    <span class="c1"># see ``_GATSupportMixin._GAT_NOISE_PARAMS``). ``_SPAN_TOLERANCE`` stays</span>
+    <span class="c1"># overridable by subclasses, as the class docstring documents.</span>
+    <span class="n">_MAX_OBJECTS_PER_CELL</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">250</span>
     <span class="c1"># Entire missing edge rows/cols tolerated before span-coverage anchoring</span>
     <span class="c1"># fires. With the default of 1, a 96-well plate with one fully-empty</span>
     <span class="c1"># edge column keeps its fitted offset; only ≥ 2 missing edge cells</span>
     <span class="c1"># trigger the anchoring check.</span>
-    <span class="n">_SPAN_TOLERANCE</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">_SPAN_TOLERANCE</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
-            <span class="bp">self</span><span class="p">,</span>
-            <span class="n">nrows</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">,</span>
-            <span class="n">ncols</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">12</span><span class="p">,</span>
-            <span class="n">residual_fraction</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.25</span><span class="p">,</span>
-            <span class="o">*</span><span class="p">,</span>
-            <span class="n">warn</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
-            <span class="n">tol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-            <span class="n">max_iter</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="p">):</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">nrows</span><span class="o">=</span><span class="n">nrows</span><span class="p">,</span> <span class="n">ncols</span><span class="o">=</span><span class="n">ncols</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">residual_fraction</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">residual_fraction</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">warn</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="n">warn</span>
+    <span class="c1"># ``nrows`` / ``ncols`` are required fields on the ``GridFinder`` ABC;</span>
+    <span class="c1"># ``AutoGridFinder`` historically defaulted them to 8 / 12 (96-well</span>
+    <span class="c1"># plate). Pydantic allows a subclass to add a default to an inherited</span>
+    <span class="c1"># required field, so redeclare them here with the legacy defaults.</span>
+    <span class="n">nrows</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">8</span>
+    <span class="n">ncols</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">12</span>
+    <span class="n">residual_fraction</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.25</span>
+    <span class="n">warn</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="c1"># ``tol`` / ``max_iter`` are deprecated, accepted-but-ignored</span>
+    <span class="c1"># constructor parameters retained for backward compatibility. They are</span>
+    <span class="c1"># declared as optional fields (rather than dropped) so that, under</span>
+    <span class="c1"># ``extra=&quot;forbid&quot;``, legacy callers passing them still construct; a</span>
+    <span class="c1"># non-``None`` value triggers a ``DeprecationWarning`` in</span>
+    <span class="c1"># ``model_post_init``. The fitter never reads them.</span>
+    <span class="n">tol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">max_iter</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
 
-        <span class="k">if</span> <span class="n">tol</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+<div class="viewcode-block" id="AutoGridFinder.model_post_init">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.grid.html#phenotypic.grid.AutoGridFinder.model_post_init">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">model_post_init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">__context</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Warn on deprecated ``tol`` / ``max_iter`` parameters.</span>
+
+<span class="sd">        Reproduces the legacy ``__init__`` deprecation warnings, then</span>
+<span class="sd">        delegates to :meth:`BaseOperation.model_post_init` for logger and</span>
+<span class="sd">        memory-tracking setup.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            __context: Pydantic post-init context (unused).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">tol</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
                 <span class="s2">&quot;The &#39;tol&#39; parameter is deprecated and has no effect. &quot;</span>
                 <span class="s2">&quot;AutoGridFinder now uses a deterministic robust-fit algorithm.&quot;</span><span class="p">,</span>
                 <span class="ne">DeprecationWarning</span><span class="p">,</span>
                 <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
             <span class="p">)</span>
-        <span class="k">if</span> <span class="n">max_iter</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_iter</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
                 <span class="s2">&quot;The &#39;max_iter&#39; parameter is deprecated and has no effect. &quot;</span>
                 <span class="s2">&quot;AutoGridFinder now uses a deterministic robust-fit algorithm.&quot;</span><span class="p">,</span>
                 <span class="ne">DeprecationWarning</span><span class="p">,</span>
                 <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
             <span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">model_post_init</span><span class="p">(</span><span class="n">__context</span><span class="p">)</span></div>
+
 
     <span class="nd">@contextmanager</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_warning_filter</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -1672,14 +1693,18 @@
     <span class="c1"># Diagnostic inspect() method</span>
     <span class="c1"># ------------------------------------------------------------------</span>
 
-    <span class="n">_OI_NAVY</span> <span class="o">=</span> <span class="s2">&quot;#003660&quot;</span>
-    <span class="n">_OI_ORANGE</span> <span class="o">=</span> <span class="s2">&quot;#E69F00&quot;</span>
-    <span class="n">_OI_SKY</span> <span class="o">=</span> <span class="s2">&quot;#56B4E9&quot;</span>
-    <span class="n">_OI_GREEN</span> <span class="o">=</span> <span class="s2">&quot;#009E73&quot;</span>
-    <span class="n">_OI_VERMILION</span> <span class="o">=</span> <span class="s2">&quot;#D55E00&quot;</span>
-    <span class="n">_OI_BLUE</span> <span class="o">=</span> <span class="s2">&quot;#0072B2&quot;</span>
-    <span class="n">_OI_PURPLE</span> <span class="o">=</span> <span class="s2">&quot;#CC79A7&quot;</span>
-    <span class="n">_OI_GREY</span> <span class="o">=</span> <span class="s2">&quot;#BBBBBB&quot;</span>
+    <span class="c1"># Okabe-Ito palette for the inspect() diagnostic plots. Annotated</span>
+    <span class="c1"># ``ClassVar`` so pydantic keeps them as plain class constants — an</span>
+    <span class="c1"># un-annotated underscore name is otherwise collected as a</span>
+    <span class="c1"># ``ModelPrivateAttr`` and class-level access returns the wrapper.</span>
+    <span class="n">_OI_NAVY</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;#003660&quot;</span>
+    <span class="n">_OI_ORANGE</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;#E69F00&quot;</span>
+    <span class="n">_OI_SKY</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;#56B4E9&quot;</span>
+    <span class="n">_OI_GREEN</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;#009E73&quot;</span>
+    <span class="n">_OI_VERMILION</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;#D55E00&quot;</span>
+    <span class="n">_OI_BLUE</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;#0072B2&quot;</span>
+    <span class="n">_OI_PURPLE</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;#CC79A7&quot;</span>
+    <span class="n">_OI_GREY</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;#BBBBBB&quot;</span>
 
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_dashboard_rcparams</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>

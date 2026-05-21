@@ -18,13 +18,60 @@ phenotypic.analysis.LinearSoftplus
    
       ~LinearSoftplus.__init__
       ~LinearSoftplus.analyze
+      ~LinearSoftplus.construct
+      ~LinearSoftplus.copy
       ~LinearSoftplus.dash
+      ~LinearSoftplus.dict
+      ~LinearSoftplus.from_orm
+      ~LinearSoftplus.json
+      ~LinearSoftplus.model_construct
+      ~LinearSoftplus.model_copy
+      ~LinearSoftplus.model_dump
+      ~LinearSoftplus.model_dump_json
       ~LinearSoftplus.model_func
+      ~LinearSoftplus.model_json_schema
+      ~LinearSoftplus.model_parametrized_name
+      ~LinearSoftplus.model_post_init
+      ~LinearSoftplus.model_rebuild
+      ~LinearSoftplus.model_validate
+      ~LinearSoftplus.model_validate_json
+      ~LinearSoftplus.model_validate_strings
+      ~LinearSoftplus.parse_file
+      ~LinearSoftplus.parse_obj
+      ~LinearSoftplus.parse_raw
       ~LinearSoftplus.results
+      ~LinearSoftplus.schema
+      ~LinearSoftplus.schema_json
       ~LinearSoftplus.show
+      ~LinearSoftplus.update_forward_refs
+      ~LinearSoftplus.validate
    
    
 
    
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~LinearSoftplus.model_computed_fields
+      ~LinearSoftplus.model_config
+      ~LinearSoftplus.model_extra
+      ~LinearSoftplus.model_fields
+      ~LinearSoftplus.model_fields_set
+      ~LinearSoftplus.prune_saturated
+      ~LinearSoftplus.stderr_label
+      ~LinearSoftplus.s0_prior
+      ~LinearSoftplus.s0_prior_cv
+      ~LinearSoftplus.s0_prior_sigma
+      ~LinearSoftplus.s0_prior_groupby
+      ~LinearSoftplus.time_label
+      ~LinearSoftplus.loss
+      ~LinearSoftplus.f_scale
+      ~LinearSoftplus.verbose
+      ~LinearSoftplus.on
+      ~LinearSoftplus.groupby
+      ~LinearSoftplus.agg_func
+      ~LinearSoftplus.n_jobs
    
    

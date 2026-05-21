@@ -531,6 +531,7 @@
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">field_validator</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">skimage.filters.rank</span><span class="w"> </span><span class="kn">import</span> <span class="n">median</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">skimage.util</span><span class="w"> </span><span class="kn">import</span> <span class="n">img_as_ubyte</span><span class="p">,</span> <span class="n">img_as_float</span>
 
@@ -580,29 +581,18 @@
 <span class="sd">        visual walkthrough of denoising pipelines on plate images.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-<div class="viewcode-block" id="RankMedianEnhancer.__init__">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.enhance.html#phenotypic.enhance.RankMedianEnhancer.__init__">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">shape</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;square&quot;</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">shift_x</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">shift_y</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Parameters:</span>
-<span class="sd">            shape (str): Geometry of the neighborhood. Use &#39;disk&#39; for</span>
-<span class="sd">                isotropic smoothing on plates; &#39;square&#39; to align with grid noise;</span>
-<span class="sd">                &#39;sphere&#39;/&#39;cube&#39; for 3D contexts. Default &#39;square&#39;.</span>
-<span class="sd">            width (int | None): Neighborhood width in pixels. Set</span>
-<span class="sd">                smaller than the minimum colony width to preserve colony edges;</span>
-<span class="sd">                None chooses a small default based on image size.</span>
-<span class="sd">            shift_x (int): Horizontal offset of the shape center to bias the</span>
-<span class="sd">                neighborhood if artifacts are directional. Typically 0.</span>
-<span class="sd">            shift_y (int): Vertical offset of the shape center. Typically 0.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="n">shape</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;square&quot;</span>
+    <span class="n">width</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">shift_x</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">shift_y</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;shape&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_check_shape_supported</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">shape</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Reject an unsupported footprint shape (matches the legacy guard).&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">shape</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;disk&quot;</span><span class="p">,</span> <span class="s2">&quot;square&quot;</span><span class="p">,</span> <span class="s2">&quot;sphere&quot;</span><span class="p">,</span> <span class="s2">&quot;cube&quot;</span><span class="p">]:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;shape shape </span><span class="si">{</span><span class="n">shape</span><span class="si">}</span><span class="s2"> is not supported&quot;</span><span class="p">)</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="n">shape</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">width</span> <span class="o">=</span> <span class="n">width</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">shift_x</span> <span class="o">=</span> <span class="n">shift_x</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">shift_y</span> <span class="o">=</span> <span class="n">shift_y</span></div>
-
+        <span class="k">return</span> <span class="n">shape</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
         <span class="n">image</span><span class="o">.</span><span class="n">detect_mat</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">img_as_float</span><span class="p">(</span>

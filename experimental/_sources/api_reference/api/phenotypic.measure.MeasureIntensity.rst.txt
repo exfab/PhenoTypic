@@ -17,10 +17,43 @@ phenotypic.measure.MeasureIntensity
       :nosignatures:
    
       ~MeasureIntensity.__init__
+      ~MeasureIntensity.construct
+      ~MeasureIntensity.copy
+      ~MeasureIntensity.dict
+      ~MeasureIntensity.from_orm
+      ~MeasureIntensity.json
       ~MeasureIntensity.measure
+      ~MeasureIntensity.model_construct
+      ~MeasureIntensity.model_copy
+      ~MeasureIntensity.model_dump
+      ~MeasureIntensity.model_dump_json
+      ~MeasureIntensity.model_json_schema
+      ~MeasureIntensity.model_parametrized_name
+      ~MeasureIntensity.model_post_init
+      ~MeasureIntensity.model_rebuild
+      ~MeasureIntensity.model_validate
+      ~MeasureIntensity.model_validate_json
+      ~MeasureIntensity.model_validate_strings
+      ~MeasureIntensity.parse_file
+      ~MeasureIntensity.parse_obj
+      ~MeasureIntensity.parse_raw
+      ~MeasureIntensity.schema
+      ~MeasureIntensity.schema_json
+      ~MeasureIntensity.update_forward_refs
+      ~MeasureIntensity.validate
    
    
 
    
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~MeasureIntensity.model_computed_fields
+      ~MeasureIntensity.model_config
+      ~MeasureIntensity.model_extra
+      ~MeasureIntensity.model_fields
+      ~MeasureIntensity.model_fields_set
    
    

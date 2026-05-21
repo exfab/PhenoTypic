@@ -18,11 +18,48 @@ phenotypic.detect.ManualGridPointDetector
    
       ~ManualGridPointDetector.__init__
       ~ManualGridPointDetector.apply
+      ~ManualGridPointDetector.construct
+      ~ManualGridPointDetector.copy
+      ~ManualGridPointDetector.dict
+      ~ManualGridPointDetector.from_orm
+      ~ManualGridPointDetector.json
+      ~ManualGridPointDetector.model_construct
+      ~ManualGridPointDetector.model_copy
+      ~ManualGridPointDetector.model_dump
+      ~ManualGridPointDetector.model_dump_json
+      ~ManualGridPointDetector.model_json_schema
+      ~ManualGridPointDetector.model_parametrized_name
+      ~ManualGridPointDetector.model_post_init
+      ~ManualGridPointDetector.model_rebuild
+      ~ManualGridPointDetector.model_validate
+      ~ManualGridPointDetector.model_validate_json
+      ~ManualGridPointDetector.model_validate_strings
       ~ManualGridPointDetector.napari
+      ~ManualGridPointDetector.parse_file
+      ~ManualGridPointDetector.parse_obj
+      ~ManualGridPointDetector.parse_raw
+      ~ManualGridPointDetector.schema
+      ~ManualGridPointDetector.schema_json
+      ~ManualGridPointDetector.update_forward_refs
+      ~ManualGridPointDetector.validate
       ~ManualGridPointDetector.widget
    
    
 
    
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ManualGridPointDetector.model_computed_fields
+      ~ManualGridPointDetector.model_config
+      ~ManualGridPointDetector.model_extra
+      ~ManualGridPointDetector.model_fields
+      ~ManualGridPointDetector.model_fields_set
+      ~ManualGridPointDetector.coord1
+      ~ManualGridPointDetector.coord2
+      ~ManualGridPointDetector.shape
+      ~ManualGridPointDetector.width
    
    

@@ -633,12 +633,9 @@
 <span class="sd">        import numpy as np</span>
 
 <span class="sd">        class MyGridRefiner(GridObjectRefiner):</span>
-<span class="sd">            def __init__(self, max_width_fraction: float = 0.9):</span>
-<span class="sd">                super().__init__()</span>
-<span class="sd">                self.max_width_fraction = max_width_fraction</span>
+<span class="sd">            max_width_fraction: float = 0.9  # Annotated class-level field</span>
 
-<span class="sd">            @staticmethod</span>
-<span class="sd">            def _operate(image: GridImage, max_width_fraction: float = 0.9) -&gt; GridImage:</span>
+<span class="sd">            def _operate(self, image: GridImage) -&gt; GridImage:</span>
 <span class="sd">                # Get grid structure information</span>
 <span class="sd">                col_edges = image.grid.get_col_edges()      # x-coordinates of column boundaries</span>
 <span class="sd">                row_edges = image.grid.get_row_edges()      # y-coordinates of row boundaries</span>
@@ -662,7 +659,7 @@
 <span class="sd">    **Key Rules**</span>
 
 <span class="sd">    1. ``_operate()`` must be an instance method (access parameters via ``self``).</span>
-<span class="sd">    2. All parameters except ``image`` must exist as instance attributes.</span>
+<span class="sd">    2. All parameters except ``image`` must be declared as annotated class-level fields.</span>
 <span class="sd">    3. Only modify ``image.objmask[:]`` and ``image.objmap[:]``.</span>
 <span class="sd">    4. Access grid via ``image.grid`` methods: get_row_edges(), get_col_edges(), info().</span>
 <span class="sd">    5. Return the modified GridImage object.</span>
@@ -718,8 +715,8 @@
 
 <span class="sd">        - **Instance _operate() method:** ``_operate()`` is an instance method; access parameters via ``self``.</span>
 
-<span class="sd">        - **Parameter matching:** All ``_operate()`` parameters except ``image`` must exist</span>
-<span class="sd">          as instance attributes for automatic parameter matching.</span>
+<span class="sd">        - **Field-based parameters:** All ``_operate()`` parameters except ``image``</span>
+<span class="sd">          are declared as annotated class-level fields.</span>
 
 <span class="sd">    Examples:</span>
 <span class="sd">        Remove objects larger than their grid cell width:</span>
@@ -730,11 +727,7 @@
 <span class="sd">        &gt;&gt;&gt; class OversizedObjectRemover(GridObjectRefiner):</span>
 <span class="sd">        ...     &#39;&#39;&#39;Remove objects exceeding cell dimensions.&#39;&#39;&#39;</span>
 <span class="sd">        ...</span>
-<span class="sd">        ...     def __init__(self):</span>
-<span class="sd">        ...         super().__init__()</span>
-<span class="sd">        ...</span>
-<span class="sd">        ...     @staticmethod</span>
-<span class="sd">        ...     def _operate(image: GridImage) -&gt; GridImage:</span>
+<span class="sd">        ...     def _operate(self, image: GridImage) -&gt; GridImage:</span>
 <span class="sd">        ...         # Get grid boundaries</span>
 <span class="sd">        ...         col_edges = image.grid.get_col_edges()</span>
 <span class="sd">        ...         row_edges = image.grid.get_row_edges()</span>
@@ -771,12 +764,9 @@
 <span class="sd">        &gt;&gt;&gt; class PerWellOversizedRemover(GridObjectRefiner):</span>
 <span class="sd">        ...     &#39;&#39;&#39;Remove objects that exceed size threshold relative to their well.&#39;&#39;&#39;</span>
 <span class="sd">        ...</span>
-<span class="sd">        ...     def __init__(self, max_area_fraction: float = 0.8):</span>
-<span class="sd">        ...         super().__init__()</span>
-<span class="sd">        ...         self.max_area_fraction = max_area_fraction</span>
+<span class="sd">        ...     max_area_fraction: float = 0.8</span>
 <span class="sd">        ...</span>
-<span class="sd">        ...     @staticmethod</span>
-<span class="sd">        ...     def _operate(image: GridImage, max_area_fraction: float = 0.8) -&gt; GridImage:</span>
+<span class="sd">        ...     def _operate(self, image: GridImage) -&gt; GridImage:</span>
 <span class="sd">        ...         # Get grid structure</span>
 <span class="sd">        ...         col_edges = image.grid.get_col_edges()</span>
 <span class="sd">        ...         row_edges = image.grid.get_row_edges()</span>

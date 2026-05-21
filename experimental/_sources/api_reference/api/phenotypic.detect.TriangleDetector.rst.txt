@@ -18,10 +18,43 @@ phenotypic.detect.TriangleDetector
    
       ~TriangleDetector.__init__
       ~TriangleDetector.apply
+      ~TriangleDetector.construct
+      ~TriangleDetector.copy
+      ~TriangleDetector.dict
+      ~TriangleDetector.from_orm
+      ~TriangleDetector.json
+      ~TriangleDetector.model_construct
+      ~TriangleDetector.model_copy
+      ~TriangleDetector.model_dump
+      ~TriangleDetector.model_dump_json
+      ~TriangleDetector.model_json_schema
+      ~TriangleDetector.model_parametrized_name
+      ~TriangleDetector.model_post_init
+      ~TriangleDetector.model_rebuild
+      ~TriangleDetector.model_validate
+      ~TriangleDetector.model_validate_json
+      ~TriangleDetector.model_validate_strings
+      ~TriangleDetector.parse_file
+      ~TriangleDetector.parse_obj
+      ~TriangleDetector.parse_raw
+      ~TriangleDetector.schema
+      ~TriangleDetector.schema_json
+      ~TriangleDetector.update_forward_refs
+      ~TriangleDetector.validate
       ~TriangleDetector.widget
    
    
 
    
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~TriangleDetector.model_computed_fields
+      ~TriangleDetector.model_config
+      ~TriangleDetector.model_extra
+      ~TriangleDetector.model_fields
+      ~TriangleDetector.model_fields_set
    
    

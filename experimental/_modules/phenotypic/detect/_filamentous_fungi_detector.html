@@ -525,14 +525,16 @@
                   
   <h1>Source code for phenotypic.detect._filamentous_fungi_detector</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Optional</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">ClassVar</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">gc</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">model_validator</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing_extensions</span><span class="w"> </span><span class="kn">import</span> <span class="n">Self</span>
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._grid_image</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridImage</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image_pipeline</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImagePipeline</span>  <span class="c1"># type: ignore</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.enhance._phase_congruency</span><span class="w"> </span><span class="kn">import</span> <span class="n">_PhaseCong3Result</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">scipy.ndimage</span><span class="w"> </span><span class="kn">import</span> <span class="n">center_of_mass</span><span class="p">,</span> <span class="n">label</span> <span class="k">as</span> <span class="n">ndi_label</span>
@@ -540,13 +542,14 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">skimage.measure</span><span class="w"> </span><span class="kn">import</span> <span class="n">label</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">skimage.morphology</span><span class="w"> </span><span class="kn">import</span> <span class="n">disk</span><span class="p">,</span> <span class="n">dilation</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridObjectDetector</span><span class="p">,</span> <span class="n">ObjectDetector</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridObjectDetector</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImagePipeline</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.enhance</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">SubtractGaussian</span><span class="p">,</span>
     <span class="n">ContrastStretching</span><span class="p">,</span>
     <span class="n">PhaseCongruencyEnhancer</span><span class="p">,</span>
 <span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">OperationField</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect</span><span class="w"> </span><span class="kn">import</span> <span class="n">HysteresisDetector</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect._inoculum_detector</span><span class="w"> </span><span class="kn">import</span> <span class="n">InoculumDetector</span>
@@ -691,123 +694,119 @@
 <span class="sd">        :doc:`/explanation/detection_strategies_compared`</span>
 <span class="sd">            In-depth comparison of all detection strategies.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">__center_pipe</span> <span class="o">=</span> <span class="n">ImagePipeline</span><span class="p">(</span>
-            <span class="n">ops</span><span class="o">=</span><span class="p">[</span><span class="n">InoculumDetector</span><span class="p">(),</span> <span class="n">GridSectionLargest</span><span class="p">()]</span>
-    <span class="p">)</span>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">__build_center_pipe</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="s2">&quot;ImagePipeline&quot;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Build the default inoculum-center detection pipeline.</span>
+
+<span class="sd">        Constructed lazily (rather than as a class-body attribute) so</span>
+<span class="sd">        importing this module does not instantiate operations — the</span>
+<span class="sd">        pydantic v2 migration makes leaf operations uninstantiable until</span>
+<span class="sd">        their own migration phase completes.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">ImagePipeline</span><span class="p">(</span>
+                <span class="n">ops</span><span class="o">=</span><span class="p">[</span><span class="n">InoculumDetector</span><span class="p">(),</span> <span class="n">GridSectionLargest</span><span class="p">()]</span>
+        <span class="p">)</span>
 
     <span class="c1"># Scene-derivation multipliers (private; override in subclass to tune).</span>
     <span class="c1"># Raw param = multiplier * scene knob (rounded to int where required).</span>
-    <span class="n">_GAUSS_SIGMA_PER_R</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.2</span>
-    <span class="n">_TILE_SIZE_PER_R</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">4.8</span>
-    <span class="n">_TILE_OVERLAP_PER_R</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.4</span>
-    <span class="n">_WAVELENGTH_PER_W</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.0</span>
-    <span class="n">_MAD_WINDOW_PER_W</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.0</span>
-    <span class="n">_PATH_DILATION_PER_W</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span>
-    <span class="n">_SNR_MARGIN_PER_W</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span>
-    <span class="n">_COHERENCE_RADIUS_PER_W</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">5.0</span>
+    <span class="c1"># Declared ``ClassVar`` so they stay class-level constants (not pydantic</span>
+    <span class="c1"># fields) while remaining subclass-overridable, exactly as before.</span>
+    <span class="n">_GAUSS_SIGMA_PER_R</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.2</span>
+    <span class="n">_TILE_SIZE_PER_R</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="mf">4.8</span>
+    <span class="n">_TILE_OVERLAP_PER_R</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="mf">2.4</span>
+    <span class="n">_WAVELENGTH_PER_W</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="mf">2.0</span>
+    <span class="n">_MAD_WINDOW_PER_W</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="mf">2.0</span>
+    <span class="n">_PATH_DILATION_PER_W</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.5</span>
+    <span class="n">_SNR_MARGIN_PER_W</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.5</span>
+    <span class="n">_COHERENCE_RADIUS_PER_W</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="mf">5.0</span>
 
-    <span class="c1"># Algorithm internals (hidden from __init__; override in subclass to tune).</span>
-    <span class="n">beta</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.0</span>          <span class="c1"># anisotropy exponent in composite cost</span>
-    <span class="n">gamma</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.2</span>         <span class="c1"># MAD penalty weight in composite cost numerator</span>
-    <span class="n">gauss_n_iter</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span>      <span class="c1"># SubtractGaussian iterations</span>
-    <span class="n">delta</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span>         <span class="c1"># Dijkstra radial retreat penalty</span>
-    <span class="n">pct_n_orient</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">8</span>      <span class="c1"># phase congruency angular resolution</span>
+    <span class="c1"># Algorithm internals (hidden from the constructor; override in subclass</span>
+    <span class="c1"># to tune). ``ClassVar` keeps them out of ``model_fields`` so they are</span>
+    <span class="c1"># not constructor parameters, matching the pre-migration behaviour.</span>
+    <span class="n">beta</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="mf">2.0</span>          <span class="c1"># anisotropy exponent in composite cost</span>
+    <span class="n">gamma</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.2</span>         <span class="c1"># MAD penalty weight in composite cost numerator</span>
+    <span class="n">gauss_n_iter</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">2</span>      <span class="c1"># SubtractGaussian iterations</span>
+    <span class="n">delta</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span>         <span class="c1"># Dijkstra radial retreat penalty</span>
+    <span class="n">pct_n_orient</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">8</span>      <span class="c1"># phase congruency angular resolution</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
-            <span class="bp">self</span><span class="p">,</span>
-            <span class="n">inoculum_detector</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">ObjectDetector</span><span class="p">,</span> <span class="s1">&#39;ImagePipeline&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-            <span class="c1"># ── Scene parameters ──</span>
-            <span class="n">max_colony_radius_px</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">250.0</span><span class="p">,</span>
-            <span class="n">min_branch_width_px</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
-            <span class="c1"># ── Explicit user knobs ──</span>
-            <span class="n">ignore_borders</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-            <span class="n">edge_noise_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">6.0</span><span class="p">,</span>
-            <span class="n">reconnection_tolerance</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.5</span><span class="p">,</span>
-            <span class="n">max_gap_length</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">30</span><span class="p">,</span>
-            <span class="n">border_margin_px</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">50</span><span class="p">,</span>
-            <span class="n">frag_reach_px</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
-            <span class="n">gap_crossing_penalty</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">4.0</span><span class="p">,</span>
-            <span class="o">*</span><span class="p">,</span>
-            <span class="c1"># ── Scene-derivation overrides (None → auto-derived) ──</span>
-            <span class="n">gauss_sigma</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-            <span class="n">tile_size</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-            <span class="n">tile_overlap</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-            <span class="n">pct_min_wavelength</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-            <span class="n">mad_window</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-            <span class="n">path_dilation_radius</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-            <span class="n">snr_margin</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-            <span class="n">coherence_window_radius</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="p">):</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+    <span class="c1"># ── Inoculum detector (None → default pipeline, filled by validator) ──</span>
+    <span class="c1"># ``OperationField`` preserves the concrete detector/pipeline class</span>
+    <span class="c1"># across a JSON round-trip; ``| None`` keeps the unset sentinel that</span>
+    <span class="c1"># ``_derive_scene_params`` replaces with the default pipeline.</span>
+    <span class="n">inoculum_detector</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">OperationField</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
 
-        <span class="c1"># Type validation (allow None for serialization/deserialization)</span>
-        <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImagePipeline</span>
+    <span class="c1"># ── Scene parameters ──</span>
+    <span class="n">max_colony_radius_px</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">250.0</span>
+    <span class="n">min_branch_width_px</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span>
 
-        <span class="k">if</span> <span class="n">inoculum_detector</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span>
-                <span class="n">inoculum_detector</span><span class="p">,</span> <span class="p">(</span><span class="n">ObjectDetector</span><span class="p">,</span> <span class="n">ImagePipeline</span><span class="p">)</span>
-        <span class="p">):</span>
-            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
-                    <span class="s2">&quot;inoculum_detector must be an ObjectDetector or &quot;</span>
-                    <span class="s2">&quot;ImagePipeline instance, &quot;</span>
-                    <span class="sa">f</span><span class="s2">&quot;got </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">inoculum_detector</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span>
-            <span class="p">)</span>
+    <span class="c1"># ── Explicit user knobs ──</span>
+    <span class="n">ignore_borders</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">edge_noise_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">6.0</span>
+    <span class="n">reconnection_tolerance</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.5</span>
+    <span class="n">max_gap_length</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">30</span>
+    <span class="n">border_margin_px</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">50</span>
+    <span class="n">frag_reach_px</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span>
+    <span class="n">gap_crossing_penalty</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">4.0</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">inoculum_detector</span> <span class="o">=</span> <span class="n">inoculum_detector</span> <span class="k">if</span> <span class="n">inoculum_detector</span> \
-            <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">__center_pipe</span>
+    <span class="c1"># ── Scene-derivation overrides (None → auto-derived by the validator) ──</span>
+    <span class="n">gauss_sigma</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">tile_size</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">tile_overlap</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">pct_min_wavelength</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">mad_window</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">path_dilation_radius</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">snr_margin</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">coherence_window_radius</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
 
-        <span class="c1"># ── Scene knobs ──</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">max_colony_radius_px</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">max_colony_radius_px</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">min_branch_width_px</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">min_branch_width_px</span><span class="p">)</span>
+    <span class="nd">@model_validator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;after&quot;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_derive_scene_params</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Fill the default pipeline and scene-derived parameters.</span>
 
-        <span class="c1"># ── Explicit user knobs ──</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">ignore_borders</span> <span class="o">=</span> <span class="n">ignore_borders</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">edge_noise_threshold</span> <span class="o">=</span> <span class="n">edge_noise_threshold</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">reconnection_tolerance</span> <span class="o">=</span> <span class="n">reconnection_tolerance</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">max_gap_length</span> <span class="o">=</span> <span class="n">max_gap_length</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">border_margin_px</span> <span class="o">=</span> <span class="n">border_margin_px</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">frag_reach_px</span> <span class="o">=</span> <span class="n">frag_reach_px</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">gap_crossing_penalty</span> <span class="o">=</span> <span class="n">gap_crossing_penalty</span>
+<span class="sd">        Reproduces the body of the pre-migration ``__init__``:</span>
 
-        <span class="c1"># ── Scene-derived params (apply overrides if supplied) ──</span>
+<span class="sd">        * a ``None`` ``inoculum_detector`` is replaced with the lazily</span>
+<span class="sd">          built default ``InoculumDetector`` + ``GridSectionLargest``</span>
+<span class="sd">          pipeline (the field default cannot be a live pipeline because</span>
+<span class="sd">          operations are uninstantiable at class-definition time);</span>
+<span class="sd">        * each scene-derivation override left at ``None`` is computed</span>
+<span class="sd">          from ``max_colony_radius_px`` / ``min_branch_width_px`` using</span>
+<span class="sd">          the ``_*_PER_*`` multipliers, with ``mad_window`` forced odd.</span>
+
+<span class="sd">        Bad ``inoculum_detector`` types are rejected by the field&#39;s</span>
+<span class="sd">        ``ObjectDetector | ImagePipeline | None`` annotation before this</span>
+<span class="sd">        validator runs.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">inoculum_detector</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">inoculum_detector</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__build_center_pipe</span><span class="p">()</span>
+
         <span class="n">R</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_colony_radius_px</span>
         <span class="n">w</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_branch_width_px</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">gauss_sigma</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="nb">float</span><span class="p">(</span><span class="n">gauss_sigma</span><span class="p">)</span> <span class="k">if</span> <span class="n">gauss_sigma</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-            <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">_GAUSS_SIGMA_PER_R</span> <span class="o">*</span> <span class="n">R</span>
-        <span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">tile_size</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="nb">int</span><span class="p">(</span><span class="n">tile_size</span><span class="p">)</span> <span class="k">if</span> <span class="n">tile_size</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-            <span class="k">else</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_TILE_SIZE_PER_R</span> <span class="o">*</span> <span class="n">R</span><span class="p">))</span>
-        <span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">tile_overlap</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="nb">int</span><span class="p">(</span><span class="n">tile_overlap</span><span class="p">)</span> <span class="k">if</span> <span class="n">tile_overlap</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-            <span class="k">else</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_TILE_OVERLAP_PER_R</span> <span class="o">*</span> <span class="n">R</span><span class="p">))</span>
-        <span class="p">)</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">pct_min_wavelength</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="nb">float</span><span class="p">(</span><span class="n">pct_min_wavelength</span><span class="p">)</span> <span class="k">if</span> <span class="n">pct_min_wavelength</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-            <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">_WAVELENGTH_PER_W</span> <span class="o">*</span> <span class="n">w</span>
-        <span class="p">)</span>
-        <span class="c1"># mad_window must be odd; +1 on an even 2w keeps it odd.</span>
-        <span class="n">_mad_default</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_MAD_WINDOW_PER_W</span> <span class="o">*</span> <span class="n">w</span><span class="p">))</span> <span class="o">+</span> <span class="mi">1</span>
-        <span class="k">if</span> <span class="n">_mad_default</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="n">_mad_default</span> <span class="o">+=</span> <span class="mi">1</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">mad_window</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="nb">int</span><span class="p">(</span><span class="n">mad_window</span><span class="p">)</span> <span class="k">if</span> <span class="n">mad_window</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">_mad_default</span>
-        <span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">path_dilation_radius</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="nb">int</span><span class="p">(</span><span class="n">path_dilation_radius</span><span class="p">)</span> <span class="k">if</span> <span class="n">path_dilation_radius</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-            <span class="k">else</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_PATH_DILATION_PER_W</span> <span class="o">*</span> <span class="n">w</span><span class="p">)))</span>
-        <span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">snr_margin</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="nb">int</span><span class="p">(</span><span class="n">snr_margin</span><span class="p">)</span> <span class="k">if</span> <span class="n">snr_margin</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-            <span class="k">else</span> <span class="nb">max</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_SNR_MARGIN_PER_W</span> <span class="o">*</span> <span class="n">w</span><span class="p">)))</span>
-        <span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">coherence_window_radius</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="nb">int</span><span class="p">(</span><span class="n">coherence_window_radius</span><span class="p">)</span> <span class="k">if</span> <span class="n">coherence_window_radius</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-            <span class="k">else</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_COHERENCE_RADIUS_PER_W</span> <span class="o">*</span> <span class="n">w</span><span class="p">))</span>
-        <span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">gauss_sigma</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">gauss_sigma</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_GAUSS_SIGMA_PER_R</span> <span class="o">*</span> <span class="n">R</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">tile_size</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">tile_size</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_TILE_SIZE_PER_R</span> <span class="o">*</span> <span class="n">R</span><span class="p">))</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">tile_overlap</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">tile_overlap</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_TILE_OVERLAP_PER_R</span> <span class="o">*</span> <span class="n">R</span><span class="p">))</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">pct_min_wavelength</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">pct_min_wavelength</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_WAVELENGTH_PER_W</span> <span class="o">*</span> <span class="n">w</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mad_window</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># mad_window must be odd; +1 on an even 2w keeps it odd.</span>
+            <span class="n">_mad_default</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_MAD_WINDOW_PER_W</span> <span class="o">*</span> <span class="n">w</span><span class="p">))</span> <span class="o">+</span> <span class="mi">1</span>
+            <span class="k">if</span> <span class="n">_mad_default</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">_mad_default</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">mad_window</span> <span class="o">=</span> <span class="n">_mad_default</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">path_dilation_radius</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">path_dilation_radius</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span>
+                    <span class="mi">1</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_PATH_DILATION_PER_W</span> <span class="o">*</span> <span class="n">w</span><span class="p">))</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">snr_margin</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">snr_margin</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_SNR_MARGIN_PER_W</span> <span class="o">*</span> <span class="n">w</span><span class="p">)))</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">coherence_window_radius</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">coherence_window_radius</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span>
+                    <span class="nb">round</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_COHERENCE_RADIUS_PER_W</span> <span class="o">*</span> <span class="n">w</span><span class="p">)</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="s1">&#39;GridImage&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;GridImage&#39;</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Detect and separate filamentous fungi using grid-based Voronoi partition.</span>

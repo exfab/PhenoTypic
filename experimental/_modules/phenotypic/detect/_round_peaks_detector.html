@@ -648,69 +648,19 @@
 <span class="sd">            In-depth comparison of all detection strategies.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-<div class="viewcode-block" id="RoundPeaksDetector.__init__">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.detect.html#phenotypic.detect.RoundPeaksDetector.__init__">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
-            <span class="bp">self</span><span class="p">,</span>
-            <span class="n">thresh_method</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span>
-                <span class="s2">&quot;otsu&quot;</span><span class="p">,</span> <span class="s2">&quot;mean&quot;</span><span class="p">,</span> <span class="s2">&quot;local&quot;</span><span class="p">,</span> <span class="s2">&quot;triangle&quot;</span><span class="p">,</span> <span class="s2">&quot;minimum&quot;</span><span class="p">,</span> <span class="s2">&quot;isodata&quot;</span><span class="p">,</span> <span class="s2">&quot;li&quot;</span>
-            <span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;otsu&quot;</span><span class="p">,</span>
-            <span class="n">subtract_background</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-            <span class="n">remove_noise</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-            <span class="n">footprint_width</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">6</span><span class="p">,</span>
-            <span class="n">noise_radius</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
-            <span class="n">smoothing_sigma</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.0</span><span class="p">,</span>
-            <span class="n">min_peak_distance</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-            <span class="n">peak_prominence</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-            <span class="n">edge_refinement</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-            <span class="n">selection_mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;dominant&quot;</span><span class="p">,</span> <span class="s2">&quot;centered&quot;</span><span class="p">,</span> <span class="s2">&quot;regularized&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;dominant&quot;</span><span class="p">,</span>
-            <span class="n">split_merged</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-    <span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Initialize the RoundPeaksDetector with specified parameters.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            thresh_method: Method for thresholding the image. Options are:</span>
-<span class="sd">                &#39;otsu&#39; (default), &#39;mean&#39;, &#39;local&#39;, &#39;triangle&#39;, &#39;minimum&#39;,</span>
-<span class="sd">                &#39;isodata&#39;, &#39;li&#39;.</span>
-<span class="sd">            subtract_background: If True, apply white tophat transform to remove</span>
-<span class="sd">                background variations before thresholding.</span>
-<span class="sd">            remove_noise: If True, apply morphological opening to remove small</span>
-<span class="sd">                noise artifacts from the binary mask.</span>
-<span class="sd">            footprint_width: Width in pixels for the background subtraction kernel.</span>
-<span class="sd">                When a GridImage is provided, an adaptive kernel sized to 1.5x</span>
-<span class="sd">                colony spacing is used instead, making this a fallback.</span>
-<span class="sd">            noise_radius: Radius for the diamond structuring element used in</span>
-<span class="sd">                morphological noise removal. Default 1 (3x3 diamond, matching</span>
-<span class="sd">                gitter). Increase for larger noise artifacts.</span>
-<span class="sd">            smoothing_sigma: Standard deviation for Gaussian smoothing of intensity</span>
-<span class="sd">                profiles before peak detection. Set to 0 to disable smoothing.</span>
-<span class="sd">            min_peak_distance: Minimum allowed distance between detected peaks.</span>
-<span class="sd">                If None, automatically estimated from grid dimensions.</span>
-<span class="sd">            peak_prominence: Minimum prominence required for peak detection.</span>
-<span class="sd">                If None, automatically calculated as 0.1 * signal range.</span>
-<span class="sd">            edge_refinement: If True, refine grid edges using weighted intensity</span>
-<span class="sd">                profiles for improved accuracy.</span>
-<span class="sd">            selection_mode: Strategy for choosing one object per grid cell.</span>
-<span class="sd">                &#39;dominant&#39; (default) keeps the largest, &#39;centered&#39; keeps</span>
-<span class="sd">                the most centred, &#39;regularized&#39; uses a global fit.</span>
-<span class="sd">            split_merged: If True (default), pre-split merged colonies that</span>
-<span class="sd">                span multiple grid cells using EDT watershed before assignment.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">thresh_method</span> <span class="o">=</span> <span class="n">thresh_method</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">subtract_background</span> <span class="o">=</span> <span class="n">subtract_background</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">footprint_radius</span> <span class="o">=</span> <span class="n">footprint_width</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">noise_radius</span> <span class="o">=</span> <span class="n">noise_radius</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">remove_noise</span> <span class="o">=</span> <span class="n">remove_noise</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">smoothing_sigma</span> <span class="o">=</span> <span class="n">smoothing_sigma</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">min_peak_distance</span> <span class="o">=</span> <span class="n">min_peak_distance</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">peak_prominence</span> <span class="o">=</span> <span class="n">peak_prominence</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">edge_refinement</span> <span class="o">=</span> <span class="n">edge_refinement</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">selection_mode</span> <span class="o">=</span> <span class="n">selection_mode</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">split_merged</span> <span class="o">=</span> <span class="n">split_merged</span></div>
-
+    <span class="n">thresh_method</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span>
+        <span class="s2">&quot;otsu&quot;</span><span class="p">,</span> <span class="s2">&quot;mean&quot;</span><span class="p">,</span> <span class="s2">&quot;local&quot;</span><span class="p">,</span> <span class="s2">&quot;triangle&quot;</span><span class="p">,</span> <span class="s2">&quot;minimum&quot;</span><span class="p">,</span> <span class="s2">&quot;isodata&quot;</span><span class="p">,</span> <span class="s2">&quot;li&quot;</span>
+    <span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;otsu&quot;</span>
+    <span class="n">subtract_background</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">remove_noise</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">footprint_width</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">6</span>
+    <span class="n">noise_radius</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">smoothing_sigma</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.0</span>
+    <span class="n">min_peak_distance</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">peak_prominence</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">edge_refinement</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">selection_mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;dominant&quot;</span><span class="p">,</span> <span class="s2">&quot;centered&quot;</span><span class="p">,</span> <span class="s2">&quot;regularized&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;dominant&quot;</span>
+    <span class="n">split_merged</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
 
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_round_odd</span><span class="p">(</span><span class="n">n</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
@@ -862,7 +812,7 @@
             <span class="n">bg_w</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_round_odd</span><span class="p">(</span><span class="nb">round</span><span class="p">((</span><span class="n">matrix</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">/</span> <span class="p">(</span><span class="n">ncols</span> <span class="ow">or</span> <span class="n">nrows</span><span class="p">))</span> <span class="o">*</span> <span class="mf">1.5</span><span class="p">))</span>
             <span class="n">kernel</span> <span class="o">=</span> <span class="n">morphology</span><span class="o">.</span><span class="n">footprint_rectangle</span><span class="p">((</span><span class="n">bg_h</span><span class="p">,</span> <span class="n">bg_w</span><span class="p">))</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">dim</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_round_odd</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">footprint_radius</span> <span class="o">*</span> <span class="mi">2</span><span class="p">)</span>
+            <span class="n">dim</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_round_odd</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">footprint_width</span> <span class="o">*</span> <span class="mi">2</span><span class="p">)</span>
             <span class="n">kernel</span> <span class="o">=</span> <span class="n">morphology</span><span class="o">.</span><span class="n">footprint_rectangle</span><span class="p">((</span><span class="n">dim</span><span class="p">,</span> <span class="n">dim</span><span class="p">))</span>
 
         <span class="n">enh_matrix</span> <span class="o">=</span> <span class="n">matrix</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>  <span class="c1"># Work on a copy to avoid modifying input</span>
@@ -879,7 +829,7 @@
                 <span class="n">thresh</span> <span class="o">=</span> <span class="n">filters</span><span class="o">.</span><span class="n">threshold_mean</span><span class="p">(</span><span class="n">enh_matrix</span><span class="p">)</span>
             <span class="k">case</span> <span class="s2">&quot;local&quot;</span><span class="p">:</span>
                 <span class="n">block_size</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">footprint_radius</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">3</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">footprint_width</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">3</span>
                 <span class="p">)</span>  <span class="c1"># Ensure odd block size</span>
                 <span class="n">thresh</span> <span class="o">=</span> <span class="n">filters</span><span class="o">.</span><span class="n">threshold_local</span><span class="p">(</span><span class="n">enh_matrix</span><span class="p">,</span> <span class="n">block_size</span><span class="o">=</span><span class="n">block_size</span><span class="p">)</span>
             <span class="k">case</span> <span class="s2">&quot;triangle&quot;</span><span class="p">:</span>

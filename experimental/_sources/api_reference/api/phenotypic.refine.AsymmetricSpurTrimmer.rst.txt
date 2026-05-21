@@ -18,10 +18,52 @@ phenotypic.refine.AsymmetricSpurTrimmer
    
       ~AsymmetricSpurTrimmer.__init__
       ~AsymmetricSpurTrimmer.apply
+      ~AsymmetricSpurTrimmer.construct
+      ~AsymmetricSpurTrimmer.copy
+      ~AsymmetricSpurTrimmer.dict
+      ~AsymmetricSpurTrimmer.from_orm
+      ~AsymmetricSpurTrimmer.json
+      ~AsymmetricSpurTrimmer.model_construct
+      ~AsymmetricSpurTrimmer.model_copy
+      ~AsymmetricSpurTrimmer.model_dump
+      ~AsymmetricSpurTrimmer.model_dump_json
+      ~AsymmetricSpurTrimmer.model_json_schema
+      ~AsymmetricSpurTrimmer.model_parametrized_name
+      ~AsymmetricSpurTrimmer.model_post_init
+      ~AsymmetricSpurTrimmer.model_rebuild
+      ~AsymmetricSpurTrimmer.model_validate
+      ~AsymmetricSpurTrimmer.model_validate_json
+      ~AsymmetricSpurTrimmer.model_validate_strings
+      ~AsymmetricSpurTrimmer.parse_file
+      ~AsymmetricSpurTrimmer.parse_obj
+      ~AsymmetricSpurTrimmer.parse_raw
+      ~AsymmetricSpurTrimmer.schema
+      ~AsymmetricSpurTrimmer.schema_json
+      ~AsymmetricSpurTrimmer.update_forward_refs
+      ~AsymmetricSpurTrimmer.validate
       ~AsymmetricSpurTrimmer.widget
    
    
 
    
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~AsymmetricSpurTrimmer.model_computed_fields
+      ~AsymmetricSpurTrimmer.model_config
+      ~AsymmetricSpurTrimmer.model_extra
+      ~AsymmetricSpurTrimmer.model_fields
+      ~AsymmetricSpurTrimmer.model_fields_set
+      ~AsymmetricSpurTrimmer.symmetry_threshold
+      ~AsymmetricSpurTrimmer.n_angular_bins
+      ~AsymmetricSpurTrimmer.n_annuli
+      ~AsymmetricSpurTrimmer.pelt_penalty
+      ~AsymmetricSpurTrimmer.smoothing_window
+      ~AsymmetricSpurTrimmer.method
+      ~AsymmetricSpurTrimmer.beehive_threshold
+      ~AsymmetricSpurTrimmer.min_cc_area
+      ~AsymmetricSpurTrimmer.min_object_area
    
    

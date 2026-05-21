@@ -18,10 +18,46 @@ phenotypic.refine.MaskCloser
    
       ~MaskCloser.__init__
       ~MaskCloser.apply
+      ~MaskCloser.construct
+      ~MaskCloser.copy
+      ~MaskCloser.dict
+      ~MaskCloser.from_orm
+      ~MaskCloser.json
+      ~MaskCloser.model_construct
+      ~MaskCloser.model_copy
+      ~MaskCloser.model_dump
+      ~MaskCloser.model_dump_json
+      ~MaskCloser.model_json_schema
+      ~MaskCloser.model_parametrized_name
+      ~MaskCloser.model_post_init
+      ~MaskCloser.model_rebuild
+      ~MaskCloser.model_validate
+      ~MaskCloser.model_validate_json
+      ~MaskCloser.model_validate_strings
+      ~MaskCloser.parse_file
+      ~MaskCloser.parse_obj
+      ~MaskCloser.parse_raw
+      ~MaskCloser.schema
+      ~MaskCloser.schema_json
+      ~MaskCloser.update_forward_refs
+      ~MaskCloser.validate
       ~MaskCloser.widget
    
    
 
    
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~MaskCloser.model_computed_fields
+      ~MaskCloser.model_config
+      ~MaskCloser.model_extra
+      ~MaskCloser.model_fields
+      ~MaskCloser.model_fields_set
+      ~MaskCloser.shape
+      ~MaskCloser.width
+      ~MaskCloser.n_iter
    
    

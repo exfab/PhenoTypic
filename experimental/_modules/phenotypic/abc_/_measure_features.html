@@ -598,7 +598,7 @@
 
 <span class="sd">    This class follows a strict pattern where subclasses implement minimal code:</span>
 
-<span class="sd">    1. **__init__:** Define parameters and configuration for your measurement</span>
+<span class="sd">    1. **Fields:** Declare parameters as annotated class-level fields</span>
 <span class="sd">    2. **_operate(image: Image) -&gt; pd.DataFrame:** Implement your measurement logic</span>
 <span class="sd">    3. Everything else (type validation, metadata handling, exception handling) is</span>
 <span class="sd">       handled by the `measure()` method</span>
@@ -611,13 +611,13 @@
 <span class="sd">    Users call the public API method `measure(image, include_meta=False)`, which:</span>
 
 <span class="sd">    1. Validates input (Image object with detected objects)</span>
-<span class="sd">    2. Extracts operation parameters using introspection</span>
-<span class="sd">    3. Calls `_operate()` with matched parameters</span>
-<span class="sd">    4. Optionally merges image metadata into results</span>
-<span class="sd">    5. Returns a pandas DataFrame with object labels in the first column</span>
+<span class="sd">    2. Calls `_operate()`, which reads operation parameters from ``self``</span>
+<span class="sd">    3. Optionally merges image metadata into results</span>
+<span class="sd">    4. Returns a pandas DataFrame with object labels in the first column</span>
 
-<span class="sd">    Subclasses **only** override `_operate()` and `__init__()`. The `measure()`</span>
-<span class="sd">    method provides automatic validation, exception handling, and metadata merging.</span>
+<span class="sd">    Subclasses **only** override `_operate()` and declare their parameter</span>
+<span class="sd">    fields. The `measure()` method provides automatic validation, exception</span>
+<span class="sd">    handling, and metadata merging.</span>
 
 <span class="sd">    **Accessing Image Data in _operate():**</span>
 
@@ -690,11 +690,13 @@
 <span class="sd">    &gt;&gt;&gt; import pandas as pd</span>
 <span class="sd">    &gt;&gt;&gt; import numpy as np</span>
 <span class="sd">    &gt;&gt;&gt; class MeasureCustom(MeasureFeatures):</span>
-<span class="sd">    ...     &#39;&#39;&#39;Measure custom morphology metrics for microbial colonies.&#39;&#39;&#39;</span>
+<span class="sd">    ...     &#39;&#39;&#39;Measure custom morphology metrics for microbial colonies.</span>
 <span class="sd">    ...</span>
-<span class="sd">    ...     def __init__(self, intensity_threshold=100):</span>
-<span class="sd">    ...         &#39;&#39;&#39;Initialize with intensity threshold for bright pixels.&#39;&#39;&#39;</span>
-<span class="sd">    ...         self.intensity_threshold = intensity_threshold</span>
+<span class="sd">    ...     Args:</span>
+<span class="sd">    ...         intensity_threshold: Intensity cutoff for bright pixels.</span>
+<span class="sd">    ...     &#39;&#39;&#39;</span>
+<span class="sd">    ...</span>
+<span class="sd">    ...     intensity_threshold: int = 100  # Annotated class-level field</span>
 <span class="sd">    ...</span>
 <span class="sd">    ...     def _operate(self, image):</span>
 <span class="sd">    ...         &#39;&#39;&#39;Extract bright region area and mean intensity.&#39;&#39;&#39;</span>
@@ -744,7 +746,8 @@
 <span class="sd">    genetic and environmental association studies.</span>
 
 <span class="sd">    Attributes:</span>
-<span class="sd">        No public attributes. Configuration is passed through __init__() parameters.</span>
+<span class="sd">        No public attributes at this level. Subclasses declare measurement</span>
+<span class="sd">        parameters as annotated class-level fields.</span>
 
 <span class="sd">    Examples:</span>
 <span class="sd">        Basic usage: measure colony area and intensity:</span>
@@ -848,8 +851,7 @@
 <span class="sd">        When you subclass MeasureFeatures, you only implement _operate(). This</span>
 <span class="sd">        measure() method automatically:</span>
 
-<span class="sd">        - Extracts __init__ parameters from your instance (introspection)</span>
-<span class="sd">        - Passes matched parameters to _operate() as keyword arguments</span>
+<span class="sd">        - Calls _operate(), which reads its parameters from ``self``</span>
 <span class="sd">        - Validates the Image has detected objects (objmap)</span>
 <span class="sd">        - Wraps exceptions in OperationFailedError with context</span>
 <span class="sd">        - Merges grid/object metadata if requested</span>

@@ -18,10 +18,46 @@ phenotypic.enhance.OpeningSubtractBg
    
       ~OpeningSubtractBg.__init__
       ~OpeningSubtractBg.apply
+      ~OpeningSubtractBg.construct
+      ~OpeningSubtractBg.copy
+      ~OpeningSubtractBg.dict
+      ~OpeningSubtractBg.from_orm
+      ~OpeningSubtractBg.json
+      ~OpeningSubtractBg.model_construct
+      ~OpeningSubtractBg.model_copy
+      ~OpeningSubtractBg.model_dump
+      ~OpeningSubtractBg.model_dump_json
+      ~OpeningSubtractBg.model_json_schema
+      ~OpeningSubtractBg.model_parametrized_name
+      ~OpeningSubtractBg.model_post_init
+      ~OpeningSubtractBg.model_rebuild
+      ~OpeningSubtractBg.model_validate
+      ~OpeningSubtractBg.model_validate_json
+      ~OpeningSubtractBg.model_validate_strings
+      ~OpeningSubtractBg.parse_file
+      ~OpeningSubtractBg.parse_obj
+      ~OpeningSubtractBg.parse_raw
+      ~OpeningSubtractBg.schema
+      ~OpeningSubtractBg.schema_json
+      ~OpeningSubtractBg.update_forward_refs
+      ~OpeningSubtractBg.validate
       ~OpeningSubtractBg.widget
    
    
 
    
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~OpeningSubtractBg.model_computed_fields
+      ~OpeningSubtractBg.model_config
+      ~OpeningSubtractBg.model_extra
+      ~OpeningSubtractBg.model_fields
+      ~OpeningSubtractBg.model_fields_set
+      ~OpeningSubtractBg.shape
+      ~OpeningSubtractBg.width
+      ~OpeningSubtractBg.n_iter
    
    

@@ -537,6 +537,7 @@
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">colour</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">PrivateAttr</span><span class="p">,</span> <span class="n">field_validator</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">skimage.color</span><span class="w"> </span><span class="kn">import</span> <span class="n">rgb2gray</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">...abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageCorrector</span>
@@ -573,6 +574,10 @@
 <span class="sd">      dyed or pigmented colonies.</span>
 
 <span class="sd">    Attributes:</span>
+<span class="sd">        profile: A fitted :class:`ColorCheckerProfile` supplying the</span>
+<span class="sd">            root-polynomial correction matrix and expansion degree. Must</span>
+<span class="sd">            already be fitted; an unfitted profile is rejected at</span>
+<span class="sd">            construction.</span>
 <span class="sd">        correction_matrix: The root-polynomial correction matrix stored as</span>
 <span class="sd">            a nested list (serialisable).</span>
 <span class="sd">        degree: Polynomial expansion degree matching the profile.</span>
@@ -585,35 +590,52 @@
 <span class="sd">        &gt;&gt;&gt; import numpy as np</span>
 <span class="sd">        &gt;&gt;&gt; profile = ColorCheckerProfile(rois=[...], degree=2)  # doctest: +SKIP</span>
 <span class="sd">        &gt;&gt;&gt; profile.fit(image)  # doctest: +SKIP</span>
-<span class="sd">        &gt;&gt;&gt; corrector = ColorCorrector(profile)  # doctest: +SKIP</span>
+<span class="sd">        &gt;&gt;&gt; corrector = ColorCorrector(profile=profile)  # doctest: +SKIP</span>
 <span class="sd">        &gt;&gt;&gt; corrected = corrector.apply(image)  # doctest: +SKIP</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-<div class="viewcode-block" id="ColorCorrector.__init__">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.correction.html#phenotypic.correction.ColorCorrector.__init__">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="n">profile</span><span class="p">:</span> <span class="n">ColorCheckerProfile</span><span class="p">,</span>
-        <span class="n">output_illuminant</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;D65&quot;</span><span class="p">,</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialise the corrector from a fitted profile.</span>
+    <span class="n">profile</span><span class="p">:</span> <span class="n">ColorCheckerProfile</span>
+    <span class="n">output_illuminant</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;D65&quot;</span>
 
-<span class="sd">        Args:</span>
-<span class="sd">            profile: A fitted :class:`ColorCheckerProfile`.</span>
-<span class="sd">            output_illuminant: Target illuminant label (metadata only).</span>
+    <span class="c1">#: Float64 view of the profile&#39;s correction matrix, materialised once</span>
+    <span class="c1">#: in :meth:`model_post_init` and read by :meth:`_operate`.</span>
+    <span class="n">_ccm</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">PrivateAttr</span><span class="p">()</span>
 
-<span class="sd">        Raises:</span>
-<span class="sd">            ValueError: If *profile* has not been fitted.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;profile&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_require_fitted_profile</span><span class="p">(</span>
+        <span class="bp">cls</span><span class="p">,</span> <span class="n">profile</span><span class="p">:</span> <span class="n">ColorCheckerProfile</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ColorCheckerProfile</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Reject an unfitted profile (pre-migration ``__init__`` guard).&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">profile</span><span class="o">.</span><span class="n">is_fitted</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;ColorCheckerProfile must be fitted before use.&quot;</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_profile</span> <span class="o">=</span> <span class="n">profile</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">correction_matrix</span> <span class="o">=</span> <span class="n">profile</span><span class="o">.</span><span class="n">correction_matrix</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_ccm</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">correction_matrix</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">degree</span> <span class="o">=</span> <span class="n">profile</span><span class="o">.</span><span class="n">degree</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">output_illuminant</span> <span class="o">=</span> <span class="n">output_illuminant</span></div>
+        <span class="k">return</span> <span class="n">profile</span>
 
+<div class="viewcode-block" id="ColorCorrector.model_post_init">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.correction.html#phenotypic.correction.ColorCorrector.model_post_init">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">model_post_init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">__context</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Materialise the float64 correction matrix after construction.</span>
+
+<span class="sd">        Extends :meth:`BaseOperation.model_post_init` (which sets up the</span>
+<span class="sd">        logger): caches a ``float64`` copy of the fitted profile&#39;s</span>
+<span class="sd">        correction matrix so :meth:`_operate` does not rebuild it per call.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            __context: Pydantic post-init context (unused).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">model_post_init</span><span class="p">(</span><span class="n">__context</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ccm</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">profile</span><span class="o">.</span><span class="n">correction_matrix</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span></div>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">correction_matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The root-polynomial correction matrix as a nested list.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ccm</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">degree</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Polynomial expansion degree, matching the profile.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">profile</span><span class="o">.</span><span class="n">degree</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply root-polynomial colour correction to the image.</span>
@@ -689,7 +711,7 @@
 <span class="sd">        Returns:</span>
 <span class="sd">            The Panel layout object.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_profile</span><span class="o">.</span><span class="n">dashboard</span><span class="p">(</span><span class="n">show</span><span class="o">=</span><span class="n">show</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">profile</span><span class="o">.</span><span class="n">dashboard</span><span class="p">(</span><span class="n">show</span><span class="o">=</span><span class="n">show</span><span class="p">)</span></div>
 </div>
 
 </pre></div>

@@ -639,9 +639,7 @@
 <span class="sd">        from scipy.ndimage import gaussian_filter</span>
 
 <span class="sd">        class MyCustomEnhancer(ImageEnhancer):</span>
-<span class="sd">            def __init__(self, sigma: float = 1.0):</span>
-<span class="sd">                super().__init__()</span>
-<span class="sd">                self.sigma = sigma  # Instance attribute matched to _operate()</span>
+<span class="sd">            sigma: float = 1.0  # Annotated class-level field</span>
 
 <span class="sd">            def _operate(self, image: Image) -&gt; Image:</span>
 <span class="sd">                # Modify ONLY detect_mat; read, process, write back</span>
@@ -811,9 +809,7 @@
 <span class="sd">        &gt;&gt;&gt; from scipy.ndimage import gaussian_filter</span>
 <span class="sd">        &gt;&gt;&gt;</span>
 <span class="sd">        &gt;&gt;&gt; class GaussianEnhancer(ImageEnhancer):</span>
-<span class="sd">        ...     def __init__(self, sigma=1.5):</span>
-<span class="sd">        ...         super().__init__()</span>
-<span class="sd">        ...         self.sigma = sigma</span>
+<span class="sd">        ...     sigma: float = 1.5</span>
 <span class="sd">        ...     def _operate(self, image):</span>
 <span class="sd">        ...         enh = image.detect_mat[:]</span>
 <span class="sd">        ...         filtered = gaussian_filter(enh.astype(float), sigma=self.sigma)</span>
@@ -833,10 +829,8 @@
 <span class="sd">        &gt;&gt;&gt; from skimage.morphology import closing</span>
 <span class="sd">        &gt;&gt;&gt;</span>
 <span class="sd">        &gt;&gt;&gt; class MorphologicalEnhancer(ImageEnhancer):</span>
-<span class="sd">        ...     def __init__(self, operation=&#39;closing&#39;, width=3):</span>
-<span class="sd">        ...         super().__init__()</span>
-<span class="sd">        ...         self.operation = operation</span>
-<span class="sd">        ...         self.width = width</span>
+<span class="sd">        ...     operation: str = &#39;closing&#39;</span>
+<span class="sd">        ...     width: int = 3</span>
 <span class="sd">        ...     def _operate(self, image):</span>
 <span class="sd">        ...         enh = image.detect_mat[:]</span>
 <span class="sd">        ...         footprint = ImageEnhancer._make_footprint(&#39;disk&#39;, self.width)</span>
@@ -857,7 +851,7 @@
 <span class="sd">        &gt;&gt;&gt; from phenotypic.data import load_synth_yeast_plate</span>
 <span class="sd">        &gt;&gt;&gt;</span>
 <span class="sd">        &gt;&gt;&gt; image = load_synth_yeast_plate()</span>
-<span class="sd">        &gt;&gt;&gt; pipeline = ImagePipeline([</span>
+<span class="sd">        &gt;&gt;&gt; pipeline = ImagePipeline(pipe_cfgs=[</span>
 <span class="sd">        ...     GaussianBlur(sigma=1.5),</span>
 <span class="sd">        ...     CLAHE(clip_limit=2.0),</span>
 <span class="sd">        ...     OtsuDetector()</span>

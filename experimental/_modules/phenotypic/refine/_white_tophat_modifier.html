@@ -536,6 +536,7 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ObjectRefiner</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.mixin</span><span class="w"> </span><span class="kn">import</span> <span class="n">FootprintMixin</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">NdArrayField</span>
 
 
 <div class="viewcode-block" id="WhiteTophat">
@@ -584,38 +585,8 @@
 <span class="sd">        morphological refinement methods.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-<div class="viewcode-block" id="WhiteTophat.__init__">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.refine.html#phenotypic.refine.WhiteTophat.__init__">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
-                 <span class="n">shape</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;disk&quot;</span><span class="p">,</span> <span class="s2">&quot;square&quot;</span><span class="p">,</span> <span class="s2">&quot;diamond&quot;</span><span class="p">]</span> <span class="o">|</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="s2">&quot;disk&quot;</span><span class="p">,</span>
-                 <span class="n">width</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Represents a structural element used to analyze and process images, specifically useful for microbial</span>
-<span class="sd">        colony analysis on solid media agar.</span>
-
-<span class="sd">        The class encapsulates the shape and size of the structural element. Structural elements are commonly</span>
-<span class="sd">        used in morphological image processing tasks such as dilations, erosions, opening, and closing. These</span>
-<span class="sd">        operations can enhance or isolate features of microbe colonies on agar plates, such as determining</span>
-<span class="sd">        colony size, spacing, or detecting connections between colonies.</span>
-
-<span class="sd">        Attributes:</span>
-<span class="sd">            shape (Literal[&quot;disk&quot;, &quot;square&quot;, &quot;diamond&quot;] | np.ndarray):</span>
-<span class="sd">                Defines the shape of the structural element. Choosing &quot;disk&quot; may help preserve the rounded</span>
-<span class="sd">                geometry of typical microbial colonies. &quot;Square&quot; and &quot;diamond&quot; shapes may be more useful for</span>
-<span class="sd">                colonies that form irregular or grid-based patterns. Supplying a custom numpy array (np.ndarray)</span>
-<span class="sd">                allows for complete customization of the structural element, which could be beneficial for non-</span>
-<span class="sd">                standard colony morphologies.</span>
-
-<span class="sd">            width (int | None):</span>
-<span class="sd">                Specifies the size of the structural element by defining the width. Larger widths will create</span>
-<span class="sd">                structural elements that can encompass larger colonies or areas of colonies, potentially aiding</span>
-<span class="sd">                in operations designed to merge close colonies. Smaller widths will result in more localized</span>
-<span class="sd">                structural elements, which can preserve fine details and delineate smaller colonies. A None</span>
-<span class="sd">                value assumes a default or minimal size.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="n">shape</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">width</span> <span class="o">=</span> <span class="n">width</span></div>
-
+    <span class="n">shape</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;disk&quot;</span><span class="p">,</span> <span class="s2">&quot;square&quot;</span><span class="p">,</span> <span class="s2">&quot;diamond&quot;</span><span class="p">]</span> <span class="o">|</span> <span class="n">NdArrayField</span> <span class="o">=</span> <span class="s2">&quot;disk&quot;</span>
+    <span class="n">width</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
         <span class="n">white_tophat_results</span> <span class="o">=</span> <span class="n">white_tophat</span><span class="p">(</span>

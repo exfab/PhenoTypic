@@ -526,11 +526,13 @@
   <h1>Source code for phenotypic.abc_._image_operation</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">overload</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">overload</span>
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._grid_image</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridImage</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">PrivateAttr</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">._base_operation</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseOperation</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.mixin</span><span class="w"> </span><span class="kn">import</span> <span class="n">LazyWidgetMixin</span>
@@ -641,9 +643,7 @@
 <span class="sd">    .. code-block:: python</span>
 
 <span class="sd">        class MyEnhancer(ImageEnhancer):</span>
-<span class="sd">            def __init__(self, sigma: float):</span>
-<span class="sd">                super().__init__()</span>
-<span class="sd">                self.sigma = sigma  # Instance attribute</span>
+<span class="sd">            sigma: float  # Annotated class-level field</span>
 
 <span class="sd">            def _operate(self, image: Image) -&gt; Image:</span>
 <span class="sd">                # Access parameters via self</span>
@@ -735,16 +735,16 @@
 <span class="sd">    ImageOperation supports parallel execution through operation serialization. When</span>
 <span class="sd">    ``ImagePipeline`` runs with multiple images, it:</span>
 
-<span class="sd">    1. Serializes the operation instance with all attributes (``op.__dict__``)</span>
-<span class="sd">    2. Sends the pickled operation to worker processes</span>
-<span class="sd">    3. Workers unpickle the operation (restoring all ``self.param`` values)</span>
+<span class="sd">    1. Serializes the operation instance with all fields (pydantic ``model_dump()``)</span>
+<span class="sd">    2. Sends the operation to worker processes</span>
+<span class="sd">    3. Workers reconstruct the operation (restoring all field values)</span>
 <span class="sd">    4. Workers call ``operation.apply(image)`` which invokes ``_operate(self, image)``</span>
 
 <span class="sd">    Instance methods work perfectly with parallel execution because the entire</span>
 <span class="sd">    operation object (with all parameters) is serialized together.</span>
 
 <span class="sd">    Attributes:</span>
-<span class="sd">        None (all operation state is stored in subclass instances as attributes).</span>
+<span class="sd">        None (all operation state is stored in subclass instances as fields).</span>
 
 <span class="sd">    Methods:</span>
 <span class="sd">        apply(image, inplace=False): User-facing method that applies the operation.</span>
@@ -770,8 +770,8 @@
 <span class="sd">          static method approach.</span>
 
 <span class="sd">        - **Parallel execution compatibility:** Instance methods work seamlessly with</span>
-<span class="sd">          parallel execution. Operations are serialized with all instance attributes</span>
-<span class="sd">          (``op.__dict__``) and unpickled in worker processes with full state restored.</span>
+<span class="sd">          parallel execution. Operations are serialized with all fields via pydantic</span>
+<span class="sd">          and reconstructed in worker processes with full state restored.</span>
 
 <span class="sd">        - **Automatic memory/performance tracking:** BaseOperation (parent class)</span>
 <span class="sd">          automatically tracks memory usage and execution time when the logger is</span>
@@ -793,9 +793,7 @@
 <span class="sd">        &gt;&gt;&gt; class GaussianEnhancer(ImageEnhancer):</span>
 <span class="sd">        ...     &#39;&#39;&#39;Custom enhancer applying Gaussian blur to detect_mat.&#39;&#39;&#39;</span>
 <span class="sd">        ...</span>
-<span class="sd">        ...     def __init__(self, sigma: float = 1.0):</span>
-<span class="sd">        ...         super().__init__()</span>
-<span class="sd">        ...         self.sigma = sigma  # Instance attribute</span>
+<span class="sd">        ...     sigma: float = 1.0  # Annotated class-level field</span>
 <span class="sd">        ...</span>
 <span class="sd">        ...     def _operate(self, image: Image) -&gt; Image:</span>
 <span class="sd">        ...         &#39;&#39;&#39;Apply Gaussian blur to detect_mat.&#39;&#39;&#39;</span>
@@ -821,10 +819,8 @@
 <span class="sd">        &gt;&gt;&gt; class PeakDetector(ObjectDetector):</span>
 <span class="sd">        ...     &#39;&#39;&#39;Detector using local peak finding to locate colonies.&#39;&#39;&#39;</span>
 <span class="sd">        ...</span>
-<span class="sd">        ...     def __init__(self, min_distance: int = 10, threshold_abs: int = 100):</span>
-<span class="sd">        ...         super().__init__()</span>
-<span class="sd">        ...         self.min_distance = min_distance</span>
-<span class="sd">        ...         self.threshold_abs = threshold_abs</span>
+<span class="sd">        ...     min_distance: int = 10  # Annotated class-level fields</span>
+<span class="sd">        ...     threshold_abs: int = 100</span>
 <span class="sd">        ...</span>
 <span class="sd">        ...     def _operate(self, image: Image) -&gt; Image:</span>
 <span class="sd">        ...         &#39;&#39;&#39;Find peaks in detect_mat and create object mask/map.&#39;&#39;&#39;</span>
@@ -892,10 +888,8 @@
 <span class="sd">        &gt;&gt;&gt; from phenotypic.abc_ import ImageOperation</span>
 <span class="sd">        &gt;&gt;&gt; from phenotypic import Image</span>
 <span class="sd">        &gt;&gt;&gt; class CustomThreshold(ImageOperation):</span>
-<span class="sd">        ...     def __init__(self, threshold: int, min_size: int = 5):</span>
-<span class="sd">        ...         super().__init__()</span>
-<span class="sd">        ...         self.threshold = threshold</span>
-<span class="sd">        ...         self.min_size = min_size</span>
+<span class="sd">        ...     threshold: int  # Annotated class-level fields</span>
+<span class="sd">        ...     min_size: int = 5</span>
 <span class="sd">        ...</span>
 <span class="sd">        ...     def _operate(self, image: Image) -&gt; Image:</span>
 <span class="sd">        ...         # Access parameters via self</span>
@@ -910,11 +904,18 @@
 <span class="sd">        # 3. The bound method includes self, so all parameters are available</span>
 <span class="sd">        &gt;&gt;&gt; result = op.apply(image)</span>
 <span class="sd">        # For parallel execution, the entire operation object (with all</span>
-<span class="sd">        # attributes) is pickled and sent to worker processes</span>
+<span class="sd">        # fields) is serialized via pydantic and sent to worker processes</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="c1"># Lazily-populated ipywidget UI handles used by ``LazyWidgetMixin``.</span>
+    <span class="c1"># Declared here (not on the plain mixin) so pydantic collects them as</span>
+    <span class="c1"># private attributes — see ``LazyWidgetMixin`` for the rationale.</span>
+    <span class="n">_ui</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="n">PrivateAttr</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+    <span class="n">_param_widgets</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">PrivateAttr</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+    <span class="n">_view_dropdown</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="n">PrivateAttr</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+    <span class="n">_update_button</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="n">PrivateAttr</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+    <span class="n">_output_widget</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="n">PrivateAttr</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+    <span class="n">_image_ref</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="n">PrivateAttr</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 
     <span class="nd">@overload</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">,</span> <span class="n">inplace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>

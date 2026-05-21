@@ -18,10 +18,44 @@ phenotypic.refine.Skeletonize
    
       ~Skeletonize.__init__
       ~Skeletonize.apply
+      ~Skeletonize.construct
+      ~Skeletonize.copy
+      ~Skeletonize.dict
+      ~Skeletonize.from_orm
+      ~Skeletonize.json
+      ~Skeletonize.model_construct
+      ~Skeletonize.model_copy
+      ~Skeletonize.model_dump
+      ~Skeletonize.model_dump_json
+      ~Skeletonize.model_json_schema
+      ~Skeletonize.model_parametrized_name
+      ~Skeletonize.model_post_init
+      ~Skeletonize.model_rebuild
+      ~Skeletonize.model_validate
+      ~Skeletonize.model_validate_json
+      ~Skeletonize.model_validate_strings
+      ~Skeletonize.parse_file
+      ~Skeletonize.parse_obj
+      ~Skeletonize.parse_raw
+      ~Skeletonize.schema
+      ~Skeletonize.schema_json
+      ~Skeletonize.update_forward_refs
+      ~Skeletonize.validate
       ~Skeletonize.widget
    
    
 
    
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Skeletonize.model_computed_fields
+      ~Skeletonize.model_config
+      ~Skeletonize.model_extra
+      ~Skeletonize.model_fields
+      ~Skeletonize.model_fields_set
+      ~Skeletonize.method
    
    
