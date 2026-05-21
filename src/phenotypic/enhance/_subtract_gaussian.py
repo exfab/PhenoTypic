@@ -6,6 +6,7 @@ if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
 import numpy as np
+from pydantic import field_validator
 from skimage.filters import gaussian
 
 from phenotypic.abc_ import ImageEnhancer
@@ -60,38 +61,20 @@ class SubtractGaussian(ImageEnhancer):
         illumination correction strategies.
     """
 
-    def __init__(
-            self,
-            sigma: float = 50.0,
-            mode: str = "reflect",
-            cval: float = 0.0,
-            truncate: float = 4.0,
-            preserve_range: bool = True,
-            n_iter: int = 1,
-    ):
-        """
-        Parameters:
-            sigma (float): Background scale. Set larger than colony diameter so
-                colonies are preserved while slow illumination is removed.
-            mode (str): Border handling; 'reflect' reduces artificial rims on plates.
-            cval (float): Fill value when `mode='constant'`.
-            truncate (float): Gaussian support in standard deviations (advanced).
-            preserve_range (bool): Keep the original intensity range; useful if
-                subsequent steps or measurements assume a specific scaling.
-            n_iter (int): Number of successive subtraction passes. Must be >= 1.
-                One pass (default) removes a single background estimate. Multiple
-                passes (2+) iteratively subtract residual background, useful for
-                complex or multi-scale illumination gradients.
-        """
+    sigma: float = 50.0
+    mode: str = "reflect"
+    cval: float = 0.0
+    truncate: float = 4.0
+    preserve_range: bool = True
+    n_iter: int = 1
+
+    @field_validator("n_iter")
+    @classmethod
+    def _check_n_iter(cls, n_iter: int) -> int:
+        """Require at least one subtraction pass (matches the legacy guard)."""
         if n_iter < 1:
             raise ValueError("n_iter must be >= 1")
-
-        self.sigma: float = sigma
-        self.mode: str = mode
-        self.cval: float = cval
-        self.truncate: float = truncate
-        self.preserve_range: bool = preserve_range
-        self.n_iter: int = n_iter
+        return n_iter
 
     def _operate(self, image: Image) -> Image:
         for _ in range(self.n_iter):

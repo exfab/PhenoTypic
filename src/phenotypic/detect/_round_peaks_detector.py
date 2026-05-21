@@ -120,66 +120,19 @@ class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
             In-depth comparison of all detection strategies.
     """
 
-    def __init__(
-            self,
-            thresh_method: Literal[
-                "otsu", "mean", "local", "triangle", "minimum", "isodata", "li"
-            ] = "otsu",
-            subtract_background: bool = True,
-            remove_noise: bool = True,
-            footprint_width: int = 6,
-            noise_radius: int = 1,
-            smoothing_sigma: float = 2.0,
-            min_peak_distance: int | None = None,
-            peak_prominence: float | None = None,
-            edge_refinement: bool = True,
-            selection_mode: Literal["dominant", "centered", "regularized"] = "dominant",
-            split_merged: bool = True,
-    ):
-        """
-        Initialize the RoundPeaksDetector with specified parameters.
-
-        Args:
-            thresh_method: Method for thresholding the image. Options are:
-                'otsu' (default), 'mean', 'local', 'triangle', 'minimum',
-                'isodata', 'li'.
-            subtract_background: If True, apply white tophat transform to remove
-                background variations before thresholding.
-            remove_noise: If True, apply morphological opening to remove small
-                noise artifacts from the binary mask.
-            footprint_width: Width in pixels for the background subtraction kernel.
-                When a GridImage is provided, an adaptive kernel sized to 1.5x
-                colony spacing is used instead, making this a fallback.
-            noise_radius: Radius for the diamond structuring element used in
-                morphological noise removal. Default 1 (3x3 diamond, matching
-                gitter). Increase for larger noise artifacts.
-            smoothing_sigma: Standard deviation for Gaussian smoothing of intensity
-                profiles before peak detection. Set to 0 to disable smoothing.
-            min_peak_distance: Minimum allowed distance between detected peaks.
-                If None, automatically estimated from grid dimensions.
-            peak_prominence: Minimum prominence required for peak detection.
-                If None, automatically calculated as 0.1 * signal range.
-            edge_refinement: If True, refine grid edges using weighted intensity
-                profiles for improved accuracy.
-            selection_mode: Strategy for choosing one object per grid cell.
-                'dominant' (default) keeps the largest, 'centered' keeps
-                the most centred, 'regularized' uses a global fit.
-            split_merged: If True (default), pre-split merged colonies that
-                span multiple grid cells using EDT watershed before assignment.
-        """
-        super().__init__()
-
-        self.thresh_method = thresh_method
-        self.subtract_background = subtract_background
-        self.footprint_radius = footprint_width
-        self.noise_radius = noise_radius
-        self.remove_noise = remove_noise
-        self.smoothing_sigma = smoothing_sigma
-        self.min_peak_distance = min_peak_distance
-        self.peak_prominence = peak_prominence
-        self.edge_refinement = edge_refinement
-        self.selection_mode = selection_mode
-        self.split_merged = split_merged
+    thresh_method: Literal[
+        "otsu", "mean", "local", "triangle", "minimum", "isodata", "li"
+    ] = "otsu"
+    subtract_background: bool = True
+    remove_noise: bool = True
+    footprint_width: int = 6
+    noise_radius: int = 1
+    smoothing_sigma: float = 2.0
+    min_peak_distance: int | None = None
+    peak_prominence: float | None = None
+    edge_refinement: bool = True
+    selection_mode: Literal["dominant", "centered", "regularized"] = "dominant"
+    split_merged: bool = True
 
     @staticmethod
     def _round_odd(n: int) -> int:
@@ -331,7 +284,7 @@ class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
             bg_w = self._round_odd(round((matrix.shape[1] / (ncols or nrows)) * 1.5))
             kernel = morphology.footprint_rectangle((bg_h, bg_w))
         else:
-            dim = self._round_odd(self.footprint_radius * 2)
+            dim = self._round_odd(self.footprint_width * 2)
             kernel = morphology.footprint_rectangle((dim, dim))
 
         enh_matrix = matrix.copy()  # Work on a copy to avoid modifying input
@@ -348,7 +301,7 @@ class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
                 thresh = filters.threshold_mean(enh_matrix)
             case "local":
                 block_size = max(
-                        self.footprint_radius * 2 + 1, 3
+                        self.footprint_width * 2 + 1, 3
                 )  # Ensure odd block size
                 thresh = filters.threshold_local(enh_matrix, block_size=block_size)
             case "triangle":

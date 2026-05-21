@@ -44,10 +44,6 @@ class ImageInverter(ImageEnhancer):
         visual walkthrough of enhancement pipelines on plate images.
     """
 
-    def __init__(self):
-        """Initialize the ImageInverter with no parameters."""
-        pass
-
     def _operate(self, image: Image) -> Image:
         enh = image.detect_mat[:]
 

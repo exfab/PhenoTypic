@@ -74,7 +74,7 @@ class TestMicroSamDetectorSerialization:
 
     def test_json_roundtrip(self):
         original = MicroSamDetector(model_type="vit_l_lm", device="cpu")
-        pipeline = ImagePipeline([original])
+        pipeline = ImagePipeline(ops=[original])
         json_str = pipeline.to_json()
         restored_pipeline = ImagePipeline.from_json(json_str)
 
@@ -86,7 +86,7 @@ class TestMicroSamDetectorSerialization:
     def test_predictor_not_in_json(self):
         """The lazy _predictor attribute must not appear in serialised JSON."""
         det = MicroSamDetector()
-        pipeline = ImagePipeline([det])
+        pipeline = ImagePipeline(ops=[det])
         json_str = pipeline.to_json()
         config = json.loads(json_str)
 
@@ -97,7 +97,7 @@ class TestMicroSamDetectorSerialization:
 
     def test_json_roundtrip_default_params(self):
         """Round-trip with all-default params preserves detector identity."""
-        pipeline = ImagePipeline([MicroSamDetector()])
+        pipeline = ImagePipeline(ops=[MicroSamDetector()])
         restored = ImagePipeline.from_json(pipeline.to_json())
         restored_det = list(restored._ops.values())[0]
         assert isinstance(restored_det, MicroSamDetector)
@@ -106,7 +106,7 @@ class TestMicroSamDetectorSerialization:
     def test_json_structure(self):
         """Verify the serialised JSON has the expected structure."""
         det = MicroSamDetector(model_type="vit_t_lm", device="cpu")
-        pipeline = ImagePipeline([det])
+        pipeline = ImagePipeline(ops=[det])
         config = json.loads(pipeline.to_json())
 
         pipe_cfgs = config["pipe_cfgs"]
@@ -150,7 +150,7 @@ class TestMicroSamDetectorFunctional:
         )
 
     def test_pipeline_apply(self, synth_plate):
-        pipeline = ImagePipeline([
+        pipeline = ImagePipeline(ops=[
             MicroSamDetector(model_type="vit_b_lm", device="cpu"),
         ])
         result = pipeline.apply(synth_plate.copy(), inplace=False)

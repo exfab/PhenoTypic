@@ -31,10 +31,16 @@ class TestExpandMetadataInit:
         assert em.column == "Metadata_ImageName"
         assert em.labels == ["Metadata_Strain", "Metadata_Condition"]
 
-    def test_empty_labels_raises(self):
-        """Empty labels list raises ValueError."""
-        with pytest.raises(ValueError, match="labels"):
-            ExpandMetadata(column="ImageName", labels=[])
+    def test_empty_labels_accepted_as_unset(self):
+        """An empty labels list is the valid 'unset' state, not an error.
+
+        The empty list is the field default and must validate so
+        ``model_dump`` / ``model_validate`` round-trip and assignment
+        work; a genuinely-misconfigured (empty-labels) ExpandMetadata
+        fails later, at ``apply()`` time, via the split-count check.
+        """
+        em = ExpandMetadata(column="ImageName", labels=[])
+        assert em.labels == []
 
 
 class TestExpandMetadataOperate:

@@ -66,18 +66,7 @@ class SeparateObjects(ObjectRefiner):
         colony separation approaches.
     """
 
-    def __init__(
-            self,
-            min_distance: int = 10,
-    ):
-        """Initialize SeparateObjects with distance-based peak detection.
-
-        Args:
-            min_distance: Minimum pixel distance between peaks for regular Images.
-                Ignored for GridImages (one peak per cell). Default 10.
-        """
-        super().__init__()
-        self.min_distance = min_distance
+    min_distance: int = 10
 
     @staticmethod
     def _make_elevation_map(score_map: np.ndarray) -> np.ndarray:

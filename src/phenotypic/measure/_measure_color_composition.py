@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import ClassVar, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -61,11 +61,11 @@ class MeasureColorComposition(MeasureFeatures):
         interpreting color metrics biologically.
     """
 
-    _measurement_infoclass = ColorComposition
+    _measurement_infoclass: ClassVar[type] = ColorComposition
 
     # Standardized color name mapping (index -> name)
     # This order matches ColorComposition.all_headers() and is used throughout the module
-    _COLOR_NAMES = [
+    _COLOR_NAMES: ClassVar[list[str]] = [
         "Black",
         "White",
         "Gray",
@@ -80,38 +80,14 @@ class MeasureColorComposition(MeasureFeatures):
         "Purple",
     ]
 
-    def __init__(
-            self,
-            hue_normalization: float = 360.0,
-            sat_normalization: float = 100.0,
-            val_normalization: float = 100.0,
-            black_value_max: float = 20.0,
-            neutral_sat_max: float = 15.0,
-            white_value_min: float = 85.0,
-            gray_value_min: float = 20.0,
-            gray_value_max: float = 85.0,
-    ):
-        """
-        Initialize the color composition measurer.
-
-        Args:
-            hue_normalization: Multiplier to normalize hue to 0-360 range
-            sat_normalization: Multiplier to normalize saturation to 0-100 range
-            val_normalization: Multiplier to normalize value to 0-100 range
-            black_value_max: Maximum value threshold for black classification
-            neutral_sat_max: Maximum saturation threshold for white and gray classification
-            white_value_min: Minimum value threshold for white classification
-            gray_value_min: Minimum value threshold for gray classification
-            gray_value_max: Maximum value threshold for gray classification
-        """
-        self.hue_normalization = hue_normalization
-        self.sat_normalization = sat_normalization
-        self.val_normalization = val_normalization
-        self.black_value_max = black_value_max
-        self.neutral_sat_max = neutral_sat_max
-        self.white_value_min = white_value_min
-        self.gray_value_min = gray_value_min
-        self.gray_value_max = gray_value_max
+    hue_normalization: float = 360.0
+    sat_normalization: float = 100.0
+    val_normalization: float = 100.0
+    black_value_max: float = 20.0
+    neutral_sat_max: float = 15.0
+    white_value_min: float = 85.0
+    gray_value_min: float = 20.0
+    gray_value_max: float = 85.0
 
     @staticmethod
     def encode_color_name(name: str) -> int:

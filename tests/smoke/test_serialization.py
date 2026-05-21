@@ -26,7 +26,7 @@ from unit.resources.TestHelper import timeit
 # ---------------------------------------------------------------------------
 
 # Operations that cannot be instantiated with an empty constructor
-_SKIP_OPS = {"ColorCorrector", "ManualGridFinder"}
+_SKIP_OPS = {"ColorCorrector", "ManualGridFinder", "GridApply"}
 
 _all_operations = [
     (qualname, obj)
@@ -36,8 +36,11 @@ _all_operations = [
 
 _all_measurements = list(walk_package_for_measurements(phenotypic))
 
-# Prefabs whose inner ops cannot be deserialized with empty constructors
-_SKIP_PREFABS = {"GridSectionPipeline"}
+# Prefabs whose inner ops cannot be deserialized with empty constructors.
+# Empty since the pydantic migration: ``GridApply`` is now a proper
+# pydantic operation with an ``OperationField`` for its wrapped op, so
+# ``GridSectionPipeline`` round-trips through JSON like every other prefab.
+_SKIP_PREFABS: set[str] = set()
 
 _all_prefabs = [
     pytest.param(

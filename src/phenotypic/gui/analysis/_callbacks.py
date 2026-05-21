@@ -461,29 +461,34 @@ def _pattern_input_key(name: str, prefix: str, type_: str) -> str:
     return f'{{"name":"{name}","prefix":"{prefix}","type":"{type_}"}}.value'
 
 
+#: Legacy analyzer-kwarg renames the GUI's per-edit reconstruction must
+#: still honour. Pydantic's ``AliasChoices`` on ``SetAnalyzer.n_jobs``
+#: accepts the legacy ``num_workers`` key directly at construction, but a
+#: kwarg dict pre-filtered against ``model_fields`` (which lists the
+#: canonical ``n_jobs``) would drop it — so this map translates the
+#: legacy name to its canonical field before filtering.
+_ANALYZER_KWARG_ALIASES: dict[str, str] = {"num_workers": "n_jobs"}
+
+
 def _filter_kwargs_to_signature(cls: type, kwargs: dict[str, Any]) -> dict[str, Any]:
-    """Return only ``kwargs`` entries that ``cls.__init__`` accepts.
+    """Return only ``kwargs`` entries that ``cls`` accepts as fields.
 
-    Reuses :data:`SerializablePipeline._ANALYZER_INIT_ALIASES` so the
-    GUI's per-edit reconstruction follows the same name-mapping (legacy
-    ``num_workers`` -> ``n_jobs``) the JSON deserializer uses.
+    Operations and analyzers are pydantic v2 ``BaseModel`` subclasses, so
+    the accepted parameter names are ``cls.model_fields`` (a pydantic
+    model rejects unknown kwargs via ``extra="forbid"``). The legacy
+    ``num_workers`` -> ``n_jobs`` rename is applied via
+    :data:`_ANALYZER_KWARG_ALIASES` so the GUI's per-edit reconstruction
+    follows the same name-mapping the JSON deserializer's
+    ``AliasChoices`` provides.
     """
-    import inspect
-
-    from phenotypic._core._pipeline_parts._serializable_pipeline import (
-        SerializablePipeline,
-    )
-
-    sig = inspect.signature(cls.__init__)
-    accepted = {p for p in sig.parameters if p != "self"}
-    aliases = SerializablePipeline._ANALYZER_INIT_ALIASES
+    accepted = set(getattr(cls, "model_fields", ()) or ())
 
     out: dict[str, Any] = {}
     for k, v in kwargs.items():
         if k in accepted:
             out[k] = v
-        elif k in aliases and aliases[k] in accepted:
-            out[aliases[k]] = v
+        elif k in _ANALYZER_KWARG_ALIASES and _ANALYZER_KWARG_ALIASES[k] in accepted:
+            out[_ANALYZER_KWARG_ALIASES[k]] = v
     return out
 
 

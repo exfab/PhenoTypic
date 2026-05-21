@@ -479,13 +479,16 @@ class TestAutoGridFinderIntegration:
         from phenotypic import ImagePipeline
         from phenotypic.detect import OtsuDetector
 
-        pipeline = ImagePipeline([
-            OtsuDetector(),
-            AutoGridFinder(nrows=8, ncols=12, residual_fraction=0.4),
-        ])
+        # AutoGridFinder is a MeasureFeatures (GridFinder -> GridMeasureFeatures
+        # -> MeasureFeatures), so it belongs in the pipeline's ``meas`` queue,
+        # not ``ops`` — the pydantic-typed fields now enforce that placement.
+        pipeline = ImagePipeline(
+            ops=[OtsuDetector()],
+            meas=[AutoGridFinder(nrows=8, ncols=12, residual_fraction=0.4)],
+        )
         json_str = pipeline.to_json()
         restored = ImagePipeline.from_json(json_str)
-        restored_finder = restored._ops["AutoGridFinder"]
+        restored_finder = restored._meas["AutoGridFinder"]
         assert isinstance(restored_finder, AutoGridFinder)
         assert restored_finder.nrows == 8
         assert restored_finder.ncols == 12

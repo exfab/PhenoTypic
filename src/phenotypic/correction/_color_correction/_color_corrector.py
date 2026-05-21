@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any
 
 import colour
 import numpy as np
+from pydantic import PrivateAttr, field_validator
 from skimage.color import rgb2gray
 
 from ...abc_ import ImageCorrector
@@ -45,6 +46,10 @@ class ColorCorrector(ImageCorrector):
       dyed or pigmented colonies.
 
     Attributes:
+        profile: A fitted :class:`ColorCheckerProfile` supplying the
+            root-polynomial correction matrix and expansion degree. Must
+            already be fitted; an unfitted profile is rejected at
+            construction.
         correction_matrix: The root-polynomial correction matrix stored as
             a nested list (serialisable).
         degree: Polynomial expansion degree matching the profile.
@@ -57,32 +62,49 @@ class ColorCorrector(ImageCorrector):
         >>> import numpy as np
         >>> profile = ColorCheckerProfile(rois=[...], degree=2)  # doctest: +SKIP
         >>> profile.fit(image)  # doctest: +SKIP
-        >>> corrector = ColorCorrector(profile)  # doctest: +SKIP
+        >>> corrector = ColorCorrector(profile=profile)  # doctest: +SKIP
         >>> corrected = corrector.apply(image)  # doctest: +SKIP
     """
 
-    def __init__(
-        self,
-        profile: ColorCheckerProfile,
-        output_illuminant: str = "D65",
-    ) -> None:
-        """Initialise the corrector from a fitted profile.
+    profile: ColorCheckerProfile
+    output_illuminant: str = "D65"
 
-        Args:
-            profile: A fitted :class:`ColorCheckerProfile`.
-            output_illuminant: Target illuminant label (metadata only).
+    #: Float64 view of the profile's correction matrix, materialised once
+    #: in :meth:`model_post_init` and read by :meth:`_operate`.
+    _ccm: np.ndarray = PrivateAttr()
 
-        Raises:
-            ValueError: If *profile* has not been fitted.
-        """
-        super().__init__()
+    @field_validator("profile")
+    @classmethod
+    def _require_fitted_profile(
+        cls, profile: ColorCheckerProfile
+    ) -> ColorCheckerProfile:
+        """Reject an unfitted profile (pre-migration ``__init__`` guard)."""
         if not profile.is_fitted:
             raise ValueError("ColorCheckerProfile must be fitted before use.")
-        self._profile = profile
-        self.correction_matrix = profile.correction_matrix.tolist()
-        self._ccm = np.asarray(self.correction_matrix, dtype=np.float64)
-        self.degree = profile.degree
-        self.output_illuminant = output_illuminant
+        return profile
+
+    def model_post_init(self, __context: Any) -> None:
+        """Materialise the float64 correction matrix after construction.
+
+        Extends :meth:`BaseOperation.model_post_init` (which sets up the
+        logger): caches a ``float64`` copy of the fitted profile's
+        correction matrix so :meth:`_operate` does not rebuild it per call.
+
+        Args:
+            __context: Pydantic post-init context (unused).
+        """
+        super().model_post_init(__context)
+        self._ccm = np.asarray(self.profile.correction_matrix, dtype=np.float64)
+
+    @property
+    def correction_matrix(self) -> list:
+        """The root-polynomial correction matrix as a nested list."""
+        return self._ccm.tolist()
+
+    @property
+    def degree(self) -> int:
+        """Polynomial expansion degree, matching the profile."""
+        return self.profile.degree
 
     def _operate(self, image: Image) -> Image:
         """Apply root-polynomial colour correction to the image.
@@ -156,4 +178,4 @@ class ColorCorrector(ImageCorrector):
         Returns:
             The Panel layout object.
         """
-        return self._profile.dashboard(show=show)
+        return self.profile.dashboard(show=show)

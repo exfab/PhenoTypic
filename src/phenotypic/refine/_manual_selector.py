@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
+from pydantic import field_validator
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -96,13 +97,16 @@ class ManualSelector(ObjectRefiner, PointPickerMixin, FootprintMixin):
         >>> from phenotypic.data import load_synth_yeast_plate
         >>> from phenotypic.detect import OtsuDetector
         >>> from phenotypic.refine import ManualSelector
+        >>> from scipy.ndimage import center_of_mass
         >>> import numpy as np
         >>> image = load_synth_yeast_plate()
         >>> detected = OtsuDetector().apply(image)
-        >>> # Pick any pixel known to lie on an object
-        >>> ys, xs = np.where(detected.objmap[:] > 0)
-        >>> cy, cx = int(ys[0]), int(xs[0])
-        >>> selector = ManualSelector(centers=[(cy, cx)], width=15)
+        >>> # Pick the centroid of one colony — a pixel well inside its body
+        >>> # so a small footprint stamp stays on that single colony.
+        >>> target_label = int(np.unique(detected.objmap[:])[1])
+        >>> cy, cx = center_of_mass(detected.objmap[:] == target_label)
+        >>> cy, cx = int(round(cy)), int(round(cx))
+        >>> selector = ManualSelector(centers=[(cy, cx)], width=3)
         >>> curated = selector.apply(detected)
         >>> # Only the target label survives; its original ID is preserved
         >>> surviving = set(np.unique(curated.objmap[:])) - {0}
@@ -113,26 +117,36 @@ class ManualSelector(ObjectRefiner, PointPickerMixin, FootprintMixin):
 
         >>> from phenotypic import ImagePipeline
         >>> from phenotypic.enhance import GaussianBlur
-        >>> pipeline = ImagePipeline([
+        >>> pipeline = ImagePipeline(ops=[
         ...     GaussianBlur(sigma=1.0),
         ...     OtsuDetector(),
-        ...     ManualSelector(centers=[(cy, cx)], width=20),
+        ...     ManualSelector(centers=[(cy, cx)], width=3),
         ... ])
         >>> result = pipeline.apply(image)
         >>> result.objmap[:].max() > 0
         True
     """
 
-    def __init__(
-        self,
-        centers: np.ndarray | list | None = None,
-        shape: Literal["square", "diamond", "disk"] = "disk",
-        width: int = 15,
-    ):
-        super().__init__()
-        self.centers = centers
-        self.shape = shape
-        self.width = width
+    centers: list[tuple[int, int]] | None = None
+    shape: Literal["square", "diamond", "disk"] = "disk"
+    width: int = 15
+
+    @field_validator("centers", mode="before")
+    @classmethod
+    def _coerce_centers(cls, centers: Any) -> Any:
+        """Normalize picked-point input to a JSON-native list of ``(y, x)`` pairs.
+
+        Accepts ``None``, an ``np.ndarray``, or any list/tuple of
+        coordinate pairs. This replaces the coordinate coercion that the
+        :class:`PointPickerMixin` previously performed in a
+        ``__setattr__`` override (removed in the pydantic migration so it
+        no longer clashes with pydantic's own ``__setattr__``).
+        """
+        if centers is None:
+            return None
+        if isinstance(centers, np.ndarray):
+            return centers.tolist()
+        return centers
 
     def _operate(self, image: Image) -> Image:  # type: ignore[override]
         if self.centers is None or len(self.centers) == 0:

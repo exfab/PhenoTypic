@@ -31,10 +31,16 @@ class TestMergeMetadataInit:
         assert mm.columns == ["Metadata_Strain", "Metadata_Condition"]
         assert mm.label == "Metadata_SampleID"
 
-    def test_empty_columns_raises(self):
-        """Empty columns list raises ValueError."""
-        with pytest.raises(ValueError, match="columns"):
-            MergeMetadata(columns=[], label="SampleID")
+    def test_empty_columns_accepted_as_unset(self):
+        """An empty columns list is the valid 'unset' state, not an error.
+
+        Only a genuinely-invalid single-column merge raises (see
+        ``test_single_column_raises``); the empty list is the field
+        default and must validate so ``model_dump`` / ``model_validate``
+        round-trip and assignment work.
+        """
+        mm = MergeMetadata(columns=[], label="SampleID")
+        assert mm.columns == []
 
     def test_single_column_raises(self):
         """Single column raises ValueError -- need at least 2 to merge."""

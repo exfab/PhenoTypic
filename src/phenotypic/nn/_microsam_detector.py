@@ -4,13 +4,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from pydantic import PrivateAttr
+
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
 from phenotypic.abc_ import GpuDetector
 from phenotypic.nn._checkpoint_manager import (
     Device,
-    MicroSamCheckpointManager,
     MicroSamModelType,
 )
 
@@ -157,21 +158,12 @@ class MicroSamDetector(GpuDetector):
         True
     """
 
-    def __init__(
-        self,
-        model_type: MicroSamModelType = "vit_b_lm",
-        device: Device = "auto",
-    ):
-        super().__init__()
-        if model_type not in MicroSamCheckpointManager.MODELS:
-            raise ValueError(
-                f"Unknown model_type={model_type!r}. "
-                f"Choose from: {list(MicroSamCheckpointManager.MODELS)}"
-            )
-        self.model_type = model_type
-        self.device = device
-        self._predictor = None  # _ prefix -> skipped by serialization
-        self._segmenter = None
+    model_type: MicroSamModelType = "vit_b_lm"
+    device: Device = "auto"
+
+    # Lazy micro-sam predictor/segmenter — PrivateAttr, skipped by serialization.
+    _predictor: object = PrivateAttr(default=None)
+    _segmenter: object = PrivateAttr(default=None)
 
     def _ensure_model_loaded(self) -> None:
         """Load the micro-sam predictor and segmenter on first use."""

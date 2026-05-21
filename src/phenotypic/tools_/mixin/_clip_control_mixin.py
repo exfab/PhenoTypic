@@ -40,7 +40,7 @@ class ClipControlMixin:
         >>> from phenotypic import ImagePipeline
         >>> from phenotypic.enhance import GaussianBlur, BilateralDenoise
         >>>
-        >>> pipeline = ImagePipeline([
+        >>> pipeline = ImagePipeline(pipe_cfgs=[
         ...     GaussianBlur(sigma=1.0),
         ...     BilateralDenoise(sigma_spatial=5, clip=True)
         ... ])

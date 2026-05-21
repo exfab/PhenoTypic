@@ -3,7 +3,7 @@ from __future__ import annotations
 import abc
 import itertools
 from abc import ABC
-from typing import Any, Callable, Dict, List, Literal, Tuple, TYPE_CHECKING, Union
+from typing import Any, ClassVar, Dict, List, Literal, Tuple, TYPE_CHECKING, Union
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 import scipy.optimize as optimize
 from joblib import Parallel, delayed
+from pydantic import Field, PrivateAttr
 from sklearn.metrics import (
     mean_absolute_error,
     mean_squared_error,
@@ -18,7 +19,7 @@ from sklearn.metrics import (
     root_mean_squared_error,
 )
 
-from phenotypic.tools_ import ColumnRef, ColumnRefList
+from phenotypic.tools_ import ColumnRef
 from phenotypic.tools_.measurement_info import MODEL_METRICS
 
 from ._set_analyzer import SetAnalyzer
@@ -75,32 +76,16 @@ class ModelFitter(SetAnalyzer, ABC):
         verbose (bool): Whether to print detailed optimizer output.
     """
 
-    _measurement_infoclass: type
+    _measurement_infoclass: ClassVar[type]
 
-    def __init__(
-            self,
-            on: ColumnRef,
-            groupby: ColumnRefList,
-            time_label: ColumnRef = "Metadata_Time",
-            agg_func: Callable | str | list | dict | None = "mean",
-            *,
-            n_jobs: int = 1,
-            loss: LossKind = "huber",
-            f_scale: float = 1.0,
-            verbose: bool = False,
-    ):
-        super().__init__(
-                on=on, groupby=groupby, agg_func=agg_func, n_jobs=n_jobs
-        )
-        if not np.isfinite(f_scale) or f_scale <= 0:
-            raise ValueError(
-                    f"f_scale must be a positive finite number, got {f_scale!r}."
-            )
-        self._latest_model_scores: pd.DataFrame = pd.DataFrame()
-        self.time_label = time_label
-        self.loss = loss
-        self.f_scale = float(f_scale)
-        self.verbose = verbose
+    time_label: ColumnRef = "Metadata_Time"
+    loss: LossKind = "huber"
+    f_scale: float = Field(default=1.0, gt=0, allow_inf_nan=False)
+    verbose: bool = False
+
+    _latest_model_scores: pd.DataFrame = PrivateAttr(
+        default_factory=pd.DataFrame
+    )
 
     # ------------------------------------------------------------------ #
     # Abstract model math — subclasses must implement

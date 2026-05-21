@@ -208,7 +208,7 @@ class TestInoculumDetectorPipeline:
     """InoculumDetector in an ImagePipeline."""
 
     def test_pipeline_apply(self):
-        pipeline = ImagePipeline([
+        pipeline = ImagePipeline(ops=[
             InoculumDetector(enable_gmm=False, **_FAST_PARAMS),
         ])
         image = _make_test_image()
@@ -235,7 +235,7 @@ class TestInoculumDetectorSerialization:
             gmm_separation_threshold=0.5,
             validate_obj_count=False,
         )
-        pipeline = ImagePipeline([original])
+        pipeline = ImagePipeline(ops=[original])
         json_str = pipeline.to_json()
         restored_pipeline = ImagePipeline.from_json(json_str)
 
@@ -252,7 +252,7 @@ class TestInoculumDetectorSerialization:
     def test_serialization_functional_equivalence(self):
         """Serialized and restored detector produces identical results."""
         original = InoculumDetector(enable_gmm=False, **_FAST_PARAMS)
-        pipeline = ImagePipeline([original])
+        pipeline = ImagePipeline(ops=[original])
         restored_pipeline = ImagePipeline.from_json(pipeline.to_json())
 
         image1 = _make_test_image()

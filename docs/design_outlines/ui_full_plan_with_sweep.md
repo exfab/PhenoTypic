@@ -165,7 +165,7 @@ class PipelineBuilder(param.Parameterized):
         **params
     ):
         super().__init__(**params)
-        self._pipeline = pipeline or ImagePipeline([])
+        self._pipeline = pipeline or ImagePipeline(pipe_cfgs=[])
         self._manager = instance_manager
         self._image = image
 

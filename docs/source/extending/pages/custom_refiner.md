@@ -1,6 +1,8 @@
 # Custom Refiner
 
-Subclass `ObjectRefiner` to clean up detection masks.
+Subclass `ObjectRefiner` to clean up detection masks. Operations are
+pydantic models: declare each parameter as an annotated class-level
+field — there is no hand-written `__init__`.
 
 ```python
 from phenotypic.abc_ import ObjectRefiner
@@ -8,10 +10,13 @@ from skimage.measure import label
 import numpy as np
 
 class RemoveLargeObjects(ObjectRefiner):
-    """Remove objects larger than a maximum area."""
+    """Remove objects larger than a maximum area.
 
-    def __init__(self, max_size: int = 10000):
-        self.max_size = max_size
+    Args:
+        max_size: Maximum object area (pixels); larger objects are removed.
+    """
+
+    max_size: int = 10000
 
     def _operate(self, image):
         objmap = image.objmap[:]

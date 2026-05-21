@@ -98,7 +98,7 @@ class TestSam2DetectorSerialization:
             min_mask_region_area=200,
             device="cpu",
         )
-        pipeline = ImagePipeline([original])
+        pipeline = ImagePipeline(ops=[original])
         json_str = pipeline.to_json()
         restored_pipeline = ImagePipeline.from_json(json_str)
 
@@ -114,7 +114,7 @@ class TestSam2DetectorSerialization:
     def test_generator_not_in_json(self):
         """The lazy _generator attribute must not appear in serialised JSON."""
         det = Sam2Detector(model_size="tiny")
-        pipeline = ImagePipeline([det])
+        pipeline = ImagePipeline(ops=[det])
         json_str = pipeline.to_json()
         config = json.loads(json_str)
 
@@ -126,7 +126,7 @@ class TestSam2DetectorSerialization:
 
     def test_json_roundtrip_default_params(self):
         """Round-trip with all-default params preserves detector identity."""
-        pipeline = ImagePipeline([Sam2Detector()])
+        pipeline = ImagePipeline(ops=[Sam2Detector()])
         restored = ImagePipeline.from_json(pipeline.to_json())
         restored_det = list(restored._ops.values())[0]
         assert isinstance(restored_det, Sam2Detector)
@@ -135,7 +135,7 @@ class TestSam2DetectorSerialization:
     def test_json_structure(self):
         """Verify the serialised JSON has the expected structure."""
         det = Sam2Detector(model_size="base_plus", points_per_side=16)
-        pipeline = ImagePipeline([det])
+        pipeline = ImagePipeline(ops=[det])
         config = json.loads(pipeline.to_json())
 
         pipe_cfgs = config["pipe_cfgs"]
@@ -205,7 +205,7 @@ class TestSam2DetectorFunctional:
         )
 
     def test_pipeline_apply(self, synth_plate):
-        pipeline = ImagePipeline([
+        pipeline = ImagePipeline(ops=[
             Sam2Detector(model_size="tiny", device="cpu"),
         ])
         result = pipeline.apply(synth_plate.copy(), inplace=False)

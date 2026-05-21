@@ -31,7 +31,9 @@ class TestBM3DCorrectorParameterValidation:
             StableDenoise(scale_factor=-10.0)
 
     def test_invalid_stage_arg_raises(self):
-        with pytest.raises(ValueError, match="stage_arg must be"):
+        # ``stage_arg`` is a ``Literal`` field post-pydantic-migration; an
+        # out-of-set value raises ``ValidationError`` (a ``ValueError``).
+        with pytest.raises(ValueError, match="stage_arg"):
             StableDenoise(stage_arg="invalid")
 
     def test_valid_defaults(self):
@@ -44,9 +46,10 @@ class TestBM3DCorrectorParameterValidation:
         assert c.scale_factor is None
 
     def test_valid_custom_params(self):
+        # Pydantic models are keyword-only constructed.
         c = StableDenoise(
-                16,
-                "hard_thresholding",
+                block_size=16,
+                stage_arg="hard_thresholding",
                 gain=2.0,
                 mu=1.0,
                 sigma=0.5,

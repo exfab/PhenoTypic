@@ -8,10 +8,19 @@ providing serializable diagnostics for quality assessment.
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Annotated, Any
 
 import colour
 import numpy as np
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    PrivateAttr,
+    WithJsonSchema,
+    field_validator,
+)
+
+from phenotypic.tools_.typing_ import NdArrayField
 
 from ._helpers import (
     _normalize_to_unit_float,
@@ -29,6 +38,27 @@ if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
 logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# ROI-slice field annotation
+# ---------------------------------------------------------------------------
+#: A single ``slice`` ROI bound. ``slice`` is a Python-native object that
+#: pydantic accepts under ``arbitrary_types_allowed`` but cannot describe in
+#: JSON Schema, so ``WithJsonSchema`` supplies a descriptive entry. The
+#: ``rois`` field is transient (set at construction, deliberately dropped by
+#: :meth:`ColorCheckerProfile.to_dict`); the schema entry exists only so
+#: ``model_json_schema()`` succeeds for downstream tooling.
+_RoiSlice = Annotated[
+    slice,
+    WithJsonSchema(
+        {
+            "type": "object",
+            "description": "A Python slice (start, stop, step) bounding a "
+            "color-checker ROI along one image axis.",
+        }
+    ),
+]
 
 
 # ---------------------------------------------------------------------------
@@ -141,7 +171,7 @@ def _load_reference_data(
 # ---------------------------------------------------------------------------
 
 
-class ColorCheckerProfile:
+class ColorCheckerProfile(BaseModel):
     """Profile fitted from a colour checker card for root-polynomial correction.
 
     Measures patch colours from one or more ROIs in an image, matches them
@@ -149,6 +179,11 @@ class ColorCheckerProfile:
     outlier patches, and solves for a root-polynomial colour correction
     matrix (Finlayson 2015).  The resulting matrix can be applied to entire
     images via :class:`ColorCorrector`.
+
+    This is a pydantic v2 ``BaseModel``: the constructor parameters and the
+    post-fit state are declared as annotated class-level fields, so an
+    unfitted profile still constructs (``correction_matrix`` is ``None``,
+    ``is_fitted`` is ``False`` until :meth:`fit` runs).
 
     Args:
         checker_type: Key in ``colour.CCS_COLOURCHECKERS``.  Defaults to the
@@ -173,69 +208,70 @@ class ColorCheckerProfile:
 
     Attributes:
         correction_matrix: Fitted correction matrix once :meth:`fit`
-            or :meth:`_fit_from_patch_colors` has been called.
+            or :meth:`_fit_from_patch_colors` has been called; ``None``
+            on an unfitted profile.
         diagnostics: Per-patch and aggregate quality metrics.
         is_fitted: ``True`` after a successful fit.
     """
 
-    def __init__(
-        self,
-        checker_type: str = "ColorChecker24 - After November 2014",
-        degree: int = 2,
-        target_illuminant: str = "D65",
-        median_filter_size: int = 10,
-        stddev_mag_threshold: float = 15.0,
-        border_distance_threshold: float = 12.0,
-        core_fraction: float = 0.5,
-        ridge_lambda: float = 1e-3,
-        outlier_sigma: float = 2.0,
-        rois: list[tuple[slice, slice]] | None = None,
-    ) -> None:
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        validate_assignment=True,
+    )
+
+    # -- constructor parameters --------------------------------------------
+    checker_type: str = "ColorChecker24 - After November 2014"
+    degree: int = 2
+    target_illuminant: str = "D65"
+    median_filter_size: int = 10
+    stddev_mag_threshold: float = 15.0
+    border_distance_threshold: float = 12.0
+    core_fraction: float = 0.5
+    ridge_lambda: float = 1e-3
+    outlier_sigma: float = 2.0
+    rois: list[tuple[_RoiSlice, _RoiSlice]] | None = None
+
+    # -- post-fit state (defaults so an unfitted profile still constructs) --
+    correction_matrix: NdArrayField | None = None
+    diagnostics: dict[str, Any] = {}
+    is_fitted: bool = False
+
+    # -- transient (set by fit(), never serialized) ------------------------
+    _image: "Image | None" = PrivateAttr(default=None)
+
+    @field_validator("degree")
+    @classmethod
+    def _validate_degree(cls, degree: int) -> int:
+        """Require ``degree`` in ``{1, 2, 3, 4}`` (pre-migration guard)."""
         if degree not in {1, 2, 3, 4}:
             raise ValueError(f"degree must be 1, 2, 3, or 4, got {degree}")
+        return degree
+
+    @field_validator("core_fraction")
+    @classmethod
+    def _validate_core_fraction(cls, core_fraction: float) -> float:
+        """Require ``core_fraction`` in ``(0, 1]`` (pre-migration guard)."""
         if not (0.0 < core_fraction <= 1.0):
-            raise ValueError(f"core_fraction must be in (0, 1], got {core_fraction}")
+            raise ValueError(
+                f"core_fraction must be in (0, 1], got {core_fraction}"
+            )
+        return core_fraction
+
+    @field_validator("ridge_lambda")
+    @classmethod
+    def _validate_ridge_lambda(cls, ridge_lambda: float) -> float:
+        """Require ``ridge_lambda`` to be non-negative (pre-migration guard)."""
         if ridge_lambda < 0:
             raise ValueError(f"ridge_lambda must be >= 0, got {ridge_lambda}")
+        return ridge_lambda
+
+    @field_validator("outlier_sigma")
+    @classmethod
+    def _validate_outlier_sigma(cls, outlier_sigma: float) -> float:
+        """Require ``outlier_sigma`` to be positive (pre-migration guard)."""
         if outlier_sigma <= 0:
             raise ValueError(f"outlier_sigma must be > 0, got {outlier_sigma}")
-
-        self.checker_type = checker_type
-        self.degree = degree
-        self.target_illuminant = target_illuminant
-        self.median_filter_size = median_filter_size
-        self.stddev_mag_threshold = stddev_mag_threshold
-        self.border_distance_threshold = border_distance_threshold
-        self.core_fraction = core_fraction
-        self.ridge_lambda = ridge_lambda
-        self.outlier_sigma = outlier_sigma
-
-        self._correction_matrix: np.ndarray | None = None
-        self._diagnostics: dict[str, Any] = {}
-        self._is_fitted: bool = False
-        self._rois = rois
-        self._image: Image | None = None
-
-    # -- properties ---------------------------------------------------------
-
-    @property
-    def correction_matrix(self) -> np.ndarray:
-        """Root-polynomial correction matrix (shape ``(3, F)``)."""
-        if self._correction_matrix is None:
-            raise RuntimeError(
-                "Profile is not fitted. Call fit() first."
-            )
-        return self._correction_matrix
-
-    @property
-    def diagnostics(self) -> dict[str, Any]:
-        """Diagnostic metrics from the most recent fit."""
-        return self._diagnostics
-
-    @property
-    def is_fitted(self) -> bool:
-        """Whether a correction matrix has been fitted."""
-        return self._is_fitted
+        return outlier_sigma
 
     # -- high-level fitting -------------------------------------------------
 
@@ -251,12 +287,12 @@ class ColorCheckerProfile:
         Raises:
             ValueError: If no ROIs were provided at initialisation.
         """
-        if self._rois is None:
+        if self.rois is None:
             raise ValueError(
                 "No ROIs available. Pass rois= to the constructor."
             )
         self._image = image
-        return self._fit_from_rois(image, self._rois)
+        return self._fit_from_rois(image, self.rois)
 
     def _fit_from_rois(
         self,
@@ -540,7 +576,7 @@ class ColorCheckerProfile:
             # Fallback: manual ridge regression.
             CCM = self._fit_ridge(measured_arr, reference_arr)
 
-        self._correction_matrix = CCM
+        self.correction_matrix = CCM
 
         # --- Compute after-correction Delta-E 2000 -------------------------
         corrected_Lab: dict[str, np.ndarray] = {}
@@ -602,7 +638,7 @@ class ColorCheckerProfile:
         ]
         after_arr = np.array(after_values) if after_values else np.array([0.0])
 
-        self._diagnostics = {
+        self.diagnostics = {
             "checker_type": self.checker_type,
             "degree": self.degree,
             "target_illuminant": self.target_illuminant,
@@ -620,14 +656,14 @@ class ColorCheckerProfile:
             "warnings": warnings_list,
         }
 
-        self._is_fitted = True
+        self.is_fitted = True
         logger.info(
             "ColorCheckerProfile fitted: %d/%d patches, "
             "mean dE00 %.2f -> %.2f",
             len(measured_Lab),
             len(all_patch_names),
-            self._diagnostics["mean_deltaE00_before"],
-            self._diagnostics["mean_deltaE00_after"],
+            self.diagnostics["mean_deltaE00_before"],
+            self.diagnostics["mean_deltaE00_after"],
         )
 
     def _fit_ridge(
@@ -697,7 +733,7 @@ class ColorCheckerProfile:
             RuntimeError: If the profile has not been fitted.
             ImportError: If Panel is not installed.
         """
-        if not self._is_fitted:
+        if not self.is_fitted:
             raise RuntimeError(
                 "Cannot create dashboard for an unfitted profile."
             )
@@ -708,7 +744,7 @@ class ColorCheckerProfile:
         from ._diagnostic_dashboard import ColorCorrectionDashboard
 
         dashboard = ColorCorrectionDashboard(
-            profile=self, image=self._image, rois=self._rois,
+            profile=self, image=self._image, rois=self.rois,
         )
         panel_layout = dashboard.panel()
 
@@ -733,12 +769,12 @@ class ColorCheckerProfile:
             "core_fraction": self.core_fraction,
             "ridge_lambda": self.ridge_lambda,
             "outlier_sigma": self.outlier_sigma,
-            "is_fitted": self._is_fitted,
+            "is_fitted": self.is_fitted,
         }
-        if self._correction_matrix is not None:
-            data["correction_matrix"] = self._correction_matrix.tolist()
-        if self._diagnostics:
-            data["diagnostics"] = self._diagnostics
+        if self.correction_matrix is not None:
+            data["correction_matrix"] = self.correction_matrix.tolist()
+        if self.diagnostics:
+            data["diagnostics"] = self.diagnostics
         return data
 
     @classmethod
@@ -763,19 +799,19 @@ class ColorCheckerProfile:
             outlier_sigma=data.get("outlier_sigma", 2.0),
         )
         if data.get("correction_matrix") is not None:
-            profile._correction_matrix = np.asarray(
+            profile.correction_matrix = np.asarray(
                 data["correction_matrix"], dtype=np.float64
             )
         if data.get("diagnostics"):
-            profile._diagnostics = data["diagnostics"]
-        profile._is_fitted = data.get("is_fitted", False)
-        profile._rois = None
+            profile.diagnostics = data["diagnostics"]
+        profile.is_fitted = data.get("is_fitted", False)
+        profile.rois = None
         profile._image = None
         return profile
 
     def __repr__(self) -> str:
-        status = "fitted" if self._is_fitted else "unfitted"
-        n_rois = len(self._rois) if self._rois else 0
+        status = "fitted" if self.is_fitted else "unfitted"
+        n_rois = len(self.rois) if self.rois else 0
         return (
             f"ColorCheckerProfile(checker_type={self.checker_type!r}, "
             f"degree={self.degree}, target_illuminant={self.target_illuminant!r}, "

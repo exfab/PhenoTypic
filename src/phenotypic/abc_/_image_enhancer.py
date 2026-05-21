@@ -111,9 +111,7 @@ class ImageEnhancer(FootprintMixin, ImageOperation, ABC):
         from scipy.ndimage import gaussian_filter
 
         class MyCustomEnhancer(ImageEnhancer):
-            def __init__(self, sigma: float = 1.0):
-                super().__init__()
-                self.sigma = sigma  # Instance attribute matched to _operate()
+            sigma: float = 1.0  # Annotated class-level field
 
             def _operate(self, image: Image) -> Image:
                 # Modify ONLY detect_mat; read, process, write back
@@ -283,9 +281,7 @@ class ImageEnhancer(FootprintMixin, ImageOperation, ABC):
         >>> from scipy.ndimage import gaussian_filter
         >>>
         >>> class GaussianEnhancer(ImageEnhancer):
-        ...     def __init__(self, sigma=1.5):
-        ...         super().__init__()
-        ...         self.sigma = sigma
+        ...     sigma: float = 1.5
         ...     def _operate(self, image):
         ...         enh = image.detect_mat[:]
         ...         filtered = gaussian_filter(enh.astype(float), sigma=self.sigma)
@@ -305,10 +301,8 @@ class ImageEnhancer(FootprintMixin, ImageOperation, ABC):
         >>> from skimage.morphology import closing
         >>>
         >>> class MorphologicalEnhancer(ImageEnhancer):
-        ...     def __init__(self, operation='closing', width=3):
-        ...         super().__init__()
-        ...         self.operation = operation
-        ...         self.width = width
+        ...     operation: str = 'closing'
+        ...     width: int = 3
         ...     def _operate(self, image):
         ...         enh = image.detect_mat[:]
         ...         footprint = ImageEnhancer._make_footprint('disk', self.width)
@@ -329,7 +323,7 @@ class ImageEnhancer(FootprintMixin, ImageOperation, ABC):
         >>> from phenotypic.data import load_synth_yeast_plate
         >>>
         >>> image = load_synth_yeast_plate()
-        >>> pipeline = ImagePipeline([
+        >>> pipeline = ImagePipeline(pipe_cfgs=[
         ...     GaussianBlur(sigma=1.5),
         ...     CLAHE(clip_limit=2.0),
         ...     OtsuDetector()

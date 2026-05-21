@@ -7,7 +7,9 @@ from scipy.stats import permutation_test
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 
-from phenotypic.tools_ import ColumnRef, ColumnRefList
+from pydantic import field_validator, PrivateAttr
+
+from phenotypic.tools_ import ColumnRef
 from phenotypic.tools_.measurement_info import EDGE_CORRECTION
 from .abc_ import SetAnalyzer
 
@@ -56,109 +58,68 @@ class EdgeCorrector(SetAnalyzer):
 
     _measurement_infoclass = EDGE_CORRECTION
 
-    def __init__(
-            self,
-            on: ColumnRef,
-            groupby: ColumnRefList,
-            time_label: ColumnRef = "Metadata_Time",
-            nrows: int = 8,
-            ncols: int = 12,
-            top_n: int = 3,
-            pvalue: float = 0.05,
-            connectivity: int = 4,
-            agg_func: str = "mean",
-            n_jobs: int = 1,
-    ):
-        """Initialize EdgeCorrector with grid layout and correction parameters.
+    time_label: ColumnRef = "Metadata_Time"
+    nrows: int = 8
+    ncols: int = 12
+    top_n: int = 3
+    pvalue: float = 0.05
+    connectivity: int = 4
+
+    _original_data: pd.DataFrame = PrivateAttr(default_factory=pd.DataFrame)
+
+    @field_validator("connectivity")
+    @classmethod
+    def _validate_connectivity(cls, value: int) -> int:
+        """Reject connectivity patterns other than 4 or 8.
 
         Args:
-            on (str): Name of the measurement column to analyze (e.g., 'Area', 'Intensity').
-                Corrected values will be placed in a new column EDGE_CORRECTION.NEW_VAL-{on}.
-                Original column is preserved unchanged.
-            groupby (list[str]): Column names for grouping data independently (e.g.,
-                ['ImageName', 'Condition']). Each group gets its own threshold calculation.
-            time_label (str, optional): Column name containing time point information.
-                Defaults to "Metadata_Time". The maximum time point per group is used
-                to identify interior vs. edge colonies.
-            nrows (int, optional): Number of rows in the grid layout. Defaults to 8
-                (standard 96-well plate). Must be positive. Affects edge detection logic.
-            ncols (int, optional): Number of columns in the grid layout. Defaults to 12
-                (standard 96-well plate). Must be positive. Affects edge detection logic.
-            top_n (int, optional): Number of top-valued interior colonies to use for
-                threshold calculation. Defaults to 3. The threshold is the mean of the
-                top_n interior colonies; larger values give more stable thresholds but
-                may miss subtle edge effects.
-            pvalue (float, optional): P-value threshold for permutation test comparing
-                interior vs. edge distributions. Defaults to 0.05. Set to 0.0 to disable
-                statistical testing and apply correction to all groups. Values are passed
-                to scipy.stats.permutation_test with 1000 resamples.
-            connectivity (int, optional): Neighbor pattern for interior cell detection.
-                Defaults to 4 (orthogonal: North, South, East, West). Set to 8 to include
-                diagonal neighbors. Affects how strictly "surrounded" is defined.
-            agg_func (str, optional): Aggregation function for multiple measurements per
-                section (well). Defaults to "mean". See pandas.DataFrame.agg for options.
-            n_jobs (int, optional): Number of parallel workers for group processing.
-                Defaults to 1 (serial). Use -1 for all CPU cores via joblib.Parallel.
+            value: The candidate neighbor-connectivity pattern.
+
+        Returns:
+            The validated connectivity value.
 
         Raises:
-            ValueError: If connectivity is not 4 or 8.
-            ValueError: If nrows or ncols are not positive integers.
-            ValueError: If top_n is not a positive integer.
-
-        Examples:
-            Basic initialization with 96-well plate defaults:
-
-            >>> from phenotypic.analysis import EdgeCorrector
-            >>> corrector = EdgeCorrector(
-            ...     on='Area',
-            ...     groupby=['ImageName'],
-            ...     top_n=3,
-            ...     pvalue=0.05
-            ... )
-            >>> # nrows=8, ncols=12 are defaults for 96-well format
-
-            Custom grid layout (384-well format, 16x24):
-
-            >>> corrector = EdgeCorrector(
-            ...     on='ColonyIntensity',
-            ...     groupby=['Plate', 'Condition'],
-            ...     nrows=16,
-            ...     ncols=24,
-            ...     top_n=3,
-            ...     connectivity=8,  # Include diagonal neighbors
-            ...     n_jobs=4
-            ... )
-
-            Aggressive correction (no statistical test):
-
-            >>> corrector = EdgeCorrector(
-            ...     on='Area',
-            ...     groupby=['ImageName'],
-            ...     pvalue=0.0,  # Apply to all groups regardless of stats
-            ...     top_n=1  # Use single top value as threshold
-            ... )
+            ValueError: If ``connectivity`` is not 4 or 8.
         """
-        super().__init__(
-                on=on, groupby=groupby, agg_func=agg_func, n_jobs=n_jobs
-        )
+        if value not in (4, 8):
+            raise ValueError(f"connectivity must be 4 or 8, got {value}")
+        return value
 
-        if connectivity not in (4, 8):
-            raise ValueError(f"connectivity must be 4 or 8, got {connectivity}")
-        if nrows <= 0 or ncols <= 0:
-            raise ValueError(
-                    f"nrows and ncols must be positive, got nrows={nrows}, ncols={ncols}"
-            )
-        if top_n <= 0:
-            raise ValueError(f"top_n must be positive, got {top_n}")
+    @field_validator("nrows", "ncols")
+    @classmethod
+    def _validate_grid_dim(cls, value: int) -> int:
+        """Reject non-positive grid dimensions.
 
-        self.nrows = nrows
-        self.ncols = ncols
-        self.top_n = top_n
-        self.connectivity = connectivity
-        self.time_label = time_label
-        self.pvalue = pvalue
+        Args:
+            value: A candidate ``nrows`` or ``ncols`` grid dimension.
 
-        self._original_data: pd.DataFrame = pd.DataFrame()
+        Returns:
+            The validated dimension.
+
+        Raises:
+            ValueError: If the dimension is not positive.
+        """
+        if value <= 0:
+            raise ValueError(f"nrows and ncols must be positive, got {value}")
+        return value
+
+    @field_validator("top_n")
+    @classmethod
+    def _validate_top_n(cls, value: int) -> int:
+        """Reject non-positive ``top_n`` values.
+
+        Args:
+            value: The candidate ``top_n`` count.
+
+        Returns:
+            The validated ``top_n`` value.
+
+        Raises:
+            ValueError: If ``top_n`` is not positive.
+        """
+        if value <= 0:
+            raise ValueError(f"top_n must be positive, got {value}")
+        return value
 
     @staticmethod
     def _surrounded_positions(

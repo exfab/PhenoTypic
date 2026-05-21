@@ -6,11 +6,12 @@ if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
 import numpy as np
+from pydantic import field_validator
 from scipy.ndimage import binary_fill_holes
-from typing import Optional
 
 from phenotypic.abc_ import ObjectRefiner
 from phenotypic.tools_.funcs_ import is_binary_mask
+from phenotypic.tools_.typing_ import NdArrayField
 
 
 class MaskFill(ObjectRefiner):
@@ -45,26 +46,22 @@ class MaskFill(ObjectRefiner):
         of refinement operations.
     """
 
-    def __init__(self, structure: Optional[np.ndarray] = None, origin: int = 0):
-        """Initialize the filler and validate inputs.
+    structure: NdArrayField | None = None
+    origin: int = 0
 
-        Args:
-            structure (Optional[np.ndarray]): Binary structuring element. Larger
-                or more connected structures fill bigger holes and may reduce
-                small-scale texture within colony masks. If provided, must be a
-                binary array; otherwise a ValueError is raised.
-            origin (int): Origin offset for the structuring element. Typically
-                left at 0; changing it slightly alters how neighborhoods are
-                centered, which may affect edge sharpness at boundaries.
+    @field_validator("structure")
+    @classmethod
+    def _validate_structure(cls, structure: np.ndarray | None) -> np.ndarray | None:
+        """Require ``structure``, when provided, to be a binary mask.
 
-        Raises:
-            ValueError: If ``structure`` is provided and is not a binary mask.
+        Reproduces the pre-migration ``__init__`` guard verbatim. The
+        ``NdArrayField`` ``BeforeValidator`` has already coerced any
+        list input to an ``np.ndarray`` by the time this runs.
         """
         if structure is not None:
             if not is_binary_mask(structure):
                 raise ValueError("arr object array must be a binary array")
-        self.structure = structure
-        self.origin = origin
+        return structure
 
     def _operate(self, image: Image) -> Image:
         image.objmask[:] = binary_fill_holes(

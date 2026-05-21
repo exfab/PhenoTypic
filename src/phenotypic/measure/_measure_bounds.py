@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
+from typing import ClassVar, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -58,7 +58,7 @@ class MeasureBounds(MeasureFeatures):
         walkthrough of measuring and exporting colony data.
     """
 
-    _measurement_infoclass = BBOX
+    _measurement_infoclass: ClassVar[type] = BBOX
 
     def _operate(self, image: Image) -> pd.DataFrame:
         objmap = image.objmap[:]

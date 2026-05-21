@@ -104,12 +104,20 @@ class TestCompositeDetector:
             CompositeDetector(detectors=[]).apply(synth_plate.copy())
 
     def test_invalid_mode_raises(self, synth_plate):
-        """Test that invalid mode raises an error."""
-        with pytest.raises(Exception, match="Invalid mode"):
+        """Test that an invalid mode is rejected at construction.
+
+        Under the pydantic v2 migration ``mode`` is typed
+        ``Literal['union', 'intersection', 'overlap']``, so a bad value
+        raises ``pydantic.ValidationError`` (a ``ValueError`` subclass)
+        when the detector is constructed rather than when ``apply`` runs.
+        """
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError):
             CompositeDetector(
                     detectors=[OtsuDetector()],
                     mode='invalid'
-            ).apply(synth_plate.copy())
+            )
 
     def test_serialization_roundtrip(self):
         """Test that CompositeDetector serializes and deserializes correctly."""
@@ -123,7 +131,7 @@ class TestCompositeDetector:
         )
 
         # Create pipeline
-        pipeline = ImagePipeline([composite])
+        pipeline = ImagePipeline(ops=[composite])
 
         # Serialize to JSON
         json_str = pipeline.to_json()
@@ -141,7 +149,7 @@ class TestCompositeDetector:
         assert restored_composite.mode == 'union'
 
         # Verify parameters preserved
-        assert restored_composite.detectors[0].ignore_zeros == True
+        assert restored_composite.detectors[0].ignore_zeros is True
         assert restored_composite.detectors[1].sigma == 2
 
     def test_serialization_functional_equivalence(self, synth_plate):
@@ -156,7 +164,7 @@ class TestCompositeDetector:
         original_result = composite.apply(image, inplace=False)
 
         # Serialize and deserialize
-        pipeline = ImagePipeline([composite])
+        pipeline = ImagePipeline(ops=[composite])
         json_str = pipeline.to_json()
         restored_pipeline = ImagePipeline.from_json(json_str)
 
@@ -212,7 +220,7 @@ class TestCompositeDetector:
                 min_overlap_ratio=0.6
         )
 
-        pipeline = ImagePipeline([composite])
+        pipeline = ImagePipeline(ops=[composite])
         json_str = pipeline.to_json()
         config = json.loads(json_str)
 
@@ -221,19 +229,21 @@ class TestCompositeDetector:
         composite_key = [k for k in pipe_cfgs.keys() if 'CompositeDetector' in k][0]
         composite_data = pipe_cfgs[composite_key]
 
-        # Verify nested detectors are serialized
+        # Verify nested detectors are serialized. Under the pydantic
+        # serializer each ``OperationField`` entry is a plain
+        # ``{"class", "params"}`` dict, so ``detectors`` is a JSON list.
         assert 'detectors' in composite_data['params']
         detectors_data = composite_data['params']['detectors']
-        assert detectors_data['__type__'] == 'operation_list'
-        assert len(detectors_data['items']) == 2
+        assert isinstance(detectors_data, list)
+        assert len(detectors_data) == 2
 
         # Verify first detector (OtsuDetector)
-        otsu_data = detectors_data['items'][0]
+        otsu_data = detectors_data[0]
         assert otsu_data['class'] == 'OtsuDetector'
-        assert otsu_data['params']['ignore_zeros'] == True
+        assert otsu_data['params']['ignore_zeros'] is True
 
         # Verify second detector (CannyDetector)
-        canny_data = detectors_data['items'][1]
+        canny_data = detectors_data[1]
         assert canny_data['class'] == 'CannyDetector'
         assert canny_data['params']['sigma'] == 2
 
@@ -248,7 +258,7 @@ class TestCompositeDetector:
 
         image = synth_plate.copy()
 
-        pipeline = ImagePipeline([
+        pipeline = ImagePipeline(ops=[
             GaussianBlur(sigma=2),
             CompositeDetector(
                     detectors=[OtsuDetector(), CannyDetector(sigma=2)],
@@ -283,7 +293,7 @@ class TestCompositeDetector:
         image = synth_plate.copy()
 
         # Pipeline with preprocessing + detection
-        pipeline = ImagePipeline([
+        pipeline = ImagePipeline(ops=[
             GaussianBlur(sigma=2),
             OtsuDetector()
         ])
@@ -306,7 +316,7 @@ class TestCompositeDetector:
         composite = CompositeDetector(
                 detectors=[
                     OtsuDetector(),  # Direct detector
-                    ImagePipeline([  # Pipeline
+                    ImagePipeline(ops=[  # Pipeline
                         GaussianBlur(sigma=2),
                         CannyDetector(sigma=2)
                     ])
@@ -326,7 +336,7 @@ class TestCompositeDetector:
         composite = CompositeDetector(
                 detectors=[
                     OtsuDetector(),
-                    ImagePipeline([
+                    ImagePipeline(ops=[
                         GaussianBlur(sigma=2),
                         CannyDetector(sigma=2)
                     ])
@@ -334,7 +344,7 @@ class TestCompositeDetector:
                 mode='intersection'
         )
 
-        pipeline = ImagePipeline([composite])
+        pipeline = ImagePipeline(ops=[composite])
         json_str = pipeline.to_json()
 
         # Deserialize
@@ -359,7 +369,7 @@ class TestCompositeDetector:
         composite = CompositeDetector(
                 detectors=[
                     OtsuDetector(),
-                    ImagePipeline([
+                    ImagePipeline(ops=[
                         GaussianBlur(sigma=2),
                         CannyDetector(sigma=2)
                     ])
@@ -369,7 +379,7 @@ class TestCompositeDetector:
         original_result = composite.apply(image, inplace=False)
 
         # Serialize and deserialize
-        pipeline = ImagePipeline([composite])
+        pipeline = ImagePipeline(ops=[composite])
         json_str = pipeline.to_json()
         restored = ImagePipeline.from_json(json_str)
 
@@ -390,7 +400,7 @@ class TestCompositeDetector:
         composite = CompositeDetector(
                 detectors=[
                     OtsuDetector(),
-                    ImagePipeline([
+                    ImagePipeline(ops=[
                         GaussianBlur(sigma=2),
                         OtsuDetector()
                     ])
@@ -398,7 +408,7 @@ class TestCompositeDetector:
                 mode='union'
         )
 
-        pipeline = ImagePipeline([composite])
+        pipeline = ImagePipeline(ops=[composite])
         json_str = pipeline.to_json()
         config = json.loads(json_str)
 
@@ -407,17 +417,20 @@ class TestCompositeDetector:
         composite_key = [k for k in pipe_cfgs.keys() if 'CompositeDetector' in k][0]
         composite_data = pipe_cfgs[composite_key]
 
-        # Verify detectors list structure
+        # Verify detectors list structure. ``OperationField`` serializes
+        # each entry to a class-tagged dict; an ``ObjectDetector`` entry is
+        # ``{"class", "params"}`` and a nested ``ImagePipeline`` entry is
+        # ``{"__type__": "pipeline", "config": ...}``.
         detectors_data = composite_data['params']['detectors']
-        assert detectors_data['__type__'] == 'operation_list'
-        assert len(detectors_data['items']) == 2
+        assert isinstance(detectors_data, list)
+        assert len(detectors_data) == 2
 
         # First item is ObjectDetector
-        assert detectors_data['items'][0]['class'] == 'OtsuDetector'
+        assert detectors_data[0]['class'] == 'OtsuDetector'
 
         # Second item is ImagePipeline
-        assert detectors_data['items'][1]['__type__'] == 'pipeline'
-        assert 'config' in detectors_data['items'][1]
-        nested_config = detectors_data['items'][1]['config']
+        assert detectors_data[1]['__type__'] == 'pipeline'
+        assert 'config' in detectors_data[1]
+        nested_config = detectors_data[1]['config']
         assert 'pipe_cfgs' in nested_config
         assert len(nested_config['pipe_cfgs']) == 2

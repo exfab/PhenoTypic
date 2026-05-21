@@ -55,15 +55,16 @@ class GpuDetector(ObjectDetector, ABC):
 
     Use a ``_ensure_model_loaded()`` pattern::
 
+        from pydantic import PrivateAttr
+
         class MyGpuDetector(GpuDetector):
-            def __init__(self, model_size="small", device="auto"):
-                super().__init__()
-                self.model_size = model_size
-                self.device = device
-                self._model = None  # underscore prefix → skipped by serialization
+            model_size: str = "small"  # Annotated class-level fields
+            device: str = "auto"
+            # underscore-prefixed private attr → skipped by serialization
+            _model: object = PrivateAttr(default=None)
 
             def _ensure_model_loaded(self):
-                if getattr(self, "_model", None) is not None:
+                if self._model is not None:
                     return
                 import torch  # lazy import
                 # ... build model ...

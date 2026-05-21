@@ -386,10 +386,10 @@ class TestLogGrowthModel:
 
         model.analyze(sample_data)
 
-        # Check that verbose output was produced
-        captured = capsys.readouterr()
-        # Note: scipy's verbose output may not always appear in captured stdout
-        # This test mainly ensures verbose=True doesn't break anything
+        # Drain the capture buffer. scipy's verbose output may not always
+        # appear in captured stdout; this test mainly ensures verbose=True
+        # doesn't break anything.
+        capsys.readouterr()
 
     def test_fitting_bounds(self):
         """Test that fitting respects bounds."""

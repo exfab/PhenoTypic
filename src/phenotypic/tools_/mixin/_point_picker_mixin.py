@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, ClassVar, TypeVar
 
-import numpy as np
-
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
@@ -19,36 +17,31 @@ class PointPickerMixin:
     Operations that take a list of point coordinates as a primary parameter
     (currently :class:`~phenotypic.detect.ManualPointDetector` and
     :class:`~phenotypic.refine.ManualSelector`) inherit from this mixin to
-    pick up three things at once:
+    pick up two things at once:
 
-    * **Coordinate coercion.** ``__setattr__`` converts list/tuple input
-      assigned to the centres parameter into a NumPy array, so downstream
-      ``_operate`` code can treat it uniformly. ``None`` passes through
-      unchanged so that "no points yet" remains a valid state.
     * **A blocking napari picker.** :meth:`napari` opens a desktop
       :class:`~phenotypic.tools_.napari_.PointPickerWidget` and writes the
       confirmed picks back to the operation. Closing the viewer without
       confirming is a no-op (existing centres are preserved).
     * **A GUI introspection hook.** The ``_point_picker_param_name`` class
-      attribute tells the Dash builder which ``__init__`` parameter to
-      replace with an interactive picker button instead of a free-form text
-      input.
+      attribute tells the Dash builder which field to replace with an
+      interactive picker button instead of a free-form text input.
 
     Subclasses that store coordinates under a name other than ``"centers"``
-    can override :attr:`_point_picker_param_name`; both ``__setattr__`` and
-    :meth:`napari` use that attribute.
+    can override :attr:`_point_picker_param_name`; :meth:`napari` uses that
+    attribute.
+
+    Coordinate coercion (list/tuple/``np.ndarray`` → a canonical form)
+    moves to a ``field_validator`` on the coordinate field of each
+    consuming operation as part of the pydantic migration — this mixin no
+    longer overrides ``__setattr__`` (which would clash with pydantic's).
 
     Attributes:
-        _point_picker_param_name: Name of the ``__init__`` parameter holding
-            the picked ``(y, x)`` coordinates. Defaults to ``"centers"``.
+        _point_picker_param_name: Name of the field holding the picked
+            ``(y, x)`` coordinates. Defaults to ``"centers"``.
     """
 
     _point_picker_param_name: ClassVar[str] = "centers"
-
-    def __setattr__(self, name: str, value: object) -> None:
-        if name == self._point_picker_param_name and value is not None:
-            value = np.asarray(value)
-        super().__setattr__(name, value)
 
     def napari(self: _T, image: Image) -> _T:
         """Interactively pick coordinates using a napari viewer.

@@ -224,19 +224,29 @@ class TestParamFormViaRegistry:
         assert info.category == "Model"
         assert "loss" in info.parameters
 
-    def test_linear_softplus_has_multi_union(self, registry):
+    def test_linear_softplus_s0_prior_exposed_as_any(self, registry):
+        """``s0_prior`` is exposed by the registry but intentionally ``Any``.
+
+        The pydantic migration types ``_LinearSoftplusBase.s0_prior`` as
+        ``Any`` (not a ``bool | float | int | str | None`` union) so that
+        ``_InoculumPrior.__init__`` still raises its own ``TypeError`` for
+        a bad value rather than pydantic raising ``ValidationError`` — so
+        it is no longer a multi-union.
+        """
         info = registry.get("LinearSoftplus")
         assert info is not None
         sp = info.parameters.get("s0_prior")
         assert sp is not None
-        assert _is_multi_union(sp.type_hint)
+        assert not _is_multi_union(sp.type_hint)
 
-    def test_double_softplus_has_multi_union(self, registry):
+    def test_double_softplus_s0_prior_exposed_as_any(self, registry):
+        """``s0_prior`` is exposed but intentionally ``Any`` — see
+        ``test_linear_softplus_s0_prior_exposed_as_any``."""
         info = registry.get("DoubleSoftplus")
         assert info is not None
         sp = info.parameters.get("s0_prior")
         assert sp is not None
-        assert _is_multi_union(sp.type_hint)
+        assert not _is_multi_union(sp.type_hint)
 
     def test_param_form_renders_for_filter(self, registry):
         info = registry.get("EdgeCorrector")

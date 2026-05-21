@@ -14,14 +14,14 @@ power-user knobs that move on subclass override.
 
 from __future__ import annotations
 
-from typing import Any, ClassVar, Dict, List, Tuple
+from typing import Any, ClassVar, Dict, Tuple
 
 import numpy as np
 import pandas as pd
+from pydantic import PrivateAttr
 
 from phenotypic.analysis._inoculum_prior import _InoculumPrior
-from phenotypic.analysis.abc_._model_fitter import LossKind, ModelFitter
-from phenotypic.tools_ import ColumnRef, ColumnRefList
+from phenotypic.analysis.abc_._model_fitter import ModelFitter
 
 
 _DEFAULT_BETA = 10.0
@@ -62,43 +62,39 @@ class _LinearSoftplusBase(ModelFitter):
     the unfloored ratio. Set to ``None`` on a subclass to disable the
     floor and recover raw inverse-variance weighting."""
 
-    def __init__(
-            self,
-            on: ColumnRef,
-            groupby: ColumnRefList,
-            time_label: ColumnRef = "Metadata_Time",
-            *,
-            stderr_label: str | None = None,
-            s0_prior: bool | float | int | str | None = None,
-            s0_prior_cv: float | None = None,
-            s0_prior_sigma: float | None = None,
-            s0_prior_groupby: List[str] | None = None,
-            n_jobs: int = 1,
-            loss: LossKind = "huber",
-            f_scale: float = 1.0,
-            verbose: bool = False,
-    ):
-        super().__init__(
-                on=on,
-                groupby=groupby,
-                time_label=time_label,
-                n_jobs=n_jobs,
-                loss=loss,
-                f_scale=f_scale,
-                verbose=verbose,
-        )
-        self.stderr_label = stderr_label
-        self.s0_prior = s0_prior
-        self.s0_prior_cv = s0_prior_cv
-        self.s0_prior_sigma = s0_prior_sigma
-        self.s0_prior_groupby = s0_prior_groupby
+    stderr_label: str | None = None
+    # ``s0_prior`` accepts bool / float / int / str / None. It is typed
+    # ``Any`` (not a union) so pydantic stores the value verbatim without
+    # coercion or rejection — type-dispatch and validation are the job of
+    # ``_InoculumPrior.__init__`` below, which raises ``TypeError`` for
+    # unsupported types and ``ValueError`` for non-positive scalars.
+    s0_prior: Any = None
+    s0_prior_cv: float | None = None
+    s0_prior_sigma: float | None = None
+    s0_prior_groupby: list[str] | None = None
 
+    _prior: _InoculumPrior = PrivateAttr()
+
+    def model_post_init(self, __context: Any) -> None:
+        """Build the inoculum-prior helper from the resolved fields.
+
+        Runs after pydantic has validated every field. Constructing
+        :class:`_InoculumPrior` here preserves the original
+        ``__init__``-time validation: it raises ``TypeError`` for an
+        unsupported ``s0_prior`` type and ``ValueError`` for a
+        non-positive scalar, a mutually-exclusive σ pair, or an empty
+        ``s0_prior_groupby`` list.
+
+        Args:
+            __context: Pydantic post-init context (unused).
+        """
+        super().model_post_init(__context)
         self._prior = _InoculumPrior(
-                s0_prior=s0_prior,
-                s0_prior_cv=s0_prior_cv,
-                s0_prior_sigma=s0_prior_sigma,
-                s0_prior_groupby=s0_prior_groupby,
-                on_column=on,
+                s0_prior=self.s0_prior,
+                s0_prior_cv=self.s0_prior_cv,
+                s0_prior_sigma=self.s0_prior_sigma,
+                s0_prior_groupby=self.s0_prior_groupby,
+                on_column=self.on,
         )
 
     # ------------------------------------------------------------------ #

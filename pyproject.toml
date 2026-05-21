@@ -69,6 +69,7 @@ dependencies = [
     "dash>=4.1.0",
     "dash-cytoscape>=1.0.2",
     "dash-bootstrap-components>=2.0.4",
+    "pydantic>=2.12.5",
 ]
 
 [project.urls]
@@ -186,3 +187,6 @@ required-environments = [
 
 [tool.ruff]
 line-length = 79
+
+[tool.mypy]
+plugins = ["pydantic.mypy"]

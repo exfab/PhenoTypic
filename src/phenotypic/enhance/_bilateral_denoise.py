@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, ClassVar, Literal
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
+from pydantic import field_validator
 from skimage.restoration import denoise_bilateral
 
 from ..abc_ import ImageDenoiser
@@ -75,58 +76,28 @@ class BilateralDenoise(_GATSupportMixin, ImageDenoiser):
     _GAT_NOISE_PARAMS: ClassVar[dict[str, float]] = {"sigma_color": 1.0}
     _GAT_DEFER_ATTRS: ClassVar[tuple[str, ...]] = ("clip",)
 
-    def __init__(
-            self,
-            sigma_color: float | None = None,
-            sigma_spatial: float = 15,
-            *,
-            win_size: int | None = None,
-            mode: str = "constant",
-            cval: float = 0,
-            clip: bool = True,
-            use_gat: bool = False,
-            **kwargs,
-    ):
-        """
-        Parameters:
-            sigma_color (float | None): Standard deviation for grayvalue
-                similarity. None (default) auto-estimates. Retargeted to 1.0
-                when ``use_gat=True``.
-            sigma_spatial (float): Standard deviation for spatial distance
-                in pixels. Default: 15.
-            win_size (int | None): Window size for bilateral filter
-                computation. None (default) auto-calculates.
-            mode (str): Boundary handling. 'constant' (default), 'edge',
-                'symmetric', 'reflect', 'wrap'.
-            cval (float): Fill value for 'constant' mode. Default: 0.
-            clip (bool): Whether to clip output to [0, 1] range. Default
-                True. Automatically deferred when ``use_gat=True``.
-            use_gat (bool): Wrap denoising in the Generalized Anscombe
-                Transform for Poisson-Gaussian noise. Default False. See
-                :class:`phenotypic.tools_.mixin._GATSupportMixin`.
-            **kwargs: GAT tuning parameters forwarded to
-                :class:`_GATSupportMixin` (``gat_gain``, ``gat_mu``,
-                ``gat_read_sigma``, ``gat_scale_factor``).
-        """
+    sigma_color: float | None = None
+    sigma_spatial: float = 15
+    win_size: int | None = None
+    mode: Literal["constant", "edge", "symmetric", "reflect", "wrap"] = "constant"
+    cval: float = 0
+    clip: bool = True
+
+    @field_validator("sigma_spatial")
+    @classmethod
+    def _check_sigma_spatial(cls, sigma_spatial: float) -> float:
+        """Require a positive spatial sigma (matches the legacy guard)."""
         if sigma_spatial <= 0:
             raise ValueError("sigma_spatial must be > 0")
+        return sigma_spatial
 
+    @field_validator("sigma_color")
+    @classmethod
+    def _check_sigma_color(cls, sigma_color: float | None) -> float | None:
+        """Require a positive intensity sigma or ``None`` (matches the legacy guard)."""
         if sigma_color is not None and sigma_color <= 0:
             raise ValueError("sigma_color must be > 0 or None")
-
-        if mode not in ["constant", "edge", "symmetric", "reflect", "wrap"]:
-            raise ValueError(
-                    f'mode must be one of "constant", "edge", "symmetric", "reflect", '
-                    f'"wrap"; got {mode!r}'
-            )
-
-        super().__init__(use_gat=use_gat, **kwargs)
-        self.sigma_color = sigma_color
-        self.sigma_spatial = float(sigma_spatial)
-        self.win_size = win_size
-        self.mode = mode
-        self.cval = cval
-        self.clip = clip
+        return sigma_color
 
     def _operate(self, image: Image) -> Image:
         """Apply bilateral denoising to reduce noise while preserving colony edges."""

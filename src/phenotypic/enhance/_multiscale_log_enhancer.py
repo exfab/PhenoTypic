@@ -6,7 +6,9 @@ if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
 import numpy as np
+from pydantic import model_validator
 from scipy.ndimage import gaussian_laplace
+from typing_extensions import Self
 
 from ..abc_ import ImageEnhancer
 
@@ -69,46 +71,35 @@ class MultiscaleLoGEnhancer(ImageEnhancer):
         scale-space blob detection and LoG theory.
     """
 
-    def __init__(
-        self,
-        min_radius: float = 3.0,
-        max_radius: float = 12.0,
-        num_scales: int = 12,
-    ):
-        """Initialize MultiscaleLoGEnhancer with radius range and scale density.
+    min_radius: float = 3.0
+    max_radius: float = 12.0
+    num_scales: int = 12
 
-        Args:
-            min_radius (float): Smallest target blob radius in pixels. The
-                corresponding Gaussian sigma is ``min_radius / sqrt(2)``. Blobs
-                smaller than this radius produce weaker LoG responses. Typical
-                range: 1.0–5.0 pixels at 512×768 resolution. Default: 3.0.
-            max_radius (float): Largest target blob radius in pixels. The
-                corresponding Gaussian sigma is ``max_radius / sqrt(2)``. Blobs
-                larger than this radius also produce weaker responses. Typical
-                range: 8.0–50.0 pixels at 512×768 resolution. Default: 12.0.
-            num_scales (int): Number of logarithmically spaced sigma values
-                between ``min_radius / sqrt(2)`` and ``max_radius / sqrt(2)``.
-                Controls size-discrimination resolution. Larger values give finer
-                blob size resolution but increase computation (one LoG evaluation
-                per scale). Typical range: 4–20. Default: 12.
+    @model_validator(mode="after")
+    def _check_radius_range(self) -> Self:
+        """Reproduce the pre-migration ``__init__`` radius/scale guards.
+
+        The ``min_radius >= max_radius`` check spans two fields, so it
+        lives in a model validator rather than a per-field validator.
 
         Raises:
-            ValueError: If min_radius <= 0, min_radius >= max_radius, or
-                num_scales < 1.
+            ValueError: If ``min_radius`` <= 0, ``min_radius`` >=
+                ``max_radius``, or ``num_scales`` < 1.
         """
-        if min_radius <= 0:
-            raise ValueError(f"min_radius must be positive, got {min_radius}")
-        if min_radius >= max_radius:
+        if self.min_radius <= 0:
             raise ValueError(
-                f"min_radius ({min_radius}) must be less than "
-                f"max_radius ({max_radius})"
+                f"min_radius must be positive, got {self.min_radius}"
             )
-        if num_scales < 1:
-            raise ValueError(f"num_scales must be >= 1, got {num_scales}")
-
-        self.min_radius = float(min_radius)
-        self.max_radius = float(max_radius)
-        self.num_scales = int(num_scales)
+        if self.min_radius >= self.max_radius:
+            raise ValueError(
+                f"min_radius ({self.min_radius}) must be less than "
+                f"max_radius ({self.max_radius})"
+            )
+        if self.num_scales < 1:
+            raise ValueError(
+                f"num_scales must be >= 1, got {self.num_scales}"
+            )
+        return self
 
     @staticmethod
     def _enhance(

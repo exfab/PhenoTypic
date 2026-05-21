@@ -6,8 +6,6 @@ import numpy as np
 import pandas as pd
 
 from phenotypic.analysis.abc_._linear_softplus_base import _LinearSoftplusBase
-from phenotypic.analysis.abc_._model_fitter import LossKind
-from phenotypic.tools_ import ColumnRef, ColumnRefList
 from phenotypic.tools_.measurement_info import (
     LINEAR_SOFTPLUS_MODEL,
     MODEL_METRICS,
@@ -86,92 +84,7 @@ class LinearSoftplus(_LinearSoftplusBase):
     """Extra rows past the saturation index kept so the fit still sees
     some plateau evidence. Subclass override to tune."""
 
-    def __init__(
-            self,
-            on: ColumnRef,
-            groupby: ColumnRefList,
-            time_label: ColumnRef = "Metadata_Time",
-            *,
-            stderr_label: str | None = None,
-            s0_prior: bool | float | int | str | None = None,
-            s0_prior_cv: float | None = None,
-            s0_prior_sigma: float | None = None,
-            s0_prior_groupby: List[str] | None = None,
-            prune_saturated: bool = True,
-            n_jobs: int = 1,
-            loss: LossKind = "huber",
-            f_scale: float = 1.0,
-            verbose: bool = False,
-    ):
-        """Initialize the linear-softplus fitter.
-
-        Args:
-            on: Target column (size measurement) to fit.
-            groupby: Columns defining the per-fit grouping structure.
-            time_label: Column name representing time. Defaults to
-                ``"Metadata_Time"``.
-            stderr_label: Column providing per-timepoint standard
-                errors used as weights. When ``None``, replicate SE is
-                computed automatically during aggregation.
-            s0_prior: Unified prior-mean source, dispatched by type:
-
-                - ``None`` / ``False``: no prior (default).
-                - ``True``: ground on data — ``µ`` is the median of
-                  ``self.on`` at the earliest observed timepoint
-                  within the effective group.
-                - ``str``: ground on the named column — ``µ`` is the
-                  median of ``data[s0_prior]`` at the earliest
-                  timepoint.
-                - positive ``int`` / ``float``: scalar ``µ`` applied
-                  uniformly.
-
-                Raises :class:`TypeError` on anything else, and
-                :class:`ValueError` on non-positive scalars.
-            s0_prior_cv: CV coefficient for the prior σ
-                (``σ = cv × µ``). Mutually exclusive with
-                ``s0_prior_sigma``. Defaults to ``None``; if neither
-                knob is set and the prior is engaged, the helper applies
-                CV=0.05 as a moderately informative default.
-            s0_prior_sigma: Absolute σ for the prior. Mutually exclusive
-                with ``s0_prior_cv``. Defaults to ``None``.
-            s0_prior_groupby: Coarser grouping (subset of ``groupby``)
-                for empirical-Bayes pooling of the per-group ``µ``.
-                Only meaningful when ``s0_prior`` is ``True`` or a
-                string. Subset-of-``groupby`` constraint is verified
-                at ``analyze`` time.
-            prune_saturated: Whether to drop post-saturation timepoints
-                before fitting. Defaults to ``True``.
-            n_jobs: Number of parallel workers for per-group fits.
-            loss: Loss method passed through to
-                :func:`scipy.optimize.least_squares`. One of
-                ``"linear"``, ``"soft_l1"``, ``"huber"``, ``"cauchy"``,
-                ``"arctan"``. Defaults to ``"huber"`` — behaves like
-                standard least-squares on inlier residuals (below
-                ``f_scale``) but downweights large residuals from
-                outlier timepoints.
-            f_scale: Soft margin between inlier and outlier residuals.
-                Residuals well below ``f_scale`` behave like the
-                standard squared loss; residuals well above it are
-                downweighted according to the chosen robust ``loss``.
-                No effect when ``loss="linear"``. Must be positive;
-                defaults to ``1.0``.
-            verbose: If ``True``, enables optimizer verbose output.
-        """
-        super().__init__(
-                on=on,
-                groupby=groupby,
-                time_label=time_label,
-                stderr_label=stderr_label,
-                s0_prior=s0_prior,
-                s0_prior_cv=s0_prior_cv,
-                s0_prior_sigma=s0_prior_sigma,
-                s0_prior_groupby=s0_prior_groupby,
-                n_jobs=n_jobs,
-                loss=loss,
-                f_scale=f_scale,
-                verbose=verbose,
-        )
-        self.prune_saturated = prune_saturated
+    prune_saturated: bool = True
 
     # ------------------------------------------------------------------ #
     # Model math

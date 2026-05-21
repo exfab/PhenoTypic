@@ -77,44 +77,11 @@ class NonLocalMeansDenoiser(_GATSupportMixin, ImageDenoiser):
     _GAT_NOISE_PARAMS: ClassVar[dict[str, float]] = {"h": 1.0, "sigma": 1.0}
     _GAT_DEFER_ATTRS: ClassVar[tuple[str, ...]] = ()
 
-    def __init__(
-            self,
-            patch_size: int = 5,
-            search_dist: int = 11,
-            h: float = 0.5,
-            *,
-            fast_mode: bool = False,
-            sigma: float = 0.0,
-            use_gat: bool = False,
-            **kwargs,
-    ):
-        """
-        Parameters:
-            patch_size (int): Size of patches used for comparison.
-                Default: 5.
-            search_dist (int): Maximal distance in pixels to search for
-                similar patches. Default: 11.
-            h (float): Cut-off distance controlling smoothness. Rule of
-                thumb: ``h`` ≈ ``sigma``. Default: 0.5. Retargets to 1.0
-                when ``use_gat=True``.
-            fast_mode (bool): If True, use faster variant with uniform
-                spatial weighting. Default: False.
-            sigma (float): Noise standard deviation. If provided (> 0),
-                improves patch weighting. Default: 0.0. Retargets to 1.0
-                when ``use_gat=True``.
-            use_gat (bool): Wrap denoising in the Generalized Anscombe
-                Transform for Poisson-Gaussian noise. Default False. See
-                :class:`phenotypic.tools_.mixin._GATSupportMixin`.
-            **kwargs: GAT tuning parameters forwarded to
-                :class:`_GATSupportMixin` (``gat_gain``, ``gat_mu``,
-                ``gat_read_sigma``, ``gat_scale_factor``).
-        """
-        super().__init__(use_gat=use_gat, **kwargs)
-        self.patch_size = int(patch_size)
-        self.search_dist = int(search_dist)
-        self.h = float(h)
-        self.fast_mode = bool(fast_mode)
-        self.sigma = float(sigma)
+    patch_size: int = 5
+    search_dist: int = 11
+    h: float = 0.5
+    fast_mode: bool = False
+    sigma: float = 0.0
 
     def _operate(self, image: Image) -> Image:
         """Apply non-local means denoising to detection matrix."""

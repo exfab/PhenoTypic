@@ -6,7 +6,7 @@ runtime equivalence (``ColumnRef`` is still a ``str``) plus the
 """
 from __future__ import annotations
 
-from typing import get_args, get_type_hints
+from typing import get_args
 
 import pytest
 
@@ -91,14 +91,20 @@ class TestAnalyzerSignatureMarkers:
         import phenotypic.analysis as analysis_module
 
         cls = getattr(analysis_module, cls_name)
-        hints = get_type_hints(cls.__init__, include_extras=True)
+        # The analyzers are pydantic models: the ``_ColumnRefMarker`` is
+        # carried on each field's ``FieldInfo`` rather than on a
+        # hand-written ``__init__`` signature. Pydantic lifts the marker
+        # into ``FieldInfo.metadata``; for union-typed fields (e.g.
+        # ``Kmax_label: ColumnRef | None``) it stays on a union branch's
+        # ``__metadata__``.
         marked = set()
-        for name, hint in hints.items():
-            metadata = getattr(hint, "__metadata__", ())
-            if any(isinstance(m, _ColumnRefMarker) for m in metadata):
+        for name, field in cls.model_fields.items():
+            if any(
+                isinstance(m, _ColumnRefMarker) for m in field.metadata
+            ):
                 marked.add(name)
                 continue
-            for branch in get_args(hint):
+            for branch in get_args(field.annotation):
                 if any(
                     isinstance(m, _ColumnRefMarker)
                     for m in getattr(branch, "__metadata__", ())

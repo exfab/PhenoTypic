@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import abc
 from abc import ABC
-from typing import Any, Callable, ClassVar
+from typing import Any, ClassVar
 
 import pandas as pd
+from pydantic import Field
 
-from phenotypic.tools_ import ColumnRef, ColumnRefList
 from phenotypic.tools_.measurement_info import QUALITY_CHECK
 
 from ._set_analyzer import SetAnalyzer
@@ -58,10 +58,12 @@ class QualityCheck(SetAnalyzer, ABC):
         name: Short identifier composed into output column names. Set on
             each concrete subclass (e.g. ``"Count"``, ``"SE"``).
         severity_warn: Severity at/above which ``Status="warn"``.
-            Class-level default; instance can override via constructor.
+            A class-level constant; subclasses may override it by
+            re-declaring the ``ClassVar`` in their class body.
         severity_fail: Severity at/above which ``Status="fail"`` and
-            ``Flag=True``. Class-level default; instance can override
-            via constructor.
+            ``Flag=True``. A class-level constant; subclasses may
+            override it by re-declaring the ``ClassVar`` in their
+            class body.
         unmatched_groups: Groups that the check could not evaluate (for
             example, expected counts whose group key never appeared in
             the data). Populated by subclasses that need to report
@@ -69,50 +71,12 @@ class QualityCheck(SetAnalyzer, ABC):
     """
 
     name: ClassVar[str]
+    _exposes_agg_func: ClassVar[bool] = False
+    _measurement_infoclass: ClassVar[type | None] = None
+
     severity_warn: ClassVar[float] = 0.05
     severity_fail: ClassVar[float] = 0.10
-    _exposes_agg_func: ClassVar[bool] = False
-    _measurement_infoclass: type | None = None
-
-    def __init__(
-        self,
-        on: ColumnRef,
-        groupby: ColumnRefList,
-        *,
-        severity_warn: float | None = None,
-        severity_fail: float | None = None,
-        agg_func: Callable | str = "mean",
-        n_jobs: int = 1,
-    ):
-        """Construct a quality check.
-
-        Args:
-            on: Measurement column the check operates on.
-            groupby: Columns that define the per-group iteration unit
-                passed to :meth:`_compute`.
-            severity_warn: Per-instance override for the class-level
-                ``severity_warn`` threshold. ``None`` falls back to the
-                class default.
-            severity_fail: Per-instance override for the class-level
-                ``severity_fail`` threshold. ``None`` falls back to the
-                class default.
-            agg_func: Forwarded to :class:`SetAnalyzer`. No v1 check
-                actually aggregates measurement values; the parameter
-                is preserved for subclass opt-in via
-                ``_exposes_agg_func``.
-            n_jobs: Worker count. Currently unused by the base
-                ``analyze`` loop (subclasses may parallelize inside
-                ``_compute``); kept on the signature for parity with
-                :class:`SetAnalyzer`.
-        """
-        super().__init__(on=on, groupby=groupby, agg_func=agg_func, n_jobs=n_jobs)
-        self.severity_warn = (  # type: ignore[misc]
-            severity_warn if severity_warn is not None else type(self).severity_warn
-        )
-        self.severity_fail = (  # type: ignore[misc]
-            severity_fail if severity_fail is not None else type(self).severity_fail
-        )
-        self.unmatched_groups: list = []
+    unmatched_groups: list = Field(default_factory=list)
 
     @abc.abstractmethod
     def _compute(self, group: pd.DataFrame) -> pd.DataFrame:

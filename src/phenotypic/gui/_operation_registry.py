@@ -10,20 +10,52 @@ from __future__ import annotations
 
 import inspect
 import types
-import typing
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Type, Union, get_args, get_origin
+
+from pydantic_core import PydanticUndefined
 
 from phenotypic import ImagePipeline
 from phenotypic.abc_ import ImageOperation
 from phenotypic.tools_._column_ref import _ColumnRefMarker
+from phenotypic.tools_._docstring_params import parse_param_descriptions
 from phenotypic.tools_.mixin import PointPickerMixin
+from phenotypic.tools_.typing_ import _OperationFieldMarker
 
 
 def _is_union_origin(origin: Any) -> bool:
     """Return ``True`` for both ``typing.Union`` and PEP 604 unions."""
 
     return origin is Union or origin is types.UnionType
+
+
+def _has_operation_field_marker(hint: Any) -> bool:
+    """Return ``True`` if ``hint`` carries an :class:`_OperationFieldMarker`.
+
+    :data:`~phenotypic.tools_.typing_.OperationField` erases its core
+    type to ``Any``, so the usual ``issubclass(..., ImageOperation)``
+    detection in :meth:`OperationRegistry._detect_operation_types` never
+    fires. The marker is the distinguishing token. Because a field is
+    typically declared as ``list[OperationField]`` or
+    ``OperationField | None``, the ``Annotated`` carrying the marker is
+    nested *inside* a ``list`` / ``Optional`` wrapper rather than sitting
+    in ``FieldInfo.metadata``; this walks the annotation tree —
+    ``Annotated`` extras and every ``get_args`` branch — to find it at
+    any depth.
+
+    Args:
+        hint: A type annotation (possibly wrapped / nested).
+
+    Returns:
+        ``True`` if an :class:`_OperationFieldMarker` is present anywhere
+        in the annotation tree.
+    """
+    # Direct ``Annotated[...]`` extras.
+    for meta in getattr(hint, "__metadata__", ()):
+        if isinstance(meta, _OperationFieldMarker):
+            return True
+    # Recurse into list / Optional / Union element types.
+    return any(_has_operation_field_marker(arg) for arg in get_args(hint))
 
 
 @dataclass
@@ -52,7 +84,8 @@ class ParamInfo:
 
     Attributes:
         name: Parameter name
-        type_hint: Type annotation from function signature
+        type_hint: Type annotation from the pydantic field
+            (``FieldInfo.annotation``)
         default: Default value (None if no default)
         has_default: Whether parameter has a default value
         is_operation: True if parameter accepts ImageOperation subclass
@@ -293,87 +326,19 @@ class OperationRegistry:
                     # Skip operations that fail to introspect
                     print(f"Warning: Could not register {name}: {e}")
 
-    def _parse_docstring_params(self, cls: Type) -> Dict[str, str]:
-        """Parse parameter descriptions from class docstring.
-
-        Extracts parameter descriptions from Google-style docstrings.
-        Supports Args, Attributes, and Parameters sections.
-
-        Args:
-            cls: Class to extract docstring from
-
-        Returns:
-            Dict mapping parameter names to description strings
-        """
-        import re
-
-        doc = cls.__doc__
-        if not doc:
-            return {}
-
-        params = {}
-        lines = doc.split("\n")
-
-        # State machine variables
-        in_param_section = False
-        current_param = None
-        current_desc = []
-
-        # Regex patterns for Google-style docstrings
-        section_header_re = re.compile(
-            r"^\s*(Args|Attributes|Parameters)\s*:\s*$", re.IGNORECASE
-        )
-        google_param_re = re.compile(r"^\s*(\w+)\s*(\(.*?\))?\s*:\s*(.+)$")
-
-        for i, line in enumerate(lines):
-            stripped_line = line.strip()
-
-            # Check for section headers
-            if section_header_re.match(stripped_line):
-                in_param_section = True
-                # Save previous param if exists
-                if current_param:
-                    params[current_param] = " ".join(current_desc).strip()
-                    current_param = None
-                    current_desc = []
-                continue
-
-            if in_param_section:
-                # End of section detection
-                if (
-                    line
-                    and not line[0].isspace()
-                    and not google_param_re.match(line)
-                ):
-                    in_param_section = False
-                    if current_param:
-                        params[current_param] = " ".join(current_desc).strip()
-                        current_param = None
-                        current_desc = []
-                    continue
-
-                # Check for new parameter definition
-                g_match = google_param_re.match(line)
-                if g_match:
-                    if current_param:
-                        params[current_param] = " ".join(current_desc).strip()
-
-                    current_param = g_match.group(1)
-                    current_desc = [g_match.group(3)]
-                    continue
-
-                # Continuation of description
-                if current_param and stripped_line:
-                    current_desc.append(stripped_line)
-
-        # Save last param
-        if current_param:
-            params[current_param] = " ".join(current_desc).strip()
-
-        return params
-
     def _extract_parameters(self, cls: Type) -> Dict[str, ParamInfo]:
         """Extract parameter info with operation/pipeline type detection.
+
+        Operations and analyzers are pydantic v2 ``BaseModel`` subclasses,
+        so the parameter contract is read from ``cls.model_fields`` — a
+        ``dict[str, FieldInfo]`` — rather than from
+        ``inspect.signature(cls.__init__)`` (which collapses to a generic
+        ``(self, data)`` signature on a pydantic model).
+
+        For non-pydantic classes (e.g. a plain class passed directly to
+        this method) the legacy ``inspect.signature`` path is used as a
+        fallback so callers outside the migrated operation tree still
+        work.
 
         Args:
             cls: Operation class to introspect
@@ -381,39 +346,102 @@ class OperationRegistry:
         Returns:
             Dict mapping parameter names to ParamInfo
         """
+        model_fields = getattr(cls, "model_fields", None)
+        if model_fields:
+            return self._extract_parameters_from_model_fields(cls, model_fields)
+        return self._extract_parameters_from_signature(cls)
+
+    def _extract_parameters_from_model_fields(
+        self, cls: Type, model_fields: Dict[str, Any]
+    ) -> Dict[str, ParamInfo]:
+        """Extract ``ParamInfo`` from a pydantic model's ``model_fields``.
+
+        Each ``FieldInfo`` carries:
+
+        * ``.annotation`` — the carrier type (used for op/pipeline/list
+          detection). ``Annotated`` extras are *not* on the annotation;
+          pydantic peels them off into ``.metadata``.
+        * ``.default`` — the default value (``PydanticUndefined`` marks a
+          required field).
+        * ``.description`` — populated by ``BaseOperation``'s docstring
+          hook from the class ``Args:`` block.
+        * ``.metadata`` — a flat list of the ``Annotated[...]`` extras,
+          including the :class:`_ColumnRefMarker` column-ref markers.
+        """
+        params: Dict[str, ParamInfo] = {}
+
+        # Per spec §1419–1428, ``QualityCheck`` subclasses inherit
+        # ``agg_func`` from ``SetAnalyzer`` but no v1 check actually
+        # aggregates values. Subclasses opt in to exposing the parameter
+        # via ``_exposes_agg_func: ClassVar[bool] = True``; the default
+        # ``False`` filters the param out of the GUI form. Classes
+        # without the attribute (e.g. ``EdgeCorrector``, ``LogGrowthModel``)
+        # are treated as opted in for backward-compat.
+        exposes_agg_func = getattr(cls, "_exposes_agg_func", True)
+
+        for name, fi in model_fields.items():
+            if name == "agg_func" and not exposes_agg_func:
+                continue
+
+            hint = fi.annotation if fi.annotation is not None else Any
+            has_default = fi.default is not PydanticUndefined
+            default = fi.default if has_default else None
+
+            # Detect operation/pipeline types (enhanced for forward refs)
+            is_operation, is_pipeline, is_optional, is_list = (
+                self._detect_operation_types(hint)
+            )
+
+            column_ref = _detect_column_ref(hint, fi.metadata)
+
+            params[name] = ParamInfo(
+                name=name,
+                type_hint=hint,
+                default=default,
+                has_default=has_default,
+                is_operation=is_operation,
+                is_pipeline=is_pipeline,
+                is_optional=is_optional,
+                is_list=is_list,
+                description=fi.description,
+                column_ref=column_ref,
+            )
+
+        return params
+
+    def _extract_parameters_from_signature(
+        self, cls: Type
+    ) -> Dict[str, ParamInfo]:
+        """Extract ``ParamInfo`` from a non-pydantic class's ``__init__``.
+
+        Fallback path for plain classes that are not pydantic
+        ``BaseModel`` subclasses. ``Annotated[...]`` extras are recovered
+        from ``typing.get_type_hints(..., include_extras=True)`` and the
+        column-ref marker scan walks the annotation's ``__metadata__``.
+        """
+        import inspect
+        import typing
+
         try:
             sig = inspect.signature(cls.__init__)
-        except Exception:
-            # If signature extraction fails, return empty dict
+        except (ValueError, TypeError):
             return {}
 
-        # Try to get resolved type hints, fall back to signature annotations.
-        # ``include_extras=True`` preserves ``Annotated[T, ...]`` metadata so
-        # the column-ref marker scan below can pick it up.
+        # ``include_extras=True`` preserves ``Annotated[T, ...]`` metadata
+        # so the column-ref marker scan can pick it up.
         try:
             hints = typing.get_type_hints(cls.__init__, include_extras=True)
-        except Exception:
-            # Fall back to raw annotations from signature (handles forward refs)
+        except Exception:  # noqa: BLE001 — forward refs / partial annotations
             hints = {
                 name: p.annotation
                 for name, p in sig.parameters.items()
                 if p.annotation is not inspect.Parameter.empty
             }
 
-        # Parse parameter descriptions from docstring
-        param_descriptions = self._parse_docstring_params(cls)
-
-        params = {}
-
-        # Per spec §1419–1428, ``QualityCheck`` subclasses inherit
-        # ``agg_func`` from ``SetAnalyzer``'s constructor signature but no v1
-        # check actually aggregates values. Subclasses opt in to exposing
-        # the parameter via ``_exposes_agg_func: ClassVar[bool] = True``;
-        # the default ``False`` filters the param out of the GUI form.
-        # Classes without the attribute (e.g. ``EdgeCorrector``,
-        # ``LogGrowthModel``) are treated as opted in for backward-compat.
+        param_descriptions = parse_param_descriptions(cls.__doc__)
         exposes_agg_func = getattr(cls, "_exposes_agg_func", True)
 
+        params: Dict[str, ParamInfo] = {}
         for name, p in sig.parameters.items():
             if name in ("self", "args", "kwargs"):
                 continue
@@ -421,15 +449,18 @@ class OperationRegistry:
                 continue
 
             hint = hints.get(name, Any)
-            default = p.default if p.default is not inspect.Parameter.empty else None
             has_default = p.default is not inspect.Parameter.empty
+            default = p.default if has_default else None
 
-            # Detect operation/pipeline types (enhanced for forward refs)
             is_operation, is_pipeline, is_optional, is_list = (
                 self._detect_operation_types(hint)
             )
 
-            column_ref = _detect_column_ref(hint)
+            # An ``Annotated[...]`` hint stores its extras on
+            # ``__metadata__``; pass the inner type as the annotation.
+            metadata = getattr(hint, "__metadata__", ())
+            annotation = getattr(hint, "__origin__", hint) if metadata else hint
+            column_ref = _detect_column_ref(annotation, metadata)
 
             params[name] = ParamInfo(
                 name=name,
@@ -461,6 +492,13 @@ class OperationRegistry:
         substring scan recognises ``List[`` / ``list[`` carriers and the
         ``Optional[...]`` / ``... | None`` wrappers around them.
 
+        A field typed :data:`~phenotypic.tools_.typing_.OperationField`
+        (whose core type is erased to ``Any``) is recognised via an
+        :class:`_OperationFieldMarker` scan of the annotation tree —
+        ``OperationField`` accepts an operation *or* a nested pipeline,
+        so both ``is_operation`` and ``is_pipeline`` are set when the
+        marker is found.
+
         Args:
             hint: Type hint to analyze
 
@@ -471,6 +509,16 @@ class OperationRegistry:
         is_pipeline = False
         is_optional = False
         is_list = False
+
+        # ``OperationField`` erases its core type to ``Any``; the marker
+        # scan is the only reliable signal that the field accepts an
+        # operation / nested pipeline. Detected up front so it survives
+        # every wrapper-peeling branch (including the early ``list``
+        # return below).
+        operation_field = _has_operation_field_marker(hint)
+        if operation_field:
+            is_operation = True
+            is_pipeline = True
 
         # Step 1: peel an Optional/Union wrapper. If the union contains
         # exactly one non-None branch we recurse into it so callers see the
@@ -499,8 +547,10 @@ class OperationRegistry:
                 inner_op, inner_pipe, _, _ = self._detect_operation_types(
                     element_args[0]
                 )
-                is_operation = inner_op
-                is_pipeline = inner_pipe
+                # OR rather than assign so a top-level ``OperationField``
+                # marker (already detected above) is never clobbered.
+                is_operation = is_operation or inner_op
+                is_pipeline = is_pipeline or inner_pipe
             return is_operation, is_pipeline, is_optional, is_list
 
         # Step 2b: ``get_type_hints`` falls back to raw string annotations
@@ -667,29 +717,66 @@ def _scan_string_list_optional(annotation: str) -> tuple[bool, bool]:
     return is_optional, is_list
 
 
-def _detect_column_ref(hint: Any) -> Optional[ColumnRefSpec]:
-    """Extract a :class:`ColumnRefSpec` from a (possibly nested) annotation.
+def _detect_column_ref(
+    annotation: Any, metadata: Any = ()
+) -> Optional[ColumnRefSpec]:
+    """Extract a :class:`ColumnRefSpec` from a parameter annotation.
 
-    Walks ``Annotated[T, ...]`` directly and recurses into ``Union`` /
-    ``T | None`` branches so ``ColumnRef | None`` is recognised. The
-    ``with_alt`` flag is set whenever the marker is found inside a Union
-    (i.e. there is at least one alternate branch) — that drives the
-    two-button dtype toggle in the GUI param-form.
+    The column-ref markers ride on the ``Annotated[...]`` aliases
+    (:data:`~phenotypic.tools_.ColumnRef` /
+    :data:`~phenotypic.tools_.ColumnRefList`).
 
-    First-wins for multi-marker unions: if a Union carries the marker on
-    more than one branch (e.g. a hypothetical
-    ``ColumnRef | ColumnRefList``), the spec returned reflects the first
-    matching branch. Update this rule when (and only when) the GUI
-    grows a renderer for unions of column refs.
+    Two introspection paths feed this:
+
+    * **pydantic** — pydantic peels every ``Annotated`` extra off the
+      field annotation into the flat ``FieldInfo.metadata`` list, so
+      ``metadata`` carries the marker and ``annotation`` is the bare
+      carrier (e.g. ``str`` / ``list[str]`` / ``str | None``).
+    * **signature fallback** — ``metadata`` is empty; the marker is
+      walked off the ``annotation`` itself (``Annotated.__metadata__``,
+      recursing into ``Union`` branches).
+
+    * ``multi`` — ``True`` when the carrier resolves to a ``list`` (i.e.
+      ``ColumnRefList`` / ``list[str]``), driving a multi-select widget.
+    * ``with_alt`` — ``True`` when the annotation is a ``Union`` with at
+      least one non-``None`` alternate branch (e.g. ``ColumnRef | None``
+      → ``str | None``), driving the two-button dtype toggle in the GUI
+      param-form.
+
+    Returns ``None`` for ordinary (non-column-ref) parameters.
     """
-    spec = _column_ref_from_annotated(hint)
+    marker = next(
+        (m for m in metadata if isinstance(m, _ColumnRefMarker)),
+        None,
+    )
+
+    # pydantic path: the marker is in the flat metadata list and the
+    # annotation is already the bare carrier type.
+    if marker is not None:
+        with_alt = False
+        carrier: Any = annotation
+        if _is_union_origin(get_origin(annotation)):
+            branches = get_args(annotation)
+            non_none = [b for b in branches if b is not type(None)]
+            # Any non-None alternate branch makes this a dtype-toggle field.
+            with_alt = len(non_none) >= 1 and (
+                len(non_none) > 1 or type(None) in branches
+            )
+            if non_none:
+                carrier = non_none[0]
+        multi = get_origin(carrier) is list or carrier is list
+        return ColumnRefSpec(source=marker.source, multi=multi, with_alt=with_alt)
+
+    # Signature-fallback path: walk the annotation for an ``Annotated``
+    # column-ref marker, recursing into ``Union`` / ``T | None`` branches.
+    spec = _column_ref_from_annotated(annotation)
     if spec is not None:
         return spec
 
-    if not _is_union_origin(get_origin(hint)):
+    if not _is_union_origin(get_origin(annotation)):
         return None
 
-    for branch in get_args(hint):
+    for branch in get_args(annotation):
         if branch is type(None):
             continue
         inner = _column_ref_from_annotated(branch)

@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
+from pydantic import field_validator
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -70,16 +71,28 @@ class ManualPointDetector(ObjectDetector, PointPickerMixin, FootprintMixin):
             In-depth comparison of all detection strategies.
     """
 
-    def __init__(
-            self,
-            centers: np.ndarray | list | None = None,
-            shape: Literal["square", "diamond", "disk"] = "disk",
-            width: int = 15,
-    ):
-        super().__init__()
-        self.centers = centers
-        self.shape = shape
-        self.width = width
+    centers: list[tuple[float, float]] | None = None
+    shape: Literal["square", "diamond", "disk"] = "disk"
+    width: int = 15
+
+    @field_validator("centers", mode="before")
+    @classmethod
+    def _normalize_centers(cls, value: Any) -> list[tuple[float, float]] | None:
+        """Coerce a list/tuple/``np.ndarray`` of centres to a list of tuples.
+
+        Replaces the ``PointPickerMixin.__setattr__`` coercion removed in
+        the pydantic v2 migration. ``None`` (the legacy "unset" sentinel)
+        passes through unchanged; any array-like of ``(y, x)`` pairs is
+        normalized to a plain ``list[tuple[float, float]]`` so the
+        untouched ``_operate`` can iterate it. Coordinates are kept as
+        floats (not pre-rounded) — ``_operate`` does ``int(round(...))``
+        per coordinate, exactly as before the migration.
+        """
+        if value is None:
+            return None
+        if isinstance(value, np.ndarray):
+            value = value.tolist()
+        return [(float(y), float(x)) for y, x in value]
 
     def _operate(self, image: Image) -> Image:  # type: ignore[override]
         h, w = image.shape[:2]

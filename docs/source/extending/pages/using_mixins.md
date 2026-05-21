@@ -10,15 +10,16 @@ morphological kernels.
 
 ```python
 from phenotypic.abc_ import ObjectRefiner
-from phenotypic.tools_.mixins_ import FootprintMixin
+from phenotypic.tools_.mixin import FootprintMixin
 
 class MyRefiner(FootprintMixin, ObjectRefiner):
-    def __init__(self, shape="disk", width=5):
-        self.shape = shape
-        self.width = width
+    # Parameters are annotated class-level fields (operations are
+    # pydantic models); the mixin contributes helper methods.
+    shape: str = "disk"
+    width: int = 5
 
     def _operate(self, image):
-        footprint = self._get_footprint()
+        footprint = self._make_footprint(self.shape, self.width)
         # Use footprint for morphological operations
         ...
         return image

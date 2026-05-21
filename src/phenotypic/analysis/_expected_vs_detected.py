@@ -9,14 +9,25 @@ missing or over-detected.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import Annotated, Any, Callable, ClassVar
 
 import pandas as pd
 import plotly.graph_objects as go
+from pydantic import PrivateAttr, WithJsonSchema, field_validator
 
 from phenotypic.analysis.abc_._quality_check import QualityCheck
-from phenotypic.tools_ import ColumnRef, ColumnRefList
+from phenotypic.tools_ import ColumnRef
 from phenotypic.tools_.measurement_info import QUALITY_COUNT
+
+# The metadata layout frame is an ``arbitrary_types_allowed`` field: a
+# raw ``pandas.DataFrame`` has no JSON schema, so attach an object-typed
+# placeholder so ``model_json_schema()`` succeeds. The frame is supplied
+# (and resolved from a CSV/Parquet path) at construction time and is not
+# part of the JSON-serializable parameter surface.
+_MetadataFrame = Annotated[
+    pd.DataFrame,
+    WithJsonSchema({"type": "object"}),
+]
 
 
 class ExpectedVsDetectedCount(QualityCheck):
@@ -129,38 +140,61 @@ class ExpectedVsDetectedCount(QualityCheck):
     _exposes_agg_func: ClassVar[bool] = False
     _measurement_infoclass = QUALITY_COUNT
 
-    def __init__(
-        self,
-        metadata: pd.DataFrame | Path | str,
-        groupby: ColumnRefList,
-        on: ColumnRef = "ObjectLabel",
-        *,
-        severity_warn: float | None = None,
-        severity_fail: float | None = None,
-        n_jobs: int = 1,
-    ) -> None:
-        resolved = self._resolve_metadata(metadata)
-        missing = [col for col in groupby if col not in resolved.columns]
+    on: ColumnRef = "ObjectLabel"
+    agg_func: Callable | str | list | dict | None = "first"
+    metadata: _MetadataFrame
+
+    _metadata: pd.DataFrame = PrivateAttr(default_factory=pd.DataFrame)
+    _expected_counts: pd.Series = PrivateAttr(default_factory=pd.Series)
+
+    @field_validator("metadata", mode="before")
+    @classmethod
+    def _coerce_metadata(
+        cls, value: pd.DataFrame | Path | str
+    ) -> pd.DataFrame:
+        """Resolve a DataFrame-or-path ``metadata`` argument to a frame.
+
+        Args:
+            value: Either an in-memory DataFrame or a path (``Path`` or
+                ``str``) to a ``.csv``/``.parquet`` file.
+
+        Returns:
+            The resolved DataFrame.
+
+        Raises:
+            FileNotFoundError: If ``value`` is a path that does not exist.
+            ValueError: If the path has an unsupported suffix.
+        """
+        return cls._resolve_metadata(value)
+
+    def model_post_init(self, __context: Any) -> None:
+        """Validate metadata columns and pre-compute expected counts.
+
+        Runs after pydantic has validated every field. Mirrors the
+        resolved ``metadata`` frame onto the private ``_metadata`` slot,
+        verifies every ``groupby`` column is present, and caches the
+        per-key expected colony counts.
+
+        Args:
+            __context: Pydantic post-init context (unused).
+
+        Raises:
+            KeyError: If any column in ``groupby`` is absent from the
+                resolved metadata frame.
+        """
+        super().model_post_init(__context)
+        missing = [
+            col for col in self.groupby if col not in self.metadata.columns
+        ]
         if missing:
             raise KeyError(
                 "metadata frame is missing required groupby column(s): "
                 f"{missing}"
             )
-
-        super().__init__(
-            on=on,
-            groupby=groupby,
-            severity_warn=severity_warn,
-            severity_fail=severity_fail,
-            agg_func="first",
-            n_jobs=n_jobs,
-        )
-
-        self._metadata: pd.DataFrame = resolved
-        self._expected_counts: pd.Series = resolved.groupby(
-            groupby, dropna=False
+        self._metadata = self.metadata
+        self._expected_counts = self.metadata.groupby(
+            self.groupby, dropna=False
         ).size()
-        self.unmatched_groups: list[tuple] = []
 
     @staticmethod
     def _resolve_metadata(

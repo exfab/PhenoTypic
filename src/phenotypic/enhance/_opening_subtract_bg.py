@@ -60,15 +60,9 @@ class OpeningSubtractBg(ImageEnhancer, FootprintMixin):
         morphological background removal strategies.
     """
 
-    def __init__(
-            self,
-            shape: Literal["square", "diamond", "disk"] = "disk",
-            width: int = 51,
-            n_iter: int = 1,
-    ):
-        self.shape = shape
-        self.width = width
-        self.n_iter = n_iter
+    shape: Literal["square", "diamond", "disk"] = "disk"
+    width: int = 51
+    n_iter: int = 1
 
     def _operate(self, image: Image) -> Image:
         image.detect_mat[:] = cv2.morphologyEx(

@@ -6,8 +6,10 @@ if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
 import numpy as np
+from pydantic import ConfigDict, Field, model_validator
 from scipy.ndimage import gaussian_filter
 from skimage.feature import structure_tensor_eigenvalues
+from typing_extensions import Self
 
 from ..abc_ import ImageEnhancer
 
@@ -75,82 +77,57 @@ class CoherenceEnhancingDiffusion(ImageEnhancer):
         anisotropic diffusion and structure tensor analysis.
     """
 
-    def __init__(
-            self,
-            num_iter: int = 20,
-            sigma: float = 1.5,
-            rho: float | None = None,
-            dt: float = 0.1,
-            *,
-            alpha: float = 0.001,
-            C: float = 99.0,
-    ):
+    # ``num_iter`` is the public constructor keyword; the algorithm body
+    # (``_operate``) reads it as ``self.num_iterations``. The field keeps
+    # the algorithm-facing name and accepts the public ``num_iter`` kwarg
+    # via a validation alias, so neither the call sites nor ``_operate``
+    # change. ``populate_by_name`` lets the field also be set/dumped under
+    # its own name (used by JSON round-trips of migrated pipelines).
+    model_config = ConfigDict(populate_by_name=True)
+
+    num_iterations: int = Field(default=20, validation_alias="num_iter")
+    sigma: float = 1.5
+    rho: float | None = None
+    dt: float = 0.1
+    alpha: float = 0.001
+    C: float = 99.0
+
+    @model_validator(mode="after")
+    def _check_diffusion_params(self) -> Self:
+        """Reproduce the pre-migration ``__init__`` parameter guards.
+
+        Several checks (notably ``rho >= sigma``) span more than one
+        field, so all guards live in a single model validator rather than
+        per-field validators.
+
+        Raises:
+            ValueError: If any diffusion parameter is outside its valid
+                range (see the class ``Args:`` block).
         """
-        Parameters:
-            num_iter (int): Number of diffusion iterations. Controls the total
-                amount of smoothing applied. Small values (5-10) give subtle enhancement;
-                medium values (15-30) are typical; large values (50-100) provide heavy
-                smoothing. Computational cost scales linearly with iterations.
-                Recommended: 20 for balanced enhancement.
-            sigma (float): Noise/derivative scale (Gaussian derivative σ). Controls the
-                scale at which image gradients are computed for orientation estimation.
-                Match to the width of structures you want to enhance: ~1.5 for fine
-                hyphae (~3px wide), ~3.0 for coarser structures. Recommended: 1.5.
-            rho (float | None): Integration scale for structure tensor smoothing. Controls
-                the neighborhood over which gradient products are averaged. Must be
-                >= sigma. When None (default), equals sigma (single-scale mode). Larger
-                values produce smoother orientation fields. Typical: 2-3x sigma.
-            dt (float): Time step for each diffusion iteration. Must satisfy the
-                2D forward-Euler stability bound of 1/8 (0.125). Smaller values
-                require more iterations for equivalent smoothing. Recommended:
-                0.1 for stable, efficient diffusion.
-            alpha (float): Minimum diffusivity parameter (0 < alpha < 1). Ensures some
-                diffusion even in uniform regions, preventing numerical issues. Small
-                values (0.001) maximize anisotropy; larger values (0.01-0.1) add more
-                isotropic smoothing. Recommended: 0.001 for strong directional bias.
-            C (float): Contrast percentile for the diffusivity function
-                (0 < C <= 100). The Cth percentile of the coherence histogram
-                (lambda1 - lambda2)^2 from the original image is used as the
-                contrast threshold, adapting to image content. Higher values
-                restrict anisotropy to the most coherent structures.
-                Default: 99.
-        """
-        if num_iter < 1:
+        if self.num_iterations < 1:
             raise ValueError("num_iter must be >= 1")
-
-        if dt <= 0:
+        if self.dt <= 0:
             raise ValueError("dt must be > 0")
-
-        if dt > 0.125:
+        if self.dt > 0.125:
             raise ValueError(
-                    "dt > 0.125 exceeds the 2D forward-Euler stability bound (1/8); "
-                    "use smaller values"
+                "dt > 0.125 exceeds the 2D forward-Euler stability bound (1/8); "
+                "use smaller values"
             )
-
-        if sigma <= 0:
+        if self.sigma <= 0:
             raise ValueError("sigma must be > 0")
-
-        if rho is not None:
-            if rho <= 0:
+        if self.rho is not None:
+            if self.rho <= 0:
                 raise ValueError("rho must be > 0")
-            if rho < sigma:
+            if self.rho < self.sigma:
                 raise ValueError(
-                        f"rho ({rho}) must be >= sigma ({sigma}); the integration "
-                        "scale cannot be smaller than the noise scale"
+                    f"rho ({self.rho}) must be >= sigma ({self.sigma}); the "
+                    "integration scale cannot be smaller than the noise scale"
                 )
-
-        if not (0 < alpha < 1):
+        if not (0 < self.alpha < 1):
             raise ValueError("alpha must be in (0, 1)")
-
-        if not (0 < C <= 100):
+        if not (0 < self.C <= 100):
             raise ValueError("C must be in (0, 100]")
-
-        self.num_iterations = int(num_iter)
-        self.dt = float(dt)
-        self.sigma = float(sigma)
-        self.rho = float(rho) if rho is not None else None
-        self.alpha = float(alpha)
-        self.C = float(C)
+        return self
 
     @staticmethod
     def _central_diff(arr: np.ndarray, axis: int) -> np.ndarray:

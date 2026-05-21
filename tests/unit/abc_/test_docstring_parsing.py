@@ -15,10 +15,9 @@ class GoogleStyleOp(ImageOperation):
         param_c (bool): Third parameter.
     """
 
-    def __init__(self, param_a: int = 10, param_b: float = 2.5, param_c: bool = True):
-        self.param_a = param_a
-        self.param_b = param_b
-        self.param_c = param_c
+    param_a: int = 10
+    param_b: float = 2.5
+    param_c: bool = True
 
     def _operate(self, image):
         return image
@@ -35,9 +34,8 @@ class NumPyStyleOp(ImageOperation):
         Second parameter description.
     """
 
-    def __init__(self, param_x: int = 5, param_y: float = 1.0):
-        self.param_x = param_x
-        self.param_y = param_y
+    param_x: int = 5
+    param_y: float = 1.0
 
     def _operate(self, image):
         return image
@@ -50,17 +48,15 @@ class SphinxStyleOp(ImageOperation):
     :param beta: Beta parameter with longer description.
     """
 
-    def __init__(self, alpha: int = 3, beta: str = "test"):
-        self.alpha = alpha
-        self.beta = beta
+    alpha: int = 3
+    beta: str = "test"
 
     def _operate(self, image):
         return image
 
 
 class NoDocstringOp(ImageOperation):
-    def __init__(self, value: int = 1):
-        self.value = value
+    value: int = 1
 
     def _operate(self, image):
         return image

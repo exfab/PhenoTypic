@@ -55,24 +55,7 @@ class Skeletonize(ObjectRefiner):
         morphological refinement methods.
     """
 
-    def __init__(self, method: Literal["zhang", "lee"] | None = None):
-        """Initialize the skeletonizer.
-
-        Args:
-            method (Literal["zhang", "lee"] | None): Algorithm for skeletonization.
-
-                - "zhang": Optimized for 2D images; fast, produces thin skeletons.
-                  Best for well-defined colony boundaries.
-                - "lee": Works on 2D/3D; more robust to noisy or irregular boundaries.
-                  Slightly slower but preserves topology better on challenging images.
-                - None: Automatically selects Zhang for 2D and Lee for 3D.
-
-                Choosing the right method depends on image quality: clean, binary
-                masks benefit from Zhang; noisier masks or fungal hyphae benefit
-                from Lee.
-        """
-        super().__init__()
-        self.method: Literal["zhang", "lee"] | None = method
+    method: Literal["zhang", "lee"] | None = None
 
     def _operate(self, image: Image) -> Image:
         image.objmask[:] = skeletonize(image.objmask.copy(), method=self.method)

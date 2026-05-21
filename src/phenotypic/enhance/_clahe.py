@@ -63,23 +63,8 @@ class CLAHE(ImageEnhancer):
         contrast enhancement methods.
     """
 
-    def __init__(
-            self,
-            kernel_size: int | None = None,
-            clip_limit: float = 0.01,
-    ):
-        """
-        Parameters:
-            kernel_size (int | None): Tile size for adaptive equalization. Smaller
-                tiles enhance very local contrast (revealing tiny colonies) but can
-                amplify agar texture; larger tiles produce smoother, gentler effects.
-                None selects an automatic size based on image dimensions.
-            clip_limit (float): Maximum local contrast amplification. Lower values
-                reduce noise/halo amplification; higher values make faint colonies
-                stand out more but can emphasize dust or condensation.
-        """
-        self.kernel_size: int = kernel_size
-        self.clip_limit: float = clip_limit
+    kernel_size: int | None = None
+    clip_limit: float = 0.01
 
     def _operate(self, image: Image) -> Image:
         try:

@@ -10,13 +10,14 @@ uniform?
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Literal, TYPE_CHECKING
+from typing import ClassVar, Literal, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
 import numpy as np
 import pandas as pd
+from pydantic import PrivateAttr
 from scipy.ndimage import convolve, distance_transform_edt
 from skimage.measure import approximate_polygon, find_contours, regionprops
 
@@ -222,39 +223,28 @@ class MeasureSymmetricZones(MeasureFeatures):
         walkthrough of measuring and exporting colony data.
     """
 
-    _measurement_infoclass = SYMMETRIC_ZONES
+    _measurement_infoclass: ClassVar[type] = SYMMETRIC_ZONES
 
-    def __init__(
-            self,
-            n_annuli: int = 100,
-            pelt_penalty: float = 5.0,
-            symmetry_threshold: float = 4 / 6,
-            n_angular_bins: int = 6,
-            smoothing_window: int = 3,
-            method: Literal["distance", "intensity"] = "distance",
-            extent_margin: float = 0.05,
-            min_samples_per_ring: int = 5,
-            tau_core: float = 0.9,
-            tau_dense: float = 0.5,
-            tau_sparse: float = 0.1,
-            intensity_source: Literal["gray", "detect_mat"] = "gray",
-    ):
-        self.n_annuli = n_annuli
-        self.pelt_penalty = pelt_penalty
-        self.symmetry_threshold = symmetry_threshold
-        self.n_angular_bins = n_angular_bins
-        self.smoothing_window = smoothing_window
-        self.method = method
-        self.extent_margin = extent_margin
-        self.min_samples_per_ring = min_samples_per_ring
-        self.tau_core = tau_core
-        self.tau_dense = tau_dense
-        self.tau_sparse = tau_sparse
-        self.intensity_source = intensity_source
+    n_annuli: int = 100
+    pelt_penalty: float = 5.0
+    symmetry_threshold: float = 4 / 6
+    n_angular_bins: int = 6
+    smoothing_window: int = 3
+    method: Literal["distance", "intensity"] = "distance"
+    extent_margin: float = 0.05
+    min_samples_per_ring: int = 5
+    tau_core: float = 0.9
+    tau_dense: float = 0.5
+    tau_sparse: float = 0.1
+    intensity_source: Literal["gray", "detect_mat"] = "gray"
 
-        self.__cache_image: Image | None = None
-        self.__cache_props: list | None = None
-        self.__cache_intermediates: dict[int, _SymmetryIntermediates] = {}
+    # Diagnostic cache populated by ``measure()`` so ``inspect()`` /
+    # ``napari()`` can reuse the per-object intermediates. Pure runtime
+    # state — never a constructor parameter — so modeled as private attrs.
+    __cache_image: "Image | None" = PrivateAttr(default=None)
+    __cache_props: "list | None" = PrivateAttr(default=None)
+    __cache_intermediates: "dict[int, _SymmetryIntermediates]" = PrivateAttr(
+            default_factory=dict)
 
     # ── shared pipeline for one object ───────────────────────────────
 

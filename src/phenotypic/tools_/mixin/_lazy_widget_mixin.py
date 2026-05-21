@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-import inspect
-import re
-import typing
 from typing import TYPE_CHECKING, Any, Optional, get_args, get_origin, Literal
+
+from pydantic_core import PydanticUndefined
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -15,14 +14,17 @@ class LazyWidgetMixin:
 
     This mixin allows ImageOperation classes to automatically generate a Jupyter
     widget interface for parameter tuning and visualization.
-    """
 
-    _ui: Optional[Widget] = None
-    _param_widgets: dict[str, Widget]
-    _view_dropdown: Optional[Widget] = None
-    _update_button: Optional[Widget] = None
-    _output_widget: Optional[Widget] = None
-    _image_ref: Optional[Image] = None
+    The six lazily-populated UI handles this mixin uses (``_ui``,
+    ``_param_widgets``, ``_view_dropdown``, ``_update_button``,
+    ``_output_widget``, ``_image_ref``) are declared as ``PrivateAttr``
+    on :class:`~phenotypic.abc_.ImageOperation` rather than here. A plain
+    (non-``BaseModel``) mixin's ``PrivateAttr`` declarations are not
+    collected by pydantic, so this mixin stays a stateless methods-only
+    class and the private attrs live on the pydantic model that mixes it
+    in. This keeps the mixin safe to combine with any ``BaseModel`` in
+    any MRO position.
+    """
 
     def widget(self, image: Optional[Image] = None, show: bool = False) -> Widget:
         """Return (and optionally display) the root widget.
@@ -145,49 +147,51 @@ class LazyWidgetMixin:
         if doc_widget:
             controls.append(doc_widget)
 
-        # 1. Introspect __init__ parameters
-        # Skip for ImagePipeline
+        # 1. Introspect pydantic model fields
+        # Skip for ImagePipeline.
+        #
+        # Operations are pydantic ``BaseModel``s after the v2 migration,
+        # so ``inspect.signature(self.__init__)`` no longer yields the
+        # parameters (it returns the generic ``(self, data)`` signature).
+        # The contract now lives in ``type(self).model_fields`` — a
+        # ``dict[str, FieldInfo]`` whose entries carry ``.annotation``,
+        # ``.default`` and ``.description``.
 
         if not isinstance(self, pht.ImagePipeline):
-            sig = inspect.signature(self.__init__)
-            hints = typing.get_type_hints(self.__init__)
+            model_fields = getattr(type(self), "model_fields", {})
 
-            # Parse docstring for parameter descriptions
-            doc_params = self._parse_docstring()
-
-            for param_name, param in sig.parameters.items():
-                if (
-                        param_name == "self"
-                        or param_name == "args"
-                        or param_name == "kwargs"
-                ):
-                    continue
-
-                # Get current value from instance
+            for param_name, field in model_fields.items():
+                # Resolve the current instance value, falling back to the
+                # field default (``PydanticUndefined`` marks a required
+                # field with no default).
                 if hasattr(self, param_name):
                     current_val = getattr(self, param_name)
+                elif field.default is not PydanticUndefined:
+                    current_val = field.default
                 else:
-                    # Fallback to default if attribute missing (shouldn't happen for well-behaved ops)
-                    current_val = (
-                        param.default
-                        if param.default is not inspect.Parameter.empty
-                        else None
-                    )
+                    current_val = None
 
-                # Skip if we can't determine value or it's private
-                if current_val is None and param.default is inspect.Parameter.empty:
+                # Skip if we can't determine a value for a required field.
+                if current_val is None and field.default is PydanticUndefined:
                     continue
+
+                # Type comes straight from the field annotation; the
+                # ``_create_*_widget`` helpers already handle ``Optional``
+                # / ``Union`` / ``Literal`` forms.
+                type_hint = field.annotation if field.annotation is not None else Any
 
                 # Determine widget type
                 widget = self._create_widget_for_param(
-                        param_name, hints.get(param_name, Any), current_val
+                        param_name, type_hint, current_val
                 )
                 if widget:
                     self._param_widgets[param_name] = widget
 
-                    # Check for help text from docstring
-                    if param_name in doc_params:
-                        help_text = doc_params[param_name]
+                    # Help text comes from the field description, which
+                    # ``BaseOperation``'s docstring hook populated from
+                    # the class ``Args:`` block.
+                    help_text = field.description
+                    if help_text:
                         # Create help label
                         help_label = widgets.HTML(
                                 value=f"<span style='color: #666; font-size: 0.85em; font-style: italic; margin-left: 2px;'>{help_text}</span>"
@@ -469,125 +473,19 @@ class LazyWidgetMixin:
 
         Supports Google, NumPy, and Sphinx/ReST styles.
 
+        Thin wrapper around the shared
+        :func:`~phenotypic.tools_._docstring_params.parse_param_descriptions`
+        — the canonical home of this parser since the pydantic v2
+        migration. Operation parameter descriptions are now read straight
+        from ``FieldInfo.description`` during widget generation; this
+        method is retained as a stable, instance-level entry point.
+
         Returns:
             dict: A dictionary mapping parameter names to their description strings.
         """
-        doc = self.__doc__
-        if not doc:
-            return {}
+        from phenotypic.tools_._docstring_params import parse_param_descriptions
 
-        params = {}
-        lines = doc.split("\n")
-
-        # State machine variables
-        in_param_section = False
-        current_param = None
-        current_desc = []
-
-        # Regex patterns
-        # Google: "Args:", "Attributes:", "Parameters:"
-        section_header_re = re.compile(
-                r"^\s*(Args|Attributes|Parameters)\s*:\s*$", re.IGNORECASE
-        )
-        # NumPy: "Parameters\n----------"
-        numpy_header_re = re.compile(r"^\s*Parameters\s*$", re.IGNORECASE)
-        numpy_underline_re = re.compile(r"^\s*-+\s*$")
-
-        # Param patterns
-        # Google: "name (type): description" or "name: description"
-        google_param_re = re.compile(r"^\s*(\w+)\s*(\(.*?\))?\s*:\s*(.+)$")
-        # NumPy: "name : type"
-        numpy_param_re = re.compile(r"^\s*(\w+)\s*:\s*(.*)$")
-        # Sphinx: ":param name: description" (can appear anywhere)
-        sphinx_param_re = re.compile(r"^\s*:param\s+(\w+)\s*:\s*(.+)$")
-
-        i = 0
-        while i < len(lines):
-            line = lines[i]
-            stripped_line = line.strip()
-
-            # Check for Sphinx style (line by line, no section needed)
-            sphinx_match = sphinx_param_re.match(line)
-            if sphinx_match:
-                # Save previous param if exists
-                if current_param:
-                    params[current_param] = " ".join(current_desc).strip()
-
-                current_param = sphinx_match.group(1)
-                current_desc = [sphinx_match.group(2)]
-                in_param_section = False  # Sphinx doesn't strictly enforce sections
-                i += 1
-                continue
-
-            # Check for section headers
-            if section_header_re.match(stripped_line):
-                in_param_section = True
-                # If previous param was pending, save it
-                if current_param:
-                    params[current_param] = " ".join(current_desc).strip()
-                    current_param = None
-                    current_desc = []
-                i += 1
-                continue
-
-            if numpy_header_re.match(stripped_line):
-                # Check next line for underline
-                if i + 1 < len(lines) and numpy_underline_re.match(lines[i + 1]):
-                    in_param_section = True
-                    i += 2
-                    continue
-
-            if in_param_section:
-                # End of section detection
-                # Heuristic: if line is unindented and not empty, and doesn't match param pattern, section might be over
-                if (
-                        line
-                        and not line[0].isspace()
-                        and not google_param_re.match(line)
-                        and not numpy_param_re.match(line)
-                ):
-                    in_param_section = False
-                    if current_param:
-                        params[current_param] = " ".join(current_desc).strip()
-                        current_param = None
-                        current_desc = []
-                    i += 1
-                    continue
-
-                # Check for new parameter definition
-                # Google style
-                g_match = google_param_re.match(line)
-                if g_match:
-                    if current_param:
-                        params[current_param] = " ".join(current_desc).strip()
-
-                    current_param = g_match.group(1)
-                    current_desc = [g_match.group(3)]
-                    i += 1
-                    continue
-
-                # NumPy style
-                n_match = numpy_param_re.match(line)
-                if n_match:
-                    if current_param:
-                        params[current_param] = " ".join(current_desc).strip()
-
-                    current_param = n_match.group(1)
-                    current_desc = []  # NumPy desc starts on next line
-                    i += 1
-                    continue
-
-                # Continuation of description
-                if current_param and stripped_line:
-                    current_desc.append(stripped_line)
-
-            i += 1
-
-        # End of loop, save last param
-        if current_param:
-            params[current_param] = " ".join(current_desc).strip()
-
-        return params
+        return parse_param_descriptions(self.__doc__)
 
     def _create_viz_widgets(self) -> list[Widget]:
         import ipywidgets as widgets

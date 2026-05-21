@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import inspect
 from typing import Any, Dict
 
 _ABSENT = object()  # Sentinel: operation is omitted from the pipeline
@@ -41,7 +40,8 @@ class Sweep:
 
     Args:
         operation_class: The operation **class** (not an instance). Must be a
-            class with an ``__init__`` accepting the provided parameter names.
+            pydantic operation class whose ``model_fields`` include the
+            provided parameter names.
         **params: Keyword arguments specifying parameter values.
 
             - **Tuple** values are swept (each element becomes one combination).
@@ -51,8 +51,8 @@ class Sweep:
 
     Raises:
         TypeError: If ``operation_class`` is an instance rather than a class.
-        ValueError: If a parameter name does not exist in the operation
-            class constructor.
+        ValueError: If a parameter name is not a field on the operation
+            class.
 
     Examples:
         >>> from phenotypic.sweep import Sweep, Fixed
@@ -94,34 +94,33 @@ class Sweep:
                 self.fixed_params[key] = value
 
     def _validate_param_names(self, params: Dict[str, Any]) -> None:
-        """Check that all param names exist in the operation class constructor.
+        """Check that all param names exist as fields on the operation class.
+
+        Operations are pydantic v2 ``BaseModel`` subclasses, so the
+        accepted parameter names are ``operation_class.model_fields``.
+        pydantic models do not accept ``**kwargs`` — unknown kwargs are
+        rejected at construction via ``extra="forbid"`` — so there is no
+        var-keyword escape hatch to honour.
 
         Args:
             params: Parameter names to validate.
 
         Raises:
-            ValueError: If a parameter name is not accepted by the constructor.
+            ValueError: If a parameter name is not a field on the
+                operation class.
         """
-        try:
-            sig = inspect.signature(self.operation_class.__init__)
-        except (ValueError, TypeError):
-            # If we can't inspect the signature, skip validation
+        model_fields = getattr(self.operation_class, "model_fields", None)
+        if model_fields is None:
+            # Not a pydantic model (or fields not yet built) — skip
+            # validation rather than reject every name.
             return
 
-        valid_params = set(sig.parameters.keys()) - {"self"}
-        has_var_keyword = any(
-            p.kind == inspect.Parameter.VAR_KEYWORD
-            for p in sig.parameters.values()
-        )
-
-        if has_var_keyword:
-            # Constructor accepts **kwargs, so any param name is valid
-            return
+        valid_params = set(model_fields)
 
         for name in params:
             if name not in valid_params:
                 raise ValueError(
-                    f"{self.operation_class.__name__}.__init__() has no "
+                    f"{self.operation_class.__name__} has no "
                     f"parameter '{name}'. Valid parameters: "
                     f"{sorted(valid_params)}"
                 )

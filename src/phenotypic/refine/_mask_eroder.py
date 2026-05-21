@@ -7,6 +7,7 @@ if TYPE_CHECKING:
 
 from phenotypic.abc_ import ObjectRefiner
 from phenotypic.tools_.mixin import FootprintMixin
+from phenotypic.tools_.typing_ import NdArrayField
 
 import numpy as np
 from skimage.morphology import erosion
@@ -46,39 +47,9 @@ class MaskEroder(ObjectRefiner, FootprintMixin):
         refinement sequence.
     """
 
-    def __init__(
-            self,
-            shape: Literal[
-                           "auto", "square", "diamond", "disk"] | np.ndarray | None = None,
-            width: int = 3,
-            n_iter: int = 1,
-    ):
-        """Initialize the eroder.
-
-        Args:
-            shape (Literal["auto", "square", "diamond", "disk"] | np.ndarray | None):
-                Structuring element for erosion. Use:
-
-                - "auto" to select a disk shape scaled to image size
-                  (larger plates → slightly larger width),
-                - a NumPy array to pass a custom shape,
-                - one of the named shapes ("disk", "square", "diamond") with
-                  a specified width,
-                - or ``None`` to use the library default.
-
-                Larger widths erode more aggressively, removing larger features
-                but risking elimination of small colonies and over-shrinkage
-                of area measurements.
-            width (int): Footprint width in pixels when using named shapes
-                or auto-scaling. Default: 3 pixels (moderate erosion).
-            n_iter (int): Number of times to apply erosion. Repeated erosion
-                with a small element produces smoother results than a single
-                pass with a larger element. Default: 1.
-        """
-        super().__init__()
-        self.shape = shape
-        self.width = width
-        self.n_iter = n_iter
+    shape: Literal["auto", "square", "diamond", "disk"] | NdArrayField | None = None
+    width: int = 3
+    n_iter: int = 1
 
     def _operate(self, image: Image) -> Image:
         if self.shape == "auto":

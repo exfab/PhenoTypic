@@ -282,7 +282,7 @@ class TestPipelineIntegration:
         arr = rng.random((64, 64)).astype(np.float64) * 0.5 + 0.25
         image = Image(arr=arr)
 
-        pipeline = ImagePipeline([
+        pipeline = ImagePipeline(ops=[
             GaussianBlur(sigma=1.0),
             MultiscaleLoGEnhancer(min_radius=3.0, max_radius=10.0, num_scales=6),
         ])
@@ -314,7 +314,7 @@ class TestSerialization:
 
     @_SKIP_SERIAL
     def test_roundtrip_preserves_params(self):
-        pipeline = ImagePipeline([
+        pipeline = ImagePipeline(ops=[
             MultiscaleLoGEnhancer(min_radius=2.0, max_radius=15.0, num_scales=8),
         ])
         json_str = pipeline.to_json()
@@ -330,7 +330,7 @@ class TestSerialization:
 
     @_SKIP_SERIAL
     def test_default_params_roundtrip(self):
-        pipeline = ImagePipeline([MultiscaleLoGEnhancer()])
+        pipeline = ImagePipeline(ops=[MultiscaleLoGEnhancer()])
         json_str = pipeline.to_json()
         loaded = ImagePipeline.from_json(json_str)
 

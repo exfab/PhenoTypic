@@ -44,9 +44,7 @@ class SetDetectMode(ImageOperation):
         visual walkthrough of channel selection strategies.
     """
 
-    def __init__(self, mode: DetectMode = "gray"):
-        super().__init__()
-        self.mode = mode
+    mode: DetectMode = "gray"
 
     def _operate(self, image: Image) -> Image:
         image.set_detect_mode(self.mode)

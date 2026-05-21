@@ -55,23 +55,7 @@ class Thinning(ObjectRefiner):
         morphological refinement methods.
     """
 
-    def __init__(self, max_num_iter: int | None = None):
-        """Initialize the thinner.
-
-        Args:
-            max_num_iter (int | None): Upper limit on iterations. Use:
-
-                - None (default) to iterate until convergence, yielding a full skeleton.
-                - A small int (e.g., 1-3) for gentle boundary cleanup while preserving
-                  colony bulk.
-                - A large int (e.g., 10-50) for aggressive thinning to single-pixel structures.
-
-                Choosing max_num_iter is a trade-off: few iterations preserve colony
-                size/robustness but may leave overlaps; many iterations separate more
-                aggressively but risk removing small filaments or creating fragmentation.
-        """
-        super().__init__()
-        self.max_num_iter: int | None = max_num_iter
+    max_num_iter: int | None = None
 
     def _operate(self, image: Image) -> Image:
         image.objmask[:] = thin(image.objmask[:], max_num_iter=self.max_num_iter)

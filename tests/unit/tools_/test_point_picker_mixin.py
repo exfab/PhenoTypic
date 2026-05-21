@@ -1,4 +1,12 @@
-"""Unit tests for ``PointPickerMixin`` — coordinate coercion + napari hook."""
+"""Unit tests for ``PointPickerMixin`` — picked-coords param marker + napari hook.
+
+Coordinate coercion no longer lives on the mixin: ``PointPickerMixin``'s
+``__setattr__`` override was removed in the pydantic migration (it
+conflicts with pydantic's own ``__setattr__``). The picked-coordinates
+field is now coerced by a ``field_validator`` on each consuming
+operation (``ManualPointDetector`` / ``ManualSelector``) — covered by
+``tests/unit/detect`` and ``tests/unit/refine``.
+"""
 
 from __future__ import annotations
 
@@ -35,46 +43,6 @@ class TestParamNameAttribute:
 
     def test_subclass_can_override(self):
         assert _CustomParam._point_picker_param_name == "points"
-
-
-class TestSetattrCoercion:
-    """``__setattr__`` coerces the picked-coords parameter into a NumPy array."""
-
-    def test_list_is_coerced(self):
-        d = _Dummy(centers=[[1, 2], [3, 4]])
-        assert isinstance(d.centers, np.ndarray)
-        np.testing.assert_array_equal(d.centers, [[1, 2], [3, 4]])
-
-    def test_tuple_iterable_is_coerced(self):
-        d = _Dummy(centers=[(10, 20), (30, 40)])
-        assert isinstance(d.centers, np.ndarray)
-        np.testing.assert_array_equal(d.centers, [[10, 20], [30, 40]])
-
-    def test_ndarray_passes_through(self):
-        arr = np.array([[5, 6]])
-        d = _Dummy(centers=arr)
-        # asarray on an array is allowed to return the same object
-        assert isinstance(d.centers, np.ndarray)
-        np.testing.assert_array_equal(d.centers, arr)
-
-    def test_none_passes_through(self):
-        d = _Dummy()
-        assert d.centers is None
-        d.centers = None
-        assert d.centers is None
-
-    def test_other_attributes_untouched(self):
-        d = _Dummy()
-        d.some_label = [1, 2, 3]  # type: ignore[attr-defined]
-        assert d.some_label == [1, 2, 3]
-        assert not isinstance(d.some_label, np.ndarray)
-
-    def test_custom_param_name_is_coerced(self):
-        c = _CustomParam(points=[[0, 0]])
-        assert isinstance(c.points, np.ndarray)
-        # Default ``centers`` attribute on the same instance is NOT coerced.
-        c.centers = [1, 2, 3]  # type: ignore[attr-defined]
-        assert c.centers == [1, 2, 3]
 
 
 class TestNapariMethod:

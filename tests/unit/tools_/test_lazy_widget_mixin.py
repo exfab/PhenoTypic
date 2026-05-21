@@ -8,10 +8,9 @@ from phenotypic import Image
 
 # Define a dummy operation class for testing
 class DummyOp(ImageOperation):
-    def __init__(self, param1: int = 10, param2: bool = True, param3: str = "test"):
-        self.param1 = param1
-        self.param2 = param2
-        self.param3 = param3
+    param1: int = 10
+    param2: bool = True
+    param3: str = "test"
 
     def _operate(self, image):
         # Dummy operation that modifies the image slightly so we can detect it
@@ -139,8 +138,7 @@ def test_union_widget_creation():
 
     # Define a local class using the mixin
     class UnionOp(ImageOperation):
-        def __init__(self, param: Union[int, None] = None):
-            self.param = param
+        param: Union[int, None] = None
 
         def _operate(self, image):
             return image
@@ -191,8 +189,7 @@ def test_union_widget_init_with_value():
     import ipywidgets
 
     class UnionOp(ImageOperation):
-        def __init__(self, param: Union[int, None] = None):
-            self.param = param
+        param: Union[int, None] = None
 
         def _operate(self, image):
             return image
@@ -220,8 +217,7 @@ def test_union_widget_with_generics():
 
 
     class GenericUnionOp(ImageOperation):
-        def __init__(self, param: Union[int, List[int], None] = None):
-            self.param = param
+        param: Union[int, List[int], None] = None
 
         def _operate(self, image):
             return image
@@ -248,8 +244,7 @@ def test_union_widget_with_literal():
 
 
     class LiteralUnionOp(ImageOperation):
-        def __init__(self, param: Union[int, Literal["auto"], None] = None):
-            self.param = param
+        param: Union[int, Literal["auto"], None] = None
 
         def _operate(self, image):
             return image

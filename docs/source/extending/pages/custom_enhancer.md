@@ -1,16 +1,21 @@
 # Custom Enhancer
 
 Subclass `ImageEnhancer` to create an operation that modifies `detect_mat`.
+Operations are pydantic models: declare each parameter as an annotated
+class-level field — there is no hand-written `__init__`.
 
 ```python
 from phenotypic.abc_ import ImageEnhancer
 import numpy as np
 
 class LogTransform(ImageEnhancer):
-    """Apply a log transform to compress the dynamic range of detect_mat."""
+    """Apply a log transform to compress the dynamic range of detect_mat.
 
-    def __init__(self, c: float = 1.0):
-        self.c = c
+    Args:
+        c: Scaling coefficient applied after the log transform.
+    """
+
+    c: float = 1.0
 
     def _operate(self, image):
         mat = image.detect_mat[:]

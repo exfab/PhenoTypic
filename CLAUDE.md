@@ -84,6 +84,17 @@ operations copy data; avoid unnecessary intermediate allocations.
 
 ### Design Decisions
 
+- **Operations are pydantic v2 models:** every operation and analyzer is a
+  `pydantic.BaseModel` rooted at `BaseOperation`. Parameters are **annotated
+  class-level fields** — there is no hand-written `__init__`; construction is
+  **keyword-only**; invalid input raises `pydantic.ValidationError` (a `ValueError`
+  subclass). Algorithm bodies (`_operate`/`apply`/`measure`) are unchanged. Every class
+  exposes a machine-readable contract via `model_json_schema()`, with field
+  descriptions auto-derived from the Google-style `Args:` docstring. To add a
+  parameter, declare a typed field; put input normalization and guards in a
+  `field_validator`, never an `__init__`. Raw-array params use the reusable
+  `NdArrayField` type; operation-valued params use `OperationField` (both in
+  `tools_/typing_.py`).
 - **Public API:** only `__init__.py` exports are public; `_implementation.py` files are
   private.
 - **Immutability:** operations return copies; never modify `image.rgb`/`image.gray`
@@ -136,7 +147,8 @@ operations copy data; avoid unnecessary intermediate allocations.
 ## Code Style
 
 Public parameters with closed value sets: type as `EnumType | Literal["a", "b", ...]`,
-normalize on entry with `value = EnumType(value)`, and use only enum members internally.
+normalize in a `field_validator(mode="before")` with `value = EnumType(value)`, and use
+only enum members internally.
 Define the `Literal` alias once as a `TypeAlias` and reuse. If both `Enum` and `Literal`
 exist, add a test asserting their values match.
 
@@ -175,6 +187,9 @@ never derive `Literal` from runtime expressions.
 - External tools: ExifTool (raw metadata), Pandoc (doc builds).
 - **Operations use `.apply()`, not `__call__`:** `op.apply(image)` is correct;
   `op(image)` raises `TypeError`.
+- **Operations are keyword-only constructed:** `OtsuDetector(ignore_zeros=True)`, not
+  `OtsuDetector(True)` — pydantic models take no positional args. Unknown kwargs and
+  invalid values raise `pydantic.ValidationError`.
 - **Measurement columns are category-prefixed:** `Size_Area`, `Shape_Circularity`,
   `Intensity_MeanIntensity`, etc.
   `MeasurementInfo.get_labels()` returns unprefixed names; `get_headers()` returns the

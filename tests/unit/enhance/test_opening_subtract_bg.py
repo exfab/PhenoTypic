@@ -182,7 +182,7 @@ class TestPipelineIntegration:
         arr = rng.random((64, 64)).astype(np.float64) * 0.5 + 0.25
         image = Image(arr=arr)
 
-        pipeline = ImagePipeline([
+        pipeline = ImagePipeline(ops=[
             OpeningSubtractBg(shape="disk", width=11),
             GaussianBlur(sigma=1.0),
         ])
@@ -198,7 +198,7 @@ class TestSerialization:
     """to_json / from_json preserves all parameters."""
 
     def test_roundtrip_preserves_params(self):
-        pipeline = ImagePipeline([
+        pipeline = ImagePipeline(ops=[
             OpeningSubtractBg(shape="diamond", width=31),
         ])
         json_str = pipeline.to_json()
@@ -212,7 +212,7 @@ class TestSerialization:
         assert op.width == 31
 
     def test_default_params_roundtrip(self):
-        pipeline = ImagePipeline([OpeningSubtractBg()])
+        pipeline = ImagePipeline(ops=[OpeningSubtractBg()])
         json_str = pipeline.to_json()
         loaded = ImagePipeline.from_json(json_str)
 

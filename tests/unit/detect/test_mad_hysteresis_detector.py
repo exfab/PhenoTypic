@@ -158,7 +158,7 @@ class TestMadHysteresisDetectorIntegration:
 
     def test_pipeline_integration(self):
         """MadHysteresisDetector works within an ImagePipeline."""
-        pipeline = ImagePipeline([
+        pipeline = ImagePipeline(ops=[
             MadHysteresisDetector(k_high=5.0, k_low=2.5),
         ])
         image = _make_response_image()
@@ -172,7 +172,7 @@ class TestMadHysteresisDetectorIntegration:
             k_high=4.0, k_low=2.0, min_size=50,
             connectivity=1, ignore_zeros=False, ignore_borders=False,
         )
-        pipeline = ImagePipeline([original])
+        pipeline = ImagePipeline(ops=[original])
         json_str = pipeline.to_json()
         restored_pipeline = ImagePipeline.from_json(json_str)
 
@@ -188,7 +188,7 @@ class TestMadHysteresisDetectorIntegration:
     def test_serialization_functional_equivalence(self):
         """Serialized and restored detector produces identical results."""
         original = MadHysteresisDetector(k_high=4.0, k_low=2.0, min_size=30)
-        pipeline = ImagePipeline([original])
+        pipeline = ImagePipeline(ops=[original])
         restored_pipeline = ImagePipeline.from_json(pipeline.to_json())
 
         image1 = _make_response_image()

@@ -1,14 +1,15 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    pass
+from typing import Any
 
 import importlib.util
 import logging
 import tracemalloc
 from abc import ABC
+
+from pydantic import BaseModel, ConfigDict, PrivateAttr
+
+from phenotypic.tools_._docstring_params import apply_docstring_descriptions
 
 # Check for optional dependencies
 PYMPLER_AVAILABLE = importlib.util.find_spec("pympler") is not None
@@ -21,7 +22,7 @@ if PSUTIL_AVAILABLE:
     import psutil
 
 
-class BaseOperation(ABC):
+class BaseOperation(BaseModel, ABC):
     """Root abstract base class for all operations in PhenoTypic.
 
     BaseOperation is the foundation of PhenoTypic's operation system. It provides
@@ -32,6 +33,11 @@ class BaseOperation(ABC):
     This class is a blueprint for extending the framework: when you create a new
     operation, BaseOperation automatically handles memory profiling and logging so
     you can focus on the algorithm implementation.
+
+    BaseOperation is a pydantic v2 ``BaseModel``. Operation parameters are declared
+    as **annotated class-level fields** — pydantic generates the constructor,
+    validates inputs, and exposes a machine-readable contract via
+    ``model_json_schema()``. There is no hand-written ``__init__``.
 
     What it provides automatically:
 
@@ -51,9 +57,9 @@ class BaseOperation(ABC):
       class with the name format: `module.ClassName`. Subclasses can log messages
       and memory usage without additional setup.
 
-    - **Parallel Execution Support:** Operations are serialized with all instance
-      attributes (`op.__dict__`) for parallel execution. Worker processes unpickle
-      the complete operation object and execute it.
+    - **Parallel Execution Support:** Operations are serialized via pydantic
+      (``model_dump()``/``model_validate()``) for parallel execution. Worker
+      processes reconstruct the complete operation object and execute it.
 
     Inheritance hierarchy:
 
@@ -80,13 +86,9 @@ class BaseOperation(ABC):
         import logging
 
         class MyCustomOperation(BaseOperation):
-            def __init__(self, param1, param2=5):
-                # Always call parent __init__ first
-                super().__init__()
-
-                # Store your parameters as attributes
-                self.param1 = param1
-                self.param2 = param2
+            # Parameters are declared as annotated class-level fields.
+            param1: int
+            param2: int = 5
 
             def _operate(self, data):
                 # Your algorithm here
@@ -144,29 +146,63 @@ class BaseOperation(ABC):
         >>> enhanced = blur.apply(image)
         # Memory tracking happens automatically during operation
 
-        Custom operation with parameter matching for parallel execution:
+        Custom operation with declared fields for parallel execution:
 
         >>> from phenotypic.abc_ import ImageOperation
         >>> from phenotypic import Image
         >>> class CustomThreshold(ImageOperation):
-        ...     def __init__(self, threshold_value: int):
-        ...         super().__init__()
-        ...         self.threshold_value = threshold_value
+        ...     threshold_value: int
         ...
-        ...     @staticmethod
-        ...     def _operate(image: Image, threshold_value: int = 128) -> Image:
+        ...     def _operate(self, image: Image) -> Image:
         ...         # Apply threshold algorithm
-        ...         image.detect_mat[:] = image.detect_mat[:] > threshold_value
+        ...         image.detect_mat[:] = (
+        ...             image.detect_mat[:] > self.threshold_value
+        ...         )
         ...         return image
         >>> # When operation is applied via pipeline:
         >>> operation = CustomThreshold(threshold_value=100)
-        # The operation object is serialized with all attributes
+        # The operation object is serialized with all fields
         # for parallel execution in worker processes
     """
 
-    def __init__(self, *args, **kwargs) -> None:
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        validate_assignment=True,
+        extra="forbid",
+    )
+
+    _logger: logging.Logger = PrivateAttr()
+    _tracemalloc_started: bool = PrivateAttr(default=False)
+
+    @classmethod
+    def __pydantic_init_subclass__(cls, **kwargs: Any) -> None:
+        """Populate field descriptions from the subclass docstring.
+
+        Runs once per concrete subclass after pydantic has built its
+        model. Copies parameter descriptions parsed from the Google-style
+        ``Args:`` docstring block onto each field's ``description`` slot
+        so they surface in ``model_json_schema()`` — the machine-readable
+        contract used by downstream tooling (e.g. an MCP server).
+
+        Args:
+            **kwargs: Class-keyword arguments forwarded by pydantic.
+        """
+        super().__pydantic_init_subclass__(**kwargs)
+        apply_docstring_descriptions(cls)
+
+    def model_post_init(self, __context: Any) -> None:
+        """Initialize logging and memory tracking after model construction.
+
+        Replaces the legacy ``__init__`` body: creates the per-class
+        logger and, when that logger is enabled for INFO level or higher,
+        starts ``tracemalloc`` so per-operation memory usage can be
+        logged.
+
+        Args:
+            __context: Pydantic post-init context (unused).
+        """
         self._logger = logging.getLogger(
-                f"{self.__class__.__module__}.{self.__class__.__name__}"
+            f"{self.__class__.__module__}.{self.__class__.__name__}"
         )
         self._tracemalloc_started = False
 

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -57,30 +57,10 @@ class GaussianBlur(ImageEnhancer):
         denoising methods.
     """
 
-    def __init__(
-            self, sigma: float = 2.0, *, mode: str = "reflect", cval=0.0,
-            truncate: float = 4.0
-    ):
-        """
-        Parameters:
-            sigma (float): Blur strength; start near 1–3 for high-resolution scans.
-                Keep below the colony width to avoid merging colonies.
-            mode (str): Boundary handling. 'reflect' is a safe default for plates;
-                'constant' may require setting `cval` close to background.
-            cval (float): Constant fill value when `mode='constant'`.
-            truncate (float): Kernel extent in standard deviations. Rarely needs
-                adjustment; larger values slightly widen the effective kernel.
-        """
-        self.sigma = sigma
-
-        if mode in ["reflect", "constant", "nearest"]:
-            self.mode = mode
-        else:
-            raise ValueError('mode must be one of "reflect", "constant", "nearest"')
-
-        self.cval = cval
-
-        self.truncate = truncate
+    sigma: float = 2.0
+    mode: Literal["reflect", "constant", "nearest"] = "reflect"
+    cval: float = 0.0
+    truncate: float = 4.0
 
     def _operate(self, image: Image) -> Image:
         image.detect_mat[:] = gaussian(

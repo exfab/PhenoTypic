@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Callable, ClassVar
 
+from pydantic import BaseModel, Field
+
 from phenotypic.tools_._anscombe import (
     gat_forward,
     gat_inverse,
@@ -14,7 +16,7 @@ if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
 
-class _GATSupportMixin:
+class _GATSupportMixin(BaseModel):
     """Optional Generalized Anscombe Transform (GAT) wrapping for noise-driven ops.
 
     Subclasses opt into Poisson-Gaussian variance stabilization by setting
@@ -57,34 +59,11 @@ class _GATSupportMixin:
     _GAT_NOISE_PARAMS: ClassVar[dict[str, float]] = {}
     _GAT_DEFER_ATTRS: ClassVar[tuple[str, ...]] = ()
 
-    def __init__(
-            self,
-            *args,
-            use_gat: bool = False,
-            gat_gain: float = 1.0,
-            gat_mu: float = 0.0,
-            gat_read_sigma: float = 0.0,
-            gat_scale_factor: float | None = None,
-            **kwargs,
-    ):
-        super().__init__(*args, **kwargs)
-        if gat_gain <= 0:
-            raise ValueError(f"gat_gain must be > 0, got {gat_gain}")
-        if gat_read_sigma < 0:
-            raise ValueError(
-                f"gat_read_sigma must be >= 0, got {gat_read_sigma}"
-            )
-        if gat_scale_factor is not None and gat_scale_factor <= 0:
-            raise ValueError(
-                f"gat_scale_factor must be > 0, got {gat_scale_factor}"
-            )
-        self.use_gat = bool(use_gat)
-        self.gat_gain = float(gat_gain)
-        self.gat_mu = float(gat_mu)
-        self.gat_read_sigma = float(gat_read_sigma)
-        self.gat_scale_factor = (
-            float(gat_scale_factor) if gat_scale_factor is not None else None
-        )
+    use_gat: bool = False
+    gat_gain: float = Field(default=1.0, gt=0)
+    gat_mu: float = 0.0
+    gat_read_sigma: float = Field(default=0.0, ge=0)
+    gat_scale_factor: float | None = Field(default=None, gt=0)
 
     def _gat_apply(
             self,

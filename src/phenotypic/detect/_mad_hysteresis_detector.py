@@ -84,21 +84,12 @@ class MadHysteresisDetector(ThresholdDetector):
             In-depth comparison of all detection strategies.
     """
 
-    def __init__(
-            self,
-            k_high: float = 5.0,
-            k_low: float = 2.5,
-            min_size: int = 20,
-            connectivity: int = 2,
-            ignore_zeros: bool = False,
-            ignore_borders: bool = True,
-    ):
-        self.k_high = k_high
-        self.k_low = k_low
-        self.min_size = min_size
-        self.connectivity = connectivity
-        self.ignore_zeros = ignore_zeros
-        self.ignore_borders = ignore_borders
+    k_high: float = 5.0
+    k_low: float = 2.5
+    min_size: int = 20
+    connectivity: int = 2
+    ignore_zeros: bool = False
+    ignore_borders: bool = True
 
     def _operate(self, image: Image) -> Image:
         """Apply MAD-based hysteresis thresholding to detect colonies.

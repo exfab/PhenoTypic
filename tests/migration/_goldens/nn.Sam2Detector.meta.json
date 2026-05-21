@@ -1,0 +1,6 @@
+{
+  "scenario_id": "nn.Sam2Detector",
+  "class_name": "Sam2Detector",
+  "structural_only": true,
+  "note": "model-backed detector; goldens record metadata only, equivalence is structural"
+}

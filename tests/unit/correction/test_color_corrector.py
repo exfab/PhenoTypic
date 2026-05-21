@@ -166,11 +166,16 @@ class TestColorCheckerProfileFitting:
             f"Missing keys: {expected_keys - set(diag.keys())}"
         )
 
-    def test_unfitted_profile_raises(self):
-        """Accessing correction_matrix before fit raises RuntimeError."""
+    def test_unfitted_profile_correction_matrix_is_none(self):
+        """An unfitted profile exposes ``correction_matrix`` as ``None``.
+
+        Post-pydantic-migration ``correction_matrix`` is a defaulted model
+        field rather than a ``RuntimeError``-raising property, so an
+        unfitted profile still constructs and reports ``is_fitted=False``.
+        """
         profile = ColorCheckerProfile()
-        with pytest.raises(RuntimeError, match="not fitted"):
-            _ = profile.correction_matrix
+        assert profile.correction_matrix is None
+        assert profile.is_fitted is False
 
 
 # ===========================================================================
@@ -238,14 +243,14 @@ class TestColorCorrectorOperation:
     def test_rgb_modified(self, fitted_profile, synthetic_rgb_image):
         """Applying the corrector changes the RGB data."""
         original_rgb = synthetic_rgb_image.rgb[:].copy()
-        corrector = ColorCorrector(fitted_profile)
+        corrector = ColorCorrector(profile=fitted_profile)
         result = corrector.apply(synthetic_rgb_image)
         assert not np.array_equal(result.rgb[:], original_rgb)
 
     def test_gray_recomputed(self, fitted_profile, synthetic_rgb_image):
         """Gray channel is recomputed from corrected RGB and differs from original."""
         original_gray = synthetic_rgb_image.gray[:].copy()
-        corrector = ColorCorrector(fitted_profile)
+        corrector = ColorCorrector(profile=fitted_profile)
         result = corrector.apply(synthetic_rgb_image)
         # Gray should have changed.
         assert not np.array_equal(result.gray[:], original_gray)
@@ -258,20 +263,20 @@ class TestColorCorrectorOperation:
     def test_detect_mat_recomputed(self, fitted_profile, synthetic_rgb_image):
         """detect_mat is updated from the corrected RGB."""
         original_dm = synthetic_rgb_image.detect_mat[:].copy()
-        corrector = ColorCorrector(fitted_profile)
+        corrector = ColorCorrector(profile=fitted_profile)
         result = corrector.apply(synthetic_rgb_image)
         assert not np.array_equal(result.detect_mat[:], original_dm)
 
     def test_shape_preserved(self, fitted_profile, synthetic_rgb_image):
         """Output shape matches input shape."""
         original_shape = synthetic_rgb_image.rgb[:].shape
-        corrector = ColorCorrector(fitted_profile)
+        corrector = ColorCorrector(profile=fitted_profile)
         result = corrector.apply(synthetic_rgb_image)
         assert result.rgb[:].shape == original_shape
 
     def test_output_dtype_preserved(self, fitted_profile, synthetic_rgb_image):
         """uint8 input produces uint8 output."""
-        corrector = ColorCorrector(fitted_profile)
+        corrector = ColorCorrector(profile=fitted_profile)
         result = corrector.apply(synthetic_rgb_image)
         assert result.rgb[:].dtype == np.uint8
 
@@ -320,7 +325,7 @@ class TestColorCorrectionDashboard:
 
     def test_corrector_dashboard_delegates(self, fitted_profile):
         """ColorCorrector.dashboard() delegates to the profile."""
-        corrector = ColorCorrector(fitted_profile)
+        corrector = ColorCorrector(profile=fitted_profile)
         layout = corrector.dashboard(show=False)
         assert isinstance(layout, pn.Column)
 

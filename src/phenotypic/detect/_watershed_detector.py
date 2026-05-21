@@ -5,15 +5,17 @@ if TYPE_CHECKING:
     from phenotypic._core._grid_image import GridImage
     from phenotypic._core._image import Image
 
-from typing import Literal
+from typing import Any, Literal
 import gc
 
 import numpy as np
 import numpy.ma as ma
+from pydantic import field_validator
 from scipy.ndimage import distance_transform_edt
 from skimage import feature, filters, morphology, segmentation
 
 from phenotypic.abc_ import ThresholdDetector
+from phenotypic.tools_.typing_ import NdArrayField
 
 
 class WatershedDetector(ThresholdDetector):
@@ -99,32 +101,26 @@ class WatershedDetector(ThresholdDetector):
             In-depth comparison of all detection strategies.
     """
 
-    def __init__(
-            self,
-            footprint: Literal["auto"] | np.ndarray | int | None = None,
-            min_size: int = 50,
-            compactness: float = 0.001,
-            connectivity: int = 1,
-            relabel: bool = True,
-            ignore_zeros: bool = False,
-    ):
-        super().__init__()
+    footprint: Literal["auto"] | NdArrayField | int | None = None
+    min_size: int = 50
+    compactness: float = 0.001
+    connectivity: int = 1
+    relabel: bool = True
+    ignore_zeros: bool = False
 
-        match footprint:
-            case x if isinstance(x, int):
-                self.footprint = morphology.diamond(footprint)
-            case x if isinstance(x, np.ndarray):
-                self.footprint = footprint
-            case "auto":
-                self.footprint = "auto"
-            case None:
-                # shape will be automatically determined by implementation
-                self.footprint = None
-        self.min_size = min_size
-        self.compactness = compactness
-        self.connectivity = connectivity
-        self.relabel = relabel
-        self.ignore_zeros = ignore_zeros
+    @field_validator("footprint", mode="before")
+    @classmethod
+    def _expand_int_footprint(cls, value: Any) -> Any:
+        """Expand an integer ``footprint`` into a diamond structuring element.
+
+        Reproduces the ``match`` block of the pre-migration ``__init__``:
+        an ``int`` is turned into ``morphology.diamond(value)``; ``'auto'``,
+        an ``np.ndarray``, and ``None`` pass through untouched (the
+        ``np.ndarray`` branch is then handled by ``NdArrayField``).
+        """
+        if isinstance(value, int) and not isinstance(value, bool):
+            return morphology.diamond(value)
+        return value
 
     def _operate(self, image: Image | GridImage) -> Image:
         from phenotypic import Image, GridImage

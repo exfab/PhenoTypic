@@ -92,28 +92,15 @@ class ChanVeseDetector(ObjectDetector):
             In-depth comparison of all detection strategies.
     """
 
-    def __init__(
-        self,
-        mu: float = 0.25,
-        lambda1: float = 1.0,
-        lambda2: float = 1.0,
-        max_num_iter: int = 500,
-        tol: float = 1e-3,
-        dt: float = 0.5,
-        init_level_set: str = "checkerboard",
-        min_size: int = 50,
-        connectivity: int = 2,
-    ):
-        super().__init__()
-        self.mu = mu
-        self.lambda1 = lambda1
-        self.lambda2 = lambda2
-        self.max_num_iter = max_num_iter
-        self.tol = tol
-        self.dt = dt
-        self.init_level_set = init_level_set
-        self.min_size = min_size
-        self.connectivity = connectivity
+    mu: float = 0.25
+    lambda1: float = 1.0
+    lambda2: float = 1.0
+    max_num_iter: int = 500
+    tol: float = 1e-3
+    dt: float = 0.5
+    init_level_set: str = "checkerboard"
+    min_size: int = 50
+    connectivity: int = 2
 
     def _operate(self, image: Image | GridImage) -> Image:
         """Apply Chan-Vese level-set segmentation to detect colonies.

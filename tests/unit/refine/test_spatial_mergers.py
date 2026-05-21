@@ -158,13 +158,12 @@ class TestTransitiveDistanceMerger:
         """Default apply() should not modify original."""
         original_max = single_object_image.objmap[:].max()
         merger = TransitiveDistanceMerger(distance_threshold=30.0)
-        result = merger.apply(single_object_image)  # Default: inplace=False
+        merger.apply(single_object_image)  # Default: inplace=False
         # Original should be unchanged
         assert single_object_image.objmap[:].max() == original_max
 
     def test_inplace_modification(self, chain_objects_image):
         """inplace=True should modify original."""
-        original_id = id(chain_objects_image.objmap[:])
         merger = TransitiveDistanceMerger(distance_threshold=25.0)
         result = merger.apply(chain_objects_image, inplace=True)
         # Result should be same object
@@ -386,7 +385,6 @@ class TestSmallToLargeMerger:
         objmap[60:80, 60:80] = 2
         image.objmap[:] = objmap
 
-        original = objmap.copy()
         merger = SmallToLargeMerger(size_threshold=100, distance_threshold=100.0)
         result = merger.apply(image)
 
@@ -442,7 +440,7 @@ class TestMergerIntegration:
         """Mergers should work in ImagePipeline."""
         from phenotypic import ImagePipeline
 
-        pipeline = ImagePipeline([TransitiveDistanceMerger(distance_threshold=20.0)])
+        pipeline = ImagePipeline(ops=[TransitiveDistanceMerger(distance_threshold=20.0)])
 
         # Should apply without error
         result = pipeline.apply(chain_objects_image)

@@ -563,7 +563,7 @@ visible effect, and the recovery (or guard).
 | Aux cycle (e.g. A's aux ← B; B's aux ← A) | Same as image cycle — Rule 4 applies to combined edge graph | Same recovery |
 | Container left wired *and* right wired to purple (mixed mode) | Rule 5 fires; container border red | User must remove one of the two wires |
 | Empty container (no inner ops) | Container shows "+ drop ops here" placeholder; not an error | Optional aux: passes Rule 3 (uses default `ImagePipeline()`). Required aux: Rule 3 is satisfied by the wire's *presence* — but the runtime may raise on an empty pipeline when invoked. See §10 open question. |
-| Empty scope (root scope has only `InputImage`) | All rules pass; preview is a no-op; save emits `ImagePipeline([])` | Allowed; the toolbar shows "Pipeline is empty" hint but does not block |
+| Empty scope (root scope has only `InputImage`) | All rules pass; preview is a no-op; save emits `ImagePipeline(pipe_cfgs=[])` | Allowed; the toolbar shows "Pipeline is empty" hint but does not block |
 | Deleting a container with children | Toast: "Delete container and its N inner blocks?" — confirm to proceed | If confirmed, atomically removes the container and every edge that referenced any inner block |
 | List aux slot reordered while disconnected wire-drag in flight | Drag completes first (snapping to the slot under cursor at release); reorder applies after | Single fan-in callback orders dispatches by trigger timestamp |
 | Loading a `pipeline.json` saved by a pre-redesign release | One-shot dagre layout on first open; auto-seeds `InputImage` at scope head | `from_pipeline_dag` handles the conversion (see §5.4); no migration script required |
@@ -941,7 +941,7 @@ passes all six rules — `validate` returns `[]`. The toolbar shows a
 
 **Required aux + empty container:** an empty container wired into a required
 aux port satisfies Rule 3 by being present (the wire exists), but
-`to_pipeline` materialises an `ImagePipeline([])`. Whether that is
+`to_pipeline` materialises an `ImagePipeline(pipe_cfgs=[])`. Whether that is
 semantically a valid value for a required aux is class-dependent and
 delegated to the runtime (some ops may raise on empty pipelines). See
 §10 for the open question.

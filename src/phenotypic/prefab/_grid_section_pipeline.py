@@ -162,8 +162,8 @@ class GridSectionPipeline(PrefabPipeline):
             "align"                           : GridAligner(axis=aligner_axis,
                                                             mode=aligner_mode),
             "section-level detect"            : GridApply(
-                    ImagePipeline(
-                            {
+                    image_op=ImagePipeline(
+                            pipe_cfgs={
                                 "blur"               : GaussianBlur(
                                         sigma=section_blur_sigma,
                                         mode=section_blur_mode,

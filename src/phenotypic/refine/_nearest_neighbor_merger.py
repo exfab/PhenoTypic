@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
 import numpy as np
+from pydantic import field_validator
 from scipy.spatial import cKDTree
 from skimage.measure import regionprops_table
 import pandas as pd
@@ -52,26 +53,30 @@ class NearestNeighborMerger(ObjectRefiner):
         refinement approach.
     """
 
-    def __init__(self, distance_threshold: float = 20.0, min_size: Optional[int] = 50):
-        """Initialize the merger.
+    distance_threshold: float = 20.0
+    min_size: int | None = 50
 
-        Args:
-            distance_threshold (float): Maximum distance to nearest neighbor for
-                merging. Objects farther than this remain independent.
-            min_size (int | None): Minimum area to preserve independently.
-                Objects smaller than this merge to nearest neighbor if within
-                distance_threshold. Larger objects remain untouched.
+    @field_validator("distance_threshold")
+    @classmethod
+    def _validate_distance_threshold(cls, distance_threshold: float) -> float:
+        """Reject a non-positive ``distance_threshold``.
 
-        Raises:
-            ValueError: If distance_threshold is not positive or if min_size is
-                provided and not positive.
+        Reproduces the pre-migration ``__init__`` guard verbatim.
         """
         if distance_threshold <= 0:
             raise ValueError("distance_threshold must be positive")
+        return distance_threshold
+
+    @field_validator("min_size")
+    @classmethod
+    def _validate_min_size(cls, min_size: int | None) -> int | None:
+        """Reject a non-positive ``min_size`` when one is provided.
+
+        Reproduces the pre-migration ``__init__`` guard verbatim.
+        """
         if min_size is not None and min_size <= 0:
             raise ValueError("min_size must be positive if provided")
-        self.distance_threshold = distance_threshold
-        self.min_size = min_size
+        return min_size
 
     def _operate(self, image: Image) -> Image:
         """Apply nearest-neighbor distance-based merging to objmap.

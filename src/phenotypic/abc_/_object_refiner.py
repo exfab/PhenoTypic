@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, overload
+from typing import TYPE_CHECKING, ClassVar, overload
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -183,15 +183,14 @@ class ObjectRefiner(ImageOperation, ABC):
         from skimage.morphology import remove_small_objects
 
         class MyCustomRefiner(ObjectRefiner):
-            def __init__(self, min_size: int = 50):
-                super().__init__()
-                self.min_size = min_size  # Instance attribute matched to _operate()
+            min_size: int = 50  # Annotated class-level field
 
-            @staticmethod
-            def _operate(image: Image, min_size: int = 50) -> Image:
+            def _operate(self, image: Image) -> Image:
                 # Modify ONLY objmap; read, process, write back
                 # objmask will be auto-updated from objmap via relabel()
-                refined_map = remove_small_objects(image.objmap[:], min_size=min_size)
+                refined_map = remove_small_objects(
+                    image.objmap[:], min_size=self.min_size
+                )
                 image.objmap[:] = refined_map
                 return image
 
@@ -208,16 +207,14 @@ class ObjectRefiner(ImageOperation, ABC):
         from skimage.morphology import dilation
 
         class MyMorphRefiner(ObjectRefiner, FootprintMixin):
-            def __init__(self, footprint_shape: str = 'disk', footprint_width: int = 2):
-                super().__init__()
-                self.footprint_shape = footprint_shape
-                self.footprint_width = footprint_width
+            footprint_shape: str = 'disk'  # Annotated class-level fields
+            footprint_width: int = 2
 
-            @staticmethod
-            def _operate(image: Image, footprint_shape: str = 'disk',
-                        footprint_width: int = 2) -> Image:
+            def _operate(self, image: Image) -> Image:
                 # Use _make_footprint from ObjectRefiner or FootprintMixin
-                fp = ObjectRefiner._make_footprint(footprint_shape, footprint_width)
+                fp = ObjectRefiner._make_footprint(
+                    self.footprint_shape, self.footprint_width
+                )
                 dilated = dilation(image.objmask[:], footprint=fp)
                 image.objmask[:] = dilated
                 # Reconstruct objmap from dilated mask
@@ -229,8 +226,7 @@ class ObjectRefiner(ImageOperation, ABC):
     **Key Rules for Implementation:**
 
     1. ``_operate()`` must be an **instance method** (access parameters via ``self``).
-    2. All parameters except `image` must exist as instance attributes with matching names
-       (enables automatic parameter matching via `_get_matched_operation_args()`).
+    2. All parameters except `image` must be declared as annotated class-level fields.
     3. **Only modify ``image.objmask[:]`` and ``image.objmap[:]``**—all other components are
        protected. Reading image data is allowed but modifications will trigger integrity errors.
     4. Always use the accessor pattern: ``image.objmap[:] = new_data`` (never direct attribute
@@ -384,9 +380,9 @@ class ObjectRefiner(ImageOperation, ABC):
         - **Instance _operate() method:** The ``_operate()`` method is an instance method;
           access parameters via ``self``.
 
-        - **Parameter matching for parallelization:** All ``_operate()`` parameters except
-          ``image`` must exist as instance attributes. When ``apply()`` is called, these
-          values are extracted and passed to ``_operate()``.
+        - **Field-based parameters:** All ``_operate()`` parameters except ``image``
+          are declared as annotated class-level fields. ``_operate()`` accesses them
+          via ``self``; pydantic handles construction and serialization.
 
         - **Accessor pattern:** Always use ``image.objmap[:] = new_data`` to modify
           object maps. Never use direct attribute assignment.
@@ -408,17 +404,14 @@ class ObjectRefiner(ImageOperation, ABC):
         >>> class SimpleSmallObjectRemover(ObjectRefiner):
         ...     '''Remove objects smaller than a minimum size threshold.'''
         ...
-        ...     def __init__(self, min_size: int = 50):
-        ...         super().__init__()
-        ...         self.min_size = min_size
+        ...     min_size: int = 50
         ...
-        ...     @staticmethod
-        ...     def _operate(image: Image, min_size: int = 50) -> Image:
+        ...     def _operate(self, image: Image) -> Image:
         ...         '''Remove small objects from labeled map.'''
         ...         # Get current labeled map
         ...         objmap = image.objmap[:]
         ...         # Remove small objects (automatically updates objmap)
-        ...         refined = remove_small_objects(objmap, min_size=min_size)
+        ...         refined = remove_small_objects(objmap, min_size=self.min_size)
         ...         # Set refined result
         ...         image.objmap[:] = refined
         ...         return image
@@ -443,12 +436,9 @@ class ObjectRefiner(ImageOperation, ABC):
         >>> class CircularityFilter(ObjectRefiner):
         ...     '''Remove objects with low circularity (merged colonies, artifacts).'''
         ...
-        ...     def __init__(self, min_circularity: float = 0.7):
-        ...         super().__init__()
-        ...         self.min_circularity = min_circularity
+        ...     min_circularity: float = 0.7
         ...
-        ...     @staticmethod
-        ...     def _operate(image: Image, min_circularity: float = 0.7) -> Image:
+        ...     def _operate(self, image: Image) -> Image:
         ...         '''Filter objects by circularity using Polsby-Popper metric.'''
         ...         objmap = image.objmap[:]
         ...         # Measure shape properties
@@ -460,7 +450,9 @@ class ObjectRefiner(ImageOperation, ABC):
         ...         # Calculate circularity (Polsby-Popper: 4*pi*area / perimeter^2)
         ...         df['circularity'] = (4 * math.pi * df['area']) / (df['perimeter'] ** 2)
         ...         # Keep only circular objects
-        ...         keep_labels = df[df['circularity'] >= min_circularity]['label'].values
+        ...         keep_labels = df[
+        ...             df['circularity'] >= self.min_circularity
+        ...         ]['label'].values
         ...         # Filter map: keep only selected labels
         ...         refined_map = np.where(np.isin(objmap, keep_labels), objmap, 0)
         ...         image.objmap[:] = refined_map
@@ -482,11 +474,7 @@ class ObjectRefiner(ImageOperation, ABC):
         >>> class HoleFiller(ObjectRefiner):
         ...     '''Fill holes within colony masks for solid shape representation.'''
         ...
-        ...     def __init__(self):
-        ...         super().__init__()
-        ...
-        ...     @staticmethod
-        ...     def _operate(image: Image) -> Image:
+        ...     def _operate(self, image: Image) -> Image:
         ...         '''Fill holes in binary mask.'''
         ...         mask = image.objmask[:]
         ...         # Fill holes (interior voids within objects)
@@ -518,16 +506,13 @@ class ObjectRefiner(ImageOperation, ABC):
         >>> class FragmentMerger(ObjectRefiner):
         ...     '''Merge fragmented colonies via morphological dilation and relabeling.'''
         ...
-        ...     def __init__(self, dilation_radius: int = 2):
-        ...         super().__init__()
-        ...         self.dilation_radius = dilation_radius
+        ...     dilation_radius: int = 2
         ...
-        ...     @staticmethod
-        ...     def _operate(image: Image, dilation_radius: int = 2) -> Image:
+        ...     def _operate(self, image: Image) -> Image:
         ...         '''Dilate mask and relabel to merge nearby fragments.'''
         ...         mask = image.objmask[:]
         ...         # Create disk shape for isotropic dilation
-        ...         fp = ObjectRefiner._make_footprint('disk', dilation_radius)
+        ...         fp = ObjectRefiner._make_footprint('disk', self.dilation_radius)
         ...         # Dilate to bridge fragmented regions
         ...         dilated = dilation(mask, footprint=fp)
         ...         # Relabel connected components
@@ -555,18 +540,15 @@ class ObjectRefiner(ImageOperation, ABC):
         >>> class TransitiveDistanceMerger(ObjectRefiner):
         ...     '''Merge objects within specified distance via distance transform.'''
         ...
-        ...     def __init__(self, merge_distance: int = 5):
-        ...         super().__init__()
-        ...         self.merge_distance = merge_distance
+        ...     merge_distance: int = 5
         ...
-        ...     @staticmethod
-        ...     def _operate(image: Image, merge_distance: int = 5) -> Image:
+        ...     def _operate(self, image: Image) -> Image:
         ...         '''Merge objects closer than merge_distance via dilation of distance map.'''
         ...         mask = image.objmask[:]
         ...         # Compute distance transform from object interior
         ...         dist_map = distance_transform_edt(mask)
         ...         # Dilate distance map to bridge nearby objects
-        ...         fp = ObjectRefiner._make_footprint('disk', merge_distance)
+        ...         fp = ObjectRefiner._make_footprint('disk', self.merge_distance)
         ...         dilated_dist = dilation(dist_map > 0, footprint=fp)
         ...         # Relabel connected components in dilated region
         ...         relabeled, _ = ndi_label(dilated_dist)
@@ -615,7 +597,7 @@ class ObjectRefiner(ImageOperation, ABC):
         >>> print(f"Detected and cleaned: {len(colonies)} colonies")
         >>> print(f"Color measurements: {measurements.shape}")
     """
-    _footprint_shapes = {"square", "diamond", "disk"}
+    _footprint_shapes: ClassVar[set[str]] = {"square", "diamond", "disk"}
 
     @overload
     def apply(self, image: Image, inplace: bool = False) -> Image: ...

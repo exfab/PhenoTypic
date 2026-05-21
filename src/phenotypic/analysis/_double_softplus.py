@@ -4,13 +4,12 @@ from typing import Any, Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
+from pydantic import field_validator
 
 from phenotypic.analysis.abc_._linear_softplus_base import (
     _DEFAULT_BETA,
     _LinearSoftplusBase,
 )
-from phenotypic.analysis.abc_._model_fitter import LossKind
-from phenotypic.tools_ import ColumnRef, ColumnRefList
 from phenotypic.tools_.measurement_info import (
     DOUBLE_SOFTPLUS_MODEL,
     MODEL_METRICS,
@@ -84,96 +83,53 @@ class DoubleSoftplus(_LinearSoftplusBase):
 
     _measurement_infoclass = DOUBLE_SOFTPLUS_MODEL
 
-    def __init__(
-            self,
-            on: ColumnRef,
-            groupby: ColumnRefList,
-            time_label: ColumnRef = "Metadata_Time",
-            *,
-            smax: float | None = None,
-            beta: float | None = None,
-            stderr_label: str | None = None,
-            s0_prior: bool | float | int | str | None = None,
-            s0_prior_cv: float | None = None,
-            s0_prior_sigma: float | None = None,
-            s0_prior_groupby: List[str] | None = None,
-            shoulder_slope_ratio: float = 0.05,
-            n_jobs: int = 1,
-            loss: LossKind = "huber",
-            f_scale: float = 1.0,
-            verbose: bool = False,
-    ):
-        """Initialize the double-softplus fitter.
+    smax: float | None = None
+    beta: float | None = None
+    shoulder_slope_ratio: float = 0.05
+
+    @field_validator("beta")
+    @classmethod
+    def _validate_beta(cls, value: float | None) -> float | None:
+        """Reject a non-positive or non-finite scalar ``beta``.
 
         Args:
-            on: Target column (size measurement) to fit.
-            groupby: Columns defining the per-fit grouping structure.
-            time_label: Column name representing time. Defaults to
-                ``"Metadata_Time"``.
-            smax: Fixed carrying capacity for every group. When
-                ``None``, the model uses the per-group observed
-                maximum.
-            beta: Saturation transition sharpness. ``None`` (default)
-                enables per-group mode dispatch — the fitter picks
-                between fitted-beta and fixed-beta-at-default based on
-                whether a shoulder is detected. A positive scalar
-                forces ``"fixed_beta"`` mode with that value across
-                every group. Non-positive scalars raise
-                :class:`ValueError`.
-            stderr_label: Column providing per-timepoint standard
-                errors used as weights. When ``None``, replicate SE is
-                computed automatically during aggregation.
-            s0_prior: Unified prior-mean source, dispatched by type.
-                See :class:`LinearSoftplus` for the dispatch table.
-            s0_prior_cv: CV coefficient for the prior σ
-                (``σ = cv × µ``). Mutually exclusive with
-                ``s0_prior_sigma``. Defaults to ``None``; if neither
-                knob is set and the prior is engaged, CV=0.05 is
-                applied.
-            s0_prior_sigma: Absolute σ for the prior. Mutually exclusive
-                with ``s0_prior_cv``.
-            s0_prior_groupby: Coarser grouping (subset of ``groupby``)
-                for empirical-Bayes pooling of the per-group ``µ``.
-            shoulder_slope_ratio: Fraction of peak ``ds/dt`` below
-                which the curve is considered to show a saturation
-                shoulder for mode dispatch. Defaults to ``0.05``.
-            n_jobs: Number of parallel workers for per-group fits.
-            loss: Loss method for :func:`scipy.optimize.least_squares`.
-            f_scale: Soft margin between inlier and outlier residuals.
-            verbose: If ``True``, enables optimizer verbose output.
+            value: The candidate ``beta``. ``None`` opts into per-group
+                mode dispatch and is left untouched.
+
+        Returns:
+            The validated ``beta`` value.
+
+        Raises:
+            ValueError: If ``beta`` is not ``None`` and is not a
+                positive finite number.
         """
-        super().__init__(
-                on=on,
-                groupby=groupby,
-                time_label=time_label,
-                stderr_label=stderr_label,
-                s0_prior=s0_prior,
-                s0_prior_cv=s0_prior_cv,
-                s0_prior_sigma=s0_prior_sigma,
-                s0_prior_groupby=s0_prior_groupby,
-                n_jobs=n_jobs,
-                loss=loss,
-                f_scale=f_scale,
-                verbose=verbose,
-        )
-        if beta is not None:
-            if not np.isfinite(beta) or beta <= 0:
-                raise ValueError(
-                        f"beta must be None or a positive finite number, "
-                        f"got {beta!r}."
-                )
-        if (
-                not np.isfinite(shoulder_slope_ratio)
-                or shoulder_slope_ratio <= 0
-                or shoulder_slope_ratio >= 1
-        ):
+        if value is not None and (not np.isfinite(value) or value <= 0):
+            raise ValueError(
+                    f"beta must be None or a positive finite number, "
+                    f"got {value!r}."
+            )
+        return value
+
+    @field_validator("shoulder_slope_ratio")
+    @classmethod
+    def _validate_shoulder_slope_ratio(cls, value: float) -> float:
+        """Reject a ``shoulder_slope_ratio`` outside the open ``(0, 1)``.
+
+        Args:
+            value: The candidate ``shoulder_slope_ratio``.
+
+        Returns:
+            The validated ratio.
+
+        Raises:
+            ValueError: If the ratio is not finite or not in ``(0, 1)``.
+        """
+        if not np.isfinite(value) or value <= 0 or value >= 1:
             raise ValueError(
                     f"shoulder_slope_ratio must be in (0, 1), "
-                    f"got {shoulder_slope_ratio!r}."
+                    f"got {value!r}."
             )
-        self.smax = smax
-        self.beta = beta
-        self.shoulder_slope_ratio = shoulder_slope_ratio
+        return value
 
     # ------------------------------------------------------------------ #
     # Model math

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pandas as pd
+from pydantic import field_validator
 
 from phenotypic.abc_._post_measurement import PostMeasurement
 from ._utils import _ensure_prefix
@@ -38,10 +39,14 @@ class PrependString(PostMeasurement):
         ['WT-001', 'WT-002']
     """
 
-    def __init__(self, column: str = "", value: str = ""):
-        super().__init__()
-        self.column = _ensure_prefix(column) if column else ""
-        self.value = value
+    column: str = ""
+    value: str = ""
+
+    @field_validator("column")
+    @classmethod
+    def _prefix_column(cls, column: str) -> str:
+        """Prepend the ``Metadata_`` prefix to a non-empty column name."""
+        return _ensure_prefix(column) if column else ""
 
     def _operate(self, df: pd.DataFrame) -> pd.DataFrame:
         """Prepend the string value to each cell in the target column.

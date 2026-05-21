@@ -1,11 +1,10 @@
-from typing import Any, Callable, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
 
 from phenotypic.analysis.abc_ import ModelFitter
-from phenotypic.analysis.abc_._model_fitter import LossKind
-from phenotypic.tools_ import ColumnRef, ColumnRefList
+from phenotypic.tools_ import ColumnRef
 from phenotypic.tools_.measurement_info import LOG_GROWTH_MODEL, MODEL_METRICS
 
 
@@ -64,64 +63,9 @@ class LogGrowthModel(ModelFitter):
 
     _measurement_infoclass = LOG_GROWTH_MODEL
 
-    def __init__(
-            self,
-            on: ColumnRef,
-            groupby: ColumnRefList,
-            time_label: ColumnRef = "Metadata_Time",
-            agg_func: Callable | str | list | dict | None = "mean",
-            lam: float = 1.2,
-            beta: float = 2,
-            Kmax_label: ColumnRef | None = None,
-            loss: LossKind = "huber",
-            f_scale: float = 1.0,
-            verbose: bool = False,
-            n_jobs: int = 1,
-    ):
-        """Initialize the log-growth fitter.
-
-        Args:
-            on: Target column (population-size measurement) to fit.
-            groupby: Columns defining the per-fit grouping structure.
-            time_label: Column name representing time. Defaults to
-                ``"Metadata_Time"``.
-            agg_func: Aggregation function fed to ``DataFrame.groupby.agg()``.
-                Defaults to ``"mean"``.
-            lam: Regularization factor applied to the maximum specific
-                growth rate and initial population size. Defaults to 1.2.
-            beta: Penalty factor applied to the relative difference
-                between ``K`` and the largest observed measurement.
-                Defaults to 2.
-            Kmax_label: Optional column providing a per-group upper bound
-                on ``K``. When omitted, the observed maximum of ``on`` is
-                used.
-            loss: Loss method passed through to
-                :func:`scipy.optimize.least_squares`. One of
-                ``"linear"``, ``"soft_l1"``, ``"huber"``, ``"cauchy"``,
-                ``"arctan"``. Defaults to ``"huber"`` — standard
-                least-squares on inliers, linear downweighting past
-                ``f_scale`` for outlier timepoints. Pass ``"linear"``
-                for the classical sum-of-squared-residuals loss.
-            f_scale: Soft margin between inlier and outlier residuals
-                handed to :func:`scipy.optimize.least_squares`. No
-                effect when ``loss="linear"``. Must be positive;
-                defaults to ``1.0``.
-            verbose: If ``True``, enables the optimizer's verbose output.
-            n_jobs: Number of parallel workers for per-group fits.
-        """
-        super().__init__(
-                on=on,
-                groupby=groupby,
-                time_label=time_label,
-                agg_func=agg_func,
-                n_jobs=n_jobs,
-                loss=loss,
-                f_scale=f_scale,
-                verbose=verbose,
-        )
-        self.lam = lam
-        self.beta = beta
-        self.Kmax_label = Kmax_label
+    lam: float = 1.2
+    beta: int | float = 2
+    Kmax_label: ColumnRef | None = None
 
     # ------------------------------------------------------------------ #
     # Model math

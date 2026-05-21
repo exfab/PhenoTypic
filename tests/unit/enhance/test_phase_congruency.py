@@ -63,8 +63,13 @@ class TestPhaseCongruencyEnhancerParameterValidation:
             PhaseCongruencyEnhancer(g=-5.0)
 
     def test_invalid_output_raises_error(self):
-        """Test that invalid output mode raises ValueError."""
-        with pytest.raises(ValueError, match="output must be"):
+        """Test that invalid output mode raises ValueError.
+
+        ``output`` is a ``Literal`` field, so an out-of-set value is
+        rejected by pydantic with a ``literal_error`` (a subclass of
+        ``ValueError``) rather than the legacy hand-rolled message.
+        """
+        with pytest.raises(ValueError, match="Input should be"):
             PhaseCongruencyEnhancer(output="invalid")
 
     def test_valid_parameters_accepted(self):
@@ -243,7 +248,7 @@ class TestPhaseCongruencyEnhancerIntegration:
         original_rgb = image.rgb[:].copy()
 
         enhancer = PhaseCongruencyEnhancer(n_scale=3, n_orient=4)
-        result = enhancer.apply(image)
+        enhancer.apply(image)
 
         # Original image rgb should be unchanged
         assert np.array_equal(image.rgb[:], original_rgb)
@@ -255,7 +260,7 @@ class TestPhaseCongruencyEnhancerIntegration:
         original_gray = image.gray[:].copy()
 
         enhancer = PhaseCongruencyEnhancer(n_scale=3, n_orient=4)
-        result = enhancer.apply(image)
+        enhancer.apply(image)
 
         # Original image gray should be unchanged
         assert np.array_equal(image.gray[:], original_gray)

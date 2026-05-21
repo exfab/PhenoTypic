@@ -46,18 +46,8 @@ class ContrastStretching(ImageEnhancer):
         into the pipeline model.
     """
 
-    def __init__(self, lower_percentile: int = 2, upper_percentile: int = 98):
-        """
-        Parameters:
-            lower_percentile (int): Dark clipping point. Increase to suppress
-                deep shadows/edge artifacts; too high may remove meaningful dark
-                background structure. Typical range: 1–5.
-            upper_percentile (int): Bright clipping point. Decrease to suppress
-                glare/highlights; too low may flatten bright colonies. Typical
-                range: 95–99.
-        """
-        self.lower_percentile = lower_percentile
-        self.upper_percentile = upper_percentile
+    lower_percentile: int = 2
+    upper_percentile: int = 98
 
     def _operate(self, image: Image) -> Image:
         p_lower, p_upper = np.percentile(

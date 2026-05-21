@@ -6,6 +6,7 @@ if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
 import numpy as np
+from pydantic import field_validator
 from scipy.spatial import cKDTree
 from skimage.measure import regionprops_table
 import pandas as pd
@@ -60,21 +61,18 @@ class TransitiveDistanceMerger(ObjectRefiner):
         merging strategies.
     """
 
-    def __init__(self, distance_threshold: float = 20.0):
-        """Initialize the merger.
+    distance_threshold: float = 20.0
 
-        Args:
-            distance_threshold (float): Maximum centroid-to-centroid distance in
-                pixels for merging colonies. Increasing this value merges more
-                fragments but risks combining distinct colonies. Should be smaller
-                than the minimum expected distance between separate colonies.
+    @field_validator("distance_threshold")
+    @classmethod
+    def _validate_distance_threshold(cls, distance_threshold: float) -> float:
+        """Reject a non-positive ``distance_threshold``.
 
-        Raises:
-            ValueError: If distance_threshold is not positive.
+        Reproduces the pre-migration ``__init__`` guard verbatim.
         """
         if distance_threshold <= 0:
             raise ValueError("distance_threshold must be positive")
-        self.distance_threshold = distance_threshold
+        return distance_threshold
 
     @staticmethod
     def _find_root(label: int, parent: Dict[int, int]) -> int:

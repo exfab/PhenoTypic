@@ -91,17 +91,10 @@ class HysteresisDetector(ThresholdDetector):
             In-depth comparison of all detection strategies.
     """
 
-    def __init__(
-        self,
-        low: Union[str, float] = "mean",
-        high: Union[str, float] = "otsu",
-        ignore_zeros: bool = False,
-        ignore_borders: bool = True,
-    ):
-        self.low = low
-        self.high = high
-        self.ignore_zeros = ignore_zeros
-        self.ignore_borders = ignore_borders
+    low: Union[str, float] = "mean"
+    high: Union[str, float] = "otsu"
+    ignore_zeros: bool = False
+    ignore_borders: bool = True
 
     def _operate(self, image: Image) -> Image:
         """Apply hysteresis thresholding to detect colonies.

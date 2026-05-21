@@ -30,7 +30,7 @@ logging.basicConfig(
 
 @timeit
 def test_empty_pipeline(plate_12hr_grid_image):
-    empty_pipeline = ImagePipeline({})
+    empty_pipeline = ImagePipeline(pipe_cfgs={})
     assert empty_pipeline.apply(plate_12hr_grid_image.copy()).num_objects == 0
 
 
@@ -40,7 +40,7 @@ def test_pipeline_on_image(plate_grid_images):
             ops={
                 "blur"     : GaussianBlur(sigma=5),
                 "detection": OtsuDetector(),
-                "remove"   : BorderObjectRemover(50),
+                "remove"   : BorderObjectRemover(border_size=50),
             },
             meas={
                 "MeasureColor"    : MeasureColor(),
@@ -101,20 +101,20 @@ def test_kmarx_pipeline_pickleable(plate_grid_images):
     import pickle
 
     pipe = ImagePipeline(
-            {
+            pipe_cfgs={
                 "blur"                            : GaussianBlur(sigma=2),
                 "clahe"                           : CLAHE(),
                 "median filter"                   : MedianFilter(),
                 "detection"                       : OtsuDetector(),
-                "border_removal"                  : BorderObjectRemover(50),
-                "low circularity remover"         : LowCircularityRemover(0.6),
-                "small object remover"            : SmallObjectRemover(100),
+                "border_removal"                  : BorderObjectRemover(border_size=50),
+                "low circularity remover"         : LowCircularityRemover(cutoff=0.6),
+                "small object remover"            : SmallObjectRemover(min_size=100),
                 "Reduce by section residual error": ReduceMultipleGridObjects(),
                 "outlier removal"                 : ResidualOutlierRemover(),
                 "align"                           : GridAligner(),
                 "section-level detect"            : GridApply(
-                        ImagePipeline(
-                                {
+                        image_op=ImagePipeline(
+                                pipe_cfgs={
                                     "blur"               : GaussianBlur(sigma=5),
                                     "median filter"      : MedianFilter(),
                                     "contrast stretching": ContrastStretching(),
@@ -122,7 +122,7 @@ def test_kmarx_pipeline_pickleable(plate_grid_images):
                                 }
                         )
                 ),
-                "small object remover 2"          : SmallObjectRemover(100),
+                "small object remover 2"          : SmallObjectRemover(min_size=100),
                 "grid_reduction"                  : ReduceMultipleGridObjects(),
             }
     )
@@ -140,7 +140,7 @@ def _make_three_op_pipeline():
         ops={
             "blur": GaussianBlur(sigma=5),
             "detection": OtsuDetector(),
-            "remove": BorderObjectRemover(50),
+            "remove": BorderObjectRemover(border_size=50),
         },
     )
 
@@ -211,7 +211,7 @@ def test_apply_with_intermediates_preserves_gridimage(plate_12hr_grid_image):
 
 @timeit
 def test_apply_with_intermediates_empty_pipeline(plate_12hr_grid_image):
-    pipe = ImagePipeline({})
+    pipe = ImagePipeline(pipe_cfgs={})
     image = plate_12hr_grid_image.copy()
 
     result = pipe.apply_with_intermediates(image)

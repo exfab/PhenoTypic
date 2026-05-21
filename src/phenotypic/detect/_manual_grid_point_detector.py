@@ -86,23 +86,10 @@ class ManualGridPointDetector(GridObjectDetector, FootprintMixin):
             In-depth comparison of all detection strategies.
     """
 
-    def __init__(
-            self,
-            coord1: tuple[int, int] = (0, 0),
-            coord2: tuple[int, int] | None = None,
-            shape: Literal["square", "diamond", "disk"] = "disk",
-            width: int = 15,
-    ):
-        super().__init__()
-        self.coord1 = coord1
-        self.coord2 = coord2
-        self.shape = shape
-        self.width = width
-
-    def __setattr__(self, name: str, value: object) -> None:
-        if name in ("coord1", "coord2") and value is not None:
-            value = tuple(value)  # type: ignore[arg-type]
-        super().__setattr__(name, value)
+    coord1: tuple[int, int] = (0, 0)
+    coord2: tuple[int, int] | None = None
+    shape: Literal["square", "diamond", "disk"] = "disk"
+    width: int = 15
 
     def napari(self, image: GridImage) -> ManualGridPointDetector:
         """Interactively pick 1--2 anchor coordinates using a napari viewer.

@@ -8,17 +8,15 @@ from phenotypic.abc_ import ImageOperation
 
 # Dummy operations
 class OpA(ImageOperation):
-    def __init__(self, val_a: int = 1):
-        self.val_a = val_a
+    val_a: int = 1
 
     def _operate(self, image):
         return image
 
 
 class OpB(ImageOperation):
-    def __init__(self, val_b: float = 2.5, toggle: bool = False):
-        self.val_b = val_b
-        self.toggle = toggle
+    val_b: float = 2.5
+    toggle: bool = False
 
     def _operate(self, image):
         return image

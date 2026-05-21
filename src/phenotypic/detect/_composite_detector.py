@@ -1,14 +1,15 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, List, Literal, Union
+from typing import TYPE_CHECKING, Any, List, Literal
 import numpy as np
+from pydantic import Field, field_validator
 from scipy.ndimage import label
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
-    from phenotypic._core._image_pipeline import ImagePipeline
 
 from phenotypic.abc_ import ObjectDetector
 from phenotypic.detect import OtsuDetector, RoundPeaksDetector
+from phenotypic.tools_.typing_ import OperationField
 
 
 class CompositeDetector(ObjectDetector):
@@ -75,19 +76,33 @@ class CompositeDetector(ObjectDetector):
             In-depth comparison of all detection strategies.
     """
 
-    def __init__(
-            self,
-            detectors: List[Union[ObjectDetector, 'ImagePipeline']] = None,
-            mode: Literal['union', 'intersection', 'overlap'] = 'overlap',
-            min_overlap_ratio: float = 0.0
-    ):
-        super().__init__()
-        self.detectors = detectors if detectors is not None else [
-            OtsuDetector(),
-            RoundPeaksDetector()
-        ]
-        self.mode = mode
-        self.min_overlap_ratio = min_overlap_ratio
+    # Each detector may be an ``ObjectDetector`` or a nested
+    # ``ImagePipeline``. ``OperationField`` keeps the concrete class of
+    # each entry across a JSON round-trip (a bare ``model_dump`` of an
+    # ``ObjectDetector | ImagePipeline`` union would lose the subclass).
+    # ``| None`` permits an empty list slot: the GUI builder marks an
+    # unfilled detector slot in an in-progress pipeline with ``None``
+    # (pre-migration the un-validated list accepted these implicitly).
+    detectors: List[OperationField | None] = Field(
+        default_factory=lambda: [OtsuDetector(), RoundPeaksDetector()]
+    )
+    mode: Literal['union', 'intersection', 'overlap'] = 'overlap'
+    min_overlap_ratio: float = 0.0
+
+    @field_validator("detectors", mode="before")
+    @classmethod
+    def _default_detectors(cls, value: Any) -> Any:
+        """Map an explicit ``None`` onto the default detector pair.
+
+        The pre-migration ``__init__`` accepted ``detectors=None`` as the
+        "unset" sentinel and substituted ``[OtsuDetector(),
+        RoundPeaksDetector()]``. The ``default_factory`` covers the
+        omitted-argument case; this validator preserves the legacy
+        explicit-``None`` call.
+        """
+        if value is None:
+            return [OtsuDetector(), RoundPeaksDetector()]
+        return value
 
     def _operate(self, image: Image) -> Image:
         """Apply all detectors/pipelines and combine their objmask outputs."""
@@ -109,6 +124,10 @@ class CompositeDetector(ObjectDetector):
         objmaps = []
 
         for detector in self.detectors:
+            if detector is None:
+                # An unfilled list slot (the GUI builder marks an empty
+                # detector slot with None); nothing to apply — skip it.
+                continue
             if isinstance(detector, ImagePipeline):
                 # Apply pipeline (preprocessing + detection)
                 detected_image = detector.apply(image,

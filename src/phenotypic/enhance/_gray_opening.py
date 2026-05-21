@@ -54,37 +54,9 @@ class GrayOpening(ImageEnhancer, FootprintMixin):
         visual walkthrough of enhancement pipelines on plate images.
     """
 
-    def __init__(self, shape: Literal["square", "diamond", "disk"] = "square",
-                 width: int = 5, n_iter: int = 1):
-        """
-        A kernel configuration class for image processing tasks, particularly suited for applications
-        such as analyzing and processing images of microbe colonies on solid media agar. This class
-        enables the definition of a kernel shape and size, which significantly impacts the morphological
-        operations applied to the image (e.g., filtering, dilation, erosion). Adjusting these parameters
-        can enhance or hinder the detection and analysis of colony boundaries, shapes, and distribution.
-
-        Attributes:
-            shape (Literal["square", "diamond", "disk"]): The geometric shape of the kernel. This attribute
-                governs the pattern and extent of neighboring pixels involved in the processing operation.
-                Choosing "square" results in a uniform rectangular influence, which may be suitable for
-                isotropic features but could introduce angular artifacts in circular features like microbe
-                colonies. The "diamond" shape provides a more angular neighborhood pattern that helps
-                preserve diagonal structures. On the other hand, "disk" introduces a circular pattern
-                that can align well with colony boundaries and reduce distortions in rounded features.
-
-            width (int): The size (diameter) of the kernel in pixels. A larger width increases the
-                area of influence during image processing, which can smooth out smaller features like
-                noise but potentially merge closely spaced microbe colonies into larger regions. Smaller
-                values offer finer detail and greater distinction between colonies but may leave noise
-                unprocessed or small artifacts unchanged.
-
-            n_iter (int): Number of times to apply the opening operation.
-                Repeated opening with a small element produces smoother results
-                than a single pass with a larger element. Default: 1.
-        """
-        self.shape = shape
-        self.width = width
-        self.n_iter = n_iter
+    shape: Literal["square", "diamond", "disk"] = "square"
+    width: int = 5
+    n_iter: int = 1
 
     def _operate(self, image: Image) -> Image:
         footprint = self._make_footprint(shape=self.shape, width=self.width)

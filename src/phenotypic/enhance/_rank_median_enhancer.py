@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
 import numpy as np
+from pydantic import field_validator
 from skimage.filters.rank import median
 from skimage.util import img_as_ubyte, img_as_float
 
@@ -52,26 +53,18 @@ class RankMedianEnhancer(ImageEnhancer):
         visual walkthrough of denoising pipelines on plate images.
     """
 
-    def __init__(self, shape: str = "square", width: int = None, shift_x=0, shift_y=0):
-        """
-        Parameters:
-            shape (str): Geometry of the neighborhood. Use 'disk' for
-                isotropic smoothing on plates; 'square' to align with grid noise;
-                'sphere'/'cube' for 3D contexts. Default 'square'.
-            width (int | None): Neighborhood width in pixels. Set
-                smaller than the minimum colony width to preserve colony edges;
-                None chooses a small default based on image size.
-            shift_x (int): Horizontal offset of the shape center to bias the
-                neighborhood if artifacts are directional. Typically 0.
-            shift_y (int): Vertical offset of the shape center. Typically 0.
-        """
+    shape: str = "square"
+    width: int | None = None
+    shift_x: int = 0
+    shift_y: int = 0
+
+    @field_validator("shape")
+    @classmethod
+    def _check_shape_supported(cls, shape: str) -> str:
+        """Reject an unsupported footprint shape (matches the legacy guard)."""
         if shape not in ["disk", "square", "sphere", "cube"]:
             raise ValueError(f"shape shape {shape} is not supported")
-
-        self.shape = shape
-        self.width = width
-        self.shift_x = shift_x
-        self.shift_y = shift_y
+        return shape
 
     def _operate(self, image: Image) -> Image:
         image.detect_mat[:] = img_as_float(

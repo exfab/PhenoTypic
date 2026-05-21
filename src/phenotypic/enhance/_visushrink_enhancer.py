@@ -77,47 +77,12 @@ class VisuShrinkEnhancer(_GATSupportMixin, ImageDenoiser):
     _GAT_NOISE_PARAMS: ClassVar[dict[str, float]] = {"sigma": 1.0}
     _GAT_DEFER_ATTRS: ClassVar[tuple[str, ...]] = ("clip", "rescale_sigma")
 
-    def __init__(
-            self,
-            sigma: float | None = None,
-            wavelet: str = "db2",
-            mode: Literal["soft", "hard"] = "soft",
-            wavelet_levels: int | None = None,
-            clip: bool = True,
-            rescale_sigma: bool = True,
-            use_gat: bool = False,
-            **kwargs,
-    ):
-        """Initialize VisuShrink wavelet denoiser.
-
-        Parameters:
-            sigma (float | None): Noise standard deviation in [0, 1] scale. None
-                (default) auto-estimates via median absolute deviation (MAD).
-                Overridden to 1.0 when ``use_gat=True``.
-            wavelet (str): Wavelet type from PyWavelets. 'db2' (default).
-                Must be orthogonal (db*, sym*).
-            mode (Literal['soft', 'hard']): Threshold type. 'soft' (default).
-            wavelet_levels (int | None): Decomposition depth. None (default)
-                uses max-3 automatically.
-            clip (bool): Whether to clip output to [0, 1] range. Default True.
-                Automatically deferred when ``use_gat=True``.
-            rescale_sigma (bool): skimage flag to rescale sigma to the wavelet
-                decomposition scale. Default True. Automatically set to False
-                when ``use_gat=True``.
-            use_gat (bool): Wrap denoising in the Generalized Anscombe
-                Transform for Poisson-Gaussian noise. Default False. See
-                :class:`phenotypic.tools_.mixin._GATSupportMixin`.
-            **kwargs: GAT tuning parameters forwarded to
-                :class:`_GATSupportMixin` (``gat_gain``, ``gat_mu``,
-                ``gat_read_sigma``, ``gat_scale_factor``).
-        """
-        super().__init__(use_gat=use_gat, **kwargs)
-        self.sigma = sigma
-        self.wavelet = wavelet
-        self.mode = mode
-        self.wavelet_levels = wavelet_levels
-        self.clip = clip
-        self.rescale_sigma = rescale_sigma
+    sigma: float | None = None
+    wavelet: str = "db2"
+    mode: Literal["soft", "hard"] = "soft"
+    wavelet_levels: int | None = None
+    clip: bool = True
+    rescale_sigma: bool = True
 
     def _operate(self, image: Image) -> Image:
         """Apply VisuShrink wavelet denoising to detection matrix."""

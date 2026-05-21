@@ -32,18 +32,20 @@ class TestManualPointDetectorInit:
         assert det.width == 15
 
     def test_init_with_centers_list(self):
-        """Centers given as a list of lists are coerced to np.ndarray."""
+        """Centers given as a list of lists are normalized to a list of tuples.
+
+        The pydantic v2 migration declares ``centers`` as a JSON-native
+        ``list[tuple[float, float]]``; the ``_normalize_centers`` field
+        validator coerces any array-like to that form.
+        """
         det = ManualPointDetector(centers=[[50, 60], [100, 120]])
-        assert isinstance(det.centers, np.ndarray)
-        assert det.centers.shape == (2, 2)
-        np.testing.assert_array_equal(det.centers, [[50, 60], [100, 120]])
+        assert det.centers == [(50.0, 60.0), (100.0, 120.0)]
 
     def test_setattr_coercion(self):
-        """Setting .centers to a list coerces it to np.ndarray."""
+        """Setting .centers re-runs the validator (validate_assignment)."""
         det = ManualPointDetector()
         det.centers = [[10, 20]]
-        assert isinstance(det.centers, np.ndarray)
-        np.testing.assert_array_equal(det.centers, [[10, 20]])
+        assert det.centers == [(10.0, 20.0)]
 
     def test_setattr_none_passthrough(self):
         """Setting .centers to None keeps it as None (no coercion)."""
@@ -132,7 +134,11 @@ class TestManualPointDetectorNapari:
     """Test .napari() integration via mocked PointPickerWidget."""
 
     def test_napari_sets_centers(self):
-        """napari() with picked points sets self.centers and returns self."""
+        """napari() with picked points sets self.centers and returns self.
+
+        The picked ``np.ndarray`` is normalized to a list of tuples by
+        the ``centers`` field validator on assignment.
+        """
         det = ManualPointDetector()
 
         with patch("phenotypic.tools_.napari_.PointPickerWidget") as MockWidget:
@@ -140,8 +146,7 @@ class TestManualPointDetectorNapari:
             mock_instance.run.return_value = np.array([[50, 60], [100, 120]])
             result = det.napari(MagicMock())
 
-        assert isinstance(det.centers, np.ndarray)
-        np.testing.assert_array_equal(det.centers, [[50, 60], [100, 120]])
+        assert det.centers == [(50.0, 60.0), (100.0, 120.0)]
         assert result is det
 
     def test_napari_empty_result_no_change(self):

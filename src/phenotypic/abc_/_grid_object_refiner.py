@@ -105,12 +105,9 @@ class GridObjectRefiner(ObjectRefiner, GridOperation, ABC):
         import numpy as np
 
         class MyGridRefiner(GridObjectRefiner):
-            def __init__(self, max_width_fraction: float = 0.9):
-                super().__init__()
-                self.max_width_fraction = max_width_fraction
+            max_width_fraction: float = 0.9  # Annotated class-level field
 
-            @staticmethod
-            def _operate(image: GridImage, max_width_fraction: float = 0.9) -> GridImage:
+            def _operate(self, image: GridImage) -> GridImage:
                 # Get grid structure information
                 col_edges = image.grid.get_col_edges()      # x-coordinates of column boundaries
                 row_edges = image.grid.get_row_edges()      # y-coordinates of row boundaries
@@ -134,7 +131,7 @@ class GridObjectRefiner(ObjectRefiner, GridOperation, ABC):
     **Key Rules**
 
     1. ``_operate()`` must be an instance method (access parameters via ``self``).
-    2. All parameters except ``image`` must exist as instance attributes.
+    2. All parameters except ``image`` must be declared as annotated class-level fields.
     3. Only modify ``image.objmask[:]`` and ``image.objmap[:]``.
     4. Access grid via ``image.grid`` methods: get_row_edges(), get_col_edges(), info().
     5. Return the modified GridImage object.
@@ -190,8 +187,8 @@ class GridObjectRefiner(ObjectRefiner, GridOperation, ABC):
 
         - **Instance _operate() method:** ``_operate()`` is an instance method; access parameters via ``self``.
 
-        - **Parameter matching:** All ``_operate()`` parameters except ``image`` must exist
-          as instance attributes for automatic parameter matching.
+        - **Field-based parameters:** All ``_operate()`` parameters except ``image``
+          are declared as annotated class-level fields.
 
     Examples:
         Remove objects larger than their grid cell width:
@@ -202,11 +199,7 @@ class GridObjectRefiner(ObjectRefiner, GridOperation, ABC):
         >>> class OversizedObjectRemover(GridObjectRefiner):
         ...     '''Remove objects exceeding cell dimensions.'''
         ...
-        ...     def __init__(self):
-        ...         super().__init__()
-        ...
-        ...     @staticmethod
-        ...     def _operate(image: GridImage) -> GridImage:
+        ...     def _operate(self, image: GridImage) -> GridImage:
         ...         # Get grid boundaries
         ...         col_edges = image.grid.get_col_edges()
         ...         row_edges = image.grid.get_row_edges()
@@ -243,12 +236,9 @@ class GridObjectRefiner(ObjectRefiner, GridOperation, ABC):
         >>> class PerWellOversizedRemover(GridObjectRefiner):
         ...     '''Remove objects that exceed size threshold relative to their well.'''
         ...
-        ...     def __init__(self, max_area_fraction: float = 0.8):
-        ...         super().__init__()
-        ...         self.max_area_fraction = max_area_fraction
+        ...     max_area_fraction: float = 0.8
         ...
-        ...     @staticmethod
-        ...     def _operate(image: GridImage, max_area_fraction: float = 0.8) -> GridImage:
+        ...     def _operate(self, image: GridImage) -> GridImage:
         ...         # Get grid structure
         ...         col_edges = image.grid.get_col_edges()
         ...         row_edges = image.grid.get_row_edges()

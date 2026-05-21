@@ -260,7 +260,7 @@ class TestJsonRoundtrip:
                 min_object_area=120,
                 method="intensity",
         )
-        pipeline = ImagePipeline([trimmer])
+        pipeline = ImagePipeline(ops=[trimmer])
         restored = ImagePipeline.from_json(pipeline.to_json())
 
         ops = restored.get_ops()

@@ -179,7 +179,7 @@ class TestRefinerPipelineShared:
         from phenotypic import ImagePipeline
         from phenotypic.enhance import GaussianBlur, CLAHE
 
-        pipeline = ImagePipeline([
+        pipeline = ImagePipeline(ops=[
             GaussianBlur(sigma=1),
             CLAHE(clip_limit=2),
             RoundPeaksDetector(),
@@ -296,7 +296,7 @@ class TestRefinerSelectionModeShared:
         """JSON serialization preserves selection_mode."""
         from phenotypic import ImagePipeline
 
-        pipeline = ImagePipeline([
+        pipeline = ImagePipeline(ops=[
             RoundPeaksDetector(),
             RefinerClass(selection_mode="centered"),
         ])
