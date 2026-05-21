@@ -479,7 +479,7 @@ class TestAutoGridFinderIntegration:
         from phenotypic import ImagePipeline
         from phenotypic.detect import OtsuDetector
 
-        pipeline = ImagePipeline([
+        pipeline = ImagePipeline(ops=[
             OtsuDetector(),
             AutoGridFinder(nrows=8, ncols=12, residual_fraction=0.4),
         ])

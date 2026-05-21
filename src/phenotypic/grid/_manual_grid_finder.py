@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
 import pandas as pd
 import numpy as np
+from pydantic import field_validator, model_validator
 
 from phenotypic.abc_ import GridFinder
 
@@ -22,8 +23,21 @@ class ManualGridFinder(GridFinder):
     Attributes:
         nrows (int): Number of rows in the grid (derived from row_edges).
         ncols (int): Number of columns in the grid (derived from col_edges).
-        row_edges (np.ndarray): Array of row edge coordinates defining grid rows.
-        col_edges (np.ndarray): Array of column edge coordinates defining grid columns.
+        row_edges (list[int]): Sorted row edge coordinates defining grid rows.
+        col_edges (list[int]): Sorted column edge coordinates defining grid columns.
+
+    Args:
+        row_edges: Row edge coordinates. Length should be nrows + 1.
+            Example: ``[0, 100, 200, 300]`` defines 3 rows. A list,
+            tuple, or ``np.ndarray`` is accepted; values are cast to
+            ``int`` and sorted ascending.
+        col_edges: Column edge coordinates. Length should be ncols + 1.
+            Example: ``[0, 80, 160, 240, 320]`` defines 4 columns. A
+            list, tuple, or ``np.ndarray`` is accepted; values are cast
+            to ``int`` and sorted ascending.
+
+    Raises:
+        ValueError: If row_edges or col_edges have fewer than 2 elements.
 
     Example:
         Create a 3x4 grid with specific coordinates:
@@ -37,38 +51,60 @@ class ManualGridFinder(GridFinder):
         >>> grid_info = finder.measure(image)  # doctest: +SKIP
     """
 
-    def __init__(self, row_edges: np.ndarray, col_edges: np.ndarray):
-        """
-        Initialize a ManualGridFinder with explicit row and column edge coordinates.
+    # ``nrows`` / ``ncols`` are required fields on the ``GridFinder`` ABC,
+    # but ``ManualGridFinder`` derives them from the edge arrays instead of
+    # taking them as constructor parameters. Declaring defaults here lets
+    # pydantic build the model; ``_derive_grid_shape`` (a post-validator)
+    # overwrites them from the validated edges, reproducing the legacy
+    # ``__init__`` behaviour.
+    nrows: int = 0
+    ncols: int = 0
+    row_edges: list[int]
+    col_edges: list[int]
 
-        Args:
-            row_edges (np.ndarray): Array of row edge coordinates. Length should be nrows + 1.
-                Example: [0, 100, 200, 300] defines 3 rows.
-            col_edges (np.ndarray): Array of column edge coordinates. Length should be ncols + 1.
-                Example: [0, 80, 160, 240, 320] defines 4 columns.
+    @field_validator("row_edges", mode="before")
+    @classmethod
+    def _normalize_row_edges(cls, value: Any) -> list[int]:
+        """Coerce row edges to a sorted ``list[int]``.
 
-        Raises:
-            ValueError: If row_edges or col_edges have fewer than 2 elements.
+        Accepts a list, tuple, or ``np.ndarray`` (the legacy constructor
+        took an ``np.ndarray``); reproduces the pre-migration
+        ``np.asarray(row_edges, dtype=int)`` cast followed by ``.sort()``.
         """
-        if len(row_edges) < 2:
+        edges = np.asarray(value, dtype=int)
+        if edges.ndim != 1 or len(edges) < 2:
             raise ValueError(
                 "row_edges must have at least 2 elements to define at least 1 row"
             )
-        if len(col_edges) < 2:
+        return sorted(int(x) for x in edges)
+
+    @field_validator("col_edges", mode="before")
+    @classmethod
+    def _normalize_col_edges(cls, value: Any) -> list[int]:
+        """Coerce column edges to a sorted ``list[int]``.
+
+        Accepts a list, tuple, or ``np.ndarray`` (the legacy constructor
+        took an ``np.ndarray``); reproduces the pre-migration
+        ``np.asarray(col_edges, dtype=int)`` cast followed by ``.sort()``.
+        """
+        edges = np.asarray(value, dtype=int)
+        if edges.ndim != 1 or len(edges) < 2:
             raise ValueError(
                 "col_edges must have at least 2 elements to define at least 1 column"
             )
+        return sorted(int(x) for x in edges)
 
-        self._row_edges = np.asarray(row_edges, dtype=int)
-        self._col_edges = np.asarray(col_edges, dtype=int)
+    @model_validator(mode="after")
+    def _derive_grid_shape(self) -> ManualGridFinder:
+        """Derive ``nrows`` / ``ncols`` from the validated edge arrays.
 
-        # Ensure edges are sorted
-        self._row_edges.sort()
-        self._col_edges.sort()
-
-        # Set nrows and ncols based on edge arrays
-        self.nrows: int = len(self._row_edges) - 1
-        self.ncols: int = len(self._col_edges) - 1
+        Reproduces the legacy ``__init__`` lines
+        ``self.nrows = len(self._row_edges) - 1`` and
+        ``self.ncols = len(self._col_edges) - 1``.
+        """
+        object.__setattr__(self, "nrows", len(self.row_edges) - 1)
+        object.__setattr__(self, "ncols", len(self.col_edges) - 1)
+        return self
 
     def _operate(self, image: Image) -> pd.DataFrame:
         """
@@ -83,7 +119,9 @@ class ManualGridFinder(GridFinder):
         """
         # Use base class method to assemble grid info with our predefined edges
         return self._get_grid_info(
-            image=image, row_edges=self._row_edges, col_edges=self._col_edges
+            image=image,
+            row_edges=np.asarray(self.row_edges, dtype=int),
+            col_edges=np.asarray(self.col_edges, dtype=int),
         )
 
     def get_row_edges(self, image: Image) -> np.ndarray:
@@ -96,7 +134,7 @@ class ManualGridFinder(GridFinder):
         Returns:
             np.ndarray: Array of row edge coordinates.
         """
-        return self._row_edges.copy()
+        return np.asarray(self.row_edges, dtype=int)
 
     def get_col_edges(self, image: Image) -> np.ndarray:
         """
@@ -108,4 +146,4 @@ class ManualGridFinder(GridFinder):
         Returns:
             np.ndarray: Array of column edge coordinates.
         """
-        return self._col_edges.copy()
+        return np.asarray(self.col_edges, dtype=int)

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import warnings
 from contextlib import contextmanager
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, ClassVar
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -97,41 +97,59 @@ class AutoGridFinder(GridFinder):
             )
     """
 
-    _MAX_OBJECTS_PER_CELL: int = 250
+    # ``ClassVar`` so pydantic treats these as class-level constants rather
+    # than model fields (the project convention for operation constants --
+    # see ``_GATSupportMixin._GAT_NOISE_PARAMS``). ``_SPAN_TOLERANCE`` stays
+    # overridable by subclasses, as the class docstring documents.
+    _MAX_OBJECTS_PER_CELL: ClassVar[int] = 250
     # Entire missing edge rows/cols tolerated before span-coverage anchoring
     # fires. With the default of 1, a 96-well plate with one fully-empty
     # edge column keeps its fitted offset; only ≥ 2 missing edge cells
     # trigger the anchoring check.
-    _SPAN_TOLERANCE: int = 1
+    _SPAN_TOLERANCE: ClassVar[int] = 1
 
-    def __init__(
-            self,
-            nrows: int = 8,
-            ncols: int = 12,
-            residual_fraction: float = 0.25,
-            *,
-            warn: bool = False,
-            tol: float | None = None,
-            max_iter: int | None = None,
-    ):
-        super().__init__(nrows=nrows, ncols=ncols)
-        self.residual_fraction: float = residual_fraction
-        self.warn: bool = warn
+    # ``nrows`` / ``ncols`` are required fields on the ``GridFinder`` ABC;
+    # ``AutoGridFinder`` historically defaulted them to 8 / 12 (96-well
+    # plate). Pydantic allows a subclass to add a default to an inherited
+    # required field, so redeclare them here with the legacy defaults.
+    nrows: int = 8
+    ncols: int = 12
+    residual_fraction: float = 0.25
+    warn: bool = False
+    # ``tol`` / ``max_iter`` are deprecated, accepted-but-ignored
+    # constructor parameters retained for backward compatibility. They are
+    # declared as optional fields (rather than dropped) so that, under
+    # ``extra="forbid"``, legacy callers passing them still construct; a
+    # non-``None`` value triggers a ``DeprecationWarning`` in
+    # ``model_post_init``. The fitter never reads them.
+    tol: float | None = None
+    max_iter: int | None = None
 
-        if tol is not None:
+    def model_post_init(self, __context: Any) -> None:
+        """Warn on deprecated ``tol`` / ``max_iter`` parameters.
+
+        Reproduces the legacy ``__init__`` deprecation warnings, then
+        delegates to :meth:`BaseOperation.model_post_init` for logger and
+        memory-tracking setup.
+
+        Args:
+            __context: Pydantic post-init context (unused).
+        """
+        if self.tol is not None:
             warnings.warn(
                 "The 'tol' parameter is deprecated and has no effect. "
                 "AutoGridFinder now uses a deterministic robust-fit algorithm.",
                 DeprecationWarning,
                 stacklevel=2,
             )
-        if max_iter is not None:
+        if self.max_iter is not None:
             warnings.warn(
                 "The 'max_iter' parameter is deprecated and has no effect. "
                 "AutoGridFinder now uses a deterministic robust-fit algorithm.",
                 DeprecationWarning,
                 stacklevel=2,
             )
+        super().model_post_init(__context)
 
     @contextmanager
     def _warning_filter(self):
