@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Union, Optional, NamedTuple
 
 import numpy as np
-from pydantic import Field, PrivateAttr, field_validator
+from pydantic import ConfigDict, Field, PrivateAttr, field_validator
 
 from phenotypic.tools_.constants_ import OBJECT
 
@@ -68,6 +68,12 @@ def _normalize_operation_collection(
     if isinstance(value, list):
         if expected_type is not None:
             items = [x for x in value if isinstance(x, expected_type)]
+            if len(items) != len(value):
+                raise TypeError(
+                    f"every {kind} list entry must be an instance of "
+                    f"{expected_type}; got "
+                    f"{[type(x).__name__ for x in value]}"
+                )
         else:
             items = list(value)
         names = ImagePipelineCore._make_unique(
@@ -161,6 +167,12 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
     # but accepted/serialized as ``desc`` so the docstring-fallback
     # :attr:`desc` *property* (and the legacy ``_desc`` attribute the
     # serializer reads) can keep their names.
+
+    # validate_by_name (merged onto BaseOperation's ConfigDict) lets
+    # model_validate accept the field name "desc_value" as well as the
+    # "desc" alias, so a model_dump() -> model_validate() round-trip
+    # works without by_alias=True (relied on by the Phase 4 serializer).
+    model_config = ConfigDict(validate_by_name=True)
 
     name: str = Field(default_factory=lambda: str(uuid.uuid4()))
     desc_value: Optional[str] = Field(default=None, alias="desc")
@@ -369,7 +381,7 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         # Assigning the field re-runs the ``_normalize_ops`` validator
         # (validate_assignment=True), so list/dict normalization here is
         # identical to construction-time normalization.
-        self.ops = _normalize_operation_collection(ops, "pipe_cfgs")
+        self.ops = _normalize_operation_collection(ops, "ops")
 
     def set_meas(
             self, measurements: List[MeasureFeatures] | Dict[str, MeasureFeatures]

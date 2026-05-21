@@ -70,13 +70,13 @@ class ExpandMetadata(PostMeasurement):
     @field_validator("labels", mode="before")
     @classmethod
     def _prefix_labels(cls, labels: List[str] | None) -> List[str]:
-        """Reject an empty list and add the ``Metadata_`` prefix to each label.
+        """Add the ``Metadata_`` prefix to each label.
 
-        Accepts ``None`` (the legacy "unset" sentinel) and normalizes it
-        to an empty list, matching the pre-migration constructor.
+        Accepts ``None``/``[]`` (the "unset" state) unchanged so the empty
+        default validates cleanly (``model_validate`` / assignment
+        round-trips). A genuinely-empty ``labels`` is caught at
+        ``apply()`` time by ``_operate``'s split-count check.
         """
-        if labels is not None and not labels:
-            raise ValueError("labels must be a non-empty list")
         return [_ensure_prefix(lbl) for lbl in labels] if labels else []
 
     def _operate(self, df: pd.DataFrame) -> pd.DataFrame:

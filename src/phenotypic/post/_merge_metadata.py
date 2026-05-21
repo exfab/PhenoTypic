@@ -61,12 +61,14 @@ class MergeMetadata(PostMeasurement):
     @field_validator("columns", mode="before")
     @classmethod
     def _prefix_columns(cls, columns: List[str] | None) -> List[str]:
-        """Require at least 2 columns and add the ``Metadata_`` prefix.
+        """Add the ``Metadata_`` prefix and reject a single-column merge.
 
-        Accepts ``None`` (the legacy "unset" sentinel) and normalizes it
-        to an empty list, matching the pre-migration constructor.
+        Accepts ``None``/``[]`` (the "unset" state) and normalizes to an
+        empty list. A genuinely-invalid *single*-column list raises; the
+        empty default validates cleanly so ``model_validate`` / assignment
+        round-trips work.
         """
-        if columns is not None and len(columns) < 2:
+        if columns and len(columns) < 2:
             raise ValueError("columns must contain at least 2 column names to merge")
         return [_ensure_prefix(c) for c in columns] if columns else []
 
