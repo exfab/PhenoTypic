@@ -263,24 +263,27 @@ badge contrast variants and prohibited combinations.
 
 Filter / model params that name a column in `measurements.parquet`
 should be annotated with `ColumnRef` / `ColumnRefList` from
-`phenotypic.tools_` instead of bare `str` / `list[str]`:
+`phenotypic.tools_` instead of bare `str` / `list[str]`. Analyzers are
+pydantic models, so these are declared as annotated **class-level
+fields** (there is no `__init__`):
 
 ```python
 from phenotypic.tools_ import ColumnRef, ColumnRefList
 
 class MyFilter(SetAnalyzer):
-    def __init__(self, on: ColumnRef, groupby: ColumnRefList): ...
+    on: ColumnRef
+    groupby: ColumnRefList
 ```
 
 The annotation is purely informational at runtime (`Annotated[str,
-...]` is still a `str`), but the GUI's `OperationRegistry` walks the
-metadata via `typing.get_type_hints(..., include_extras=True)` and
-renders matching params as dropdowns populated from
+...]` is still a `str`), but the GUI's `OperationRegistry` walks
+`cls.model_fields` and inspects each `FieldInfo.metadata` for the
+marker, rendering matching params as dropdowns populated from
 `MeasurementSchema.columns_for(...)`. A `ColumnRef | None` union
 renders as a two-button "Column / None" RadioItems toggle so the user
 can switch dtype without losing the dropdown affordance. No GUI
 registry edit is required when adding a new analyzer — the marker
-travels with the signature.
+travels with the field annotation.
 
 ---
 
