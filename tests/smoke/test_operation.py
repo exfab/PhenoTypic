@@ -14,7 +14,11 @@ ops = walk_package_for_class(pkg=phenotypic,
 
 image_ops = [(qualname, obj) for qualname, obj in ops
              if (("Grid" not in qualname) or ("phenotypic.abc_" not in qualname))
-             and "ColorCorrector" not in qualname]
+             and "ColorCorrector" not in qualname
+             # GridApply requires an `image_op` (the operation run on each grid
+             # section); like ColorCorrector it cannot be bare-constructed, so
+             # it is excluded from the defaults-only smoke contract.
+             and "GridApply" not in qualname]
 
 # Filter image_ops down to ObjectDetector subclasses for the objmap-consistency
 # contract. detector_ops inherits the `Grid*` and `ColorCorrector` exclusions
