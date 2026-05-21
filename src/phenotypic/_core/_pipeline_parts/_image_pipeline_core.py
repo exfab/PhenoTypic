@@ -210,6 +210,17 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
     _operation_rss: Dict[str, float] = PrivateAttr(default_factory=dict)
     _measurement_rss: Dict[str, float] = PrivateAttr(default_factory=dict)
 
+    # Lazily-populated ipywidget UI handles used by ``LazyWidgetMixin``.
+    # Mirrors the declaration on ``ImageOperation``: both classes mix in
+    # ``LazyWidgetMixin`` (a plain, non-model class), so every pydantic
+    # model that uses it must declare these private attributes itself.
+    _ui: Any = PrivateAttr(default=None)
+    _param_widgets: Dict[str, Any] = PrivateAttr(default_factory=dict)
+    _view_dropdown: Any = PrivateAttr(default=None)
+    _update_button: Any = PrivateAttr(default=None)
+    _output_widget: Any = PrivateAttr(default=None)
+    _image_ref: Any = PrivateAttr(default=None)
+
     @field_validator("name", mode="before")
     @classmethod
     def _default_name(cls, value: Any) -> Any:

@@ -301,23 +301,38 @@ class TestValidation:
     """Mixin rejects bad GAT parameters at construction time."""
 
     def test_gat_gain_zero_raises(self):
-        with pytest.raises(ValueError, match="gat_gain must be > 0"):
+        with pytest.raises(
+            ValueError,
+            match=r"gat_gain\s+Input should be greater than 0",
+        ):
             BM3DDenoiser(use_gat=True, gat_gain=0.0)
 
     def test_gat_gain_negative_raises(self):
-        with pytest.raises(ValueError, match="gat_gain must be > 0"):
+        with pytest.raises(
+            ValueError,
+            match=r"gat_gain\s+Input should be greater than 0",
+        ):
             BM3DDenoiser(use_gat=True, gat_gain=-1.0)
 
     def test_gat_read_sigma_negative_raises(self):
-        with pytest.raises(ValueError, match="gat_read_sigma must be >= 0"):
+        with pytest.raises(
+            ValueError,
+            match=r"gat_read_sigma\s+Input should be greater than or equal to 0",
+        ):
             BM3DDenoiser(use_gat=True, gat_read_sigma=-0.1)
 
     def test_gat_scale_factor_zero_raises(self):
-        with pytest.raises(ValueError, match="gat_scale_factor must be > 0"):
+        with pytest.raises(
+            ValueError,
+            match=r"gat_scale_factor\s+Input should be greater than 0",
+        ):
             BM3DDenoiser(use_gat=True, gat_scale_factor=0.0)
 
     def test_gat_scale_factor_negative_raises(self):
-        with pytest.raises(ValueError, match="gat_scale_factor must be > 0"):
+        with pytest.raises(
+            ValueError,
+            match=r"gat_scale_factor\s+Input should be greater than 0",
+        ):
             BM3DDenoiser(use_gat=True, gat_scale_factor=-255.0)
 
     def test_valid_gat_params_accepted(self):
