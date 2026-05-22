@@ -17,8 +17,18 @@ import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+import pandas as pd  # type: ignore[import-untyped]
 import polars as pl
-from dash import ALL, Input, Output, State, callback_context, html, no_update
+from dash import (
+    ALL,
+    MATCH,
+    Input,
+    Output,
+    State,
+    callback_context,
+    html,
+    no_update,
+)
 
 from phenotypic.tools_ import ModulePath
 
@@ -35,6 +45,8 @@ from phenotypic.gui.analysis._layout import (
     build_section_stack,
     pipeline_header_children,
 )
+from phenotypic.gui.analysis._plot_controls import collect_plot_kwargs
+from phenotypic.gui.analysis._render import render_plot
 
 if TYPE_CHECKING:
     import dash
@@ -123,9 +135,10 @@ def register_callbacks(app: "dash.Dash") -> None:
         Output(ids.ANALYSIS_PIPELINE_HEADER, "children", allow_duplicate=True),
         Output(ids.ANALYSIS_PIPELINE_STORE, "data", allow_duplicate=True),
         Input(ids.ANALYSIS_FILTER_ADD_DROPDOWN, "value"),
+        State(ids.ANALYSIS_PLOT_PREFS_STORE, "data"),
         prevent_initial_call=True,
     )
-    def _add_filter(class_name: str | None):
+    def _add_filter(class_name: str | None, plot_prefs: dict | None):
         if not class_name:
             return no_update, no_update, no_update
         recipe = server.config[CFG_RECIPE_STATE]
@@ -140,6 +153,7 @@ def register_callbacks(app: "dash.Dash") -> None:
             build_section_stack(
                 ids.ANALYSIS_FILTER_STACK, "filter", recipe,
                 columns_provider=_columns_provider,
+                plot_prefs=plot_prefs,
             ),
             _pipeline_summary(recipe),
             recipe.last_json,
@@ -151,9 +165,10 @@ def register_callbacks(app: "dash.Dash") -> None:
         Output(ids.ANALYSIS_RUN_BUTTON, "disabled"),
         Output(ids.ANALYSIS_PIPELINE_STORE, "data", allow_duplicate=True),
         Input(ids.ANALYSIS_MODEL_DROPDOWN, "value"),
+        State(ids.ANALYSIS_PLOT_PREFS_STORE, "data"),
         prevent_initial_call=True,
     )
-    def _set_model(class_name: str):
+    def _set_model(class_name: str, plot_prefs: dict | None):
         recipe = server.config[CFG_RECIPE_STATE]
         if class_name == "":
             recipe.pipeline.set_model(None)
@@ -169,7 +184,11 @@ def register_callbacks(app: "dash.Dash") -> None:
         )
         model = recipe.pipeline.get_model()
         section = (
-            _build_model_section(model, columns_provider=_columns_provider)
+            _build_model_section(
+                model,
+                columns_provider=_columns_provider,
+                plot_prefs=plot_prefs,
+            )
             if model is not None
             else html.Span("No model configured.", style={"color": COLOR_MUTED})
         )
@@ -189,9 +208,10 @@ def register_callbacks(app: "dash.Dash") -> None:
         # signature on ``section_remove_button_id`` doesn't model it.
         Input(ids.section_remove_button_id(ALL, ALL), "n_clicks"),  # type: ignore[arg-type]
         State(ids.ANALYSIS_PIPELINE_STORE, "data"),
+        State(ids.ANALYSIS_PLOT_PREFS_STORE, "data"),
         prevent_initial_call=True,
     )
-    def _remove_section(n_clicks_list, _store):
+    def _remove_section(n_clicks_list, _store, plot_prefs):
         # Pattern-matching callback fires on *every* button (including
         # zero-click initial state). Filter to the actually-triggered
         # button via callback_context.
@@ -235,6 +255,7 @@ def register_callbacks(app: "dash.Dash") -> None:
             build_section_stack(
                 ids.ANALYSIS_FILTER_STACK, "filter", recipe,
                 columns_provider=_columns_provider,
+                plot_prefs=plot_prefs,
             ),
             _pipeline_summary(recipe),
             recipe.last_json,
@@ -263,9 +284,13 @@ def register_callbacks(app: "dash.Dash") -> None:
         Input({"type": "param-column-scalar", "prefix": ALL, "name": ALL}, "value"),
         Input({"type": "param-column-multi", "prefix": ALL, "name": ALL}, "value"),
         Input({"type": "param-column-mode", "prefix": ALL, "name": ALL}, "value"),
+        State(ids.ANALYSIS_PLOT_PREFS_STORE, "data"),
         prevent_initial_call=True,
     )
     def _on_param_edit(*_values: Any):
+        # Dash appends State values after all Inputs — the prefs store is
+        # the sole trailing State, so it is always the last positional.
+        plot_prefs = _values[-1] if _values else None
         ctx = callback_context
         if not ctx.triggered_id or not isinstance(ctx.triggered_id, dict):
             return no_update, no_update, no_update, no_update, no_update
@@ -280,8 +305,8 @@ def register_callbacks(app: "dash.Dash") -> None:
 
         # Only rebuild the touched stack — the other two are unchanged
         # so we send ``no_update`` and avoid wasted Dash component diffs.
-        post_out = no_update
-        filter_out = no_update
+        post_out: Any = no_update
+        filter_out: Any = no_update
         model_out: Any = no_update
         if kind == "post":
             post_out = build_section_stack(
@@ -292,13 +317,18 @@ def register_callbacks(app: "dash.Dash") -> None:
             filter_out = build_section_stack(
                 ids.ANALYSIS_FILTER_STACK, "filter", recipe,
                 columns_provider=_columns_provider,
+                plot_prefs=plot_prefs,
             )
         elif kind == "model":
             from phenotypic.gui.analysis._layout import _build_model_section
 
             model = recipe.pipeline.get_model()
             model_out = (
-                _build_model_section(model, columns_provider=_columns_provider)
+                _build_model_section(
+                    model,
+                    columns_provider=_columns_provider,
+                    plot_prefs=plot_prefs,
+                )
                 if model is not None
                 else html.Span("No model configured.", style={"color": COLOR_MUTED})
             )
@@ -325,6 +355,99 @@ def register_callbacks(app: "dash.Dash") -> None:
                 "No model configured.", style={"color": "#c00"}
             )
         return _run_inline(recipe, Path(output_root.root))
+
+    # ----- Plotting-preference store ----- #
+    # Plotting widgets carry pattern-matching ids; any edit merges its
+    # value into the session-scoped store keyed ``f"{kind}-{index}-{name}"``.
+    # No stack rebuild — the store is the single source of truth read back
+    # by the Preview callback and by ``build_section_stack`` on rebuild.
+    @app.callback(
+        Output(ids.ANALYSIS_PLOT_PREFS_STORE, "data"),
+        Input(
+            {
+                "type": "analysis-plot-param",
+                "kind": ALL,
+                "index": ALL,
+                "name": ALL,
+            },
+            "value",
+        ),
+        State(ids.ANALYSIS_PLOT_PREFS_STORE, "data"),
+        prevent_initial_call=True,
+    )
+    def _on_plot_param_edit(_values: Any, prefs: dict | None):
+        ctx = callback_context
+        triggered_id = ctx.triggered_id
+        if not isinstance(triggered_id, dict):
+            return no_update
+        kind = triggered_id.get("kind")
+        index = triggered_id.get("index")
+        name = triggered_id.get("name")
+        if kind is None or name is None or index is None:
+            return no_update
+        value = ctx.triggered[0]["value"] if ctx.triggered else None
+        merged = dict(prefs or {})
+        merged[f"{kind}-{index}-{name}"] = value
+        return merged
+
+    # ----- Per-section plot preview ----- #
+    # ``MATCH`` so each Preview button updates only its own plot slot.
+    @app.callback(
+        Output(ids.plot_slot_id(MATCH, MATCH), "children"),  # type: ignore[arg-type]
+        Input(ids.preview_button_id(MATCH, MATCH), "n_clicks"),  # type: ignore[arg-type]
+        State(ids.ANALYSIS_PLOT_PREFS_STORE, "data"),
+        prevent_initial_call=True,
+    )
+    def _on_preview_click(n_clicks: int, plot_prefs: dict | None):
+        if not n_clicks:
+            return no_update
+        triggered_id = callback_context.triggered_id
+        if not isinstance(triggered_id, dict):
+            return no_update
+        kind = triggered_id.get("kind")
+        index = triggered_id.get("index")
+        recipe = server.config[CFG_RECIPE_STATE]
+        output_root = server.config[CFG_OUTPUT_ROOT]
+
+        node = _resolve_preview_node(recipe, kind, index)
+        if node is None:
+            return _preview_error("Section no longer exists — reload the page.")
+
+        measurements = Path(output_root.root) / MEASUREMENTS_PARQUET
+        if not measurements.exists():
+            return _preview_error(
+                f"Curated measurements not found at {measurements}."
+            )
+        try:
+            frame = pd.read_parquet(measurements)
+            node.analyze(frame)
+        except Exception as exc:  # noqa: BLE001 - surfaced inline
+            logger.warning("Preview analyze() failed on %s", kind, exc_info=True)
+            return _preview_error(f"analyze(): {exc}")
+
+        idx = index if isinstance(index, int) else 0
+        kwargs = collect_plot_kwargs(str(kind), idx, node, plot_prefs)
+        return render_plot(node, **kwargs)
+
+
+def _resolve_preview_node(recipe: Any, kind: Any, index: Any) -> Any:
+    """Return the analyzer instance for a ``(kind, index)`` section, or None."""
+    if kind == "filter":
+        filters = list(recipe.pipeline.get_filters().values())
+        if isinstance(index, int) and 0 <= index < len(filters):
+            return filters[index]
+        return None
+    if kind == "model":
+        return recipe.pipeline.get_model()
+    return None
+
+
+def _preview_error(message: str) -> Any:
+    """Inline error span for a failed preview (pre-render failures)."""
+    return html.Div(
+        html.Span(message, style={"color": "#c00"}),
+        className="analysis-preview-error",
+    )
 
 
 def _apply_param_edit(recipe: Any, ctx: Any) -> tuple[bool, str | None]:

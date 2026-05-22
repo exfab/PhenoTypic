@@ -21,6 +21,12 @@ SectionKind = Literal["post", "filter"]
 #: still constructed from the same dropdown-driven flow.
 InstantiationKind = Literal["post", "filter", "model"]
 
+#: Section kinds that carry a plotting-preview affordance. Post sections
+#: use the table-preview path instead, so they are intentionally absent;
+#: ``"model"`` is included because the model card hosts a plot preview
+#: even though it is not a stack (it always uses ``index`` 0).
+PlotSectionKind = Literal["filter", "model"]
+
 # ---------------------------------------------------------------------------
 # Page chrome
 # ---------------------------------------------------------------------------
@@ -93,6 +99,14 @@ ANALYSIS_RUN_SPINNER = "analysis-run-spinner"
 #: round-tripping disk on every dropdown change.
 ANALYSIS_PIPELINE_STORE = "analysis-pipeline-store"
 
+#: ``dcc.Store(storage_type="session")`` holding per-section plotting
+#: preferences (``figsize`` / ``collapsed`` / ``cmap`` / ...). Session
+#: scoped on purpose — these display tweaks are for live pipeline tuning
+#: and must never serialize into ``pipeline.json``. Keyed by
+#: ``f"{kind}-{index}-{name}"``; survives browser refresh, dies on tab
+#: close.
+ANALYSIS_PLOT_PREFS_STORE = "analysis-plot-prefs-store"
+
 # ---------------------------------------------------------------------------
 # Empty-state hand-off (mirrors the results-viewer pattern). The bind
 # endpoint is shared with the viewer; clicking either tool's "Open"
@@ -123,9 +137,40 @@ def section_remove_button_id(
     return {"type": "analysis-section-remove", "kind": kind, "index": index}
 
 
+def preview_button_id(
+    kind: PlotSectionKind, index: int
+) -> dict[str, str | int]:
+    """Pattern-matching ID for a section's ``Preview`` button."""
+    return {"type": "analysis-preview-btn", "kind": kind, "index": index}
+
+
+def plot_slot_id(kind: PlotSectionKind, index: int) -> dict[str, str | int]:
+    """Pattern-matching ID for the (initially empty) plot-output slot."""
+    return {"type": "analysis-plot-slot", "kind": kind, "index": index}
+
+
+def plot_param_id(
+    kind: PlotSectionKind, index: int, name: str
+) -> dict[str, str | int]:
+    """Pattern-matching ID for one plotting-preference widget.
+
+    All plotting widgets share this single id schema so a single
+    ``ALL`` pattern matches every one of them. ``tuple``-typed params
+    (e.g. ``figsize``) render as two widgets whose ``name`` carries a
+    ``"__0"`` / ``"__1"`` axis suffix; see :mod:`._plot_controls`.
+    """
+    return {
+        "type": "analysis-plot-param",
+        "kind": kind,
+        "index": index,
+        "name": name,
+    }
+
+
 __all__ = [
     "SectionKind",
     "InstantiationKind",
+    "PlotSectionKind",
     "ANALYSIS_PAGE",
     "ANALYSIS_OUTPUT_HEADER",
     "ANALYSIS_PIPELINE_HEADER",
@@ -142,6 +187,7 @@ __all__ = [
     "ANALYSIS_RUN_STATUS",
     "ANALYSIS_RUN_SPINNER",
     "ANALYSIS_PIPELINE_STORE",
+    "ANALYSIS_PLOT_PREFS_STORE",
     "EMPTY_HANDOFF_BANNER",
     "EMPTY_HANDOFF_LABEL",
     "EMPTY_HANDOFF_OPEN_BUTTON",
@@ -149,4 +195,7 @@ __all__ = [
     "post_section_id",
     "filter_section_id",
     "section_remove_button_id",
+    "preview_button_id",
+    "plot_slot_id",
+    "plot_param_id",
 ]
