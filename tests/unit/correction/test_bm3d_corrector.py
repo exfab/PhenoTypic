@@ -152,3 +152,21 @@ class TestBM3DCorrectorScaleFactor:
 
         c = StableDenoise()
         assert c._get_scale_factor(image) == 255.0
+
+
+class TestBM3DCorrectorLinearization:
+    """Test the sRGB linearization wrapped around the GAT denoise."""
+
+    def test_flat_field_preserved_through_linearization(self):
+        """A noise-free flat field survives sRGB-decode -> GAT -> BM3D ->
+        inverse GAT -> sRGB-encode without a meaningful intensity shift.
+
+        Guards the linearization round-trip: a broken decode/encode pair
+        would bias the recovered intensity off the input level.
+        """
+        flat = np.full((64, 64), 0.5, dtype=np.float64)
+        image = Image(arr=flat)
+
+        result = StableDenoise(scale_factor=255.0).apply(image)
+
+        np.testing.assert_allclose(result.gray[:], 0.5, atol=0.01)
