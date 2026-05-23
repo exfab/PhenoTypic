@@ -11,6 +11,7 @@ from ._edge_correction import EdgeCorrector
 from ._expected_vs_detected import ExpectedVsDetectedCount
 from ._linear_softplus import LinearSoftplus
 from ._log_growth_model import LogGrowthModel
+from ._mad_outlier import MADOutlierRemover
 from ._replicate_agreement import ReplicateAgreement
 from ._tukey_outlier import TukeyOutlierRemover
 
@@ -20,6 +21,7 @@ __all__ = [
     "ExpectedVsDetectedCount",
     "LinearSoftplus",
     "LogGrowthModel",
+    "MADOutlierRemover",
     "ReplicateAgreement",
     "TukeyOutlierRemover",
 ]
