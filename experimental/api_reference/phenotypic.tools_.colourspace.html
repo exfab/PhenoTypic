@@ -178,22 +178,40 @@
 
     
     
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
     
       <li class="nav-item">
-        <a class="nav-link nav-internal" href="../how_to/index.html">
-          How-To Guides
-        </a>
-      </li>
-    
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../explanation/index.html">
-          Explanation
-        </a>
-      </li>
-    
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../extending/index.html">
-          Extending PhenoTypic
+        <a class="nav-link nav-internal" href="../measurements_ref/index.html">
+          Measurements Ref
         </a>
       </li>
     
@@ -366,22 +384,40 @@
 
     
     
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
     
       <li class="nav-item">
-        <a class="nav-link nav-internal" href="../how_to/index.html">
-          How-To Guides
-        </a>
-      </li>
-    
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../explanation/index.html">
-          Explanation
-        </a>
-      </li>
-    
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../extending/index.html">
-          Extending PhenoTypic
+        <a class="nav-link nav-internal" href="../measurements_ref/index.html">
+          Measurements Ref
         </a>
       </li>
     
@@ -534,6 +570,53 @@
                   
   <section id="module-phenotypic.tools_.colourspace">
 <span id="phenotypic-tools-colourspace-module"></span><h1>phenotypic.tools_.colourspace module<a class="headerlink" href="#module-phenotypic.tools_.colourspace" title="Link to this heading">#</a></h1>
+<dl class="py function">
+<dt class="sig sig-object py" id="phenotypic.tools_.colourspace.decode_srgb">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.colourspace.</span></span><span class="sig-name descname"><span class="pre">decode_srgb</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><span class="pre">numpy.ndarray</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><span class="pre">numpy.ndarray</span></a></span></span><a class="reference internal" href="../_modules/phenotypic/tools_/colourspace.html#decode_srgb"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.colourspace.decode_srgb" title="Link to this definition">#</a></dt>
+<dd><p>Convert sRGB gamma-encoded values to linear light.</p>
+<p>Applies the inverse sRGB colour component transfer function (the
+standard piecewise gamma curve) elementwise. Sensor and photon noise
+is generated in linear light, so denoisers and variance-stabilizing
+transforms (e.g. the Generalized Anscombe Transform) operate most
+correctly on linearized data rather than the display-encoded values.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>arr</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><em>numpy.ndarray</em></a>) – Array of sRGB gamma-encoded values normalized to <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1]</span></code>.
+Any shape; the transfer function is applied elementwise, so a
+2D channel or an <code class="docutils literal notranslate"><span class="pre">(H,</span> <span class="pre">W,</span> <span class="pre">3)</span></code> image are both valid.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Linear-light values in <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1]</span></code> as <code class="docutils literal notranslate"><span class="pre">float64</span></code>,
+same shape as <code class="docutils literal notranslate"><span class="pre">arr</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="phenotypic.tools_.colourspace.encode_srgb">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.colourspace.</span></span><span class="sig-name descname"><span class="pre">encode_srgb</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><span class="pre">numpy.ndarray</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><span class="pre">numpy.ndarray</span></a></span></span><a class="reference internal" href="../_modules/phenotypic/tools_/colourspace.html#encode_srgb"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.colourspace.encode_srgb" title="Link to this definition">#</a></dt>
+<dd><p>Convert linear-light values to sRGB gamma-encoded values.</p>
+<p>Applies the forward sRGB colour component transfer function
+elementwise. This is the inverse of <a class="reference internal" href="#phenotypic.tools_.colourspace.decode_srgb" title="phenotypic.tools_.colourspace.decode_srgb"><code class="xref py py-func docutils literal notranslate"><span class="pre">decode_srgb()</span></code></a> and restores
+the display-encoded representation after processing in linear light.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>arr</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><em>numpy.ndarray</em></a>) – Array of linear-light values normalized to <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1]</span></code>. Any
+shape; the transfer function is applied elementwise.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>sRGB gamma-encoded values in <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1]</span></code> as
+<code class="docutils literal notranslate"><span class="pre">float64</span></code>, same shape as <code class="docutils literal notranslate"><span class="pre">arr</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
 </section>
 
 
@@ -550,6 +633,19 @@
                 <dialog id="pst-secondary-sidebar-modal"></dialog>
                 <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
 
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.colourspace.decode_srgb"><code class="docutils literal notranslate"><span class="pre">decode_srgb()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.colourspace.encode_srgb"><code class="docutils literal notranslate"><span class="pre">encode_srgb()</span></code></a></li>
+</ul>
+  </nav></div>
 
   <div class="sidebar-secondary-item">
   <div role="note" aria-label="source link">

@@ -177,22 +177,40 @@
 
     
     
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
     
       <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../../how_to/index.html">
-          How-To Guides
-        </a>
-      </li>
-    
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../../explanation/index.html">
-          Explanation
-        </a>
-      </li>
-    
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../../extending/index.html">
-          Extending PhenoTypic
+        <a class="nav-link nav-internal" href="../../../measurements_ref/index.html">
+          Measurements Ref
         </a>
       </li>
     
@@ -363,22 +381,40 @@
 
     
     
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
     
       <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../../how_to/index.html">
-          How-To Guides
-        </a>
-      </li>
-    
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../../explanation/index.html">
-          Explanation
-        </a>
-      </li>
-    
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../../extending/index.html">
-          Extending PhenoTypic
+        <a class="nav-link nav-internal" href="../../../measurements_ref/index.html">
+          Measurements Ref
         </a>
       </li>
     
@@ -1955,6 +1991,8 @@
             <span class="bp">self</span><span class="p">,</span>
             <span class="n">image</span><span class="p">:</span> <span class="n">Image</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
             <span class="n">base_layer</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;rgb&quot;</span><span class="p">,</span> <span class="s2">&quot;gray&quot;</span><span class="p">,</span> <span class="s2">&quot;detect_mat&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;gray&quot;</span><span class="p">,</span>
+            <span class="o">*</span><span class="p">,</span>
+            <span class="n">for_save</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Plate-level diagnostic overlay for symmetric-radius measurement.</span>
 
@@ -1963,6 +2001,12 @@
 <span class="sd">                image cached by the most recent :meth:`measure` call is</span>
 <span class="sd">                reused.</span>
 <span class="sd">            base_layer: Which image array to use as the plotly background.</span>
+<span class="sd">            for_save: When *True*, every overlay trace is force-shown</span>
+<span class="sd">                (no ``visible=&quot;legendonly&quot;``) so the figure renders</span>
+<span class="sd">                meaningfully as a static raster. The CLI&#39;s</span>
+<span class="sd">                ``--save-inspect`` flag passes this. Defaults to *False*</span>
+<span class="sd">                (interactive Jupyter use, with overlay layers toggleable</span>
+<span class="sd">                from the legend).</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            plotly.graph_objects.Figure with toggleable overlay layers.</span>
@@ -2022,6 +2066,11 @@
                 <span class="p">),</span>
                 <span class="n">height</span><span class="o">=</span><span class="n">overview_h</span><span class="p">,</span>
         <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">for_save</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">trace</span> <span class="ow">in</span> <span class="n">fig</span><span class="o">.</span><span class="n">data</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">trace</span><span class="p">,</span> <span class="s2">&quot;visible&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;legendonly&quot;</span><span class="p">:</span>
+                    <span class="n">trace</span><span class="o">.</span><span class="n">visible</span> <span class="o">=</span> <span class="kc">True</span>
         <span class="k">return</span> <span class="n">fig</span></div>
 
 

@@ -177,22 +177,40 @@
 
     
     
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
     
       <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../../how_to/index.html">
-          How-To Guides
-        </a>
-      </li>
-    
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../../explanation/index.html">
-          Explanation
-        </a>
-      </li>
-    
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../../extending/index.html">
-          Extending PhenoTypic
+        <a class="nav-link nav-internal" href="../../../measurements_ref/index.html">
+          Measurements Ref
         </a>
       </li>
     
@@ -363,22 +381,40 @@
 
     
     
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
     
       <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../../how_to/index.html">
-          How-To Guides
-        </a>
-      </li>
-    
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../../explanation/index.html">
-          Explanation
-        </a>
-      </li>
-    
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../../extending/index.html">
-          Extending PhenoTypic
+        <a class="nav-link nav-internal" href="../../../measurements_ref/index.html">
+          Measurements Ref
         </a>
       </li>
     
@@ -757,6 +793,12 @@
 
 <span class="c1">#: Overlay PNG subdirectory: ``&lt;output&gt;/results/&lt;ds&gt;/overlays/``.</span>
 <span class="n">DIR_OVERLAYS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;overlays&quot;</span>
+
+<span class="c1">#: Inspect-figure PNG subdirectory:</span>
+<span class="c1">#: ``&lt;output&gt;/results/&lt;ds&gt;/inspect/&lt;measurer-step&gt;/``. Provisioned only</span>
+<span class="c1">#: when the CLI&#39;s ``--save-inspect`` flag is set; per-measurer</span>
+<span class="c1">#: subdirectories are created lazily by ``OutputManager.save_inspect``.</span>
+<span class="n">DIR_INSPECT</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;inspect&quot;</span>
 
 <span class="c1">#: Mid-run chunk parquet subdirectory: ``&lt;progress&gt;/chunks/``.</span>
 <span class="n">DIR_CHUNKS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;chunks&quot;</span>

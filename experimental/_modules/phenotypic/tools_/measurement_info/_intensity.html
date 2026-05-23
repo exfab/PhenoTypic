@@ -177,22 +177,40 @@
 
     
     
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
     
       <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../../../how_to/index.html">
-          How-To Guides
-        </a>
-      </li>
-    
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../../../explanation/index.html">
-          Explanation
-        </a>
-      </li>
-    
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../../../extending/index.html">
-          Extending PhenoTypic
+        <a class="nav-link nav-internal" href="../../../../measurements_ref/index.html">
+          Measurements Ref
         </a>
       </li>
     
@@ -363,22 +381,40 @@
 
     
     
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
     
       <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../../../how_to/index.html">
-          How-To Guides
-        </a>
-      </li>
-    
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../../../explanation/index.html">
-          Explanation
-        </a>
-      </li>
-    
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../../../extending/index.html">
-          Extending PhenoTypic
+        <a class="nav-link nav-internal" href="../../../../measurements_ref/index.html">
+          Measurements Ref
         </a>
       </li>
     
@@ -532,6 +568,15 @@
 <div class="viewcode-block" id="INTENSITY">
 <a class="viewcode-back" href="../../../../api_reference/phenotypic.tools_.measurement_info.html#phenotypic.tools_.measurement_info.INTENSITY">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">INTENSITY</span><span class="p">(</span><span class="n">MeasurementInfo</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Measure grayscale intensity statistics of detected colonies.</span>
+
+<span class="sd">    Compute per-colony intensity metrics from the grayscale channel:</span>
+<span class="sd">    integrated intensity, percentiles (min, Q1, median, Q3, max),</span>
+<span class="sd">    standard deviation, coefficient of variation, and area-normalized</span>
+<span class="sd">    density. These statistics reflect colony optical density, biomass</span>
+<span class="sd">    accumulation, and internal heterogeneity.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
 <div class="viewcode-block" id="INTENSITY.category">
 <a class="viewcode-back" href="../../../../api_reference/phenotypic.tools_.measurement_info.html#phenotypic.tools_.measurement_info.INTENSITY.category">[docs]</a>
     <span class="nd">@classmethod</span>

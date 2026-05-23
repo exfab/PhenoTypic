@@ -177,22 +177,40 @@
 
     
     
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
     
       <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../../../how_to/index.html">
-          How-To Guides
-        </a>
-      </li>
-    
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../../../explanation/index.html">
-          Explanation
-        </a>
-      </li>
-    
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../../../extending/index.html">
-          Extending PhenoTypic
+        <a class="nav-link nav-internal" href="../../../../measurements_ref/index.html">
+          Measurements Ref
         </a>
       </li>
     
@@ -363,22 +381,40 @@
 
     
     
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
     
       <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../../../how_to/index.html">
-          How-To Guides
-        </a>
-      </li>
-    
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../../../explanation/index.html">
-          Explanation
-        </a>
-      </li>
-    
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../../../extending/index.html">
-          Extending PhenoTypic
+        <a class="nav-link nav-internal" href="../../../../measurements_ref/index.html">
+          Measurements Ref
         </a>
       </li>
     
@@ -532,7 +568,14 @@
 <div class="viewcode-block" id="SHAPE">
 <a class="viewcode-back" href="../../../../api_reference/phenotypic.tools_.measurement_info.html#phenotypic.tools_.measurement_info.SHAPE">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">SHAPE</span><span class="p">(</span><span class="n">MeasurementInfo</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;The labels and descriptions of the shape measurements.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Measure comprehensive morphological characteristics of detected colonies.</span>
+
+<span class="sd">    Extract geometric metrics from each colony shape: area, perimeter,</span>
+<span class="sd">    circularity, convex hull properties, width-based measures, Feret</span>
+<span class="sd">    diameters, eccentricity, and best-fit ellipse parameters. The output</span>
+<span class="sd">    DataFrame provides a full morphological profile for phenotypic</span>
+<span class="sd">    classification and growth-pattern analysis.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
 
 <div class="viewcode-block" id="SHAPE.category">
 <a class="viewcode-back" href="../../../../api_reference/phenotypic.tools_.measurement_info.html#phenotypic.tools_.measurement_info.SHAPE.category">[docs]</a>

@@ -177,22 +177,40 @@
 
     
     
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
     
       <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../../../how_to/index.html">
-          How-To Guides
-        </a>
-      </li>
-    
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../../../explanation/index.html">
-          Explanation
-        </a>
-      </li>
-    
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../../../extending/index.html">
-          Extending PhenoTypic
+        <a class="nav-link nav-internal" href="../../../../measurements_ref/index.html">
+          Measurements Ref
         </a>
       </li>
     
@@ -363,22 +381,40 @@
 
     
     
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
     
       <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../../../how_to/index.html">
-          How-To Guides
-        </a>
-      </li>
-    
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../../../explanation/index.html">
-          Explanation
-        </a>
-      </li>
-    
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../../../extending/index.html">
-          Extending PhenoTypic
+        <a class="nav-link nav-internal" href="../../../../measurements_ref/index.html">
+          Measurements Ref
         </a>
       </li>
     
@@ -532,6 +568,14 @@
 <div class="viewcode-block" id="BBOX">
 <a class="viewcode-back" href="../../../../api_reference/phenotypic.tools_.measurement_info.html#phenotypic.tools_.measurement_info.BBOX">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">BBOX</span><span class="p">(</span><span class="n">MeasurementInfo</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Extract bounding box coordinates and centroids of detected colonies.</span>
+
+<span class="sd">    Compute the axis-aligned bounding box and centroid (geometric and</span>
+<span class="sd">    intensity-weighted) for each detected colony. These spatial</span>
+<span class="sd">    measurements form the foundation for region-of-interest extraction,</span>
+<span class="sd">    grid alignment assessment, and neighbor-distance calculations.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
 <div class="viewcode-block" id="BBOX.category">
 <a class="viewcode-back" href="../../../../api_reference/phenotypic.tools_.measurement_info.html#phenotypic.tools_.measurement_info.BBOX.category">[docs]</a>
     <span class="nd">@classmethod</span>

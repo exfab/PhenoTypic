@@ -63,7 +63,7 @@
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
     <link rel="next" title="phenotypic.correction.GridAligner" href="phenotypic.correction.GridAligner.html" />
-    <link rel="prev" title="phenotypic.correction.ColorCorrector" href="phenotypic.correction.ColorCorrector.html" />
+    <link rel="prev" title="phenotypic.correction.ColorDenoise" href="phenotypic.correction.ColorDenoise.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   <meta name="docsearch:version" content="0.15.2" />
@@ -180,22 +180,40 @@
 
     
     
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
     
       <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../how_to/index.html">
-          How-To Guides
-        </a>
-      </li>
-    
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../explanation/index.html">
-          Explanation
-        </a>
-      </li>
-    
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../extending/index.html">
-          Extending PhenoTypic
+        <a class="nav-link nav-internal" href="../../measurements_ref/index.html">
+          Measurements Ref
         </a>
       </li>
     
@@ -368,22 +386,40 @@
 
     
     
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
     
       <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../how_to/index.html">
-          How-To Guides
-        </a>
-      </li>
-    
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../explanation/index.html">
-          Explanation
-        </a>
-      </li>
-    
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../extending/index.html">
-          Extending PhenoTypic
+        <a class="nav-link nav-internal" href="../../measurements_ref/index.html">
+          Measurements Ref
         </a>
       </li>
     
@@ -559,6 +595,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.ExpectedVsDetectedCount.html">phenotypic.analysis.ExpectedVsDetectedCount</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.LinearSoftplus.html">phenotypic.analysis.LinearSoftplus</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.LogGrowthModel.html">phenotypic.analysis.LogGrowthModel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.MADOutlierRemover.html">phenotypic.analysis.MADOutlierRemover</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.ReplicateAgreement.html">phenotypic.analysis.ReplicateAgreement</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.TukeyOutlierRemover.html">phenotypic.analysis.TukeyOutlierRemover</a></li>
 </ul>
@@ -566,6 +603,7 @@
 <li class="toctree-l1 current active has-children"><a class="reference internal" href="phenotypic.correction.html">phenotypic.correction</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.correction.ColorCheckerProfile.html">phenotypic.correction.ColorCheckerProfile</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.correction.ColorCorrector.html">phenotypic.correction.ColorCorrector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.correction.ColorDenoise.html">phenotypic.correction.ColorDenoise</a></li>
 <li class="toctree-l2 current active"><a class="current reference internal" href="#">phenotypic.correction.StableDenoise</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.correction.GridAligner.html">phenotypic.correction.GridAligner</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.correction.ImageCropper.html">phenotypic.correction.ImageCropper</a></li>
@@ -772,7 +810,11 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.JobMetadataKey.html">phenotypic.tools_.JobMetadataKey</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.ModulePath.html">phenotypic.tools_.ModulePath</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.ProcessingStateKey.html">phenotypic.tools_.ProcessingStateKey</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.colourspace.html">phenotypic.tools_.colourspace</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="phenotypic.tools_.colourspace.html">phenotypic.tools_.colourspace</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.colourspace.decode_srgb.html">phenotypic.tools_.colourspace.decode_srgb</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.colourspace.encode_srgb.html">phenotypic.tools_.colourspace.encode_srgb</a></li>
+</ul>
+</details></li>
 <li class="toctree-l2 has-children"><a class="reference internal" href="phenotypic.tools_.constants_.html">phenotypic.tools_.constants_</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.constants_.ConstantLabels.html">phenotypic.tools_.constants_.ConstantLabels</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.constants_.GAMMA_ENCODINGS.html">phenotypic.tools_.constants_.GAMMA_ENCODINGS</a></li>
@@ -989,6 +1031,16 @@ accessor cascade. RGB is unchanged.</p>
     recognized value.</p>
 </dd>
 </dl>
+<div class="admonition-notes admonition">
+<p class="admonition-title">Notes</p>
+<p>The grayscale channel is assumed sRGB-encoded: it is decoded to
+linear light before the GAT and re-encoded to sRGB afterwards, so
+the Poisson-Gaussian model operates on linear photon counts
+rather than gamma-warped data. The channel is a luma sum of
+gamma-encoded RGB, so decoding it with the per-channel sRGB curve
+only approximates true linear luminance – a close, intentional
+approximation; see <code class="xref py py-meth docutils literal notranslate"><span class="pre">_denoise_channel()</span></code>.</p>
+</div>
 <dl class="simple">
 <dt>Best For:</dt><dd><ul class="simple">
 <li><p>Low-light or high-ISO plate images with photon-counting

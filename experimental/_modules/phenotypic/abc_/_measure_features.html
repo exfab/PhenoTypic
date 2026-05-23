@@ -177,22 +177,40 @@
 
     
     
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
     
       <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../../how_to/index.html">
-          How-To Guides
-        </a>
-      </li>
-    
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../../explanation/index.html">
-          Explanation
-        </a>
-      </li>
-    
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../../extending/index.html">
-          Extending PhenoTypic
+        <a class="nav-link nav-internal" href="../../../measurements_ref/index.html">
+          Measurements Ref
         </a>
       </li>
     
@@ -363,22 +381,40 @@
 
     
     
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
     
       <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../../how_to/index.html">
-          How-To Guides
-        </a>
-      </li>
-    
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../../explanation/index.html">
-          Explanation
-        </a>
-      </li>
-    
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../../extending/index.html">
-          Extending PhenoTypic
+        <a class="nav-link nav-internal" href="../../../measurements_ref/index.html">
+          Measurements Ref
         </a>
       </li>
     
@@ -826,6 +862,36 @@
 <span class="sd">        ...         })</span>
 <span class="sd">        ...         results.insert(0, OBJECT.LABEL, image.objects.labels2series())</span>
 <span class="sd">        ...         return results</span>
+
+<span class="sd">    Optional: Saveable Inspect Output (CLI auto-discovery):</span>
+<span class="sd">        Implementing :meth:`inspect` on a subclass is optional. If a</span>
+<span class="sd">        subclass defines an</span>
+<span class="sd">        ``inspect(self, image=None, *, for_save=False, **kwargs)`` method,</span>
+<span class="sd">        the ``phenotypic`` CLI&#39;s ``--save-inspect`` flag will</span>
+<span class="sd">        automatically render and save its output for every processed</span>
+<span class="sd">        image to</span>
+<span class="sd">        ``results/&lt;dataset&gt;/inspect/&lt;step-name&gt;/&lt;image-stem&gt;.png``.</span>
+
+<span class="sd">        Contract:</span>
+<span class="sd">            - Return ``matplotlib.figure.Figure`` or</span>
+<span class="sd">              ``plotly.graph_objects.Figure``. Any other return type is</span>
+<span class="sd">              logged at WARNING and skipped by the saver.</span>
+<span class="sd">            - When ``for_save=True``, ensure every diagnostic</span>
+<span class="sd">              trace/artist is visible without user interaction. The CLI</span>
+<span class="sd">              flattens the figure to a static PNG; legend-only or</span>
+<span class="sd">              collapsed layers are invisible in the artifact. The</span>
+<span class="sd">              specific mechanism is class-defined (plotly: walk</span>
+<span class="sd">              ``fig.data`` and flip ``visible=&quot;legendonly&quot;`` → ``True``;</span>
+<span class="sd">              matplotlib: call ``set_visible(True)`` on hidden artists).</span>
+<span class="sd">            - Reuse cached intermediates from the immediately-preceding</span>
+<span class="sd">              :meth:`measure` call. The CLI invokes ``inspect()`` on the</span>
+<span class="sd">              same ``image`` instance that was just measured, so a</span>
+<span class="sd">              per-instance cache keyed on object identity is the</span>
+<span class="sd">              recommended pattern. Recomputing the full measurement</span>
+<span class="sd">              pipeline from scratch is unnecessary and slow.</span>
+
+<span class="sd">        Reference implementation:</span>
+<span class="sd">            :class:`phenotypic.measure.MeasureSymmetricZones`.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
 <div class="viewcode-block" id="MeasureFeatures.measure">

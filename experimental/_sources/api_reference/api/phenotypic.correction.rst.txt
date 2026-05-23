@@ -23,6 +23,7 @@
    
       ColorCheckerProfile
       ColorCorrector
+      ColorDenoise
       StableDenoise
       GridAligner
       ImageCropper

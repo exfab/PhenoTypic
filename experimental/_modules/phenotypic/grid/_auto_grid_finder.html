@@ -177,22 +177,40 @@
 
     
     
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
     
       <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../../how_to/index.html">
-          How-To Guides
-        </a>
-      </li>
-    
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../../explanation/index.html">
-          Explanation
-        </a>
-      </li>
-    
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../../extending/index.html">
-          Extending PhenoTypic
+        <a class="nav-link nav-internal" href="../../../measurements_ref/index.html">
+          Measurements Ref
         </a>
       </li>
     
@@ -363,22 +381,40 @@
 
     
     
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
     
       <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../../how_to/index.html">
-          How-To Guides
-        </a>
-      </li>
-    
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../../explanation/index.html">
-          Explanation
-        </a>
-      </li>
-    
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../../extending/index.html">
-          Extending PhenoTypic
+        <a class="nav-link nav-internal" href="../../../measurements_ref/index.html">
+          Measurements Ref
         </a>
       </li>
     
@@ -1690,10 +1726,10 @@
             <span class="p">)</span>
 
     <span class="c1"># ------------------------------------------------------------------</span>
-    <span class="c1"># Diagnostic inspect() method</span>
+    <span class="c1"># Diagnostic dashboard() method</span>
     <span class="c1"># ------------------------------------------------------------------</span>
 
-    <span class="c1"># Okabe-Ito palette for the inspect() diagnostic plots. Annotated</span>
+    <span class="c1"># Okabe-Ito palette for the dashboard() diagnostic plots. Annotated</span>
     <span class="c1"># ``ClassVar`` so pydantic keeps them as plain class constants — an</span>
     <span class="c1"># un-annotated underscore name is otherwise collected as a</span>
     <span class="c1"># ``ModelPrivateAttr`` and class-level access returns the wrapper.</span>
@@ -1774,7 +1810,7 @@
                     <span class="kn">from</span><span class="w"> </span><span class="nn">ipywidgets</span><span class="w"> </span><span class="kn">import</span> <span class="n">IntProgress</span>
                     <span class="kn">from</span><span class="w"> </span><span class="nn">IPython.display</span><span class="w"> </span><span class="kn">import</span> <span class="n">display</span>
                     <span class="n">pbar</span> <span class="o">=</span> <span class="n">IntProgress</span><span class="p">(</span>
-                        <span class="nb">min</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">steps</span><span class="p">),</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Grid inspect:&quot;</span><span class="p">,</span>
+                        <span class="nb">min</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">steps</span><span class="p">),</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Grid dashboard:&quot;</span><span class="p">,</span>
                     <span class="p">)</span>
                     <span class="n">display</span><span class="p">(</span><span class="n">pbar</span><span class="p">)</span>
                 <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
@@ -1783,7 +1819,7 @@
             <span class="k">if</span> <span class="n">pbar</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="k">try</span><span class="p">:</span>
                     <span class="kn">from</span><span class="w"> </span><span class="nn">tqdm</span><span class="w"> </span><span class="kn">import</span> <span class="n">tqdm</span>
-                    <span class="n">pbar</span> <span class="o">=</span> <span class="n">tqdm</span><span class="p">(</span><span class="n">total</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">steps</span><span class="p">),</span> <span class="n">desc</span><span class="o">=</span><span class="s2">&quot;Grid inspect&quot;</span><span class="p">)</span>
+                    <span class="n">pbar</span> <span class="o">=</span> <span class="n">tqdm</span><span class="p">(</span><span class="n">total</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">steps</span><span class="p">),</span> <span class="n">desc</span><span class="o">=</span><span class="s2">&quot;Grid dashboard&quot;</span><span class="p">)</span>
                 <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
                     <span class="k">pass</span>
 
@@ -2281,9 +2317,9 @@
             <span class="n">md</span><span class="p">,</span> <span class="n">styles</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;font-family&quot;</span><span class="p">:</span> <span class="s2">&quot;&#39;DM Sans&#39;, sans-serif&quot;</span><span class="p">},</span>
         <span class="p">)</span>
 
-<div class="viewcode-block" id="AutoGridFinder.inspect">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.grid.html#phenotypic.grid.AutoGridFinder.inspect">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">inspect</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">,</span> <span class="n">show_progress</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">):</span>
+<div class="viewcode-block" id="AutoGridFinder.dashboard">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.grid.html#phenotypic.grid.AutoGridFinder.dashboard">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">dashboard</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">,</span> <span class="n">show_progress</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Interactive diagnostic dashboard for grid fitting.</span>
 
 <span class="sd">        Profiles the grid-fitting pipeline and displays timing breakdown,</span>
@@ -2301,6 +2337,14 @@
 <span class="sd">        Returns:</span>
 <span class="sd">            Panel Column layout with 4 diagnostic panels.</span>
 
+<span class="sd">        Notes:</span>
+<span class="sd">            The ``inspect()`` name is reserved across the codebase for</span>
+<span class="sd">            methods returning a saveable matplotlib or plotly figure</span>
+<span class="sd">            consumed by the CLI&#39;s ``--save-inspect`` flag. This method</span>
+<span class="sd">            returns an interactive panel layout that does not flatten</span>
+<span class="sd">            to a static raster, so it is kept under the</span>
+<span class="sd">            :meth:`dashboard` name.</span>
+
 <span class="sd">        Examples:</span>
 <span class="sd">            &gt;&gt;&gt; from phenotypic.data import load_synth_yeast_plate</span>
 <span class="sd">            &gt;&gt;&gt; from phenotypic.detect import OtsuDetector</span>
@@ -2308,7 +2352,7 @@
 <span class="sd">            &gt;&gt;&gt; image = load_synth_yeast_plate()</span>
 <span class="sd">            &gt;&gt;&gt; image = OtsuDetector().apply(image)</span>
 <span class="sd">            &gt;&gt;&gt; finder = AutoGridFinder(nrows=8, ncols=12)</span>
-<span class="sd">            &gt;&gt;&gt; dashboard = finder.inspect(image)</span>
+<span class="sd">            &gt;&gt;&gt; dashboard = finder.dashboard(image)</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="kn">import</span><span class="w"> </span><span class="nn">panel</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pn</span>
 

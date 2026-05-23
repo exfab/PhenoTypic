@@ -178,22 +178,40 @@
 
     
     
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
     
       <li class="nav-item">
-        <a class="nav-link nav-internal" href="../how_to/index.html">
-          How-To Guides
-        </a>
-      </li>
-    
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../explanation/index.html">
-          Explanation
-        </a>
-      </li>
-    
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../extending/index.html">
-          Extending PhenoTypic
+        <a class="nav-link nav-internal" href="../measurements_ref/index.html">
+          Measurements Ref
         </a>
       </li>
     
@@ -368,22 +386,40 @@
 
     
     
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
     
       <li class="nav-item">
-        <a class="nav-link nav-internal" href="../how_to/index.html">
-          How-To Guides
-        </a>
-      </li>
-    
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../explanation/index.html">
-          Explanation
-        </a>
-      </li>
-    
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../extending/index.html">
-          Extending PhenoTypic
+        <a class="nav-link nav-internal" href="../measurements_ref/index.html">
+          Measurements Ref
         </a>
       </li>
     
@@ -13001,6 +13037,39 @@ genetic and environmental association studies.</p>
 </pre></div>
 </div>
 </div>
+<dl>
+<dt>Optional: Saveable Inspect Output (CLI auto-discovery):</dt><dd><p>Implementing <code class="xref py py-meth docutils literal notranslate"><span class="pre">inspect()</span></code> on a subclass is optional. If a
+subclass defines an
+<code class="docutils literal notranslate"><span class="pre">inspect(self,</span> <span class="pre">image=None,</span> <span class="pre">*,</span> <span class="pre">for_save=False,</span> <span class="pre">**kwargs)</span></code> method,
+the <code class="docutils literal notranslate"><span class="pre">phenotypic</span></code> CLI’s <code class="docutils literal notranslate"><span class="pre">--save-inspect</span></code> flag will
+automatically render and save its output for every processed
+image to
+<code class="docutils literal notranslate"><span class="pre">results/&lt;dataset&gt;/inspect/&lt;step-name&gt;/&lt;image-stem&gt;.png</span></code>.</p>
+<dl class="simple">
+<dt>Contract:</dt><dd><ul class="simple">
+<li><p>Return <code class="docutils literal notranslate"><span class="pre">matplotlib.figure.Figure</span></code> or
+<code class="docutils literal notranslate"><span class="pre">plotly.graph_objects.Figure</span></code>. Any other return type is
+logged at WARNING and skipped by the saver.</p></li>
+<li><p>When <code class="docutils literal notranslate"><span class="pre">for_save=True</span></code>, ensure every diagnostic
+trace/artist is visible without user interaction. The CLI
+flattens the figure to a static PNG; legend-only or
+collapsed layers are invisible in the artifact. The
+specific mechanism is class-defined (plotly: walk
+<code class="docutils literal notranslate"><span class="pre">fig.data</span></code> and flip <code class="docutils literal notranslate"><span class="pre">visible=&quot;legendonly&quot;</span></code> → <code class="docutils literal notranslate"><span class="pre">True</span></code>;
+matplotlib: call <code class="docutils literal notranslate"><span class="pre">set_visible(True)</span></code> on hidden artists).</p></li>
+<li><p>Reuse cached intermediates from the immediately-preceding
+<a class="reference internal" href="#phenotypic.abc_.MeasureFeatures.measure" title="phenotypic.abc_.MeasureFeatures.measure"><code class="xref py py-meth docutils literal notranslate"><span class="pre">measure()</span></code></a> call. The CLI invokes <code class="docutils literal notranslate"><span class="pre">inspect()</span></code> on the
+same <code class="docutils literal notranslate"><span class="pre">image</span></code> instance that was just measured, so a
+per-instance cache keyed on object identity is the
+recommended pattern. Recomputing the full measurement
+pipeline from scratch is unnecessary and slow.</p></li>
+</ul>
+</dd>
+<dt>Reference implementation:</dt><dd><p><a class="reference internal" href="phenotypic.measure.html#phenotypic.measure.MeasureSymmetricZones" title="phenotypic.measure.MeasureSymmetricZones"><code class="xref py py-class docutils literal notranslate"><span class="pre">phenotypic.measure.MeasureSymmetricZones</span></code></a>.</p>
+</dd>
+</dl>
+</dd>
+</dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.abc_.MeasureFeatures.__get_pydantic_json_schema__">
 <em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">__get_pydantic_json_schema__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">core_schema</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">CoreSchema</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">handler</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">GetJsonSchemaHandler</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">JsonSchemaValue</span></span></span><a class="headerlink" href="#phenotypic.abc_.MeasureFeatures.__get_pydantic_json_schema__" title="Link to this definition">#</a></dt>

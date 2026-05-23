@@ -177,22 +177,40 @@
 
     
     
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
     
       <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../../../how_to/index.html">
-          How-To Guides
-        </a>
-      </li>
-    
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../../../explanation/index.html">
-          Explanation
-        </a>
-      </li>
-    
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../../../extending/index.html">
-          Extending PhenoTypic
+        <a class="nav-link nav-internal" href="../../../../measurements_ref/index.html">
+          Measurements Ref
         </a>
       </li>
     
@@ -363,22 +381,40 @@
 
     
     
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
     
       <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../../../how_to/index.html">
-          How-To Guides
-        </a>
-      </li>
-    
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../../../explanation/index.html">
-          Explanation
-        </a>
-      </li>
-    
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../../../extending/index.html">
-          Extending PhenoTypic
+        <a class="nav-link nav-internal" href="../../../../measurements_ref/index.html">
+          Measurements Ref
         </a>
       </li>
     
@@ -532,7 +568,14 @@
 <div class="viewcode-block" id="SIZE">
 <a class="viewcode-back" href="../../../../api_reference/phenotypic.tools_.measurement_info.html#phenotypic.tools_.measurement_info.SIZE">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">SIZE</span><span class="p">(</span><span class="n">MeasurementInfo</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;The labels and descriptions of the size measurements.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Measure colony area and integrated intensity as lightweight size proxies.</span>
+
+<span class="sd">    Extract two fundamental size metrics per detected colony: pixel area</span>
+<span class="sd">    (biomass extent) and integrated grayscale intensity (total brightness,</span>
+<span class="sd">    a proxy for optical density). This is a convenience class for rapid</span>
+<span class="sd">    size assessment without the overhead of full shape or intensity</span>
+<span class="sd">    statistical analysis.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
 
 <div class="viewcode-block" id="SIZE.category">
 <a class="viewcode-back" href="../../../../api_reference/phenotypic.tools_.measurement_info.html#phenotypic.tools_.measurement_info.SIZE.category">[docs]</a>
@@ -548,8 +591,8 @@
     <span class="p">)</span>
     <span class="n">INTEGRATED_INTENSITY</span> <span class="o">=</span> <span class="p">(</span>
         <span class="s2">&quot;IntegratedIntensity&quot;</span><span class="p">,</span>
-        <span class="sa">r</span><span class="s2">&quot;The sum of the object\&#39;s grayscale pixels. Calculated as&quot;</span>
-        <span class="sa">r</span><span class="s2">&quot;$\sum{pixel values}*area$&quot;</span><span class="p">,</span>
+        <span class="sa">r</span><span class="s2">&quot;The sum of the object&#39;s grayscale pixels. Calculated as &quot;</span>
+        <span class="sa">r</span><span class="s2">&quot;:math:`\sum{\text{pixel values}} \times \text</span><span class="si">{area}</span><span class="s2">`.&quot;</span><span class="p">,</span>
     <span class="p">)</span></div>
 
 </pre></div>

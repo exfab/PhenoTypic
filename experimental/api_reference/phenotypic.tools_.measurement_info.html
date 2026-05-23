@@ -178,22 +178,40 @@
 
     
     
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
     
       <li class="nav-item">
-        <a class="nav-link nav-internal" href="../how_to/index.html">
-          How-To Guides
-        </a>
-      </li>
-    
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../explanation/index.html">
-          Explanation
-        </a>
-      </li>
-    
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../extending/index.html">
-          Extending PhenoTypic
+        <a class="nav-link nav-internal" href="../measurements_ref/index.html">
+          Measurements Ref
         </a>
       </li>
     
@@ -366,22 +384,40 @@
 
     
     
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
     
       <li class="nav-item">
-        <a class="nav-link nav-internal" href="../how_to/index.html">
-          How-To Guides
-        </a>
-      </li>
-    
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../explanation/index.html">
-          Explanation
-        </a>
-      </li>
-    
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../extending/index.html">
-          Extending PhenoTypic
+        <a class="nav-link nav-internal" href="../measurements_ref/index.html">
+          Measurements Ref
         </a>
       </li>
     
@@ -546,6 +582,11 @@ re-exported from here, so the public import surface stays stable:</p>
 <dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.BBOX">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.measurement_info.</span></span><span class="sig-name descname"><span class="pre">BBOX</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/measurement_info/_bbox.html#BBOX"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.measurement_info.BBOX" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.MeasurementInfo" title="phenotypic.abc_._measurement_info.MeasurementInfo"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasurementInfo</span></code></a></p>
+<p>Extract bounding box coordinates and centroids of detected colonies.</p>
+<p>Compute the axis-aligned bounding box and centroid (geometric and
+intensity-weighted) for each detected colony. These spatial
+measurements form the foundation for region-of-interest extraction,
+grid alignment assessment, and neighbor-distance calculations.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.BBOX.append_rst_to_doc">
 <em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">append_rst_to_doc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">module</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><span class="pre">object</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.tools_.measurement_info.BBOX.append_rst_to_doc" title="Link to this definition">#</a></dt>
@@ -1241,7 +1282,11 @@ which category it belongs to without explicitly referencing the class.</p>
 <dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.ColorComposition">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.measurement_info.</span></span><span class="sig-name descname"><span class="pre">ColorComposition</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/measurement_info/_color_composition.html#ColorComposition"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.measurement_info.ColorComposition" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.MeasurementInfo" title="phenotypic.abc_._measurement_info.MeasurementInfo"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasurementInfo</span></code></a></p>
-<p>Measurement info for perceptual color composition using 11-color model.</p>
+<p>Classify colony pixels into 11 perceptual color categories and measure composition.</p>
+<p>Applies a priority-based color model (neutrals → special colors → hues)
+to classify each colony pixel into one of 11 categories: Black, White,
+Gray, Pink, Brown, Red, Orange, Yellow, Green, Cyan, Blue, Purple.
+Returns per-colony percentage breakdowns as DataFrame columns.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.ColorComposition.all_headers">
 <em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">all_headers</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/measurement_info/_color_composition.html#ColorComposition.all_headers"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.measurement_info.ColorComposition.all_headers" title="Link to this definition">#</a></dt>
@@ -1953,6 +1998,13 @@ which category it belongs to without explicitly referencing the class.</p>
 <dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.ColorHSV">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.measurement_info.</span></span><span class="sig-name descname"><span class="pre">ColorHSV</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/measurement_info/_color_hsv.html#ColorHSV"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.measurement_info.ColorHSV" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.MeasurementInfo" title="phenotypic.abc_._measurement_info.MeasurementInfo"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasurementInfo</span></code></a></p>
+<p>Measure colony color statistics across multiple perceptual color spaces.</p>
+<p>Extract per-colony color features from CIE XYZ, chromaticity (xy),
+CIE Lab (perceptually uniform), and HSV color spaces. For each
+channel the standard statistical suite is computed (min, Q1, mean,
+median, Q3, max, std dev, coefficient of variation), plus Lab chroma
+estimates.</p>
+<p>Covers the HSV channels (Hue, Saturation, Brightness).</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.ColorHSV.append_rst_to_doc">
 <em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">append_rst_to_doc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">module</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><span class="pre">object</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.tools_.measurement_info.ColorHSV.append_rst_to_doc" title="Link to this definition">#</a></dt>
@@ -2733,6 +2785,13 @@ which category it belongs to without explicitly referencing the class.</p>
 <dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.ColorLab">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.measurement_info.</span></span><span class="sig-name descname"><span class="pre">ColorLab</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/measurement_info/_color_lab.html#ColorLab"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.measurement_info.ColorLab" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.MeasurementInfo" title="phenotypic.abc_._measurement_info.MeasurementInfo"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasurementInfo</span></code></a></p>
+<p>Measure colony color statistics across multiple perceptual color spaces.</p>
+<p>Extract per-colony color features from CIE XYZ, chromaticity (xy),
+CIE Lab (perceptually uniform), and HSV color spaces. For each
+channel the standard statistical suite is computed (min, Q1, mean,
+median, Q3, max, std dev, coefficient of variation), plus Lab chroma
+estimates.</p>
+<p>Covers the CIE L*a*b* channels (L*, a*, b*) plus chroma estimates.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.ColorLab.a_star_headers">
 <em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">a_star_headers</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/measurement_info/_color_lab.html#ColorLab.a_star_headers"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.measurement_info.ColorLab.a_star_headers" title="Link to this definition">#</a></dt>
@@ -3523,6 +3582,13 @@ which category it belongs to without explicitly referencing the class.</p>
 <dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.ColorXYZ">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.measurement_info.</span></span><span class="sig-name descname"><span class="pre">ColorXYZ</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/measurement_info/_color_xyz.html#ColorXYZ"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.measurement_info.ColorXYZ" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.MeasurementInfo" title="phenotypic.abc_._measurement_info.MeasurementInfo"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasurementInfo</span></code></a></p>
+<p>Measure colony color statistics across multiple perceptual color spaces.</p>
+<p>Extract per-colony color features from CIE XYZ, chromaticity (xy),
+CIE Lab (perceptually uniform), and HSV color spaces. For each
+channel the standard statistical suite is computed (min, Q1, mean,
+median, Q3, max, std dev, coefficient of variation), plus Lab chroma
+estimates.</p>
+<p>Covers CIE XYZ tristimulus values (X, Y, Z).</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.ColorXYZ.append_rst_to_doc">
 <em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">append_rst_to_doc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">module</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><span class="pre">object</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.tools_.measurement_info.ColorXYZ.append_rst_to_doc" title="Link to this definition">#</a></dt>
@@ -4303,6 +4369,13 @@ which category it belongs to without explicitly referencing the class.</p>
 <dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.Colorxy">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.measurement_info.</span></span><span class="sig-name descname"><span class="pre">Colorxy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/measurement_info/_color_xy.html#Colorxy"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.measurement_info.Colorxy" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.MeasurementInfo" title="phenotypic.abc_._measurement_info.MeasurementInfo"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasurementInfo</span></code></a></p>
+<p>Measure colony color statistics across multiple perceptual color spaces.</p>
+<p>Extract per-colony color features from CIE XYZ, chromaticity (xy),
+CIE Lab (perceptually uniform), and HSV color spaces. For each
+channel the standard statistical suite is computed (min, Q1, mean,
+median, Q3, max, std dev, coefficient of variation), plus Lab chroma
+estimates.</p>
+<p>Covers the (x, y) chromaticity channels.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.Colorxy.append_rst_to_doc">
 <em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">append_rst_to_doc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">module</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><span class="pre">object</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.tools_.measurement_info.Colorxy.append_rst_to_doc" title="Link to this definition">#</a></dt>
@@ -7062,9 +7135,12 @@ which category it belongs to without explicitly referencing the class.</p>
 <dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.GRID_LINREG_STATS">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.measurement_info.</span></span><span class="sig-name descname"><span class="pre">GRID_LINREG_STATS</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/measurement_info/_grid_linreg_stats.html#GRID_LINREG_STATS"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.measurement_info.GRID_LINREG_STATS" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.MeasurementInfo" title="phenotypic.abc_._measurement_info.MeasurementInfo"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasurementInfo</span></code></a></p>
-<p>Grid linear regression statistics and residual errors.</p>
-<p>Provides measurements for evaluating grid alignment quality and detecting off-grid
-colonies in arrayed microbial assays.</p>
+<p>Evaluate grid alignment quality using row-wise and column-wise linear regression.</p>
+<p>Fit linear regressions to colony centroid positions along each row
+and column of the grid, then compute per-colony residual error
+(Euclidean distance between observed and predicted centroid). High
+residual errors flag off-grid growth, misdetections, or plate
+warping.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.GRID_LINREG_STATS.append_rst_to_doc">
 <em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">append_rst_to_doc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">module</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><span class="pre">object</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.tools_.measurement_info.GRID_LINREG_STATS.append_rst_to_doc" title="Link to this definition">#</a></dt>
@@ -7745,7 +7821,14 @@ which category it belongs to without explicitly referencing the class.</p>
 <dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.GRID_SPATIAL">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.measurement_info.</span></span><span class="sig-name descname"><span class="pre">GRID_SPATIAL</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/measurement_info/_grid_spatial.html#GRID_SPATIAL"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.measurement_info.GRID_SPATIAL" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.MeasurementInfo" title="phenotypic.abc_._measurement_info.MeasurementInfo"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasurementInfo</span></code></a></p>
-<p>Measurement info for spatial information for grid pinned colonies</p>
+<p>Measure pixel-to-pixel distances to neighbors in adjacent grid cells.</p>
+<p>For each detected colony, identify the nearest object in the left,
+right, above, and below grid cells and report the minimum Euclidean
+distance between their pixel masks. Distances are computed via a
+per-section distance transform over a local window covering the target
+cell and its immediate neighbors, so round colonies are not
+over-estimated by their bounding boxes. Edge and corner colonies report
+<code class="docutils literal notranslate"><span class="pre">NaN</span></code> for directions beyond the plate boundary.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.GRID_SPATIAL.append_rst_to_doc">
 <em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">append_rst_to_doc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">module</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><span class="pre">object</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.tools_.measurement_info.GRID_SPATIAL.append_rst_to_doc" title="Link to this definition">#</a></dt>
@@ -8431,9 +8514,11 @@ which category it belongs to without explicitly referencing the class.</p>
 <dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.GRID_SPREAD">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.measurement_info.</span></span><span class="sig-name descname"><span class="pre">GRID_SPREAD</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/measurement_info/_grid_spread.html#GRID_SPREAD"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.measurement_info.GRID_SPREAD" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.MeasurementInfo" title="phenotypic.abc_._measurement_info.MeasurementInfo"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasurementInfo</span></code></a></p>
-<p>Grid section spatial spread measurements.</p>
-<p>Provides measurements for evaluating spatial distribution of colonies within
-grid sections of arrayed microbial assays.</p>
+<p>Quantify within-well colony dispersion using pairwise centroid distances.</p>
+<p>Compute the sum of squared pairwise Euclidean distances between all
+colony centroids in each grid section. High values indicate multiple
+dispersed objects within a single well – a sign of over-segmentation,
+fragmented growth, or invasive spreading.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.GRID_SPREAD.append_rst_to_doc">
 <em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">append_rst_to_doc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">module</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><span class="pre">object</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.tools_.measurement_info.GRID_SPREAD.append_rst_to_doc" title="Link to this definition">#</a></dt>
@@ -9084,6 +9169,12 @@ which category it belongs to without explicitly referencing the class.</p>
 <dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.INTENSITY">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.measurement_info.</span></span><span class="sig-name descname"><span class="pre">INTENSITY</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/measurement_info/_intensity.html#INTENSITY"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.measurement_info.INTENSITY" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.MeasurementInfo" title="phenotypic.abc_._measurement_info.MeasurementInfo"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasurementInfo</span></code></a></p>
+<p>Measure grayscale intensity statistics of detected colonies.</p>
+<p>Compute per-colony intensity metrics from the grayscale channel:
+integrated intensity, percentiles (min, Q1, median, Q3, max),
+standard deviation, coefficient of variation, and area-normalized
+density. These statistics reflect colony optical density, biomass
+accumulation, and internal heterogeneity.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.INTENSITY.append_rst_to_doc">
 <em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">append_rst_to_doc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">module</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><span class="pre">object</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.tools_.measurement_info.INTENSITY.append_rst_to_doc" title="Link to this definition">#</a></dt>
@@ -14511,7 +14602,12 @@ which category it belongs to without explicitly referencing the class.</p>
 <dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.SHAPE">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.measurement_info.</span></span><span class="sig-name descname"><span class="pre">SHAPE</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/measurement_info/_shape.html#SHAPE"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.measurement_info.SHAPE" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.MeasurementInfo" title="phenotypic.abc_._measurement_info.MeasurementInfo"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasurementInfo</span></code></a></p>
-<p>The labels and descriptions of the shape measurements.</p>
+<p>Measure comprehensive morphological characteristics of detected colonies.</p>
+<p>Extract geometric metrics from each colony shape: area, perimeter,
+circularity, convex hull properties, width-based measures, Feret
+diameters, eccentricity, and best-fit ellipse parameters. The output
+DataFrame provides a full morphological profile for phenotypic
+classification and growth-pattern analysis.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.SHAPE.append_rst_to_doc">
 <em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">append_rst_to_doc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">module</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><span class="pre">object</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.tools_.measurement_info.SHAPE.append_rst_to_doc" title="Link to this definition">#</a></dt>
@@ -15242,7 +15338,12 @@ which category it belongs to without explicitly referencing the class.</p>
 <dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.SIZE">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.measurement_info.</span></span><span class="sig-name descname"><span class="pre">SIZE</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/measurement_info/_size.html#SIZE"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.measurement_info.SIZE" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.MeasurementInfo" title="phenotypic.abc_._measurement_info.MeasurementInfo"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasurementInfo</span></code></a></p>
-<p>The labels and descriptions of the size measurements.</p>
+<p>Measure colony area and integrated intensity as lightweight size proxies.</p>
+<p>Extract two fundamental size metrics per detected colony: pixel area
+(biomass extent) and integrated grayscale intensity (total brightness,
+a proxy for optical density). This is a convenience class for rapid
+size assessment without the overhead of full shape or intensity
+statistical analysis.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.SIZE.append_rst_to_doc">
 <em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">append_rst_to_doc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">module</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><span class="pre">object</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.tools_.measurement_info.SIZE.append_rst_to_doc" title="Link to this definition">#</a></dt>

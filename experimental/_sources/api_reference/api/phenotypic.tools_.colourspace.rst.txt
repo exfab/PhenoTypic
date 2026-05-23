@@ -10,6 +10,15 @@ phenotypic.tools\_.colourspace
 
    
    
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+      :nosignatures:
+   
+      decode_srgb
+      encode_srgb
+   
    
 
    

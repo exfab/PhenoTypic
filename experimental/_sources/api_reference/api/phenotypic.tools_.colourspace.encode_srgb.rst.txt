@@ -1,0 +1,6 @@
+phenotypic.tools\_.colourspace.encode\_srgb
+===========================================
+
+.. currentmodule:: phenotypic.tools_.colourspace
+
+.. autofunction:: encode_srgb

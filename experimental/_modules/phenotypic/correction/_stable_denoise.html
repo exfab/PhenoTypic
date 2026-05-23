@@ -177,22 +177,40 @@
 
     
     
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
     
       <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../../how_to/index.html">
-          How-To Guides
-        </a>
-      </li>
-    
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../../explanation/index.html">
-          Explanation
-        </a>
-      </li>
-    
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../../extending/index.html">
-          Extending PhenoTypic
+        <a class="nav-link nav-internal" href="../../../measurements_ref/index.html">
+          Measurements Ref
         </a>
       </li>
     
@@ -363,22 +381,40 @@
 
     
     
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
     
       <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../../how_to/index.html">
-          How-To Guides
-        </a>
-      </li>
-    
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../../explanation/index.html">
-          Explanation
-        </a>
-      </li>
-    
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../../extending/index.html">
-          Extending PhenoTypic
+        <a class="nav-link nav-internal" href="../../../measurements_ref/index.html">
+          Measurements Ref
         </a>
       </li>
     
@@ -538,6 +574,7 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">..abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageCorrector</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..tools_._anscombe</span><span class="w"> </span><span class="kn">import</span> <span class="n">gat_forward</span><span class="p">,</span> <span class="n">gat_inverse</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..tools_.colourspace</span><span class="w"> </span><span class="kn">import</span> <span class="n">decode_srgb</span><span class="p">,</span> <span class="n">encode_srgb</span>
 
 
 <div class="viewcode-block" id="StableDenoise">
@@ -577,6 +614,15 @@
 <span class="sd">        ValueError: If ``gain`` is not positive, ``sigma`` is negative,</span>
 <span class="sd">            ``scale_factor`` is not positive, or ``stage_arg`` is not a</span>
 <span class="sd">            recognized value.</span>
+
+<span class="sd">    Notes:</span>
+<span class="sd">        The grayscale channel is assumed sRGB-encoded: it is decoded to</span>
+<span class="sd">        linear light before the GAT and re-encoded to sRGB afterwards, so</span>
+<span class="sd">        the Poisson-Gaussian model operates on linear photon counts</span>
+<span class="sd">        rather than gamma-warped data. The channel is a luma sum of</span>
+<span class="sd">        gamma-encoded RGB, so decoding it with the per-channel sRGB curve</span>
+<span class="sd">        only approximates true linear luminance -- a close, intentional</span>
+<span class="sd">        approximation; see :meth:`_denoise_channel`.</span>
 
 <span class="sd">    Best For:</span>
 <span class="sd">        - Low-light or high-ISO plate images with photon-counting</span>
@@ -682,6 +728,17 @@
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Denoise a single [0,1] channel via GAT -&gt; BM3D -&gt; inverse GAT.</span>
 
+<span class="sd">        The channel is assumed sRGB-encoded: it is decoded to linear</span>
+<span class="sd">        light before stabilization and re-encoded to sRGB afterwards, so</span>
+<span class="sd">        the GAT&#39;s Poisson-Gaussian model operates in linear light rather</span>
+<span class="sd">        than on gamma-warped data.</span>
+
+<span class="sd">        Caveat: the grayscale channel is a luma sum of gamma-encoded RGB</span>
+<span class="sd">        (``skimage.color.rgb2gray``). Decoding that sum with the</span>
+<span class="sd">        per-channel sRGB curve only *approximates* true linear luminance</span>
+<span class="sd">        -- far better than no linearization, but not exact. The exact fix</span>
+<span class="sd">        would linearize RGB per-channel then recompute luminance.</span>
+
 <span class="sd">        Args:</span>
 <span class="sd">            channel: 2D array in [0, 1] range.</span>
 <span class="sd">            scale_factor: Multiplier to convert [0,1] to counts.</span>
@@ -689,8 +746,11 @@
 <span class="sd">        Returns:</span>
 <span class="sd">            Denoised 2D array clipped to [0, 1].</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># sRGB -&gt; linear light so the GAT sees linear photon counts</span>
+        <span class="n">working</span> <span class="o">=</span> <span class="n">decode_srgb</span><span class="p">(</span><span class="n">channel</span><span class="p">)</span>
+
         <span class="c1"># [0,1] -&gt; counts</span>
-        <span class="n">counts</span> <span class="o">=</span> <span class="n">channel</span> <span class="o">*</span> <span class="n">scale_factor</span>
+        <span class="n">counts</span> <span class="o">=</span> <span class="n">working</span> <span class="o">*</span> <span class="n">scale_factor</span>
 
         <span class="c1"># Forward GAT: stabilize Poisson-Gaussian variance</span>
         <span class="n">stabilized</span> <span class="o">=</span> <span class="n">gat_forward</span><span class="p">(</span><span class="n">counts</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mu</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigma</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">gain</span><span class="p">)</span>
@@ -710,7 +770,10 @@
         <span class="n">recovered</span> <span class="o">=</span> <span class="n">gat_inverse</span><span class="p">(</span><span class="n">denoised</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mu</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigma</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">gain</span><span class="p">)</span>
 
         <span class="c1"># counts -&gt; [0,1], clip</span>
-        <span class="k">return</span> <span class="p">(</span><span class="n">recovered</span> <span class="o">/</span> <span class="n">scale_factor</span><span class="p">)</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="p">(</span><span class="n">recovered</span> <span class="o">/</span> <span class="n">scale_factor</span><span class="p">)</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+
+        <span class="c1"># linear light -&gt; sRGB to restore the original encoding</span>
+        <span class="k">return</span> <span class="n">encode_srgb</span><span class="p">(</span><span class="n">result</span><span class="p">)</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply GAT-stabilized BM3D denoising to grayscale channel.</span>

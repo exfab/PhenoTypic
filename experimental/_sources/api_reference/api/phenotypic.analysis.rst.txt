@@ -26,6 +26,7 @@
       ExpectedVsDetectedCount
       LinearSoftplus
       LogGrowthModel
+      MADOutlierRemover
       ReplicateAgreement
       TukeyOutlierRemover
    
