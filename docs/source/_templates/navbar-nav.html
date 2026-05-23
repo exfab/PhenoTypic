@@ -1,5 +1,5 @@
-{# Custom navbar: turns "Tutorials" into a dropdown with three children
-   (Getting Started, Python API, GUI). The default theme template
+{# Custom navbar: groups related top-level entries under dropdowns
+   (Tutorials, Guides) to keep the bar short. The default theme template
    renders all root-toctree entries as flat links, which is why this
    override exists. Other top-level entries are listed explicitly so the
    navbar order is stable; if you add a new top-level section, add it
@@ -37,11 +37,41 @@
       </ul>
     </li>
 
+    {# --- Guides dropdown: how-to recipes, conceptual explanations, extension guides --- #}
+    {% set _guides_active = _pn.startswith('how_to/')
+                          or _pn.startswith('explanation/')
+                          or _pn.startswith('extending/') %}
+    <li class="nav-item dropdown{% if _guides_active %} current active{% endif %}">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal{% if _pn.startswith('how_to/') %} current active{% endif %}"
+             href="{{ pathto('how_to/index') }}">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal{% if _pn.startswith('explanation/') %} current active{% endif %}"
+             href="{{ pathto('explanation/index') }}">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal{% if _pn.startswith('extending/') %} current active{% endif %}"
+             href="{{ pathto('extending/index') }}">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
     {# --- Remaining top-level pages --- #}
     {% set _navbar_main = [
-        ('how_to/index', 'How-To Guides', 'how_to/'),
-        ('explanation/index', 'Explanation', 'explanation/'),
-        ('extending/index', 'Extending PhenoTypic', 'extending/'),
+        ('measurements_ref/index', 'Measurements Ref', 'measurements_ref/'),
         ('api_reference/index', 'API Reference', 'api_reference/'),
     ] %}
     {% for docname, title, prefix in _navbar_main %}

@@ -32,6 +32,7 @@ from phenotypic.gui._operation_registry import OperationRegistry, get_registry
 from phenotypic.gui._param_forms import param_form
 from phenotypic.gui._shared import SHARED_LOGO_PATH
 from phenotypic.gui.analysis import _ids as ids
+from phenotypic.gui.analysis._plot_controls import plot_controls_form
 
 if TYPE_CHECKING:
     from phenotypic.gui.analysis._recipe_state import RecipeState
@@ -94,6 +95,11 @@ def build_app_layout(
             dcc.Store(
                 id=ids.ANALYSIS_PIPELINE_STORE,
                 data=recipe.last_json or recipe.pipeline.to_json() or "{}",
+            ),
+            dcc.Store(
+                id=ids.ANALYSIS_PLOT_PREFS_STORE,
+                storage_type="session",
+                data={},
             ),
         ],
         id=ids.ANALYSIS_PAGE,
@@ -402,6 +408,7 @@ def build_section_stack(
     registry: OperationRegistry | None = None,
     *,
     columns_provider: Optional[ColumnsProvider] = None,
+    plot_prefs: Optional[dict] = None,
 ) -> list:
     """Build the list of section cards inside a stack.
 
@@ -410,6 +417,12 @@ def build_section_stack(
     ``form_id_prefix=f"analysis-{kind}-{index}"`` so the analysis-side
     pattern-matching callback can map any param edit back to the correct
     section without colliding with the builder's prefixes.
+
+    Filter cards additionally host a :func:`plot_controls_form` — a
+    Display-settings disclosure plus a Preview button. Its widget values
+    re-seed from ``plot_prefs`` (the session-scoped plotting-preference
+    store) so display tweaks survive stack rebuilds. Post cards carry no
+    plot controls.
     """
     pipeline = recipe.pipeline
     items: list[tuple[str, Any]]
@@ -426,7 +439,7 @@ def build_section_stack(
     cards: list = []
     for index, (name, instance) in enumerate(items):
         info = registry.get(type(instance).__name__)
-        body = (
+        body: Any = (
             _section_form(
                 info,
                 instance,
@@ -440,6 +453,13 @@ def build_section_stack(
                 style={"color": COLOR_MUTED},
             )
         )
+        # Filter cards carry a plotting-preview affordance; post cards
+        # keep the table-preview path and get no plot controls.
+        if kind == "filter":
+            body = [
+                body,
+                plot_controls_form("filter", index, instance, plot_prefs),
+            ]
         cards.append(
             html.Div(
                 [
@@ -507,6 +527,7 @@ def _build_model_panel(
     recipe: "RecipeState",
     *,
     columns_provider: Optional[ColumnsProvider] = None,
+    plot_prefs: Optional[dict] = None,
 ) -> html.Div:
     pipeline = recipe.pipeline
     model = pipeline.get_model()
@@ -514,7 +535,11 @@ def _build_model_panel(
         [
             html.H3("Model (endpoint)"),
             html.Div(
-                _build_model_section(model, columns_provider=columns_provider)
+                _build_model_section(
+                    model,
+                    columns_provider=columns_provider,
+                    plot_prefs=plot_prefs,
+                )
                 if model is not None
                 else html.Span(
                     "No model configured.", style={"color": COLOR_MUTED}
@@ -549,6 +574,7 @@ def _build_model_section(
     model: object,
     *,
     columns_provider: Optional[ColumnsProvider] = None,
+    plot_prefs: Optional[dict] = None,
 ) -> html.Div:
     info = get_registry().get(type(model).__name__)
     body: Any
@@ -569,6 +595,7 @@ def _build_model_section(
         [
             html.Strong(type(model).__name__),
             html.Div(body),
+            plot_controls_form("model", 0, model, plot_prefs),
         ],
         style={
             "border": f"1px solid {COLOR_NAVY}",

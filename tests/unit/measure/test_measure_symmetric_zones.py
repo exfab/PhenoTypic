@@ -635,3 +635,38 @@ class TestMeasureSymmetricZones:
             f"SparseEndRadius={sparse_end} > SymmetricRadius+2={cap} "
             f"(symmetric cap violated)"
         )
+
+    # ------------------------------------------------------------------
+    # Test 10 — inspect(for_save=True) reveals legend-only traces.
+    # ------------------------------------------------------------------
+
+    def test_inspect_for_save_flips_legendonly_traces_visible(self):
+        """``for_save=True`` reveals every legend-only overlay trace.
+
+        The default ``inspect()`` figure intentionally hides several
+        overlay layers behind ``visible="legendonly"`` so users can
+        toggle them from the plotly legend. The CLI's ``--save-inspect``
+        path flattens the figure to a static PNG, so the saver passes
+        ``for_save=True`` to force every diagnostic trace visible — a
+        legend-only trace would otherwise be invisible in the artifact.
+        """
+        gray, objmap = _make_circular_colony(
+                shape=(200, 200),
+                center=(100, 100),
+                core_radius=15.0,
+                outer_radius=60.0,
+        )
+        image = _make_image_with_objmap(gray, objmap)
+
+        op = MeasureSymmetricZones()
+        op.measure(image)  # populates the diagnostic cache
+
+        default_fig = op.inspect(image)
+        assert any(
+            getattr(t, "visible", True) == "legendonly" for t in default_fig.data
+        ), "default inspect() must keep at least one legend-only overlay"
+
+        for_save_fig = op.inspect(image, for_save=True)
+        assert all(
+            getattr(t, "visible", True) != "legendonly" for t in for_save_fig.data
+        ), "inspect(for_save=True) must reveal every legend-only trace"

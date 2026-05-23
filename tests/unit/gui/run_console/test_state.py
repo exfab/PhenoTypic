@@ -35,6 +35,7 @@ def test_full_state_round_trips_cleanly() -> None:
         mode="slurm",
         dry_run=True,
         resume=True,
+        save_inspect=True,
         advanced_args={"sample": 4, "nrows": 8, "ncols": 12, "image_type": "tif"},
         slurm_args={
             "partition": "compute",
@@ -55,6 +56,7 @@ def test_from_json_tolerates_missing_fields() -> None:
     assert state.input_dir is None
     assert state.mode == "local"  # defaulted
     assert state.dry_run is False
+    assert state.save_inspect is False
 
 
 def test_from_json_normalises_extras_to_strings() -> None:
@@ -104,6 +106,24 @@ def test_to_argv_includes_resume_flag() -> None:
     )
     argv = to_argv(state)
     assert "--resume" in argv
+
+
+def test_to_argv_includes_save_inspect_flag() -> None:
+    """``--save-inspect`` is appended when ``state.save_inspect=True``."""
+    state = RunConsoleState(
+        pipeline_path="/p.json", input_dir="/in", output_dir="/out", save_inspect=True,
+    )
+    argv = to_argv(state)
+    assert "--save-inspect" in argv
+
+
+def test_to_argv_omits_save_inspect_flag_when_disabled() -> None:
+    """No ``--save-inspect`` token unless explicitly enabled."""
+    state = RunConsoleState(
+        pipeline_path="/p.json", input_dir="/in", output_dir="/out",
+    )
+    argv = to_argv(state)
+    assert "--save-inspect" not in argv
 
 
 def test_to_argv_threads_advanced_args() -> None:

@@ -12,6 +12,7 @@ if TYPE_CHECKING:
 
 from ..abc_ import ImageCorrector
 from ..tools_._anscombe import gat_forward, gat_inverse
+from ..tools_.colourspace import decode_srgb, encode_srgb
 
 
 class StableDenoise(ImageCorrector):
@@ -49,6 +50,15 @@ class StableDenoise(ImageCorrector):
         ValueError: If ``gain`` is not positive, ``sigma`` is negative,
             ``scale_factor`` is not positive, or ``stage_arg`` is not a
             recognized value.
+
+    Notes:
+        The grayscale channel is assumed sRGB-encoded: it is decoded to
+        linear light before the GAT and re-encoded to sRGB afterwards, so
+        the Poisson-Gaussian model operates on linear photon counts
+        rather than gamma-warped data. The channel is a luma sum of
+        gamma-encoded RGB, so decoding it with the per-channel sRGB curve
+        only approximates true linear luminance -- a close, intentional
+        approximation; see :meth:`_denoise_channel`.
 
     Best For:
         - Low-light or high-ISO plate images with photon-counting
@@ -154,6 +164,17 @@ class StableDenoise(ImageCorrector):
     ) -> np.ndarray:
         """Denoise a single [0,1] channel via GAT -> BM3D -> inverse GAT.
 
+        The channel is assumed sRGB-encoded: it is decoded to linear
+        light before stabilization and re-encoded to sRGB afterwards, so
+        the GAT's Poisson-Gaussian model operates in linear light rather
+        than on gamma-warped data.
+
+        Caveat: the grayscale channel is a luma sum of gamma-encoded RGB
+        (``skimage.color.rgb2gray``). Decoding that sum with the
+        per-channel sRGB curve only *approximates* true linear luminance
+        -- far better than no linearization, but not exact. The exact fix
+        would linearize RGB per-channel then recompute luminance.
+
         Args:
             channel: 2D array in [0, 1] range.
             scale_factor: Multiplier to convert [0,1] to counts.
@@ -161,8 +182,11 @@ class StableDenoise(ImageCorrector):
         Returns:
             Denoised 2D array clipped to [0, 1].
         """
+        # sRGB -> linear light so the GAT sees linear photon counts
+        working = decode_srgb(channel)
+
         # [0,1] -> counts
-        counts = channel * scale_factor
+        counts = working * scale_factor
 
         # Forward GAT: stabilize Poisson-Gaussian variance
         stabilized = gat_forward(counts, self.mu, self.sigma, self.gain)
@@ -182,7 +206,10 @@ class StableDenoise(ImageCorrector):
         recovered = gat_inverse(denoised, self.mu, self.sigma, self.gain)
 
         # counts -> [0,1], clip
-        return (recovered / scale_factor).clip(0.0, 1.0)
+        result = (recovered / scale_factor).clip(0.0, 1.0)
+
+        # linear light -> sRGB to restore the original encoding
+        return encode_srgb(result).clip(0.0, 1.0)
 
     def _operate(self, image: Image) -> Image:
         """Apply GAT-stabilized BM3D denoising to grayscale channel.

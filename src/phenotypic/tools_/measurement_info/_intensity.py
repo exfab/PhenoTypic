@@ -4,6 +4,15 @@ from phenotypic.abc_._measurement_info import MeasurementInfo
 
 
 class INTENSITY(MeasurementInfo):
+    """Measure grayscale intensity statistics of detected colonies.
+
+    Compute per-colony intensity metrics from the grayscale channel:
+    integrated intensity, percentiles (min, Q1, median, Q3, max),
+    standard deviation, coefficient of variation, and area-normalized
+    density. These statistics reflect colony optical density, biomass
+    accumulation, and internal heterogeneity.
+    """
+
     @classmethod
     def category(cls):
         return "Intensity"

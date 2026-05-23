@@ -232,6 +232,13 @@ def _run_overlay_task(
         hdf_path = Path(str(task["hdf_path"]))
         image = load_image_from_hdf(hdf_path)
 
+        # save_inspects intentionally omitted: the recompile worker
+        # regenerates overlays from an already-saved HDF without re-running
+        # any measurer. MeasureFeatures.inspect() relies on a per-instance
+        # diagnostic cache populated during _operate(), which would be
+        # empty here and silently fall through to a slow full recompute.
+        # Use the CLI's --measure mode if you need to regenerate inspect
+        # figures alongside fresh measurements.
         output_manager = OutputManager.from_config(
             base_dir=output_dir,
             ext=".png",

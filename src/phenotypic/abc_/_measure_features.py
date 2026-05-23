@@ -298,6 +298,36 @@ class MeasureFeatures(BaseOperation, ABC):
         ...         })
         ...         results.insert(0, OBJECT.LABEL, image.objects.labels2series())
         ...         return results
+
+    Optional: Saveable Inspect Output (CLI auto-discovery):
+        Implementing :meth:`inspect` on a subclass is optional. If a
+        subclass defines an
+        ``inspect(self, image=None, *, for_save=False, **kwargs)`` method,
+        the ``phenotypic`` CLI's ``--save-inspect`` flag will
+        automatically render and save its output for every processed
+        image to
+        ``results/<dataset>/inspect/<step-name>/<image-stem>.png``.
+
+        Contract:
+            - Return ``matplotlib.figure.Figure`` or
+              ``plotly.graph_objects.Figure``. Any other return type is
+              logged at WARNING and skipped by the saver.
+            - When ``for_save=True``, ensure every diagnostic
+              trace/artist is visible without user interaction. The CLI
+              flattens the figure to a static PNG; legend-only or
+              collapsed layers are invisible in the artifact. The
+              specific mechanism is class-defined (plotly: walk
+              ``fig.data`` and flip ``visible="legendonly"`` → ``True``;
+              matplotlib: call ``set_visible(True)`` on hidden artists).
+            - Reuse cached intermediates from the immediately-preceding
+              :meth:`measure` call. The CLI invokes ``inspect()`` on the
+              same ``image`` instance that was just measured, so a
+              per-instance cache keyed on object identity is the
+              recommended pattern. Recomputing the full measurement
+              pipeline from scratch is unnecessary and slow.
+
+        Reference implementation:
+            :class:`phenotypic.measure.MeasureSymmetricZones`.
     """
 
     @validate_measure_integrity()

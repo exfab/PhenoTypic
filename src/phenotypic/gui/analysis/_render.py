@@ -32,7 +32,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def render_plot(node: "SetAnalyzer | Any") -> Any:
+def render_plot(node: "SetAnalyzer | Any", **plot_kwargs: Any) -> Any:
     """Render *node*'s preview plot, autodetecting plotly vs matplotlib.
 
     Args:
@@ -40,6 +40,13 @@ def render_plot(node: "SetAnalyzer | Any") -> Any:
             (model) instance. Must have ``.analyze()`` already been called
             so internal results are populated; the caller is responsible
             for ordering.
+        **plot_kwargs: Plotting parameters forwarded to whichever
+            visualization method runs — ``node.dash(**plot_kwargs)`` on
+            the plotly fast path, ``node.show(**plot_kwargs)`` on the
+            matplotlib fallback. The caller is responsible for passing
+            only kwargs valid for the method that will actually run
+            (see :func:`._plot_controls.plotting_params`, which
+            introspects the same method this function selects).
 
     Returns:
         A Dash component ready for layout: ``dcc.Graph`` on the plotly
@@ -48,7 +55,7 @@ def render_plot(node: "SetAnalyzer | Any") -> Any:
     """
     # Try plotly fast path first.
     try:
-        figure = node.dash()
+        figure = node.dash(**plot_kwargs)
     except NotImplementedError:
         figure = None
     except Exception as exc:  # noqa: BLE001 - render failures are surfaced inline
@@ -63,7 +70,7 @@ def render_plot(node: "SetAnalyzer | Any") -> Any:
         )
 
     try:
-        mpl_fig = node.show()
+        mpl_fig = node.show(**plot_kwargs)
         if mpl_fig is None:
             # ``show()`` implementations that mutate ``plt.gca()`` without
             # returning the figure leave the active one for us to grab.

@@ -20,3 +20,42 @@ sRGB_D50 = colour.RGB_Colourspace(
     cctf_decoding=colour.CCTF_DECODINGS["sRGB"],
     cctf_encoding=colour.CCTF_ENCODINGS["sRGB"],
 )
+
+
+def decode_srgb(arr: np.ndarray) -> np.ndarray:
+    """Convert sRGB gamma-encoded values to linear light.
+
+    Applies the inverse sRGB colour component transfer function (the
+    standard piecewise gamma curve) elementwise. Sensor and photon noise
+    is generated in linear light, so denoisers and variance-stabilizing
+    transforms (e.g. the Generalized Anscombe Transform) operate most
+    correctly on linearized data rather than the display-encoded values.
+
+    Args:
+        arr: Array of sRGB gamma-encoded values normalized to ``[0, 1]``.
+            Any shape; the transfer function is applied elementwise, so a
+            2D channel or an ``(H, W, 3)`` image are both valid.
+
+    Returns:
+        np.ndarray: Linear-light values in ``[0, 1]`` as ``float64``,
+        same shape as ``arr``.
+    """
+    return np.asarray(colour.CCTF_DECODINGS["sRGB"](arr), dtype=np.float64)
+
+
+def encode_srgb(arr: np.ndarray) -> np.ndarray:
+    """Convert linear-light values to sRGB gamma-encoded values.
+
+    Applies the forward sRGB colour component transfer function
+    elementwise. This is the inverse of :func:`decode_srgb` and restores
+    the display-encoded representation after processing in linear light.
+
+    Args:
+        arr: Array of linear-light values normalized to ``[0, 1]``. Any
+            shape; the transfer function is applied elementwise.
+
+    Returns:
+        np.ndarray: sRGB gamma-encoded values in ``[0, 1]`` as
+        ``float64``, same shape as ``arr``.
+    """
+    return np.asarray(colour.CCTF_ENCODINGS["sRGB"](arr), dtype=np.float64)

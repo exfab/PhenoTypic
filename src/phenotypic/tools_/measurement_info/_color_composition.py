@@ -4,7 +4,13 @@ from phenotypic.abc_._measurement_info import MeasurementInfo
 
 
 class ColorComposition(MeasurementInfo):
-    """Measurement info for perceptual color composition using 11-color model."""
+    """Classify colony pixels into 11 perceptual color categories and measure composition.
+
+    Applies a priority-based color model (neutrals → special colors → hues)
+    to classify each colony pixel into one of 11 categories: Black, White,
+    Gray, Pink, Brown, Red, Orange, Yellow, Green, Cyan, Blue, Purple.
+    Returns per-colony percentage breakdowns as DataFrame columns.
+    """
 
     @classmethod
     def category(cls):

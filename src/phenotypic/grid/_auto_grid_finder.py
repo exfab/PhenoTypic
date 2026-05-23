@@ -1153,10 +1153,10 @@ class AutoGridFinder(GridFinder):
             )
 
     # ------------------------------------------------------------------
-    # Diagnostic inspect() method
+    # Diagnostic dashboard() method
     # ------------------------------------------------------------------
 
-    # Okabe-Ito palette for the inspect() diagnostic plots. Annotated
+    # Okabe-Ito palette for the dashboard() diagnostic plots. Annotated
     # ``ClassVar`` so pydantic keeps them as plain class constants — an
     # un-annotated underscore name is otherwise collected as a
     # ``ModelPrivateAttr`` and class-level access returns the wrapper.
@@ -1237,7 +1237,7 @@ class AutoGridFinder(GridFinder):
                     from ipywidgets import IntProgress
                     from IPython.display import display
                     pbar = IntProgress(
-                        min=0, max=len(steps), description="Grid inspect:",
+                        min=0, max=len(steps), description="Grid dashboard:",
                     )
                     display(pbar)
                 except ImportError:
@@ -1246,7 +1246,7 @@ class AutoGridFinder(GridFinder):
             if pbar is None:
                 try:
                     from tqdm import tqdm
-                    pbar = tqdm(total=len(steps), desc="Grid inspect")
+                    pbar = tqdm(total=len(steps), desc="Grid dashboard")
                 except ImportError:
                     pass
 
@@ -1744,7 +1744,7 @@ class AutoGridFinder(GridFinder):
             md, styles={"font-family": "'DM Sans', sans-serif"},
         )
 
-    def inspect(self, image: Image, show_progress: bool = True):
+    def dashboard(self, image: Image, show_progress: bool = True):
         """Interactive diagnostic dashboard for grid fitting.
 
         Profiles the grid-fitting pipeline and displays timing breakdown,
@@ -1762,6 +1762,14 @@ class AutoGridFinder(GridFinder):
         Returns:
             Panel Column layout with 4 diagnostic panels.
 
+        Notes:
+            The ``inspect()`` name is reserved across the codebase for
+            methods returning a saveable matplotlib or plotly figure
+            consumed by the CLI's ``--save-inspect`` flag. This method
+            returns an interactive panel layout that does not flatten
+            to a static raster, so it is kept under the
+            :meth:`dashboard` name.
+
         Examples:
             >>> from phenotypic.data import load_synth_yeast_plate
             >>> from phenotypic.detect import OtsuDetector
@@ -1769,7 +1777,7 @@ class AutoGridFinder(GridFinder):
             >>> image = load_synth_yeast_plate()
             >>> image = OtsuDetector().apply(image)
             >>> finder = AutoGridFinder(nrows=8, ncols=12)
-            >>> dashboard = finder.inspect(image)
+            >>> dashboard = finder.dashboard(image)
         """
         import panel as pn
 

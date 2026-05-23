@@ -4,7 +4,14 @@ from phenotypic.abc_._measurement_info import MeasurementInfo
 
 
 class SIZE(MeasurementInfo):
-    """The labels and descriptions of the size measurements."""
+    """Measure colony area and integrated intensity as lightweight size proxies.
+
+    Extract two fundamental size metrics per detected colony: pixel area
+    (biomass extent) and integrated grayscale intensity (total brightness,
+    a proxy for optical density). This is a convenience class for rapid
+    size assessment without the overhead of full shape or intensity
+    statistical analysis.
+    """
 
     @classmethod
     def category(cls):
@@ -17,6 +24,6 @@ class SIZE(MeasurementInfo):
     )
     INTEGRATED_INTENSITY = (
         "IntegratedIntensity",
-        r"The sum of the object\'s grayscale pixels. Calculated as"
-        r"$\sum{pixel values}*area$",
+        r"The sum of the object's grayscale pixels. Calculated as "
+        r":math:`\sum{\text{pixel values}} \times \text{area}`.",
     )

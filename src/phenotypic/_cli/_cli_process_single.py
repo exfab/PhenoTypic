@@ -102,13 +102,45 @@ def process_single_image_core(
     # Get image stem for output filenames
     image_stem = image_path.stem
 
-    # Save measurements + HDF5 (always) and overlay (opt-in)
+    # Save measurements + HDF5 (always) and overlay (opt-in). The
+    # _maybe_save_inspect call MUST stay last before the return: it
+    # depends on the per-measurer diagnostic cache populated by the
+    # apply_and_measure call above, and the cache only stays valid as
+    # long as the `image` instance is not replaced. Saving overlays
+    # and HDF reads from `image` but never rebinds it, so the cache
+    # invariant holds across these calls.
     output_manager.save_measurements(measurements, dataset_name, image_stem)
     output_manager.save_image_hdf(image, dataset_name, image_stem)
     if output_manager.save_overlays:
         output_manager.save_overlay(image, dataset_name, image_stem)
+    _maybe_save_inspect(pipeline, image, dataset_name, image_stem, output_manager)
 
     return True
+
+
+def _maybe_save_inspect(
+    pipeline: ImagePipeline,
+    image: Any,
+    dataset_name: str,
+    image_stem: str,
+    output_manager: OutputManager,
+) -> None:
+    """Dispatch ``save_inspect`` across every measurer that opts in.
+
+    Iterates ``pipeline.get_meas().items()`` and saves an inspect PNG
+    for any measurer that defines an ``inspect()`` method (duck-typed).
+    Must be called immediately after measurement on the same ``image``
+    instance — see :meth:`OutputManager.save_inspect` for the cache
+    invariant.
+    """
+    if not output_manager.save_inspects:
+        return
+    for measurer_key, measurer in pipeline.get_meas().items():
+        if hasattr(measurer, "inspect"):
+            output_manager.save_inspect(
+                measurer, image, dataset_name, image_stem,
+                measurer_key=measurer_key,
+            )
 
 
 def process_single_hdf_measure_core(
@@ -159,6 +191,9 @@ def process_single_hdf_measure_core(
 
     # Save measurements parquet (overlay + HDF intentionally skipped)
     output_manager.save_measurements(measurements, dataset_name, hdf_path.stem)
+    _maybe_save_inspect(
+        pipeline, image, dataset_name, hdf_path.stem, output_manager,
+    )
 
     return True
 
@@ -249,6 +284,17 @@ def process_single_hdf_measure_core(
     default=True,
     help="Save a PNG overlay per image (default: on). Ignored in --measure mode.",
 )
+@click.option(
+    "--save-inspect",
+    is_flag=True,
+    default=False,
+    help=(
+        "Save MeasureFeatures.inspect() figures as PNGs under "
+        "results/<dataset>/inspect/<measurer>/<image-stem>.png. "
+        "Off by default; opt in when debugging or verifying measurements. "
+        "Honored on both forward runs and --measure HDF reruns."
+    ),
+)
 def main(
     pipeline: Path,
     image: Path,
@@ -265,6 +311,7 @@ def main(
     event_log: Optional[Path],
     measure_only: bool,
     save_overlays: bool,
+    save_inspect: bool,
 ):
     """
     Process a single image with PhenoTypic pipeline.
@@ -329,12 +376,16 @@ def main(
                 )
 
             # Measure mode never writes overlays regardless of the flag.
+            # save_inspect IS honored here — re-measurement repopulates
+            # the per-measurer diagnostic cache so inspect() can render
+            # without a full pipeline recompute.
             output_manager = OutputManager.from_config(
                 base_dir=output_dir,
                 ext=ext_normalized,
                 include_dataset_column=include_dataset_column,
                 overlay_alpha=overlay_alpha,
                 save_overlays=False,
+                save_inspects=save_inspect,
             )
 
             click.echo(f"Measuring {image.name} (HDF rerun)...")
@@ -360,6 +411,7 @@ def main(
                 include_dataset_column=include_dataset_column,
                 overlay_alpha=overlay_alpha,
                 save_overlays=save_overlays,
+                save_inspects=save_inspect,
             )
 
             click.echo(f"Processing {image.name}...")

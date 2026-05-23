@@ -40,6 +40,7 @@ from phenotypic.tools_ import (
     ANALYSIS_CSV,
     ANALYSIS_PARQUET,
     DASHBOARD_HTML,
+    DIR_INSPECT,
     DIR_MEASUREMENTS,
     DIR_OVERLAYS,
     DIR_PROGRESS,
@@ -101,6 +102,7 @@ __all__ = [
     # Directory names — re-exported from phenotypic.tools_
     "RESULTS_DIRNAME",
     "PROGRESS_DIRNAME",
+    "DIR_INSPECT",
     "DIR_MEASUREMENTS",
     "DIR_OVERLAYS",
     # Dashboard filename — re-exported from phenotypic.tools_

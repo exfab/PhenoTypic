@@ -4,7 +4,16 @@ from phenotypic.abc_._measurement_info import MeasurementInfo
 
 
 class GRID_SPATIAL(MeasurementInfo):
-    """Measurement info for spatial information for grid pinned colonies"""
+    """Measure pixel-to-pixel distances to neighbors in adjacent grid cells.
+
+    For each detected colony, identify the nearest object in the left,
+    right, above, and below grid cells and report the minimum Euclidean
+    distance between their pixel masks. Distances are computed via a
+    per-section distance transform over a local window covering the target
+    cell and its immediate neighbors, so round colonies are not
+    over-estimated by their bounding boxes. Edge and corner colonies report
+    ``NaN`` for directions beyond the plate boundary.
+    """
 
     @classmethod
     def category(cls) -> str:
