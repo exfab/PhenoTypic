@@ -36,7 +36,7 @@ statistical analysis.
    * - ``Area``
      - Total number of pixels occupied by the microbial colony.Larger areas typically indicate more robust growth or longer incubation times.
    * - ``IntegratedIntensity``
-     - The sum of the object\'s grayscale pixels. Calculated as$\sum{pixel values}*area$
+     - The sum of the object's grayscale pixels. Calculated as :math:`\sum{\text{pixel values}} \times \text{area}`.
 
 
 MeasureShape
@@ -475,47 +475,6 @@ ColorHSV
      - The standard deviation of the brightness of the object
    * - ``BrightnessCoeffVar``
      - The coefficient of variation of the brightness of the object
-
-
-MeasureColorComposition
------------------------
-
-Classify colony pixels into 11 perceptual color categories and measure composition.
-
-Applies a priority-based color model (neutrals → special colors → hues)
-to classify each colony pixel into one of 11 categories: Black, White,
-Gray, Pink, Brown, Red, Orange, Yellow, Green, Cyan, Blue, Purple.
-Returns per-colony percentage breakdowns as DataFrame columns.
-
-.. list-table:: Category: **ColorComposition**
-   :header-rows: 1
-
-   * - Name
-     - Description
-   * - ``BlackPct``
-     - Percentage of pixels classified as black (Value < 20)
-   * - ``WhitePct``
-     - Percentage of pixels classified as white (Saturation < 15, Value > 85)
-   * - ``GrayPct``
-     - Percentage of pixels classified as gray (Saturation < 15, Value 20-85)
-   * - ``PinkPct``
-     - Percentage of pixels classified as pink (Red/Magenta hue, Saturation 20-60, Value > 80)
-   * - ``BrownPct``
-     - Percentage of pixels classified as brown (Red/Orange hue, Value 20-60)
-   * - ``RedPct``
-     - Percentage of pixels classified as red (Hue 0-15° or 345-360°)
-   * - ``OrangePct``
-     - Percentage of pixels classified as orange (Hue 15-45°)
-   * - ``YellowPct``
-     - Percentage of pixels classified as yellow (Hue 45-75°)
-   * - ``GreenPct``
-     - Percentage of pixels classified as green (Hue 75-150°)
-   * - ``CyanPct``
-     - Percentage of pixels classified as cyan (Hue 150-180°)
-   * - ``BluePct``
-     - Percentage of pixels classified as blue (Hue 180-250°)
-   * - ``PurplePct``
-     - Percentage of pixels classified as purple/magenta (Hue 250-345°)
 
 
 MeasureGridSpatial

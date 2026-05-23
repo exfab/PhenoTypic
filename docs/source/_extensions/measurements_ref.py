@@ -21,6 +21,10 @@ import importlib
 import inspect
 import os
 
+from sphinx.util import logging as sphinx_logging
+
+logger = sphinx_logging.getLogger(__name__)
+
 
 # (MeasureFeature qualified path, [MeasurementInfo qualified paths])
 # Per-object measurements only — QC, model metrics, and edge correction are
@@ -43,8 +47,9 @@ _REGISTRY: list[tuple[str, list[str]]] = [
             "phenotypic.tools_.measurement_info.ColorLab",
             "phenotypic.tools_.measurement_info.ColorHSV",
         ]),
-    ("phenotypic.measure._measure_color_composition.MeasureColorComposition",
-        ["phenotypic.tools_.measurement_info.ColorComposition"]),
+    # MeasureColorComposition is commented out of ``phenotypic.measure.__all__``
+    # pending completion (see the TODO in ``measure/__init__.py``). Re-add it
+    # to the registry when it ships.
     ("phenotypic.measure._measure_grid_spatial.MeasureGridSpatial",
         ["phenotypic.tools_.measurement_info.GRID_SPATIAL"]),
     ("phenotypic.measure._measure_grid_linreg_stats.MeasureGridLinRegStats",
@@ -146,7 +151,9 @@ def _build_page(output_path: str) -> None:
         try:
             measure_cls = _import(measure_path)
         except (ImportError, AttributeError) as err:
-            print(f"measurements_ref: could not import {measure_path}: {err}")
+            logger.warning(
+                "measurements_ref: could not import %s: %s", measure_path, err
+            )
             continue
 
         info_classes = []
@@ -154,7 +161,9 @@ def _build_page(output_path: str) -> None:
             try:
                 info_classes.append(_import(info_path))
             except (ImportError, AttributeError) as err:
-                print(f"measurements_ref: could not import {info_path}: {err}")
+                logger.warning(
+                    "measurements_ref: could not import %s: %s", info_path, err
+                )
         if not info_classes:
             continue
 

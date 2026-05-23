@@ -24,6 +24,6 @@ class SIZE(MeasurementInfo):
     )
     INTEGRATED_INTENSITY = (
         "IntegratedIntensity",
-        r"The sum of the object\'s grayscale pixels. Calculated as"
-        r"$\sum{pixel values}*area$",
+        r"The sum of the object's grayscale pixels. Calculated as "
+        r":math:`\sum{\text{pixel values}} \times \text{area}`.",
     )
