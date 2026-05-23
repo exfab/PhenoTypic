@@ -1,0 +1,661 @@
+Measurements Reference
+======================
+
+Every column produced by PhenoTypic's per-object measurement operators,
+grouped by operator. If you've received a ``measurements.parquet`` from
+someone else and need to know what a column means, this is the page for
+you.
+
+Each section below shows the operator's lead description followed by a
+table of every column it emits, with the short name (what appears in
+the parquet, prefixed with the category — e.g. ``Size_Area``) and a
+one-line description.
+
+This page is generated from the ``MeasurementInfo`` enums in
+``phenotypic.tools_.measurement_info`` and stays in sync with the code
+automatically — do not edit ``measurements_ref/index.rst`` by hand; edit
+the docstrings or the registry in ``docs/source/_extensions/measurements_ref.py``.
+
+
+MeasureSize
+-----------
+
+Measure colony area and integrated intensity as lightweight size proxies.
+
+Extract two fundamental size metrics per detected colony: pixel area
+(biomass extent) and integrated grayscale intensity (total brightness,
+a proxy for optical density). This is a convenience class for rapid
+size assessment without the overhead of full shape or intensity
+statistical analysis.
+
+.. list-table:: Category: **Size**
+   :header-rows: 1
+
+   * - Name
+     - Description
+   * - ``Area``
+     - Total number of pixels occupied by the microbial colony.Larger areas typically indicate more robust growth or longer incubation times.
+   * - ``IntegratedIntensity``
+     - The sum of the object\'s grayscale pixels. Calculated as$\sum{pixel values}*area$
+
+
+MeasureShape
+------------
+
+Measure comprehensive morphological characteristics of detected colonies.
+
+Extract geometric metrics from each colony shape: area, perimeter,
+circularity, convex hull properties, width-based measures, Feret
+diameters, eccentricity, and best-fit ellipse parameters. The output
+DataFrame provides a full morphological profile for phenotypic
+classification and growth-pattern analysis.
+
+.. list-table:: Category: **Shape**
+   :header-rows: 1
+
+   * - Name
+     - Description
+   * - ``Area``
+     - Total number of pixels occupied by the microbial colony. Represents colony biomass and growth extent on agar plates. Larger areas typically indicate more robust growth or longer incubation times.
+   * - ``Perimeter``
+     - Total length of the colony's outer boundary in pixels. Measures colony edge complexity and surface irregularity. Smooth, circular colonies have shorter perimeters relative to their area compared to irregular or filamentous colonies.
+   * - ``Circularity``
+     - Calculated as :math:`\frac{4\pi*\text{Area}}{\text{Perimeter}^2}`. Measures how closely a colony approximates a perfect circle (value = 1). Values < 1 indicate irregular colony morphology, which may result from genetic mutations, environmental stress, or mixed microbial populations on agar plates.
+   * - ``ConvexArea``
+     - Area of the smallest convex polygon that completely contains the colony. Represents the colony's "filled-in" appearance if all indentations and holes were removed. Useful for detecting colony spreading patterns or invasive growth characteristics.
+   * - ``MedianRadius``
+     - Median distance from colony center to edge across all directions. Provides a robust measure of typical colony size that is less sensitive to outliers than mean width. Particularly useful for colonies with uneven growth or sectoring.
+   * - ``MeanRadius``
+     - Average distance from colony center to edge across all directions. Represents overall colony expansion rate. In arrayed growth assays, this correlates with microbial fitness and growth kinetics under controlled conditions.
+   * - ``MaxRadius``
+     - Maximum distance from colony center to edge across all directions. Represents the furthest extent of colony growth from its center. In arrayed microbial assays, this measurement helps identify asymmetric growth patterns or colonies extending toward neighboring positions.
+   * - ``MinFeretDiameter``
+     - Minimum caliper diameter - the shortest distance between two parallel tangent lines touching opposite sides of the colony. Represents the narrowest dimension of the colony regardless of orientation. Useful for detecting elongated or irregular colony morphologies and measuring colony width.
+   * - ``MaxFeretDiameter``
+     - Maximum caliper diameter - the longest distance between two parallel tangent lines touching opposite sides of the colony. Represents the maximum dimension of the colony regardless of orientation. Often exceeds major axis length for irregular shapes and helps quantify maximum colony extent.
+   * - ``Eccentricity``
+     - Measure of colony elongation, ranging from 0 (perfect circle) to 1 (highly elongated). Values near 0 indicate compact, radially symmetric growth typical of healthy bacterial colonies, while higher values may suggest directional growth, motility, or environmental gradients on the agar surface.
+   * - ``Solidity``
+     - Ratio of actual colony area to its convex hull area (Area/ConvexArea). Values near 1 indicate compact, solid colonies with minimal indentations. Lower values (< 0.9) may indicate invasive growth, colony spreading, or the presence of clearing zones around colonies.
+   * - ``Extent``
+     - Ratio of colony area to its bounding box area (ObjectArea/BboxArea). Measures how efficiently the colony fills its allocated space. Compact colonies have higher extent values, while spread-out or irregular colonies have lower values.
+   * - ``BboxArea``
+     - Area of the smallest rectangle that completely contains the colony. Represents the total spatial shape of the colony including any empty space. In high-throughput assays, this helps assess colony positioning and potential interference with neighboring colonies.
+   * - ``MajorAxisLength``
+     - Length of the longest axis of the ellipse that best fits the colony shape. Represents the maximum colony dimension. In arrayed microbial growth, this measurement helps identify colonies that have grown beyond their intended grid positions.
+   * - ``MinorAxisLength``
+     - Length of the shortest axis of the ellipse that best fits the colony shape. Represents the minimum colony dimension. Together with major axis length, this helps characterize colony aspect ratio and growth anisotropy.
+   * - ``Compactness``
+     - Calculated as :math:`\frac{\text{Perimeter}^2}{4\pi*\text{Area}}`. Inverse of circularity (ranges from 1 for perfect circles to higher values for irregular shapes). Measures colony shape complexity - compact, circular colonies have values near 1, while irregular or filamentous colonies have much higher values.
+   * - ``Orientation``
+     - Angle (in radians) between the colony's major axis and the horizontal axis. Measures colony alignment and growth directionality. Random orientations are typical for most bacterial colonies, while consistent orientations may indicate environmental gradients or mechanical stresses during plating.
+
+
+MeasureIntensity
+----------------
+
+Measure grayscale intensity statistics of detected colonies.
+
+Compute per-colony intensity metrics from the grayscale channel:
+integrated intensity, percentiles (min, Q1, median, Q3, max),
+standard deviation, coefficient of variation, and area-normalized
+density. These statistics reflect colony optical density, biomass
+accumulation, and internal heterogeneity.
+
+.. list-table:: Category: **Intensity**
+   :header-rows: 1
+
+   * - Name
+     - Description
+   * - ``IntegratedIntensity``
+     - The sum of the object's pixels
+   * - ``Density``
+     - The ratio of the object's intensity to the max possible intensity of the object
+   * - ``ConvexDensity``
+     - The ratio of the objects intensity to the max possible intensity of the object's convex hull
+   * - ``MinimumIntensity``
+     - The minimum intensity of the object
+   * - ``MaximumIntensity``
+     - The maximum intensity of the object
+   * - ``MeanIntensity``
+     - The mean intensity of the object
+   * - ``MedianIntensity``
+     - The median intensity of the object
+   * - ``StandardDeviationIntensity``
+     - The standard deviation of the object
+   * - ``CoefficientVarianceIntensity``
+     - The coefficient of variation of the object
+   * - ``LowerQuartileIntensity``
+     - The lower quartile intensity of the object
+   * - ``UpperQuartileIntensity``
+     - The upper quartile intensity of the object
+   * - ``InterquartileRangeIntensity``
+     - The interquartile range of the object
+
+
+MeasureBounds
+-------------
+
+Extract bounding box coordinates and centroids of detected colonies.
+
+Compute the axis-aligned bounding box and centroid (geometric and
+intensity-weighted) for each detected colony. These spatial
+measurements form the foundation for region-of-interest extraction,
+grid alignment assessment, and neighbor-distance calculations.
+
+.. list-table:: Category: **Bbox**
+   :header-rows: 1
+
+   * - Name
+     - Description
+   * - ``CenterRR``
+     - The row coordinate of the center of the bounding box.
+   * - ``MinRR``
+     - The smallest row coordinate of the bounding box.
+   * - ``MaxRR``
+     - The largest row coordinate of the bounding box.
+   * - ``CenterCC``
+     -  The column coordinate of the center of the bounding box.
+   * - ``MinCC``
+     -  The smallest column coordinate of the bounding box.
+   * - ``MaxCC``
+     -  The largest column coordinate of the bounding box.
+   * - ``IntensityWeightedCenterRR``
+     - The intensity-weighted center row coordinate of the object (skimage ``centroid_weighted``).
+   * - ``IntensityWeightedCenterCC``
+     - The intensity-weighted center column coordinate of the object (skimage ``centroid_weighted``).
+   * - ``DistWeightedCenterRR``
+     - Row coordinate of the per-object Euclidean-distance-transform maximum (deepest interior point of the object mask). Robust to thin filamentous extensions that pull intensity-weighted centroids off-body.
+   * - ``DistWeightedCenterCC``
+     - Column coordinate of the per-object Euclidean-distance-transform maximum (deepest interior point of the object mask). Robust to thin filamentous extensions that pull intensity-weighted centroids off-body.
+
+
+MeasureTexture
+--------------
+
+Measure colony surface texture using Haralick features from gray-level co-occurrence matrices.
+
+Compute 13 second-order Haralick texture features per colony at one
+or more pixel-offset scales, across four directional angles (0, 45,
+90, 135 degrees), plus direction-averaged values. These features
+quantify surface roughness, regularity, and directional patterns
+that distinguish colony morphotypes.
+
+.. list-table:: Category: **Texture**
+   :header-rows: 1
+
+   * - Name
+     - Description
+   * - ``AngularSecondMoment``
+     - Angular second moment (energy / uniformity). Measures the degree of local homogeneity
+        (Σ p(i,j)²). High values → uniform texture (e.g., smooth, yeast-like colonies with consistent
+        mycelial density). Low values → heterogeneous surfaces (e.g., sectored, wrinkled, or mixed
+        sporulation zones). Reflects colony surface regularity rather than brightness.
+   * - ``Contrast``
+     - Contrast (local intensity variation; Σ (i–j)² p(i,j)). High values indicate strong gray-level
+        differences (e.g., sharply defined rings, radial sectors, raised or folded regions). Low values
+        indicate gradual tonal changes or uniformly pigmented colonies. Quantifies visual roughness
+        and zonation amplitude.
+   * - ``Correlation``
+     - Linear gray-level correlation between neighboring pixels. Positive, high values suggest
+        structured spatial dependence (e.g., oriented radial hyphae or concentric patterns); near-zero
+        values indicate uncorrelated, disordered growth (e.g., diffuse cottony mycelium). Sensitive to
+        illumination gradients and directional GLCM computation.
+   * - ``HaralickVariance``
+     - GLCM variance (Σ (i–μ)² p(i,j)). Captures spread of co-occurring gray-level pairs, distinct
+        from raw intensity variance. High values → complex, multi-zone textures with variable
+        hyphal/spore densities. Low values → consistent gray-level relationships and simpler colony
+        surfaces.
+   * - ``InverseDifferenceMoment``
+     - Homogeneity (Σ p(i,j) / (1 + (i–j)²)). High values → smooth, locally uniform textures
+        (e.g., glabrous colonies, uniform aerial mycelium). Low values → abrupt gray-level changes
+        (e.g., granular sporulation, wrinkled surfaces). Typically inversely correlated with Contrast.
+   * - ``SumAverage``
+     - Mean of gray-level sums (Σ k·p_{x+y}(k)). Reflects the average intensity combination of
+        neighboring pixels. In fungal colonies, can loosely parallel mean colony brightness when
+        illumination and exposure are controlled, but remains a second-order rather than first-order
+        intensity metric.
+   * - ``SumVariance``
+     - Variance of gray-level sum distribution. High values → heterogeneous brightness zones
+        (e.g., alternating dense/sparse or pigmented/non-pigmented regions). Low values → uniform
+        tone across the colony. Often correlated with Contrast; use comparatively within one setup.
+   * - ``SumEntropy``
+     - Entropy of the gray-level sum distribution. High values → diverse brightness combinations
+        and irregular zonation. Low values → repetitive or periodic brightness patterns (e.g., evenly
+        spaced rings). Indicates spatial unpredictability of summed intensities.
+   * - ``Entropy``
+     - Global GLCM entropy (–Σ p(i,j)·log p(i,j)). Measures total texture disorder and information
+        content. High values → complex, irregular colony surfaces (powdery, fuzzy, or sectored growth).
+        Low values → simple, smooth, predictable patterns (glabrous or uniform colonies). Sensitive to
+        gray-level quantization and image dynamic range.
+   * - ``DiffVariance``
+     - Variance of gray-level difference distribution. High values → mixture of smooth and textured
+        regions (e.g., smooth margins with wrinkled centers). Low values → consistent edge content.
+        Highlights heterogeneity in edge magnitude across the colony.
+   * - ``DiffEntropy``
+     - Entropy of gray-level difference distribution. High values → irregular, unpredictable
+        intensity transitions (e.g., random sporulation or uneven mycelial networks). Low values →
+        regular periodic transitions (e.g., concentric zonation). Reflects randomness of local contrast
+        rather than its magnitude.
+   * - ``InfoCorrelation1``
+     - Information measure of correlation 1. Compares joint vs marginal entropies to quantify
+        mutual dependence between gray levels. Positive values → structured, predictable textures
+        (e.g., organized radial growth); near-zero → independence between adjacent regions.
+        Direction of sign varies with implementation.
+   * - ``InfoCorrelation2``
+     - Information measure of correlation 2 (√[1 – exp(–2 (H_xy2–H_xy))]). Always ≥ 0.
+        Values approaching 1 → strong spatial dependence and organized architecture (e.g., symmetric
+        rings, radial structure). Values near 0 → random, independent patterns. Captures nonlinear
+        organization missed by linear correlation.
+
+
+MeasureColor
+------------
+
+Measure colony color statistics across multiple perceptual color spaces.
+
+Extract per-colony color features from CIE XYZ, chromaticity (xy),
+CIE Lab (perceptually uniform), and HSV color spaces. For each
+channel the standard statistical suite is computed (min, Q1, mean,
+median, Q3, max, std dev, coefficient of variation), plus Lab chroma
+estimates.
+
+ColorXYZ
+^^^^^^^^
+
+.. list-table:: Category: **ColorXYZ**
+   :header-rows: 1
+
+   * - Name
+     - Description
+   * - ``CieXMin``
+     - The minimum X value of the object in CIE XYZ color space
+   * - ``CieXQ1``
+     - The lower quartile (Q1) X value of the object in CIE XYZ color space
+   * - ``CieXMean``
+     - The mean X value of the object in CIE XYZ color space
+   * - ``CieXMedian``
+     - The median X value of the object in CIE XYZ color space
+   * - ``CieXQ3``
+     - The upper quartile (Q3) X value of the object in CIE XYZ color space
+   * - ``CieXMax``
+     - The maximum X value of the object in CIE XYZ color space
+   * - ``CieXStdDev``
+     - The standard deviation of the X value of the object in CIE XYZ color space
+   * - ``CieXCoeffVar``
+     - The coefficient of variation of the X value of the object in CIE XYZ color space
+   * - ``CieYMin``
+     - The minimum Y value of the object in CIE XYZ color space
+   * - ``CieYQ1``
+     - The lower quartile (Q1) Y value of the object in CIE XYZ color space
+   * - ``CieYMean``
+     - The mean Y value of the object in CIE XYZ color space
+   * - ``CieYMedian``
+     - The median Y value of the object in CIE XYZ color space
+   * - ``CieYQ3``
+     - The upper quartile (Q3) Y value of the object in CIE XYZ color space
+   * - ``CieYMax``
+     - The maximum Y value of the object in CIE XYZ color space
+   * - ``CieYStdDev``
+     - The standard deviation of the Y value of the object in CIE XYZ color space
+   * - ``CieYCoeffVar``
+     - The coefficient of variation of the Y value of the object in CIE XYZ color space
+   * - ``CieZMin``
+     - The minimum Z value of the object in CIE XYZ color space
+   * - ``CieZQ1``
+     - The lower quartile (Q1) Z value of the object in CIE XYZ color space
+   * - ``CieZMean``
+     - The mean Z value of the object in CIE XYZ color space
+   * - ``CieZMedian``
+     - The median Z value of the object in CIE XYZ color space
+   * - ``CieZQ3``
+     - The upper quartile (Q3) Z value of the object in CIE XYZ color space
+   * - ``CieZMax``
+     - The maximum Z value of the object in CIE XYZ color space
+   * - ``CieZStdDev``
+     - The standard deviation of the Z value of the object in CIE XYZ color space
+   * - ``CieZCoeffVar``
+     - The coefficient of variation of the Z value of the object in CIE XYZ color space
+
+Colorxy
+^^^^^^^
+
+.. list-table:: Category: **Colorxy**
+   :header-rows: 1
+
+   * - Name
+     - Description
+   * - ``xMin``
+     - The minimum chromaticity x coordinate of the object
+   * - ``xQ1``
+     - The lower quartile (Q1) chromaticity x coordinate of the object
+   * - ``xMean``
+     - The mean chromaticity x coordinate of the object
+   * - ``xMedian``
+     - The median chromaticity x coordinate of the object
+   * - ``xQ3``
+     - The upper quartile (Q3) chromaticity x coordinate of the object
+   * - ``xMax``
+     - The maximum chromaticity x coordinate of the object
+   * - ``xStdDev``
+     - The standard deviation of the chromaticity x coordinate of the object
+   * - ``xCoeffVar``
+     - The coefficient of variation of the chromaticity x coordinate of the object
+   * - ``yMin``
+     - The minimum chromaticity y coordinate of the object
+   * - ``yQ1``
+     - The lower quartile (Q1) chromaticity y coordinate of the object
+   * - ``yMean``
+     - The mean chromaticity y coordinate of the object
+   * - ``yMedian``
+     - The median chromaticity y coordinate of the object
+   * - ``yQ3``
+     - The upper quartile (Q3) chromaticity y coordinate of the object
+   * - ``yMax``
+     - The maximum chromaticity y coordinate of the object
+   * - ``yStdDev``
+     - The standard deviation of the chromaticity y coordinate of the object
+   * - ``yCoeffVar``
+     - The coefficient of variation of the chromaticity y coordinate of the object
+
+ColorLab
+^^^^^^^^
+
+.. list-table:: Category: **ColorLab**
+   :header-rows: 1
+
+   * - Name
+     - Description
+   * - ``L*Min``
+     - The minimum L* value of the object
+   * - ``L*Q1``
+     - The lower quartile (Q1) L* value of the object
+   * - ``L*Mean``
+     - The mean L* value of the object
+   * - ``L*Median``
+     - The median L* value of the object
+   * - ``L*Q3``
+     - The upper quartile (Q3) L* value of the object
+   * - ``L*Max``
+     - The maximum L* value of the object
+   * - ``L*StdDev``
+     - The standard deviation of the L* value of the object
+   * - ``L*CoeffVar``
+     - The coefficient of variation of the L* value of the object
+   * - ``a*Min``
+     - The minimum a* value of the object
+   * - ``a*Q1``
+     - The lower quartile (Q1) a* value of the object
+   * - ``a*Mean``
+     - The mean a* value of the object
+   * - ``a*Median``
+     - The median a* value of the object
+   * - ``a*Q3``
+     - The upper quartile (Q3) a* value of the object
+   * - ``a*Max``
+     - The maximum a* value of the object
+   * - ``a*StdDev``
+     - The standard deviation of the a* value of the object
+   * - ``a*CoeffVar``
+     - The coefficient of variation of the a* value of the object
+   * - ``b*Min``
+     - The minimum b* value of the object
+   * - ``b*Q1``
+     - The lower quartile (Q1) b* value of the object
+   * - ``b*Mean``
+     - The mean b* value of the object
+   * - ``b*Median``
+     - The median b* value of the object
+   * - ``b*Q3``
+     - The upper quartile (Q3) b* value of the object
+   * - ``b*Max``
+     - The maximum b* value of the object
+   * - ``b*StdDev``
+     - The standard deviation of the b* value of the object
+   * - ``b*CoeffVar``
+     - The coefficient of variation of the b* value of the object
+   * - ``ChromaEstimatedMean``
+     - The mean chroma estimation of the object calculated using :math:`\(sqrt(a^{*}_{mean}^2 + b^{*}_{mean})^2}`
+   * - ``ChromaEstimatedMedian``
+     - The median chroma estimation of the object using :math:`\sqrt({a*_{median}^2 + b*_{median})^2}`
+
+ColorHSV
+^^^^^^^^
+
+.. list-table:: Category: **ColorHSV**
+   :header-rows: 1
+
+   * - Name
+     - Description
+   * - ``HueMin``
+     - The minimum hue of the object
+   * - ``HueQ1``
+     - The lower quartile (Q1) hue of the object
+   * - ``HueMean``
+     - The mean hue of the object
+   * - ``HueMedian``
+     - The median hue of the object
+   * - ``HueQ3``
+     - The upper quartile (Q3) hue of the object
+   * - ``HueMax``
+     - The maximum hue of the object
+   * - ``HueStdDev``
+     - The standard deviation of the hue of the object
+   * - ``HueCoeffVar``
+     - The coefficient of variation of the hue of the object
+   * - ``SaturationMin``
+     - The minimum saturation of the object
+   * - ``SaturationQ1``
+     - The lower quartile (Q1) saturation of the object
+   * - ``SaturationMean``
+     - The mean saturation of the object
+   * - ``SaturationMedian``
+     - The median saturation of the object
+   * - ``SaturationQ3``
+     - The upper quartile (Q3) saturation of the object
+   * - ``SaturationMax``
+     - The maximum saturation of the object
+   * - ``SaturationStdDev``
+     - The standard deviation of the saturation of the object
+   * - ``SaturationCoeffVar``
+     - The coefficient of variation of the saturation of the object
+   * - ``BrightnessMin``
+     - The minimum brightness of the object
+   * - ``BrightnessQ1``
+     - The lower quartile (Q1) brightness of the object
+   * - ``BrightnessMean``
+     - The mean brightness of the object
+   * - ``BrightnessMedian``
+     - The median brightness of the object
+   * - ``BrightnessQ3``
+     - The upper quartile (Q3) brightness of the object
+   * - ``BrightnessMax``
+     - The maximum brightness of the object
+   * - ``BrightnessStdDev``
+     - The standard deviation of the brightness of the object
+   * - ``BrightnessCoeffVar``
+     - The coefficient of variation of the brightness of the object
+
+
+MeasureColorComposition
+-----------------------
+
+Classify colony pixels into 11 perceptual color categories and measure composition.
+
+Applies a priority-based color model (neutrals → special colors → hues)
+to classify each colony pixel into one of 11 categories: Black, White,
+Gray, Pink, Brown, Red, Orange, Yellow, Green, Cyan, Blue, Purple.
+Returns per-colony percentage breakdowns as DataFrame columns.
+
+.. list-table:: Category: **ColorComposition**
+   :header-rows: 1
+
+   * - Name
+     - Description
+   * - ``BlackPct``
+     - Percentage of pixels classified as black (Value < 20)
+   * - ``WhitePct``
+     - Percentage of pixels classified as white (Saturation < 15, Value > 85)
+   * - ``GrayPct``
+     - Percentage of pixels classified as gray (Saturation < 15, Value 20-85)
+   * - ``PinkPct``
+     - Percentage of pixels classified as pink (Red/Magenta hue, Saturation 20-60, Value > 80)
+   * - ``BrownPct``
+     - Percentage of pixels classified as brown (Red/Orange hue, Value 20-60)
+   * - ``RedPct``
+     - Percentage of pixels classified as red (Hue 0-15° or 345-360°)
+   * - ``OrangePct``
+     - Percentage of pixels classified as orange (Hue 15-45°)
+   * - ``YellowPct``
+     - Percentage of pixels classified as yellow (Hue 45-75°)
+   * - ``GreenPct``
+     - Percentage of pixels classified as green (Hue 75-150°)
+   * - ``CyanPct``
+     - Percentage of pixels classified as cyan (Hue 150-180°)
+   * - ``BluePct``
+     - Percentage of pixels classified as blue (Hue 180-250°)
+   * - ``PurplePct``
+     - Percentage of pixels classified as purple/magenta (Hue 250-345°)
+
+
+MeasureGridSpatial
+------------------
+
+Measure pixel-to-pixel distances to neighbors in adjacent grid cells.
+
+For each detected colony, identify the nearest object in the left,
+right, above, and below grid cells and report the minimum Euclidean
+distance between their pixel masks. Distances are computed via a
+per-section distance transform over a local window covering the target
+cell and its immediate neighbors, so round colonies are not
+over-estimated by their bounding boxes. Edge and corner colonies report
+``NaN`` for directions beyond the plate boundary.
+
+.. list-table:: Category: **GridSpatial**
+   :header-rows: 1
+
+   * - Name
+     - Description
+   * - ``LeftNeighborObjLabel``
+     - The object label of the left neighbor colony
+   * - ``LeftDistance``
+     - The minimum pixel-to-pixel distance to the left neighbor colony, computed via a Euclidean distance transform of object pixel masks
+   * - ``RightNeighborObjLabel``
+     - The object label of the right neighbor colony
+   * - ``RightDistance``
+     - The minimum pixel-to-pixel distance to the right neighbor colony, computed via a Euclidean distance transform of object pixel masks
+   * - ``AboveNeighborObjLabel``
+     - The object label of the above neighbor colony
+   * - ``AboveDistance``
+     - The minimum pixel-to-pixel distance to the above neighbor colony, computed via a Euclidean distance transform of object pixel masks
+   * - ``UnderNeighborObjLabel``
+     - The object label of the under neighbor colony
+   * - ``UnderDistance``
+     - The minimum pixel-to-pixel distance to the under neighbor colony, computed via a Euclidean distance transform of object pixel masks
+
+
+MeasureGridLinRegStats
+----------------------
+
+Evaluate grid alignment quality using row-wise and column-wise linear regression.
+
+Fit linear regressions to colony centroid positions along each row
+and column of the grid, then compute per-colony residual error
+(Euclidean distance between observed and predicted centroid). High
+residual errors flag off-grid growth, misdetections, or plate
+warping.
+
+.. list-table:: Category: **GridLinReg**
+   :header-rows: 1
+
+   * - Name
+     - Description
+   * - ``RowM``
+     - Slope of row-wise linear regression fit across column positions. Measures systematic drift in row alignment. Values near 0 indicate horizontal rows; non-zero values suggest rotational misalignment or systematic row curvature across the plate.
+   * - ``RowB``
+     - Intercept of row-wise linear regression fit. Represents the expected row coordinate when column position is 0. Combined with slope, defines the expected row trend line for quality assessment and position prediction.
+   * - ``ColM``
+     - Slope of column-wise linear regression fit across row positions. Measures systematic drift in column alignment. Values near 0 indicate vertical columns; non-zero values suggest rotational misalignment or systematic column curvature across the plate.
+   * - ``ColB``
+     - Intercept of column-wise linear regression fit. Represents the expected column coordinate when row position is 0. Combined with slope, defines the expected column trend line for quality assessment and position prediction.
+   * - ``PredRR``
+     - Predicted row coordinate from column-wise linear regression. Uses the column position and column regression parameters (ColM, ColB) to estimate where the row coordinate should be if the grid were perfectly aligned. Used for calculating residual errors and detecting misaligned colonies.
+   * - ``PredCC``
+     - Predicted column coordinate from row-wise linear regression. Uses the row position and row regression parameters (RowM, RowB) to estimate where the column coordinate should be if the grid were perfectly aligned. Used for calculating residual errors and detecting misaligned colonies.
+   * - ``ResidualError``
+     - Euclidean distance between the actual colony centroid and the predicted position from linear regression. Quantifies how far each colony deviates from the expected grid pattern. High values indicate misdetections, off-grid growth, or local plate warping. Used by refinement operations to filter outliers and select the most plausible colony per grid cell.
+
+
+MeasureGridSpread
+-----------------
+
+Quantify within-well colony dispersion using pairwise centroid distances.
+
+Compute the sum of squared pairwise Euclidean distances between all
+colony centroids in each grid section. High values indicate multiple
+dispersed objects within a single well -- a sign of over-segmentation,
+fragmented growth, or invasive spreading.
+
+.. list-table:: Category: **GridSpread**
+   :header-rows: 1
+
+   * - Name
+     - Description
+   * - ``ObjectSpread``
+     - Sum of squared pairwise Euclidean distances between all unique colony pairs within a grid section. Quantifies spatial dispersion of colonies in a grid cell. Higher values indicate greater spread from the section center, suggesting over-segmentation, multi-detections, or colonies growing beyond expected boundaries. Used to identify problematic grid sections requiring refinement or quality review.
+
+
+MeasureSymmetricZones
+---------------------
+
+Measure colony radial expansion and angular symmetry from the object mask alone.
+
+Quantifies each colony by four scalars derived directly from its binary
+mask and distance-from-inoculum map — no skeletonization, no branch
+tracing, no runner outlier flagging. The headline output is
+``SymmetricRadius``, the first radius past the inoculum core at which the
+per-annulus circular mean resultant length of mask-boundary pixels drops
+below a tunable symmetry threshold. ``CoreRadius`` (PELT changepoint on
+the radial density profile, identical algorithm to
+:class:`MeasureRadialExpansion`) anchors the measurement; ``MeanExpansion``
+and ``MaxExpansion`` summarise how far growth reached past that core.
+
+Zone segmentation (core / dense / sparse) uses a 1D per-annulus
+**normalised colony-ness** signal ``c(r)`` computed from the ring-wide
+mean intensity. After calibrating ``I_core`` and ``I_agar`` from
+percentiles of the expanded crop, each ring's mean intensity is mapped
+into ``[0, 1]`` where 1 = pure colony and 0 = pure agar. For a
+roughly circular colony, ``c(r)`` decreases monotonically outward
+(uniform dense core ≈ 1, mixed dense branching ≈ 0.5–0.8, sparse
+branching ≈ 0.1–0.4, agar = 0), so zone boundaries follow directly
+from threshold crossings — no peak-finding. Zones are emitted as
+concentric circles at the three scalar radii. Variance and raw mean
+per ring are retained in the intermediates for diagnostic access but
+do not drive segmentation.
+
+.. list-table:: Category: **SymmetricZones**
+   :header-rows: 1
+
+   * - Name
+     - Description
+   * - ``CoreRadius``
+     - Radius of the dense inoculum core, determined by PELT changepoint detection on the radial mask-density profile centered on the inoculum. Growth measurements are reported relative to this boundary.
+   * - ``SymmetricRadius``
+     - Radial distance from the inoculum centroid at which colony growth ceases to be angularly uniform. Computed as the first radius past the core where the smoothed per-annulus circular mean resultant length of mask-boundary pixels exceeds the symmetry threshold. Equals the colony outer envelope when growth remains symmetric throughout.
+   * - ``MeanExpansion``
+     - Mean distance of mask-boundary pixels from the inoculum centroid, measured from the core boundary outward. Captures the typical radial extent of growth past the inoculum, averaged over all angular directions.
+   * - ``MaxExpansion``
+     - Maximum distance of any mask pixel from the inoculum centroid, measured from the core boundary outward. Captures the farthest extent of growth past the inoculum.
+   * - ``CoreEndRadius``
+     - Mean radius of the inoculum core boundary derived from the per-angle bright/background ratio walk. Each of 360 1° angular sectors finds the outer edge of the contiguous core run (bright fraction >= tau_core); the reported value is the mean across sectors. Compare with CoreRadius (the global PELT changepoint) — close agreement indicates a well-formed core.
+   * - ``DenseEndRadius``
+     - Mean outer radius of the dense branching zone, where mask-bright pixels dominate (bright fraction >= tau_sparse). Per-angle radii are capped at the SymmetricRadius and angularly median-smoothed before averaging.
+   * - ``SparseEndRadius``
+     - Mean outer radius of the sparse branching zone (= colony envelope inside the symmetric growth front). Equals min(objmask outer envelope, SymmetricRadius) per angle, averaged across 360 sectors.
+   * - ``CoreArea``
+     - Pixel^2 area of the inoculum core zone, integrated across the 360-sector polar polygon defined by the per-angle core radii.
+   * - ``DenseArea``
+     - Pixel^2 area of the dense branching zone, the annular region between the per-angle core boundary and dense-branching boundary.
+   * - ``SparseArea``
+     - Pixel^2 area of the sparse branching zone, the annular region between the per-angle dense boundary and the symmetric-envelope outer boundary.
+

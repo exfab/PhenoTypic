@@ -89,6 +89,7 @@ extensions = [
     "sphinx_autosummary_accessors",
     "sphinx_design",
     "class_members",
+    "measurements_ref",
     "sphinx_togglebutton",
     "myst_parser",
     "typehint_formatter",

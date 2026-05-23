@@ -4,6 +4,17 @@ from phenotypic.abc_._measurement_info import MeasurementInfo
 
 
 class ColorXYZ(MeasurementInfo):
+    """Measure colony color statistics across multiple perceptual color spaces.
+
+    Extract per-colony color features from CIE XYZ, chromaticity (xy),
+    CIE Lab (perceptually uniform), and HSV color spaces. For each
+    channel the standard statistical suite is computed (min, Q1, mean,
+    median, Q3, max, std dev, coefficient of variation), plus Lab chroma
+    estimates.
+
+    Covers CIE XYZ tristimulus values (X, Y, Z).
+    """
+
     @classmethod
     def category(cls):
         return "ColorXYZ"

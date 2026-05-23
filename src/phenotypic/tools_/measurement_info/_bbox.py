@@ -4,6 +4,14 @@ from phenotypic.abc_._measurement_info import MeasurementInfo
 
 
 class BBOX(MeasurementInfo):
+    """Extract bounding box coordinates and centroids of detected colonies.
+
+    Compute the axis-aligned bounding box and centroid (geometric and
+    intensity-weighted) for each detected colony. These spatial
+    measurements form the foundation for region-of-interest extraction,
+    grid alignment assessment, and neighbor-distance calculations.
+    """
+
     @classmethod
     def category(cls) -> str:
         return "Bbox"

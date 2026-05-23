@@ -38,13 +38,14 @@ started.
 
          Start learning
 
-   .. grid-item-card:: How-To Guides
+   .. grid-item-card:: Guides
       :img-top: ./_static/assets/200x150/examples.svg
       :class-card: intro-card
       :shadow: md
 
-      Task-oriented recipes for specific problems: correcting images, choosing
-      detectors, measuring colonies, running batch jobs, and more.
+      How-to recipes for specific problems, conceptual explanations of how
+      and why things work, and guides for extending PhenoTypic with your
+      own operations, detectors, and dashboards.
 
       +++
 
@@ -54,43 +55,26 @@ started.
          :color: secondary
          :expand:
 
-         Find a recipe
+         Browse the guides
 
-   .. grid-item-card::  Explanation
+   .. grid-item-card:: Measurements Reference
       :img-top: ./_static/assets/200x150/dev_guide.svg
       :class-card: intro-card
       :shadow: md
 
-      Conceptual guides that explain how and why things work: color spaces,
-      detection strategies, measurement metrics, and the pipeline model.
+      A quick reference for every column produced by PhenoTypic's per-object
+      measurement operators — useful if you've received processed data and
+      need to know what a column means.
 
       +++
 
-      .. button-ref:: explanation/index
+      .. button-ref:: measurements_ref/index
          :ref-type: doc
          :click-parent:
          :color: secondary
          :expand:
 
-         Understand the concepts
-
-   .. grid-item-card::  Extending
-      :img-top: ./_static/assets/200x150/downloads.svg
-      :class-card: intro-card
-      :shadow: md
-
-      Build your own operations, detectors, and dashboards on top of
-      PhenoTypic's modular architecture.
-
-      +++
-
-      .. button-ref:: extending/index
-         :ref-type: doc
-         :click-parent:
-         :color: secondary
-         :expand:
-
-         Start extending
+         Look up a measurement
 
    .. grid-item-card::  API Reference
       :img-top: ./_static/assets/200x150/api_ref_sign.svg
@@ -140,6 +124,7 @@ started.
    how_to/index
    explanation/index
    extending/index
+   measurements_ref/index
    api_reference/index
    contrib_guide/index
    downloads

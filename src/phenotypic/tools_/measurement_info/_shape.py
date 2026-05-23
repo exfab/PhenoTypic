@@ -4,7 +4,14 @@ from phenotypic.abc_._measurement_info import MeasurementInfo
 
 
 class SHAPE(MeasurementInfo):
-    """The labels and descriptions of the shape measurements."""
+    """Measure comprehensive morphological characteristics of detected colonies.
+
+    Extract geometric metrics from each colony shape: area, perimeter,
+    circularity, convex hull properties, width-based measures, Feret
+    diameters, eccentricity, and best-fit ellipse parameters. The output
+    DataFrame provides a full morphological profile for phenotypic
+    classification and growth-pattern analysis.
+    """
 
     @classmethod
     def category(cls):

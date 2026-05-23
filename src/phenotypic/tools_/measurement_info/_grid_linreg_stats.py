@@ -4,10 +4,13 @@ from phenotypic.abc_._measurement_info import MeasurementInfo
 
 
 class GRID_LINREG_STATS(MeasurementInfo):
-    """Grid linear regression statistics and residual errors.
+    """Evaluate grid alignment quality using row-wise and column-wise linear regression.
 
-    Provides measurements for evaluating grid alignment quality and detecting off-grid
-    colonies in arrayed microbial assays.
+    Fit linear regressions to colony centroid positions along each row
+    and column of the grid, then compute per-colony residual error
+    (Euclidean distance between observed and predicted centroid). High
+    residual errors flag off-grid growth, misdetections, or plate
+    warping.
     """
 
     @classmethod

@@ -4,10 +4,12 @@ from phenotypic.abc_._measurement_info import MeasurementInfo
 
 
 class GRID_SPREAD(MeasurementInfo):
-    """Grid section spatial spread measurements.
+    """Quantify within-well colony dispersion using pairwise centroid distances.
 
-    Provides measurements for evaluating spatial distribution of colonies within
-    grid sections of arrayed microbial assays.
+    Compute the sum of squared pairwise Euclidean distances between all
+    colony centroids in each grid section. High values indicate multiple
+    dispersed objects within a single well -- a sign of over-segmentation,
+    fragmented growth, or invasive spreading.
     """
 
     @classmethod
