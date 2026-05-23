@@ -706,3 +706,31 @@ class TestSectionNumberDtype:
         for col_name in [str(GRID.ROW_MAJOR_IDX), str(GRID.COL_MAJOR_IDX)]:
             assert result[col_name].dtype.name == "category"
             assert result[col_name].cat.categories.dtype == pd.UInt16Dtype()
+
+
+class TestInspectDashboardRename:
+    """Regression guard for the inspect()→dashboard() rename.
+
+    The ``inspect()`` name is reserved across the codebase for methods
+    returning a saveable matplotlib or plotly figure consumed by the
+    CLI's ``--save-inspect`` flag. AutoGridFinder's diagnostic surface
+    returns a ``panel.Column`` (interactive, not flattenable to a
+    static raster) so it is exposed under ``dashboard()`` instead.
+    These checks catch an accidental revert of the rename, which would
+    cause the CLI to auto-save a non-figure return type and emit
+    confusing warnings.
+    """
+
+    def test_dashboard_method_exists(self):
+        assert hasattr(AutoGridFinder, "dashboard"), (
+            "AutoGridFinder.dashboard() must exist after the inspect→dashboard rename"
+        )
+        assert callable(AutoGridFinder.dashboard)
+
+    def test_inspect_method_does_not_exist(self):
+        assert not hasattr(AutoGridFinder, "inspect"), (
+            "AutoGridFinder.inspect() must NOT exist — it would be auto-picked "
+            "up by the CLI's --save-inspect dispatch and produce a panel.Column "
+            "(unsupported figure type). Use dashboard() for the interactive "
+            "diagnostic surface."
+        )

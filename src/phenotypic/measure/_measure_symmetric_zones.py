@@ -1425,6 +1425,8 @@ class MeasureSymmetricZones(MeasureFeatures):
             self,
             image: Image | None = None,
             base_layer: Literal["rgb", "gray", "detect_mat"] = "gray",
+            *,
+            for_save: bool = False,
     ):
         """Plate-level diagnostic overlay for symmetric-radius measurement.
 
@@ -1433,6 +1435,12 @@ class MeasureSymmetricZones(MeasureFeatures):
                 image cached by the most recent :meth:`measure` call is
                 reused.
             base_layer: Which image array to use as the plotly background.
+            for_save: When *True*, every overlay trace is force-shown
+                (no ``visible="legendonly"``) so the figure renders
+                meaningfully as a static raster. The CLI's
+                ``--save-inspect`` flag passes this. Defaults to *False*
+                (interactive Jupyter use, with overlay layers toggleable
+                from the legend).
 
         Returns:
             plotly.graph_objects.Figure with toggleable overlay layers.
@@ -1492,6 +1500,11 @@ class MeasureSymmetricZones(MeasureFeatures):
                 ),
                 height=overview_h,
         )
+
+        if for_save:
+            for trace in fig.data:
+                if getattr(trace, "visible", True) == "legendonly":
+                    trace.visible = True
         return fig
 
     @staticmethod

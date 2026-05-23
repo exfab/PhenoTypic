@@ -125,6 +125,11 @@ class ExecutionConfig:
     # never regenerate overlays regardless of this flag.
     save_overlays: bool = True
 
+    # Opt-in saved inspect figures for measurers with .inspect() methods.
+    # See OutputManager.save_inspect and the MeasureFeatures ABC docstring
+    # for the duck-typed protocol contract.
+    save_inspects: bool = False
+
     # Measure-only mode: reload HDFs and rerun pipeline.measure() without detection
     measure_only: bool = False
     

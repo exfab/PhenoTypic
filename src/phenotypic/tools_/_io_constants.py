@@ -232,6 +232,12 @@ DIR_HDF: Final[str] = "hdf"
 #: Overlay PNG subdirectory: ``<output>/results/<ds>/overlays/``.
 DIR_OVERLAYS: Final[str] = "overlays"
 
+#: Inspect-figure PNG subdirectory:
+#: ``<output>/results/<ds>/inspect/<measurer-step>/``. Provisioned only
+#: when the CLI's ``--save-inspect`` flag is set; per-measurer
+#: subdirectories are created lazily by ``OutputManager.save_inspect``.
+DIR_INSPECT: Final[str] = "inspect"
+
 #: Mid-run chunk parquet subdirectory: ``<progress>/chunks/``.
 DIR_CHUNKS: Final[str] = "chunks"
 

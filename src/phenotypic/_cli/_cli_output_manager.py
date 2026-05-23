@@ -15,7 +15,7 @@ import shutil
 import tempfile
 import warnings
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, TYPE_CHECKING
+from typing import Any, Callable, Dict, List, Optional, TYPE_CHECKING
 
 import pandas as pd
 import polars as pl
@@ -40,6 +40,7 @@ from phenotypic.tools_ import (
     DIR_MEASUREMENTS_BY_FEATURE,
     DIR_LOGS,
     DIR_HDF,
+    DIR_INSPECT,
     DIR_OVERLAYS,
     DATASET_AGGREGATED_PARQUET,
     EnvVar,
@@ -855,6 +856,7 @@ class OutputManager:
         include_dataset_column: bool = True,
         overlay_alpha: float = 0.3,
         save_overlays: bool = True,
+        save_inspects: bool = False,
     ):
         """
         Initialize OutputManager.
@@ -872,6 +874,10 @@ class OutputManager:
                 ``overlays/`` directory per dataset and workers will save
                 a PNG overlay per image. Defaults to True; set False only
                 for ``--measure`` reruns that should not regenerate overlays.
+            save_inspects: If True, ``create_structure`` provisions an
+                ``inspect/`` directory per dataset and workers will call
+                :meth:`save_inspect` for every measurer with a ``.inspect()``
+                method. Defaults to False (opt-in via ``--save-inspect``).
         """
         self.base_dir = Path(base_dir)
         self.save_layers = save_layers
@@ -879,6 +885,7 @@ class OutputManager:
         self.include_dataset_column = include_dataset_column
         self.overlay_alpha = overlay_alpha
         self.save_overlays = save_overlays
+        self.save_inspects = save_inspects
 
         # Results directory for dataset outputs (images, measurements, overlays)
         self.results_dir = self.base_dir / DIR_RESULTS
@@ -894,6 +901,7 @@ class OutputManager:
         include_dataset_column: bool = True,
         overlay_alpha: float = 0.3,
         save_overlays: bool = True,
+        save_inspects: bool = False,
     ) -> "OutputManager":
         """Create an OutputManager configured for HDF-centric forward runs.
 
@@ -913,6 +921,10 @@ class OutputManager:
                 dataset and save an overlay per image. Pass False only
                 for ``--measure`` reruns that should not regenerate
                 overlays.
+            save_inspects: If True, provision ``inspect/`` per dataset
+                and call :meth:`save_inspect` for every measurer that
+                implements ``.inspect()``. Defaults to False (opt-in
+                via the CLI's ``--save-inspect`` flag).
         """
         return cls(
             base_dir=base_dir,
@@ -921,6 +933,7 @@ class OutputManager:
             include_dataset_column=include_dataset_column,
             overlay_alpha=overlay_alpha,
             save_overlays=save_overlays,
+            save_inspects=save_inspects,
         )
 
     def create_structure(self, datasets: List[Dataset]) -> None:
@@ -954,6 +967,12 @@ class OutputManager:
             (dataset_dir / DIR_HDF).mkdir(exist_ok=True)
             if self.save_overlays:
                 (dataset_dir / DIR_OVERLAYS).mkdir(exist_ok=True)
+            if self.save_inspects:
+                # Per-measurer subdirs (inspect/<measurer-key>/) are
+                # created lazily by :meth:`save_inspect`; we only
+                # provision the parent here so workers don't race on
+                # the first dispatch.
+                (dataset_dir / DIR_INSPECT).mkdir(exist_ok=True)
 
     def get_output_path(
         self,
@@ -1056,6 +1075,159 @@ class OutputManager:
             )
 
         return output_path
+
+    def save_inspect(
+        self,
+        measurer: Any,
+        image: "Image",
+        dataset_name: str,
+        image_stem: str,
+        *,
+        measurer_key: str,
+    ) -> Optional[Path]:
+        """Render ``measurer.inspect(image, for_save=True)`` and write a PNG.
+
+        Lands at ``<results>/<dataset>/inspect/<measurer-key>/<stem>.png``.
+        Dispatches on the returned figure's type — matplotlib and plotly
+        figures are both supported. Any other return type, or any
+        exception raised by the inspect call or the writer, is logged at
+        WARNING and skipped (the run continues).
+
+        Precondition: the caller must invoke this method immediately
+        after ``pipeline.apply_and_measure(image)`` / ``pipeline.measure(image)``
+        on the same ``image`` instance. Measurer implementations rely
+        on a per-instance diagnostic cache populated during ``_operate()``
+        keyed on object identity; calling ``inspect()`` against a
+        different image silently triggers a full recompute.
+
+        Args:
+            measurer: A ``MeasureFeatures`` subclass instance with an
+                ``inspect(image, *, for_save=True)`` method (duck-typed).
+            image: The Image just measured by ``measurer``.
+            dataset_name: Dataset name (used in the output path).
+            image_stem: Image filename stem (used in the output path).
+            measurer_key: Pipeline step key for the measurer; used as
+                the subdirectory under ``inspect/`` so distinct
+                instances of the same class land in distinct folders.
+
+        Returns:
+            The written PNG path on success, or ``None`` if the inspect
+            call raised, returned an unsupported figure type, or the
+            writer failed.
+        """
+        inspect_dir = self.results_dir / dataset_name / DIR_INSPECT / measurer_key
+        output_path = inspect_dir / f"{image_stem}.png"
+        try:
+            fig = measurer.inspect(image, for_save=True)
+        except Exception as e:
+            logger.warning(
+                "save_inspect: inspect() raised for %s/%s/%s: %s: %s",
+                dataset_name, image_stem, measurer_key, type(e).__name__, e,
+            )
+            return None
+
+        try:
+            writer = self._build_inspect_writer(fig, image_stem)
+        except TypeError as e:
+            logger.warning(
+                "save_inspect: unsupported figure type for %s/%s/%s: %s",
+                dataset_name, image_stem, measurer_key, e,
+            )
+            return None
+
+        try:
+            _atomic_write(output_path, writer)
+        except Exception as e:
+            logger.warning(
+                "save_inspect: writer failed for %s/%s/%s: %s: %s",
+                dataset_name, image_stem, measurer_key, type(e).__name__, e,
+            )
+            return None
+        return output_path
+
+    @staticmethod
+    def _build_inspect_writer(
+        fig: Any, image_stem: str,
+    ) -> Callable[[str], None]:
+        """Return a writer callable that prepends ``image_stem`` to the
+        figure title then writes a PNG at the given path.
+
+        Title mutation is deferred into the returned writer (not applied
+        eagerly) so that calling this builder twice on the same figure
+        does not compound the prepended stem. This matters for any
+        future measurer that returns a cached figure object from
+        ``inspect()`` — without the deferral, a second
+        ``save_inspect`` call on the same cache hit would produce
+        ``"img2 — img1 — original-title"``.
+
+        Raises:
+            TypeError: When *fig* is neither a matplotlib nor a plotly
+                Figure instance. Caller logs and skips.
+        """
+        try:
+            from matplotlib.figure import Figure as MplFigure
+        except ImportError:
+            MplFigure = None  # type: ignore[assignment]
+
+        try:
+            from plotly.graph_objects import Figure as PlotlyFigure
+        except ImportError:
+            PlotlyFigure = None  # type: ignore[assignment]
+
+        if MplFigure is not None and isinstance(fig, MplFigure):
+            # Capture the title at builder construction. The writer
+            # mutates the figure, writes the PNG, then restores the
+            # original title so a second write on the same cached
+            # figure does not see a stem-prefixed baseline.
+            original_mpl_title = (
+                fig._suptitle.get_text() if fig._suptitle else ""  # type: ignore[attr-defined]
+            )
+
+            def _write_mpl(path: str) -> None:
+                # ``_atomic_write`` uses a ``.tmp`` suffix, so force
+                # ``format="png"`` because matplotlib infers from the
+                # extension otherwise.
+                import matplotlib.pyplot as plt
+                fig.suptitle(
+                    f"{image_stem} — {original_mpl_title}".rstrip(" —")
+                )
+                try:
+                    fig.savefig(
+                        path, format="png", dpi=150, bbox_inches="tight",
+                    )
+                finally:
+                    fig.suptitle(original_mpl_title)
+                plt.close(fig)
+
+            return _write_mpl
+
+        if PlotlyFigure is not None and isinstance(fig, PlotlyFigure):
+            original_plotly_title = ""
+            title = fig.layout.title
+            if title is not None and title.text:
+                original_plotly_title = str(title.text)
+
+            def _write_plotly(path: str) -> None:
+                # Force ``format="png"`` for the same reason as the mpl
+                # branch: kaleido would otherwise infer from the ``.tmp``
+                # temp-file extension.
+                new_text = (
+                    f"{image_stem} — {original_plotly_title}".rstrip(" —")
+                )
+                fig.update_layout(title={"text": new_text})
+                try:
+                    fig.write_image(path, format="png", scale=2)
+                finally:
+                    fig.update_layout(
+                        title={"text": original_plotly_title},
+                    )
+
+            return _write_plotly
+
+        raise TypeError(
+            f"figure type {type(fig).__name__} is not matplotlib.figure.Figure "
+            f"or plotly.graph_objects.Figure"
+        )
 
     def _save_layer_safely(
         self,

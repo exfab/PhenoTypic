@@ -33,6 +33,7 @@ from ._io_constants import (
     DATASET_AGGREGATED_PARQUET,
     DIR_CHUNKS,
     DIR_HDF,
+    DIR_INSPECT,
     DIR_LOGS,
     DIR_MEASUREMENTS,
     DIR_MEASUREMENTS_BY_FEATURE,
@@ -171,6 +172,7 @@ __all__ = [
     # Directory constants
     "DIR_CHUNKS",
     "DIR_HDF",
+    "DIR_INSPECT",
     "DIR_LOGS",
     "DIR_MEASUREMENTS",
     "DIR_MEASUREMENTS_BY_FEATURE",
