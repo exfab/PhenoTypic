@@ -21,6 +21,37 @@ pytestmark = pytest.mark.skipif(
     reason="OutputManager uses POSIX atomic writes",
 )
 
+
+def _kaleido_chrome_available() -> bool:
+    """Return True iff choreographer can locate a Chrome executable.
+
+    kaleido >= 1 requires an external Chrome install for Plotly PNG export;
+    choreographer is the underlying browser manager. On GitHub Actions
+    ubuntu-latest/macOS runners Chrome is pre-installed and this returns
+    True. On minimal containers or Windows this returns False.
+    """
+    try:
+        from choreographer.browsers.chromium import (
+            chromium_based_browsers,
+            get_browser_path,
+        )
+        return any(
+            get_browser_path(exe) is not None
+            for info in chromium_based_browsers.values()
+            for exe in info.exe_names
+        )
+    except Exception:
+        return False
+
+
+_requires_kaleido_chrome = pytest.mark.skipif(
+    not _kaleido_chrome_available(),
+    reason=(
+        "kaleido >= 1 requires Chrome for Plotly PNG export; "
+        "install via `kaleido_get_chrome`"
+    ),
+)
+
 from phenotypic._cli._cli_output_manager import OutputManager
 
 
@@ -102,6 +133,7 @@ class TestSaveInspect:
         # PNG magic bytes
         assert expected.read_bytes()[:8] == b"\x89PNG\r\n\x1a\n"
 
+    @_requires_kaleido_chrome
     def test_plotly_figure_writes_non_empty_png(self, tmp_path: Path) -> None:
         om = _make_output_manager(tmp_path)
         result = om.save_inspect(
@@ -157,6 +189,7 @@ class TestSaveInspect:
             for r in caplog.records
         )
 
+    @_requires_kaleido_chrome
     def test_title_at_write_time_prepends_stem_to_existing_plotly_title(
         self, tmp_path: Path,
     ) -> None:
@@ -190,6 +223,7 @@ class TestSaveInspect:
         assert captured.startswith("2024-03-14_plate_A2")
         assert "stub-title" in captured
 
+    @_requires_kaleido_chrome
     def test_title_does_not_compound_on_repeat_calls(
         self, tmp_path: Path,
     ) -> None:
