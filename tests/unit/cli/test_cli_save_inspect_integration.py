@@ -19,6 +19,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.unit.cli._kaleido_utils import requires_kaleido_chrome
+
 pytestmark = pytest.mark.skipif(
     sys.platform == "win32",
     reason="OutputManager uses POSIX atomic writes",
@@ -88,6 +90,7 @@ def _make_output_manager(
 class TestSaveInspectForwardRun:
     """``--save-inspect`` writes a PNG per measurer per image on a forward run."""
 
+    @requires_kaleido_chrome
     def test_save_inspect_writes_png_for_symmetric_zones(
         self, temp_workspace: Path, saved_image_path: Path,
         inspect_pipeline_path: Path,
@@ -139,6 +142,7 @@ class TestSaveInspectForwardRun:
 class TestSaveInspectMeasureRerun:
     """``--save-inspect`` also fires on the ``--measure`` HDF rerun path."""
 
+    @requires_kaleido_chrome
     def test_save_inspect_regenerates_on_hdf_rerun(
         self, temp_workspace: Path, saved_image_path: Path,
         inspect_pipeline_path: Path,

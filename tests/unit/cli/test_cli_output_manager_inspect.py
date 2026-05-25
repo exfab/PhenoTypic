@@ -16,6 +16,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.unit.cli._kaleido_utils import requires_kaleido_chrome
+
 pytestmark = pytest.mark.skipif(
     sys.platform == "win32",
     reason="OutputManager uses POSIX atomic writes",
@@ -102,6 +104,7 @@ class TestSaveInspect:
         # PNG magic bytes
         assert expected.read_bytes()[:8] == b"\x89PNG\r\n\x1a\n"
 
+    @requires_kaleido_chrome
     def test_plotly_figure_writes_non_empty_png(self, tmp_path: Path) -> None:
         om = _make_output_manager(tmp_path)
         result = om.save_inspect(
@@ -157,6 +160,7 @@ class TestSaveInspect:
             for r in caplog.records
         )
 
+    @requires_kaleido_chrome
     def test_title_at_write_time_prepends_stem_to_existing_plotly_title(
         self, tmp_path: Path,
     ) -> None:
@@ -190,6 +194,7 @@ class TestSaveInspect:
         assert captured.startswith("2024-03-14_plate_A2")
         assert "stub-title" in captured
 
+    @requires_kaleido_chrome
     def test_title_does_not_compound_on_repeat_calls(
         self, tmp_path: Path,
     ) -> None:
