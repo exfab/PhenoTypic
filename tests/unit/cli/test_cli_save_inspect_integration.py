@@ -26,6 +26,7 @@ pytestmark = pytest.mark.skipif(
     reason="OutputManager uses POSIX atomic writes",
 )
 
+
 from PIL import Image as PILImage
 
 from phenotypic import ImagePipeline

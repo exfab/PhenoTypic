@@ -23,6 +23,7 @@ pytestmark = pytest.mark.skipif(
     reason="OutputManager uses POSIX atomic writes",
 )
 
+
 from phenotypic._cli._cli_output_manager import OutputManager
 
 
