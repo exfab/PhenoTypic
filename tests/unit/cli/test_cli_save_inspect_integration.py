@@ -19,40 +19,13 @@ from pathlib import Path
 
 import pytest
 
+from tests.unit.cli._kaleido_utils import requires_kaleido_chrome
+
 pytestmark = pytest.mark.skipif(
     sys.platform == "win32",
     reason="OutputManager uses POSIX atomic writes",
 )
 
-
-def _kaleido_chrome_available() -> bool:
-    """Return True iff choreographer can locate a Chrome executable.
-
-    kaleido >= 1 requires an external Chrome install for Plotly PNG export.
-    On GitHub Actions ubuntu-latest/macOS runners Chrome is pre-installed.
-    On minimal containers (like this remote execution environment) it is not.
-    """
-    try:
-        from choreographer.browsers.chromium import (
-            chromium_based_browsers,
-            get_browser_path,
-        )
-        return any(
-            get_browser_path(exe) is not None
-            for info in chromium_based_browsers.values()
-            for exe in info.exe_names
-        )
-    except Exception:
-        return False
-
-
-_requires_kaleido_chrome = pytest.mark.skipif(
-    not _kaleido_chrome_available(),
-    reason=(
-        "kaleido >= 1 requires Chrome for Plotly PNG export; "
-        "install via `kaleido_get_chrome`"
-    ),
-)
 
 from PIL import Image as PILImage
 
@@ -118,7 +91,7 @@ def _make_output_manager(
 class TestSaveInspectForwardRun:
     """``--save-inspect`` writes a PNG per measurer per image on a forward run."""
 
-    @_requires_kaleido_chrome
+    @requires_kaleido_chrome
     def test_save_inspect_writes_png_for_symmetric_zones(
         self, temp_workspace: Path, saved_image_path: Path,
         inspect_pipeline_path: Path,
@@ -170,7 +143,7 @@ class TestSaveInspectForwardRun:
 class TestSaveInspectMeasureRerun:
     """``--save-inspect`` also fires on the ``--measure`` HDF rerun path."""
 
-    @_requires_kaleido_chrome
+    @requires_kaleido_chrome
     def test_save_inspect_regenerates_on_hdf_rerun(
         self, temp_workspace: Path, saved_image_path: Path,
         inspect_pipeline_path: Path,
