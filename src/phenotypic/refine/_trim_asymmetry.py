@@ -20,7 +20,7 @@ from ..measure._measure_symmetric_zones import MeasureSymmetricZones
 _log = logging.getLogger(__name__)
 
 
-class AsymmetricSpurTrimmer(ObjectRefiner):
+class TrimAsymmetry(ObjectRefiner):
     """Trim spurs and web-like noise beyond each colony's symmetric envelope.
 
     Reuses the symmetric-radius machinery from :class:`MeasureSymmetricZones`
@@ -92,10 +92,10 @@ class AsymmetricSpurTrimmer(ObjectRefiner):
 
         >>> from phenotypic.data import load_synth_yeast_plate
         >>> from phenotypic.detect import OtsuDetector
-        >>> from phenotypic.refine import AsymmetricSpurTrimmer
+        >>> from phenotypic.refine import TrimAsymmetry
         >>> plate = load_synth_yeast_plate()
         >>> detected = OtsuDetector().apply(plate)
-        >>> trimmer = AsymmetricSpurTrimmer()
+        >>> trimmer = TrimAsymmetry()
         >>> refined = trimmer.apply(detected)
         >>> bool(refined.objmap[:].max() >= 0)
         True
@@ -104,7 +104,7 @@ class AsymmetricSpurTrimmer(ObjectRefiner):
         envelope are preserved; only topologically web-like regions are
         removed:
 
-        >>> trimmer = AsymmetricSpurTrimmer(beehive_threshold=0.002)
+        >>> trimmer = TrimAsymmetry(beehive_threshold=0.002)
         >>> refined = trimmer.apply(detected)
         >>> bool(refined.objmap[:].max() >= 0)
         True
