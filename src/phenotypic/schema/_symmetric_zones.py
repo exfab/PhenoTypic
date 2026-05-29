@@ -20,7 +20,7 @@ class SYMMETRIC_ZONES(MeasurementInfo):
 
     @classmethod
     def category(cls) -> str:
-        return "SymmetricZones"
+        return "SymZones"
 
     CORE_RADIUS = (
         "CoreRadius",
