@@ -29,7 +29,11 @@ from ._model_metrics import MODEL_METRICS
 from ._object import OBJECT
 from ._quality_check import QUALITY_CHECK
 from ._quality_count import QUALITY_COUNT
+from ._quality_icc import QUALITY_ICC
+from ._quality_mad import QUALITY_MAD
 from ._quality_se import QUALITY_SE
+from ._quality_tukey import QUALITY_TUKEY
+from ._quality_zmax import QUALITY_ZMAX
 from ._radial_expansion import RADIAL_EXPANSION
 from ._shape import SHAPE
 from ._size import SIZE
@@ -57,7 +61,11 @@ __all__ = [
     "OBJECT",
     "QUALITY_CHECK",
     "QUALITY_COUNT",
+    "QUALITY_ICC",
+    "QUALITY_MAD",
     "QUALITY_SE",
+    "QUALITY_TUKEY",
+    "QUALITY_ZMAX",
     "RADIAL_EXPANSION",
     "SHAPE",
     "SIZE",

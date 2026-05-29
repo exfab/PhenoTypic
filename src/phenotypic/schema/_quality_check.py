@@ -9,7 +9,7 @@ class QUALITY_CHECK(MeasurementInfo):
     """Generic QC output columns emitted by every QualityCheck subclass.
 
     The category convention used elsewhere in the codebase would produce
-    column names ``QC_Flag``, ``QC_Severity``, ``QC_Status`` — but the
+    column names ``QC_Flag``, ``QC_Metric``, ``QC_Status`` — but the
     actual emitted columns include each subclass's ``name`` between the
     category and the label (``QC_Count_Flag``, ``QC_SE_Flag``). This
     enum overrides :meth:`append_rst_to_doc` to substitute the subclass's
@@ -17,8 +17,16 @@ class QUALITY_CHECK(MeasurementInfo):
     docstring documents its real emitted columns.
     """
 
-    FLAG = ("Flag", "True when severity >= severity_fail; eligible for curation.")
-    SEVERITY = ("Severity", "Normalized magnitude in [0, inf). Drives Status.")
+    FLAG = (
+        "Flag",
+        "True when the metric crosses fail_threshold in the bad direction; "
+        "eligible for curation.",
+    )
+    METRIC = (
+        "Metric",
+        "Headline metric in the check's own units; the bad direction is set "
+        "by the check's _HIGHER_IS_BAD flag. Drives Status.",
+    )
     STATUS = ("Status", "Categorical: pass | warn | fail.")
 
     @classmethod

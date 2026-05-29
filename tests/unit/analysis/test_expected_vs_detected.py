@@ -29,10 +29,10 @@ def _make_measurements(image_file: str, n_detected: int) -> pd.DataFrame:
     })
 
 
-class TestSeverityCalculation:
-    """Severity computation across the pass/warn/fail bands."""
+class TestMetricCalculation:
+    """Metric computation across the pass/warn/fail bands."""
 
-    def test_basic_match_zero_severity(self) -> None:
+    def test_basic_match_zero_metric(self) -> None:
         metadata = _make_96well_metadata()
         measurements = _make_measurements("plate1.png", 96)
         chk = ExpectedVsDetectedCount(
@@ -41,12 +41,12 @@ class TestSeverityCalculation:
 
         result = chk.analyze(measurements)
 
-        assert (result["QC_Count_Severity"] == 0.0).all()
+        assert (result["QC_Count_Metric"] == 0.0).all()
         assert (result["QC_Count_Status"] == "pass").all()
         assert (~result["QC_Count_Flag"]).all()
         assert (result["QC_Count_Delta"] == 0).all()
 
-    def test_missing_one_well_severity_below_warn(self) -> None:
+    def test_missing_one_well_metric_below_warn(self) -> None:
         metadata = _make_96well_metadata()
         measurements = _make_measurements("plate1.png", 95)
         chk = ExpectedVsDetectedCount(
@@ -55,13 +55,13 @@ class TestSeverityCalculation:
 
         result = chk.analyze(measurements)
 
-        severity = result["QC_Count_Severity"].iloc[0]
-        assert math.isclose(severity, 1 / 96, rel_tol=1e-9)
+        metric = result["QC_Count_Metric"].iloc[0]
+        assert math.isclose(metric, 1 / 96, rel_tol=1e-9)
         assert result["QC_Count_Delta"].iloc[0] == -1
         assert (result["QC_Count_Status"] == "pass").all()
         assert (~result["QC_Count_Flag"]).all()
 
-    def test_missing_six_wells_severity_above_warn(self) -> None:
+    def test_missing_six_wells_metric_above_warn(self) -> None:
         metadata = _make_96well_metadata()
         measurements = _make_measurements("plate1.png", 90)
         chk = ExpectedVsDetectedCount(
@@ -70,8 +70,8 @@ class TestSeverityCalculation:
 
         result = chk.analyze(measurements)
 
-        severity = result["QC_Count_Severity"].iloc[0]
-        assert math.isclose(severity, 6 / 96, rel_tol=1e-9)
+        metric = result["QC_Count_Metric"].iloc[0]
+        assert math.isclose(metric, 6 / 96, rel_tol=1e-9)
         assert (result["QC_Count_Status"] == "warn").all()
         assert (~result["QC_Count_Flag"]).all()
 
@@ -84,8 +84,8 @@ class TestSeverityCalculation:
 
         result = chk.analyze(measurements)
 
-        severity = result["QC_Count_Severity"].iloc[0]
-        assert math.isclose(severity, 16 / 96, rel_tol=1e-9)
+        metric = result["QC_Count_Metric"].iloc[0]
+        assert math.isclose(metric, 16 / 96, rel_tol=1e-9)
         assert (result["QC_Count_Status"] == "fail").all()
         assert (result["QC_Count_Flag"]).all()
 
@@ -98,8 +98,8 @@ class TestSeverityCalculation:
 
         result = chk.analyze(measurements)
 
-        severity = result["QC_Count_Severity"].iloc[0]
-        assert math.isclose(severity, 4 / 96, rel_tol=1e-9)
+        metric = result["QC_Count_Metric"].iloc[0]
+        assert math.isclose(metric, 4 / 96, rel_tol=1e-9)
         assert result["QC_Count_Delta"].iloc[0] == 4
         assert (result["QC_Count_Status"] == "pass").all()
 
@@ -107,7 +107,7 @@ class TestSeverityCalculation:
 class TestUnmatchedGroups:
     """Behavior when a measurement group has no metadata counterpart."""
 
-    def test_unmatched_group_severity_inf_and_recorded(self) -> None:
+    def test_unmatched_group_metric_inf_and_recorded(self) -> None:
         metadata = _make_96well_metadata("plate1.png")
         measurements = _make_measurements("plate2.png", 10)
         chk = ExpectedVsDetectedCount(
@@ -116,8 +116,8 @@ class TestUnmatchedGroups:
 
         result = chk.analyze(measurements)
 
-        severity = result["QC_Count_Severity"].iloc[0]
-        assert math.isinf(severity)
+        metric = result["QC_Count_Metric"].iloc[0]
+        assert math.isinf(metric)
         assert (result["QC_Count_Status"] == "fail").all()
         assert (result["QC_Count_Flag"]).all()
         assert chk.unmatched_groups == [("plate2.png",)]
@@ -200,7 +200,7 @@ class TestEmittedColumns:
             "QC_Count_Detected",
             "QC_Count_Expected",
             "QC_Count_Delta",
-            "QC_Count_Severity",
+            "QC_Count_Metric",
             "QC_Count_Flag",
             "QC_Count_Status",
         }
@@ -256,7 +256,28 @@ class TestClassFlags:
     def test_exposes_agg_func_is_false(self) -> None:
         assert ExpectedVsDetectedCount._exposes_agg_func is False
 
+    def test_higher_is_bad_is_true(self) -> None:
+        assert ExpectedVsDetectedCount._HIGHER_IS_BAD is True
+
+    def test_metric_col_returns_metric_name(self) -> None:
+        assert ExpectedVsDetectedCount.metric_col() == "QC_Count_Metric"
+
     def test_class_attributes_match_spec(self) -> None:
+        metadata = _make_96well_metadata()
+        chk = ExpectedVsDetectedCount(
+            metadata=metadata, groupby=["Metadata_ImageFile"]
+        )
         assert ExpectedVsDetectedCount.name == "Count"
-        assert ExpectedVsDetectedCount.severity_warn == 0.05
-        assert ExpectedVsDetectedCount.severity_fail == 0.10
+        assert chk.warn_threshold == 0.05
+        assert chk.fail_threshold == 0.10
+
+    def test_threshold_override_per_instance(self) -> None:
+        metadata = _make_96well_metadata()
+        chk = ExpectedVsDetectedCount(
+            metadata=metadata,
+            groupby=["Metadata_ImageFile"],
+            warn_threshold=0.02,
+            fail_threshold=0.20,
+        )
+        assert chk.warn_threshold == 0.02
+        assert chk.fail_threshold == 0.20

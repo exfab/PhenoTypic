@@ -3,7 +3,7 @@
 Flags ``(group, time)`` bins whose biological replicates disagree on a
 phenotype. Computes the standard error of the mean (``SE = stddev /
 sqrt(n)``) across replicates per timepoint, normalizes by the mean to
-produce a relative-SE severity, and broadcasts the per-bin scalars back
+produce a relative-SE metric, and broadcasts the per-bin scalars back
 to every replicate row in the bin so downstream curation can pick up the
 flag from any row.
 """
@@ -28,15 +28,19 @@ class ReplicateAgreement(QualityCheck):
     For each combination of ``self.groupby`` columns, this check splits
     the group by ``self.time_label`` and computes the standard error of
     the measurement across replicates at every timepoint. The relative
-    standard error ``severity = |SE| / |mean|`` is the per-bin severity;
-    bins whose severity exceeds the warn/fail thresholds are surfaced
+    standard error ``metric = |SE| / |mean|`` is the per-bin metric;
+    bins whose metric exceeds the warn/fail thresholds are surfaced
     for curation. The per-bin scalars are broadcast back to every
     replicate row in the bin so the GUI can pick up the flag from any
     row.
 
-    Three guard paths short-circuit to ``severity = NaN`` so
+    ``_HIGHER_IS_BAD`` is ``True``: a larger relative SE means worse
+    replicate agreement, so the base class flags rows whose metric meets
+    or exceeds ``fail_threshold``.
+
+    Three guard paths short-circuit to ``metric = NaN`` so
     under-powered or degenerate bins never gate curation (the base class
-    treats ``NaN`` severity as ``Status="pass"``):
+    treats ``NaN`` metric as ``Status="pass"``):
 
     1. **``n < min_replicates``** — too few replicates for a meaningful
        standard error. Defaults to ``min_replicates=2``; raising it lets
@@ -66,14 +70,18 @@ class ReplicateAgreement(QualityCheck):
             group. Defaults to ``"Metadata_Time"``.
         min_replicates: Minimum replicate count required before SE is
             considered meaningful. Bins below this threshold receive
-            ``severity = NaN``.
+            ``metric = NaN``.
         eps: Floor on ``|mean|`` below which the relative-SE ratio is
             considered undefined. Bins below this floor receive
-            ``severity = NaN``.
+            ``metric = NaN``.
+        warn_threshold: Relative SE at which ``Status`` becomes
+            ``"warn"``. Defaults to ``0.10``.
+        fail_threshold: Relative SE at which ``Status`` becomes
+            ``"fail"`` and ``Flag=True``. Defaults to ``0.20``.
 
     Examples:
         Basic — three-replicate, four-timepoint synthetic frame; the
-        check adds ``QC_SE_Severity`` plus the per-bin summary columns:
+        check adds ``QC_SE_Metric`` plus the per-bin summary columns:
 
         >>> import pandas as pd
         >>> from phenotypic.analysis._replicate_agreement import (
@@ -97,7 +105,7 @@ class ReplicateAgreement(QualityCheck):
         ...     time_label="Metadata_Time",
         ... )
         >>> result = chk.analyze(data)  # doctest: +SKIP
-        >>> "QC_SE_Severity" in result.columns  # doctest: +SKIP
+        >>> "QC_SE_Metric" in result.columns  # doctest: +SKIP
         True
 
         Advanced — only one replicate per ``(group, time)`` bin with
@@ -114,15 +122,17 @@ class ReplicateAgreement(QualityCheck):
         ...     min_replicates=2,
         ... )
         >>> result = chk.analyze(singleton)  # doctest: +SKIP
-        >>> bool(result["QC_SE_Severity"].isna().all())  # doctest: +SKIP
+        >>> bool(result["QC_SE_Metric"].isna().all())  # doctest: +SKIP
         True
     """
 
     name: ClassVar[str] = "SE"
-    severity_warn: ClassVar[float] = 0.10
-    severity_fail: ClassVar[float] = 0.20
+    _HIGHER_IS_BAD: ClassVar[bool] = True
     _exposes_agg_func: ClassVar[bool] = False
     _measurement_infoclass = QUALITY_SE
+
+    warn_threshold: float = 0.10
+    fail_threshold: float = 0.20
 
     time_label: ColumnRef = "Metadata_Time"
     min_replicates: int = 2
@@ -138,7 +148,7 @@ class ReplicateAgreement(QualityCheck):
         Returns:
             The group frame (a copy) with five new columns appended:
             ``QC_SE_Value``, ``QC_SE_Mean``, ``QC_SE_CV``,
-            ``QC_SE_NumReplicates``, ``QC_SE_Severity``. The severity
+            ``QC_SE_NumReplicates``, ``QC_SE_Metric``. The metric
             column is ``NaN`` for bins that hit any of the three guard
             paths documented on the class.
         """
@@ -148,7 +158,7 @@ class ReplicateAgreement(QualityCheck):
         mean_col = f"{QUALITY_SE.MEAN}"
         cv_col = f"{QUALITY_SE.CV}"
         n_col = f"{QUALITY_SE.NUM_REPLICATES}"
-        severity_col = self.severity_col()
+        metric_col = self.metric_col()
 
         # Initialize emitted columns so partial bins still produce a
         # consistent column set on return.
@@ -156,7 +166,7 @@ class ReplicateAgreement(QualityCheck):
         out[mean_col] = np.nan
         out[cv_col] = np.nan
         out[n_col] = 0
-        out[severity_col] = np.nan
+        out[metric_col] = np.nan
 
         if len(out) == 0:
             return out
@@ -186,15 +196,15 @@ class ReplicateAgreement(QualityCheck):
             degenerate = std_val == 0 and mean_val == 0
 
             if under_powered or near_zero_mean or degenerate:
-                severity = float("nan")
+                metric = float("nan")
             else:
-                severity = abs(se_val) / abs(mean_val)
+                metric = abs(se_val) / abs(mean_val)
 
             out.loc[idx, value_col] = se_val
             out.loc[idx, mean_col] = mean_val
             out.loc[idx, cv_col] = cv_val
             out.loc[idx, n_col] = n
-            out.loc[idx, severity_col] = severity
+            out.loc[idx, metric_col] = metric
 
         out[n_col] = out[n_col].astype(int)
         return out

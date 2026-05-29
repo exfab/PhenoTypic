@@ -44,7 +44,7 @@ def tight_replicates() -> pd.DataFrame:
 
 @pytest.fixture
 def dispersed_replicates() -> pd.DataFrame:
-    """Replicates with very high relative dispersion — severity above fail."""
+    """Replicates with very high relative dispersion — metric above fail."""
     return pd.DataFrame({
         "Plate": ["P1"] * 3,
         "Metadata_Time": [0, 0, 0],
@@ -54,12 +54,12 @@ def dispersed_replicates() -> pd.DataFrame:
 
 @pytest.fixture
 def warn_band_replicates() -> pd.DataFrame:
-    """Replicates whose relative-SE severity falls between warn and fail.
+    """Replicates whose relative-SE metric falls between warn and fail.
 
-    Values chosen so ``severity = stddev / (sqrt(n) * mean)`` lands
+    Values chosen so ``metric = stddev / (sqrt(n) * mean)`` lands
     inside ``[0.10, 0.20)``. For [8, 10, 12] at mean=10, n=3:
     ``stddev = 2``, ``SE = 2/sqrt(3) ~= 1.1547``,
-    ``severity = 1.1547 / 10 = 0.1155`` (warn band).
+    ``metric = 1.1547 / 10 = 0.1155`` (warn band).
     """
     return pd.DataFrame({
         "Plate": ["P1"] * 3,
@@ -112,38 +112,38 @@ class TestStatisticalCorrectness:
 
 
 # --------------------------------------------------------------------------- #
-# Severity tri-state semantics
+# Metric tri-state semantics
 # --------------------------------------------------------------------------- #
 
 
-class TestSeverityTriState:
+class TestMetricTriState:
     """Verify pass / warn / fail thresholds at the SE check's defaults."""
 
-    def test_severity_below_warn(
+    def test_metric_below_warn(
         self, tight_replicates: pd.DataFrame
     ) -> None:
         chk = ReplicateAgreement(on="Size_Area", groupby=["Plate"])
         result = chk.analyze(tight_replicates)
-        assert (result["QC_SE_Severity"] < 0.10).all()
+        assert (result["QC_SE_Metric"] < 0.10).all()
         assert (result["QC_SE_Status"] == "pass").all()
         assert (~result["QC_SE_Flag"]).all()
 
-    def test_severity_above_fail(
+    def test_metric_above_fail(
         self, dispersed_replicates: pd.DataFrame
     ) -> None:
         chk = ReplicateAgreement(on="Size_Area", groupby=["Plate"])
         result = chk.analyze(dispersed_replicates)
-        assert (result["QC_SE_Severity"] >= 0.20).all()
+        assert (result["QC_SE_Metric"] >= 0.20).all()
         assert (result["QC_SE_Status"] == "fail").all()
         assert result["QC_SE_Flag"].all()
 
-    def test_severity_in_warn_band(
+    def test_metric_in_warn_band(
         self, warn_band_replicates: pd.DataFrame
     ) -> None:
         chk = ReplicateAgreement(on="Size_Area", groupby=["Plate"])
         result = chk.analyze(warn_band_replicates)
-        sev = result["QC_SE_Severity"]
-        assert (sev >= 0.10).all() and (sev < 0.20).all()
+        metric = result["QC_SE_Metric"]
+        assert (metric >= 0.10).all() and (metric < 0.20).all()
         assert (result["QC_SE_Status"] == "warn").all()
         assert (~result["QC_SE_Flag"]).all()
 
@@ -154,7 +154,7 @@ class TestSeverityTriState:
 
 
 class TestNanGuardPaths:
-    """The three documented guard paths must yield NaN severity / pass."""
+    """The three documented guard paths must yield NaN metric / pass."""
 
     def test_min_replicates_nan_guard(self) -> None:
         # One replicate per (group, time); default min_replicates=2.
@@ -165,8 +165,8 @@ class TestNanGuardPaths:
         })
         chk = ReplicateAgreement(on="Size_Area", groupby=["Plate"])
         result = chk.analyze(data)
-        assert result["QC_SE_Severity"].isna().all()
-        # NaN severity → "pass" status per base class.
+        assert result["QC_SE_Metric"].isna().all()
+        # NaN metric → "pass" status per base class.
         assert (result["QC_SE_Status"] == "pass").all()
 
     def test_eps_guard_for_near_zero_mean(self) -> None:
@@ -177,7 +177,7 @@ class TestNanGuardPaths:
         })
         chk = ReplicateAgreement(on="Size_Area", groupby=["Plate"])
         result = chk.analyze(data)
-        assert result["QC_SE_Severity"].isna().all()
+        assert result["QC_SE_Metric"].isna().all()
 
     def test_degenerate_bin_all_zeros(self) -> None:
         data = pd.DataFrame({
@@ -187,7 +187,7 @@ class TestNanGuardPaths:
         })
         chk = ReplicateAgreement(on="Size_Area", groupby=["Plate"])
         result = chk.analyze(data)
-        assert result["QC_SE_Severity"].isna().all()
+        assert result["QC_SE_Metric"].isna().all()
         assert (result["QC_SE_Status"] == "pass").all()
 
     def test_min_replicates_three_with_two_replicates_is_nan(self) -> None:
@@ -200,7 +200,7 @@ class TestNanGuardPaths:
             on="Size_Area", groupby=["Plate"], min_replicates=3
         )
         result = chk.analyze(data)
-        assert result["QC_SE_Severity"].isna().all()
+        assert result["QC_SE_Metric"].isna().all()
 
 
 # --------------------------------------------------------------------------- #
@@ -235,7 +235,7 @@ class TestBehavioralEdges:
             "QC_SE_Mean",
             "QC_SE_CV",
             "QC_SE_NumReplicates",
-            "QC_SE_Severity",
+            "QC_SE_Metric",
             "QC_SE_Flag",
             "QC_SE_Status",
         ]
@@ -244,6 +244,25 @@ class TestBehavioralEdges:
 
     def test_exposes_agg_func_is_false(self) -> None:
         assert ReplicateAgreement._exposes_agg_func is False
+
+    def test_higher_is_bad_is_true(self) -> None:
+        assert ReplicateAgreement._HIGHER_IS_BAD is True
+
+    def test_metric_col_returns_metric_name(self) -> None:
+        assert ReplicateAgreement.metric_col() == "QC_SE_Metric"
+
+    def test_threshold_defaults_and_override(self) -> None:
+        chk = ReplicateAgreement(on="Size_Area", groupby=["Plate"])
+        assert chk.warn_threshold == 0.10
+        assert chk.fail_threshold == 0.20
+        custom = ReplicateAgreement(
+            on="Size_Area",
+            groupby=["Plate"],
+            warn_threshold=0.05,
+            fail_threshold=0.15,
+        )
+        assert custom.warn_threshold == 0.05
+        assert custom.fail_threshold == 0.15
 
     def test_flagged_keys_returns_image_file_object_label_pairs(self) -> None:
         # Build dispersed (failing) data carrying ImageFile + Object_Label.

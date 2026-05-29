@@ -8,13 +8,15 @@ from joblib import delayed, Parallel
 import matplotlib.pyplot as plt
 from pydantic import field_validator, PrivateAttr
 
+from . import _qc_math
 from .abc_ import SetAnalyzer
 
 # Iglewicz & Hoaglin (1993) consistency constant: for a normal distribution
 # sigma ~= 1.4826 * MAD, and 0.6745 ~= 1 / 1.4826. Multiplying the absolute
 # deviation by 0.6745 / MAD therefore estimates the deviation in units of
 # sigma, putting the modified Z-score on the same scale as a standard Z-score.
-_MAD_CONSISTENCY = 0.6745
+# The canonical definition now lives in ``_qc_math`` so QC checks reuse it.
+_MAD_CONSISTENCY = _qc_math.MAD_CONSISTENCY
 
 
 class MADOutlierRemover(SetAnalyzer):
@@ -699,6 +701,7 @@ class MADOutlierRemover(SetAnalyzer):
             is an outlier when ``|value - median| > threshold * half_width``.
             ``half_width`` is ``0.0`` only when every value is identical.
         """
+        scores = _qc_math.modified_z_scores(values)
         median = float(np.nanmedian(values))
         abs_dev = np.abs(values - median)
         mad = float(np.nanmedian(abs_dev))
@@ -707,10 +710,10 @@ class MADOutlierRemover(SetAnalyzer):
             mean_ad = float(np.nanmean(abs_dev))
             if mean_ad == 0.0:
                 # All values identical -- no outliers possible.
-                return np.zeros_like(values, dtype=float), median, 0.0
-            return abs_dev / mean_ad, median, mean_ad
+                return scores, median, 0.0
+            return scores, median, mean_ad
 
-        return _MAD_CONSISTENCY * abs_dev / mad, median, mad / _MAD_CONSISTENCY
+        return scores, median, mad / _MAD_CONSISTENCY
 
     @staticmethod
     def _mad_bounds(
