@@ -61,9 +61,9 @@ class GridAlignmentRefiner(GridInferenceMixin, ObjectRefiner):
     Consider Also:
         - :class:`SineAlignmentRefiner` when colony intensities are
           heterogeneous and rank-based correlation improves grid estimation.
-        - :class:`GridSectionLargest` for a simpler largest-per-cell strategy
+        - :class:`KeepSectionLargest` for a simpler largest-per-cell strategy
           on GridImage inputs.
-        - :class:`ReduceMultipleGridObjects` for regression-based multi-
+        - :class:`ReduceSectionsByLine` for regression-based multi-
           detection reduction within grid cells.
 
     See Also:
@@ -137,8 +137,8 @@ class GridAlignmentRefiner(GridInferenceMixin, ObjectRefiner):
 
         # Assign objects per grid cell using selection strategy
         refined_map = self._assign_grid_objects(
-            objmap, row_edges, col_edges, self.selection_mode, image._OBJMAP_DTYPE,
-            intensity=image.detect_mat[:], split_merged=self.split_merged,
+                objmap, row_edges, col_edges, self.selection_mode, image._OBJMAP_DTYPE,
+                intensity=image.detect_mat[:], split_merged=self.split_merged,
         )
 
         # Update image with refined map

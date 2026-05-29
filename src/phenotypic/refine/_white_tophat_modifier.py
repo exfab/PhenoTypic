@@ -43,7 +43,7 @@ class WhiteTophat(ObjectRefiner, FootprintMixin):
           perimeters.
 
     Consider Also:
-        - :class:`MaskOpener` for general morphological opening that
+        - :class:`MaskOpening` for general morphological opening that
           removes thin protrusions without tophat detection.
         - :class:`SmallObjectRemover` when small artifacts are entire
           disconnected objects rather than thin bridges.

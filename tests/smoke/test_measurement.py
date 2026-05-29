@@ -3,7 +3,7 @@ import pytest
 import pandas as pd
 
 from phenotypic.data import load_synth_yeast_plate
-from phenotypic.refine import MaskOpener
+from phenotypic.refine import MaskOpening
 
 from unit.test_fixtures import _image_measurements
 from unit.resources.TestHelper import timeit
@@ -11,9 +11,9 @@ from unit.resources.TestHelper import timeit
 
 @pytest.fixture(scope="session")
 def mask_opened_image():
-    """Session-scoped image with MaskOpener pre-applied."""
+    """Session-scoped image with MaskOpening pre-applied."""
     image = load_synth_yeast_plate()
-    MaskOpener().apply(image, inplace=True)
+    MaskOpening().apply(image, inplace=True)
     return image
 
 

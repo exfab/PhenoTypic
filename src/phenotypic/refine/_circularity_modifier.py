@@ -46,9 +46,9 @@ class LowCircularityRemover(ObjectRefiner):
     Consider Also:
         - :class:`SmallObjectRemover` when artifacts are distinguished by
           size rather than shape.
-        - :class:`BorderObjectRemover` when irregular detections cluster
+        - :class:`RemoveBorderObjects` when irregular detections cluster
           near plate edges.
-        - :class:`MaskOpener` for smoothing jagged boundaries before
+        - :class:`MaskOpening` for smoothing jagged boundaries before
           circularity filtering.
 
     See Also:

@@ -44,7 +44,7 @@ class ResidualOutlierRemover(GridObjectRefiner):
           spurious artifacts.
 
     Consider Also:
-        - :class:`ReduceMultipleGridObjects` for reducing multi-detections to
+        - :class:`ReduceSectionsByLine` for reducing multi-detections to
           one per cell rather than pruning outliers within rows/columns.
         - :class:`GridAlignmentRefiner` for full grid-aware filtering using
           dominant-object-per-cell selection.

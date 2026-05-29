@@ -48,7 +48,7 @@ class MaskGradient(ObjectRefiner, FootprintMixin):
     Consider Also:
         - :class:`Skeletonize` when you need medial-axis topology rather
           than boundary outlines.
-        - :class:`MaskEroder` for uniform inward shrinking without
+        - :class:`MaskErosion` for uniform inward shrinking without
           extracting boundaries.
         - :class:`Thinning` for iterative boundary peeling that preserves
           connectivity.

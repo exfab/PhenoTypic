@@ -176,13 +176,13 @@ class TestPointPickerMarker:
         return reg
 
     def test_point_picker_marker_propagates(self, registry):
-        """ManualPointDetector and ManualSelector advertise the mixin marker."""
+        """ManualPointDetector and ManualRefine advertise the mixin marker."""
         det = registry.get("ManualPointDetector")
         assert det is not None
         assert det.is_point_pickable is True
         assert det.point_picker_param == "centers"
 
-        sel = registry.get("ManualSelector")
+        sel = registry.get("ManualRefine")
         assert sel is not None
         assert sel.is_point_pickable is True
         assert sel.point_picker_param == "centers"
@@ -217,26 +217,26 @@ class TestColumnRefDetection:
         return reg
 
     @pytest.mark.parametrize(
-        "cls_name,param_name,expected_multi",
-        [
-            ("EdgeCorrector", "on", False),
-            ("EdgeCorrector", "groupby", True),
-            ("EdgeCorrector", "time_label", False),
-            ("TukeyOutlierRemover", "on", False),
-            ("TukeyOutlierRemover", "groupby", True),
-            ("LogGrowthModel", "on", False),
-            ("LogGrowthModel", "groupby", True),
-            ("LogGrowthModel", "time_label", False),
-            ("LinearSoftplus", "on", False),
-            ("LinearSoftplus", "groupby", True),
-            ("LinearSoftplus", "time_label", False),
-            ("DoubleSoftplus", "on", False),
-            ("DoubleSoftplus", "groupby", True),
-            ("DoubleSoftplus", "time_label", False),
-        ],
+            "cls_name,param_name,expected_multi",
+            [
+                ("EdgeCorrector", "on", False),
+                ("EdgeCorrector", "groupby", True),
+                ("EdgeCorrector", "time_label", False),
+                ("TukeyOutlierRemover", "on", False),
+                ("TukeyOutlierRemover", "groupby", True),
+                ("LogGrowthModel", "on", False),
+                ("LogGrowthModel", "groupby", True),
+                ("LogGrowthModel", "time_label", False),
+                ("LinearSoftplus", "on", False),
+                ("LinearSoftplus", "groupby", True),
+                ("LinearSoftplus", "time_label", False),
+                ("DoubleSoftplus", "on", False),
+                ("DoubleSoftplus", "groupby", True),
+                ("DoubleSoftplus", "time_label", False),
+            ],
     )
     def test_column_ref_populated(
-        self, registry, cls_name, param_name, expected_multi
+            self, registry, cls_name, param_name, expected_multi
     ):
         info = registry.get(cls_name)
         assert info is not None, f"{cls_name} not registered"
@@ -385,7 +385,7 @@ class TestQualityCheckCategory:
             assert info.category == "quality_check"
 
     def test_quality_check_classes_excluded_from_filter_or_model_categories(
-        self, registry
+            self, registry
     ):
         """QC classes must not leak into ``"Filter"`` or ``"Model"`` buckets."""
         filter_names = {info.name for info in registry.get_by_category("Filter")}
@@ -404,7 +404,7 @@ class TestQualityCheckCategory:
             assert "QualityCheck" not in names
 
     def test_quality_check_params_omit_agg_func_when_exposes_agg_func_is_false(
-        self, registry
+            self, registry
     ):
         """``_exposes_agg_func=False`` filters ``agg_func`` out of params."""
         info = registry.get("ExpectedVsDetectedCount")

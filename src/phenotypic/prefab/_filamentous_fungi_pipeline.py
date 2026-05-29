@@ -14,7 +14,7 @@ from phenotypic.measure import (
     MeasureShape,
     MeasureTexture,
 )
-from phenotypic.refine import GridSectionLargest
+from phenotypic.refine import KeepSectionLargest
 
 if TYPE_CHECKING:
     pass
@@ -53,7 +53,7 @@ class FilamentousFungiPipeline(PrefabPipeline):
             is provided. Default 100.0.
         inoculum_detector: Custom ObjectDetector or ImagePipeline that
             identifies fungal centers/nuclei. When None, builds a default
-            pipeline of ``InoculumDetector`` + ``GridSectionLargest``.
+            pipeline of ``InoculumDetector`` + ``KeepSectionLargest``.
         max_colony_radius_px: Largest colony radius (in pixels) the
             detector should handle. Sizes scene-derived spatial
             parameters for this worst case. Default 250.
@@ -139,7 +139,7 @@ class FilamentousFungiPipeline(PrefabPipeline):
                                 min_diameter=inoculum_min_diameter,
                                 max_diameter=inoculum_max_diameter,
                         ),
-                        GridSectionLargest(),
+                        KeepSectionLargest(),
                     ]
             )
 

@@ -45,31 +45,30 @@ OUTPUT_DIR = DATASET_DIR / "results"
 
 VIEWPORT = {"width": 1280, "height": 900}
 
-
 # ---------------------------------------------------------------------------
 # Synthetic dataset
 # ---------------------------------------------------------------------------
 
 PIPELINE_DOC = {
-    "version": "0.1.0",
-    "name": "gui_tutorial",
-    "desc": "Synthetic yeast tutorial pipeline",
-    "reset": False,
+    "version"  : "0.1.0",
+    "name"     : "gui_tutorial",
+    "desc"     : "Synthetic yeast tutorial pipeline",
+    "reset"    : False,
     "pipe_cfgs": {
         "GaussianBlur": {
-            "class": "GaussianBlur",
+            "class" : "GaussianBlur",
             "params": {"sigma": 2},
         },
         "OtsuDetector": {
-            "class": "OtsuDetector",
+            "class" : "OtsuDetector",
             "params": {"ignore_zeros": True},
         },
     },
-    "meas": {
+    "meas"     : {
         "MeasureShape": {"class": "MeasureShape", "params": {}},
-        "MeasureSize": {"class": "MeasureSize", "params": {}},
+        "MeasureSize" : {"class": "MeasureSize", "params": {}},
     },
-    "post": {},
+    "post"     : {},
     # The analysis sub-app's tutorial walkthrough renders better when the
     # synthetic CLI run produces a real ``analysis.parquet`` to demo the
     # populated state. ``EdgeCorrector`` correction needs at least one
@@ -79,23 +78,23 @@ PIPELINE_DOC = {
     # filter/model are configured here primarily as recipe metadata; the
     # CLI's ``_emit_analysis_outputs`` swallows the resulting fit failure
     # at WARNING and the master output is unaffected.
-    "filters": {
+    "filters"  : {
         "TukeyOutlierRemover": {
-            "class": "TukeyOutlierRemover",
+            "class" : "TukeyOutlierRemover",
             "params": {"on": "Shape_Area", "groupby": ["Metadata_StrainID"], "k": 3.0},
         },
     },
-    "model": {
-        "class": "LogGrowthModel",
+    "model"    : {
+        "class" : "LogGrowthModel",
         "params": {
-            "on": "Shape_Area",
-            "groupby": ["Metadata_StrainID"],
+            "on"        : "Shape_Area",
+            "groupby"   : ["Metadata_StrainID"],
             "time_label": "Metadata_RunDate",
-            "n_jobs": 1,
+            "n_jobs"    : 1,
         },
     },
-    "nrows": 8,
-    "ncols": 12,
+    "nrows"    : 8,
+    "ncols"    : 12,
 }
 
 METADATA_ROWS = [
@@ -128,18 +127,19 @@ def build_tutorial_dataset(force: bool = False) -> None:
     from phenotypic.data import make_synthetic_plate
     import imageio.v3 as iio
 
-    print(f"[dataset] generating fresh dataset under {DATASET_DIR.relative_to(REPO_ROOT)}")
+    print(
+        f"[dataset] generating fresh dataset under {DATASET_DIR.relative_to(REPO_ROOT)}")
     PLATES_DIR.mkdir(parents=True, exist_ok=True)
 
     for i, seed in enumerate((1, 2, 3), start=1):
         arr = make_synthetic_plate(
-            nrows=8,
-            ncols=12,
-            plate_h=1024,
-            plate_w=1536,
-            seed=seed,
-            spacing_factor=0.85,
-            colony_size_variation=0.15,
+                nrows=8,
+                ncols=12,
+                plate_h=1024,
+                plate_w=1536,
+                seed=seed,
+                spacing_factor=0.85,
+                colony_size_variation=0.15,
         )
         out = PLATES_DIR / f"plate_{i:03d}.tif"
         iio.imwrite(out, arr)
@@ -161,7 +161,8 @@ def run_cli_once() -> None:
     pipeline; ~seconds on the synthetic dataset but still avoidable).
     """
     if (OUTPUT_DIR / "master_measurements.parquet").exists():
-        print(f"[cli] reusing existing CLI output at {OUTPUT_DIR.relative_to(REPO_ROOT)}")
+        print(
+            f"[cli] reusing existing CLI output at {OUTPUT_DIR.relative_to(REPO_ROOT)}")
         return
 
     print("[cli] running pipeline against synthetic dataset")
@@ -204,7 +205,7 @@ def _wait_for_http_200(url: str, *, timeout: float = 30.0) -> None:
             last_err = err
         time.sleep(0.2)
     raise RuntimeError(
-        f"GUI did not respond at {url} within {timeout}s (last error: {last_err!r})"
+            f"GUI did not respond at {url} within {timeout}s (last error: {last_err!r})"
     )
 
 
@@ -243,10 +244,10 @@ def boot_gui(root: Path) -> tuple[subprocess.Popen[str], str]:
     # parent handle can be closed immediately — the GUI keeps writing.
     with log_path.open("w", encoding="utf-8") as gui_log:
         proc = subprocess.Popen(
-            cmd,
-            stdout=gui_log,
-            stderr=subprocess.STDOUT,
-            text=True,
+                cmd,
+                stdout=gui_log,
+                stderr=subprocess.STDOUT,
+                text=True,
         )
     base_url = f"http://127.0.0.1:{port}"
     _wait_for_http_200(base_url + "/", timeout=30.0)
@@ -278,9 +279,9 @@ def capture_workflow_screenshots(base_url: str, headed: bool = False) -> None:
         from playwright.sync_api import sync_playwright
     except ImportError as exc:  # pragma: no cover
         raise SystemExit(
-            "Playwright is not installed. Install it with:\n"
-            "  uv add --group dev playwright\n"
-            "  uv run playwright install chromium"
+                "Playwright is not installed. Install it with:\n"
+                "  uv add --group dev playwright\n"
+                "  uv run playwright install chromium"
         ) from exc
 
     with sync_playwright() as pw:
@@ -322,7 +323,7 @@ def _new_page(context, base_url: str, path: str = "/"):
 
 
 def _emit_empty_state_shot(
-    context, base_url: str, path: str, workflow: str, name: str, *, log: str
+        context, base_url: str, path: str, workflow: str, name: str, *, log: str
 ) -> None:
     """Open ``path``, save a single screenshot, close.  The shared shape of
     the empty-state hub captures (setup landing, results viewer, analysis
@@ -375,13 +376,13 @@ def _relayout_canvas(page) -> None:
     canvas shows the final dagre layout + port placement deterministically.
     """
     page.evaluate(
-        "() => window.phenotypicRelayout && window.phenotypicRelayout()"
+            "() => window.phenotypicRelayout && window.phenotypicRelayout()"
     )
     page.wait_for_timeout(900)
 
 
 def _dispatch_block_create(
-    page, class_name: str, *, container_block_id: str | None = None
+        page, class_name: str, *, container_block_id: str | None = None
 ) -> None:
     """Mint a DAG block via ``store-palette-drop`` (``block_create``).
 
@@ -393,28 +394,28 @@ def _dispatch_block_create(
     container's nested scope.
     """
     page.evaluate(
-        """([cn, cbid]) => {
-            window.dash_clientside.set_props('store-palette-drop', {
-                data: {
-                    kind: 'block_create',
-                    class_name: cn,
-                    x: 0, y: 0,
-                    container_block_id: cbid,
-                    ts: Date.now(),
-                },
-            });
-        }""",
-        [class_name, container_block_id],
+            """([cn, cbid]) => {
+                window.dash_clientside.set_props('store-palette-drop', {
+                    data: {
+                        kind: 'block_create',
+                        class_name: cn,
+                        x: 0, y: 0,
+                        container_block_id: cbid,
+                        ts: Date.now(),
+                    },
+                });
+            }""",
+            [class_name, container_block_id],
     )
     page.wait_for_timeout(900)
 
 
 def _dispatch_edge_create(
-    page,
-    source_block_id: str,
-    target_block_id: str,
-    target_port: str,
-    edge_kind: str,
+        page,
+        source_block_id: str,
+        target_block_id: str,
+        target_port: str,
+        edge_kind: str,
 ) -> None:
     """Draw a wire via ``store-edge-event`` (``edge_create``).
 
@@ -423,19 +424,19 @@ def _dispatch_edge_create(
     payload ``wire_drawing.js`` emits on a compatible port drop.
     """
     page.evaluate(
-        """([s, t, port, ek]) => {
-            window.dash_clientside.set_props('store-edge-event', {
-                data: {
-                    kind: 'edge_create',
-                    source_block_id: s,
-                    target_block_id: t,
-                    target_port: port,
-                    edge_kind: ek,
-                    ts: Date.now(),
-                },
-            });
-        }""",
-        [source_block_id, target_block_id, target_port, edge_kind],
+            """([s, t, port, ek]) => {
+                window.dash_clientside.set_props('store-edge-event', {
+                    data: {
+                        kind: 'edge_create',
+                        source_block_id: s,
+                        target_block_id: t,
+                        target_port: port,
+                        edge_kind: ek,
+                        ts: Date.now(),
+                    },
+                });
+            }""",
+            [source_block_id, target_block_id, target_port, edge_kind],
     )
     page.wait_for_timeout(900)
 
@@ -447,14 +448,14 @@ def _block_id(page, class_name: str, which: str = "last") -> str:
     helpers resolve ids from the live cy instance rather than hardcoding.
     """
     return page.evaluate(
-        """([cn, which]) => {
-            const cy = window.phenoGetCy && window.phenoGetCy();
-            if (!cy) return '';
-            const ns = cy.nodes('[class_name = "' + cn + '"]');
-            if (!ns || ns.length === 0) return '';
-            return (which === 'first' ? ns.first() : ns.last()).id();
-        }""",
-        [class_name, which],
+            """([cn, which]) => {
+                const cy = window.phenoGetCy && window.phenoGetCy();
+                if (!cy) return '';
+                const ns = cy.nodes('[class_name = "' + cn + '"]');
+                if (!ns || ns.length === 0) return '';
+                return (which === 'first' ? ns.first() : ns.last()).id();
+            }""",
+            [class_name, which],
     )
 
 
@@ -466,13 +467,13 @@ def _tap_block(page, block_id: str) -> None:
     ``block_select`` dispatch — the same path a real click takes.
     """
     page.evaluate(
-        """(bid) => {
-            const cy = window.phenoGetCy && window.phenoGetCy();
-            if (!cy) return;
-            const n = cy.getElementById(bid);
-            if (n && n.length) { cy.elements().unselect(); n.emit('tap'); }
-        }""",
-        block_id,
+            """(bid) => {
+                const cy = window.phenoGetCy && window.phenoGetCy();
+                if (!cy) return;
+                const n = cy.getElementById(bid);
+                if (n && n.length) { cy.elements().unselect(); n.emit('tap'); }
+            }""",
+            block_id,
     )
     page.wait_for_timeout(700)
 
@@ -481,8 +482,8 @@ def _tap_block(page, block_id: str) -> None:
 
 def _capture_setup(context, base_url: str) -> None:
     _emit_empty_state_shot(
-        context, base_url, "/", "setup", "01_landing_page.png",
-        log="[shot] workflow=setup",
+            context, base_url, "/", "setup", "01_landing_page.png",
+            log="[shot] workflow=setup",
     )
 
 
@@ -604,8 +605,8 @@ def _capture_view_results(context, base_url: str) -> None:
     CLI output for the populated screenshots.
     """
     _emit_empty_state_shot(
-        context, base_url, "/results/", "view_results", "01_viewer_empty.png",
-        log="[shot] workflow=view_results (empty state via hub)",
+            context, base_url, "/results/", "view_results", "01_viewer_empty.png",
+            log="[shot] workflow=view_results (empty state via hub)",
     )
 
 
@@ -616,8 +617,8 @@ def _capture_pick_points(context, base_url: str) -> None:
     ``docs/source/tutorials/gui/07_pick_points.md``:
 
     1. Palette with the PICK badge visible on the two pickable ops.
-    2. Canvas with ``GaussianBlur → OtsuDetector → ManualSelector``.
-    3. Inspector param form for ``ManualSelector`` (count = "0 points").
+    2. Canvas with ``GaussianBlur → OtsuDetector → ManualRefine``.
+    3. Inspector param form for ``ManualRefine`` (count = "0 points").
     4. Picker modal open on the original RGB plate.
     5. Picker modal toggled to the predecessor's intermediate.
     6. RGB plate after staging three picks via ``set_props``.
@@ -645,7 +646,7 @@ def _capture_pick_points(context, base_url: str) -> None:
     # first one only — clicking the headers opens the rest.
     for header_text in ("Corrector", "Detector", "Enhancer", "Refiner"):
         header = page.locator(
-            f'button.accordion-button:has-text("{header_text}")'
+                f'button.accordion-button:has-text("{header_text}")'
         ).first
         if header.count() > 0:
             try:
@@ -658,7 +659,7 @@ def _capture_pick_points(context, base_url: str) -> None:
     page.wait_for_timeout(300)
     _save(page, "pick_points", "01_palette_with_badge.png")
 
-    # 2) Pipeline with GaussianBlur → OtsuDetector → ManualSelector.
+    # 2) Pipeline with GaussianBlur → OtsuDetector → ManualRefine.
     # Each palette button is a pattern-matching id of the form
     # {"type": "palette-add", "class_name": "<name>"}; Dash hashes the dict
     # to a JSON string when it renders the DOM, so the selector below
@@ -671,18 +672,18 @@ def _capture_pick_points(context, base_url: str) -> None:
         page.click(sel)
         page.wait_for_timeout(400)
 
-    for cls in ("GaussianBlur", "OtsuDetector", "ManualSelector"):
+    for cls in ("GaussianBlur", "OtsuDetector", "ManualRefine"):
         _add_op(cls)
     # Re-run the leaf-first dagre layout so the ribbon shows the settled
     # left-to-right chain rather than dash-cytoscape's breadthfirst pass.
     _relayout_canvas(page)
     _save(page, "pick_points", "02_pipeline_with_selector.png")
 
-    # 3) Inspector param form for ManualSelector. Tap the block so the
+    # 3) Inspector param form for ManualRefine. Tap the block so the
     # canvas-tap callback dispatches ``block_select`` and the inspector
     # re-renders against it (a clientside-only ``cy ... .select()`` would
     # not update the server-side ``selected_block_id``).
-    selector_id = _block_id(page, "ManualSelector")
+    selector_id = _block_id(page, "ManualRefine")
     if selector_id:
         _tap_block(page, selector_id)
     page.wait_for_timeout(600)
@@ -715,7 +716,7 @@ def _capture_pick_points(context, base_url: str) -> None:
     # Wait for OSD canvas + the modal to settle (aria-busy flips off when
     # the tile pyramid finishes rendering the first level).
     page.wait_for_selector(
-        '[data-testid="point-picker-osd-canvas"]', timeout=15_000
+            '[data-testid="point-picker-osd-canvas"]', timeout=15_000
     )
     osd = page.locator('[data-testid="point-picker-osd-canvas"]')
     try:
@@ -725,31 +726,6 @@ def _capture_pick_points(context, base_url: str) -> None:
     # Wait for aria-busy to flip false on the parent or a short fallback.
     try:
         page.wait_for_function(
-            """
-            () => {
-                const el = document.querySelector('[data-testid="point-picker-osd-canvas"]');
-                if (!el) return false;
-                const busy = el.getAttribute('aria-busy');
-                return busy === null || busy === 'false';
-            }
-            """,
-            timeout=10_000,
-        )
-    except Exception:  # pragma: no cover - best-effort
-        page.wait_for_timeout(1500)
-    page.wait_for_timeout(800)
-    _save(page, "pick_points", "04_modal_rgb.png")
-
-    # 5) Toggle the channel radio to "Input to this op".
-    intermediate_label = page.locator(
-        'label:has-text("Input to this op")'
-    ).first
-    if intermediate_label.count() > 0:
-        intermediate_label.click()
-        # First toggle dumps + tiles the intermediate PNG; allow time.
-        page.wait_for_timeout(2000)
-        try:
-            page.wait_for_function(
                 """
                 () => {
                     const el = document.querySelector('[data-testid="point-picker-osd-canvas"]');
@@ -759,6 +735,31 @@ def _capture_pick_points(context, base_url: str) -> None:
                 }
                 """,
                 timeout=10_000,
+        )
+    except Exception:  # pragma: no cover - best-effort
+        page.wait_for_timeout(1500)
+    page.wait_for_timeout(800)
+    _save(page, "pick_points", "04_modal_rgb.png")
+
+    # 5) Toggle the channel radio to "Input to this op".
+    intermediate_label = page.locator(
+            'label:has-text("Input to this op")'
+    ).first
+    if intermediate_label.count() > 0:
+        intermediate_label.click()
+        # First toggle dumps + tiles the intermediate PNG; allow time.
+        page.wait_for_timeout(2000)
+        try:
+            page.wait_for_function(
+                    """
+                    () => {
+                        const el = document.querySelector('[data-testid="point-picker-osd-canvas"]');
+                        if (!el) return false;
+                        const busy = el.getAttribute('aria-busy');
+                        return busy === null || busy === 'false';
+                    }
+                    """,
+                    timeout=10_000,
             )
         except Exception:  # pragma: no cover - best-effort
             page.wait_for_timeout(1500)
@@ -777,14 +778,14 @@ def _capture_pick_points(context, base_url: str) -> None:
     # The clientside redraw subscribes to picker-staged-store changes and
     # paints red OSD overlay markers.
     page.evaluate(
-        """
-        () => {
-            const points = [[160, 240], [400, 700], [720, 1180]];
-            window.dash_clientside.set_props(
-                'picker-staged-store', {data: points}
-            );
-        }
-        """
+            """
+            () => {
+                const points = [[160, 240], [400, 700], [720, 1180]];
+                window.dash_clientside.set_props(
+                    'picker-staged-store', {data: points}
+                );
+            }
+            """
     )
     page.wait_for_timeout(800)
     _save(page, "pick_points", "06_three_picks.png")
@@ -992,7 +993,7 @@ def _expand_palette_accordions(page) -> None:
     """
     for header_text in ("Corrector", "Detector", "Enhancer", "Refiner", "Measure"):
         header = page.locator(
-            f'button.accordion-button:has-text("{header_text}")'
+                f'button.accordion-button:has-text("{header_text}")'
         ).first
         if header.count() > 0:
             try:
@@ -1140,7 +1141,7 @@ def _capture_wire_pipeline_as_aux(context, base_url: str) -> None:
     ffd_id = _block_id(page, "FilamentousFungiDetector")
     if container_id and ffd_id:
         _dispatch_edge_create(
-            page, container_id, ffd_id, "inoculum_detector", "aux"
+                page, container_id, ffd_id, "inoculum_detector", "aux"
         )
         _relayout_canvas(page)
     _save(page, "wire-pipeline-as-aux", "03_pipeline_wired_as_aux.png")
@@ -1221,8 +1222,8 @@ def _capture_analysis(context, base_url: str) -> None:
     the sidebar selection at startup.
     """
     _emit_empty_state_shot(
-        context, base_url, "/analysis/", "analysis", "01_analysis_empty.png",
-        log="[shot] workflow=analysis (empty state via hub)",
+            context, base_url, "/analysis/", "analysis", "01_analysis_empty.png",
+            log="[shot] workflow=analysis (empty state via hub)",
     )
 
 
@@ -1256,9 +1257,9 @@ def capture_standalone_analysis_screenshots(headed: bool = False) -> None:
         "127.0.0.1",
     ]
     proc = subprocess.Popen(
-        cmd,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+            cmd,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
     )
     base_url = f"http://127.0.0.1:{port}"
 
@@ -1294,7 +1295,7 @@ def capture_standalone_analysis_screenshots(headed: bool = False) -> None:
                 section = page.locator(".analysis-filter-section").first
                 if section.count() > 0:
                     section.screenshot(
-                        path=str(target_dir / "03_filter_section_with_form.png"),
+                            path=str(target_dir / "03_filter_section_with_form.png"),
                     )
                     print("[shot]   analysis/03_filter_section_with_form.png")
 
@@ -1350,10 +1351,10 @@ def capture_standalone_viewer_screenshots(headed: bool = False) -> None:
     print(f"[shot]   standalone viewer logs -> {log_path}")
     with log_path.open("w", encoding="utf-8") as gui_log:
         proc = subprocess.Popen(
-            cmd,
-            stdout=gui_log,
-            stderr=subprocess.STDOUT,
-            text=True,
+                cmd,
+                stdout=gui_log,
+                stderr=subprocess.STDOUT,
+                text=True,
         )
     base_url = f"http://127.0.0.1:{port}"
     try:
@@ -1370,7 +1371,7 @@ def capture_standalone_viewer_screenshots(headed: bool = False) -> None:
                 # Select the first image from the dropdown so the
                 # OpenSeadragon canvas actually renders a colony plate.
                 dropdown = page.locator(
-                    ".Select-control, div[class*='css-'][class*='control']"
+                        ".Select-control, div[class*='css-'][class*='control']"
                 ).first
                 if dropdown.count() > 0:
                     try:
@@ -1378,14 +1379,14 @@ def capture_standalone_viewer_screenshots(headed: bool = False) -> None:
                         page.wait_for_timeout(400)
                         # Pick the first option that appears.
                         first_option = page.locator(
-                            ".Select-option, div[class*='option']"
+                                ".Select-option, div[class*='option']"
                         ).first
                         if first_option.count() > 0:
                             first_option.click(timeout=2000)
                             page.wait_for_timeout(2500)
                     except Exception as exc:  # pragma: no cover - best-effort
                         print(
-                            f"[shot]   image-dropdown selection skipped: {exc!r}"
+                                f"[shot]   image-dropdown selection skipped: {exc!r}"
                         )
 
                 _save(page, "view_results", "02_viewer_loaded.png")
@@ -1479,7 +1480,7 @@ def _heatmap_exploration_loaded_shots(page) -> None:
     heatmap_tab = page.locator('a[role="tab"]:has-text("Heatmap")').first
     if heatmap_tab.count() == 0:
         print(
-            "[shot]   heatmap_exploration: Heatmap tab not found — loaded captures skipped"
+                "[shot]   heatmap_exploration: Heatmap tab not found — loaded captures skipped"
         )
         return
     try:
@@ -1506,22 +1507,22 @@ def _heatmap_exploration_loaded_shots(page) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description=(__doc__ or "").split("\n")[0],
+            description=(__doc__ or "").split("\n")[0],
     )
     parser.add_argument(
-        "--force",
-        action="store_true",
-        help="Regenerate the synthetic dataset even if it already exists.",
+            "--force",
+            action="store_true",
+            help="Regenerate the synthetic dataset even if it already exists.",
     )
     parser.add_argument(
-        "--headed",
-        action="store_true",
-        help="Run Chromium with a visible window (debugging).",
+            "--headed",
+            action="store_true",
+            help="Run Chromium with a visible window (debugging).",
     )
     parser.add_argument(
-        "--skip-cli",
-        action="store_true",
-        help="Skip the CLI run (useful when iterating on screenshots only).",
+            "--skip-cli",
+            action="store_true",
+            help="Skip the CLI run (useful when iterating on screenshots only).",
     )
     args = parser.parse_args(argv)
 
@@ -1531,10 +1532,10 @@ def main(argv: list[str] | None = None) -> int:
             run_cli_once()
         except subprocess.CalledProcessError as exc:
             print(
-                f"[cli] FAILED with exit {exc.returncode}; continuing without "
-                "CLI output (Recent Runs / viewer screenshots will reflect "
-                "an empty sandbox).",
-                file=sys.stderr,
+                    f"[cli] FAILED with exit {exc.returncode}; continuing without "
+                    "CLI output (Recent Runs / viewer screenshots will reflect "
+                    "an empty sandbox).",
+                    file=sys.stderr,
             )
 
     proc, base_url = boot_gui(DATASET_DIR)

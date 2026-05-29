@@ -32,7 +32,7 @@ class ObjectRefiner(ImageOperation, ABC):
     - **Size filtering:** Use for removing dust, noise, agar artifacts (too small) or unrealistic regions
       (too large). Example: [SmallObjectRemover](src/phenotypic/refine/_small_object_remover.py).
     - **Morphological cleanup:** Use for fragmented edges, thin protrusions, internal gaps. Example:
-      [MaskDilator](src/phenotypic/refine/_mask_dilator.py) (uses FootprintMixin).
+      [MaskDilator](src/phenotypic/refine/_mask_dilation.py) (uses FootprintMixin).
     - **Hole filling:** Use for voids from uneven illumination or pigment patterns within colonies.
     - **Shape filtering:** Use for removing elongated artifacts, merged colonies, low-circularity debris.
     - **Merging operations:** Use for bridging fragmented colonies or combining nearby regions. Example:
@@ -140,8 +140,8 @@ class ObjectRefiner(ImageOperation, ABC):
     - **Hole filling:** Fill interior voids within colony masks for solid shape representation.
       Targets: voids from uneven illumination, pigment heterogeneity. Improves area measurements.
 
-    - **Morphological operations:** Erosion, dilation, opening, closing with [MaskDilator](src/phenotypic/refine/_mask_dilator.py),
-      [MaskEroder](src/phenotypic/refine/_mask_eroder.py), [MaskOpener](src/phenotypic/refine/_mask_opener.py).
+    - **Morphological operations:** Erosion, dilation, opening, closing with [MaskDilator](src/phenotypic/refine/_mask_dilation.py),
+      [MaskErosion](src/phenotypic/refine/_mask_erosion.py), [MaskOpening](src/phenotypic/refine/_mask_opening.py).
       Targets: fragmented edges, thin protrusions, internal gaps. Uses FootprintMixin for shape control.
 
     - **Border removal:** Remove or exclude objects touching image/well boundaries.
@@ -197,7 +197,7 @@ class ObjectRefiner(ImageOperation, ABC):
     **Morphological Operations with FootprintMixin**
 
     For operations requiring morphological structuring elements (dilation, erosion, opening, closing),
-    inherit from FootprintMixin. See [MaskDilator](src/phenotypic/refine/_mask_dilator.py) for example:
+    inherit from FootprintMixin. See [MaskDilator](src/phenotypic/refine/_mask_dilation.py) for example:
 
     .. code-block:: python
 

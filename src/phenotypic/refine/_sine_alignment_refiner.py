@@ -70,9 +70,9 @@ class SineAlignmentRefiner(GridInferenceMixin, ObjectRefiner):
     Consider Also:
         - :class:`GridAlignmentRefiner` for faster grid estimation when
           colony intensities are relatively uniform.
-        - :class:`GridSectionLargest` for a simpler largest-per-cell
+        - :class:`KeepSectionLargest` for a simpler largest-per-cell
           strategy on GridImage inputs.
-        - :class:`ReduceMultipleGridObjects` for regression-based multi-
+        - :class:`ReduceSectionsByLine` for regression-based multi-
           detection reduction within grid cells.
 
     References:
@@ -144,8 +144,8 @@ class SineAlignmentRefiner(GridInferenceMixin, ObjectRefiner):
 
         # Assign objects per grid cell using selection strategy
         refined_map = self._assign_grid_objects(
-            objmap, row_edges, col_edges, self.selection_mode, image._OBJMAP_DTYPE,
-            intensity=image.detect_mat[:], split_merged=self.split_merged,
+                objmap, row_edges, col_edges, self.selection_mode, image._OBJMAP_DTYPE,
+                intensity=image.detect_mat[:], split_merged=self.split_merged,
         )
 
         # Update image with refined map
@@ -156,7 +156,8 @@ class SineAlignmentRefiner(GridInferenceMixin, ObjectRefiner):
 
         return image
 
-    def _estimate_edges(self, binary_image: np.ndarray, axis: int, n_bins: int, **kwargs: object) -> np.ndarray:  # type: ignore[override]
+    def _estimate_edges(self, binary_image: np.ndarray, axis: int, n_bins: int,
+                        **kwargs: object) -> np.ndarray:  # type: ignore[override]
         """Estimate grid edges using sinusoidal cross-correlation.
 
         Overrides GridInferenceMixin._estimate_edges with a gitter-faithful
@@ -225,10 +226,10 @@ class SineAlignmentRefiner(GridInferenceMixin, ObjectRefiner):
         elif peaks.size < n_bins:
             # Fallback: evenly spaced peaks
             peaks = np.linspace(
-                start=expected_spacing // 2,
-                stop=image_size - expected_spacing // 2,
-                num=n_bins,
-                dtype=int,
+                    start=expected_spacing // 2,
+                    stop=image_size - expected_spacing // 2,
+                    num=n_bins,
+                    dtype=int,
             )
 
         # 10. Derive edges at midpoints
@@ -248,7 +249,8 @@ class SineAlignmentRefiner(GridInferenceMixin, ObjectRefiner):
         return edges.astype(int)
 
     @staticmethod
-    def _normalized_cross_correlation(signal: np.ndarray, template: np.ndarray) -> np.ndarray:
+    def _normalized_cross_correlation(signal: np.ndarray,
+                                      template: np.ndarray) -> np.ndarray:
         """FFT-based normalized cross-correlation.
 
         Computes the normalized cross-correlation between a signal and a
@@ -291,9 +293,9 @@ class SineAlignmentRefiner(GridInferenceMixin, ObjectRefiner):
         denom = local_std * template_norm
         safe_denom = np.where(denom > 1e-10, denom, 1.0)
         ncc = np.where(
-            denom > 1e-10,
-            (xcorr - local_mean * np.sum(template_zm)) / safe_denom,
-            0.0,
+                denom > 1e-10,
+                (xcorr - local_mean * np.sum(template_zm)) / safe_denom,
+                0.0,
         )
 
         return np.clip(ncc, -1.0, 1.0)

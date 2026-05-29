@@ -45,7 +45,7 @@ class Skeletonize(ObjectRefiner):
           over the number of iterations.
         - :class:`MaskGradient` when you need boundary outlines rather
           than medial axes.
-        - :class:`MaskEroder` for uniform inward shrinking that preserves
+        - :class:`MaskErosion` for uniform inward shrinking that preserves
           filled regions.
 
     See Also:

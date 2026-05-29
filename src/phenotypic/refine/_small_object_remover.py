@@ -32,7 +32,7 @@ class SmallObjectRemover(ObjectRefiner):
         - Post-processing after aggressive enhancement or thresholding.
 
     Consider Also:
-        - :class:`BorderObjectRemover` for removing partial colonies at
+        - :class:`RemoveBorderObjects` for removing partial colonies at
           image edges (size-independent).
         - :class:`LowCircularityRemover` for removing non-circular artifacts
           regardless of size.

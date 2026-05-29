@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING, ClassVar, TypeVar
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
-
 _T = TypeVar("_T", bound="PointPickerMixin")
 
 
@@ -16,7 +15,7 @@ class PointPickerMixin:
 
     Operations that take a list of point coordinates as a primary parameter
     (currently :class:`~phenotypic.detect.ManualPointDetector` and
-    :class:`~phenotypic.refine.ManualSelector`) inherit from this mixin to
+    :class:`~phenotypic.refine.ManualRefine`) inherit from this mixin to
     pick up two things at once:
 
     * **A blocking napari picker.** :meth:`napari` opens a desktop

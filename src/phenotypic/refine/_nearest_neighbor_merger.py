@@ -44,7 +44,7 @@ class NearestNeighborMerger(ObjectRefiner):
           objects regardless of size.
         - :class:`SmallToLargeMerger` for merging small objects into the
           largest nearby colony.
-        - :class:`MaskCloser` for bridging narrow gaps morphologically.
+        - :class:`MaskClosing` for bridging narrow gaps morphologically.
 
     See Also:
         :doc:`/how_to/notebooks/merge_fragmented_detections` for fragment
@@ -107,7 +107,7 @@ class NearestNeighborMerger(ObjectRefiner):
 
         # Extract properties
         props = regionprops_table(
-            label_image=objmap, properties=["label", "centroid", "area"]
+                label_image=objmap, properties=["label", "centroid", "area"]
         )
         df = pd.DataFrame(props)
 

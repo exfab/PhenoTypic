@@ -32,9 +32,9 @@ class GridObjectRefiner(ObjectRefiner, GridOperation, ABC):
       image.grid to make position-aware decisions (e.g., filter colonies oversized for their well).
     - **Oversized colonies:** [GridOversizedObjectRemover](src/phenotypic/refine/_grid_oversized_object_remover.py)
       removes objects spanning nearly entire well (merged colonies, segmentation spillover).
-    - **Per-well largest:** [GridSectionLargest](src/phenotypic/refine/_grid_section_largest.py) keeps
+    - **Per-well largest:** [KeepSectionLargest](src/phenotypic/refine/_keep_section_largest.py) keeps
       only the largest object per grid cell (one colony per well).
-    - **Multi-well reducer:** [ReduceMultipleGridObjects](src/phenotypic/refine/_min_residual_error_reducer.py)
+    - **Multi-well reducer:** [ReduceSectionsByLine](src/phenotypic/refine/_reduce_multiple_grid_objects.py)
       merges multiple objects per well into single representative region.
     - **Border handling:** Grid structure enables identifying and filtering objects near plate/well
       edges that may be incomplete or distorted.

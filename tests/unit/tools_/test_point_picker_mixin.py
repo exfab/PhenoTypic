@@ -4,7 +4,7 @@ Coordinate coercion no longer lives on the mixin: ``PointPickerMixin``'s
 ``__setattr__`` override was removed in the pydantic migration (it
 conflicts with pydantic's own ``__setattr__``). The picked-coordinates
 field is now coerced by a ``field_validator`` on each consuming
-operation (``ManualPointDetector`` / ``ManualSelector``) — covered by
+operation (``ManualPointDetector`` / ``ManualRefine``) — covered by
 ``tests/unit/detect`` and ``tests/unit/refine``.
 """
 
@@ -52,7 +52,7 @@ class TestNapariMethod:
         d = _Dummy()
         with patch("phenotypic.tools_.napari_.PointPickerWidget") as MockWidget:
             MockWidget.return_value.run.return_value = np.array(
-                [[10.0, 20.0], [30.0, 40.0]]
+                    [[10.0, 20.0], [30.0, 40.0]]
             )
             result = d.napari(MagicMock())
         assert result is d
@@ -76,7 +76,7 @@ class TestNapariMethod:
 
 
 class TestMixinIsMarkerForRealOps:
-    """``ManualPointDetector`` and ``ManualSelector`` mix the marker in."""
+    """``ManualPointDetector`` and ``ManualRefine`` mix the marker in."""
 
     def test_manual_point_detector_inherits(self):
         from phenotypic.detect import ManualPointDetector
@@ -86,9 +86,9 @@ class TestMixinIsMarkerForRealOps:
         assert det._point_picker_param_name == "centers"
 
     def test_manual_selector_inherits(self):
-        from phenotypic.refine import ManualSelector
+        from phenotypic.refine import ManualRefine
 
-        sel = ManualSelector()
+        sel = ManualRefine()
         assert isinstance(sel, PointPickerMixin)
         assert sel._point_picker_param_name == "centers"
 

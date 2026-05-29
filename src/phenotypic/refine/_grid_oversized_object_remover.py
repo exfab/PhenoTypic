@@ -32,7 +32,7 @@ class GridOversizedObjectRemover(GridObjectRefiner):
           should contain one confined colony.
 
     Consider Also:
-        - :class:`GridSectionLargest` when you want to keep the single
+        - :class:`KeepSectionLargest` when you want to keep the single
           largest object per cell rather than removing oversized ones.
         - :class:`GridAlignmentRefiner` for full grid-aware dominant-object
           selection.

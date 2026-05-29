@@ -53,7 +53,7 @@ fail depending on noise in your scene
 
 | Param               | Role                                                                                                                                                                                                                        |
 |---------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `inoculum_detector` | ObjectDetector or ImagePipeline for centres. Defaults to `InoculumDetector` + `GridSectionLargest` for grid plates. Replace with a species-specific centre detector if the default doesn't pick up your inoculation points. |
+| `inoculum_detector` | ObjectDetector or ImagePipeline for centres. Defaults to `InoculumDetector` + `KeepSectionLargest` for grid plates. Replace with a species-specific centre detector if the default doesn't pick up your inoculation points. |
 
 ---
 

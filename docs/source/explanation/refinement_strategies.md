@@ -5,24 +5,24 @@ artifacts. Refiners clean up these artifacts without re-running detection.
 
 ## Common Artifacts
 
-| Artifact | Cause | Refiner |
-|----------|-------|---------|
-| Border objects | Partial colonies at image edges | `BorderObjectRemover` |
-| Small fragments | Noise, agar texture | `SmallObjectRemover` |
-| Holes in masks | Uneven colony interior intensity | `MaskFill` |
-| Jagged edges | Threshold quantization | `MaskOpener`, `MaskCloser` |
-| Touching colonies merged | Threshold too low | `SeparateObjects` |
-| One colony fragmented | Threshold too high | `NearestNeighborMerger`, `MaskCloser` |
-| Multiple detections per well | Over-segmentation in grid plates | `ReduceMultipleGridObjects` |
-| Oversized objects | Merged colonies spanning wells | `GridOversizedObjectRemover` |
+| Artifact                     | Cause                            | Refiner                                |
+|------------------------------|----------------------------------|----------------------------------------|
+| Border objects               | Partial colonies at image edges  | `RemoveBorderObjects`                  |
+| Small fragments              | Noise, agar texture              | `SmallObjectRemover`                   |
+| Holes in masks               | Uneven colony interior intensity | `MaskFill`                             |
+| Jagged edges                 | Threshold quantization           | `MaskOpening`, `MaskClosing`           |
+| Touching colonies merged     | Threshold too low                | `SeparateObjects`                      |
+| One colony fragmented        | Threshold too high               | `NearestNeighborMerger`, `MaskClosing` |
+| Multiple detections per well | Over-segmentation in grid plates | `ReduceSectionsByLine`                 |
+| Oversized objects            | Merged colonies spanning wells   | `GridOversizedObjectRemover`           |
 
 ## Refinement Order
 
 The recommended refinement sequence:
 
-1. **BorderObjectRemover** — remove partial edge colonies first
+1. **RemoveBorderObjects** — remove partial edge colonies first
 2. **SmallObjectRemover** — remove noise fragments
-3. **MaskOpener** — smooth boundaries and break thin bridges
+3. **MaskOpening** — smooth boundaries and break thin bridges
 4. **MaskFill** — fill interior holes
 5. **Grid-specific refiners** — align, reduce multiples, remove oversized
 
@@ -34,12 +34,12 @@ masks.
 Morphological operations use a structuring element (footprint) to reshape
 mask boundaries.
 
-- **MaskOpener** (erosion → dilation) — removes small protrusions,
+- **MaskOpening** (erosion → dilation) — removes small protrusions,
   breaks thin bridges between touching colonies
-- **MaskCloser** (dilation → erosion) — fills small gaps, bridges
+- **MaskClosing** (dilation → erosion) — fills small gaps, bridges
   narrow breaks in fragmented colonies
 - **MaskDilator** — expands mask boundaries outward
-- **MaskEroder** — shrinks mask boundaries inward
+- **MaskErosion** — shrinks mask boundaries inward
 - **MaskFill** — fills enclosed holes using binary flood fill
 
 The `width` parameter controls the footprint size. Larger footprints
@@ -53,9 +53,9 @@ for `GridImage`:
 - **GridAligner** — rotates the image to align the grid
 - **GridOversizedObjectRemover** — removes objects larger than expected
   for a single well
-- **ReduceMultipleGridObjects** — when multiple objects are in one grid
+- **ReduceSectionsByLine** — when multiple objects are in one grid
   section, keeps only the most prominent
-- **MergeGridObj** — merges all objects within a grid section into one
+- **MergeWithinSection** — merges all objects within a grid section into one
 
 ## Tuning Strategy
 

@@ -21,7 +21,7 @@ from phenotypic.enhance._median_filter import MedianFilter
 from phenotypic.enhance._multiscale_log_enhancer import MultiscaleLoGEnhancer
 from phenotypic.enhance._subtract_gaussian import SubtractGaussian
 from phenotypic.refine._gmm_core_extractor import GMMCoreExtractor
-from phenotypic.refine._grid_section_largest import GridSectionLargest
+from phenotypic.refine._keep_section_largest import KeepSectionLargest
 
 logger = logging.getLogger(__name__)
 
@@ -233,8 +233,8 @@ class InoculumDetector(ObjectDetector):
 
         # --- Step 8: GridImage → keep largest per cell ---
         if isinstance(work, GridImage):
-            GridSectionLargest().apply(work, inplace=True)
-            self._log_memory_usage("GridSectionLargest")
+            KeepSectionLargest().apply(work, inplace=True)
+            self._log_memory_usage("KeepSectionLargest")
 
         # --- Step 9: Optional GMM core extraction ---
         if self.enable_gmm:

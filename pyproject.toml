@@ -79,8 +79,7 @@ Repository = "https://github.com/Wheeldon-Lab/PhenoTypic"
 
 gui = [
     # Napari visualization
-    "napari[optional,pyqt5]>=0.5.4,<0.7.0;sys_platform!='darwin'",
-    "napari[all]>=0.5.4;sys_platform=='darwin'",
+    "napari[optional,pyqt6]",
     # Panel GUI components
     "panel>=1.3",
     "param>=2.0",

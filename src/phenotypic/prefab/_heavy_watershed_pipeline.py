@@ -13,11 +13,11 @@ from phenotypic.measure import (
     MeasureTexture,
 )
 from phenotypic.refine import (
-    BorderObjectRemover,
+    RemoveBorderObjects,
     MaskFill,
     LowCircularityRemover,
     GridOversizedObjectRemover,
-    ReduceMultipleGridObjects,
+    ReduceSectionsByLine,
 )
 
 
@@ -34,10 +34,10 @@ class HeavyWatershedPipeline(PrefabPipeline):
         2. CLAHE — boost local contrast
         3. MedianFilter — remove residual speckle
         4. WatershedDetector — region-growing segmentation
-        5. BorderObjectRemover — remove partial edge colonies
+        5. RemoveBorderObjects — remove partial edge colonies
         6. LowCircularityRemover — remove non-circular artifacts
         7. GridOversizedObjectRemover — remove merged multi-well objects
-        8. ReduceMultipleGridObjects — keep one colony per well
+        8. ReduceSectionsByLine — keep one colony per well
         9. GridAligner — straighten the grid
         10. MaskFill — fill interior holes
 
@@ -122,8 +122,8 @@ class HeavyWatershedPipeline(PrefabPipeline):
                 relabel=watershed_relabel,
                 ignore_zeros=watershed_ignore_zeros,
         )
-        border_remover = BorderObjectRemover(border_size=border_remover_size)
-        min_residual_reducer = ReduceMultipleGridObjects()
+        border_remover = RemoveBorderObjects(border_size=border_remover_size)
+        min_residual_reducer = ReduceSectionsByLine()
 
         ops = [
             GaussianBlur(

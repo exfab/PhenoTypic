@@ -173,36 +173,24 @@ if PANEL_AVAILABLE:
                 plt.close(fig)
             return pane
 
-        def _preprocess_roi(
-            self, roi_idx: int,
-        ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-            """Run preprocessing pipeline on a single ROI.
+        def _preprocess_roi(self, roi_idx: int):
+            """Run the profile's preprocessing on a single ROI.
+
+            Delegates to :meth:`ColorCheckerProfile._preprocess_roi` so the
+            dashboard observes the same pixels (and respects ``pad_checker``)
+            as the fit path.
 
             Args:
                 roi_idx: Index into ``self._rois``.
 
             Returns:
-                Tuple of ``(original_crop, trimmed, filtered, padded)``
-                arrays.
+                A ``_RoiPreprocessing`` named tuple with every stage of the
+                pipeline plus the canonical normalised sRGB and Lab arrays.
             """
-            from ._helpers import (
-                center_and_pad_checker,
-                median_filter_rgb,
-                trim_background_edges,
-            )
-
             row_sl, col_sl = self._rois[roi_idx]  # type: ignore[index]
-            original = self._image.rgb[row_sl, col_sl].copy()  # type: ignore[union-attr]
-            trimmed = trim_background_edges(original)
-            filtered = median_filter_rgb(
-                trimmed, size=self._profile.median_filter_size,
+            return self._profile._preprocess_roi(
+                self._image, row_sl, col_sl,  # type: ignore[arg-type]
             )
-            padded = center_and_pad_checker(
-                filtered,
-                filter_size=self._profile.median_filter_size,
-                stddev_mag_threshold=self._profile.stddev_mag_threshold,
-            )
-            return original, trimmed, filtered, padded
 
         # ------------------------------------------------------------------
         # Section A: Pipeline Steps
@@ -219,18 +207,30 @@ if PANEL_AVAILABLE:
                 "2. Background Trimmed",
                 "3. Median Filtered",
                 "4. Centered & Padded",
+                "5. Border Mask",
             ]
 
             with plt.rc_context(_DASHBOARD_STYLE):
                 fig, axes = plt.subplots(
-                    n_rois, 4, figsize=(16, 4 * n_rois), squeeze=False,
+                    n_rois, 5, figsize=(20, 4 * n_rois), squeeze=False,
                 )
                 for roi_idx in range(n_rois):
-                    original, trimmed, filtered, padded = self._preprocess_roi(
-                        roi_idx,
+                    prep = self._preprocess_roi(roi_idx)
+                    # Darken excluded (border) pixels to ~33% intensity so
+                    # the swatch interior the fit actually sees stands out.
+                    mask_overlay = prep.padded.copy()
+                    mask_overlay[~prep.swatch_roi_mask] = (
+                        mask_overlay[~prep.swatch_roi_mask] // 3
                     )
+                    stages = [
+                        prep.original,
+                        prep.trimmed,
+                        prep.filtered,
+                        prep.padded,
+                        mask_overlay,
+                    ]
                     for col, (label, arr) in enumerate(
-                        zip(stage_labels, [original, trimmed, filtered, padded])
+                        zip(stage_labels, stages)
                     ):
                         ax = axes[roi_idx, col]
                         display = arr.astype(np.float64)
@@ -272,19 +272,18 @@ if PANEL_AVAILABLE:
                 return pn.Column()
 
             from ._helpers import (
-                _normalize_to_unit_float,
-                _rgb_to_lab,
                 compute_core_mask,
-                lab_checker_cluster_masks,
+                segment_chips_by_border_fill,
                 validate_patch_shape,
             )
 
             n_rois = len(self._rois)  # type: ignore[arg-type]
-            ref_Lab_dict, _, target_wp_xy = self._profile._load_refs()
+            ref_Lab_dict, _, _target_wp_xy = self._profile._load_refs()
             ref_Lab_tuples = {
                 name: tuple(lab.tolist())
                 for name, lab in ref_Lab_dict.items()
             }
+            n_expected = len(ref_Lab_tuples)
 
             warnings_text: list[str] = []
 
@@ -295,20 +294,26 @@ if PANEL_AVAILABLE:
                 rng = np.random.default_rng(42)
 
                 for roi_idx in range(n_rois):
-                    _, _, _, padded = self._preprocess_roi(roi_idx)
-                    padded_float = _normalize_to_unit_float(padded)
-                    lab_padded = _rgb_to_lab(
-                        padded_float, illuminant_xy=target_wp_xy,
+                    prep = self._preprocess_roi(roi_idx)
+                    padded_float = prep.padded_normed
+
+                    # strict=False: never raise during inspection — render
+                    # whatever chips were found and surface a warning banner.
+                    blob_masks, blob_names = segment_chips_by_border_fill(
+                        prep.swatch_roi_mask,
+                        prep.lab,
+                        ref_Lab_tuples,
+                        min_swatch_area_frac=self._profile.min_swatch_area_frac,
+                        strict=False,
                     )
 
-                    masks, bboxes, labels = lab_checker_cluster_masks(
-                        lab_padded,
-                        ref_Lab_tuples,
-                        border_distance_threshold=(
-                            self._profile.border_distance_threshold
-                        ),
-                        include_labels=True,
-                    )  # type: ignore[misc]
+                    if len(blob_masks) != n_expected:
+                        warnings_text.append(
+                            f"**ROI {roi_idx}**: segmented {len(blob_masks)} "
+                            f"chips, expected {n_expected} — gutters may have "
+                            f"merged (raise stddev_mag_threshold) or the card "
+                            f"is partially occluded."
+                        )
 
                     display = padded_float.copy()
                     if display.max() > 1.0:
@@ -318,9 +323,7 @@ if PANEL_AVAILABLE:
                         (*display.shape[:2], 4), dtype=np.float64,
                     )
 
-                    for mask, label in zip(masks, labels):
-                        if label == "border":
-                            continue
+                    for mask, name in zip(blob_masks, blob_names):
                         if not mask.any():
                             continue
                         color = rng.uniform(0.3, 0.9, size=3)
@@ -336,7 +339,7 @@ if PANEL_AVAILABLE:
                         _, patch_warnings = validate_patch_shape(core)
                         if patch_warnings:
                             warnings_text.append(
-                                f"**ROI {roi_idx} -- {label}**: "
+                                f"**ROI {roi_idx} -- {name}**: "
                                 f"{'; '.join(patch_warnings)}"
                             )
 
@@ -356,7 +359,7 @@ if PANEL_AVAILABLE:
                     axes[roi_idx, 1].imshow(np.clip(display, 0, 1))
                     axes[roi_idx, 1].imshow(overlay)
                     axes[roi_idx, 1].set_title(
-                        "Cluster Masks (bright = core)",
+                        "Chip Masks (bright = core)",
                         fontsize=9, color=_COLOR_NAVY,
                     )
                     axes[roi_idx, 1].axis("off")

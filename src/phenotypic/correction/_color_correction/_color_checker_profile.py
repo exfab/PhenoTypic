@@ -8,28 +8,30 @@ providing serializable diagnostics for quality assessment.
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Annotated, Any
+from typing import TYPE_CHECKING, Annotated, Any, NamedTuple
 
 import colour
 import numpy as np
 from pydantic import (
     BaseModel,
     ConfigDict,
+    Field,
     PrivateAttr,
     WithJsonSchema,
     field_validator,
+    model_validator,
 )
 
 from phenotypic.tools_.typing_ import NdArrayField
 
+from ._capture_metadata import CaptureMetadata
 from ._helpers import (
-    _normalize_to_unit_float,
-    _rgb_to_lab,
     center_and_pad_checker,
     compute_core_mask,
+    compute_swatch_roi_mask,
     geometric_median,
-    lab_checker_cluster_masks,
     median_filter_rgb,
+    segment_chips_by_border_fill,
     trim_background_edges,
     validate_patch_shape,
 )
@@ -40,26 +42,54 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+class _RoiPreprocessing(NamedTuple):
+    """Stages of per-ROI preprocessing shared by fit and the dashboard.
+
+    Attributes:
+        original: Raw RGB crop from the source image.
+        trimmed: Result of :func:`trim_background_edges`.  Equals
+            *original* when ``pad_checker`` is ``False``.
+        filtered: Median-filtered RGB.
+        padded: RGB after the optional centring + reflect-pad.  Equals
+            *filtered* when ``pad_checker`` is ``False``.
+        padded_normed: ``[0, 1]`` float view of *padded* via the canonical
+            :pyattr:`Image.rgb.normed`.
+        lab: CIE Lab of *padded* via the canonical
+            :pyattr:`Image.color.Lab` accessor.
+        swatch_roi_mask: 2-D boolean mask, ``True`` where *padded* is a
+            swatch-interior pixel and ``False`` on uniform border rows or
+            columns (outer frame, central divider, inter-swatch gutters).
+            Consumed by :func:`segment_chips_by_border_fill` as the chip
+            source so dark-frame pixels cannot be misassigned to a chip.
+    """
+
+    original: np.ndarray
+    trimmed: np.ndarray
+    filtered: np.ndarray
+    padded: np.ndarray
+    padded_normed: np.ndarray
+    lab: np.ndarray
+    swatch_roi_mask: np.ndarray
+
 # ---------------------------------------------------------------------------
 # ROI-slice field annotation
 # ---------------------------------------------------------------------------
 #: A single ``slice`` ROI bound. ``slice`` is a Python-native object that
 #: pydantic accepts under ``arbitrary_types_allowed`` but cannot describe in
 #: JSON Schema, so ``WithJsonSchema`` supplies a descriptive entry. The
-#: ``rois`` field is transient (set at construction, deliberately dropped by
-#: :meth:`ColorCheckerProfile.to_dict`); the schema entry exists only so
+#: ``rois`` field is transient (set at construction, excluded from
+#: :meth:`~pydantic.BaseModel.model_dump`); the schema entry exists only so
 #: ``model_json_schema()`` succeeds for downstream tooling.
 _RoiSlice = Annotated[
     slice,
     WithJsonSchema(
-        {
-            "type": "object",
-            "description": "A Python slice (start, stop, step) bounding a "
-            "color-checker ROI along one image axis.",
-        }
+            {
+                "type"       : "object",
+                "description": "A Python slice (start, stop, step) bounding a "
+                               "color-checker ROI along one image axis.",
+            }
     ),
 ]
-
 
 # ---------------------------------------------------------------------------
 # Illuminant constants
@@ -89,8 +119,8 @@ def _illuminant_xy(name: str) -> np.ndarray:
         return colour.CCS_ILLUMINANTS["CIE 1931 2 Degree Standard Observer"][name]
     except KeyError:
         raise ValueError(
-            f"Unknown illuminant '{name}'. Expected one of: "
-            f"{list(colour.CCS_ILLUMINANTS['CIE 1931 2 Degree Standard Observer'].keys())}"
+                f"Unknown illuminant '{name}'. Expected one of: "
+                f"{list(colour.CCS_ILLUMINANTS['CIE 1931 2 Degree Standard Observer'].keys())}"
         ) from None
 
 
@@ -105,8 +135,8 @@ def _illuminant_XYZ(name: str) -> np.ndarray:
 
 
 def _load_reference_data(
-    checker_type: str,
-    target_illuminant: str,
+        checker_type: str,
+        target_illuminant: str,
 ) -> tuple[dict[str, np.ndarray], dict[str, np.ndarray], np.ndarray]:
     """Load reference Lab values and linear RGB for a colour checker.
 
@@ -145,10 +175,10 @@ def _load_reference_data(
 
         if need_adapt:
             XYZ = colour.chromatic_adaptation(
-                XYZ,
-                XYZ_w=checker_wp_XYZ,
-                XYZ_wr=target_wp_XYZ,
-                transform="Bradford",
+                    XYZ,
+                    XYZ_w=checker_wp_XYZ,
+                    XYZ_wr=target_wp_XYZ,
+                    transform="Bradford",
             )
 
         Lab = colour.XYZ_to_Lab(XYZ, illuminant=target_wp_xy)
@@ -156,10 +186,10 @@ def _load_reference_data(
 
         # XYZ -> linear sRGB (under target illuminant / D65 for sRGB).
         linear_rgb = colour.XYZ_to_RGB(
-            XYZ,
-            colourspace=cs,
-            illuminant=target_wp_xy,
-            apply_cctf_encoding=False,
+                XYZ,
+                colourspace=cs,
+                illuminant=target_wp_xy,
+                apply_cctf_encoding=False,
         )
         ref_linear[name] = np.clip(linear_rgb, 0.0, None)
 
@@ -193,9 +223,19 @@ class ColorCheckerProfile(BaseModel):
             ``'D65'``).
         median_filter_size: Kernel size for per-ROI median filtering.
         stddev_mag_threshold: Column-stddev threshold for border detection
-            during checker centering.
-        border_distance_threshold: Lab Euclidean distance below which a
-            pixel is classified as border rather than swatch.
+            during checker centering.  Ignored when ``pad_checker`` is
+            ``False``.
+        pad_checker: When ``True``, each ROI is centred and reflect-padded
+            via :func:`center_and_pad_checker` to recover partially-clipped
+            checker cards.  Defaults to ``False`` because border-fill
+            segmentation requires a fully-visible grid with intact gutters:
+            reflect-padding fabricates extra mirrored swatch cells, which
+            makes the connected-component count exceed the expected number
+            of patches and trips the strict count gate.  Only enable it for
+            the clustering-era clipped-card workflow.
+        min_swatch_area_frac: During border-fill segmentation, connected
+            components smaller than this fraction of the median component
+            area are discarded as noise before the strict chip-count gate.
         core_fraction: Fraction of centroid-to-boundary distance used to
             define the reliable core of each patch.
         ridge_lambda: Ridge-regression regularisation parameter for the
@@ -212,12 +252,38 @@ class ColorCheckerProfile(BaseModel):
             on an unfitted profile.
         diagnostics: Per-patch and aggregate quality metrics.
         is_fitted: ``True`` after a successful fit.
+        capture_metadata: Camera EXIF (make/model, lens, ISO, exposure,
+            F-number, focal length) read from the calibration image during
+            :meth:`fit`.  ``None`` for an unfitted profile or one fitted via
+            :meth:`_fit_from_patch_colors` (no source image).  Serialises as a
+            nested object under :meth:`~pydantic.BaseModel.model_dump`; consumed
+            by :class:`ColorCorrector` to warn when a corrected image was shot
+            on different optics.  See :class:`CaptureMetadata`.
     """
 
     model_config = ConfigDict(
-        arbitrary_types_allowed=True,
-        validate_assignment=True,
+            arbitrary_types_allowed=True,
+            validate_assignment=True,
+            extra="forbid",
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _drop_legacy_fields(cls, data: Any) -> Any:
+        """Drop fields removed since older serialised profiles were written.
+
+        Runs before validation, so the obsolete keys are stripped while
+        ``extra="forbid"`` still rejects genuine typo'd kwargs (the project's
+        strict-construction contract). ``border_distance_threshold`` was
+        removed when chip segmentation switched from Lab clustering to
+        border-fill.
+        """
+        if isinstance(data, dict):
+            data = {
+                k: v for k, v in data.items()
+                if k not in {"border_distance_threshold"}
+            }
+        return data
 
     # -- constructor parameters --------------------------------------------
     checker_type: str = "ColorChecker24 - After November 2014"
@@ -225,16 +291,18 @@ class ColorCheckerProfile(BaseModel):
     target_illuminant: str = "D65"
     median_filter_size: int = 10
     stddev_mag_threshold: float = 15.0
-    border_distance_threshold: float = 12.0
+    pad_checker: bool = False
+    min_swatch_area_frac: float = 0.3
     core_fraction: float = 0.5
     ridge_lambda: float = 1e-3
     outlier_sigma: float = 2.0
-    rois: list[tuple[_RoiSlice, _RoiSlice]] | None = None
+    rois: list[tuple[_RoiSlice, _RoiSlice]] | None = Field(default=None, exclude=True)
 
     # -- post-fit state (defaults so an unfitted profile still constructs) --
     correction_matrix: NdArrayField | None = None
     diagnostics: dict[str, Any] = {}
     is_fitted: bool = False
+    capture_metadata: CaptureMetadata | None = None
 
     # -- transient (set by fit(), never serialized) ------------------------
     _image: "Image | None" = PrivateAttr(default=None)
@@ -253,9 +321,19 @@ class ColorCheckerProfile(BaseModel):
         """Require ``core_fraction`` in ``(0, 1]`` (pre-migration guard)."""
         if not (0.0 < core_fraction <= 1.0):
             raise ValueError(
-                f"core_fraction must be in (0, 1], got {core_fraction}"
+                    f"core_fraction must be in (0, 1], got {core_fraction}"
             )
         return core_fraction
+
+    @field_validator("min_swatch_area_frac")
+    @classmethod
+    def _validate_min_swatch_area_frac(cls, frac: float) -> float:
+        """Require ``min_swatch_area_frac`` in ``(0, 1]``."""
+        if not (0.0 < frac <= 1.0):
+            raise ValueError(
+                    f"min_swatch_area_frac must be in (0, 1], got {frac}"
+            )
+        return frac
 
     @field_validator("ridge_lambda")
     @classmethod
@@ -278,33 +356,100 @@ class ColorCheckerProfile(BaseModel):
     def fit(self, image: Image) -> ColorCheckerProfile:
         """Fit the profile from checker-card ROIs stored at initialisation.
 
+        When ``rois`` was not provided at initialisation, the entire image is
+        treated as a single ROI.
+
         Args:
             image: Source image containing visible checker cards.
 
         Returns:
             ``self`` for method chaining.
-
-        Raises:
-            ValueError: If no ROIs were provided at initialisation.
         """
         if self.rois is None:
-            raise ValueError(
-                "No ROIs available. Pass rois= to the constructor."
-            )
+            self.rois = [(slice(None), slice(None))]
         self._image = image
+        self.capture_metadata = CaptureMetadata.from_image(image)
         return self._fit_from_rois(image, self.rois)
 
+    def _preprocess_roi(
+            self,
+            image: Image,
+            row_sl: slice,
+            col_sl: slice,
+    ) -> _RoiPreprocessing:
+        """Run per-ROI preprocessing and canonical Lab conversion.
+
+        Shared by :meth:`_fit_from_rois` and the diagnostic dashboard so
+        both observe the same pixels: ``pad_checker`` controls whether
+        ``trim_background_edges`` and ``center_and_pad_checker`` run, and
+        Lab is always produced via :pyattr:`Image.color.Lab` (the same
+        XYZ pipeline used everywhere else in the package).
+
+        Args:
+            image: Source image (provides ``gamma`` for the wrapped sub-image).
+            row_sl: Row slice into ``image.rgb``.
+            col_sl: Column slice into ``image.rgb``.
+
+        Returns:
+            A :class:`_RoiPreprocessing` with every preprocessing stage.
+        """
+        from phenotypic._core._image import Image as _Image
+
+        original = image.rgb[row_sl, col_sl].copy()
+        trimmed = trim_background_edges(original) if self.pad_checker else original
+        filtered = median_filter_rgb(trimmed, size=self.median_filter_size)
+        if self.pad_checker:
+            padded = center_and_pad_checker(
+                    filtered,
+                    filter_size=self.median_filter_size,
+                    stddev_mag_threshold=self.stddev_mag_threshold,
+            )
+        else:
+            padded = filtered
+
+        sub_image = _Image(
+                arr=padded,
+                gamma=image.gamma,
+                illuminant=self.target_illuminant,  # type: ignore[arg-type]
+        )
+        lab = sub_image.color.Lab[:]
+        swatch_roi_mask = compute_swatch_roi_mask(
+                lab,
+                stddev_mag_threshold=self.stddev_mag_threshold,
+                filter_size=self.median_filter_size,
+        )
+        if not swatch_roi_mask.any():
+            logger.warning(
+                    "Cross-channel stddev ROI mask is empty for ROI; falling "
+                    "back to a full-ROI mask. No gutters were detected, so "
+                    "segmentation will fail the chip-count gate. Consider "
+                    "lowering stddev_mag_threshold (currently %.2f).",
+                    self.stddev_mag_threshold,
+            )
+            swatch_roi_mask = np.ones(padded.shape[:2], dtype=bool)
+        return _RoiPreprocessing(
+                original=original,
+                trimmed=trimmed,
+                filtered=filtered,
+                padded=padded,
+                padded_normed=sub_image.rgb.normed(),
+                lab=lab,
+                swatch_roi_mask=swatch_roi_mask,
+        )
+
     def _fit_from_rois(
-        self,
-        image: Image,
-        rois: list[tuple[slice, slice]],
+            self,
+            image: Image,
+            rois: list[tuple[slice, slice]],
     ) -> ColorCheckerProfile:
         """Fit the profile from one or more checker-card ROIs in an image.
 
         For each ROI the function extracts the sub-image, pre-processes it
         (background trimming, median filtering, centering/padding), segments
-        patches via nearest-neighbour Lab assignment, measures the core color
-        of each patch with geometric median, and pools the results.  Outlier
+        chips geometrically as filled connected components of the swatch ROI
+        mask and labels them by Hungarian colour match
+        (:func:`segment_chips_by_border_fill`), measures the core color of
+        each chip with geometric median, and pools the results.  Outlier
         patches are rejected before fitting the root-polynomial matrix.
 
         Args:
@@ -316,7 +461,7 @@ class ColorCheckerProfile(BaseModel):
             ``self`` for method chaining.
         """
         ref_Lab, ref_linear, target_wp_xy = _load_reference_data(
-            self.checker_type, self.target_illuminant
+                self.checker_type, self.target_illuminant
         )
         patch_names = list(ref_Lab.keys())
         n_expected = len(patch_names)
@@ -327,47 +472,32 @@ class ColorCheckerProfile(BaseModel):
         }
         per_card_summary: list[dict[str, Any]] = []
 
+        ref_Lab_tuples = {
+            name: tuple(ref_Lab[name].tolist()) for name in patch_names
+        }
+
         for roi_idx, (row_sl, col_sl) in enumerate(rois):
-            # 1. Extract sub-image and preprocess.
-            sub_rgb = image.rgb[row_sl, col_sl].copy()
-            sub_rgb = trim_background_edges(sub_rgb)
-            sub_rgb = median_filter_rgb(sub_rgb, size=self.median_filter_size)
+            prep = self._preprocess_roi(image, row_sl, col_sl)
+            padded_float = prep.padded_normed
 
-            # 2. Center and pad the checker.
-            sub_rgb_padded = center_and_pad_checker(
-                sub_rgb,
-                filter_size=self.median_filter_size,
-                stddev_mag_threshold=self.stddev_mag_threshold,
+            # 4. Segment chips geometrically and label them by colour.
+            blob_masks, blob_names = segment_chips_by_border_fill(
+                    prep.swatch_roi_mask,
+                    prep.lab,
+                    ref_Lab_tuples,
+                    min_swatch_area_frac=self.min_swatch_area_frac,
+                    strict=True,
             )
-
-            # Re-convert padded image to Lab.
-            padded_float = _normalize_to_unit_float(sub_rgb_padded)
-            lab_padded = _rgb_to_lab(padded_float, illuminant_xy=target_wp_xy)
-
-            # 4. Cluster masks.
-            ref_Lab_tuples = {
-                name: tuple(ref_Lab[name].tolist()) for name in patch_names
-            }
-            cluster_result = lab_checker_cluster_masks(
-                lab_padded,
-                ref_Lab_tuples,
-                border_distance_threshold=self.border_distance_threshold,
-                include_labels=True,
-            )
-            masks, bboxes, labels = cluster_result  # type: ignore[misc]
 
             card_detected = 0
 
-            for mask, bbox, label in zip(masks, bboxes, labels):
-                if label == "border":
-                    continue
-                if not mask.any():
-                    continue
-
+            for blob_mask, name in zip(blob_masks, blob_names):
                 # 5. Compute core mask and validate.
-                core = compute_core_mask(mask, core_fraction=self.core_fraction)
-                is_valid, warnings = validate_patch_shape(core)
-                core_pixels_fraction = float(core.sum()) / max(float(mask.sum()), 1.0)
+                core = compute_core_mask(blob_mask, core_fraction=self.core_fraction)
+                _, warnings = validate_patch_shape(core)
+                core_pixels_fraction = float(core.sum()) / max(
+                        float(blob_mask.sum()), 1.0
+                )
 
                 # 6. Measure color from core pixels in the padded sRGB image.
                 core_pixels_srgb = padded_float[core]
@@ -376,17 +506,17 @@ class ColorCheckerProfile(BaseModel):
 
                 # Geometric median in sRGB space.
                 patch_srgb = geometric_median(core_pixels_srgb)
-                measured_srgb[label].append(
-                    (patch_srgb, roi_idx, core_pixels_fraction, warnings)
+                measured_srgb[name].append(
+                        (patch_srgb, roi_idx, core_pixels_fraction, warnings)
                 )
                 card_detected += 1
 
             per_card_summary.append(
-                {
-                    "roi_index": roi_idx,
-                    "patches_detected": card_detected,
-                    "patches_expected": n_expected,
-                }
+                    {
+                        "roi_index"       : roi_idx,
+                        "patches_detected": card_detected,
+                        "patches_expected": n_expected,
+                    }
             )
 
         # 7. Pool measurements: pick the best observation per patch (highest
@@ -403,25 +533,25 @@ class ColorCheckerProfile(BaseModel):
             best = max(observations, key=lambda o: o[2])
             measured_rgb_final[name] = best[0]
             patch_meta[name] = {
-                "roi_index": best[1],
-                "core_fraction_used": best[2],
+                "roi_index"          : best[1],
+                "core_fraction_used" : best[2],
                 "validation_warnings": best[3],
             }
 
         self._fit_from_measured(
-            measured_rgb_final,
-            ref_Lab,
-            ref_linear,
-            target_wp_xy,
-            patch_meta,
-            per_card_summary,
+                measured_rgb_final,
+                ref_Lab,
+                ref_linear,
+                target_wp_xy,
+                patch_meta,
+                per_card_summary,
         )
         return self
 
     def _fit_from_patch_colors(
-        self,
-        measured_rgb: np.ndarray,
-        patch_names: list[str] | None = None,
+            self,
+            measured_rgb: np.ndarray,
+            patch_names: list[str] | None = None,
     ) -> ColorCheckerProfile:
         """Fit from pre-measured patch colors.
 
@@ -439,16 +569,16 @@ class ColorCheckerProfile(BaseModel):
             ``self`` for method chaining.
         """
         ref_Lab, ref_linear, target_wp_xy = _load_reference_data(
-            self.checker_type, self.target_illuminant
+                self.checker_type, self.target_illuminant
         )
         all_names = list(ref_Lab.keys())
 
         if patch_names is None:
             if measured_rgb.shape[0] != len(all_names):
                 raise ValueError(
-                    f"measured_rgb has {measured_rgb.shape[0]} rows but the "
-                    f"checker expects {len(all_names)} patches. Supply "
-                    f"patch_names explicitly if providing a subset."
+                        f"measured_rgb has {measured_rgb.shape[0]} rows but the "
+                        f"checker expects {len(all_names)} patches. Supply "
+                        f"patch_names explicitly if providing a subset."
                 )
             patch_names = all_names
 
@@ -458,33 +588,33 @@ class ColorCheckerProfile(BaseModel):
 
         patch_meta: dict[str, dict[str, Any]] = {
             name: {
-                "roi_index": 0,
-                "core_fraction_used": 1.0,
+                "roi_index"          : 0,
+                "core_fraction_used" : 1.0,
                 "validation_warnings": [],
             }
             for name in patch_names
         }
 
         self._fit_from_measured(
-            measured_dict,
-            ref_Lab,
-            ref_linear,
-            target_wp_xy,
-            patch_meta,
-            per_card_summary=[],
+                measured_dict,
+                ref_Lab,
+                ref_linear,
+                target_wp_xy,
+                patch_meta,
+                per_card_summary=[],
         )
         return self
 
     # -- internal fitting logic ---------------------------------------------
 
     def _fit_from_measured(
-        self,
-        measured_srgb: dict[str, np.ndarray],
-        ref_Lab: dict[str, np.ndarray],
-        ref_linear: dict[str, np.ndarray],
-        target_wp_xy: np.ndarray,
-        patch_meta: dict[str, dict[str, Any]],
-        per_card_summary: list[dict[str, Any]],
+            self,
+            measured_srgb: dict[str, np.ndarray],
+            ref_Lab: dict[str, np.ndarray],
+            ref_linear: dict[str, np.ndarray],
+            target_wp_xy: np.ndarray,
+            patch_meta: dict[str, dict[str, Any]],
+            per_card_summary: list[dict[str, Any]],
     ) -> None:
         """Core fitting routine shared by both public entry points.
 
@@ -506,7 +636,7 @@ class ColorCheckerProfile(BaseModel):
         for name, srgb in measured_srgb.items():
             srgb_clipped = np.clip(srgb, 0.0, 1.0)
             XYZ = colour.RGB_to_XYZ(
-                srgb_clipped, colourspace=cs, apply_cctf_decoding=True
+                    srgb_clipped, colourspace=cs, apply_cctf_decoding=True
             )
             measured_Lab[name] = colour.XYZ_to_Lab(XYZ, illuminant=target_wp_xy)
             measured_linear[name] = colour.cctf_decoding(srgb_clipped, function="sRGB")
@@ -515,9 +645,9 @@ class ColorCheckerProfile(BaseModel):
         deltaE_before: dict[str, float] = {}
         for name in measured_Lab:
             dE = float(
-                colour.difference.delta_E_CIE2000(
-                    measured_Lab[name], ref_Lab[name]
-                )
+                    colour.difference.delta_E_CIE2000(
+                            measured_Lab[name], ref_Lab[name]
+                    )
             )
             deltaE_before[name] = dE
 
@@ -533,23 +663,23 @@ class ColorCheckerProfile(BaseModel):
             if deltaE_before[name] > threshold:
                 rejected.append(name)
                 logger.info(
-                    "Rejecting patch '%s': Delta-E 2000 = %.2f > threshold %.2f",
-                    name,
-                    deltaE_before[name],
-                    threshold,
+                        "Rejecting patch '%s': Delta-E 2000 = %.2f > threshold %.2f",
+                        name,
+                        deltaE_before[name],
+                        threshold,
                 )
             else:
                 kept_names.append(name)
 
         if len(kept_names) < 4:
             warnings_list.append(
-                f"Only {len(kept_names)} patches remaining after outlier "
-                f"rejection (minimum recommended: 4)."
+                    f"Only {len(kept_names)} patches remaining after outlier "
+                    f"rejection (minimum recommended: 4)."
             )
 
         if not kept_names:
             raise ValueError(
-                "All patches were rejected as outliers. Cannot fit correction matrix."
+                    "All patches were rejected as outliers. Cannot fit correction matrix."
             )
 
         # --- Build arrays for fitting -------------------------------------
@@ -567,10 +697,10 @@ class ColorCheckerProfile(BaseModel):
         # Returns CCM of shape (3, F) where F = polynomial feature count
         try:
             CCM = colour.characterisation.matrix_colour_correction_Finlayson2015(
-                measured_arr,
-                reference_arr,
-                degree=self.degree,  # type: ignore[arg-type]
-                root_polynomial_expansion=True,
+                    measured_arr,
+                    reference_arr,
+                    degree=self.degree,  # type: ignore[arg-type]
+                    root_polynomial_expansion=True,
             )
         except Exception:
             # Fallback: manual ridge regression.
@@ -586,24 +716,25 @@ class ColorCheckerProfile(BaseModel):
             linear_in = measured_linear[name].reshape(1, 3)
             corrected_linear = (
                 colour.characterisation.apply_matrix_colour_correction_Finlayson2015(
-                    linear_in,
-                    CCM,
-                    degree=self.degree,  # type: ignore[arg-type]
-                    root_polynomial_expansion=True,
+                        linear_in,
+                        CCM,
+                        degree=self.degree,  # type: ignore[arg-type]
+                        root_polynomial_expansion=True,
                 )
             )
             corrected_linear = np.clip(corrected_linear.ravel(), 0.0, None)
             corrected_srgb = colour.cctf_encoding(corrected_linear, function="sRGB")
-            corrected_srgb = np.clip(corrected_srgb, 0.0, 1.0)  # type: ignore[assignment]
+            corrected_srgb = np.clip(corrected_srgb, 0.0,
+                                     1.0)  # type: ignore[assignment]
 
             XYZ_corr = colour.RGB_to_XYZ(
-                corrected_srgb, colourspace=cs, apply_cctf_decoding=True
+                    corrected_srgb, colourspace=cs, apply_cctf_decoding=True
             )
             Lab_corr = colour.XYZ_to_Lab(XYZ_corr, illuminant=target_wp_xy)
             corrected_Lab[name] = Lab_corr
 
             dE = float(
-                colour.difference.delta_E_CIE2000(Lab_corr, ref_Lab[name])
+                    colour.difference.delta_E_CIE2000(Lab_corr, ref_Lab[name])
             )
             deltaE_after[name] = dE
 
@@ -639,37 +770,37 @@ class ColorCheckerProfile(BaseModel):
         after_arr = np.array(after_values) if after_values else np.array([0.0])
 
         self.diagnostics = {
-            "checker_type": self.checker_type,
-            "degree": self.degree,
-            "target_illuminant": self.target_illuminant,
-            "n_patches_detected": len(measured_Lab),
-            "n_patches_expected": len(all_patch_names),
-            "n_patches_rejected": len(rejected),
-            "rejected_patches": rejected,
-            "per_card_summary": per_card_summary,
-            "patches": patches_diag,
-            "mean_deltaE00_before": float(np.mean(dE_values)),
-            "mean_deltaE00_after": float(np.mean(after_arr)),
-            "max_deltaE00_after": float(np.max(after_arr)),
-            "median_deltaE00_after": float(np.median(after_arr)),
+            "checker_type"                      : self.checker_type,
+            "degree"                            : self.degree,
+            "target_illuminant"                 : self.target_illuminant,
+            "n_patches_detected"                : len(measured_Lab),
+            "n_patches_expected"                : len(all_patch_names),
+            "n_patches_rejected"                : len(rejected),
+            "rejected_patches"                  : rejected,
+            "per_card_summary"                  : per_card_summary,
+            "patches"                           : patches_diag,
+            "mean_deltaE00_before"              : float(np.mean(dE_values)),
+            "mean_deltaE00_after"               : float(np.mean(after_arr)),
+            "max_deltaE00_after"                : float(np.max(after_arr)),
+            "median_deltaE00_after"             : float(np.median(after_arr)),
             "correction_matrix_condition_number": cond,
-            "warnings": warnings_list,
+            "warnings"                          : warnings_list,
         }
 
         self.is_fitted = True
         logger.info(
-            "ColorCheckerProfile fitted: %d/%d patches, "
-            "mean dE00 %.2f -> %.2f",
-            len(measured_Lab),
-            len(all_patch_names),
-            self.diagnostics["mean_deltaE00_before"],
-            self.diagnostics["mean_deltaE00_after"],
+                "ColorCheckerProfile fitted: %d/%d patches, "
+                "mean dE00 %.2f -> %.2f",
+                len(measured_Lab),
+                len(all_patch_names),
+                self.diagnostics["mean_deltaE00_before"],
+                self.diagnostics["mean_deltaE00_after"],
         )
 
     def _fit_ridge(
-        self,
-        measured_linear: np.ndarray,
-        reference_linear: np.ndarray,
+            self,
+            measured_linear: np.ndarray,
+            reference_linear: np.ndarray,
     ) -> np.ndarray:
         """Fallback ridge-regression fit when colour library call fails.
 
@@ -684,16 +815,16 @@ class ColorCheckerProfile(BaseModel):
             Correction matrix of shape ``(3, F)``.
         """
         Phi = colour.characterisation.polynomial_expansion_Finlayson2015(
-            measured_linear,
-            degree=self.degree,  # type: ignore[arg-type]
-            root_polynomial_expansion=True,
+                measured_linear,
+                degree=self.degree,  # type: ignore[arg-type]
+                root_polynomial_expansion=True,
         )
         # Solve: reference = Phi @ W.T  =>  W.T = (Phi^T Phi + lam I)^-1 Phi^T reference
         AtA = Phi.T @ Phi
         F = AtA.shape[0]
         W_T = np.linalg.solve(
-            AtA + self.ridge_lambda * np.eye(F),
-            Phi.T @ reference_linear,
+                AtA + self.ridge_lambda * np.eye(F),
+                Phi.T @ reference_linear,
         )
         # W_T has shape (F, 3); CCM convention in colour is (3, F)
         return W_T.T
@@ -701,7 +832,7 @@ class ColorCheckerProfile(BaseModel):
     # -- reference data accessor -------------------------------------------
 
     def _load_refs(
-        self,
+            self,
     ) -> tuple[dict[str, np.ndarray], dict[str, np.ndarray], np.ndarray]:
         """Load reference Lab and linear RGB for the configured checker.
 
@@ -735,7 +866,7 @@ class ColorCheckerProfile(BaseModel):
         """
         if not self.is_fitted:
             raise RuntimeError(
-                "Cannot create dashboard for an unfitted profile."
+                    "Cannot create dashboard for an unfitted profile."
             )
         from phenotypic.tools_.panel_ import require_panel, display_or_return
 
@@ -744,70 +875,19 @@ class ColorCheckerProfile(BaseModel):
         from ._diagnostic_dashboard import ColorCorrectionDashboard
 
         dashboard = ColorCorrectionDashboard(
-            profile=self, image=self._image, rois=self.rois,
+                profile=self, image=self._image, rois=self.rois,
         )
         panel_layout = dashboard.panel()
 
         return display_or_return(panel_layout, show=show)
 
     # -- serialisation ------------------------------------------------------
-
-    def to_dict(self) -> dict[str, Any]:
-        """Serialise the profile to a JSON-compatible dictionary.
-
-        Returns:
-            Dictionary containing all parameters and the fitted correction
-            matrix (as a nested list).
-        """
-        data: dict[str, Any] = {
-            "checker_type": self.checker_type,
-            "degree": self.degree,
-            "target_illuminant": self.target_illuminant,
-            "median_filter_size": self.median_filter_size,
-            "stddev_mag_threshold": self.stddev_mag_threshold,
-            "border_distance_threshold": self.border_distance_threshold,
-            "core_fraction": self.core_fraction,
-            "ridge_lambda": self.ridge_lambda,
-            "outlier_sigma": self.outlier_sigma,
-            "is_fitted": self.is_fitted,
-        }
-        if self.correction_matrix is not None:
-            data["correction_matrix"] = self.correction_matrix.tolist()
-        if self.diagnostics:
-            data["diagnostics"] = self.diagnostics
-        return data
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> ColorCheckerProfile:
-        """Reconstruct a profile from a serialised dictionary.
-
-        Args:
-            data: Dictionary previously produced by :meth:`to_dict`.
-
-        Returns:
-            Reconstructed ``ColorCheckerProfile`` instance.
-        """
-        profile = cls(
-            checker_type=data.get("checker_type", "ColorChecker24 - After November 2014"),
-            degree=data.get("degree", 2),
-            target_illuminant=data.get("target_illuminant", "D65"),
-            median_filter_size=data.get("median_filter_size", 10),
-            stddev_mag_threshold=data.get("stddev_mag_threshold", 15.0),
-            border_distance_threshold=data.get("border_distance_threshold", 12.0),
-            core_fraction=data.get("core_fraction", 0.5),
-            ridge_lambda=data.get("ridge_lambda", 1e-3),
-            outlier_sigma=data.get("outlier_sigma", 2.0),
-        )
-        if data.get("correction_matrix") is not None:
-            profile.correction_matrix = np.asarray(
-                data["correction_matrix"], dtype=np.float64
-            )
-        if data.get("diagnostics"):
-            profile.diagnostics = data["diagnostics"]
-        profile.is_fitted = data.get("is_fitted", False)
-        profile.rois = None
-        profile._image = None
-        return profile
+    #
+    # ``ColorCheckerProfile`` is a pydantic ``BaseModel``: serialise via
+    # :meth:`~pydantic.BaseModel.model_dump` (use ``mode="json"`` for a
+    # JSON-native dict — ``NdArrayField`` rewrites ``correction_matrix`` to a
+    # nested list, and ``rois`` is field-level ``exclude=True``) and round-trip
+    # via :meth:`~pydantic.BaseModel.model_validate`.
 
     def __repr__(self) -> str:
         status = "fitted" if self.is_fitted else "unfitted"

@@ -36,18 +36,18 @@ from phenotypic.gui.builder._state import (
 
 
 def _otsu_step(
-    *,
-    node_id: str = "otsu_aux",
-    ignore_zeros: bool = True,
-    ignore_borders: bool = False,
+        *,
+        node_id: str = "otsu_aux",
+        ignore_zeros: bool = True,
+        ignore_borders: bool = False,
 ) -> StepNode:
     """Build an ``OtsuDetector`` :class:`StepNode` suitable for embedding."""
 
     return StepNode(
-        node_id=node_id,
-        class_name="OtsuDetector",
-        params={"ignore_zeros": ignore_zeros, "ignore_borders": ignore_borders},
-        label="OtsuDetector",
+            node_id=node_id,
+            class_name="OtsuDetector",
+            params={"ignore_zeros": ignore_zeros, "ignore_borders": ignore_borders},
+            label="OtsuDetector",
     )
 
 
@@ -55,10 +55,10 @@ def _round_peaks_step(*, node_id: str = "rp_aux") -> StepNode:
     """Build a ``RoundPeaksDetector`` :class:`StepNode` suitable for embedding."""
 
     return StepNode(
-        node_id=node_id,
-        class_name="RoundPeaksDetector",
-        params={},
-        label="RoundPeaksDetector",
+            node_id=node_id,
+            class_name="RoundPeaksDetector",
+            params={},
+            label="RoundPeaksDetector",
     )
 
 
@@ -79,17 +79,17 @@ def _structural_fingerprint(scope: BuilderScope) -> Dict[str, Any]:
         nested = _scope(node.nested) if node.nested is not None else None
         return {
             "class_name": node.class_name,
-            "params": dict(node.params),
-            "label": node.label,
-            "nested": nested,
-            "aux_ports": aux,
+            "params"    : dict(node.params),
+            "label"     : node.label,
+            "nested"    : nested,
+            "aux_ports" : aux,
         }
 
     def _scope(s: BuilderScope) -> Dict[str, Any]:
         return {
             "nodes": [_node(n) for n in s.nodes],
-            "name": s.name,
-            "desc": s.desc,
+            "name" : s.name,
+            "desc" : s.desc,
             "nrows": s.nrows,
             "ncols": s.ncols,
         }
@@ -112,28 +112,28 @@ def test_flat_pipeline_roundtrip() -> None:
         )
 
     scope = BuilderScope(
-        nodes=[
-            StepNode(
-                node_id="aaaa1111",
-                class_name="GaussianBlur",
-                params={"sigma": 2.0},
-                label="GaussianBlur",
-            ),
-            StepNode(
-                node_id="bbbb2222",
-                class_name="OtsuDetector",
-                params={"ignore_zeros": False, "ignore_borders": True},
-                label="OtsuDetector",
-            ),
-            StepNode(
-                node_id="cccc3333",
-                class_name="MeasureSize",
-                params={},
-                label="MeasureSize",
-            ),
-        ],
-        name="flat_demo",
-        desc="three-step demo pipeline",
+            nodes=[
+                StepNode(
+                        node_id="aaaa1111",
+                        class_name="GaussianBlur",
+                        params={"sigma": 2.0},
+                        label="GaussianBlur",
+                ),
+                StepNode(
+                        node_id="bbbb2222",
+                        class_name="OtsuDetector",
+                        params={"ignore_zeros": False, "ignore_borders": True},
+                        label="OtsuDetector",
+                ),
+                StepNode(
+                        node_id="cccc3333",
+                        class_name="MeasureSize",
+                        params={},
+                        label="MeasureSize",
+                ),
+            ],
+            name="flat_demo",
+            desc="three-step demo pipeline",
     )
 
     pipeline = to_pipeline(scope)
@@ -184,41 +184,41 @@ def test_nested_pipeline_roundtrip() -> None:
     """A nested ``ImagePipeline`` step survives a full round-trip."""
 
     inner_scope = BuilderScope(
-        nodes=[
-            StepNode(
-                node_id="inner001",
-                class_name="GaussianBlur",
-                params={"sigma": 1.25},
-                label="GaussianBlur",
-            ),
-            StepNode(
-                node_id="inner002",
-                class_name="OtsuDetector",
-                params={"ignore_zeros": True, "ignore_borders": False},
-                label="OtsuDetector",
-            ),
-        ],
-        name="inner_pipe",
-        desc="nested",
+            nodes=[
+                StepNode(
+                        node_id="inner001",
+                        class_name="GaussianBlur",
+                        params={"sigma": 1.25},
+                        label="GaussianBlur",
+                ),
+                StepNode(
+                        node_id="inner002",
+                        class_name="OtsuDetector",
+                        params={"ignore_zeros": True, "ignore_borders": False},
+                        label="OtsuDetector",
+                ),
+            ],
+            name="inner_pipe",
+            desc="nested",
     )
 
     outer_scope = BuilderScope(
-        nodes=[
-            StepNode(
-                node_id="outer001",
-                class_name="ImagePipeline",
-                params={},
-                label="inner_pipe",
-                nested=inner_scope,
-            ),
-            StepNode(
-                node_id="outer002",
-                class_name="MeasureSize",
-                params={},
-                label="MeasureSize",
-            ),
-        ],
-        name="outer_pipe",
+            nodes=[
+                StepNode(
+                        node_id="outer001",
+                        class_name="ImagePipeline",
+                        params={},
+                        label="inner_pipe",
+                        nested=inner_scope,
+                ),
+                StepNode(
+                        node_id="outer002",
+                        class_name="MeasureSize",
+                        params={},
+                        label="MeasureSize",
+                ),
+            ],
+            name="outer_pipe",
     )
 
     pipeline = to_pipeline(outer_scope)
@@ -281,27 +281,27 @@ def test_op_typed_param_roundtrip() -> None:
 
     if candidate_name is None or candidate_param is None:
         pytest.skip(
-            "no registered op exposes an Optional operation-typed parameter"
+                "no registered op exposes an Optional operation-typed parameter"
         )
 
     # Use OtsuDetector as a generic ObjectDetector substitute since the only
     # current candidate (FilamentousFungiDetector) accepts an ObjectDetector.
     inner_marker = {
-        "__type__": "operation",
+        "__type__"  : "operation",
         "class_name": "OtsuDetector",
-        "params": {"ignore_zeros": True, "ignore_borders": False},
+        "params"    : {"ignore_zeros": True, "ignore_borders": False},
     }
 
     scope = BuilderScope(
-        nodes=[
-            StepNode(
-                node_id="ffd00001",
-                class_name=candidate_name,
-                params={candidate_param: inner_marker},
-                label=candidate_name,
-            ),
-        ],
-        name="op_param_demo",
+            nodes=[
+                StepNode(
+                        node_id="ffd00001",
+                        class_name=candidate_name,
+                        params={candidate_param: inner_marker},
+                        label=candidate_name,
+                ),
+            ],
+            name="op_param_demo",
     )
 
     pipeline = to_pipeline(scope)
@@ -429,20 +429,20 @@ def test_composite_detector_with_mixed_wired_and_empty_slots() -> None:
     round_peaks_aux = _round_peaks_step(node_id="rp_a")
 
     scope = BuilderScope(
-        nodes=[
-            StepNode(
-                node_id="comp_main",
-                class_name="CompositeDetector",
-                params={"mode": "union"},
-                label="CompositeDetector",
-                aux_ports={
-                    # 3 slots: wired, empty, wired.
-                    "detectors": [otsu_aux, None, round_peaks_aux],
-                },
-            ),
-        ],
-        name="mixed_slots_demo",
-        desc="",
+            nodes=[
+                StepNode(
+                        node_id="comp_main",
+                        class_name="CompositeDetector",
+                        params={"mode": "union"},
+                        label="CompositeDetector",
+                        aux_ports={
+                            # 3 slots: wired, empty, wired.
+                            "detectors": [otsu_aux, None, round_peaks_aux],
+                        },
+                ),
+            ],
+            name="mixed_slots_demo",
+            desc="",
     )
 
     pipeline = to_pipeline(scope)
@@ -475,17 +475,17 @@ def test_embedded_aux_serialization_via_state_to_json() -> None:
 
     otsu_aux = _otsu_step(node_id="otsu_aux", ignore_zeros=True)
     scope = BuilderScope(
-        nodes=[
-            StepNode(
-                node_id="ffd_main",
-                class_name="FilamentousFungiDetector",
-                params={},
-                label="FilamentousFungiDetector",
-                aux_ports={"inoculum_detector": [otsu_aux]},
-            ),
-        ],
-        name="embedded_aux_demo",
-        desc="",
+            nodes=[
+                StepNode(
+                        node_id="ffd_main",
+                        class_name="FilamentousFungiDetector",
+                        params={},
+                        label="FilamentousFungiDetector",
+                        aux_ports={"inoculum_detector": [otsu_aux]},
+                ),
+            ],
+            name="embedded_aux_demo",
+            desc="",
     )
 
     pipeline = to_pipeline(scope)
@@ -531,33 +531,33 @@ def test_recursive_aux_three_levels_deep() -> None:
 
     # Deepest level: a plain OtsuDetector.
     deepest_aux = _otsu_step(
-        node_id="deep_aux", ignore_zeros=True, ignore_borders=False
+            node_id="deep_aux", ignore_zeros=True, ignore_borders=False
     )
 
     # Middle level: a FilamentousFungiDetector whose inoculum_detector is
     # the deepest OtsuDetector aux.
     middle_aux = StepNode(
-        node_id="mid_aux",
-        class_name="FilamentousFungiDetector",
-        params={},
-        label="FilamentousFungiDetector",
-        aux_ports={"inoculum_detector": [deepest_aux]},
+            node_id="mid_aux",
+            class_name="FilamentousFungiDetector",
+            params={},
+            label="FilamentousFungiDetector",
+            aux_ports={"inoculum_detector": [deepest_aux]},
     )
 
     # Outer level: another FilamentousFungiDetector whose inoculum_detector
     # is the middle FilamentousFungiDetector aux.
     outer_consumer = StepNode(
-        node_id="outer_ffd",
-        class_name="FilamentousFungiDetector",
-        params={},
-        label="FilamentousFungiDetector",
-        aux_ports={"inoculum_detector": [middle_aux]},
+            node_id="outer_ffd",
+            class_name="FilamentousFungiDetector",
+            params={},
+            label="FilamentousFungiDetector",
+            aux_ports={"inoculum_detector": [middle_aux]},
     )
 
     scope = BuilderScope(
-        nodes=[outer_consumer],
-        name="recursive_aux_demo",
-        desc="",
+            nodes=[outer_consumer],
+            name="recursive_aux_demo",
+            desc="",
     )
 
     # 1) Build the runtime pipeline.
@@ -606,8 +606,8 @@ def test_inspector_focus_aux_roundtrip() -> None:
 
     # Case 1: explicitly None.
     state_a = BuilderState(
-        root=BuilderScope(name="root"),
-        inspector_focus_aux=None,
+            root=BuilderScope(name="root"),
+            inspector_focus_aux=None,
     )
     json_a = state_to_json(state_a)
     assert "inspector_focus_aux" in json_a
@@ -618,12 +618,12 @@ def test_inspector_focus_aux_roundtrip() -> None:
     # Case 2: a real focus dict.
     focus = {
         "target_node_id": "consumer_abc",
-        "param": "inoculum_detector",
-        "slot": 0,
+        "param"         : "inoculum_detector",
+        "slot"          : 0,
     }
     state_b = BuilderState(
-        root=BuilderScope(name="root"),
-        inspector_focus_aux=dict(focus),
+            root=BuilderScope(name="root"),
+            inspector_focus_aux=dict(focus),
     )
     json_b = state_to_json(state_b)
     assert json_b["inspector_focus_aux"] == focus
@@ -639,18 +639,18 @@ def test_breadcrumb_aux_slot_segment_roundtrips() -> None:
 
     otsu_aux = _otsu_step(node_id="otsu_aux", ignore_zeros=True)
     main_node = StepNode(
-        node_id="ffd_main",
-        class_name="FilamentousFungiDetector",
-        params={},
-        label="FilamentousFungiDetector",
-        aux_ports={"inoculum_detector": [otsu_aux]},
+            node_id="ffd_main",
+            class_name="FilamentousFungiDetector",
+            params={},
+            label="FilamentousFungiDetector",
+            aux_ports={"inoculum_detector": [otsu_aux]},
     )
     root = BuilderScope(nodes=[main_node], name="root")
 
     seg = {
         "target_node_id": "ffd_main",
-        "param": "inoculum_detector",
-        "slot": 0,
+        "param"         : "inoculum_detector",
+        "slot"          : 0,
     }
     state = BuilderState(root=root, breadcrumb=[seg])
 
@@ -679,44 +679,44 @@ def test_aux_breadcrumb_walks_into_pipeline_aux_scope() -> None:
     """An aux-slot breadcrumb segment drills into a pipeline aux's nested scope."""
 
     inner_scope = BuilderScope(
-        nodes=[
-            StepNode(
-                node_id="aux_inner",
-                class_name="GaussianBlur",
-                params={"sigma": 0.5},
-                label="GaussianBlur",
-            ),
-        ],
-        name="aux_inner_pipeline",
+            nodes=[
+                StepNode(
+                        node_id="aux_inner",
+                        class_name="GaussianBlur",
+                        params={"sigma": 0.5},
+                        label="GaussianBlur",
+                ),
+            ],
+            name="aux_inner_pipeline",
     )
 
     aux_pipeline_node = StepNode(
-        node_id="aux_pipe",
-        class_name="ImagePipeline",
-        params={},
-        label="ImagePipeline",
-        nested=inner_scope,
+            node_id="aux_pipe",
+            class_name="ImagePipeline",
+            params={},
+            label="ImagePipeline",
+            nested=inner_scope,
     )
 
     main_node = StepNode(
-        node_id="main_a",
-        class_name="FilamentousFungiDetector",
-        params={},
-        aux_ports={"inoculum_detector": [aux_pipeline_node]},
-        label="FilamentousFungiDetector",
+            node_id="main_a",
+            class_name="FilamentousFungiDetector",
+            params={},
+            aux_ports={"inoculum_detector": [aux_pipeline_node]},
+            label="FilamentousFungiDetector",
     )
 
     root_scope = BuilderScope(nodes=[main_node], name="root")
 
     state = BuilderState(
-        root=root_scope,
-        breadcrumb=[
-            {
-                "target_node_id": "main_a",
-                "param": "inoculum_detector",
-                "slot": 0,
-            }
-        ],
+            root=root_scope,
+            breadcrumb=[
+                {
+                    "target_node_id": "main_a",
+                    "param"         : "inoculum_detector",
+                    "slot"          : 0,
+                }
+            ],
     )
 
     drilled = current_scope(state)
@@ -729,24 +729,24 @@ def test_state_json_back_compat_without_aux_fields() -> None:
     """Older JSON payloads (no ``aux_ports`` / ``inspector_focus_aux``) rehydrate cleanly."""
 
     legacy_json = {
-        "root": {
+        "root"            : {
             "nodes": [
                 {
-                    "node_id": "a",
+                    "node_id"   : "a",
                     "class_name": "GaussianBlur",
-                    "params": {"sigma": 1.0},
-                    "label": "GaussianBlur",
-                    "nested": None,
+                    "params"    : {"sigma": 1.0},
+                    "label"     : "GaussianBlur",
+                    "nested"    : None,
                     # NB: no ``aux_ports`` key
                 },
             ],
-            "name": "Pipeline",
-            "desc": "",
+            "name" : "Pipeline",
+            "desc" : "",
             "nrows": None,
             "ncols": None,
             # NB: no ``aux_nodes`` key (was removed)
         },
-        "breadcrumb": [],
+        "breadcrumb"      : [],
         "selected_node_id": None,
         # NB: no ``inspector_focus_aux`` key
     }
@@ -813,8 +813,8 @@ class TestPrefabRoundTrip:
         # living in a separate ``aux_nodes`` list.
         rebuilt_scope = from_pipeline(once_pipeline)
         consumer = next(
-            n for n in rebuilt_scope.nodes
-            if n.class_name == "FilamentousFungiDetector"
+                n for n in rebuilt_scope.nodes
+                if n.class_name == "FilamentousFungiDetector"
         )
         assert "inoculum_detector" in consumer.aux_ports
         slots = consumer.aux_ports["inoculum_detector"]
@@ -824,22 +824,22 @@ class TestPrefabRoundTrip:
         # The aux source for the inoculum_detector is an ImagePipeline
         # (the default constructed by FilamentousFungiPipeline).
         assert aux.class_name == "ImagePipeline"
-        # That nested pipeline contains InoculumDetector + GridSectionLargest.
+        # That nested pipeline contains InoculumDetector + KeepSectionLargest.
         assert aux.nested is not None
         nested_classes = [n.class_name for n in aux.nested.nodes]
         assert "InoculumDetector" in nested_classes
-        assert "GridSectionLargest" in nested_classes
+        assert "KeepSectionLargest" in nested_classes
 
     @pytest.mark.parametrize(
-        "prefab_name",
-        [
-            "HeavyOtsuPipeline",
-            "HeavyWatershedPipeline",
-            "RoundPeaksPipeline",
-        ],
+            "prefab_name",
+            [
+                "HeavyOtsuPipeline",
+                "HeavyWatershedPipeline",
+                "RoundPeaksPipeline",
+            ],
     )
     def test_scalar_param_prefab_round_trips_byte_identical(
-        self, prefab_name: str
+            self, prefab_name: str
     ) -> None:
         """Prefabs without op-typed params must round-trip byte-identically.
 
@@ -889,34 +889,34 @@ def test_nested_pipeline_apply_with_intermediates() -> None:
     from phenotypic.data._synthetic_data import load_synth_yeast_plate
 
     inner_scope = BuilderScope(
-        nodes=[
-            StepNode(
-                node_id="inner_a",
-                class_name="GaussianBlur",
-                params={"sigma": 1.0},
-                label="GaussianBlur",
-            ),
-            StepNode(
-                node_id="inner_b",
-                class_name="OtsuDetector",
-                params={},
-                label="OtsuDetector",
-            ),
-        ],
-        name="enhance_then_detect",
+            nodes=[
+                StepNode(
+                        node_id="inner_a",
+                        class_name="GaussianBlur",
+                        params={"sigma": 1.0},
+                        label="GaussianBlur",
+                ),
+                StepNode(
+                        node_id="inner_b",
+                        class_name="OtsuDetector",
+                        params={},
+                        label="OtsuDetector",
+                ),
+            ],
+            name="enhance_then_detect",
     )
 
     outer_scope = BuilderScope(
-        nodes=[
-            StepNode(
-                node_id="outer_a",
-                class_name="ImagePipeline",
-                params={},
-                label="enhance_then_detect",
-                nested=inner_scope,
-            ),
-        ],
-        name="end_to_end",
+            nodes=[
+                StepNode(
+                        node_id="outer_a",
+                        class_name="ImagePipeline",
+                        params={},
+                        label="enhance_then_detect",
+                        nested=inner_scope,
+                ),
+            ],
+            name="end_to_end",
     )
 
     pipeline = to_pipeline(outer_scope)

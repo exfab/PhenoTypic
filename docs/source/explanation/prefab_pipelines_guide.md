@@ -6,14 +6,14 @@ workflow. Each is tuned for a specific imaging scenario.
 
 ## Overview
 
-| Prefab | Organism | Plate type | Key strategy |
-|--------|----------|-----------|--------------|
-| `HeavyOtsuPipeline` | Yeast, bacteria | 96/384-well grid | Multi-stage Otsu with refinement |
-| `HeavyWatershedPipeline` | Yeast, bacteria | Dense grids | Watershed for touching colonies |
-| `RoundPeaksPipeline` | Yeast | Grid plates | Peak detection, lightweight |
-| `HeavyRoundPeaksPipeline` | Yeast | Grid plates | Extended peak detection with refinement |
-| `FilamentousFungiPipeline` | *Neurospora*, *Aspergillus*, etc. | Grid plates | BM3D + FilamentousFungiDetector |
-| `GridSectionPipeline` | Any | Pre-tiled sections | Per-section processing |
+| Prefab                     | Organism                          | Plate type         | Key strategy                            |
+|----------------------------|-----------------------------------|--------------------|-----------------------------------------|
+| `HeavyOtsuPipeline`        | Yeast, bacteria                   | 96/384-well grid   | Multi-stage Otsu with refinement        |
+| `HeavyWatershedPipeline`   | Yeast, bacteria                   | Dense grids        | Watershed for touching colonies         |
+| `RoundPeaksPipeline`       | Yeast                             | Grid plates        | Peak detection, lightweight             |
+| `HeavyRoundPeaksPipeline`  | Yeast                             | Grid plates        | Extended peak detection with refinement |
+| `FilamentousFungiPipeline` | *Neurospora*, *Aspergillus*, etc. | Grid plates        | BM3D + FilamentousFungiDetector         |
+| `GridSectionPipeline`      | Any                               | Pre-tiled sections | Per-section processing                  |
 
 ## HeavyOtsuPipeline
 
@@ -22,8 +22,8 @@ with uniform backgrounds.
 
 **Pipeline steps:**
 GaussianBlur → CLAHE → MedianFilter → SobelFilter → OtsuDetector →
-MaskOpener → BorderObjectRemover → SmallObjectRemover → MaskFill →
-GridOversizedObjectRemover → ReduceMultipleGridObjects → GridAligner
+MaskOpening → RemoveBorderObjects → SmallObjectRemover → MaskFill →
+GridOversizedObjectRemover → ReduceSectionsByLine → GridAligner
 
 **Measurements:** MeasureShape, MeasureColor, MeasureTexture,
 MeasureIntensity

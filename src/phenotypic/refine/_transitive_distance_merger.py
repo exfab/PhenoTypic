@@ -51,7 +51,7 @@ class TransitiveDistanceMerger(ObjectRefiner):
           merge into large anchors, preserving distinct large colonies.
         - :class:`NearestNeighborMerger` for simple pairwise nearest-
           neighbor merging without transitive closure.
-        - :class:`MaskCloser` for morphological closing that bridges small
+        - :class:`MaskClosing` for morphological closing that bridges small
           gaps without relabeling.
 
     See Also:

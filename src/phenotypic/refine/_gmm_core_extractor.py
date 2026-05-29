@@ -56,7 +56,7 @@ class GMMCoreExtractor(ObjectRefiner):
           growth mass rather than diffusion halos.
 
     Consider Also:
-        - :class:`MaskEroder` for uniform inward shrinking when cores are
+        - :class:`MaskErosion` for uniform inward shrinking when cores are
           not intensity-distinct from halos.
         - :class:`WhiteTophat` for removing small bright artifacts without
           full core extraction.
@@ -157,14 +157,14 @@ class GMMCoreExtractor(ObjectRefiner):
 
     @staticmethod
     def _extract_single_core(
-        intensity: np.ndarray,
-        label_map: np.ndarray,
-        label: int,
-        n_components: int,
-        separation_threshold: float,
-        min_core_area: int,
-        open_kernel: np.ndarray | None,
-        close_kernel: np.ndarray | None,
+            intensity: np.ndarray,
+            label_map: np.ndarray,
+            label: int,
+            n_components: int,
+            separation_threshold: float,
+            min_core_area: int,
+            open_kernel: np.ndarray | None,
+            close_kernel: np.ndarray | None,
     ) -> np.ndarray:
         """Extract the bright core from a single labelled region using GMM.
 
@@ -231,10 +231,10 @@ class GMMCoreExtractor(ObjectRefiner):
             return mask
 
         gmm = GaussianMixture(
-            n_components=n_components,
-            covariance_type="full",
-            n_init=3,
-            random_state=42,
+                n_components=n_components,
+                covariance_type="full",
+                n_init=3,
+                random_state=42,
         )
         gmm.fit(pixels)
         sep = GMMCoreExtractor._normalized_separation(gmm)
@@ -261,7 +261,7 @@ class GMMCoreExtractor(ObjectRefiner):
             core_u8 = cv2.morphologyEx(core_u8, cv2.MORPH_CLOSE, close_kernel)
 
         n_labels, cc_map, stats, _ = cv2.connectedComponentsWithStats(
-            core_u8, connectivity=8
+                core_u8, connectivity=8
         )
 
         best_cc = -1
@@ -283,13 +283,13 @@ class GMMCoreExtractor(ObjectRefiner):
 
     @staticmethod
     def _extract_cores(
-        intensity_array: np.ndarray,
-        label_map: np.ndarray,
-        n_components: int = 2,
-        separation_threshold: float = 0.8,
-        min_core_area: int = 30,
-        morph_open_radius: int = 1,
-        morph_close_radius: int = 2,
+            intensity_array: np.ndarray,
+            label_map: np.ndarray,
+            n_components: int = 2,
+            separation_threshold: float = 0.8,
+            min_core_area: int = 30,
+            morph_open_radius: int = 1,
+            morph_close_radius: int = 2,
     ) -> np.ndarray:
         """Extract bright cores from all labelled regions in a label map using GMM.
 
@@ -365,14 +365,14 @@ class GMMCoreExtractor(ObjectRefiner):
 
         for label in labels:
             core_mask = GMMCoreExtractor._extract_single_core(
-                intensity_array,
-                label_map,
-                label,
-                n_components,
-                separation_threshold,
-                min_core_area,
-                open_kernel,
-                close_kernel,
+                    intensity_array,
+                    label_map,
+                    label,
+                    n_components,
+                    separation_threshold,
+                    min_core_area,
+                    open_kernel,
+                    close_kernel,
             )
             output[core_mask] = label
 
@@ -383,13 +383,13 @@ class GMMCoreExtractor(ObjectRefiner):
         label_map = image.objmap[:]
 
         refined = self._extract_cores(
-            intensity_array=intensity,
-            label_map=label_map,
-            n_components=self.n_components,
-            separation_threshold=self.separation_threshold,
-            min_core_area=self.min_core_area,
-            morph_open_radius=self.morph_open_radius,
-            morph_close_radius=self.morph_close_radius,
+                intensity_array=intensity,
+                label_map=label_map,
+                n_components=self.n_components,
+                separation_threshold=self.separation_threshold,
+                min_core_area=self.min_core_area,
+                morph_open_radius=self.morph_open_radius,
+                morph_close_radius=self.morph_close_radius,
         )
 
         image.objmap[:] = refined

@@ -185,6 +185,8 @@ def test_image_object_map_access(sample_image_array_with_imformat):
 def test_image_copy(sample_image_array_with_imformat):
     input_image, input_imformat, true_imformat = sample_image_array_with_imformat
     ps_image = phenotypic.Image(arr=input_image)
+    # Imported (EXIF/file) metadata must survive a copy as capture provenance.
+    ps_image._metadata.imported.update({"EXIF:Model": "EOS R100", "EXIF:ISO": 800})
     ps_image_copy = ps_image.copy()
     assert ps_image_copy is not ps_image
     assert ps_image_copy.isempty() is False
@@ -192,6 +194,12 @@ def test_image_copy(sample_image_array_with_imformat):
     assert ps_image._metadata.private != ps_image_copy._metadata.private
     assert ps_image._metadata.protected == ps_image_copy._metadata.protected
     assert ps_image._metadata.public == ps_image_copy._metadata.public
+    # Imported metadata is preserved and deep-copied (not a shared reference).
+    assert ps_image._metadata.imported == ps_image_copy._metadata.imported
+    assert ps_image_copy._metadata.imported["EXIF:Model"] == "EOS R100"
+    assert (
+        ps_image_copy._metadata.imported is not ps_image._metadata.imported
+    )
 
     if not ps_image.rgb.isempty():
         assert np.array_equal(ps_image.rgb[:], ps_image.rgb[:])

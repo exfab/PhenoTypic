@@ -11,12 +11,12 @@ from phenotypic.enhance import (
 )
 from phenotypic.detect import OtsuDetector
 from phenotypic.correction import GridAligner
-from phenotypic.refine import ReduceMultipleGridObjects, GridOversizedObjectRemover
+from phenotypic.refine import ReduceSectionsByLine, GridOversizedObjectRemover
 from phenotypic.refine import (
-    BorderObjectRemover,
+    RemoveBorderObjects,
     SmallObjectRemover,
 )
-from phenotypic.refine import MaskFill, MaskOpener
+from phenotypic.refine import MaskFill, MaskOpening
 from phenotypic.measure import (
     MeasureIntensity,
     MeasureShape,
@@ -38,12 +38,12 @@ class HeavyOtsuPipeline(PrefabPipeline):
         3. MedianFilter — remove residual speckle
         4. SobelFilter — enhance colony edges
         5. OtsuDetector — threshold-based detection
-        6. MaskOpener — smooth mask boundaries
-        7. BorderObjectRemover — remove partial edge colonies
+        6. MaskOpening — smooth mask boundaries
+        7. RemoveBorderObjects — remove partial edge colonies
         8. SmallObjectRemover — remove noise fragments
         9. MaskFill — fill interior holes
         10. GridOversizedObjectRemover — remove merged multi-well objects
-        11. ReduceMultipleGridObjects — keep one colony per well
+        11. ReduceSectionsByLine — keep one colony per well
         12. GridAligner — straighten the grid
 
     Measurements: MeasureShape, MeasureColor, MeasureTexture, MeasureIntensity.
@@ -104,8 +104,8 @@ class HeavyOtsuPipeline(PrefabPipeline):
             min_size: Deprecated, use small_object_min_size.
             border_size: Deprecated, use border_remover_size.
         """
-        border_remover = BorderObjectRemover(border_size=border_remover_size)
-        min_residual_reducer = ReduceMultipleGridObjects()
+        border_remover = RemoveBorderObjects(border_size=border_remover_size)
+        min_residual_reducer = ReduceSectionsByLine()
 
         ops = [
             GaussianBlur(
@@ -117,7 +117,7 @@ class HeavyOtsuPipeline(PrefabPipeline):
             OtsuDetector(
                     ignore_zeros=otsu_ignore_zeros, ignore_borders=otsu_ignore_borders
             ),
-            MaskOpener(shape=mask_opener_footprint),
+            MaskOpening(shape=mask_opener_footprint),
             border_remover,
             SmallObjectRemover(min_size=small_object_min_size),
             MaskFill(),
@@ -127,7 +127,7 @@ class HeavyOtsuPipeline(PrefabPipeline):
             OtsuDetector(
                     ignore_zeros=otsu_ignore_zeros, ignore_borders=otsu_ignore_borders
             ),
-            MaskOpener(shape=None),
+            MaskOpening(shape=None),
             border_remover,
             SmallObjectRemover(min_size=small_object_min_size),
             GridOversizedObjectRemover(),

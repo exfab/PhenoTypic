@@ -12,22 +12,22 @@ address fragmented colony detections from uneven illumination or heterogeneous p
 by merging nearby detections based on spatial proximity and size thresholds.
 """
 
-from ._asymmetric_spur_trimmer import AsymmetricSpurTrimmer
-from ._border_object_modifier import BorderObjectRemover
-from ._center_deviation_reducer import CenterDeviationReducer
+from ._trim_asymmetry import TrimAsymmetry
+from ._remove_border_objects import RemoveBorderObjects
+from ._keep_nearest_center import KeepNearestCenter
 from ._circularity_modifier import LowCircularityRemover
 from ._gmm_core_extractor import GMMCoreExtractor
 from ._grid_alignment_refiner import GridAlignmentRefiner
 from ._sine_alignment_refiner import SineAlignmentRefiner
 from ._grid_oversized_object_remover import GridOversizedObjectRemover
-from ._manual_selector import ManualSelector
-from ._mask_closer import MaskCloser
-from ._mask_dilator import MaskDilator
-from ._mask_eroder import MaskEroder
+from ._manual_refine import ManualRefine
+from ._mask_closing import MaskClosing
+from ._mask_dilation import MaskDilator
+from ._mask_erosion import MaskErosion
 from ._mask_fill import MaskFill
 from ._mask_gradient import MaskGradient
-from ._mask_opener import MaskOpener
-from ._min_residual_error_reducer import ReduceMultipleGridObjects
+from ._mask_opening import MaskOpening
+from ._reduce_multiple_grid_objects import ReduceSectionsByLine
 from ._nearest_neighbor_merger import NearestNeighborMerger
 from ._residual_outlier_remover import ResidualOutlierRemover
 from ._skeletonize import Skeletonize
@@ -36,25 +36,25 @@ from ._small_to_large_merger import SmallToLargeMerger
 from ._thinning import Thinning
 from ._transitive_distance_merger import TransitiveDistanceMerger
 from ._white_tophat_modifier import WhiteTophat
-from ._grid_section_largest import GridSectionLargest
+from ._keep_section_largest import KeepSectionLargest
 from ._separate_objects import SeparateObjects
 
 __all__ = [
-    "AsymmetricSpurTrimmer",
-    "BorderObjectRemover",
-    "CenterDeviationReducer",
+    "TrimAsymmetry",
+    "RemoveBorderObjects",
+    "KeepNearestCenter",
     "GMMCoreExtractor",
     "GridAlignmentRefiner",
     "GridOversizedObjectRemover",
     "LowCircularityRemover",
-    "ManualSelector",
-    "MaskCloser",
+    "ManualRefine",
+    "MaskClosing",
     "MaskDilator",
-    "MaskEroder",
+    "MaskErosion",
     "MaskFill",
     "MaskGradient",
-    "MaskOpener",
-    "ReduceMultipleGridObjects",
+    "MaskOpening",
+    "ReduceSectionsByLine",
     "NearestNeighborMerger",
     "ResidualOutlierRemover",
     "SeparateObjects",
@@ -65,5 +65,5 @@ __all__ = [
     "Thinning",
     "TransitiveDistanceMerger",
     "WhiteTophat",
-    "GridSectionLargest"
+    "KeepSectionLargest"
 ]

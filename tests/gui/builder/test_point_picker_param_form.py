@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-
 from phenotypic.gui._operation_registry import OperationRegistry, ParamInfo
 from phenotypic.gui.builder._param_form import param_form, parse_widget_value
 
@@ -61,8 +60,9 @@ def test_picker_widget_replaces_input_for_manual_point_detector():
         getattr(node, "id", None)
         for node in _walk(form)
         if isinstance(getattr(node, "id", None), dict)
-        and getattr(node, "id", {}).get("name") == "centers"
-        and getattr(node, "id", {}).get("type") in ("param-list", "param-tuple", "param-str")
+           and getattr(node, "id", {}).get("name") == "centers"
+           and getattr(node, "id", {}).get("type") in ("param-list", "param-tuple",
+                                                       "param-str")
     ]
     assert centers_inputs == []
 
@@ -86,15 +86,16 @@ def test_picker_store_carries_initial_centers():
     info = reg.get("ManualPointDetector")
 
     form = param_form(
-        info,
-        current_values={"centers": [[10, 20], [30, 40]]},
-        form_id_prefix="seeded",
+            info,
+            current_values={"centers": [[10, 20], [30, 40]]},
+            form_id_prefix="seeded",
     )
 
     for node in _walk(form):
         nid = getattr(node, "id", None)
         if isinstance(nid, dict) and nid.get("type") == "param-point-picker-store":
-            assert node.data == [[10, 20], [30, 40]] or node.data == [[10.0, 20.0], [30.0, 40.0]]
+            assert node.data == [[10, 20], [30, 40]] or node.data == [[10.0, 20.0],
+                                                                      [30.0, 40.0]]
             return
     raise AssertionError("picker store not found in form")
 
@@ -102,14 +103,15 @@ def test_picker_store_carries_initial_centers():
 def test_picker_store_handles_numpy_initial():
     """np.ndarray current_values flow through cleanly (PointPickerMixin coerces on __setattr__)."""
     import numpy as np
+
     reg = OperationRegistry()
     reg.discover()
-    info = reg.get("ManualSelector")
+    info = reg.get("ManualRefine")
 
     form = param_form(
-        info,
-        current_values={"centers": np.array([[1.5, 2.5]])},
-        form_id_prefix="np",
+            info,
+            current_values={"centers": np.array([[1.5, 2.5]])},
+            form_id_prefix="np",
     )
     for node in _walk(form):
         nid = getattr(node, "id", None)
@@ -148,13 +150,13 @@ def test_parse_widget_value_coerces_pep604_optional_float():
     """PEP 604 optional floats share the same coercion path as Optional[float]."""
 
     param = ParamInfo(
-        name="sigma",
-        type_hint=float | None,
-        default=None,
-        has_default=True,
-        is_operation=False,
-        is_pipeline=False,
-        is_optional=True,
+            name="sigma",
+            type_hint=float | None,
+            default=None,
+            has_default=True,
+            is_operation=False,
+            is_pipeline=False,
+            is_optional=True,
     )
 
     assert parse_widget_value("2.5", param) == 2.5

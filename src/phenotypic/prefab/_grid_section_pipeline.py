@@ -6,10 +6,10 @@ from phenotypic.enhance import CLAHE, GaussianBlur, MedianFilter, ContrastStretc
 from phenotypic.detect import OtsuDetector
 from phenotypic.grid import GridApply
 from phenotypic.refine import (
-    BorderObjectRemover,
+    RemoveBorderObjects,
     SmallObjectRemover,
     LowCircularityRemover,
-    ReduceMultipleGridObjects,
+    ReduceSectionsByLine,
     ResidualOutlierRemover,
 )
 from phenotypic.correction import GridAligner
@@ -32,10 +32,10 @@ class GridSectionPipeline(PrefabPipeline):
     Steps:
         1. GaussianBlur + CLAHE — global preprocessing
         2. OtsuDetector — initial global detection
-        3. BorderObjectRemover, SmallObjectRemover — cleanup
+        3. RemoveBorderObjects, SmallObjectRemover — cleanup
         4. GridAligner — straighten the grid
         5. GridApply — apply per-section sub-pipeline
-        6. ReduceMultipleGridObjects — final grid refinement
+        6. ReduceSectionsByLine — final grid refinement
 
     Measurements: MeasureShape, MeasureColor, MeasureIntensity, MeasureTexture.
 
@@ -147,13 +147,13 @@ class GridSectionPipeline(PrefabPipeline):
             "detection"                       : OtsuDetector(
                     ignore_zeros=otsu_ignore_zeros, ignore_borders=otsu_ignore_borders
             ),
-            "border_removal"                  : BorderObjectRemover(
+            "border_removal"                  : RemoveBorderObjects(
                     border_size=border_remover_size),
             "low circularity remover"         : LowCircularityRemover(
                     cutoff=circularity_cutoff),
             "small object remover"            : SmallObjectRemover(
                     min_size=small_object_min_size),
-            "Reduce by section residual error": ReduceMultipleGridObjects(),
+            "Reduce by section residual error": ReduceSectionsByLine(),
             "outlier removal"                 : ResidualOutlierRemover(
                     axis=outlier_axis,
                     stddev_multiplier=outlier_stddev_multiplier,
@@ -188,7 +188,7 @@ class GridSectionPipeline(PrefabPipeline):
             "small object remover 2"          : SmallObjectRemover(
                     min_size=small_object_min_size_2
             ),
-            "grid_reduction"                  : ReduceMultipleGridObjects(),
+            "grid_reduction"                  : ReduceSectionsByLine(),
         }
         meas = {
             "MeasureColor"    : MeasureColor(
