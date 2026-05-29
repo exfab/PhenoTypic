@@ -33,41 +33,46 @@ def test_left_join_qc_columns_preserves_left_rows() -> None:
         {
             "Metadata_ImageFile": ["img_0.tif", "img_1.tif", "img_2.tif"],
             "Object_Label": [0, 1, 2],
-            "QC_SE_Severity": [0.01, 0.05, 0.12],
+            "QC_SE_Metric": [0.01, 0.05, 0.12],
         }
     )
     result = _left_join_qc_columns(left, right)
     assert result.height == 10
-    assert "QC_SE_Severity" in result.columns
+    assert "QC_SE_Metric" in result.columns
     # Non-matching rows should be NaN/null.
-    sev = result["QC_SE_Severity"].to_list()
-    assert sev[0] is not None
-    assert sev[9] is None
+    metric = result["QC_SE_Metric"].to_list()
+    assert metric[0] is not None
+    assert metric[9] is None
 
 
 def test_render_summary_strip_format() -> None:
-    """The summary strip text matches the documented shape."""
+    """The summary strip text matches the documented shape.
+
+    Built with the ``qc_``-prefixed column names ``QualityCheck.summary``
+    now emits (``qc_n_members`` / ``qc_n_flagged`` / ``qc_worst_metric`` /
+    ``qc_status``) so this test guards against the old stale-column reads.
+    """
     summary = pd.DataFrame(
         {
             "Plate": ["P1", "P2", "P3"],
-            "num_rows": [4, 4, 4],
-            "num_flagged": [1, 0, 0],
-            "max_severity": [0.12, 0.04, 0.02],
-            "status": ["fail", "pass", "pass"],
+            "qc_n_members": [4, 4, 4],
+            "qc_n_flagged": [1, 0, 0],
+            "qc_worst_metric": [0.12, 0.04, 0.02],
+            "qc_status": ["fail", "pass", "pass"],
         }
     )
     text = _render_summary_strip(summary)
     assert re.match(
-        r"groups:\s+\d+\s+\|\s+flagged:\s+\d+\s+\|\s+max severity:\s+\d+\.\d+",
+        r"groups:\s+\d+\s+\|\s+flagged:\s+\d+\s+\|\s+worst metric:\s+\d+\.\d+",
         text,
     ), f"unexpected summary text: {text!r}"
 
 
 def test_worst_status_pass_warn_fail() -> None:
     """``fail`` wins over ``warn`` which wins over ``pass``."""
-    pass_only = pd.DataFrame({"status": ["pass", "pass"]})
-    pass_warn = pd.DataFrame({"status": ["pass", "warn"]})
-    pass_warn_fail = pd.DataFrame({"status": ["pass", "warn", "fail"]})
+    pass_only = pd.DataFrame({"qc_status": ["pass", "pass"]})
+    pass_warn = pd.DataFrame({"qc_status": ["pass", "warn"]})
+    pass_warn_fail = pd.DataFrame({"qc_status": ["pass", "warn", "fail"]})
     assert _worst_status(pass_only) == "pass"
     assert _worst_status(pass_warn) == "warn"
     assert _worst_status(pass_warn_fail) == "fail"

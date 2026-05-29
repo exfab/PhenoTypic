@@ -136,31 +136,31 @@ def _error_figure(*, check_name: str, message: str) -> go.Figure:
 def _render_summary_strip(summary_df: pd.DataFrame) -> str:
     """Render the summary strip text from a check's per-group summary.
 
-    Example output: ``"groups: 4 | flagged: 1 | max severity: 0.12"``
+    Example output: ``"groups: 4 | flagged: 1 | worst metric: 0.12"``
     (spec line 1218).
 
     Args:
         summary_df: One-row-per-group frame as produced by
             :meth:`QualityCheck.summary`. Must carry the columns
-            ``num_flagged``, ``max_severity`` and ``status``.
+            ``qc_n_flagged``, ``qc_worst_metric`` and ``qc_status``.
 
     Returns:
         A single string for display in the per-card summary chip. NaN
-        ``max_severity`` is rendered as ``"nan"``.
+        ``qc_worst_metric`` is rendered as ``"nan"``.
     """
     groups = int(len(summary_df))
-    if groups == 0 or "num_flagged" not in summary_df.columns:
-        return "groups: 0 | flagged: 0 | max severity: nan"
+    if groups == 0 or "qc_n_flagged" not in summary_df.columns:
+        return "groups: 0 | flagged: 0 | worst metric: nan"
 
-    flagged = int(summary_df["num_flagged"].fillna(0).astype(int).sum())
-    max_severity_raw = pd.to_numeric(
-        summary_df["max_severity"], errors="coerce"
+    flagged = int(summary_df["qc_n_flagged"].fillna(0).astype(int).sum())
+    worst_metric_raw = pd.to_numeric(
+        summary_df["qc_worst_metric"], errors="coerce"
     )
-    if max_severity_raw.empty or max_severity_raw.dropna().empty:
-        severity_str = "nan"
+    if worst_metric_raw.empty or worst_metric_raw.dropna().empty:
+        metric_str = "nan"
     else:
-        severity_str = f"{float(max_severity_raw.max()):.2f}"
-    return f"groups: {groups} | flagged: {flagged} | max severity: {severity_str}"
+        metric_str = f"{float(worst_metric_raw.max()):.2f}"
+    return f"groups: {groups} | flagged: {flagged} | worst metric: {metric_str}"
 
 
 def _worst_status(summary_df: pd.DataFrame) -> Literal["pass", "warn", "fail"]:
@@ -170,9 +170,9 @@ def _worst_status(summary_df: pd.DataFrame) -> Literal["pass", "warn", "fail"]:
     frame or missing column is treated as ``"pass"`` so a degenerate
     check never spuriously alarms.
     """
-    if summary_df.empty or "status" not in summary_df.columns:
+    if summary_df.empty or "qc_status" not in summary_df.columns:
         return "pass"
-    statuses = summary_df["status"].astype(str).tolist()
+    statuses = summary_df["qc_status"].astype(str).tolist()
     if not statuses:
         return "pass"
     worst_rank = max((_STATUS_RANK.get(s, 0) for s in statuses), default=0)
@@ -913,8 +913,8 @@ def _export_qc_report(
 
         summary_frame = check.summary()
         status_counts: dict[str, int] = {"pass": 0, "warn": 0, "fail": 0}
-        if "status" in summary_frame.columns:
-            for s, cnt in summary_frame["status"].value_counts().items():
+        if "qc_status" in summary_frame.columns:
+            for s, cnt in summary_frame["qc_status"].value_counts().items():
                 key = str(s)
                 if key in status_counts:
                     status_counts[key] = int(cnt)
@@ -925,20 +925,20 @@ def _export_qc_report(
                 "params": dict(entry.params),
                 "num_rows": int(len(result)),
                 "num_flagged": int(
-                    summary_frame["num_flagged"].fillna(0).astype(int).sum()
+                    summary_frame["qc_n_flagged"].fillna(0).astype(int).sum()
                 )
-                if "num_flagged" in summary_frame.columns
+                if "qc_n_flagged" in summary_frame.columns
                 else 0,
                 "max_severity": (
                     float(
                         pd.to_numeric(
                             summary_frame.get(
-                                "max_severity", pd.Series(dtype=float)
+                                "qc_worst_metric", pd.Series(dtype=float)
                             ),
                             errors="coerce",
                         ).max()
                     )
-                    if "max_severity" in summary_frame.columns
+                    if "qc_worst_metric" in summary_frame.columns
                     and not summary_frame.empty
                     else float("nan")
                 ),

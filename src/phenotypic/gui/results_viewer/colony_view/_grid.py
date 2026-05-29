@@ -39,6 +39,7 @@ from phenotypic.gui._design import (
     FONT_SIZE_CAPTION,
     FONT_SIZE_LABEL,
 )
+from phenotypic.gui._shared.tiles import build_tile_cell, expand_range
 from phenotypic.gui.results_viewer._ids import (
     colony_cell_count_badge_id,
     colony_cell_popover_body_id,
@@ -300,103 +301,23 @@ def _build_axis_label(value: object, *, axis: str, max_width_px: int) -> Compone
     )
 
 
-def _build_cell(
-    *,
-    image_file: str,
-    label: int,
-    dataset: str,
-    count: int,
-    max_size: int,
-    display_size: int,
-    has_overlay: bool,
-    is_removed: bool,
-    is_selected: bool,
-    members: list[tuple[str, str, int]] | None = None,
-) -> Component:
-    """Render the chrome + crop for a single grid cell.
+def _colony_crop_url(dataset: str, image_file: str, label: int, crop_size: int) -> str:
+    """Build the colony-view crop ``<img>`` src for one cell.
 
-    Args:
-        image_file: ``Metadata_ImageFile`` of the representative colony.
-        label: ``Object_Label`` of the representative colony.
-        dataset: ``Metadata_Dataset`` of the representative colony.
-        count: Number of colonies aggregated into this cell.
-        max_size: Server crop side length, in pixels (used in the URL so
-            the PNG is generated at full resolution covering the colony's
-            bbox).
-        display_size: CSS render size, in pixels. The browser scales the
-            ``<img>`` to this size; ``object-fit`` keeps colonies centered
-            without distortion.
-        has_overlay: Whether the source overlay PNG exists on disk; if not,
-            a striped placeholder is rendered instead of an ``<img>``.
-        is_removed: Whether the representative colony is in the curated
-            removal set. Toggles the icon and dims the crop.
-        is_selected: Whether the cell is in the active multi-select.
-
-    Returns:
-        A component ready to drop into the grid container.
+    The shared :func:`phenotypic.gui._shared.tiles.build_tile_cell` calls
+    this to fill each tile's ``<img>``; it points at the ``/crops`` route
+    mounted by :func:`colony_view._crop_routes.register`.
     """
-    classes = ["colony-cell"]
-    if is_selected:
-        classes.append("is-selected")
-    if is_removed:
-        classes.append("is-removed")
-
-    if has_overlay:
-        prefix = _url_prefix()
-        crop_url = f"{prefix}{COLONY_CROPS_URL_SEGMENT}/{dataset}/{image_file}/{label}.png?size={max_size}"
-        crop_node: Component = html.Img(
-            src=crop_url,
-            className="colony-cell-img",
-            style={
-                "width": f"{display_size}px",
-                "height": f"{display_size}px",
-                "display": "block",
-                "opacity": "0.3" if is_removed else "1",
-                "objectFit": "cover",
-            },
-        )
-    else:
-        crop_node = html.Div(
-            className="colony-cell-placeholder",
-            style={
-                "width": f"{display_size}px",
-                "height": f"{display_size}px",
-                "backgroundImage": (
-                    "repeating-linear-gradient(45deg, "
-                    "rgba(0,54,96,0.05) 0px, rgba(0,54,96,0.05) 8px, "
-                    "rgba(0,54,96,0.10) 8px, rgba(0,54,96,0.10) 16px)"
-                ),
-                "border": "1px dashed rgba(0,54,96,0.25)",
-            },
-        )
-
-    # CSS-styled span playing the role of a checkbox. We don't use a real
-    # <input> because Dash 4 doesn't expose html.Input, and the JS layer
-    # only needs `data-key` + the class name to wire up the click event.
-    # Visual checked state is driven by the `is-checked` modifier class.
-    checkbox_class = "colony-cell-checkbox"
-    if is_selected:
-        checkbox_class += " is-checked"
-    # `data-*` HTML attributes can't be expressed in Dash's typed Span
-    # kwargs, so unpack via an Any-typed dict to bypass the stub mismatch.
-    extra_props: dict[str, Any] = {"data-key": f"{image_file}::{label}"}
-    checkbox_inner = html.Span(
-        "",
-        className=checkbox_class,
-        **extra_props,
-    )
-    checkbox = html.Span(
-        checkbox_inner,
-        className="colony-cell-checkbox-wrap",
-        style={
-            "position": "absolute",
-            "top": "4px",
-            "left": "4px",
-            "zIndex": "2",
-        },
+    prefix = _url_prefix()
+    return (
+        f"{prefix}{COLONY_CROPS_URL_SEGMENT}/{dataset}/{image_file}/"
+        f"{label}.png?size={crop_size}"
     )
 
-    remove_btn = dbc.Button(
+
+def _colony_remove_button(image_file: str, label: int, is_removed: bool) -> Component:
+    """Build the colony-cell remove/restore button with its pattern-matched id."""
+    return dbc.Button(
         "↺" if is_removed else "✕",
         id=colony_cell_remove_btn_id(image_file, label),
         color="danger" if not is_removed else "secondary",
@@ -418,19 +339,51 @@ def _build_cell(
         ),
     )
 
-    # Image card: the framed display_size×display_size area carrying the
-    # crop, checkbox, and remove button. Sits in front of the stack tab
-    # via z-index so the tab can peek out from beneath the bottom edge.
-    frame = html.Div(
-        [crop_node, checkbox, remove_btn],
-        className="colony-cell-frame",
-    )
 
-    children: list[Component] = [frame]
+def _build_cell(
+    *,
+    image_file: str,
+    label: int,
+    dataset: str,
+    count: int,
+    max_size: int,
+    display_size: int,
+    has_overlay: bool,
+    is_removed: bool,
+    is_selected: bool,
+    members: list[tuple[str, str, int]] | None = None,
+) -> Component:
+    """Render the chrome + crop for a single grid cell.
 
+    Delegates the shared per-tile chrome (img/placeholder, checkbox,
+    remove button) to :func:`phenotypic.gui._shared.tiles.build_tile_cell`
+    and layers on the colony-grid-only ``N=k`` stack badge + popover plus
+    the extra vertical room the badge peeks into.
+
+    Args:
+        image_file: ``Metadata_ImageFile`` of the representative colony.
+        label: ``Object_Label`` of the representative colony.
+        dataset: ``Metadata_Dataset`` of the representative colony.
+        count: Number of colonies aggregated into this cell.
+        max_size: Server crop side length, in pixels (used in the URL so
+            the PNG is generated at full resolution covering the colony's
+            bbox).
+        display_size: CSS render size, in pixels. The browser scales the
+            ``<img>`` to this size; ``object-fit`` keeps colonies centered
+            without distortion.
+        has_overlay: Whether the source overlay PNG exists on disk; if not,
+            a striped placeholder is rendered instead of an ``<img>``.
+        is_removed: Whether the representative colony is in the curated
+            removal set. Toggles the icon and dims the crop.
+        is_selected: Whether the cell is in the active multi-select.
+
+    Returns:
+        A component ready to drop into the grid container.
+    """
+    extra_children: list[Component] = []
     if count > 1:
         badge_id = colony_cell_count_badge_id(image_file, label)
-        children.append(
+        extra_children.append(
             dbc.Button(
                 f"N={count}",
                 id=badge_id,
@@ -440,7 +393,7 @@ def _build_cell(
             )
         )
         if members:
-            children.extend(
+            extra_children.extend(
                 _build_stack_popover(
                     target_id=badge_id,
                     image_file=image_file,
@@ -451,15 +404,20 @@ def _build_cell(
                 )
             )
 
-    return html.Div(
-        children,
-        className=" ".join(classes),
-        style={
-            "position": "relative",
-            "width": f"{display_size}px",
-            "height": f"{display_size + _STACK_TAB_OFFSET}px",
-            "overflow": "visible",
-        },
+    return build_tile_cell(
+        image_file=image_file,
+        label=label,
+        dataset=dataset,
+        crop_size=max_size,
+        display_size=display_size,
+        has_overlay=has_overlay,
+        is_removed=is_removed,
+        is_selected=is_selected,
+        url_builder=_colony_crop_url,
+        remove_button=_colony_remove_button(image_file, label, is_removed),
+        extra_children=extra_children,
+        # Reserve room beneath the frame for the stack tab to peek out.
+        outer_height=display_size + _STACK_TAB_OFFSET,
     )
 
 
@@ -766,51 +724,11 @@ def build_grid(
     return grid, grid_order
 
 
-# ---------------------------------------------------------------------------
-# Range expansion
-# ---------------------------------------------------------------------------
-
-
-def expand_range(
-    grid_order: list[tuple[str, int]],
-    anchor: tuple[str, int],
-    target: tuple[str, int],
-) -> list[tuple[str, int]]:
-    """Return the contiguous slice of ``grid_order`` between two keys.
-
-    Direction-agnostic: the slice always runs from the lower of the two
-    indices to the higher (inclusive) regardless of which key was
-    originally clicked first.
-
-    Args:
-        grid_order: Row-major flat list of cell keys, as returned by
-            :func:`build_grid`.
-        anchor: Key of the cell that started the range (the most recent
-            non-shift click).
-        target: Key of the shift-clicked cell.
-
-    Returns:
-        Inclusive slice of ``grid_order`` between the two keys.
-
-    Raises:
-        ValueError: If either ``anchor`` or ``target`` is not in
-            ``grid_order``.
-    """
-    try:
-        a = grid_order.index(anchor)
-    except ValueError as exc:
-        raise ValueError(f"anchor {anchor!r} is not in grid_order") from exc
-    try:
-        b = grid_order.index(target)
-    except ValueError as exc:
-        raise ValueError(f"target {target!r} is not in grid_order") from exc
-    lo, hi = (a, b) if a <= b else (b, a)
-    return grid_order[lo : hi + 1]
-
-
 __all__ = [
     "selectable_axis_columns",
     "compute_max_bbox_size",
     "build_grid",
+    # Re-exported from :mod:`phenotypic.gui._shared.tiles` so colony-view
+    # callers keep their historical import path.
     "expand_range",
 ]

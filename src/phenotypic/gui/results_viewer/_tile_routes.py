@@ -20,39 +20,19 @@ from flask import Blueprint, Response, jsonify, send_from_directory
 from werkzeug.utils import secure_filename
 
 from phenotypic.gui._config import VIEWER_TILES_PREFIX
+from phenotypic.gui._shared.tiles import is_safe_path_component
 from phenotypic.gui.results_viewer import _dzi_tiler
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 
 logger = logging.getLogger(__name__)
 
-#: Allow only filesystem-safe identifiers (alphanumeric, dot, underscore,
-#: dash) — same character class :func:`werkzeug.utils.secure_filename` is
-#: comfortable with, but applied before any path math.
-_NAME_RE = re.compile(r"^[A-Za-z0-9._-]+$")
-
 #: DZI tile filenames are ``<col>_<row>.png`` per the OpenSeadragon spec.
 _TILE_NAME_RE = re.compile(r"^\d+_\d+\.png$")
 
-
-def _is_safe_path_component(name: str) -> bool:
-    """Return ``True`` if ``name`` is safe to use as a single path component.
-
-    Validates both the ``<dataset>`` and ``<stem>`` URL captures before
-    feeding them into filesystem paths.
-
-    Args:
-        name: Candidate identifier from the URL.
-
-    Returns:
-        ``True`` only if ``name`` is non-empty, contains no path
-        separators or parent-directory tokens, does not start with a
-        leading dot, and matches ``[A-Za-z0-9._-]+``.
-    """
-    if not name or name.startswith("."):
-        return False
-    if "/" in name or "\\" in name or ".." in name:
-        return False
-    return bool(_NAME_RE.match(name))
+#: Backwards-compatible alias — the path-traversal guard moved to
+#: :mod:`phenotypic.gui._shared.tiles`. Re-exported under its historical
+#: private name so callers importing it from here keep working.
+_is_safe_path_component = is_safe_path_component
 
 
 def register(app: dash.Dash, output_root: OutputRoot) -> None:
@@ -77,7 +57,7 @@ def register(app: dash.Dash, output_root: OutputRoot) -> None:
     @bp.route("/<dataset>/<stem>.dzi")
     def manifest(dataset: str, stem: str) -> Response:
         """Serve the DZI XML manifest, generating the pyramid if needed."""
-        if not _is_safe_path_component(dataset) or not _is_safe_path_component(stem):
+        if not is_safe_path_component(dataset) or not is_safe_path_component(stem):
             logger.warning(
                 "Rejected tile manifest request with unsafe identifiers: "
                 "dataset=%r stem=%r",
@@ -120,7 +100,7 @@ def register(app: dash.Dash, output_root: OutputRoot) -> None:
         dataset: str, stem: str, level: int, filename: str
     ) -> Response:
         """Serve an individual tile PNG from the per-image cache."""
-        if not _is_safe_path_component(dataset) or not _is_safe_path_component(stem):
+        if not is_safe_path_component(dataset) or not is_safe_path_component(stem):
             logger.warning(
                 "Rejected tile request with unsafe identifiers: "
                 "dataset=%r stem=%r",

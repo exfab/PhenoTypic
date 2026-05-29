@@ -4,7 +4,7 @@ Two callbacks:
 
 1. :func:`_render_heatmap` - rebuilds the figure on any picker change
    or store-revision tick. Reads the QC-augmented frame when
-   available so the color picker can target QC severity columns;
+   available so the color picker can target QC metric columns;
    falls back to the plain filtered frame otherwise (spec lines
    1074-1090).
 2. :func:`_refresh_heatmap_controls` - repopulates the picker /
@@ -149,7 +149,7 @@ def register_heatmap_callbacks(app: dash.Dash) -> None:
         """Repopulate dropdown options and the time slider on each tick.
 
         Reads the augmented frame when present so the color picker can
-        include any ``QC_*_Severity`` columns the QC tab emitted; falls
+        include any ``QC_*_Metric`` columns the QC tab emitted; falls
         back to the plain filtered frame + schema otherwise.
 
         Returns:
@@ -167,7 +167,7 @@ def register_heatmap_callbacks(app: dash.Dash) -> None:
         frame = _resolve_frame()
         schema = current_app.config.get(CFG_MEASUREMENT_SCHEMA)
 
-        # Color options: schema columns union QC_*_Severity columns in
+        # Color options: schema columns union QC_*_Metric columns in
         # the active frame. Schema may be ``None`` when the analysis
         # sub-app hasn't seeded it (e.g. the viewer is mounted on a
         # freshly-discovered output root without QC checks); we
@@ -181,7 +181,7 @@ def register_heatmap_callbacks(app: dash.Dash) -> None:
                 column_names = []
         if frame is not None:
             for c in frame.columns:
-                if c.startswith("QC_") and c.endswith("_Severity") and c not in column_names:
+                if c.startswith("QC_") and c.endswith("_Metric") and c not in column_names:
                     column_names.append(c)
             if not column_names:
                 column_names = list(frame.columns)

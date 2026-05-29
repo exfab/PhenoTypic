@@ -23,10 +23,10 @@ TAB_HEATMAP_ID = "tab-heatmap"
 #: curation tick and the QC writer's completion. Spec lines 775-798.
 STORE_QC_AUGMENTED_REVISION = "store-qc-augmented-revision"
 
-#: Dropdown selecting the measurement (or QC severity) column whose
+#: Dropdown selecting the measurement (or QC metric) column whose
 #: per-well values feed the heatmap. Options union
 #: ``MeasurementSchema.columns_for("measurements")`` with any
-#: ``QC_*_Severity`` columns present in the augmented frame.
+#: ``QC_*_Metric`` columns present in the augmented frame.
 HEATMAP_COLOR_PICKER_ID = "heatmap-color-picker"
 
 #: Dropdown selecting the source image whose colonies are pivoted.

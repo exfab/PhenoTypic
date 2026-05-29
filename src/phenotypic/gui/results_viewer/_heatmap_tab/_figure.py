@@ -84,7 +84,7 @@ def build_heatmap_figure(
             pipeline can rely on the polars API.
         color_col: Name of the column whose values fill the heatmap
             cells. Typically a measurement column (e.g. ``Size_Area``)
-            or a QC severity column (e.g. ``QC_Count_Severity``).
+            or a QC metric column (e.g. ``QC_Count_Metric``).
         image_file: ``Metadata_ImageFile`` selection. Applied as a
             row filter *before* the aggregator so multi-image frames
             cannot leak across image boundaries (spec lines 1352-1356).
@@ -185,7 +185,7 @@ def build_heatmap_figure(
                 f"{color_col}: %{{z}}<extra></extra>"
             ),
             # Render NaN cells transparently rather than collapsing to
-            # the colormap's zero - keeps QC severity columns (which
+            # the colormap's zero - keeps QC metric columns (which
             # are NaN-heavy) visually honest.
             zauto=True,
             connectgaps=False,
