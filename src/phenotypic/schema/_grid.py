@@ -1,6 +1,6 @@
 """Constants for grid structure in the PhenoTypic module."""
 
-from phenotypic.abc_._measurement_info import MeasurementInfo
+from ._measurement_info import MeasurementInfo
 
 
 class GRID(MeasurementInfo):

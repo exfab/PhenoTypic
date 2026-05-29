@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 
 from phenotypic.analysis.abc_._linear_softplus_base import _LinearSoftplusBase
-from phenotypic.tools_.measurement_info import (
+from phenotypic.schema import (
     LINEAR_SOFTPLUS_MODEL,
     MODEL_METRICS,
 )

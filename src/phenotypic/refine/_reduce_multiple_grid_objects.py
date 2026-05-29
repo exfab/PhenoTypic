@@ -8,7 +8,7 @@ import numpy as np
 
 from phenotypic.abc_ import GridObjectRefiner
 from phenotypic.measure import MeasureGridLinRegStats
-from phenotypic.tools_.measurement_info import GRID_LINREG_STATS
+from phenotypic.schema import GRID_LINREG_STATS
 
 
 class ReduceSectionsByLine(GridObjectRefiner):

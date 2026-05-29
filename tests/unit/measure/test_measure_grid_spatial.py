@@ -8,7 +8,7 @@ from phenotypic import GridImage
 from phenotypic.grid import ManualGridFinder
 from phenotypic.measure import MeasureGridSpatial
 from phenotypic.tools_.constants_ import OBJECT
-from phenotypic.tools_.measurement_info import GRID_SPATIAL, GRID
+from phenotypic.schema import GRID_SPATIAL, GRID
 
 
 def _circle(objmap: np.ndarray, label: int, rr: int, cc: int, radius: int) -> None:

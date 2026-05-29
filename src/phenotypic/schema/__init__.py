@@ -1,13 +1,15 @@
-"""Centralized measurement information enumerations for the PhenoTypic library.
+"""Public measurement schema for the PhenoTypic library.
 
-This subpackage contains all :class:`MeasurementInfo` subclasses used across
-the library, standardizing measurement naming conventions, metadata, and
-documentation. Each class lives in its own module (``_<name>.py``) and is
-re-exported from here, so the public import surface stays stable:
+This subpackage is the canonical, public home for PhenoTypic's measurement
+naming conventions: the :class:`MeasurementInfo` base class plus every
+``MeasurementInfo`` subclass that names a column in an output DataFrame. Each
+enum lives in its own module (``_<name>.py``) and is re-exported here, so the
+public import surface stays stable:
 
-    from phenotypic.tools_.measurement_info import BBOX, GRID, SHAPE
+    from phenotypic.schema import MeasurementInfo, BBOX, GRID, SHAPE
 """
 
+from ._measurement_info import MeasurementInfo
 from ._bbox import BBOX
 from ._color_composition import ColorComposition
 from ._color_hsv import ColorHSV
@@ -34,6 +36,7 @@ from ._symmetric_zones import SYMMETRIC_ZONES
 from ._texture import TEXTURE
 
 __all__ = [
+    "MeasurementInfo",
     "BBOX",
     "ColorComposition",
     "ColorHSV",

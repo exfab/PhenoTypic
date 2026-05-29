@@ -2,7 +2,7 @@
 
 from textwrap import dedent
 
-from phenotypic.abc_._measurement_info import MeasurementInfo
+from ._measurement_info import MeasurementInfo
 
 
 class QUALITY_CHECK(MeasurementInfo):

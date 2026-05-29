@@ -1,6 +1,6 @@
 """Measurement info container for expected-vs-detected colony count QC."""
 
-from phenotypic.abc_._measurement_info import MeasurementInfo
+from ._measurement_info import MeasurementInfo
 
 
 class QUALITY_COUNT(MeasurementInfo):

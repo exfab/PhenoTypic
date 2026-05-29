@@ -11,7 +11,7 @@ import logging
 
 from phenotypic.abc_ import MeasureFeatures
 from phenotypic.tools_.constants_ import OBJECT
-from ..tools_.measurement_info import ColorXYZ, Colorxy, ColorLab, ColorHSV
+from phenotypic.schema import ColorXYZ, Colorxy, ColorLab, ColorHSV
 
 logger = logging.getLogger(__name__)
 

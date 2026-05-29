@@ -1,6 +1,6 @@
 """Measurement info container for replicate-agreement standard-error QC."""
 
-from phenotypic.abc_._measurement_info import MeasurementInfo
+from ._measurement_info import MeasurementInfo
 
 
 class QUALITY_SE(MeasurementInfo):

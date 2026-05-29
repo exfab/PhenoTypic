@@ -1,6 +1,6 @@
 """Second-order texture features derived from the gray-level co-occurrence matrix."""
 
-from phenotypic.abc_._measurement_info import MeasurementInfo
+from ._measurement_info import MeasurementInfo
 
 
 class TEXTURE(MeasurementInfo):

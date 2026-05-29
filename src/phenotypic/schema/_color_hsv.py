@@ -1,6 +1,6 @@
 """Per-object summary statistics in the HSV color space."""
 
-from phenotypic.abc_._measurement_info import MeasurementInfo
+from ._measurement_info import MeasurementInfo
 
 
 class ColorHSV(MeasurementInfo):

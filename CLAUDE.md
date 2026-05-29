@@ -129,6 +129,7 @@ operations copy data; avoid unnecessary intermediate allocations.
 
 - [_core/CLAUDE.md](src/phenotypic/_core/CLAUDE.md) — Image class, accessors
 - [abc_/CLAUDE.md](src/phenotypic/abc_/CLAUDE.md) — ABC hierarchy, implementation
+- [schema/CLAUDE.md](src/phenotypic/schema/CLAUDE.md) — public measurement schema (`MeasurementInfo` base + header enums)
 - [tools_/CLAUDE.md](src/phenotypic/tools_/CLAUDE.md) — mixins, utilities
 - [settings_/CLAUDE.md](src/phenotypic/settings_/CLAUDE.md) — global config
 - [enhance/CLAUDE.md](src/phenotypic/enhance/CLAUDE.md) — enhancer conventions
@@ -156,8 +157,10 @@ exist, add a test asserting their values match.
 `ConstantLabels`** (in `phenotypic.tools_.constants_`). Each member is a
 `(label, description)` tuple, the description is accessible to callers, and the existing
 pattern (override `category()` classmethod, optionally `__new__` for bare-label values)
-is the project convention. Examples: `GAMMA_ENCODINGS`, `PIPE_STATUS`, `METADATA`, the
-per-feature `MeasurementInfo` enums in `tools_/measurement_info/`. Do not modify these
+is the project convention. The `MeasurementInfo` base class lives in the public
+`phenotypic.schema` package; framework-config constant enums (`GAMMA_ENCODINGS`,
+`PIPE_STATUS`, `METADATA`) stay in `phenotypic.tools_.constants_`, while the
+per-feature measurement-column enums live in `phenotypic.schema`. Do not modify these
 classes' internals to satisfy the generic `MyEnum(value)` normalization — their bespoke
 coercion (e.g. `_GAMMA_COERCE` for `GAMMA_ENCODINGS`) is intentional.
 

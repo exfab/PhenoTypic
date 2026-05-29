@@ -1,7 +1,7 @@
 """Tests for the generic ``QUALITY_CHECK`` measurement info enum."""
 from __future__ import annotations
 
-from phenotypic.tools_.measurement_info._quality_check import QUALITY_CHECK
+from phenotypic.schema._quality_check import QUALITY_CHECK
 
 
 class TestQualityCheckMembers:

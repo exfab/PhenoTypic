@@ -1,6 +1,6 @@
 """Measurement info for spatial information for grid pinned colonies."""
 
-from phenotypic.abc_._measurement_info import MeasurementInfo
+from ._measurement_info import MeasurementInfo
 
 
 class GRID_SPATIAL(MeasurementInfo):

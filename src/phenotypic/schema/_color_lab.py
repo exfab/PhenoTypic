@@ -1,6 +1,6 @@
 """Per-object summary statistics in the CIE L*a*b* color space."""
 
-from phenotypic.abc_._measurement_info import MeasurementInfo
+from ._measurement_info import MeasurementInfo
 
 
 class ColorLab(MeasurementInfo):

@@ -17,7 +17,7 @@ from pydantic import PrivateAttr, WithJsonSchema, field_validator
 
 from phenotypic.analysis.abc_._quality_check import QualityCheck
 from phenotypic.tools_ import ColumnRef
-from phenotypic.tools_.measurement_info import QUALITY_COUNT
+from phenotypic.schema import QUALITY_COUNT
 
 # The metadata layout frame is an ``arbitrary_types_allowed`` field: a
 # raw ``pandas.DataFrame`` has no JSON schema, so attach an object-typed

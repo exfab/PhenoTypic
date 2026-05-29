@@ -1,6 +1,6 @@
 """Grid linear regression statistics and residual errors."""
 
-from phenotypic.abc_._measurement_info import MeasurementInfo
+from ._measurement_info import MeasurementInfo
 
 
 class GRID_LINREG_STATS(MeasurementInfo):

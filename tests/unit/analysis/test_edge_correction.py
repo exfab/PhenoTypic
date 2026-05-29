@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 
 from phenotypic.analysis import EdgeCorrector
-from phenotypic.tools_.measurement_info import EDGE_CORRECTION, GRID
+from phenotypic.schema import EDGE_CORRECTION, GRID
 
 
 class TestSurroundedPositions:

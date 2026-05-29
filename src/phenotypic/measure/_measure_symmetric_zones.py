@@ -23,7 +23,7 @@ from skimage.measure import approximate_polygon, find_contours, regionprops
 
 from phenotypic.abc_ import MeasureFeatures
 from phenotypic.tools_.constants_ import OBJECT
-from ..tools_.measurement_info import SYMMETRIC_ZONES
+from phenotypic.schema import SYMMETRIC_ZONES
 
 _NEIGHBOR_KERNEL = np.array([[1, 1, 1], [1, 0, 1], [1, 1, 1]], dtype=np.int32)
 

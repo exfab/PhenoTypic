@@ -4,12 +4,12 @@ from typing import ClassVar, TYPE_CHECKING
 if TYPE_CHECKING:
     from phenotypic._core._grid_image import GridImage
 from phenotypic.abc_ import GridMeasureFeatures
-from ..tools_.measurement_info import GRID_SPREAD
+from phenotypic.schema import GRID_SPREAD
 
 import pandas as pd
 import numpy as np
 from scipy.spatial import distance_matrix
-from phenotypic.tools_.measurement_info import BBOX, GRID
+from phenotypic.schema import BBOX, GRID
 
 
 class MeasureGridSpread(GridMeasureFeatures):

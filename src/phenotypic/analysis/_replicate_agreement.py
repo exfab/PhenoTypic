@@ -19,7 +19,7 @@ import plotly.graph_objects as go
 
 from phenotypic.analysis.abc_._quality_check import QualityCheck
 from phenotypic.tools_ import ColumnRef
-from phenotypic.tools_.measurement_info import QUALITY_SE
+from phenotypic.schema import QUALITY_SE
 
 
 class ReplicateAgreement(QualityCheck):

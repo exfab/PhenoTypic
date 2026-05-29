@@ -20,7 +20,7 @@ from sklearn.metrics import (
 )
 
 from phenotypic.tools_ import ColumnRef
-from phenotypic.tools_.measurement_info import MODEL_METRICS
+from phenotypic.schema import MODEL_METRICS
 
 from ._set_analyzer import SetAnalyzer
 

@@ -1,6 +1,6 @@
 """Per-object summary statistics in CIE chromaticity xy coordinates."""
 
-from phenotypic.abc_._measurement_info import MeasurementInfo
+from ._measurement_info import MeasurementInfo
 
 
 class Colorxy(MeasurementInfo):

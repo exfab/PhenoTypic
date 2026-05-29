@@ -1,6 +1,6 @@
 """Bounding-box and centroid coordinate measurements."""
 
-from phenotypic.abc_._measurement_info import MeasurementInfo
+from ._measurement_info import MeasurementInfo
 
 
 class BBOX(MeasurementInfo):

@@ -1,6 +1,6 @@
 """Fitted parameters and bounds for the logistic growth model."""
 
-from phenotypic.abc_._measurement_info import MeasurementInfo
+from ._measurement_info import MeasurementInfo
 
 
 class LOG_GROWTH_MODEL(MeasurementInfo):

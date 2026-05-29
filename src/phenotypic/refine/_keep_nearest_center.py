@@ -8,7 +8,7 @@ if TYPE_CHECKING:
 from scipy.spatial.distance import euclidean
 
 from phenotypic.abc_ import ObjectRefiner
-from phenotypic.tools_.measurement_info import BBOX
+from phenotypic.schema import BBOX
 
 
 class KeepNearestCenter(ObjectRefiner):

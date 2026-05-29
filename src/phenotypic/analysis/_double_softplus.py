@@ -10,7 +10,7 @@ from phenotypic.analysis.abc_._linear_softplus_base import (
     _DEFAULT_BETA,
     _LinearSoftplusBase,
 )
-from phenotypic.tools_.measurement_info import (
+from phenotypic.schema import (
     DOUBLE_SOFTPLUS_MODEL,
     MODEL_METRICS,
 )

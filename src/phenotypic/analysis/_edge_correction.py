@@ -10,7 +10,7 @@ from matplotlib.figure import Figure
 from pydantic import field_validator, PrivateAttr
 
 from phenotypic.tools_ import ColumnRef
-from phenotypic.tools_.measurement_info import EDGE_CORRECTION
+from phenotypic.schema import EDGE_CORRECTION
 from .abc_ import SetAnalyzer
 
 
@@ -335,7 +335,7 @@ class EdgeCorrector(SetAnalyzer):
             >>> import pandas as pd
             >>> import numpy as np
             >>> from phenotypic.analysis import EdgeCorrector
-            >>> from phenotypic.tools_.measurement_info import GRID
+            >>> from phenotypic.schema import GRID
             >>> # Create sample 96-well data (8 rows x 12 cols)
             >>> np.random.seed(42)
             >>> data = pd.DataFrame({
@@ -379,7 +379,7 @@ class EdgeCorrector(SetAnalyzer):
             >>> corrected = corrector.analyze(data)  # doctest: +SKIP
             >>> # Each plate-condition combo gets its own threshold
         """
-        from phenotypic.tools_.measurement_info import GRID
+        from phenotypic.schema import GRID
 
         # Validate input
         if data is None or len(data) == 0:
@@ -929,7 +929,7 @@ class EdgeCorrector(SetAnalyzer):
             - If p-value > self.pvalue, threshold = np.inf (no correction applied)
             - Threshold = mean of top_n interior values if correction applies
         """
-        from phenotypic.tools_.measurement_info import GRID
+        from phenotypic.schema import GRID
 
         if len(group) == 0:
             return None
@@ -1109,7 +1109,7 @@ class EdgeCorrector(SetAnalyzer):
             ...     pvalue=0.05
             ... )  # doctest: +SKIP
         """
-        from phenotypic.tools_.measurement_info import GRID
+        from phenotypic.schema import GRID
 
         section_col = GRID.ROW_MAJOR_IDX
 

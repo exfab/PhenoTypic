@@ -1,6 +1,6 @@
 """Per-object grayscale intensity summary statistics."""
 
-from phenotypic.abc_._measurement_info import MeasurementInfo
+from ._measurement_info import MeasurementInfo
 
 
 class INTENSITY(MeasurementInfo):

@@ -11,7 +11,7 @@ import pandas as pd
 import numpy as np
 
 from phenotypic.abc_ import MeasureFeatures
-from ..tools_.measurement_info import SIZE
+from phenotypic.schema import SIZE
 
 
 class MeasureSize(MeasureFeatures):

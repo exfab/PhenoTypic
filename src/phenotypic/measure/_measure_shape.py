@@ -14,7 +14,7 @@ from scipy.ndimage import distance_transform_edt
 import numpy as np
 
 from phenotypic.abc_ import MeasureFeatures
-from ..tools_.measurement_info import SHAPE
+from phenotypic.schema import SHAPE
 
 
 class MeasureShape(MeasureFeatures):

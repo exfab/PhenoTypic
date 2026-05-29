@@ -1,6 +1,6 @@
 """Fitted parameters for the double-softplus growth model (with saturation ceiling)."""
 
-from phenotypic.abc_._measurement_info import MeasurementInfo
+from ._measurement_info import MeasurementInfo
 
 
 class DOUBLE_SOFTPLUS_MODEL(MeasurementInfo):

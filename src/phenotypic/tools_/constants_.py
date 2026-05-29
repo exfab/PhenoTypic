@@ -22,7 +22,7 @@ from enum import Enum
 from packaging.version import Version
 from pathlib import Path
 
-from phenotypic.abc_._measurement_info import MeasurementInfo
+from phenotypic.schema import MeasurementInfo
 
 
 class ConstantLabels(MeasurementInfo):

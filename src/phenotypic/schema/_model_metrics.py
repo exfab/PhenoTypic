@@ -1,6 +1,6 @@
 """Generic fit-quality metrics shared by all ModelFitter subclasses."""
 
-from phenotypic.abc_._measurement_info import MeasurementInfo
+from ._measurement_info import MeasurementInfo
 
 
 class MODEL_METRICS(MeasurementInfo):

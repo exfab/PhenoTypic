@@ -1,6 +1,6 @@
 """Measurement info for perceptual color composition using 11-color model."""
 
-from phenotypic.abc_._measurement_info import MeasurementInfo
+from ._measurement_info import MeasurementInfo
 
 
 class ColorComposition(MeasurementInfo):

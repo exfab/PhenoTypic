@@ -1,6 +1,6 @@
 """Fitted parameters for the linear-softplus growth model (no saturation)."""
 
-from phenotypic.abc_._measurement_info import MeasurementInfo
+from ._measurement_info import MeasurementInfo
 
 
 class LINEAR_SOFTPLUS_MODEL(MeasurementInfo):

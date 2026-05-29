@@ -47,7 +47,7 @@ class MeasurementInfo(str, Enum):
     Examples:
         Define a custom measurement enumeration:
 
-        >>> from phenotypic.abc_ import MeasurementInfo
+        >>> from phenotypic.schema import MeasurementInfo
         >>> class SHAPE(MeasurementInfo):
         ...     @classmethod
         ...     def category(cls):

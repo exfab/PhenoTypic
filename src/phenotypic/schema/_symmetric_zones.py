@@ -1,6 +1,6 @@
 """Mask-based radial expansion measurements for colonies on solid media."""
 
-from phenotypic.abc_._measurement_info import MeasurementInfo
+from ._measurement_info import MeasurementInfo
 
 
 class SYMMETRIC_ZONES(MeasurementInfo):

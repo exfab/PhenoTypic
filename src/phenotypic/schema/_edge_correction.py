@@ -1,6 +1,6 @@
 """Measurement info container for edge correction analysis results."""
 
-from phenotypic.abc_._measurement_info import MeasurementInfo
+from ._measurement_info import MeasurementInfo
 
 
 class EDGE_CORRECTION(MeasurementInfo):

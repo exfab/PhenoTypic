@@ -18,10 +18,11 @@ __version__ = "0.15.2"
 __author__ = "Alexander Nguyen"
 __email__ = "anguy344@ucr.edu"
 
-# Import abc_ first: its __init__ loads _measurement_info (stdlib-only, cached
-# instantly) then triggers tools_ init.  When tools_.constants_ later does
-# ``from phenotypic.abc_._measurement_info import MeasurementInfo`` the module
-# is already in sys.modules, breaking the circular import chain.
+# Import abc_ first: its __init__ imports the public ``schema`` package
+# (the stdlib-only MeasurementInfo base + leaf enums, cached instantly) then
+# triggers tools_ init.  When tools_.constants_ later does
+# ``from phenotypic.schema import MeasurementInfo`` the module is already in
+# sys.modules, breaking the circular import chain.
 from . import abc_  # noqa: F401
 
 from ._core._grid_image import GridImage
@@ -38,6 +39,7 @@ from . import (
     measure,
     nn,
     refine,
+    schema,
     settings_,
     sweep,
     tools_,
@@ -55,6 +57,7 @@ __all__ = [
     "measure",
     "grid",
     "refine",
+    "schema",
     "prefab",
     "correction",
     "enhance",

@@ -1,6 +1,6 @@
 """Radial expansion measurements for filamentous fungal colonies."""
 
-from phenotypic.abc_._measurement_info import MeasurementInfo
+from ._measurement_info import MeasurementInfo
 
 
 class RADIAL_EXPANSION(MeasurementInfo):

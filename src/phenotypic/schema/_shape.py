@@ -1,6 +1,6 @@
 """The labels and descriptions of the shape measurements."""
 
-from phenotypic.abc_._measurement_info import MeasurementInfo
+from ._measurement_info import MeasurementInfo
 
 
 class SHAPE(MeasurementInfo):

@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
 from phenotypic.abc_ import GridObjectRefiner
 from phenotypic.tools_.constants_ import OBJECT
-from phenotypic.tools_.measurement_info import GRID
+from phenotypic.schema import GRID
 
 
 class MergeWithinSection(GridObjectRefiner):

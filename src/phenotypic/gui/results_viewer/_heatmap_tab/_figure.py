@@ -97,7 +97,7 @@ def build_heatmap_figure(
             data heatmap.
         grid_row_col: Tuple of (row column, col column) names used to
             pivot the heatmap. Defaults to the
-            :class:`phenotypic.tools_.measurement_info.GRID`-prefixed
+            :class:`phenotypic.schema.GRID`-prefixed
             column names emitted by ``GridMeasureFeatures``.
 
     Returns:

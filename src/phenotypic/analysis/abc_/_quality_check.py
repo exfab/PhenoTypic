@@ -9,7 +9,7 @@ from typing import Any, ClassVar
 import pandas as pd
 from pydantic import Field
 
-from phenotypic.tools_.measurement_info import QUALITY_CHECK
+from phenotypic.schema import QUALITY_CHECK
 
 from ._set_analyzer import SetAnalyzer
 

@@ -13,7 +13,7 @@ from skimage.color import label2rgb
 
 import phenotypic
 from phenotypic.tools_.constants_ import METADATA, IMAGE_TYPES, OBJECT
-from phenotypic.tools_.measurement_info import BBOX, GRID
+from phenotypic.schema import BBOX, GRID
 from phenotypic.tools_.exceptions_ import NoObjectsError
 
 
