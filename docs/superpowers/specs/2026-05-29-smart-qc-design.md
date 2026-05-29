@@ -90,13 +90,27 @@ Drop the normalized `severity` abstraction in favor of a single raw
 | `ExpectedVsDetectedCount` | `Count` | detection | \|detected−expected\|/expected (∞ if no metadata) | True | 0.05 / 0.10 | existing |
 | `RelativeMAD` (new) | `MAD` | replicate (robust) | MAD/\|median\| | True | 0.10 / 0.20 | MAD math |
 | `MaxModifiedZScore` (new) | `ZMax` | detection/outlier | max over members of 0.6745·\|x−med\|/MAD | True | 3.5 / 5.0 | MAD math |
-| `ICC` (new) | `ICC` | replicate reliability | ICC(2,1) two-way random, absolute agreement | **False** | warn ≤ 0.75, fail ≤ 0.50 | — |
+| `ICC` (new) | `ICC` | replicate reliability | ICC(2,1) two-way random, absolute agreement — v1 default subject=`Metadata_Time`, rater=`Metadata_Replicate` | **False** | warn ≤ 0.75, fail ≤ 0.50 | — |
 | `TukeyOutlierFraction` (new) | `Tukey` | detection | fraction of members outside Q1−k·IQR … Q3+k·IQR (k=1.5) | True | 0.10 / 0.25 | IQR fences |
 
 - New MAD/ZMax/Tukey checks reuse the math in `MADOutlierRemover` /
   `TukeyOutlierRemover` (extract shared helpers if convenient) but are
   `QualityCheck` subclasses that **flag groups**, not remove rows.
-- `ICC` validates the `_HIGHER_IS_BAD=False` path end-to-end.
+- `ICC` validates the `_HIGHER_IS_BAD=False` path. **v1 default:**
+  subject=`Metadata_Time`, rater=`Metadata_Replicate` (uses the time column in
+  `all_meas.csv`; both are per-instance overridable). A missing subject/rater
+  column is surfaced LOUD (recorded in `unmatched_groups`, never a silent green
+  pass). **Caveat:** treating timepoints as subjects means growth dominates the
+  between-subject variance, so ICC mainly flags replicate disagreement that is
+  large relative to the growth signal. **Documented refinement (deferred):**
+  subject=`Metadata_StrainID` snapshot and/or per-timepoint binning, which is
+  statistically sounder. Test data: `src/phenotypic/data/meas/all_meas.csv`.
+  **Known v1 limitation:** real per-strain Time×Replicate grids in that data
+  are *sparse* (missing cells), so the strict complete-matrix guard NaNs most
+  groups → ICC reports "insufficient data" rather than a metric on real plates.
+  A sparse-tolerant estimator (restrict to the largest complete sub-block, or a
+  missing-data ICC) is part of the deferred refinement. On a complete sub-grid
+  (e.g. CBS11445, 5×5) ICC computes a finite value (~0.68).
 - Each new check gets a sibling schema enum (`QUALITY_MAD`,
   `QUALITY_ZMAX`, `QUALITY_ICC`, `QUALITY_TUKEY`) documenting its emitted
   columns, mirroring `QUALITY_SE` / `QUALITY_COUNT`.
@@ -111,7 +125,7 @@ already auto-discovers `QualityCheck` subclasses exported from
 
 ### A.4 Time-aware grouping nuance
 
-Time-course checks (`SE`, `ICC`) compute per `(group, time)` internally
+The time-course check (`SE`) computes per `(group, time)` internally
 but the **review unit is the `groupby` key**. `summary()` reduces
 per-time metrics to a worst-per-group value for ranking — the group is
 ranked by its **worst timepoint**. In the Review detail pane the tile
@@ -337,4 +351,54 @@ pass after each phase plus a final pass, and a regression run.
 - ICC(2,1) small-n / degenerate-bin guards (under-powered bins → NaN →
   pass, mirroring the SE check).
 - Default thresholds (A.2) tuned against real plates.
+
+## Risk-driven refinements (from devil's-advocate review)
+
+Accepted, assigned to the owning phase:
+
+**Phase A (engine):**
+- `summary()` must not collide when a `groupby` column shares a name with an
+  output column. Rename summary outputs to a prefixed set:
+  `[*groupby, "qc_n_members", "qc_n_flagged", "qc_worst_metric", "qc_status"]`
+  (a groupby col literally named `status`/`num_rows` otherwise crashes
+  `reset_index`). Test with `groupby=["status"]`.
+- Add a `model_validator(mode="after")` enforcing threshold ordering by
+  direction: `_HIGHER_IS_BAD` ⇒ `warn_threshold ≤ fail_threshold`; else
+  `warn_threshold ≥ fail_threshold` (equality allowed = no warn band). Raises
+  `ValidationError`. Without it, a lower-is-bad check (ICC) with mis-ordered
+  thresholds silently inverts pass/fail. Test both polarities + mis-order + equal.
+- ICC degenerate guards → NaN metric (= pass, "insufficient data" not "good"):
+  subject/rater column absent, `n_subjects<2`, `n_raters<2`, incomplete design
+  (NaN the whole group — do not silently drop), zero total variance. Document
+  that negative ICC is valid (poor agreement) and NaN ≠ good. Test all cases.
+- Alignment test: every concrete `QualityCheck` subclass is discoverable via
+  `OperationRegistry.get_by_category("quality_check")` (guards "no registry edits").
+
+**Phase B (cli):**
+- Sequence the metadata→path field BEFORE the qc serializer; round-trip test
+  must build `Count` from a **path**, not a frame (a frame-typed `Count` in the
+  qc list crashes `to_json` today).
+- Unknown qc class on `from_json` follows the **skip+warn** analyzer path (like
+  `QcRecipe`), NOT the raise path operations use — one stale entry must not brick
+  pipeline load. Test skip=True/False.
+- Scoped `qc`-array RMW adopts `RecipeState`-style **mtime refusal**; sidecar
+  migration is idempotent + atomic. Test a CLI write landing between the QC tab's
+  read and write.
+- `run_qc` must NEVER write `measurements.parquet` (only `qc/`). `rank` sorts NaN
+  metrics LAST (`na_position="last"`). Robust/nan-aware aggregation for any
+  summary stat that could see `inf` (unmatched-group Count). Duplicate-class
+  round-trip test (slice qc rows by `instance_id`, not class).
+
+**Phase D (gui):**
+- Per-group recompute must run on the **post-applied + metadata-joined** frame
+  (read `measurements.parquet`, anti-join removed keys), NOT `get_curated_frame`
+  (= master − removed). Otherwise it KeyErrors on metadata-only groupby cols or
+  diverges from the CLI artifact (the before→after delta would be apples-to-
+  oranges). Test parity vs CLI `run_qc` on identical removals.
+- Recompute calls `run_qc` ONLY, never `finalize_*` (which would wipe
+  `review_state.json`). `--recompile` always resets it (idempotent clear).
+- Read `removed_keys` under the `FilteredMeasurements` lock; document that `qc/`
+  reflects state-at-mark-reviewed, not live mid-edit.
+- Summary header distinguishes **NaN/insufficient** groups from `pass` (don't show
+  a no-signal ICC as green); robust aggregation for the median-metric tile.
 ```

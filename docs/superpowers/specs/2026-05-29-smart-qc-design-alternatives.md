@@ -93,5 +93,12 @@ Recorded for the spec's "alternatives considered" section.
 
 - Home for `run_qc` / migrated `QcRecipe` (`_cli/_cli_qc.py` vs a neutral
   `phenotypic/qc/`).
-- ICC(2,1) small-n / degenerate-bin guards.
+- ICC KEPT in v1 with **subject=Metadata_Time, rater=Metadata_Replicate**
+  (loud missing-axis via unmatched_groups). Test data:
+  src/phenotypic/data/meas/all_meas.csv. **Documented refinement (deferred):**
+  subject=Metadata_StrainID snapshot and/or per-timepoint binning (sounder).
+  [Heavy decision churn: time-as-subject → cut for a missing time column →
+  reinstated → snapshot-StrainID → finally KEPT on the green time-based default
+  per the user's "keep subject=Metadata_Time (green now)" call. The sounder
+  StrainID/per-timepoint model is the v2 refinement.]
 - Default thresholds, tuned against real plates.
