@@ -42,7 +42,7 @@ class MergeMetadata(PostMeasurement):
         >>> df = pd.DataFrame({
         ...     "Metadata_Strain": ["WT", "mut"],
         ...     "Metadata_Condition": ["30C", "37C"],
-        ...     "ObjectLabel": [1, 2],
+        ...     "Object_Label": [1, 2],
         ... })
         >>> merge = MergeMetadata(
         ...     columns=["Strain", "Condition"],

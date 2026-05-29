@@ -2,7 +2,7 @@
 
 This module backs the viewer's "remove colony" feature. The pipeline writes
 ``master_measurements.parquet`` once and never touches it again; users curate
-that frame by marking ``(Metadata_ImageFile, ObjectLabel)`` keys as removed.
+that frame by marking ``(Metadata_ImageFile, Object_Label)`` keys as removed.
 The curated view is mirrored to two sibling files in the output root, both
 seeded by the CLI as a fresh full copy of the master:
 
@@ -38,6 +38,7 @@ from typing import Callable, Iterable
 import polars as pl
 
 from phenotypic.gui._config import MEASUREMENTS_CSV, MEASUREMENTS_PARQUET
+from phenotypic.schema import OBJECT
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +50,7 @@ KEY_DATASET: str = "Metadata_Dataset"
 KEY_IMAGE_FILE: str = "Metadata_ImageFile"
 
 #: Column name that identifies a colony within its source image.
-KEY_OBJECT_LABEL: str = "ObjectLabel"
+KEY_OBJECT_LABEL: str = str(OBJECT.LABEL)
 
 #: Tuple form of the curation key columns. Importable from a single
 #: source so callers (filter panel, viewer card, colony grid, crop
@@ -114,7 +115,7 @@ def get_curated_frame(filtered: "FilteredMeasurements", output_root: object) -> 
 
 
 def _extract_keys(df: pl.DataFrame) -> set[tuple[str, int]]:
-    """Pull ``(Metadata_ImageFile, ObjectLabel)`` keys out of ``df``.
+    """Pull ``(Metadata_ImageFile, Object_Label)`` keys out of ``df``.
 
     Args:
         df: A polars frame that must expose both key columns.
@@ -144,7 +145,7 @@ def _extract_keys(df: pl.DataFrame) -> set[tuple[str, int]]:
 class FilteredMeasurements:
     """In-memory curation state plus on-disk mirrors.
 
-    Removals are keyed by ``(Metadata_ImageFile, ObjectLabel)``. The class
+    Removals are keyed by ``(Metadata_ImageFile, Object_Label)``. The class
     never mutates ``master_measurements.parquet``; instead it writes a
     curated copy to :attr:`parquet_path` and :attr:`csv_path`. Public
     mutators (:meth:`remove`, :meth:`restore`, :meth:`remove_many`,
@@ -212,7 +213,7 @@ class FilteredMeasurements:
             master_df: The full master measurements frame, used to compute
                 the removal set as ``master_keys − filtered_keys`` and
                 cached on the instance for subsequent saves. Must expose
-                both ``Metadata_ImageFile`` and ``ObjectLabel``.
+                both ``Metadata_ImageFile`` and ``Object_Label``.
 
         Returns:
             A new :class:`FilteredMeasurements` whose :attr:`removed_keys`
@@ -274,7 +275,7 @@ class FilteredMeasurements:
 
         Args:
             image_file: Value of ``Metadata_ImageFile`` for the colony.
-            object_label: Value of ``ObjectLabel`` for the colony.
+            object_label: Value of ``Object_Label`` for the colony.
 
         Returns:
             ``True`` if the key is in :attr:`removed_keys`, else ``False``.
@@ -290,7 +291,7 @@ class FilteredMeasurements:
 
         Returns:
             The number of rows in ``df`` whose
-            ``(Metadata_ImageFile, ObjectLabel)`` is in
+            ``(Metadata_ImageFile, Object_Label)`` is in
             :attr:`removed_keys`.
         """
         if df.is_empty() or not self.removed_keys:
@@ -365,7 +366,7 @@ class FilteredMeasurements:
 
         Args:
             image_file: Value of ``Metadata_ImageFile`` for the colony.
-            object_label: Value of ``ObjectLabel`` for the colony.
+            object_label: Value of ``Object_Label`` for the colony.
         """
         key = (image_file, object_label)
         with self._lock:
@@ -383,7 +384,7 @@ class FilteredMeasurements:
 
         Args:
             image_file: Value of ``Metadata_ImageFile`` for the colony.
-            object_label: Value of ``ObjectLabel`` for the colony.
+            object_label: Value of ``Object_Label`` for the colony.
         """
         key = (image_file, object_label)
         with self._lock:
@@ -438,7 +439,7 @@ class FilteredMeasurements:
 
         Args:
             image_file: Value of ``Metadata_ImageFile`` for the colony.
-            object_label: Value of ``ObjectLabel`` for the colony.
+            object_label: Value of ``Object_Label`` for the colony.
         """
         key = (image_file, object_label)
         with self._lock:

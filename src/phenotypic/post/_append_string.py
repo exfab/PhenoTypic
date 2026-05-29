@@ -31,7 +31,7 @@ class AppendString(PostMeasurement):
         >>> from phenotypic.post import AppendString
         >>> df = pd.DataFrame({
         ...     "Metadata_Temp": ["30", "37"],
-        ...     "ObjectLabel": [1, 2],
+        ...     "Object_Label": [1, 2],
         ... })
         >>> op = AppendString(column="Temp", value="C")
         >>> result = op.apply(df)

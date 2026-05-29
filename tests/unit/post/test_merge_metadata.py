@@ -57,7 +57,7 @@ class TestMergeMetadataOperate:
         df = pd.DataFrame({
             "Metadata_Strain": ["WT", "mut"],
             "Metadata_Condition": ["30C", "37C"],
-            "ObjectLabel": [1, 2],
+            "Object_Label": [1, 2],
             "Shape_Area": [100, 200],
         })
         result = mm.apply(df)
@@ -70,7 +70,7 @@ class TestMergeMetadataOperate:
         df = pd.DataFrame({
             "Metadata_A": ["x", "y"],
             "Metadata_B": ["1", "2"],
-            "ObjectLabel": [1, 2],
+            "Object_Label": [1, 2],
         })
         result = mm.apply(df)
         assert "Metadata_A" in result.columns
@@ -79,7 +79,7 @@ class TestMergeMetadataOperate:
     def test_missing_column_raises(self):
         """Raises KeyError when a source column doesn't exist."""
         mm = MergeMetadata(columns=["A", "NonExistent"], label="AB")
-        df = pd.DataFrame({"Metadata_A": ["x"], "ObjectLabel": [1]})
+        df = pd.DataFrame({"Metadata_A": ["x"], "Object_Label": [1]})
         with pytest.raises(KeyError):
             mm.apply(df)
 
@@ -89,7 +89,7 @@ class TestMergeMetadataOperate:
         df = pd.DataFrame({
             "Metadata_A": ["x", "y"],
             "Metadata_B": ["1", "2"],
-            "ObjectLabel": [1, 2],
+            "Object_Label": [1, 2],
         })
         result = mm.apply(df)
         assert list(result["Metadata_AB"]) == ["x::1", "y::2"]
@@ -101,7 +101,7 @@ class TestMergeMetadataOperate:
             "Metadata_A": ["x"],
             "Metadata_B": ["y"],
             "Metadata_C": ["z"],
-            "ObjectLabel": [1],
+            "Object_Label": [1],
         })
         result = mm.apply(df)
         assert list(result["Metadata_ABC"]) == ["x_y_z"]
@@ -111,7 +111,7 @@ class TestMergeMetadataOperate:
         mm = MergeMetadata(columns=["A", "B"], label="AB", delimiter="_")
         df = pd.DataFrame({
             "Metadata_A": ["x"],
-            "ObjectLabel": [1],
+            "Object_Label": [1],
             "Metadata_B": ["y"],
             "Shape_Area": [100],
         })

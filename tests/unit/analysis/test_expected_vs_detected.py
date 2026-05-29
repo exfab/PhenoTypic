@@ -16,7 +16,7 @@ def _make_96well_metadata(image_file: str = "plate1.png") -> pd.DataFrame:
     """Return a synthetic 96-well metadata frame with one row per well."""
     return pd.DataFrame({
         "Metadata_ImageFile": [image_file] * 96,
-        "ObjectLabel": list(range(1, 97)),
+        "Object_Label": list(range(1, 97)),
     })
 
 
@@ -24,7 +24,7 @@ def _make_measurements(image_file: str, n_detected: int) -> pd.DataFrame:
     """Return a synthetic measurement frame with ``n_detected`` rows."""
     return pd.DataFrame({
         "Metadata_ImageFile": [image_file] * n_detected,
-        "ObjectLabel": list(range(1, n_detected + 1)),
+        "Object_Label": list(range(1, n_detected + 1)),
         "Size_Area": np.linspace(100.0, 200.0, n_detected),
     })
 
@@ -143,7 +143,7 @@ class TestMetadataValidation:
     def test_metadata_keyerror_on_missing_groupby_column(self) -> None:
         metadata = pd.DataFrame({
             "Metadata_ImageFile": ["plate1.png"],
-            "ObjectLabel": [1],
+            "Object_Label": [1],
         })
 
         with pytest.raises(KeyError, match="Missing_Col"):

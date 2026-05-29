@@ -32,7 +32,7 @@ def app_client(tmp_path: Path):
         {
             "Metadata_Dataset": ["d1"],
             "Metadata_ImageFile": ["img-1"],
-            "ObjectLabel": [7],
+            "Object_Label": [7],
             "Bbox_CenterRR": [50],
             "Bbox_CenterCC": [50],
             "Bbox_MinRR": [40],

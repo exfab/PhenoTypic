@@ -6,7 +6,7 @@ Constants are organized by module and functionality.
 Note: Class names are defined in ALL_CAPS to avoid namespace conflicts with actual classes
     in the codebase (e.g., GRID_DEP vs an actual Grid class). When importing, use the format::
 
-        from phenotypic.tools_.constants_ import IMAGE_MODE, OBJECT
+        from phenotypic.tools_.constants_ import IMAGE_MODE, METADATA
 
 See also
 --------
@@ -80,13 +80,6 @@ class GAMMA_ENCODINGS(ConstantLabels):
 
     SRGB = "sRGB", "Standard sRGB gamma correction for display"
     LINEAR = "Linear", "Linear RGB with no gamma correction"
-
-
-# Object information constants
-class OBJECT:
-    """Constants for object information properties."""
-
-    LABEL = "ObjectLabel"
 
 
 class IO:

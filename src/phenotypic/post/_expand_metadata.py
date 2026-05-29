@@ -44,7 +44,7 @@ class ExpandMetadata(PostMeasurement):
         >>> from phenotypic.post import ExpandMetadata
         >>> df = pd.DataFrame({
         ...     "Metadata_ImageName": ["WT_30C_24h", "mut_37C_48h"],
-        ...     "ObjectLabel": [1, 2],
+        ...     "Object_Label": [1, 2],
         ... })
         >>> expand = ExpandMetadata(
         ...     column="ImageName",

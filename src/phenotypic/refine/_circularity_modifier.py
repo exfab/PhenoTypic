@@ -12,7 +12,7 @@ from skimage.measure import regionprops_table
 import math
 
 from ..abc_ import ObjectRefiner
-from ..tools_.constants_ import OBJECT
+from phenotypic.schema import OBJECT
 
 
 class LowCircularityRemover(ObjectRefiner):

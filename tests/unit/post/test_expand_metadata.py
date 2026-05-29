@@ -51,7 +51,7 @@ class TestExpandMetadataOperate:
         em = ExpandMetadata(column="ImageName", labels=["Strain", "Cond", "Time"], delimiter="_")
         df = pd.DataFrame({
             "Metadata_ImageName": ["WT_30C_24h", "mut_37C_48h"],
-            "ObjectLabel": [1, 2],
+            "Object_Label": [1, 2],
             "Shape_Area": [100, 200],
         })
         result = em.apply(df)
@@ -66,7 +66,7 @@ class TestExpandMetadataOperate:
     def test_original_column_kept(self):
         """The original column is always preserved."""
         em = ExpandMetadata(column="ImageName", labels=["A", "B"], delimiter="_")
-        df = pd.DataFrame({"Metadata_ImageName": ["x_y"], "ObjectLabel": [1]})
+        df = pd.DataFrame({"Metadata_ImageName": ["x_y"], "Object_Label": [1]})
         result = em.apply(df)
         assert "Metadata_ImageName" in result.columns
 
@@ -75,7 +75,7 @@ class TestExpandMetadataOperate:
         em = ExpandMetadata(column="ImageName", labels=["A", "B", "C"], delimiter="_")
         df = pd.DataFrame({
             "Metadata_ImageName": ["WT_30C_24h", "mut_37C"],  # second row has 2 parts, not 3
-            "ObjectLabel": [1, 2],
+            "Object_Label": [1, 2],
         })
         with pytest.raises(ValueError, match="split"):
             em.apply(df)
@@ -83,7 +83,7 @@ class TestExpandMetadataOperate:
     def test_missing_column_raises(self):
         """Raises KeyError when the source column doesn't exist."""
         em = ExpandMetadata(column="NonExistent", labels=["A", "B"], delimiter="_")
-        df = pd.DataFrame({"ObjectLabel": [1], "Shape_Area": [100]})
+        df = pd.DataFrame({"Object_Label": [1], "Shape_Area": [100]})
         with pytest.raises(KeyError):
             em.apply(df)
 
@@ -97,7 +97,7 @@ class TestExpandMetadataOperate:
         )
         df = pd.DataFrame({
             "Metadata_ImageName": ["WT_30C-24h", "mut-37C_48h"],
-            "ObjectLabel": [1, 2],
+            "Object_Label": [1, 2],
         })
         result = em.apply(df)
         assert list(result["Metadata_Strain"]) == ["WT", "mut"]
@@ -109,7 +109,7 @@ class TestExpandMetadataOperate:
         em = ExpandMetadata(column="ImageName", labels=["A", "B"], delimiter=".")
         df = pd.DataFrame({
             "Metadata_ImageName": ["hello.world", "foo.bar"],
-            "ObjectLabel": [1, 2],
+            "Object_Label": [1, 2],
         })
         result = em.apply(df)
         assert list(result["Metadata_A"]) == ["hello", "foo"]
@@ -120,7 +120,7 @@ class TestExpandMetadataOperate:
         em = ExpandMetadata(column="ImageName", labels=["A", "B"], delimiter="_")
         df = pd.DataFrame({
             "Metadata_ImageName": ["x_y"],
-            "ObjectLabel": [1],
+            "Object_Label": [1],
             "Shape_Area": [100],
         })
         result = em.apply(df)

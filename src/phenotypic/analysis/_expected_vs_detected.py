@@ -17,7 +17,7 @@ from pydantic import PrivateAttr, WithJsonSchema, field_validator
 
 from phenotypic.analysis.abc_._quality_check import QualityCheck
 from phenotypic.tools_ import ColumnRef
-from phenotypic.schema import QUALITY_COUNT
+from phenotypic.schema import OBJECT, QUALITY_COUNT
 
 # The metadata layout frame is an ``arbitrary_types_allowed`` field: a
 # raw ``pandas.DataFrame`` has no JSON schema, so attach an object-typed
@@ -68,7 +68,7 @@ class ExpectedVsDetectedCount(QualityCheck):
             in both the metadata frame and the measurement frame passed
             to :meth:`analyze`.
         on: Measurement column the check operates on. Defaults to
-            ``"ObjectLabel"`` since "detected" means "a measurement row
+            ``"Object_Label"`` since "detected" means "a measurement row
             exists".
         severity_warn: Per-instance override for ``severity_warn``.
             ``None`` falls back to the class default (``0.05``).
@@ -100,11 +100,11 @@ class ExpectedVsDetectedCount(QualityCheck):
         ... )
         >>> metadata = pd.DataFrame({
         ...     "Metadata_ImageFile": ["plate1.png"] * 96,
-        ...     "ObjectLabel": list(range(96)),
+        ...     "Object_Label": list(range(96)),
         ... })
         >>> measurements = pd.DataFrame({
         ...     "Metadata_ImageFile": ["plate1.png"] * 95,
-        ...     "ObjectLabel": list(range(95)),
+        ...     "Object_Label": list(range(95)),
         ... })
         >>> chk = ExpectedVsDetectedCount(
         ...     metadata=metadata,
@@ -119,11 +119,11 @@ class ExpectedVsDetectedCount(QualityCheck):
 
         >>> metadata = pd.DataFrame({
         ...     "Metadata_ImageFile": ["plate1.png"] * 96,
-        ...     "ObjectLabel": list(range(96)),
+        ...     "Object_Label": list(range(96)),
         ... })
         >>> measurements = pd.DataFrame({
         ...     "Metadata_ImageFile": ["plate2.png"] * 10,
-        ...     "ObjectLabel": list(range(10)),
+        ...     "Object_Label": list(range(10)),
         ... })
         >>> chk = ExpectedVsDetectedCount(
         ...     metadata=metadata,
@@ -140,7 +140,7 @@ class ExpectedVsDetectedCount(QualityCheck):
     _exposes_agg_func: ClassVar[bool] = False
     _measurement_infoclass = QUALITY_COUNT
 
-    on: ColumnRef = "ObjectLabel"
+    on: ColumnRef = str(OBJECT.LABEL)
     agg_func: Callable | str | list | dict | None = "first"
     metadata: _MetadataFrame
 

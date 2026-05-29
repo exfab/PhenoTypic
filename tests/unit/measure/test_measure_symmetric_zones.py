@@ -171,17 +171,17 @@ def _make_lopsided_colony(
 class TestMeasureSymmetricZones:
     """Synthetic-colony ground-truth tests for MeasureSymmetricZones."""
 
-    # -- column-name constants (match the plan's SYMMETRIC_ZONES enum) --
-    CORE_COL = "SymmetricZones_CoreRadius"
-    SYMM_COL = "SymmetricZones_SymmetricRadius"
-    MEAN_COL = "SymmetricZones_MeanExpansion"
-    MAX_COL = "SymmetricZones_MaxExpansion"
-    CORE_END_RADIUS_COL = "SymmetricZones_CoreEndRadius"
-    DENSE_END_RADIUS_COL = "SymmetricZones_DenseEndRadius"
-    SPARSE_END_RADIUS_COL = "SymmetricZones_SparseEndRadius"
-    CORE_AREA_COL = "SymmetricZones_CoreArea"
-    DENSE_AREA_COL = "SymmetricZones_DenseArea"
-    SPARSE_AREA_COL = "SymmetricZones_SparseArea"
+    # -- column-name constants (match the SYMMETRIC_ZONES enum, category "SymZones") --
+    CORE_COL = "SymZones_CoreRadius"
+    SYMM_COL = "SymZones_SymmetricRadius"
+    MEAN_COL = "SymZones_MeanExpansion"
+    MAX_COL = "SymZones_MaxExpansion"
+    CORE_END_RADIUS_COL = "SymZones_CoreEndRadius"
+    DENSE_END_RADIUS_COL = "SymZones_DenseEndRadius"
+    SPARSE_END_RADIUS_COL = "SymZones_SparseEndRadius"
+    CORE_AREA_COL = "SymZones_CoreArea"
+    DENSE_AREA_COL = "SymZones_DenseArea"
+    SPARSE_AREA_COL = "SymZones_SparseArea"
 
     # ------------------------------------------------------------------
     # Test 1 — symmetric circular colony.

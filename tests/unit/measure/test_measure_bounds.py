@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from phenotypic.measure import MeasureBounds
-from phenotypic.tools_.constants_ import OBJECT
+from phenotypic.schema import OBJECT
 from phenotypic.schema import BBOX
 
 

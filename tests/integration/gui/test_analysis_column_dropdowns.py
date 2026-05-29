@@ -43,7 +43,7 @@ def output_root(tmp_path: Path) -> OutputRoot:
             "Metadata_ImageFile": ["a", "b", "c", "d"],
             "Metadata_Strain": ["WT", "KO", "WT", "KO"],
             "Metadata_Time": [0, 1, 2, 3],
-            "ObjectLabel": [1, 1, 1, 1],
+            "Object_Label": [1, 1, 1, 1],
             "Shape_Area": [100.0, 200.0, 150.0, 250.0],
             "Intensity_MeanIntensity": [10.0, 20.0, 15.0, 25.0],
         }
@@ -68,7 +68,7 @@ def output_root_with_filter(tmp_path: Path) -> OutputRoot:
             "Metadata_ImageFile": ["a", "b", "c", "d"],
             "Metadata_Strain": ["WT", "KO", "WT", "KO"],
             "Metadata_Time": [0, 1, 2, 3],
-            "ObjectLabel": [1, 1, 1, 1],
+            "Object_Label": [1, 1, 1, 1],
             "Shape_Area": [100.0, 200.0, 150.0, 250.0],
         }
     )

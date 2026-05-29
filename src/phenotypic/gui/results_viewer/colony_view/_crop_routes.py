@@ -40,7 +40,7 @@ _MIN_CROP_SIZE = 16
 _MAX_CROP_SIZE = 4096
 
 #: Sanity ceiling on the parsed ``<label>`` URL component. Real
-#: ``ObjectLabel`` values are dense small integers; anything beyond a
+#: ``Object_Label`` values are dense small integers; anything beyond a
 #: billion is almost certainly malformed input.
 _MAX_OBJECT_LABEL = 10**9
 
@@ -52,7 +52,7 @@ def register(app: dash.Dash, output_root: OutputRoot) -> None:
 
     * ``GET /crops/<dataset>/<stem>/<label>.png?size=<int>`` — returns a
       PNG-encoded ``size`` x ``size`` crop of the dataset's overlay PNG
-      centered on the colony with ``ObjectLabel == label`` in image
+      centered on the colony with ``Object_Label == label`` in image
       ``stem``.
 
     The route never mutates state and never writes to disk; the on-disk
@@ -104,7 +104,7 @@ def register(app: dash.Dash, output_root: OutputRoot) -> None:
         # --- 4. Lookup ----------------------------------------------------
         # Cast key columns explicitly so the comparison still matches when
         # the master frame stores Metadata_ImageFile as Categorical or
-        # ObjectLabel as a narrower int type.
+        # Object_Label as a narrower int type.
         try:
             row = (
                 output_root.master_df.filter(

@@ -25,14 +25,14 @@ def test_left_join_qc_columns_preserves_left_rows() -> None:
     left = pl.DataFrame(
         {
             "Metadata_ImageFile": [f"img_{i}.tif" for i in range(10)],
-            "ObjectLabel": list(range(10)),
+            "Object_Label": list(range(10)),
             "Size_Area": [float(100 + i) for i in range(10)],
         }
     )
     right = pd.DataFrame(
         {
             "Metadata_ImageFile": ["img_0.tif", "img_1.tif", "img_2.tif"],
-            "ObjectLabel": [0, 1, 2],
+            "Object_Label": [0, 1, 2],
             "QC_SE_Severity": [0.01, 0.05, 0.12],
         }
     )

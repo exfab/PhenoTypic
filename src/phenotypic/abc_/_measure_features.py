@@ -19,7 +19,7 @@ from functools import partial, wraps
 from ._base_operation import BaseOperation
 from phenotypic.tools_.exceptions_ import OperationFailedError
 from phenotypic.tools_.funcs_ import validate_measure_integrity
-from phenotypic.tools_.constants_ import OBJECT
+from phenotypic.schema import OBJECT
 
 
 def catch_warnings_decorator(func):
@@ -158,7 +158,7 @@ class MeasureFeatures(BaseOperation, ABC):
     Implementing a custom colony measurement class:
 
     >>> from phenotypic.abc_ import MeasureFeatures
-    >>> from phenotypic.tools_.constants_ import OBJECT
+    >>> from phenotypic.schema import OBJECT
     >>> import pandas as pd
     >>> import numpy as np
     >>> class MeasureCustom(MeasureFeatures):
@@ -268,7 +268,7 @@ class MeasureFeatures(BaseOperation, ABC):
         Custom feature engineering: growth density index:
 
         >>> from phenotypic.abc_ import MeasureFeatures
-        >>> from phenotypic.tools_.constants_ import OBJECT
+        >>> from phenotypic.schema import OBJECT
         >>> import pandas as pd
         >>> import numpy as np
         >>> class MeasureGrowthDensity(MeasureFeatures):

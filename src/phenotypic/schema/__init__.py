@@ -26,6 +26,7 @@ from ._intensity import INTENSITY
 from ._linear_softplus_model import LINEAR_SOFTPLUS_MODEL
 from ._log_growth_model import LOG_GROWTH_MODEL
 from ._model_metrics import MODEL_METRICS
+from ._object import OBJECT
 from ._quality_check import QUALITY_CHECK
 from ._quality_count import QUALITY_COUNT
 from ._quality_se import QUALITY_SE
@@ -53,6 +54,7 @@ __all__ = [
     "LINEAR_SOFTPLUS_MODEL",
     "LOG_GROWTH_MODEL",
     "MODEL_METRICS",
+    "OBJECT",
     "QUALITY_CHECK",
     "QUALITY_COUNT",
     "QUALITY_SE",

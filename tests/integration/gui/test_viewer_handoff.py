@@ -29,7 +29,7 @@ def _make_minimal_output(root: Path, dataset: str = "d1") -> None:
             "Metadata_Dataset": [dataset, dataset],
             "Metadata_ImageFile": ["a", "b"],
             "Metadata_Strain": ["s1", "s2"],
-            "ObjectLabel": [1, 1],
+            "Object_Label": [1, 1],
             "Size_Area": [100.0, 200.0],
         }
     ).write_parquet(root / "master_measurements.parquet")

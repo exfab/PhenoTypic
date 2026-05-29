@@ -8,7 +8,7 @@ if TYPE_CHECKING:
 import numpy as np
 
 from phenotypic.abc_ import GridObjectRefiner
-from phenotypic.tools_.constants_ import OBJECT
+from phenotypic.schema import OBJECT
 from phenotypic.schema import BBOX
 
 

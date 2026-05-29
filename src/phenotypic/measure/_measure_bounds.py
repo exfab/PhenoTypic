@@ -11,7 +11,7 @@ from skimage.measure import regionprops_table
 
 from phenotypic.abc_ import MeasureFeatures
 
-from ..tools_.constants_ import OBJECT
+from phenotypic.schema import OBJECT
 from phenotypic.schema import BBOX
 
 

@@ -65,14 +65,14 @@ container with:
 
 Switch to the `Plate` tab and remove a flagged colony (or hit the
 per-card `Mark all flagged for removal` button to union every flagged
-`(ImageFile, ObjectLabel)` into `STORE_REMOVED_KEYS` in one click).
+`(ImageFile, Object_Label)` into `STORE_REMOVED_KEYS` in one click).
 Switching back to the QC tab shows the card re-rendered with the new
 severity.
 
 ## Common gotchas
 
 - **Metadata schema:** `ExpectedVsDetectedCount` reads
-  `Metadata_ImageFile` + `ObjectLabel` from the supplied CSV. If the
+  `Metadata_ImageFile` + `Object_Label` from the supplied CSV. If the
   CSV has a different column name (e.g. legacy `ImageName`), the
   check raises at instantiation time and the recipe records a
   load-warning instead of breaking the boot. The warning banner at

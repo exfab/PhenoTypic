@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 from phenotypic.abc_ import GridObjectRefiner
 from phenotypic.measure import MeasureSize
 from phenotypic.schema import SIZE, GRID
-from phenotypic.tools_.constants_ import OBJECT
+from phenotypic.schema import OBJECT
 
 
 class KeepSectionLargest(GridObjectRefiner):

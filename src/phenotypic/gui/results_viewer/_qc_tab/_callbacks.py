@@ -54,7 +54,10 @@ from phenotypic.gui._operation_registry import OperationRegistry
 from phenotypic.gui._param_forms import param_form, parse_widget_value
 from phenotypic.gui._qc_recipe import QcRecipe
 from phenotypic.gui.results_viewer import _ids as viewer_ids
-from phenotypic.gui.results_viewer._filtered_state import get_curated_frame
+from phenotypic.gui.results_viewer._filtered_state import (
+    KEY_COLUMNS,
+    get_curated_frame,
+)
 from phenotypic.gui.results_viewer._qc_tab import _ids as ids
 from phenotypic.gui.results_viewer._qc_tab._check_card import build_check_card
 from phenotypic.gui.results_viewer._qc_tab._layout import (
@@ -185,7 +188,7 @@ def _left_join_qc_columns(
     left: pl.DataFrame,
     right: pd.DataFrame,
     *,
-    on: tuple[str, str] = ("Metadata_ImageFile", "ObjectLabel"),
+    on: tuple[str, str] = KEY_COLUMNS,
 ) -> pl.DataFrame:
     """Left-join a check's analyze() output onto the augmented frame.
 
@@ -195,8 +198,8 @@ def _left_join_qc_columns(
             (pandas). Carries QC columns plus whatever rows the check
             iterated over.
         on: Join key columns. Defaults to
-            ``("Metadata_ImageFile", "ObjectLabel")`` — the curation
-            key used by ``STORE_REMOVED_KEYS``.
+            :data:`KEY_COLUMNS` (``("Metadata_ImageFile", "Object_Label")``)
+            — the curation key used by ``STORE_REMOVED_KEYS``.
 
     Returns:
         A new polars DataFrame with the same row count as ``left`` and

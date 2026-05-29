@@ -11,7 +11,7 @@ The tests share a function-scoped sandbox helper that:
 1. Builds the standard E2E sandbox layout.
 2. Replaces the empty placeholder ``master_measurements.parquet`` with
    a real polars frame carrying the columns the QC machinery needs
-   (``Metadata_ImageFile``, ``Metadata_Dataset``, ``ObjectLabel``,
+   (``Metadata_ImageFile``, ``Metadata_Dataset``, ``Object_Label``,
    ``Size_Area``, ``Grid_RowNum``, ``Grid_ColNum``, ``Metadata_Time``).
 3. Pre-seeds ``<output>/.viewer_cache/qc_recipe.json`` directly so the
    tests do not depend on the OperationRegistry being stashed on the
@@ -82,7 +82,7 @@ def _build_real_master_df() -> pl.DataFrame:
                         "Metadata_Dataset": "ds1",
                         "Metadata_ImageFile": image,
                         "Metadata_Time": 0.0,
-                        "ObjectLabel": label,
+                        "Object_Label": label,
                         "Grid_RowNum": r,
                         "Grid_ColNum": c,
                         "Size_Area": float(100 + r * 10 + c),
@@ -293,7 +293,7 @@ def _count_entry(
         "params": {
             "metadata": metadata_path,
             "groupby": list(groupby),
-            "on": "ObjectLabel",
+            "on": "Object_Label",
         },
     }
 
@@ -306,7 +306,7 @@ def _write_count_metadata(output_dir: Path) -> Path:
     for image in _IMAGES:
         for _ in range(_NUM_ROWS * _NUM_COLS):
             label += 1
-            rows.append({"Metadata_ImageFile": image, "ObjectLabel": label})
+            rows.append({"Metadata_ImageFile": image, "Object_Label": label})
     pl.DataFrame(rows).write_csv(csv_path)
     return csv_path
 
@@ -796,7 +796,7 @@ def test_mark_flagged_pushes_to_removed_keys(
     for image in _IMAGES:
         for _ in range(100):
             label += 1
-            rows.append({"Metadata_ImageFile": image, "ObjectLabel": label})
+            rows.append({"Metadata_ImageFile": image, "Object_Label": label})
     csv_path = output_dir / "count_metadata.csv"
     pl.DataFrame(rows).write_csv(csv_path)
 

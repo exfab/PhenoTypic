@@ -9,7 +9,7 @@ from typing import Any, ClassVar
 import pandas as pd
 from pydantic import Field
 
-from phenotypic.schema import QUALITY_CHECK
+from phenotypic.schema import OBJECT, QUALITY_CHECK
 
 from ._set_analyzer import SetAnalyzer
 
@@ -190,11 +190,11 @@ class QualityCheck(SetAnalyzer, ABC):
         return summary
 
     def flagged_keys(self) -> list[tuple[str, int]]:
-        """Return (``Metadata_ImageFile``, ``ObjectLabel``) pairs to curate.
+        """Return (``Metadata_ImageFile``, ``Object_Label``) pairs to curate.
 
         Used by the GUI "Mark all flagged for removal" button. Requires
         the analyzed frame to carry both ``Metadata_ImageFile`` and
-        ``ObjectLabel`` columns (the curation key used by
+        ``Object_Label`` columns (the curation key used by
         ``STORE_REMOVED_KEYS``). Returns an empty list when those
         columns are absent or when no rows were flagged.
 
@@ -206,15 +206,15 @@ class QualityCheck(SetAnalyzer, ABC):
         flag_col = self.flag_col()
         if flag_col not in df.columns:
             return []
-        if "Metadata_ImageFile" not in df.columns or "ObjectLabel" not in df.columns:
+        if "Metadata_ImageFile" not in df.columns or str(OBJECT.LABEL) not in df.columns:
             return []
         flagged = df.loc[df[flag_col].fillna(False).astype(bool),
-                         ["Metadata_ImageFile", "ObjectLabel"]].dropna()
+                         ["Metadata_ImageFile", str(OBJECT.LABEL)]].dropna()
         if flagged.empty:
             return []
         flagged = flagged.drop_duplicates()
         return [
-            (str(row.Metadata_ImageFile), int(row.ObjectLabel))
+            (str(row.Metadata_ImageFile), int(row.Object_Label))
             for row in flagged.itertuples(index=False)
         ]
 

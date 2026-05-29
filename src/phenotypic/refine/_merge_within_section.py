@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from phenotypic._core._grid_image import GridImage
 
 from phenotypic.abc_ import GridObjectRefiner
-from phenotypic.tools_.constants_ import OBJECT
+from phenotypic.schema import OBJECT
 from phenotypic.schema import GRID
 
 

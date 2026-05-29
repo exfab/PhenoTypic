@@ -34,7 +34,7 @@ def _frame_with_severities(severities: list[float]) -> pd.DataFrame:
     return pd.DataFrame({
         "Metadata_ImageFile": [f"img_{i // 2}.png" for i in range(n)],
         "Metadata_Strain": ["WT" if i % 2 == 0 else "KO" for i in range(n)],
-        "ObjectLabel": list(range(1, n + 1)),
+        "Object_Label": list(range(1, n + 1)),
         "Size_Area": np.linspace(100.0, 200.0, n),
         "input_severity": severities,
     })
@@ -128,7 +128,7 @@ class TestSummary:
                 "WT", "WT", "KO", "KO",
                 "WT", "WT", "KO", "KO",
             ],
-            "ObjectLabel": [1, 2, 3, 4, 5, 6, 7, 8],
+            "Object_Label": [1, 2, 3, 4, 5, 6, 7, 8],
             "Size_Area": [100.0] * 8,
             "input_severity": [0.02, 0.04, 0.15, 0.20, 0.06, 0.08, 0.30, 0.50],
         })
@@ -157,7 +157,7 @@ class TestSummary:
                 "warn_mix.png", "warn_mix.png",
                 "all_pass.png", "all_pass.png",
             ],
-            "ObjectLabel": [1, 2, 3, 4, 5, 6],
+            "Object_Label": [1, 2, 3, 4, 5, 6],
             "Size_Area": [100.0] * 6,
             "input_severity": [0.00, 0.30, 0.02, 0.07, 0.00, 0.01],
         })
@@ -184,7 +184,7 @@ class TestFlaggedKeys:
         flagged_rows = data[data["input_severity"] >= 0.10]
         expected = list(zip(
             flagged_rows["Metadata_ImageFile"].astype(str),
-            flagged_rows["ObjectLabel"].astype(int),
+            flagged_rows["Object_Label"].astype(int),
         ))
         assert sorted(keys) == sorted(expected)
 

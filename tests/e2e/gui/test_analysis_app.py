@@ -52,7 +52,7 @@ def _seed_analysis_output(sandbox: Path) -> Path:
                     "Metadata_ImageFile": f"{strain}_t{t}",
                     "Metadata_Strain": strain,
                     "Metadata_Time": float(t),
-                    "ObjectLabel": rep,
+                    "Object_Label": rep,
                     "Shape_Area": float(n + (rep - 1) * 5),
                 })
     df = pl.DataFrame(rows)

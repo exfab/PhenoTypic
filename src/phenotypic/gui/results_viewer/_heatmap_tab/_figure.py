@@ -35,6 +35,8 @@ import polars as pl
 
 from phenotypic.gui._design import COLOR_MUTED, COLOR_NAVY
 
+from .._filtered_state import KEY_OBJECT_LABEL
+
 #: Closed value-set for the aggregator dropdown. Kept in lock-step with
 #: the polars expression dispatch in :func:`_aggregate_grid_bins`.
 AggregatorName: TypeAlias = Literal["mean", "median", "max", "min"]
@@ -53,12 +55,13 @@ _REMOVED_MARKER_MAX: float = 14.0
 # Plotly trace's ``zauto`` does not silently swap to a categorical-style
 # axis. Sentinel kept private; tests don't need to assert on it.
 
-# Names of the metadata columns this module touches. Kept local rather
-# than importing from ``_filtered_state`` so the figure builder stays
-# pure (no GUI-package dependency cycle).
+# Names of the metadata columns this module touches. The image-file and
+# time columns are kept local so the figure builder stays pure; the
+# object-label curation key is single-sourced from ``_filtered_state``
+# (imported above as :data:`KEY_OBJECT_LABEL`) so it can never drift from
+# the curation layer.
 _META_IMAGE_FILE: str = "Metadata_ImageFile"
 _META_TIME: str = "Metadata_Time"
-_META_OBJECT_LABEL: str = "ObjectLabel"
 
 
 def build_heatmap_figure(
@@ -91,7 +94,7 @@ def build_heatmap_figure(
         aggregator: Polars ``GroupBy.agg`` aggregator used to collapse
             multi-row ``(grid_row, grid_col)`` bins. For the common
             one-row-per-well case this is a no-op.
-        removed_keys: Set of ``(ImageFile, ObjectLabel)`` keys that the
+        removed_keys: Set of ``(ImageFile, Object_Label)`` keys that the
             user has curated out. Cells matching the picked image plus
             any such label render as muted `x`-markers on top of the
             data heatmap.
@@ -365,7 +368,7 @@ def _build_removed_overlay(
     * ``go.Scatter`` of `x`-markers in :data:`COLOR_MUTED`. Marker size
       uses the spec's ``min(14, max(6, cell_px * 0.5))`` formula.
 
-    The frame is scanned for rows whose ``(ImageFile, ObjectLabel)``
+    The frame is scanned for rows whose ``(ImageFile, Object_Label)``
     appears in ``removed_keys``; the matching ``(row, col)`` bins drive
     the overlay coordinates. When no keys match the active frame the
     overlay traces are still emitted (zero-length scatter) so the
@@ -376,7 +379,7 @@ def _build_removed_overlay(
 
     if (
         _META_IMAGE_FILE not in frame.columns
-        or _META_OBJECT_LABEL not in frame.columns
+        or KEY_OBJECT_LABEL not in frame.columns
     ):
         return []
 
@@ -386,17 +389,17 @@ def _build_removed_overlay(
     removed_frame = pl.DataFrame(
         {
             _META_IMAGE_FILE: [k[0] for k in removed_keys],
-            _META_OBJECT_LABEL: [k[1] for k in removed_keys],
+            KEY_OBJECT_LABEL: [k[1] for k in removed_keys],
         },
-        schema={_META_IMAGE_FILE: pl.String, _META_OBJECT_LABEL: pl.Int64},
+        schema={_META_IMAGE_FILE: pl.String, KEY_OBJECT_LABEL: pl.Int64},
     )
     keyed = frame.with_columns(
         pl.col(_META_IMAGE_FILE).cast(pl.String),
-        pl.col(_META_OBJECT_LABEL).cast(pl.Int64),
+        pl.col(KEY_OBJECT_LABEL).cast(pl.Int64),
     )
     matched = keyed.join(
         removed_frame,
-        on=[_META_IMAGE_FILE, _META_OBJECT_LABEL],
+        on=[_META_IMAGE_FILE, KEY_OBJECT_LABEL],
         how="inner",
     )
     if matched.is_empty():

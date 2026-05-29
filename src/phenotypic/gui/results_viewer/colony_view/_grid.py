@@ -65,7 +65,7 @@ _MEASUREMENT_PREFIXES: tuple[str, ...] = (
     "Shape_",
     "Intensity_",
     "TextureGray_",
-    "SymmetricRadius_",
+    "SymZones_",
     "GridSpatial_",
 )
 
@@ -116,8 +116,8 @@ def selectable_axis_columns(
     - cardinality (unique non-null values) is in ``[2, max_cardinality]``;
     - name does not start with one of the measurement prefixes
       (``Bbox_``, ``Shape_``, ``Intensity_``, ``TextureGray_``,
-      ``SymmetricRadius_``, ``GridSpatial_``);
-    - name is not ``ObjectLabel`` (per-object identifier — too high
+      ``SymZones_``, ``GridSpatial_``);
+    - name is not ``Object_Label`` (per-object identifier — too high
       cardinality and not a meaningful axis).
 
     The returned list is sorted in three buckets: ``Metadata_*`` first
@@ -233,20 +233,20 @@ def _representative_per_cell(
 ) -> pl.DataFrame:
     """Pick the representative colony per (x, y) cell.
 
-    Sorts by ``(x, y, ObjectLabel)`` so the ``first`` aggregate picks the
+    Sorts by ``(x, y, Object_Label)`` so the ``first`` aggregate picks the
     smallest-label colony deterministically. Also reports the per-cell
     count so callers can render a ``N=k`` badge when a cell aggregates
     multiple colonies.
 
     Args:
         df: Filtered master frame. Must contain ``x_axis_col``, ``y_axis_col``,
-            ``Metadata_ImageFile``, ``Metadata_Dataset``, and ``ObjectLabel``.
+            ``Metadata_ImageFile``, ``Metadata_Dataset``, and ``Object_Label``.
         x_axis_col: Column projected onto the grid's X-axis.
         y_axis_col: Column projected onto the grid's Y-axis.
 
     Returns:
         A frame with columns ``x_axis_col``, ``y_axis_col``,
-        ``Metadata_ImageFile``, ``Metadata_Dataset``, ``ObjectLabel``, and
+        ``Metadata_ImageFile``, ``Metadata_Dataset``, ``Object_Label``, and
         ``count`` (number of colonies in the cell).
     """
     # Collect the full per-cell list of `(image_file, dataset, label)` tuples
@@ -317,7 +317,7 @@ def _build_cell(
 
     Args:
         image_file: ``Metadata_ImageFile`` of the representative colony.
-        label: ``ObjectLabel`` of the representative colony.
+        label: ``Object_Label`` of the representative colony.
         dataset: ``Metadata_Dataset`` of the representative colony.
         count: Number of colonies aggregated into this cell.
         max_size: Server crop side length, in pixels (used in the URL so
@@ -581,7 +581,7 @@ def build_grid(
 
     - **Top row**: X-axis value labels (one column header per unique X value).
     - **Left column**: Y-axis value labels (one row header per unique Y value).
-    - **Each cell**: a representative colony crop (smallest ``ObjectLabel``
+    - **Each cell**: a representative colony crop (smallest ``Object_Label``
       among rows matching the cell's ``(x_value, y_value)``) plus chrome
       (× / ↺ button, multi-select checkbox, optional ``N=k`` badge).
 
@@ -651,7 +651,7 @@ def build_grid(
     representatives = _representative_per_cell(df, x_axis_col, y_axis_col)
 
     # Index the representative frame for O(1) per-cell lookup. The
-    # representative is the first member (smallest ObjectLabel) and the
+    # representative is the first member (smallest Object_Label) and the
     # `members` list carries every colony in the cell so the click-to-
     # expand popover can render the full mini-stack.
     cell_index: dict[tuple[object, object], dict[str, object]] = {}

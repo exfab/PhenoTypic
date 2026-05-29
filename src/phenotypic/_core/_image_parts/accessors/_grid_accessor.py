@@ -12,7 +12,8 @@ import pandas as pd
 from skimage.color import label2rgb
 
 import phenotypic
-from phenotypic.tools_.constants_ import METADATA, IMAGE_TYPES, OBJECT
+from phenotypic.tools_.constants_ import METADATA, IMAGE_TYPES
+from phenotypic.schema import OBJECT
 from phenotypic.schema import BBOX, GRID
 from phenotypic.tools_.exceptions_ import NoObjectsError
 
@@ -139,7 +140,7 @@ class GridAccessor:
 
         Returns:
             pd.DataFrame: DataFrame with one row per detected colony. Columns include:
-                - ObjectLabel: Unique identifier for the colony
+                - Object_Label: Unique identifier for the colony
                 - CenterRR, CenterCC: Row and column coordinates of colony center
                 - MinRR, MaxRR, MinCC, MaxCC: Bounding box coordinates
                 - RowNum: Grid row index (0-indexed)
@@ -1095,7 +1096,7 @@ class GridAccessor:
 
         Returns:
             pd.DataFrame: DataFrame with one row per colony in the specified section.
-                Contains the same columns as the info() method, including ObjectLabel,
+                Contains the same columns as the info() method, including Object_Label,
                 CenterRR, CenterCC, bounding box coordinates, grid position columns
                 (RowNum, ColNum, SectionNum), and optionally metadata columns.
                 Returns empty DataFrame if section contains no colonies.

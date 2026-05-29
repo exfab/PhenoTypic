@@ -10,7 +10,7 @@ import pandas as pd
 import logging
 
 from phenotypic.abc_ import MeasureFeatures
-from phenotypic.tools_.constants_ import OBJECT
+from phenotypic.schema import OBJECT
 from phenotypic.schema import ColorComposition
 
 logger = logging.getLogger(__name__)

@@ -101,7 +101,7 @@ _OSD_CANVAS_STYLE: dict[str, str] = {"height": "600px", "width": "100%"}
 
 #: Column id and human-facing name for the curation Status column injected
 #: as the leftmost column of the per-object DataTable. Clicking a Status
-#: cell toggles whether that ``(Metadata_ImageFile, ObjectLabel)`` row is
+#: cell toggles whether that ``(Metadata_ImageFile, Object_Label)`` row is
 #: marked as removed.
 _STATUS_COLUMN_ID = "Status"
 
@@ -478,7 +478,7 @@ def _row_status(
     Args:
         image_file: Value of ``Metadata_ImageFile`` from the row dict.
             Coerced to ``str`` to match the lookup-set dtype.
-        object_label: Value of ``ObjectLabel`` from the row dict.
+        object_label: Value of ``Object_Label`` from the row dict.
             Coerced to ``int`` to match the lookup-set dtype.
         removed_keys_set: Lookup set produced by
             :func:`_decode_removed_keys_payload`.
@@ -486,7 +486,7 @@ def _row_status(
     Returns:
         ``"Removed"`` when the row's key is in the lookup set, else
         ``"Active"``. Rows whose key cannot be coerced -- e.g.
-        ``ObjectLabel`` is ``None`` -- default to ``"Active"`` rather
+        ``Object_Label`` is ``None`` -- default to ``"Active"`` rather
         than raising; this is conservative because misclassifying a row
         as removed would silently strip it from exports.
     """
@@ -504,7 +504,7 @@ def _project_details_columns(
 ) -> list[str]:
     """Pick which columns to show in the per-object DataTable.
 
-    The projection is: every ``Metadata_*`` column, plus ``ObjectLabel``
+    The projection is: every ``Metadata_*`` column, plus ``Object_Label``
     (so the per-row Status toggle callback can resolve the curation key),
     plus every column referenced in the active filter spec, deduplicated
     and intersected with the columns actually present in *df*. This
@@ -854,7 +854,7 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
     # 9. Click-to-toggle on a Status cell. Pattern-matches on every
     #    card's details DataTable; the matching ``data`` State is read
     #    in lock-step so we can resolve the clicked cell's
-    #    ``(Metadata_ImageFile, ObjectLabel)`` without re-querying the
+    #    ``(Metadata_ImageFile, Object_Label)`` without re-querying the
     #    master frame.
     @app.callback(
         Output(STORE_REMOVED_KEYS, "data", allow_duplicate=True),
@@ -875,7 +875,7 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
                 per matched DataTable (Dash pads with ``None`` for tables
                 with no active cell).
             data_list: Per-table ``data`` lists. Used to recover the
-                clicked row's ``Metadata_ImageFile`` / ``ObjectLabel``.
+                clicked row's ``Metadata_ImageFile`` / ``Object_Label``.
             id_list: Per-table ``id`` dicts. Matched index-aligned with
                 ``active_cells`` so the triggered card can be located.
 

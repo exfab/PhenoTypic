@@ -138,7 +138,7 @@ No measurements configured in this pipeline."""
             "The following measurements are extracted for each detected object:",
         ]
 
-        from phenotypic.tools_.constants_ import OBJECT
+        from phenotypic.schema import OBJECT
         from phenotypic.schema import BBOX
 
         sections.append(

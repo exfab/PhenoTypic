@@ -22,7 +22,7 @@ from scipy.ndimage import convolve, distance_transform_edt
 from skimage.measure import approximate_polygon, find_contours, regionprops
 
 from phenotypic.abc_ import MeasureFeatures
-from phenotypic.tools_.constants_ import OBJECT
+from phenotypic.schema import OBJECT
 from phenotypic.schema import SYMMETRIC_ZONES
 
 _NEIGHBOR_KERNEL = np.array([[1, 1, 1], [1, 0, 1], [1, 1, 1]], dtype=np.int32)
@@ -174,27 +174,27 @@ class MeasureSymmetricZones(MeasureFeatures):
         pd.DataFrame: Object-level radial symmetry measurements with
         columns:
 
-            - ObjectLabel: unique object identifier.
-            - SymmetricRadius_CoreRadius: inoculum core radius (pixels).
-            - SymmetricRadius_SymmetricRadius: first radius past the core
+            - Object_Label: unique object identifier.
+            - SymZones_CoreRadius: inoculum core radius (pixels).
+            - SymZones_SymmetricRadius: first radius past the core
               where R̄ exceeds the symmetry threshold (pixels).
-            - SymmetricRadius_MeanExpansion: mean boundary-pixel distance
+            - SymZones_MeanExpansion: mean boundary-pixel distance
               beyond the core (pixels, clamped at 0).
-            - SymmetricRadius_MaxExpansion: maximum mask-pixel distance
+            - SymZones_MaxExpansion: maximum mask-pixel distance
               beyond the core (pixels, clamped at 0).
-            - SymmetricRadius_CoreEndRadius: mean per-angle core boundary
+            - SymZones_CoreEndRadius: mean per-angle core boundary
               radius from the bright-fraction outward walk (pixels).
-            - SymmetricRadius_DenseEndRadius: mean per-angle outer radius
+            - SymZones_DenseEndRadius: mean per-angle outer radius
               of the dense branching zone (pixels).
-            - SymmetricRadius_SparseEndRadius: mean per-angle outer radius
+            - SymZones_SparseEndRadius: mean per-angle outer radius
               of the sparse branching zone, capped at the symmetric
               envelope (pixels).
-            - SymmetricRadius_CoreArea: pixel^2 area of the inoculum core
+            - SymZones_CoreArea: pixel^2 area of the inoculum core
               zone integrated across the 360-sector polar polygon.
-            - SymmetricRadius_DenseArea: pixel^2 area of the dense
+            - SymZones_DenseArea: pixel^2 area of the dense
               branching zone (annular region between core and dense
               boundaries).
-            - SymmetricRadius_SparseArea: pixel^2 area of the sparse
+            - SymZones_SparseArea: pixel^2 area of the sparse
               branching zone (annular region between dense and outer
               boundaries).
 

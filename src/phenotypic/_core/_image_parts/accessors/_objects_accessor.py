@@ -10,7 +10,8 @@ import pandas as pd
 from skimage.measure import regionprops
 from typing import List
 
-from phenotypic.tools_.constants_ import OBJECT, METADATA, IMAGE_TYPES
+from phenotypic.tools_.constants_ import METADATA, IMAGE_TYPES
+from phenotypic.schema import OBJECT
 
 
 class ObjectsAccessor:
@@ -50,7 +51,7 @@ class ObjectsAccessor:
         ...     print(f"Colony area: {colony.gray.sum()}")
         >>> # Get information for all colonies
         >>> colony_info = plate.objects.info()
-        >>> print(colony_info[["ObjectLabel", "Bbox_CenterRR", "Bbox_CenterCC"]])
+        >>> print(colony_info[["Object_Label", "Bbox_CenterRR", "Bbox_CenterCC"]])
     """
 
     def __init__(self, root_image: Image):
@@ -652,7 +653,7 @@ class ObjectsAccessor:
 
         Returns:
             pd.DataFrame: A DataFrame with one row per colony containing:
-                - ObjectLabel: The colony's label identifier
+                - Object_Label: The colony's label identifier
                 - Bbox_CenterRR: Row coordinate of the colony centroid
                 - Bbox_CenterCC: Column coordinate of the colony centroid
                 - Bbox_MinRR: Minimum row coordinate of the bounding box
@@ -678,7 +679,7 @@ class ObjectsAccessor:
             Access specific columns:
 
             >>> # Get just labels and centroids
-            >>> labels_centroids = colony_info[["ObjectLabel", "Bbox_CenterRR", "Bbox_CenterCC"]]
+            >>> labels_centroids = colony_info[["Object_Label", "Bbox_CenterRR", "Bbox_CenterCC"]]
             >>> print(labels_centroids)
 
             Export colony positions for other tools:
@@ -715,7 +716,7 @@ class ObjectsAccessor:
         """Convert colony labels to a pandas Series for joining with measurement DataFrames.
 
         This method creates a pandas Series containing all colony labels with a properly named
-        column ('ObjectLabel') and indexed by position. This is specifically designed to
+        column ('Object_Label') and indexed by position. This is specifically designed to
         facilitate joining labels with measurement DataFrames that are indexed by position,
         which is a common pattern in high-throughput phenotypic analysis workflows.
 
@@ -726,7 +727,7 @@ class ObjectsAccessor:
             pd.Series: A pandas Series with:
                 - data: The colony labels (integers)
                 - index: Position indices (0 to N-1)
-                - name: 'ObjectLabel' for proper DataFrame column naming
+                - name: 'Object_Label' for proper DataFrame column naming
 
         Examples:
             Join labels with measurement data:
@@ -770,10 +771,10 @@ class ObjectsAccessor:
 
             Handle potential label suffix conflicts:
 
-            >>> # If DataFrame already has an 'ObjectLabel' column
+            >>> # If DataFrame already has an 'Object_Label' column
             >>> labels = plate.objects.labels2series()
             >>> measurements_with_labels = measurements.join(labels, rsuffix="_new")
-            >>> # Creates 'ObjectLabel' and 'ObjectLabel_new' columns
+            >>> # Creates 'Object_Label' and 'Object_Label_new' columns
         """
         labels = self.labels
         return pd.Series(

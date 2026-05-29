@@ -15,7 +15,7 @@ from pydantic import (
     field_validator,
 )
 
-from phenotypic.tools_.constants_ import OBJECT
+from phenotypic.schema import OBJECT
 
 if TYPE_CHECKING:
     from phenotypic._core._grid_image import GridImage

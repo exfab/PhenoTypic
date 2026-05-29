@@ -147,6 +147,31 @@ def _build_page(output_path: str) -> None:
     """Assemble the full RST page and write it to ``output_path``."""
     out: list[str] = [_PAGE_INTRO]
 
+    # ``Object_Label`` is shared across every operator rather than owned by one
+    # ``MeasureFeature``, so it has no registry entry — emit it as a leading
+    # section above the per-operator tables.
+    try:
+        object_info = _import("phenotypic.schema.OBJECT")
+    except (ImportError, AttributeError) as err:
+        logger.warning(
+            "measurements_ref: could not import phenotypic.schema.OBJECT: %s", err
+        )
+    else:
+        object_heading = "Object identifier"
+        out.append(object_heading)
+        out.append("-" * len(object_heading))
+        out.append("")
+        out.append(
+            "``Object_Label`` is the shared per-object key — the first column of "
+            "every operator's table below. Each detected colony is assigned a "
+            "unique integer label so all of its measurements line up across "
+            "operators when joined on this column."
+        )
+        out.append("")
+        out.append(object_info.rst_table())
+        out.append("")
+        out.append("")
+
     for measure_path, info_paths in _REGISTRY:
         try:
             measure_cls = _import(measure_path)

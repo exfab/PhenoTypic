@@ -246,10 +246,10 @@ class TestBehavioralEdges:
         assert ReplicateAgreement._exposes_agg_func is False
 
     def test_flagged_keys_returns_image_file_object_label_pairs(self) -> None:
-        # Build dispersed (failing) data carrying ImageFile + ObjectLabel.
+        # Build dispersed (failing) data carrying ImageFile + Object_Label.
         data = pd.DataFrame({
             "Metadata_ImageFile": ["plate1.png"] * 3,
-            "ObjectLabel": [1, 2, 3],
+            "Object_Label": [1, 2, 3],
             "Plate": ["P1"] * 3,
             "Metadata_Time": [0, 0, 0],
             "Size_Area": [1.0, 5.0, 9.0],

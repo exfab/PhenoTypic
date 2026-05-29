@@ -25,13 +25,13 @@ def _make_master(tmp_root: Path) -> pl.DataFrame:
     """Build a tiny master frame and write it to disk under *tmp_root*.
 
     The frame mimics the shape of the real master_measurements.parquet:
-    one row per object, keyed by ``(Metadata_ImageFile, ObjectLabel)``,
+    one row per object, keyed by ``(Metadata_ImageFile, Object_Label)``,
     with a couple of measurement columns.
     """
     df = pl.DataFrame(
         {
             "Metadata_ImageFile": ["img-001", "img-001", "img-002", "img-002"],
-            "ObjectLabel": [1, 2, 1, 2],
+            "Object_Label": [1, 2, 1, 2],
             "Bbox_CenterRR": [10, 20, 30, 40],
             "Bbox_CenterCC": [50, 60, 70, 80],
         }
@@ -182,7 +182,7 @@ def test_filtered_df_excludes_removed_rows(tmp_path: Path) -> None:
     out = state.filtered_df(master)
 
     assert out.height == master.height - 2
-    keys = set(zip(out["Metadata_ImageFile"].to_list(), out["ObjectLabel"].to_list()))
+    keys = set(zip(out["Metadata_ImageFile"].to_list(), out["Object_Label"].to_list()))
     assert ("img-001", 1) not in keys
     assert ("img-002", 2) not in keys
 
@@ -238,11 +238,11 @@ def test_load_warns_on_unknown_keys_in_existing_file(
     master = _make_master(tmp_path)
     # Hand-craft a filtered file that's missing a row from master AND
     # contains a row that doesn't appear in master (the "unknown key").
-    bad = master.filter(pl.col("ObjectLabel") == 1).vstack(
+    bad = master.filter(pl.col("Object_Label") == 1).vstack(
         pl.DataFrame(
             {
                 "Metadata_ImageFile": ["img-999"],
-                "ObjectLabel": [42],
+                "Object_Label": [42],
                 "Bbox_CenterRR": [0],
                 "Bbox_CenterCC": [0],
             }
@@ -312,7 +312,7 @@ def test_concurrent_remove_and_restore_dont_interleave(tmp_path: Path) -> None:
 
     on_disk = pl.read_parquet(state.parquet_path)
     on_disk_keys = set(
-        zip(on_disk["Metadata_ImageFile"].to_list(), on_disk["ObjectLabel"].to_list())
+        zip(on_disk["Metadata_ImageFile"].to_list(), on_disk["Object_Label"].to_list())
     )
     assert ("img-001", 2) not in on_disk_keys
     assert ("img-002", 2) not in on_disk_keys

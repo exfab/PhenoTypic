@@ -70,7 +70,7 @@ def _default_master_df() -> pl.DataFrame:
                         "Metadata_Dataset": "ds1",
                         "Metadata_ImageFile": image,
                         "Metadata_Time": 0.0,
-                        "ObjectLabel": label,
+                        "Object_Label": label,
                         "Grid_RowNum": r,
                         "Grid_ColNum": c,
                         "Size_Area": float(100 + r * 10 + c),
@@ -398,7 +398,7 @@ def test_aggregator_semantics(
                         "Metadata_Dataset": "ds1",
                         "Metadata_ImageFile": image,
                         "Metadata_Time": 4.0,
-                        "ObjectLabel": label,
+                        "Object_Label": label,
                         "Grid_RowNum": r,
                         "Grid_ColNum": c,
                         "Size_Area": 100.0,
@@ -412,7 +412,7 @@ def test_aggregator_semantics(
             "Metadata_Dataset": "ds1",
             "Metadata_ImageFile": _IMAGES[0],
             "Metadata_Time": 4.0,
-            "ObjectLabel": label,
+            "Object_Label": label,
             "Grid_RowNum": 2,
             "Grid_ColNum": 3,
             "Size_Area": 200.0,
@@ -540,7 +540,7 @@ def test_image_picker(
                         "Metadata_Dataset": "ds1",
                         "Metadata_ImageFile": _IMAGES[0],
                         "Metadata_Time": t,
-                        "ObjectLabel": idx,
+                        "Object_Label": idx,
                         "Grid_RowNum": 1,
                         "Grid_ColNum": 1,
                         "Size_Area": 100.0 + t,
@@ -607,7 +607,7 @@ def test_removed_cells_visually_distinct(
     ``Mark all flagged for removal`` button — this updates
     ``STORE_REMOVED_KEYS``, which the Heatmap render callback
     subscribes to and which causes the overlay traces to be
-    emitted for every matched ``(image_file, ObjectLabel)``.
+    emitted for every matched ``(image_file, Object_Label)``.
 
     A naive approach of pre-trimming the on-disk
     ``measurements.parquet`` mirror does not work: ``OutputRoot``
@@ -623,7 +623,7 @@ def test_removed_cells_visually_distinct(
     for image in _IMAGES:
         for _ in range(100):
             label += 1
-            rows.append({"Metadata_ImageFile": image, "ObjectLabel": label})
+            rows.append({"Metadata_ImageFile": image, "Object_Label": label})
     csv_path = output_dir / "count_metadata.csv"
     pl.DataFrame(rows).write_csv(csv_path)
     instance_id = "qc-Count-overly"
@@ -639,7 +639,7 @@ def test_removed_cells_visually_distinct(
                     "params": {
                         "metadata": str(csv_path),
                         "groupby": ["Metadata_ImageFile"],
-                        "on": "ObjectLabel",
+                        "on": "Object_Label",
                     },
                 },
             ],
@@ -723,7 +723,7 @@ def _no_grid_df_factory() -> pl.DataFrame:
                 "Metadata_Dataset": "ds1",
                 "Metadata_ImageFile": _IMAGES[0],
                 "Metadata_Time": 0.0,
-                "ObjectLabel": idx,
+                "Object_Label": idx,
                 "Size_Area": 100.0 + idx,
             }
             for idx in range(6)
@@ -804,7 +804,7 @@ def test_heatmap_renders_qc_augmented_frame_not_stale(
     for image in _IMAGES:
         for _ in range(100):
             label += 1
-            rows.append({"Metadata_ImageFile": image, "ObjectLabel": label})
+            rows.append({"Metadata_ImageFile": image, "Object_Label": label})
     csv_path = output_dir / "count_metadata.csv"
     pl.DataFrame(rows).write_csv(csv_path)
 
@@ -822,7 +822,7 @@ def test_heatmap_renders_qc_augmented_frame_not_stale(
                     "params": {
                         "metadata": str(csv_path),
                         "groupby": ["Metadata_ImageFile"],
-                        "on": "ObjectLabel",
+                        "on": "Object_Label",
                     },
                 },
                 _se_entry(instance_id=se_id),
