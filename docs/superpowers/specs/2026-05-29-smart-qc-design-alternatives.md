@@ -93,5 +93,5 @@ Recorded for the spec's "alternatives considered" section.
 
 - Home for `run_qc` / migrated `QcRecipe` (`_cli/_cli_qc.py` vs a neutral
   `phenotypic/qc/`).
-- ICC estimator choice and small-n guards.
+- ICC(2,1) small-n / degenerate-bin guards.
 - Default thresholds, tuned against real plates.

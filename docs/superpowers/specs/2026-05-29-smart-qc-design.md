@@ -90,7 +90,7 @@ Drop the normalized `severity` abstraction in favor of a single raw
 | `ExpectedVsDetectedCount` | `Count` | detection | \|detected−expected\|/expected (∞ if no metadata) | True | 0.05 / 0.10 | existing |
 | `RelativeMAD` (new) | `MAD` | replicate (robust) | MAD/\|median\| | True | 0.10 / 0.20 | MAD math |
 | `MaxModifiedZScore` (new) | `ZMax` | detection/outlier | max over members of 0.6745·\|x−med\|/MAD | True | 3.5 / 5.0 | MAD math |
-| `ICC` (new) | `ICC` | replicate reliability | intraclass correlation across replicates | **False** | warn ≤ 0.75, fail ≤ 0.50 | — |
+| `ICC` (new) | `ICC` | replicate reliability | ICC(2,1) two-way random, absolute agreement | **False** | warn ≤ 0.75, fail ≤ 0.50 | — |
 | `TukeyOutlierFraction` (new) | `Tukey` | detection | fraction of members outside Q1−k·IQR … Q3+k·IQR (k=1.5) | True | 0.10 / 0.25 | IQR fences |
 
 - New MAD/ZMax/Tukey checks reuse the math in `MADOutlierRemover` /
@@ -113,8 +113,9 @@ already auto-discovers `QualityCheck` subclasses exported from
 
 Time-course checks (`SE`, `ICC`) compute per `(group, time)` internally
 but the **review unit is the `groupby` key**. `summary()` reduces
-per-time metrics to a worst-per-group value for ranking (as today). The
-detail pane may optionally facet the gallery by time.
+per-time metrics to a worst-per-group value for ranking — the group is
+ranked by its **worst timepoint**. In the Review detail pane the tile
+gallery is **faceted into one row per timepoint** (see D.2 / D.5).
 
 ---
 
@@ -243,7 +244,8 @@ sibling); reuses `_shared/tiles.py`.
   ✓ (dimmed when reviewed), and a "moved/changed" hint after recompute.
 - **Right detail pane:** group header (key, metric with delta after
   recompute e.g. `0.42 → 0.21`, status, `n` members, `n` removed), the
-  tile gallery (`build_tile_grid`), and actions.
+  tile gallery (`build_tile_grid`; **faceted into one row per timepoint**
+  for time-course checks), and actions.
 
 ### D.3 Module picker
 
@@ -255,7 +257,9 @@ worklist and its own review progress (D.6).
 
 Per-tile remove (×) / restore (↺) and multi-select bulk remove/restore,
 reusing the **same `FilteredMeasurements` removal store** as colony view —
-edits are consistent across the whole viewer. Removed tiles dim.
+edits are consistent across the whole viewer. Removed tiles dim. v1 ships
+**no dedicated whole-group/whole-image exclude buttons** — excluding a
+group is select-all + remove.
 
 ### D.5 Recompute (per-group) + frozen order
 
@@ -330,7 +334,7 @@ pass after each phase plus a final pass, and a regression run.
   pydantic models (mirror how `post`/`model` serialize).
 - Where `FilteredMeasurements` persists its removal store (to align
   review_state placement and the in-session recompute input).
-- ICC estimator choice (ICC(1) one-way vs ICC(2,1) two-way) and small-n
-  guards.
+- ICC(2,1) small-n / degenerate-bin guards (under-powered bins → NaN →
+  pass, mirroring the SE check).
 - Default thresholds (A.2) tuned against real plates.
 ```
