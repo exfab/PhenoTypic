@@ -194,7 +194,9 @@ never derive `Literal` from runtime expressions.
   `OtsuDetector(True)` — pydantic models take no positional args. Unknown kwargs and
   invalid values raise `pydantic.ValidationError`.
 - **Measurement columns are category-prefixed:** `Size_Area`, `Shape_Circularity`,
-  `Intensity_MeanIntensity`, etc.
+  `Intensity_MeanIntensity`, etc. The header enums are the **public**
+  `phenotypic.schema` package (`from phenotypic.schema import SHAPE, SIZE, ...`);
+  the old `phenotypic.tools_.measurement_info` path was removed.
   `MeasurementInfo.get_labels()` returns unprefixed names; `get_headers()` returns the
   prefixed column names used in DataFrames.
 - **Analysis classes use `.analyze()`:** `EdgeCorrector.analyze(df)`,
