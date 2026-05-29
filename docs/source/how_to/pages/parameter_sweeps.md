@@ -17,7 +17,7 @@ Define parameter ranges in a YAML file:
 pipeline: pipeline.json
 sweep:
   GaussianBlur.sigma: [1.0, 2.0, 3.0, 5.0]
-  CLAHE.clip_limit: [0.005, 0.01, 0.02, 0.05]
+  EnhanceLocalContrast.clip_limit: [0.005, 0.01, 0.02, 0.05]
 ```
 
 Each combination is tested, and results are saved with the parameter values

@@ -13,7 +13,7 @@ import numpy as np
 from skimage.morphology import dilation
 
 
-class MaskDilator(ObjectRefiner, FootprintMixin):
+class MaskDilation(ObjectRefiner, FootprintMixin):
     """Expand colony masks outward using morphological dilation.
 
     Adds pixels around object boundaries, bridging small gaps between

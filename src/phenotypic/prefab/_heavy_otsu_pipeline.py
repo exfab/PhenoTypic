@@ -4,7 +4,7 @@ import numpy as np
 
 from phenotypic.abc_ import PrefabPipeline
 from phenotypic.enhance import (
-    CLAHE,
+    EnhanceLocalContrast,
     GaussianBlur,
     MedianFilter,
     SobelFilter,
@@ -34,7 +34,7 @@ class HeavyOtsuPipeline(PrefabPipeline):
 
     Steps:
         1. GaussianBlur — smooth noise
-        2. CLAHE — boost local contrast
+        2. EnhanceLocalContrast — boost local contrast
         3. MedianFilter — remove residual speckle
         4. SobelFilter — enhance colony edges
         5. OtsuDetector — threshold-based detection
@@ -111,7 +111,7 @@ class HeavyOtsuPipeline(PrefabPipeline):
             GaussianBlur(
                     sigma=gaussian_sigma, mode=gaussian_mode, truncate=gaussian_truncate
             ),
-            CLAHE(),
+            EnhanceLocalContrast(),
             MedianFilter(),
             SobelFilter(),
             OtsuDetector(

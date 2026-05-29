@@ -1,4 +1,4 @@
-"""Tests for HomomorphicFilter and the module-level homomorphic_filter function.
+"""Tests for FlattenIllumination and the module-level homomorphic_filter function.
 
 Tests defaults, shape/dtype preservation, rgb/gray immutability, output clipped
 to [0, 1], module-level function on raw arrays, uniform image behaviour,
@@ -11,7 +11,7 @@ import numpy as np
 import pytest
 
 from phenotypic import Image, ImagePipeline
-from phenotypic.enhance._homomorphic_filter import HomomorphicFilter
+from phenotypic.enhance._flatten_illumination import FlattenIllumination
 
 
 # -- Defaults ----------------------------------------------------------------
@@ -21,23 +21,23 @@ class TestDefaults:
     """Verify default parameter values."""
 
     def test_default_sigma(self):
-        op = HomomorphicFilter()
+        op = FlattenIllumination()
         assert op.sigma == 200.0
 
     def test_default_gamma_low(self):
-        op = HomomorphicFilter()
+        op = FlattenIllumination()
         assert op.gamma_low == 0.5
 
     def test_default_gamma_high(self):
-        op = HomomorphicFilter()
+        op = FlattenIllumination()
         assert op.gamma_high == 1.5
 
     def test_default_eps(self):
-        op = HomomorphicFilter()
+        op = FlattenIllumination()
         assert op.eps == 1e-6
 
     def test_custom_values(self):
-        op = HomomorphicFilter(sigma=100.0, gamma_low=0.3, gamma_high=2.0, eps=1e-8)
+        op = FlattenIllumination(sigma=100.0, gamma_low=0.3, gamma_high=2.0, eps=1e-8)
         assert op.sigma == 100.0
         assert op.gamma_low == 0.3
         assert op.gamma_high == 2.0
@@ -63,24 +63,24 @@ class TestOutputInvariants:
         return Image(arr=arr)
 
     def test_shape_preserved(self, gray_image):
-        op = HomomorphicFilter(sigma=10.0)
+        op = FlattenIllumination(sigma=10.0)
         result = op.apply(gray_image)
         assert result.detect_mat[:].shape == gray_image.detect_mat[:].shape
 
     def test_dtype_float(self, gray_image):
-        op = HomomorphicFilter(sigma=10.0)
+        op = FlattenIllumination(sigma=10.0)
         result = op.apply(gray_image)
         assert np.issubdtype(result.detect_mat[:].dtype, np.floating)
 
     def test_rgb_immutability(self, rgb_image):
         original_rgb = rgb_image.rgb[:].copy()
-        op = HomomorphicFilter(sigma=10.0)
+        op = FlattenIllumination(sigma=10.0)
         op.apply(rgb_image)
         np.testing.assert_array_equal(rgb_image.rgb[:], original_rgb)
 
     def test_gray_immutability(self, gray_image):
         original_gray = gray_image.gray[:].copy()
-        op = HomomorphicFilter(sigma=10.0)
+        op = FlattenIllumination(sigma=10.0)
         op.apply(gray_image)
         np.testing.assert_array_equal(gray_image.gray[:], original_gray)
 
@@ -95,7 +95,7 @@ class TestOutputRange:
         rng = np.random.default_rng(99)
         arr = rng.random((64, 64)).astype(np.float64)
         image = Image(arr=arr)
-        op = HomomorphicFilter(sigma=10.0, gamma_low=0.3, gamma_high=2.0)
+        op = FlattenIllumination(sigma=10.0, gamma_low=0.3, gamma_high=2.0)
         result = op.apply(image)
         assert result.detect_mat[:].min() >= 0.0
         assert result.detect_mat[:].max() <= 1.0
@@ -104,7 +104,7 @@ class TestOutputRange:
         rng = np.random.default_rng(7)
         arr = rng.random((64, 64)).astype(np.float64)
         image = Image(arr=arr)
-        op = HomomorphicFilter(sigma=10.0, gamma_low=0.0, gamma_high=3.0)
+        op = FlattenIllumination(sigma=10.0, gamma_low=0.0, gamma_high=3.0)
         result = op.apply(image)
         assert result.detect_mat[:].min() >= 0.0
         assert result.detect_mat[:].max() <= 1.0
@@ -119,26 +119,26 @@ class TestModuleLevelFunction:
     def test_returns_ndarray(self):
         rng = np.random.default_rng(42)
         arr = rng.random((64, 64)).astype(np.float32)
-        result = HomomorphicFilter._filter(arr, sigma=10.0)
+        result = FlattenIllumination._filter(arr, sigma=10.0)
         assert isinstance(result, np.ndarray)
 
     def test_output_shape_matches_input(self):
         rng = np.random.default_rng(42)
         arr = rng.random((80, 100)).astype(np.float32)
-        result = HomomorphicFilter._filter(arr, sigma=10.0)
+        result = FlattenIllumination._filter(arr, sigma=10.0)
         assert result.shape == arr.shape
 
     def test_output_range(self):
         rng = np.random.default_rng(42)
         arr = rng.random((64, 64)).astype(np.float32)
-        result = HomomorphicFilter._filter(arr, sigma=10.0)
+        result = FlattenIllumination._filter(arr, sigma=10.0)
         assert result.min() >= 0.0
         assert result.max() <= 1.0
 
     def test_accepts_float64(self):
         rng = np.random.default_rng(42)
         arr = rng.random((64, 64)).astype(np.float64)
-        result = HomomorphicFilter._filter(arr, sigma=10.0)
+        result = FlattenIllumination._filter(arr, sigma=10.0)
         assert result.shape == arr.shape
 
 
@@ -150,14 +150,14 @@ class TestUniformImage:
 
     def test_uniform_stays_approximately_uniform(self):
         arr = np.full((64, 64), 0.5, dtype=np.float64)
-        result = HomomorphicFilter._filter(arr, sigma=10.0)
+        result = FlattenIllumination._filter(arr, sigma=10.0)
         # All output values should be very close to each other
         assert result.std() < 1e-6
 
     def test_uniform_image_via_class(self):
         arr = np.full((64, 64), 0.5, dtype=np.float64)
         image = Image(arr=arr)
-        op = HomomorphicFilter(sigma=10.0)
+        op = FlattenIllumination(sigma=10.0)
         result = op.apply(image)
         assert result.detect_mat[:].std() < 1e-6
 
@@ -178,7 +178,7 @@ class TestMathematicalCorrectness:
         gamma_high = 1.8
         eps = 1e-6
 
-        result = HomomorphicFilter._filter(
+        result = FlattenIllumination._filter(
             arr, sigma=sigma, gamma_low=gamma_low, gamma_high=gamma_high, eps=eps,
         )
 
@@ -201,7 +201,7 @@ class TestMathematicalCorrectness:
         rng = np.random.default_rng(42)
         arr = rng.random((64, 64)).astype(np.float32) * 0.8 + 0.1  # avoid clipping
 
-        result = HomomorphicFilter._filter(
+        result = FlattenIllumination._filter(
             arr, sigma=10.0, gamma_low=1.0, gamma_high=1.0,
         )
         # Should be very close to the original (only eps rounding)
@@ -221,7 +221,7 @@ class TestMathematicalCorrectness:
 
 
 class TestPipelineIntegration:
-    """HomomorphicFilter works inside an ImagePipeline."""
+    """FlattenIllumination works inside an ImagePipeline."""
 
     def test_in_pipeline(self):
         from phenotypic.enhance import GaussianBlur
@@ -231,7 +231,7 @@ class TestPipelineIntegration:
         image = Image(arr=arr)
 
         pipeline = ImagePipeline(ops=[
-            HomomorphicFilter(sigma=10.0),
+            FlattenIllumination(sigma=10.0),
             GaussianBlur(sigma=1.0),
         ])
         result = pipeline.apply(image)
@@ -248,7 +248,7 @@ class TestSerialization:
 
     def test_roundtrip_preserves_params(self):
         pipeline = ImagePipeline(ops=[
-            HomomorphicFilter(sigma=100.0, gamma_low=0.3, gamma_high=2.0, eps=1e-8),
+            FlattenIllumination(sigma=100.0, gamma_low=0.3, gamma_high=2.0, eps=1e-8),
         ])
         json_str = pipeline.to_json()
         loaded = ImagePipeline.from_json(json_str)
@@ -256,19 +256,19 @@ class TestSerialization:
         ops = list(loaded._ops.values())
         assert len(ops) == 1
         op = ops[0]
-        assert isinstance(op, HomomorphicFilter)
+        assert isinstance(op, FlattenIllumination)
         assert op.sigma == 100.0
         assert op.gamma_low == 0.3
         assert op.gamma_high == 2.0
         assert op.eps == 1e-8
 
     def test_default_params_roundtrip(self):
-        pipeline = ImagePipeline(ops=[HomomorphicFilter()])
+        pipeline = ImagePipeline(ops=[FlattenIllumination()])
         json_str = pipeline.to_json()
         loaded = ImagePipeline.from_json(json_str)
 
         op = list(loaded._ops.values())[0]
-        assert isinstance(op, HomomorphicFilter)
+        assert isinstance(op, FlattenIllumination)
         assert op.sigma == 200.0
         assert op.gamma_low == 0.5
         assert op.gamma_high == 1.5

@@ -5,7 +5,7 @@ import numpy as np
 from phenotypic.abc_ import PrefabPipeline
 from phenotypic.correction import GridAligner
 from phenotypic.detect import WatershedDetector
-from phenotypic.enhance import CLAHE, GaussianBlur, MedianFilter
+from phenotypic.enhance import EnhanceLocalContrast, GaussianBlur, MedianFilter
 from phenotypic.measure import (
     MeasureColor,
     MeasureIntensity,
@@ -15,7 +15,7 @@ from phenotypic.measure import (
 from phenotypic.refine import (
     RemoveBorderObjects,
     MaskFill,
-    LowCircularityRemover,
+    RemoveNonCircular,
     GridOversizedObjectRemover,
     ReduceSectionsByLine,
 )
@@ -31,11 +31,11 @@ class HeavyWatershedPipeline(PrefabPipeline):
 
     Steps:
         1. GaussianBlur — smooth noise
-        2. CLAHE — boost local contrast
+        2. EnhanceLocalContrast — boost local contrast
         3. MedianFilter — remove residual speckle
         4. WatershedDetector — region-growing segmentation
         5. RemoveBorderObjects — remove partial edge colonies
-        6. LowCircularityRemover — remove non-circular artifacts
+        6. RemoveNonCircular — remove non-circular artifacts
         7. GridOversizedObjectRemover — remove merged multi-well objects
         8. ReduceSectionsByLine — keep one colony per well
         9. GridAligner — straighten the grid
@@ -129,19 +129,19 @@ class HeavyWatershedPipeline(PrefabPipeline):
             GaussianBlur(
                     sigma=gaussian_sigma, mode=gaussian_mode, truncate=gaussian_truncate
             ),
-            CLAHE(),
+            EnhanceLocalContrast(),
             MedianFilter(),
             watershed_detector,
             border_remover,
             GridOversizedObjectRemover(),
-            LowCircularityRemover(cutoff=circularity_cutoff),
+            RemoveNonCircular(cutoff=circularity_cutoff),
             min_residual_reducer,
             GridAligner(),
             watershed_detector,
             GridOversizedObjectRemover(),
             min_residual_reducer,
             border_remover,
-            LowCircularityRemover(cutoff=circularity_cutoff),
+            RemoveNonCircular(cutoff=circularity_cutoff),
             MaskFill(),
         ]
 

@@ -11,7 +11,7 @@ from phenotypic.abc_ import ImageEnhancer
 from phenotypic.tools_.mixin import FootprintMixin
 
 
-class OpeningSubtractBg(ImageEnhancer, FootprintMixin):
+class SubtractOpening(ImageEnhancer, FootprintMixin):
     """Subtract background from ``detect_mat`` via OpenCV-accelerated morphological opening.
 
     Computes the white top-hat transform (original minus morphological

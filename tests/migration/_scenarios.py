@@ -383,18 +383,18 @@ CURATED_EXTRAS: tuple[_CuratedExtra, ...] = (
             "constant_mode",
             {"sigma": 2.0, "mode": "constant", "cval": 0.0},
     ),
-    _CuratedExtra("CLAHE", "small_kernel", {"kernel_size": 32}),
+    _CuratedExtra("EnhanceLocalContrast", "small_kernel", {"kernel_size": 32}),
     _CuratedExtra("MedianFilter", "wide", {"width": 9}),
     _CuratedExtra(
             "SubtractRollingBall", "small_ball", {"radius": 50}
     ),
-    _CuratedExtra("UnsharpMask", "strong", {"amount": 2.0}),
+    _CuratedExtra("SharpenEdgeGauss", "strong", {"amount": 2.0}),
     # -- refine --
     _CuratedExtra(
             "SmallObjectRemover", "aggressive", {"min_size": 256}
     ),
     _CuratedExtra(
-            "MaskDilator", "disk3x", {"width": 5, "n_iter": 2}
+            "MaskDilation", "disk3x", {"width": 5, "n_iter": 2}
     ),
     _CuratedExtra(
             "RemoveBorderObjects", "wide_margin", {"border_size": 60}
@@ -587,7 +587,7 @@ _STOCHASTIC_DEFAULTS: frozenset[str] = frozenset(
             "InoculumDetector",
             "WatershedDetector",
             "FilamentousFungiDetector",
-            "GMMCoreExtractor",
+            "ExtractColonyCore",
             "ChanVeseDetector",
         }
 )

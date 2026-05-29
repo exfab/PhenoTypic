@@ -11,7 +11,7 @@ from skimage.filters import unsharp_mask
 from ..abc_ import ImageEnhancer
 
 
-class UnsharpMask(ImageEnhancer):
+class SharpenEdgeGauss(ImageEnhancer):
     """Sharpen colony edges in ``detect_mat`` with unsharp masking.
 
     Subtracts a Gaussian-blurred copy from the original and scales the
@@ -48,11 +48,11 @@ class UnsharpMask(ImageEnhancer):
         - Slight scanner or lens blur that softens colony boundaries.
 
     Consider Also:
-        - :class:`BilateralDenoise` for denoising before sharpening on
+        - :class:`LocalEdgeDenoise` for denoising before sharpening on
           grainy images to avoid amplifying noise.
-        - :class:`LaplaceEnhancer` for second-derivative edge detection
+        - :class:`SharpenEdgeLaplace` for second-derivative edge detection
           that replaces rather than enhances the intensity profile.
-        - :class:`PhaseCongruencyEnhancer` for contrast-invariant edge
+        - :class:`EnhanceFeatures` for contrast-invariant edge
           detection under uneven illumination.
 
     See Also:

@@ -44,7 +44,7 @@ time points), agar that matches colony color, condensation on plate lid.
 - **Dynamic range** — fraction of the theoretical bit depth in use. A
   16-bit image that only uses values 0–1000 has very low dynamic range.
 
-**Mitigation:** `CLAHE`, `ContrastStretching`, `HomomorphicFilter`.
+**Mitigation:** `EnhanceLocalContrast`, `ContrastStretching`, `FlattenIllumination`.
 
 ## Structure
 
@@ -59,7 +59,7 @@ how sharp the colony edges are and how consistent the spatial layout is.
 - **Coherence** — consistency of gradient orientation. High coherence on
   a grid plate suggests well-organized, regularly spaced colonies.
 
-**Mitigation:** `UnsharpMask`, `SobelFilter` (enhance edges before
+**Mitigation:** `SharpenEdgeGauss`, `SobelFilter` (enhance edges before
 detection).
 
 ## Quality-Guided Pipeline Design
@@ -68,6 +68,6 @@ Assess image quality *before* choosing enhancers:
 
 1. **High noise, adequate contrast** → denoise first, then detect
 2. **Low noise, low contrast** → contrast enhancement, then detect
-3. **Uneven illumination** → `HomomorphicFilter` before anything else
-4. **Soft edges** → `UnsharpMask` or edge-enhancing filter
+3. **Uneven illumination** → `FlattenIllumination` before anything else
+4. **Soft edges** → `SharpenEdgeGauss` or edge-enhancing filter
 5. **All metrics good** → skip enhancement, detect directly

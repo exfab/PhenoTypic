@@ -49,9 +49,9 @@ class SubtractGaussian(ImageEnhancer):
     Consider Also:
         - :class:`SubtractRollingBall` for parabolic background estimation
           that adapts to non-Gaussian intensity ramps.
-        - :class:`OpeningSubtractBg` for faster morphological background
+        - :class:`SubtractOpening` for faster morphological background
           subtraction in high-throughput pipelines.
-        - :class:`BilateralDenoise` when the primary issue is noise rather
+        - :class:`LocalEdgeDenoise` when the primary issue is noise rather
           than illumination gradients.
 
     See Also:

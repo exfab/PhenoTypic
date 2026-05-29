@@ -376,9 +376,9 @@ class TestToPipelineDagRaises:
     def test_to_pipeline_dag_does_not_raise_on_advisory_only(self):
         """Rule 7 (stage_order_hint) is advisory and must NOT block."""
 
-        # Misorder: MeasureSize precedes a MaskDilator op stage.
+        # Misorder: MeasureSize precedes a MaskDilation op stage.
         meas = _make_block("MeasureSize")
-        refiner = _make_block("MaskDilator")
+        refiner = _make_block("MaskDilation")
         scope = _scope_with_chain(meas, refiner)
         state = BuilderState(root=scope)
 

@@ -36,7 +36,7 @@ class ReduceSectionsByLine(GridObjectRefiner):
           selection without regression modeling.
         - :class:`KeepSectionLargest` for a simpler largest-per-cell
           strategy.
-        - :class:`ResidualOutlierRemover` for removing outliers within noisy
+        - :class:`RemoveGridOutliers` for removing outliers within noisy
           rows or columns rather than reducing to one per cell.
 
     See Also:

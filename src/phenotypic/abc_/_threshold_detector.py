@@ -132,7 +132,7 @@ class ThresholdDetector(ObjectDetector, ABC):
       morphological closing, or watershed post-processing in ObjectRefiner.
     - **False positives at edges:** Use ``ignore_borders=True`` parameter or ``clear_border()``
       in ObjectRefiner to remove edge-touching objects.
-    - **Uneven illumination (vignetting, shadows):** Apply enhancement (CLAHE, illumination
+    - **Uneven illumination (vignetting, shadows):** Apply enhancement (EnhanceLocalContrast, illumination
       correction) before detection, or switch to local adaptive thresholding.
     - **Threshold too high/low:** Visualize objmask on sample images to diagnose. Adjust
       parameters and re-test on representative plates before batch processing.

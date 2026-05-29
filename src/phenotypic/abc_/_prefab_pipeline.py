@@ -125,7 +125,7 @@ class PrefabPipeline(ImagePipeline):
     .. code-block:: python
 
         from phenotypic import ImagePipeline
-        from phenotypic.enhance import GaussianBlur, CLAHE
+        from phenotypic.enhance import GaussianBlur, EnhanceLocalContrast
         from phenotypic.detect import CannyDetector  # Different detector
         from phenotypic.refine import SmallObjectRemover, MaskFill
         from phenotypic.measure import MeasureShape, MeasureColor
@@ -133,7 +133,7 @@ class PrefabPipeline(ImagePipeline):
         # Custom pipeline for your specific use case
         custom = ImagePipeline()
         custom.add(GaussianBlur(sigma=3))
-        custom.add(CLAHE())
+        custom.add(EnhanceLocalContrast())
         custom.add(CannyDetector(sigma=1.5, low_threshold=0.1, high_threshold=0.4))
         custom.add(SmallObjectRemover(min_size=100))
         custom.add(MaskFill())
@@ -190,7 +190,7 @@ class PrefabPipeline(ImagePipeline):
     .. code-block:: python
 
         from phenotypic.abc_ import PrefabPipeline
-        from phenotypic.enhance import GaussianBlur, CLAHE
+        from phenotypic.enhance import GaussianBlur, EnhanceLocalContrast
         from phenotypic.detect import OtsuDetector
         from phenotypic.refine import SmallObjectRemover
         from phenotypic.measure import MeasureShape
@@ -203,7 +203,7 @@ class PrefabPipeline(ImagePipeline):
                 '''Initialize with tunable parameters.'''
                 pipe_cfgs = [
                     GaussianBlur(sigma=param2),
-                    CLAHE(),
+                    EnhanceLocalContrast(),
                     OtsuDetector(),
                     SmallObjectRemover(min_size=param1),
                 ]

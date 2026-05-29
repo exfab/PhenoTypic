@@ -15,7 +15,7 @@ from ..abc_ import ImageEnhancer
 _SQRT2 = np.sqrt(2.0)
 
 
-class MultiscaleLoGEnhancer(ImageEnhancer):
+class EnhanceBlobs(ImageEnhancer):
     """Enhance blob-like colonies in ``detect_mat`` with scale-normalised Laplacian of Gaussian.
 
     Applies LoG filtering across a geometric series of Gaussian sigmas and
@@ -60,7 +60,7 @@ class MultiscaleLoGEnhancer(ImageEnhancer):
     Consider Also:
         - :class:`SatoRidgeFilter` for elongated or filamentous structures
           where LoG's isotropic assumption is a poor fit.
-        - :class:`LaplaceEnhancer` for simpler single-scale edge detection.
+        - :class:`SharpenEdgeLaplace` for simpler single-scale edge detection.
         - :class:`SubtractGaussian` when the primary issue is illumination
           gradients rather than blob enhancement.
 
@@ -150,18 +150,18 @@ class MultiscaleLoGEnhancer(ImageEnhancer):
             both produce strong peaks if they fall within [min_radius, max_radius].
 
             This function is the low-level kernel; for image processing via the
-            PhenoTypic pipeline, use the MultiscaleLoGEnhancer class instead.
+            PhenoTypic pipeline, use the EnhanceBlobs class instead.
 
         Examples:
             Direct kernel use on a random array:
 
             >>> import numpy as np
-            >>> from phenotypic.enhance._multiscale_log_enhancer import (
-            ...     MultiscaleLoGEnhancer,
+            >>> from phenotypic.enhance._enhance_blobs import (
+            ...     EnhanceBlobs,
             ... )
             >>> rng = np.random.default_rng(0)
             >>> arr = rng.random((64, 64))
-            >>> out = MultiscaleLoGEnhancer._enhance(arr)
+            >>> out = EnhanceBlobs._enhance(arr)
             >>> out.shape
             (64, 64)
             >>> out.min() >= 0.0
@@ -170,13 +170,13 @@ class MultiscaleLoGEnhancer(ImageEnhancer):
             LoG enhancement on a synthetic image with known blob:
 
             >>> import numpy as np
-            >>> from phenotypic.enhance._multiscale_log_enhancer import (
-            ...     MultiscaleLoGEnhancer,
+            >>> from phenotypic.enhance._enhance_blobs import (
+            ...     EnhanceBlobs,
             ... )
             >>> # Create a simple blob (Gaussian)
             >>> y, x = np.ogrid[:100, :100]
             >>> blob = np.exp(-((x - 50)**2 + (y - 50)**2) / 100.0)
-            >>> out = MultiscaleLoGEnhancer._enhance(blob, min_radius=3, max_radius=12)
+            >>> out = EnhanceBlobs._enhance(blob, min_radius=3, max_radius=12)
             >>> peak_pos = np.unravel_index(out.argmax(), out.shape)
             >>> abs(peak_pos[0] - 50) <= 2 and abs(peak_pos[1] - 50) <= 2
             True

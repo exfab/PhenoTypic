@@ -11,7 +11,7 @@ from ..abc_ import ImageEnhancer
 from phenotypic.tools_.typing_ import NdArrayField
 
 
-class LaplaceEnhancer(ImageEnhancer):
+class SharpenEdgeLaplace(ImageEnhancer):
     """Enhance colony edges in ``detect_mat`` with a Laplacian operator.
 
     Applies a discrete Laplacian that responds to rapid intensity changes,
@@ -41,9 +41,9 @@ class LaplaceEnhancer(ImageEnhancer):
     Consider Also:
         - :class:`HessianFilter` for multi-scale edge and ridge detection
           with more tuning control.
-        - :class:`UnsharpMask` for edge enhancement that retains the
+        - :class:`SharpenEdgeGauss` for edge enhancement that retains the
           original intensity profile.
-        - :class:`PhaseCongruencyEnhancer` for contrast-invariant edge
+        - :class:`EnhanceFeatures` for contrast-invariant edge
           detection under uneven illumination.
 
     See Also:

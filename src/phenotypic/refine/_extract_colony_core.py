@@ -12,7 +12,7 @@ from sklearn.mixture import GaussianMixture
 from ..abc_ import ObjectRefiner
 
 
-class GMMCoreExtractor(ObjectRefiner):
+class ExtractColonyCore(ObjectRefiner):
     """Extract compact bright cores from labeled colonies using Gaussian mixture modeling.
 
     Fits a two-component GMM to each colony's intensity histogram, separating
@@ -58,9 +58,9 @@ class GMMCoreExtractor(ObjectRefiner):
     Consider Also:
         - :class:`MaskErosion` for uniform inward shrinking when cores are
           not intensity-distinct from halos.
-        - :class:`WhiteTophat` for removing small bright artifacts without
+        - :class:`MaskWhiteTophat` for removing small bright artifacts without
           full core extraction.
-        - :class:`LowCircularityRemover` for shape-based filtering when
+        - :class:`RemoveNonCircular` for shape-based filtering when
           halos distort circularity measurements.
 
     See Also:
@@ -237,7 +237,7 @@ class GMMCoreExtractor(ObjectRefiner):
                 random_state=42,
         )
         gmm.fit(pixels)
-        sep = GMMCoreExtractor._normalized_separation(gmm)
+        sep = ExtractColonyCore._normalized_separation(gmm)
 
         if sep < separation_threshold:
             return mask
@@ -355,8 +355,8 @@ class GMMCoreExtractor(ObjectRefiner):
             - Graceful fallback: If GMM extraction fails or no valid core survives
               post-processing, the original region mask is returned (no data loss).
         """
-        open_kernel = GMMCoreExtractor._build_ellipse_kernel(morph_open_radius)
-        close_kernel = GMMCoreExtractor._build_ellipse_kernel(morph_close_radius)
+        open_kernel = ExtractColonyCore._build_ellipse_kernel(morph_open_radius)
+        close_kernel = ExtractColonyCore._build_ellipse_kernel(morph_close_radius)
 
         labels = np.unique(label_map)
         labels = labels[labels != 0]
@@ -364,7 +364,7 @@ class GMMCoreExtractor(ObjectRefiner):
         output = np.zeros_like(label_map)
 
         for label in labels:
-            core_mask = GMMCoreExtractor._extract_single_core(
+            core_mask = ExtractColonyCore._extract_single_core(
                     intensity_array,
                     label_map,
                     label,

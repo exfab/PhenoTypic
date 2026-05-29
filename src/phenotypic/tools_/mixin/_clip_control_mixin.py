@@ -27,9 +27,9 @@ class ClipControlMixin:
         Creating a clip-disabled copy of an enhancer:
 
         >>> from phenotypic.tools_ import ClipControlMixin
-        >>> from phenotypic.enhance import BilateralDenoise
+        >>> from phenotypic.enhance import LocalEdgeDenoise
         >>>
-        >>> enh = BilateralDenoise(sigma_spatial=5, clip=True)
+        >>> enh = LocalEdgeDenoise(sigma_spatial=5, clip=True)
         >>> copied = ClipControlMixin._disable_clipping(enh)
         >>> # Original unchanged, copy has clip=False
         >>> enh.clip, copied.clip
@@ -38,14 +38,14 @@ class ClipControlMixin:
         Creating a clip-disabled copy of a pipeline:
 
         >>> from phenotypic import ImagePipeline
-        >>> from phenotypic.enhance import GaussianBlur, BilateralDenoise
+        >>> from phenotypic.enhance import GaussianBlur, LocalEdgeDenoise
         >>>
         >>> pipeline = ImagePipeline(pipe_cfgs=[
         ...     GaussianBlur(sigma=1.0),
-        ...     BilateralDenoise(sigma_spatial=5, clip=True)
+        ...     LocalEdgeDenoise(sigma_spatial=5, clip=True)
         ... ])
         >>> copied_pipe = ClipControlMixin._disable_clipping(pipeline)
-        >>> # Only BilateralDenoise has clip attribute, so only it is affected
+        >>> # Only LocalEdgeDenoise has clip attribute, so only it is affected
         >>> # _ops is a dict with operation names as keys
         >>> list(copied_pipe._ops.values())[1].clip
         False
@@ -81,9 +81,9 @@ class ClipControlMixin:
 
         Example:
             >>> from phenotypic.tools_ import ClipControlMixin
-            >>> from phenotypic.enhance import BilateralDenoise
+            >>> from phenotypic.enhance import LocalEdgeDenoise
             >>>
-            >>> enh = BilateralDenoise(sigma_spatial=5, clip=True)
+            >>> enh = LocalEdgeDenoise(sigma_spatial=5, clip=True)
             >>> copied = ClipControlMixin._disable_clipping(enh)
             >>> assert enh.clip == True  # Original unchanged
             >>> assert copied.clip == False  # Copy has clipping disabled

@@ -45,7 +45,7 @@ class SubtractRollingBall(ImageEnhancer):
     Consider Also:
         - :class:`SubtractGaussian` for faster Gaussian-based subtraction
           with continuous sigma control.
-        - :class:`OpeningSubtractBg` for OpenCV-accelerated morphological
+        - :class:`SubtractOpening` for OpenCV-accelerated morphological
           background removal in high-throughput pipelines.
         - :class:`WhiteTophatEnhance` when you want to isolate small
           bright structures rather than subtract background.

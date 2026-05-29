@@ -3,7 +3,7 @@ from typing import Literal
 import numpy as np
 
 from phenotypic.abc_ import PrefabPipeline
-from phenotypic.enhance import CLAHE, MedianFilter, BM3DDenoiser
+from phenotypic.enhance import EnhanceLocalContrast, MedianFilter, BM3DDenoiser
 from phenotypic.detect import RoundPeaksDetector
 from phenotypic.correction import GridAligner
 from phenotypic.refine import ReduceSectionsByLine, GridOversizedObjectRemover
@@ -21,12 +21,12 @@ class HeavyRoundPeaksPipeline(PrefabPipeline):
     """Detect and measure round colonies using peak detection with full refinement.
 
     An extended version of :class:`RoundPeaksPipeline` that adds BM3D denoising,
-    CLAHE contrast enhancement, morphological refinement, grid alignment, and a
+    EnhanceLocalContrast contrast enhancement, morphological refinement, grid alignment, and a
     second detection pass for improved accuracy on challenging plates.
 
     Steps:
         1. BM3DDenoiser — high-quality denoising
-        2. CLAHE — boost local contrast
+        2. EnhanceLocalContrast — boost local contrast
         3. MedianFilter — remove residual speckle
         4. RoundPeaksDetector — first detection pass
         5. MaskOpening, RemoveBorderObjects, SmallObjectRemover, MaskFill — cleanup
@@ -126,10 +126,10 @@ class HeavyRoundPeaksPipeline(PrefabPipeline):
             bm3d_clip: Whether to clip denoised values to the [0, 1] range. Disabling may
                 preserve subtle intensity variations but can produce out-of-range values.
             clahe_kernel_size: Determines the size of the kernel used for local contrast enhancement
-                via CLAHE. Larger sizes improve contrast over broader areas, but may over-amplify
+                via EnhanceLocalContrast. Larger sizes improve contrast over broader areas, but may over-amplify
                 large background variations. Smaller sizes enhance localized details but may
                 introduce noise.
-            clahe_clip_limit: Contrast clipping limit for CLAHE. Lower values produce more subtle
+            clahe_clip_limit: Contrast clipping limit for EnhanceLocalContrast. Lower values produce more subtle
                 enhancement; higher values amplify local contrast more aggressively, which can
                 over-enhance noise.
             median_mode: Boundary handling mode for median filtering. Controls how pixel values
@@ -239,7 +239,7 @@ class HeavyRoundPeaksPipeline(PrefabPipeline):
         ops = [
             BM3DDenoiser(sigma_psd=bm3d_sigma, block_size=bm3d_block_size,
                          stage_arg=bm3d_stage_arg, clip=bm3d_clip),
-            CLAHE(kernel_size=clahe_kernel_size, clip_limit=clahe_clip_limit),
+            EnhanceLocalContrast(kernel_size=clahe_kernel_size, clip_limit=clahe_clip_limit),
             MedianFilter(mode=median_mode, shape=median_shape, width=median_radius,
                          cval=median_cval),
             # First detection pass

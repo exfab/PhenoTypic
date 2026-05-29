@@ -13,7 +13,7 @@ from phenotypic.tools_.mixin import FootprintMixin
 from phenotypic.tools_.typing_ import NdArrayField
 
 
-class WhiteTophat(ObjectRefiner, FootprintMixin):
+class MaskWhiteTophat(ObjectRefiner, FootprintMixin):
     """Remove small bright mask structures using white tophat subtraction.
 
     Applies a white tophat transform to the binary mask to detect small
@@ -47,7 +47,7 @@ class WhiteTophat(ObjectRefiner, FootprintMixin):
           removes thin protrusions without tophat detection.
         - :class:`SmallObjectRemover` when small artifacts are entire
           disconnected objects rather than thin bridges.
-        - :class:`GMMCoreExtractor` for intensity-based core extraction
+        - :class:`ExtractColonyCore` for intensity-based core extraction
           when halos are the primary artifact.
 
     See Also:

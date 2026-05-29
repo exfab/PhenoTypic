@@ -38,7 +38,7 @@ mask boundaries.
   breaks thin bridges between touching colonies
 - **MaskClosing** (dilation → erosion) — fills small gaps, bridges
   narrow breaks in fragmented colonies
-- **MaskDilator** — expands mask boundaries outward
+- **MaskDilation** — expands mask boundaries outward
 - **MaskErosion** — shrinks mask boundaries inward
 - **MaskFill** — fills enclosed holes using binary flood fill
 

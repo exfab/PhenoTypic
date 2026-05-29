@@ -25,8 +25,8 @@ class ImageEnhancer(FootprintMixin, ImageOperation, ABC):
     - **ImageEnhancer (this class):** Modify only ``image.detect_mat`` for preprocessing.
       Use for: noise reduction, contrast enhancement, illumination correction.
       Examples: [GaussianBlur](src/phenotypic/enhance/_gaussian_blur.py),
-      [CLAHE](src/phenotypic/enhance/_clahe.py),
-      [BilateralDenoise](src/phenotypic/enhance/_bilateral_denoise.py).
+      [EnhanceLocalContrast](src/phenotypic/enhance/_enhance_local_contrast.py),
+      [LocalEdgeDenoise](src/phenotypic/enhance/_local_edge_denoise.py).
     - **ImageCorrector:** Transform entire image (rotation, cropping, perspective).
       Use for: geometric corrections, global color transformations.
     - **ObjectDetector:** Analyze image, produce only ``objmask`` and ``objmap``.
@@ -75,9 +75,9 @@ class ImageEnhancer(FootprintMixin, ImageOperation, ABC):
     The following are canonical examples of ImageEnhancer implementations:
 
     - [GaussianBlur](src/phenotypic/enhance/_gaussian_blur.py): Noise reduction via Gaussian filtering.
-    - [CLAHE](src/phenotypic/enhance/_clahe.py): Contrast-limited adaptive histogram equalization for local contrast.
+    - [EnhanceLocalContrast](src/phenotypic/enhance/_enhance_local_contrast.py): Contrast-limited adaptive histogram equalization for local contrast.
     - ``GrayOpening``: Morphological opening using ``FootprintMixin``.
-    - [BilateralDenoise](src/phenotypic/enhance/_bilateral_denoise.py): Edge-preserving denoising.
+    - [LocalEdgeDenoise](src/phenotypic/enhance/_local_edge_denoise.py): Edge-preserving denoising.
 
     **Integrity Validation: Protection of Core Data**
 
@@ -202,7 +202,7 @@ class ImageEnhancer(FootprintMixin, ImageOperation, ABC):
         result = SubtractRollingBall(width=50).apply(image)
 
         # Step 2: Boost local contrast for faint colonies
-        result = CLAHE(kernel_size=50, clip_limit=0.02).apply(result)
+        result = EnhanceLocalContrast(kernel_size=50, clip_limit=0.02).apply(result)
 
         # Step 3: Smooth remaining noise
         result = GaussianBlur(sigma=2).apply(result)
@@ -226,12 +226,12 @@ class ImageEnhancer(FootprintMixin, ImageOperation, ABC):
     .. code-block:: python
 
         from phenotypic import Image, ImagePipeline
-        from phenotypic.enhance import SubtractRollingBall, CLAHE, GaussianBlur
+        from phenotypic.enhance import SubtractRollingBall, EnhanceLocalContrast, GaussianBlur
         from phenotypic.detect import OtsuDetector
 
         pipeline = ImagePipeline()
         pipeline.add(SubtractRollingBall(width=50))
-        pipeline.add(CLAHE(kernel_size=50, clip_limit=0.02))
+        pipeline.add(EnhanceLocalContrast(kernel_size=50, clip_limit=0.02))
         pipeline.add(GaussianBlur(sigma=2))
         pipeline.add(OtsuDetector())
 
@@ -318,14 +318,14 @@ class ImageEnhancer(FootprintMixin, ImageOperation, ABC):
         Chaining multiple enhancements in pipeline:
 
         >>> from phenotypic import ImagePipeline
-        >>> from phenotypic.enhance import GaussianBlur, CLAHE
+        >>> from phenotypic.enhance import GaussianBlur, EnhanceLocalContrast
         >>> from phenotypic.detect import OtsuDetector
         >>> from phenotypic.data import load_synth_yeast_plate
         >>>
         >>> image = load_synth_yeast_plate()
         >>> pipeline = ImagePipeline(pipe_cfgs=[
         ...     GaussianBlur(sigma=1.5),
-        ...     CLAHE(clip_limit=2.0),
+        ...     EnhanceLocalContrast(clip_limit=2.0),
         ...     OtsuDetector()
         ... ])
         >>> result = pipeline.apply(image)

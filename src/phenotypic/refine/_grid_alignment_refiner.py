@@ -59,7 +59,7 @@ class GridAlignmentRefiner(GridInferenceMixin, ObjectRefiner):
           coordinates.
 
     Consider Also:
-        - :class:`SineAlignmentRefiner` when colony intensities are
+        - :class:`RefineBySineFit` when colony intensities are
           heterogeneous and rank-based correlation improves grid estimation.
         - :class:`KeepSectionLargest` for a simpler largest-per-cell strategy
           on GridImage inputs.

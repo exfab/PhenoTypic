@@ -32,7 +32,7 @@ class ObjectRefiner(ImageOperation, ABC):
     - **Size filtering:** Use for removing dust, noise, agar artifacts (too small) or unrealistic regions
       (too large). Example: [SmallObjectRemover](src/phenotypic/refine/_small_object_remover.py).
     - **Morphological cleanup:** Use for fragmented edges, thin protrusions, internal gaps. Example:
-      [MaskDilator](src/phenotypic/refine/_mask_dilation.py) (uses FootprintMixin).
+      [MaskDilation](src/phenotypic/refine/_mask_dilation.py) (uses FootprintMixin).
     - **Hole filling:** Use for voids from uneven illumination or pigment patterns within colonies.
     - **Shape filtering:** Use for removing elongated artifacts, merged colonies, low-circularity debris.
     - **Merging operations:** Use for bridging fragmented colonies or combining nearby regions. Example:
@@ -140,7 +140,7 @@ class ObjectRefiner(ImageOperation, ABC):
     - **Hole filling:** Fill interior voids within colony masks for solid shape representation.
       Targets: voids from uneven illumination, pigment heterogeneity. Improves area measurements.
 
-    - **Morphological operations:** Erosion, dilation, opening, closing with [MaskDilator](src/phenotypic/refine/_mask_dilation.py),
+    - **Morphological operations:** Erosion, dilation, opening, closing with [MaskDilation](src/phenotypic/refine/_mask_dilation.py),
       [MaskErosion](src/phenotypic/refine/_mask_erosion.py), [MaskOpening](src/phenotypic/refine/_mask_opening.py).
       Targets: fragmented edges, thin protrusions, internal gaps. Uses FootprintMixin for shape control.
 
@@ -197,7 +197,7 @@ class ObjectRefiner(ImageOperation, ABC):
     **Morphological Operations with FootprintMixin**
 
     For operations requiring morphological structuring elements (dilation, erosion, opening, closing),
-    inherit from FootprintMixin. See [MaskDilator](src/phenotypic/refine/_mask_dilation.py) for example:
+    inherit from FootprintMixin. See [MaskDilation](src/phenotypic/refine/_mask_dilation.py) for example:
 
     .. code-block:: python
 
@@ -326,13 +326,13 @@ class ObjectRefiner(ImageOperation, ABC):
     .. code-block:: python
 
         from phenotypic import Image, ImagePipeline
-        from phenotypic.refine import SmallObjectRemover, MaskFill, LowCircularityRemover
+        from phenotypic.refine import SmallObjectRemover, MaskFill, RemoveNonCircular
 
         # Build a refinement pipeline
         pipeline = ImagePipeline()
         pipeline.add(SmallObjectRemover(min_size=100))          # Remove dust/noise
         pipeline.add(MaskFill())                                 # Fill holes in colonies
-        pipeline.add(LowCircularityRemover(cutoff=0.75))        # Remove elongated artifacts
+        pipeline.add(RemoveNonCircular(cutoff=0.75))        # Remove elongated artifacts
 
         # Apply to detected image
         image = Image.imread('plate.jpg')
@@ -537,7 +537,7 @@ class ObjectRefiner(ImageOperation, ABC):
         >>> from scipy.ndimage import label as ndi_label, distance_transform_edt
         >>> from skimage.morphology import dilation
         >>> import numpy as np
-        >>> class TransitiveDistanceMerger(ObjectRefiner):
+        >>> class MergeFragmentChains(ObjectRefiner):
         ...     '''Merge objects within specified distance via distance transform.'''
         ...
         ...     merge_distance: int = 5
@@ -562,7 +562,7 @@ class ObjectRefiner(ImageOperation, ABC):
         >>> image = load_synth_yeast_plate()
         >>> detected = OtsuDetector().apply(image)
         >>> # Merge fragments within 10-pixel distance
-        >>> merger = TransitiveDistanceMerger(merge_distance=10)
+        >>> merger = MergeFragmentChains(merge_distance=10)
         >>> merged = merger.apply(detected)
         >>> print(f"Merged nearby objects: {detected.objmap[:].max()} -> {merged.objmap[:].max()}")
 
@@ -572,7 +572,7 @@ class ObjectRefiner(ImageOperation, ABC):
         >>> from phenotypic.enhance import GaussianBlur
         >>> from phenotypic.detect import OtsuDetector
         >>> from phenotypic.refine import (
-        ...     SmallObjectRemover, MaskFill, LowCircularityRemover
+        ...     SmallObjectRemover, MaskFill, RemoveNonCircular
         ... )
         >>> from phenotypic.measure import MeasureColor
         >>> # Build complete processing pipeline with enhancement, detection, and refinement
@@ -584,7 +584,7 @@ class ObjectRefiner(ImageOperation, ABC):
         >>> # Refinement (chain multiple cleanup operations)
         >>> pipeline.add(SmallObjectRemover(min_size=100))          # Remove dust
         >>> pipeline.add(MaskFill())                                 # Fill internal holes
-        >>> pipeline.add(LowCircularityRemover(cutoff=0.75))        # Remove merged/irregular
+        >>> pipeline.add(RemoveNonCircular(cutoff=0.75))        # Remove merged/irregular
         >>> # Measurement
         >>> pipeline.add(MeasureColor())
         >>> # Load images and process

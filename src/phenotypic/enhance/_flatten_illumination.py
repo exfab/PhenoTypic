@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 from ..abc_ import ImageEnhancer
 
 
-class HomomorphicFilter(ImageEnhancer):
+class FlattenIllumination(ImageEnhancer):
     """Correct uneven illumination in detect_mat using frequency-domain filtering.
 
     Separates illumination (low-frequency) and reflectance (high-frequency)
@@ -54,7 +54,7 @@ class HomomorphicFilter(ImageEnhancer):
     Consider Also:
         - :class:`SubtractGaussian` for a simpler spatial-domain background
           subtraction when the gradient is smooth.
-        - :class:`CLAHE` when the problem is local contrast rather than
+        - :class:`EnhanceLocalContrast` when the problem is local contrast rather than
           large-scale illumination.
         - :class:`SubtractRollingBall` for morphological background estimation.
 

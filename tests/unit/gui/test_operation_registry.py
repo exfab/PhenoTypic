@@ -88,7 +88,7 @@ class TestOperationRegistry:
         # Check specific operations
         enhancer_names = [info.name for info in enhancers]
         assert "GaussianBlur" in enhancer_names
-        assert "CLAHE" in enhancer_names
+        assert "EnhanceLocalContrast" in enhancer_names
 
     def test_get_operation(self, registry):
         """Test getting specific operation by name."""

@@ -50,7 +50,7 @@ class SatoRidgeFilter(ImageEnhancer):
           where higher selectivity is needed.
         - :class:`HessianFilter` for combined edge and ridge detection with
           blob sensitivity control.
-        - :class:`CoherenceEnhancingDiffusion` for anisotropic smoothing
+        - :class:`StructureSmoothing` for anisotropic smoothing
           that enhances directional structures before ridge detection.
 
     See Also:

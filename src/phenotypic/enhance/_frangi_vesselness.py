@@ -51,7 +51,7 @@ class FrangiVesselness(ImageEnhancer):
           parameters to tune.
         - :class:`SatoRidgeFilter` for ridge detection with different
           sensitivity characteristics.
-        - :class:`PhaseCongruencyEnhancer` for illumination-invariant edge
+        - :class:`EnhanceFeatures` for illumination-invariant edge
           enhancement of filaments.
 
     References:

@@ -21,9 +21,9 @@
       },
       {
         "block_id": "00000000000000000000000000000003",
-        "class_name": "MaskDilator",
+        "class_name": "MaskDilation",
         "params": {},
-        "label": "MaskDilator",
+        "label": "MaskDilation",
         "nested": null,
         "collapsed": false,
         "list_slot_counts": {}

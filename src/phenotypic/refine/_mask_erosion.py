@@ -35,7 +35,7 @@ class MaskErosion(ObjectRefiner, FootprintMixin):
         - Excluding uncertain boundary pixels for higher-precision measurements.
 
     Consider Also:
-        - :class:`MaskDilator` for the opposite effect — expanding masks
+        - :class:`MaskDilation` for the opposite effect — expanding masks
           outward.
         - :class:`MaskOpening` for erosion-then-dilation that removes thin
           features without permanently shrinking colonies.

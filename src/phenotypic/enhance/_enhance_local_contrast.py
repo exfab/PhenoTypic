@@ -10,7 +10,7 @@ from skimage.exposure import equalize_adapthist
 from phenotypic.abc_ import ImageEnhancer
 
 
-class CLAHE(ImageEnhancer):
+class EnhanceLocalContrast(ImageEnhancer):
     """Boost local contrast in detect_mat using adaptive histogram equalization.
 
     Divides detect_mat into tiles and equalizes the histogram within each tile,
@@ -46,9 +46,9 @@ class CLAHE(ImageEnhancer):
     Consider Also:
         - :class:`ContrastStretching` for a simpler global contrast adjustment
           when illumination is already uniform.
-        - :class:`HomomorphicFilter` when the primary problem is a large-scale
+        - :class:`FlattenIllumination` when the primary problem is a large-scale
           illumination gradient rather than local contrast.
-        - :class:`UnsharpMask` when edges need sharpening rather than contrast
+        - :class:`SharpenEdgeGauss` when edges need sharpening rather than contrast
           boosting.
 
     References:
@@ -58,7 +58,7 @@ class CLAHE(ImageEnhancer):
 
     See Also:
         :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a
-        visual walkthrough of CLAHE before detection.
+        visual walkthrough of EnhanceLocalContrast before detection.
         :doc:`/how_to/notebooks/enhance_low_contrast` for a comparison of
         contrast enhancement methods.
     """

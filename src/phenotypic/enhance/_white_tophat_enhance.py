@@ -48,9 +48,9 @@ class WhiteTophatEnhance(ImageEnhancer):
     Consider Also:
         - :class:`SubtractWhiteTophat` when you want to suppress (not
           isolate) small bright artifacts.
-        - :class:`OpeningSubtractBg` for OpenCV-accelerated white top-hat
+        - :class:`SubtractOpening` for OpenCV-accelerated white top-hat
           background subtraction.
-        - :class:`MultiscaleLoGEnhancer` for scale-invariant blob detection
+        - :class:`EnhanceBlobs` for scale-invariant blob detection
           that responds to both small and large colonies.
 
     See Also:

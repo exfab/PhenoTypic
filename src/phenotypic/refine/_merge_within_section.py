@@ -36,7 +36,7 @@ class MergeWithinSection(GridObjectRefiner):
     Consider Also:
         - :class:`KeepSectionLargest` when only the dominant fragment should
           be kept rather than merging all fragments.
-        - :class:`TransitiveDistanceMerger` for proximity-based merging on
+        - :class:`MergeFragmentChains` for proximity-based merging on
           non-grid images.
         - :class:`SmallToLargeMerger` when small fragments should merge into
           the nearest large colony rather than all fragments merging equally.

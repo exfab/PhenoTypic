@@ -12,14 +12,19 @@ from ..abc_ import ImageDenoiser
 from ..tools_.mixin import _GATSupportMixin
 
 
-class BilateralDenoise(_GATSupportMixin, ImageDenoiser):
-    """Denoise ``detect_mat`` with edge-preserving bilateral filtering.
+class LocalEdgeDenoise(_GATSupportMixin, ImageDenoiser):
+    """Denoise ``detect_mat`` with fast, local edge-preserving (bilateral) filtering.
 
     Averages pixel values based on both spatial proximity and intensity
-    similarity, preserving sharp colony boundaries while smoothing uniform
-    regions such as agar background. Effectively removes scanner noise,
-    agar grain, dust speckles, and condensation artifacts without blurring
-    colony edges.
+    similarity within a *local* neighborhood, preserving sharp colony
+    boundaries while smoothing uniform regions such as agar background.
+    Effectively removes scanner noise, agar grain, dust speckles, and
+    condensation artifacts without blurring colony edges.
+
+    This is the lightweight, single-pass edge-preserving denoiser: it
+    weighs only each pixel's local neighborhood. For stronger cleanup that
+    searches the whole image for similar patches, step up to the non-local
+    :class:`NonLocalMeansDenoiser` or :class:`BM3DDenoiser`.
 
     For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 

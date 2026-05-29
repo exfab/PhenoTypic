@@ -12,7 +12,7 @@ from phenotypic.measure import MeasureGridLinRegStats
 from phenotypic.schema import GRID_LINREG_STATS, GRID
 
 
-class ResidualOutlierRemover(GridObjectRefiner):
+class RemoveGridOutliers(GridObjectRefiner):
     """Remove objects with large positional residuals in noisy grid rows or columns.
 
     Fits linear-regression trends to colony centroids along each row and

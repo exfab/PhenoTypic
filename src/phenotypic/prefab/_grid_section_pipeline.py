@@ -2,15 +2,15 @@ from typing import Literal, Optional
 
 from phenotypic.abc_ import PrefabPipeline
 from phenotypic import ImagePipeline
-from phenotypic.enhance import CLAHE, GaussianBlur, MedianFilter, ContrastStretching
+from phenotypic.enhance import EnhanceLocalContrast, GaussianBlur, MedianFilter, ContrastStretching
 from phenotypic.detect import OtsuDetector
 from phenotypic.grid import GridApply
 from phenotypic.refine import (
     RemoveBorderObjects,
     SmallObjectRemover,
-    LowCircularityRemover,
+    RemoveNonCircular,
     ReduceSectionsByLine,
-    ResidualOutlierRemover,
+    RemoveGridOutliers,
 )
 from phenotypic.correction import GridAligner
 
@@ -30,7 +30,7 @@ class GridSectionPipeline(PrefabPipeline):
     vary across the plate (e.g., different strains in different wells).
 
     Steps:
-        1. GaussianBlur + CLAHE — global preprocessing
+        1. GaussianBlur + EnhanceLocalContrast — global preprocessing
         2. OtsuDetector — initial global detection
         3. RemoveBorderObjects, SmallObjectRemover — cleanup
         4. GridAligner — straighten the grid
@@ -102,8 +102,8 @@ class GridSectionPipeline(PrefabPipeline):
             gaussian_sigma (int): Standard deviation for Gaussian kernel in initial smoothing.
             gaussian_mode (str): Mode for handling image boundaries during Gaussian smoothing.
             gaussian_truncate (float): Truncate the Gaussian kernel at this many standard deviations.
-            clahe_kernel_size (int | None): Size of kernel for CLAHE. If None, automatically calculated.
-            clahe_clip_limit (float): Contrast limit for CLAHE.
+            clahe_kernel_size (int | None): Size of kernel for EnhanceLocalContrast. If None, automatically calculated.
+            clahe_clip_limit (float): Contrast limit for EnhanceLocalContrast.
             median_mode (str): Boundary mode for median filter.
             median_cval (float): Constant value for median filter when mode is 'constant'.
             otsu_ignore_zeros (bool): Whether to ignore zero pixels in Otsu thresholding.
@@ -140,7 +140,7 @@ class GridSectionPipeline(PrefabPipeline):
             "blur"                            : GaussianBlur(
                     sigma=gaussian_sigma, mode=gaussian_mode, truncate=gaussian_truncate
             ),
-            "clahe"                           : CLAHE(kernel_size=clahe_kernel_size,
+            "clahe"                           : EnhanceLocalContrast(kernel_size=clahe_kernel_size,
                                                       clip_limit=clahe_clip_limit),
             "median filter"                   : MedianFilter(mode=median_mode,
                                                              cval=median_cval),
@@ -149,12 +149,12 @@ class GridSectionPipeline(PrefabPipeline):
             ),
             "border_removal"                  : RemoveBorderObjects(
                     border_size=border_remover_size),
-            "low circularity remover"         : LowCircularityRemover(
+            "low circularity remover"         : RemoveNonCircular(
                     cutoff=circularity_cutoff),
             "small object remover"            : SmallObjectRemover(
                     min_size=small_object_min_size),
             "Reduce by section residual error": ReduceSectionsByLine(),
-            "outlier removal"                 : ResidualOutlierRemover(
+            "outlier removal"                 : RemoveGridOutliers(
                     axis=outlier_axis,
                     stddev_multiplier=outlier_stddev_multiplier,
                     max_coeff_variance=outlier_max_coeff_variance,

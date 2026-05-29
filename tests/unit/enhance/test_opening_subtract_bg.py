@@ -1,4 +1,4 @@
-"""Tests for OpeningSubtractBg.
+"""Tests for SubtractOpening.
 
 Tests defaults, shape/dtype preservation, rgb/gray immutability, non-negative
 output, mathematical correctness (tophat = src - opening), uniform image yields
@@ -11,7 +11,7 @@ import numpy as np
 import pytest
 
 from phenotypic import Image, ImagePipeline
-from phenotypic.enhance import OpeningSubtractBg
+from phenotypic.enhance import SubtractOpening
 
 
 # -- Defaults ----------------------------------------------------------------
@@ -21,15 +21,15 @@ class TestDefaults:
     """Verify default parameter values."""
 
     def test_default_shape(self):
-        op = OpeningSubtractBg()
+        op = SubtractOpening()
         assert op.shape == "disk"
 
     def test_default_width(self):
-        op = OpeningSubtractBg()
+        op = SubtractOpening()
         assert op.width == 51
 
     def test_custom_values(self):
-        op = OpeningSubtractBg(shape="square", width=31)
+        op = SubtractOpening(shape="square", width=31)
         assert op.shape == "square"
         assert op.width == 31
 
@@ -53,25 +53,25 @@ class TestOutputInvariants:
         return Image(arr=arr)
 
     def test_shape_preserved(self, gray_image):
-        op = OpeningSubtractBg(width=11)
+        op = SubtractOpening(width=11)
         result = op.apply(gray_image)
         assert result.detect_mat[:].shape == gray_image.detect_mat[:].shape
 
     def test_dtype_preserved(self, gray_image):
         original_dtype = gray_image.detect_mat[:].dtype
-        op = OpeningSubtractBg(width=11)
+        op = SubtractOpening(width=11)
         result = op.apply(gray_image)
         assert result.detect_mat[:].dtype == original_dtype
 
     def test_rgb_immutability(self, rgb_image):
         original_rgb = rgb_image.rgb[:].copy()
-        op = OpeningSubtractBg(width=11)
+        op = SubtractOpening(width=11)
         op.apply(rgb_image)
         np.testing.assert_array_equal(rgb_image.rgb[:], original_rgb)
 
     def test_gray_immutability(self, gray_image):
         original_gray = gray_image.gray[:].copy()
-        op = OpeningSubtractBg(width=11)
+        op = SubtractOpening(width=11)
         op.apply(gray_image)
         np.testing.assert_array_equal(gray_image.gray[:], original_gray)
 
@@ -86,7 +86,7 @@ class TestNonNegativeOutput:
         rng = np.random.default_rng(99)
         arr = rng.random((64, 64)).astype(np.float64)
         image = Image(arr=arr)
-        op = OpeningSubtractBg(width=15)
+        op = SubtractOpening(width=15)
         result = op.apply(image)
         assert result.detect_mat[:].min() >= 0.0
 
@@ -102,7 +102,7 @@ class TestMathematicalCorrectness:
         arr = rng.random((80, 80)).astype(np.float64) * 0.8 + 0.1
         image = Image(arr=arr)
 
-        op = OpeningSubtractBg(shape="square", width=11)
+        op = SubtractOpening(shape="square", width=11)
         result = op.apply(image)
 
         # Compute expected manually: src - opening(src)
@@ -126,7 +126,7 @@ class TestUniformImage:
     def test_uniform_yields_zeros(self):
         arr = np.full((64, 64), 0.5, dtype=np.float64)
         image = Image(arr=arr)
-        op = OpeningSubtractBg(width=11)
+        op = SubtractOpening(width=11)
         result = op.apply(image)
         np.testing.assert_allclose(result.detect_mat[:], 0.0, atol=1e-10)
 
@@ -142,7 +142,7 @@ class TestSmallBrightSpot:
         arr[30:34, 30:34] = 1.0  # 4x4 bright patch
         image = Image(arr=arr)
 
-        op = OpeningSubtractBg(shape="square", width=11)
+        op = SubtractOpening(shape="square", width=11)
         result = op.apply(image)
 
         # The bright spot region should retain significant intensity
@@ -162,7 +162,7 @@ class TestAllShapes:
         arr = rng.random((64, 64)).astype(np.float64)
         image = Image(arr=arr)
 
-        op = OpeningSubtractBg(shape=shape, width=11)
+        op = SubtractOpening(shape=shape, width=11)
         result = op.apply(image)
 
         assert result.detect_mat[:].shape == (64, 64)
@@ -173,7 +173,7 @@ class TestAllShapes:
 
 
 class TestPipelineIntegration:
-    """OpeningSubtractBg works inside an ImagePipeline."""
+    """SubtractOpening works inside an ImagePipeline."""
 
     def test_in_pipeline(self):
         from phenotypic.enhance import GaussianBlur
@@ -183,7 +183,7 @@ class TestPipelineIntegration:
         image = Image(arr=arr)
 
         pipeline = ImagePipeline(ops=[
-            OpeningSubtractBg(shape="disk", width=11),
+            SubtractOpening(shape="disk", width=11),
             GaussianBlur(sigma=1.0),
         ])
         result = pipeline.apply(image)
@@ -199,7 +199,7 @@ class TestSerialization:
 
     def test_roundtrip_preserves_params(self):
         pipeline = ImagePipeline(ops=[
-            OpeningSubtractBg(shape="diamond", width=31),
+            SubtractOpening(shape="diamond", width=31),
         ])
         json_str = pipeline.to_json()
         loaded = ImagePipeline.from_json(json_str)
@@ -207,12 +207,12 @@ class TestSerialization:
         ops = list(loaded._ops.values())
         assert len(ops) == 1
         op = ops[0]
-        assert isinstance(op, OpeningSubtractBg)
+        assert isinstance(op, SubtractOpening)
         assert op.shape == "diamond"
         assert op.width == 31
 
     def test_default_params_roundtrip(self):
-        pipeline = ImagePipeline(ops=[OpeningSubtractBg()])
+        pipeline = ImagePipeline(ops=[SubtractOpening()])
         json_str = pipeline.to_json()
         loaded = ImagePipeline.from_json(json_str)
 

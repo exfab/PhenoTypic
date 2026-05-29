@@ -40,7 +40,7 @@ class NearestNeighborMerger(ObjectRefiner):
         - Size-selective cleanup where only fragments below a threshold merge.
 
     Consider Also:
-        - :class:`TransitiveDistanceMerger` for chained merging of all nearby
+        - :class:`MergeFragmentChains` for chained merging of all nearby
           objects regardless of size.
         - :class:`SmallToLargeMerger` for merging small objects into the
           largest nearby colony.

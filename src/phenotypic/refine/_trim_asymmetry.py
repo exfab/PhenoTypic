@@ -80,7 +80,7 @@ class TrimAsymmetry(ObjectRefiner):
     Consider Also:
         * :class:`SmallObjectRemover` for spurious noise distinguished by
           size alone rather than spatial relationship to the colony body.
-        * :class:`LowCircularityRemover` when the whole colony should be
+        * :class:`RemoveNonCircular` when the whole colony should be
           judged by shape, not just its outer extent.
 
     Examples:

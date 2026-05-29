@@ -16,7 +16,7 @@ class ContrastStretching(ImageEnhancer):
 
     Rescales pixel values based on lower and upper percentiles, compressing
     outliers (specular highlights, deep shadows) while expanding the range
-    where colony intensities reside. Simpler and faster than CLAHE, with no
+    where colony intensities reside. Simpler and faster than EnhanceLocalContrast, with no
     local tile artifacts.
 
     Args:
@@ -35,8 +35,8 @@ class ContrastStretching(ImageEnhancer):
         - Quick preprocessing before global thresholding (Otsu, Triangle).
 
     Consider Also:
-        - :class:`CLAHE` when illumination varies spatially across the plate.
-        - :class:`HomomorphicFilter` when the primary issue is a brightness
+        - :class:`EnhanceLocalContrast` when illumination varies spatially across the plate.
+        - :class:`FlattenIllumination` when the primary issue is a brightness
           gradient rather than narrow dynamic range.
 
     See Also:

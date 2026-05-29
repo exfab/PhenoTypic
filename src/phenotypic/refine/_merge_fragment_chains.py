@@ -14,7 +14,7 @@ import pandas as pd
 from ..abc_ import ObjectRefiner
 
 
-class TransitiveDistanceMerger(ObjectRefiner):
+class MergeFragmentChains(ObjectRefiner):
     """Merge nearby colony fragments using transitive closure of centroid distances.
 
     Finds all pairs of objects with centroids within the distance threshold,

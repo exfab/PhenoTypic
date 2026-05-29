@@ -10,7 +10,7 @@ from phenotypic import ImagePipeline, Image
 from phenotypic._core._pipeline_parts._serializable_pipeline import SerializablePipeline
 from phenotypic.data import load_colony
 from phenotypic.detect import OtsuDetector
-from phenotypic.enhance import GaussianBlur, CLAHE
+from phenotypic.enhance import GaussianBlur, EnhanceLocalContrast
 from phenotypic.measure import MeasureShape, MeasureIntensity, MeasureColor
 from phenotypic.refine import SmallObjectRemover, RemoveBorderObjects
 
@@ -127,11 +127,11 @@ class TestParameterSerialization:
     def test_string_parameters(self):
         """Test serialization of string parameters."""
         # Create a pipeline with an operation that has string parameters
-        pipe = ImagePipeline(ops=[CLAHE()])
+        pipe = ImagePipeline(ops=[EnhanceLocalContrast()])
         json_str = pipe.to_json()
 
         loaded_pipe = ImagePipeline.from_json(json_str)
-        assert "CLAHE" in loaded_pipe._ops
+        assert "EnhanceLocalContrast" in loaded_pipe._ops
 
     def test_list_parameters(self):
         """Test serialization of list parameters."""

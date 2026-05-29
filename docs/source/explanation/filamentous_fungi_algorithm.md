@@ -329,7 +329,7 @@ correction:
 
 1. **`StableDenoise`** (BM3D) — removes Poisson-Gaussian noise without
    destroying thin filaments.
-2. **`HomomorphicFilter`** — corrects uneven illumination so phase
+2. **`FlattenIllumination`** — corrects uneven illumination so phase
    congruency isn't driven by intensity gradients.
 
 The `FilamentousFungiPipeline` prefab chains these automatically.

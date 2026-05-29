@@ -51,7 +51,7 @@ class MeijeringRidgeFilter(ImageEnhancer):
           structures with less sensitivity to parameter tuning.
         - :class:`HessianFilter` for combined edge and ridge detection
           with blob sensitivity control.
-        - :class:`CoherenceEnhancingDiffusion` for enhancing directional
+        - :class:`StructureSmoothing` for enhancing directional
           structures via anisotropic smoothing before ridge detection.
 
     See Also:

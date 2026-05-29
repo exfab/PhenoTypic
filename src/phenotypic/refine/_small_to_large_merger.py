@@ -52,7 +52,7 @@ class SmallToLargeMerger(ObjectRefiner):
           fragments around main detections.
 
     Consider Also:
-        - :class:`TransitiveDistanceMerger` when all nearby objects should
+        - :class:`MergeFragmentChains` when all nearby objects should
           merge regardless of size, including large-to-large merging.
         - :class:`NearestNeighborMerger` for simple nearest-neighbor
           merging without size partitioning.

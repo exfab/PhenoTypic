@@ -28,9 +28,9 @@ class SobelFilter(ImageEnhancer):
         - Visualizing colony boundary sharpness for quality assessment.
 
     Consider Also:
-        - :class:`UnsharpMask` when you want to sharpen edges without
+        - :class:`SharpenEdgeGauss` when you want to sharpen edges without
           converting to a pure edge map.
-        - :class:`LaplaceEnhancer` for second-derivative edge detection
+        - :class:`SharpenEdgeLaplace` for second-derivative edge detection
           that responds to ridges and valleys.
 
     See Also:

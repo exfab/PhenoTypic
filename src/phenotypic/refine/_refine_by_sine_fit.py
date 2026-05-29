@@ -25,7 +25,7 @@ from phenotypic.tools_.mixin import GridInferenceMixin
 from phenotypic.tools_.funcs_ import validate_operation_integrity
 
 
-class SineAlignmentRefiner(GridInferenceMixin, ObjectRefiner):
+class RefineBySineFit(GridInferenceMixin, ObjectRefiner):
     """Retain only grid-aligned colonies using sinusoidal cross-correlation for grid estimation.
 
     Estimates grid edges by computing FFT-based normalized cross-correlation

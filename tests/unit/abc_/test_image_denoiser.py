@@ -5,7 +5,7 @@ import pytest
 from phenotypic.abc_ import ImageCorrector, ImageDenoiser, ImageEnhancer
 from phenotypic.enhance import (
     BayesShrinkEnhancer,
-    BilateralDenoise,
+    LocalEdgeDenoise,
     BM3DDenoiser,
     NonLocalMeansDenoiser,
     VisuShrinkEnhancer,
@@ -35,7 +35,7 @@ class TestImageDenoiserABC:
             BayesShrinkEnhancer,
             VisuShrinkEnhancer,
             NonLocalMeansDenoiser,
-            BilateralDenoise,
+            LocalEdgeDenoise,
         ],
     )
     def test_concrete_denoisers_inherit(self, denoiser_cls):
@@ -50,7 +50,7 @@ class TestImageDenoiserABC:
             BayesShrinkEnhancer,
             VisuShrinkEnhancer,
             NonLocalMeansDenoiser,
-            BilateralDenoise,
+            LocalEdgeDenoise,
         ],
     )
     def test_instances_pass_isinstance(self, denoiser_cls):

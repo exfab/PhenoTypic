@@ -4,7 +4,7 @@ from phenotypic import Image, GridImage, ImagePipeline
 from phenotypic._core._pipeline_parts import IntermediateResult
 from phenotypic.correction import GridAligner
 from phenotypic.detect import OtsuDetector
-from phenotypic.enhance import CLAHE, ContrastStretching, GaussianBlur, MedianFilter
+from phenotypic.enhance import EnhanceLocalContrast, ContrastStretching, GaussianBlur, MedianFilter
 from phenotypic.measure import (
     MeasureColor,
     MeasureIntensity,
@@ -13,9 +13,9 @@ from phenotypic.measure import (
 )
 from phenotypic.refine import (
     RemoveBorderObjects,
-    LowCircularityRemover,
+    RemoveNonCircular,
     SmallObjectRemover,
-    ResidualOutlierRemover,
+    RemoveGridOutliers,
     ReduceSectionsByLine,
 )
 from phenotypic.grid import GridApply
@@ -103,14 +103,14 @@ def test_kmarx_pipeline_pickleable(plate_grid_images):
     pipe = ImagePipeline(
             pipe_cfgs={
                 "blur"                            : GaussianBlur(sigma=2),
-                "clahe"                           : CLAHE(),
+                "clahe"                           : EnhanceLocalContrast(),
                 "median filter"                   : MedianFilter(),
                 "detection"                       : OtsuDetector(),
                 "border_removal"                  : RemoveBorderObjects(border_size=50),
-                "low circularity remover"         : LowCircularityRemover(cutoff=0.6),
+                "low circularity remover"         : RemoveNonCircular(cutoff=0.6),
                 "small object remover"            : SmallObjectRemover(min_size=100),
                 "Reduce by section residual error": ReduceSectionsByLine(),
-                "outlier removal"                 : ResidualOutlierRemover(),
+                "outlier removal"                 : RemoveGridOutliers(),
                 "align"                           : GridAligner(),
                 "section-level detect"            : GridApply(
                         image_op=ImagePipeline(

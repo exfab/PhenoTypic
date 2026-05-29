@@ -487,7 +487,7 @@ class ImageMetricsCalculator:
             snr = metrics["snr"]
             if snr < THRESHOLDS["snr"]["critical"]:
                 quality = "critically low"
-                action = "Strong denoising required (BilateralDenoise, MedianFilter)."
+                action = "Strong denoising required (LocalEdgeDenoise, MedianFilter)."
             elif snr < THRESHOLDS["snr"]["marginal"]:
                 quality = "marginal"
                 action = "Light denoising recommended (GaussianBlur sigma=0.5-1.0)."
@@ -500,10 +500,10 @@ class ImageMetricsCalculator:
             rms = metrics["rms_contrast"]
             if rms < THRESHOLDS["rms_contrast"]["critical"]:
                 quality = "critically low"
-                action = "Strong contrast enhancement required (CLAHE, HistogramEqualization)."
+                action = "Strong contrast enhancement required (EnhanceLocalContrast, HistogramEqualization)."
             elif rms < THRESHOLDS["rms_contrast"]["marginal"]:
                 quality = "marginal"
-                action = "Contrast enhancement recommended (CLAHE clip_limit=2.0)."
+                action = "Contrast enhancement recommended (EnhanceLocalContrast clip_limit=2.0)."
             else:
                 quality = "adequate"
                 action = "Contrast is sufficient for detection."
@@ -566,7 +566,7 @@ class ImageMetricsCalculator:
         corr_len = noise["correlation_length"]
         if snr < THRESHOLDS["snr"]["critical"]:
             recommendations.append(
-                    "Apply strong denoising: BilateralDenoise(sigma_spatial=3, sigma_intensity=0.1)"
+                    "Apply strong denoising: LocalEdgeDenoise(sigma_spatial=3, sigma_intensity=0.1)"
             )
         elif snr < THRESHOLDS["snr"]["marginal"]:
             recommendations.append("Apply light denoising: GaussianBlur(sigma=0.5-1.0)")
@@ -582,11 +582,11 @@ class ImageMetricsCalculator:
         dynamic = contrast["dynamic_range"]
         if rms < THRESHOLDS["rms_contrast"]["critical"]:
             recommendations.append(
-                    "Apply contrast enhancement: CLAHE(clip_limit=3.0) or HistogramEqualization"
+                    "Apply contrast enhancement: EnhanceLocalContrast(clip_limit=3.0) or HistogramEqualization"
             )
         elif rms < THRESHOLDS["rms_contrast"]["marginal"]:
             recommendations.append(
-                "Consider CLAHE(clip_limit=2.0) for improved contrast")
+                "Consider EnhanceLocalContrast(clip_limit=2.0) for improved contrast")
 
         if dynamic < 0.3:
             recommendations.append(

@@ -14,7 +14,7 @@ from typing_extensions import Self
 from ..abc_ import ImageEnhancer
 
 
-class CoherenceEnhancingDiffusion(ImageEnhancer):
+class StructureSmoothing(ImageEnhancer):
     """Enhance filamentous structures via anisotropic coherence-enhancing diffusion.
 
     Smooths ``detect_mat`` preferentially along coherent structures (lines,
@@ -59,7 +59,7 @@ class CoherenceEnhancingDiffusion(ImageEnhancer):
         - Faint elongated features in low-contrast or noisy scans.
 
     Consider Also:
-        - :class:`BilateralDenoise` for isotropic edge-preserving denoising
+        - :class:`LocalEdgeDenoise` for isotropic edge-preserving denoising
           of round colonies without directional features.
         - :class:`SatoRidgeFilter` for direct ridge detection without a
           diffusion preprocessing step.

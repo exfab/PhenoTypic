@@ -45,7 +45,7 @@ class _PhaseCong3Result:
     pc_sum: np.ndarray
 
 
-class PhaseCongruencyEnhancer(ImageEnhancer):
+class EnhanceFeatures(ImageEnhancer):
     """Enhance colony edges in ``detect_mat`` with contrast-invariant phase congruency.
 
     Detects features where Fourier components are maximally in phase,
@@ -89,11 +89,11 @@ class PhaseCongruencyEnhancer(ImageEnhancer):
         - Translucent or low-contrast colonies on agar.
 
     Consider Also:
-        - :class:`LaplaceEnhancer` for simpler edge detection when
+        - :class:`SharpenEdgeLaplace` for simpler edge detection when
           illumination is uniform.
         - :class:`HessianFilter` for multi-scale ridge and edge detection
           with blob sensitivity control.
-        - :class:`UnsharpMask` for edge sharpening that preserves the
+        - :class:`SharpenEdgeGauss` for edge sharpening that preserves the
           original intensity profile.
 
     References:
