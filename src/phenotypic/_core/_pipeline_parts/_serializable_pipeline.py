@@ -9,6 +9,7 @@ from typing import Dict, List, Union, Optional, TYPE_CHECKING
 if TYPE_CHECKING:
     from phenotypic._core._image_pipeline import ImagePipeline
     from phenotypic.analysis.abc_ import ModelFitter, SetAnalyzer
+    from phenotypic.qc._recipe import QcRecipeEntry
 
 import warnings
 
@@ -161,6 +162,15 @@ class SerializablePipeline(NapariPipelineViewer):
                 else None
             ),
         }
+
+        # QC entries serialize with their own dedicated shape — a LIST of
+        # ``{instance_id, class, enabled, params}`` (NOT the bare
+        # ``{class, params}`` analyzer shape) — so the stable instance_id +
+        # enabled flag round-trip. Omitted when empty so QC-free / legacy
+        # pipelines round-trip byte-identically.
+        qc_entries = SerializablePipeline._serialize_qc(pipeline.get_qc())
+        if qc_entries:
+            config["qc"] = qc_entries
 
         # Omit when unset so legacy JSONs round-trip unchanged.
         if pipeline._nrows is not None:
@@ -318,6 +328,13 @@ class SerializablePipeline(NapariPipelineViewer):
                 )
             else:
                 model = candidate
+        # QC config — a list of ``{instance_id, class, enabled, params}``
+        # entries. Unknown classes follow the analyzer path: dropped +
+        # recorded when ``skip_unknown_analyzers`` is set, else a hard
+        # error. Defaults to ``[]`` for QC-free / legacy pipelines.
+        qc = cls._deserialize_qc(
+            config.get("qc", []) or [], skipped=skipped
+        )
         name = config.get("name", None)
         desc = config.get("desc", None)
         reset = config.get("reset", False)  # Default False for backwards compatibility
@@ -346,6 +363,7 @@ class SerializablePipeline(NapariPipelineViewer):
 
         return ImagePipeline(
             ops=ops, meas=meas, post=post, filters=filters, model=model,
+            qc=qc,
             benchmark=benchmark, verbose=verbose,
             name=name, desc=desc, reset=reset, nrows=nrows, ncols=ncols,
         )
@@ -716,3 +734,97 @@ class SerializablePipeline(NapariPipelineViewer):
             if instance is not None:
                 result[name] = instance
         return result
+
+    # ------------------------------------------------------------------ #
+    # QC config serialization (the ``qc`` array)
+    # ------------------------------------------------------------------ #
+    #
+    # The QC section is a LIST (not a name-keyed dict) of entries shaped
+    # ``{instance_id, class, enabled, params}`` — distinct from the bare
+    # ``{class, params}`` analyzer shape because QC entries carry stable
+    # ``instance_id`` + ``enabled`` metadata the GUI per-card IDs and
+    # ``review_state.json`` key off. The on-disk shape is owned by
+    # :class:`phenotypic.qc._recipe.QcRecipeEntry` (``to_dict`` /
+    # ``from_dict``) so the (de)serializer and the GUI recipe adapter can
+    # never drift.
+
+    @staticmethod
+    def _serialize_qc(
+            qc_entries: List["QcRecipeEntry"],
+    ) -> List[Dict[str, object]]:
+        """Serialize the ``qc`` list to a list of entry dicts.
+
+        Args:
+            qc_entries: The pipeline's QC config entries (typically from
+                :meth:`ImagePipelineCore.get_qc`).
+
+        Returns:
+            One ``{instance_id, class, enabled, params}`` dict per entry,
+            in order. Empty list when no QC is configured.
+        """
+        return [entry.to_dict() for entry in qc_entries]
+
+    @classmethod
+    def _deserialize_qc(
+            cls, serialized: object,
+            *,
+            skipped: Optional[List[PipelineLoadWarning]] = None,
+    ) -> List["QcRecipeEntry"]:
+        """Reconstruct the ``qc`` list from its serialized entry dicts.
+
+        Each entry is rebuilt via
+        :meth:`phenotypic.qc._recipe.QcRecipeEntry.from_dict`, which resolves
+        the check class within :mod:`phenotypic.analysis`. Unknown classes
+        follow the **analyzer** contract (not the operations one): when
+        ``skipped`` is provided (``skip_unknown_analyzers=True``) the entry
+        is dropped and recorded as a :class:`PipelineLoadWarning` so one
+        stale entry never bricks pipeline load; otherwise an unresolved
+        class raises :class:`AttributeError`.
+
+        Note that resolution failure is the *only* tolerance applied here —
+        an entry whose class resolves but whose params are unbuildable
+        (e.g. a missing metadata file) still deserializes fine; that
+        failure surfaces later, lazily, at instantiate time (``run_qc`` /
+        the GUI).
+
+        Args:
+            serialized: The raw ``qc`` value from the config (expected to
+                be a list of entry dicts; a non-list yields an empty list).
+            skipped: When provided, unresolved-class entries are dropped and
+                appended here as :class:`PipelineLoadWarning`. When ``None``
+                (the strict default), an unresolved class raises.
+
+        Returns:
+            The reconstructed :class:`QcRecipeEntry` list, in order.
+
+        Raises:
+            AttributeError: If an entry's class cannot be resolved and
+                ``skipped`` is ``None``.
+        """
+        from phenotypic.qc._recipe import QcRecipeEntry, QcRecipeLoadWarning
+
+        if not isinstance(serialized, list):
+            return []
+
+        entries: List["QcRecipeEntry"] = []
+        for item in serialized:
+            if not isinstance(item, dict):
+                continue
+            parsed = QcRecipeEntry.from_dict(item)
+            if isinstance(parsed, QcRecipeLoadWarning):
+                if skipped is not None:
+                    skipped.append(
+                        PipelineLoadWarning(
+                            slot="qc",
+                            name=parsed.instance_id,
+                            class_name=parsed.class_name,
+                        )
+                    )
+                    continue
+                raise AttributeError(
+                    f"QC check class '{parsed.class_name}' not found in "
+                    f"phenotypic.analysis. Make sure it's properly exported "
+                    f"from phenotypic.analysis."
+                )
+            entries.append(parsed)
+        return entries

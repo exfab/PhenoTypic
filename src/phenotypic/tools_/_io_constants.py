@@ -135,6 +135,33 @@ PIPELINE_JSON: Final[str] = "pipeline.json"
 PROCESSING_STATE_JSON: Final[str] = "processing_state.json"
 
 # ---------------------------------------------------------------------------
+# QC artifact filenames (live inside DIR_QC)
+# ---------------------------------------------------------------------------
+
+#: Per-group QC summary written by
+#: :func:`phenotypic.qc._runner.run_qc`. One row per
+#: ``(instance_id, groupby key)``: the worst-direction metric, tri-state
+#: status, flag, member/flagged counts, and a worst-first ``rank``.
+QC_SUMMARY_PARQUET: Final[str] = "qc_summary.parquet"
+
+#: Per-group member colonies written by :func:`phenotypic.qc._runner.run_qc`.
+#: One row per ``(instance_id, group member)`` carrying the curation key
+#: (``Metadata_ImageFile`` + ``Object_Label``) plus the member's
+#: contributing value, so the Review gallery can render each group's tiles.
+QC_MEMBERS_PARQUET: Final[str] = "qc_members.parquet"
+
+#: Snapshot of the ``qc`` config entries (``instance_id``/``class``/
+#: ``enabled``/``params``) that produced the current ``qc/`` artifact.
+#: Written by :func:`phenotypic.qc._runner.run_qc`.
+QC_CONFIG_JSON: Final[str] = "qc_config.json"
+
+#: Per-module GUI review progress (``instance_id`` -> reviewed group keys +
+#: last position). Written **only** by the results-viewer QC Review tab;
+#: :func:`phenotypic.qc._runner.run_qc` never touches it. The CLI finalize
+#: path clears it on every rerun (a fresh run resets review progress).
+QC_REVIEW_STATE_JSON: Final[str] = "review_state.json"
+
+# ---------------------------------------------------------------------------
 # Run-time progress sidecar files (live inside DIR_PROGRESS)
 # ---------------------------------------------------------------------------
 
@@ -253,6 +280,12 @@ DIR_RECOMPILE_SHARDS: Final[str] = "measurement_shards"
 
 #: Generated SLURM script subdirectory: ``<output>/slurm_scripts/``.
 DIR_SLURM_SCRIPTS: Final[str] = "slurm_scripts"
+
+#: QC artifact subdirectory: ``<output>/qc/``. Holds
+#: :data:`QC_SUMMARY_PARQUET`, :data:`QC_MEMBERS_PARQUET`,
+#: :data:`QC_CONFIG_JSON` (written by ``run_qc``), and
+#: :data:`QC_REVIEW_STATE_JSON` (written by the GUI Review tab).
+DIR_QC: Final[str] = "qc"
 
 
 # ---------------------------------------------------------------------------
@@ -548,6 +581,35 @@ def slurm_scripts_dir(output_dir: Path) -> Path:
     return output_dir / DIR_SLURM_SCRIPTS
 
 
+def qc_dir(output_dir: Path) -> Path:
+    """Return ``<output>/qc/``.
+
+    Pure path expression; ``run_qc`` is responsible for ``mkdir`` when it
+    writes into it (via :func:`_atomic_write`).
+    """
+    return output_dir / DIR_QC
+
+
+def qc_summary_parquet_path(output_dir: Path) -> Path:
+    """Return ``<output>/qc/qc_summary.parquet``."""
+    return qc_dir(output_dir) / QC_SUMMARY_PARQUET
+
+
+def qc_members_parquet_path(output_dir: Path) -> Path:
+    """Return ``<output>/qc/qc_members.parquet``."""
+    return qc_dir(output_dir) / QC_MEMBERS_PARQUET
+
+
+def qc_config_json_path(output_dir: Path) -> Path:
+    """Return ``<output>/qc/qc_config.json``."""
+    return qc_dir(output_dir) / QC_CONFIG_JSON
+
+
+def qc_review_state_path(output_dir: Path) -> Path:
+    """Return ``<output>/qc/review_state.json`` (GUI-owned review progress)."""
+    return qc_dir(output_dir) / QC_REVIEW_STATE_JSON
+
+
 # ---------------------------------------------------------------------------
 # Loader / reader helpers (consolidate 3 duplicated read sites each)
 # ---------------------------------------------------------------------------
@@ -639,6 +701,10 @@ class JobMetadataKey:
     START_TIME: Final[str] = "start_time"
     INPUT_PATH: Final[str] = "input_path"
     METADATA_CSV: Final[str] = "metadata_csv"
+    #: Whether the recompile finalizer task should skip QC compute. Set on
+    #: the SLURM recompile finalizer task dict alongside ``METADATA_CSV``;
+    #: read by ``_cli_recompile_worker._run_post_master_steps``.
+    NO_QC: Final[str] = "no_qc"
     SLURM_JOB_IDS: Final[str] = "slurm_job_ids"
     CHUNK_JOB_IDS: Final[str] = "chunk_job_ids"
     CHUNK_SCRIPTS: Final[str] = "chunk_scripts"
