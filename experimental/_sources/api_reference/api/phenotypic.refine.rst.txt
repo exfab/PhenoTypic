@@ -21,32 +21,32 @@
       :template: class.rst
       :nosignatures:
    
-      AsymmetricSpurTrimmer
-      BorderObjectRemover
-      CenterDeviationReducer
-      GMMCoreExtractor
+      TrimAsymmetry
+      RemoveBorderObjects
+      KeepNearestCenter
+      ExtractColonyCore
       GridAlignmentRefiner
       GridOversizedObjectRemover
-      LowCircularityRemover
-      ManualSelector
-      MaskCloser
-      MaskDilator
-      MaskEroder
+      RemoveNonCircular
+      ManualRefine
+      MaskClosing
+      MaskDilation
+      MaskErosion
       MaskFill
       MaskGradient
-      MaskOpener
-      ReduceMultipleGridObjects
+      MaskOpening
+      ReduceSectionsByLine
       NearestNeighborMerger
-      ResidualOutlierRemover
+      RemoveGridOutliers
       SeparateObjects
-      SineAlignmentRefiner
+      RefineBySineFit
       Skeletonize
       SmallObjectRemover
       SmallToLargeMerger
       Thinning
-      TransitiveDistanceMerger
-      WhiteTophat
-      GridSectionLargest
+      MergeFragmentChains
+      MaskWhiteTophat
+      KeepSectionLargest
    
    
 

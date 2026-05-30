@@ -572,7 +572,8 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">skimage.measure</span><span class="w"> </span><span class="kn">import</span> <span class="n">regionprops</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">List</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.constants_</span><span class="w"> </span><span class="kn">import</span> <span class="n">OBJECT</span><span class="p">,</span> <span class="n">METADATA</span><span class="p">,</span> <span class="n">IMAGE_TYPES</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.constants_</span><span class="w"> </span><span class="kn">import</span> <span class="n">METADATA</span><span class="p">,</span> <span class="n">IMAGE_TYPES</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">OBJECT</span>
 
 
 <div class="viewcode-block" id="ObjectsAccessor">
@@ -614,7 +615,7 @@
 <span class="sd">        ...     print(f&quot;Colony area: {colony.gray.sum()}&quot;)</span>
 <span class="sd">        &gt;&gt;&gt; # Get information for all colonies</span>
 <span class="sd">        &gt;&gt;&gt; colony_info = plate.objects.info()</span>
-<span class="sd">        &gt;&gt;&gt; print(colony_info[[&quot;ObjectLabel&quot;, &quot;Bbox_CenterRR&quot;, &quot;Bbox_CenterCC&quot;]])</span>
+<span class="sd">        &gt;&gt;&gt; print(colony_info[[&quot;Object_Label&quot;, &quot;Bbox_CenterRR&quot;, &quot;Bbox_CenterCC&quot;]])</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
 <div class="viewcode-block" id="ObjectsAccessor.__init__">
@@ -1242,7 +1243,7 @@
 
 <span class="sd">        Returns:</span>
 <span class="sd">            pd.DataFrame: A DataFrame with one row per colony containing:</span>
-<span class="sd">                - ObjectLabel: The colony&#39;s label identifier</span>
+<span class="sd">                - Object_Label: The colony&#39;s label identifier</span>
 <span class="sd">                - Bbox_CenterRR: Row coordinate of the colony centroid</span>
 <span class="sd">                - Bbox_CenterCC: Column coordinate of the colony centroid</span>
 <span class="sd">                - Bbox_MinRR: Minimum row coordinate of the bounding box</span>
@@ -1268,7 +1269,7 @@
 <span class="sd">            Access specific columns:</span>
 
 <span class="sd">            &gt;&gt;&gt; # Get just labels and centroids</span>
-<span class="sd">            &gt;&gt;&gt; labels_centroids = colony_info[[&quot;ObjectLabel&quot;, &quot;Bbox_CenterRR&quot;, &quot;Bbox_CenterCC&quot;]]</span>
+<span class="sd">            &gt;&gt;&gt; labels_centroids = colony_info[[&quot;Object_Label&quot;, &quot;Bbox_CenterRR&quot;, &quot;Bbox_CenterCC&quot;]]</span>
 <span class="sd">            &gt;&gt;&gt; print(labels_centroids)</span>
 
 <span class="sd">            Export colony positions for other tools:</span>
@@ -1308,7 +1309,7 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert colony labels to a pandas Series for joining with measurement DataFrames.</span>
 
 <span class="sd">        This method creates a pandas Series containing all colony labels with a properly named</span>
-<span class="sd">        column (&#39;ObjectLabel&#39;) and indexed by position. This is specifically designed to</span>
+<span class="sd">        column (&#39;Object_Label&#39;) and indexed by position. This is specifically designed to</span>
 <span class="sd">        facilitate joining labels with measurement DataFrames that are indexed by position,</span>
 <span class="sd">        which is a common pattern in high-throughput phenotypic analysis workflows.</span>
 
@@ -1319,7 +1320,7 @@
 <span class="sd">            pd.Series: A pandas Series with:</span>
 <span class="sd">                - data: The colony labels (integers)</span>
 <span class="sd">                - index: Position indices (0 to N-1)</span>
-<span class="sd">                - name: &#39;ObjectLabel&#39; for proper DataFrame column naming</span>
+<span class="sd">                - name: &#39;Object_Label&#39; for proper DataFrame column naming</span>
 
 <span class="sd">        Examples:</span>
 <span class="sd">            Join labels with measurement data:</span>
@@ -1363,10 +1364,10 @@
 
 <span class="sd">            Handle potential label suffix conflicts:</span>
 
-<span class="sd">            &gt;&gt;&gt; # If DataFrame already has an &#39;ObjectLabel&#39; column</span>
+<span class="sd">            &gt;&gt;&gt; # If DataFrame already has an &#39;Object_Label&#39; column</span>
 <span class="sd">            &gt;&gt;&gt; labels = plate.objects.labels2series()</span>
 <span class="sd">            &gt;&gt;&gt; measurements_with_labels = measurements.join(labels, rsuffix=&quot;_new&quot;)</span>
-<span class="sd">            &gt;&gt;&gt; # Creates &#39;ObjectLabel&#39; and &#39;ObjectLabel_new&#39; columns</span>
+<span class="sd">            &gt;&gt;&gt; # Creates &#39;Object_Label&#39; and &#39;Object_Label_new&#39; columns</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">labels</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">labels</span>
         <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span>

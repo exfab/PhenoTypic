@@ -689,7 +689,7 @@
 <span class="sd">    .. code-block:: python</span>
 
 <span class="sd">        from phenotypic import ImagePipeline</span>
-<span class="sd">        from phenotypic.enhance import GaussianBlur, CLAHE</span>
+<span class="sd">        from phenotypic.enhance import GaussianBlur, EnhanceLocalContrast</span>
 <span class="sd">        from phenotypic.detect import CannyDetector  # Different detector</span>
 <span class="sd">        from phenotypic.refine import SmallObjectRemover, MaskFill</span>
 <span class="sd">        from phenotypic.measure import MeasureShape, MeasureColor</span>
@@ -697,7 +697,7 @@
 <span class="sd">        # Custom pipeline for your specific use case</span>
 <span class="sd">        custom = ImagePipeline()</span>
 <span class="sd">        custom.add(GaussianBlur(sigma=3))</span>
-<span class="sd">        custom.add(CLAHE())</span>
+<span class="sd">        custom.add(EnhanceLocalContrast())</span>
 <span class="sd">        custom.add(CannyDetector(sigma=1.5, low_threshold=0.1, high_threshold=0.4))</span>
 <span class="sd">        custom.add(SmallObjectRemover(min_size=100))</span>
 <span class="sd">        custom.add(MaskFill())</span>
@@ -754,7 +754,7 @@
 <span class="sd">    .. code-block:: python</span>
 
 <span class="sd">        from phenotypic.abc_ import PrefabPipeline</span>
-<span class="sd">        from phenotypic.enhance import GaussianBlur, CLAHE</span>
+<span class="sd">        from phenotypic.enhance import GaussianBlur, EnhanceLocalContrast</span>
 <span class="sd">        from phenotypic.detect import OtsuDetector</span>
 <span class="sd">        from phenotypic.refine import SmallObjectRemover</span>
 <span class="sd">        from phenotypic.measure import MeasureShape</span>
@@ -767,7 +767,7 @@
 <span class="sd">                &#39;&#39;&#39;Initialize with tunable parameters.&#39;&#39;&#39;</span>
 <span class="sd">                pipe_cfgs = [</span>
 <span class="sd">                    GaussianBlur(sigma=param2),</span>
-<span class="sd">                    CLAHE(),</span>
+<span class="sd">                    EnhanceLocalContrast(),</span>
 <span class="sd">                    OtsuDetector(),</span>
 <span class="sd">                    SmallObjectRemover(min_size=param1),</span>
 <span class="sd">                ]</span>

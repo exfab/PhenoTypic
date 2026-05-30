@@ -1,0 +1,67 @@
+phenotypic.refine.RefineBySineFit
+=================================
+
+.. currentmodule:: phenotypic.refine
+
+.. autoclass:: RefineBySineFit
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~RefineBySineFit.__init__
+      ~RefineBySineFit.apply
+      ~RefineBySineFit.construct
+      ~RefineBySineFit.copy
+      ~RefineBySineFit.dict
+      ~RefineBySineFit.from_orm
+      ~RefineBySineFit.json
+      ~RefineBySineFit.model_construct
+      ~RefineBySineFit.model_copy
+      ~RefineBySineFit.model_dump
+      ~RefineBySineFit.model_dump_json
+      ~RefineBySineFit.model_json_schema
+      ~RefineBySineFit.model_parametrized_name
+      ~RefineBySineFit.model_post_init
+      ~RefineBySineFit.model_rebuild
+      ~RefineBySineFit.model_validate
+      ~RefineBySineFit.model_validate_json
+      ~RefineBySineFit.model_validate_strings
+      ~RefineBySineFit.parse_file
+      ~RefineBySineFit.parse_obj
+      ~RefineBySineFit.parse_raw
+      ~RefineBySineFit.schema
+      ~RefineBySineFit.schema_json
+      ~RefineBySineFit.update_forward_refs
+      ~RefineBySineFit.validate
+      ~RefineBySineFit.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~RefineBySineFit.model_computed_fields
+      ~RefineBySineFit.model_config
+      ~RefineBySineFit.model_extra
+      ~RefineBySineFit.model_fields
+      ~RefineBySineFit.model_fields_set
+      ~RefineBySineFit.smoothing_sigma
+      ~RefineBySineFit.min_peak_distance
+      ~RefineBySineFit.peak_prominence
+      ~RefineBySineFit.edge_refinement
+      ~RefineBySineFit.correlation_threshold
+      ~RefineBySineFit.selection_mode
+      ~RefineBySineFit.split_merged
+   
+   

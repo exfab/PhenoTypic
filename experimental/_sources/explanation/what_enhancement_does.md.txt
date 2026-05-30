@@ -24,23 +24,23 @@ Reduce random variation while preserving colony boundaries.
 
 - **GaussianBlur** — isotropic smoothing; fast but blurs edges
 - **MedianFilter** — removes salt-and-pepper noise; preserves edges better
-- **BilateralDenoise** — smooths within regions; preserves edges explicitly
+- **LocalEdgeDenoise** — smooths within regions; preserves edges explicitly
 - **StableDenoise (BM3D)** — state-of-the-art block-matching denoising
 
 ### Contrast Enhancement
 
 Increase the separation between colony and background intensities.
 
-- **CLAHE** — local adaptive histogram equalization; handles spatially
+- **EnhanceLocalContrast** — local adaptive histogram equalization; handles spatially
   varying contrast
 - **ContrastStretching** — linear remapping to fill the dynamic range
-- **UnsharpMask** — sharpens edges by subtracting a blurred version
+- **SharpenEdgeGauss** — sharpens edges by subtracting a blurred version
 
 ### Illumination Correction
 
 Remove large-scale brightness gradients.
 
-- **HomomorphicFilter** — frequency-domain separation of illumination
+- **FlattenIllumination** — frequency-domain separation of illumination
   and reflectance
 - **SubtractGaussian** — subtracts a heavily blurred background estimate
 - **SubtractRollingBall** — morphological background estimation
@@ -51,7 +51,7 @@ Enhance specific morphological features.
 
 - **FrangiVesselness** — enhances tubular structures (hyphae, branches)
 - **SobelFilter** — highlights edges
-- **PhaseCongruencyEnhancer** — illumination-invariant edge detection
+- **EnhanceFeatures** — illumination-invariant edge detection
 
 ## Stacking Enhancers
 
@@ -62,7 +62,7 @@ writes it back. Order matters:
 2. **Correct illumination** — normalize brightness before thresholding
 3. **Enhance contrast** — maximize colony/background separation last
 
-A typical preprocessing chain: `GaussianBlur → HomomorphicFilter → CLAHE`.
+A typical preprocessing chain: `GaussianBlur → FlattenIllumination → EnhanceLocalContrast`.
 
 ## The Enhancement ↔ Detection Interface
 

@@ -34,6 +34,7 @@ phenotypic.tools\_.JobMetadataKey
       ~JobMetadataKey.INCLUDE_DATASET_COLUMN
       ~JobMetadataKey.INPUT_PATH
       ~JobMetadataKey.METADATA_CSV
+      ~JobMetadataKey.NO_QC
       ~JobMetadataKey.SLURM_JOB_IDS
       ~JobMetadataKey.START_TIME
    

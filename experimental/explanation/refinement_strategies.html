@@ -614,7 +614,7 @@ artifacts. Refiners clean up these artifacts without re-running detection.</p>
 <tbody>
 <tr class="row-even"><td><p>Border objects</p></td>
 <td><p>Partial colonies at image edges</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">BorderObjectRemover</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">RemoveBorderObjects</span></code></p></td>
 </tr>
 <tr class="row-odd"><td><p>Small fragments</p></td>
 <td><p>Noise, agar texture</p></td>
@@ -626,7 +626,7 @@ artifacts. Refiners clean up these artifacts without re-running detection.</p>
 </tr>
 <tr class="row-odd"><td><p>Jagged edges</p></td>
 <td><p>Threshold quantization</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">MaskOpener</span></code>, <code class="docutils literal notranslate"><span class="pre">MaskCloser</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">MaskOpening</span></code>, <code class="docutils literal notranslate"><span class="pre">MaskClosing</span></code></p></td>
 </tr>
 <tr class="row-even"><td><p>Touching colonies merged</p></td>
 <td><p>Threshold too low</p></td>
@@ -634,11 +634,11 @@ artifacts. Refiners clean up these artifacts without re-running detection.</p>
 </tr>
 <tr class="row-odd"><td><p>One colony fragmented</p></td>
 <td><p>Threshold too high</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">NearestNeighborMerger</span></code>, <code class="docutils literal notranslate"><span class="pre">MaskCloser</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">NearestNeighborMerger</span></code>, <code class="docutils literal notranslate"><span class="pre">MaskClosing</span></code></p></td>
 </tr>
 <tr class="row-even"><td><p>Multiple detections per well</p></td>
 <td><p>Over-segmentation in grid plates</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">ReduceMultipleGridObjects</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">ReduceSectionsByLine</span></code></p></td>
 </tr>
 <tr class="row-odd"><td><p>Oversized objects</p></td>
 <td><p>Merged colonies spanning wells</p></td>
@@ -652,9 +652,9 @@ artifacts. Refiners clean up these artifacts without re-running detection.</p>
 <h2>Refinement Order<a class="headerlink" href="#refinement-order" title="Link to this heading">#</a></h2>
 <p>The recommended refinement sequence:</p>
 <ol class="arabic simple">
-<li><p><strong>BorderObjectRemover</strong> — remove partial edge colonies first</p></li>
+<li><p><strong>RemoveBorderObjects</strong> — remove partial edge colonies first</p></li>
 <li><p><strong>SmallObjectRemover</strong> — remove noise fragments</p></li>
-<li><p><strong>MaskOpener</strong> — smooth boundaries and break thin bridges</p></li>
+<li><p><strong>MaskOpening</strong> — smooth boundaries and break thin bridges</p></li>
 <li><p><strong>MaskFill</strong> — fill interior holes</p></li>
 <li><p><strong>Grid-specific refiners</strong> — align, reduce multiples, remove oversized</p></li>
 </ol>
@@ -666,12 +666,12 @@ masks.</p>
 <p>Morphological operations use a structuring element (footprint) to reshape
 mask boundaries.</p>
 <ul class="simple">
-<li><p><strong>MaskOpener</strong> (erosion → dilation) — removes small protrusions,
+<li><p><strong>MaskOpening</strong> (erosion → dilation) — removes small protrusions,
 breaks thin bridges between touching colonies</p></li>
-<li><p><strong>MaskCloser</strong> (dilation → erosion) — fills small gaps, bridges
+<li><p><strong>MaskClosing</strong> (dilation → erosion) — fills small gaps, bridges
 narrow breaks in fragmented colonies</p></li>
-<li><p><strong>MaskDilator</strong> — expands mask boundaries outward</p></li>
-<li><p><strong>MaskEroder</strong> — shrinks mask boundaries inward</p></li>
+<li><p><strong>MaskDilation</strong> — expands mask boundaries outward</p></li>
+<li><p><strong>MaskErosion</strong> — shrinks mask boundaries inward</p></li>
 <li><p><strong>MaskFill</strong> — fills enclosed holes using binary flood fill</p></li>
 </ul>
 <p>The <code class="docutils literal notranslate"><span class="pre">width</span></code> parameter controls the footprint size. Larger footprints
@@ -685,9 +685,9 @@ for <code class="docutils literal notranslate"><span class="pre">GridImage</span
 <li><p><strong>GridAligner</strong> — rotates the image to align the grid</p></li>
 <li><p><strong>GridOversizedObjectRemover</strong> — removes objects larger than expected
 for a single well</p></li>
-<li><p><strong>ReduceMultipleGridObjects</strong> — when multiple objects are in one grid
+<li><p><strong>ReduceSectionsByLine</strong> — when multiple objects are in one grid
 section, keeps only the most prominent</p></li>
-<li><p><strong>MergeGridObj</strong> — merges all objects within a grid section into one</p></li>
+<li><p><strong>MergeWithinSection</strong> — merges all objects within a grid section into one</p></li>
 </ul>
 </section>
 <section id="tuning-strategy">

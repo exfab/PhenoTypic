@@ -22,30 +22,30 @@
       :nosignatures:
    
       BayesShrinkEnhancer
-      BilateralDenoise
+      LocalEdgeDenoise
       BM3DDenoiser
-      CLAHE
-      CoherenceEnhancingDiffusion
+      EnhanceLocalContrast
+      StructureSmoothing
       ContrastStretching
       FrangiVesselness
       GaussianBlur
       SubtractGaussian
       GrayOpening
       HessianFilter
-      HomomorphicFilter
+      FlattenIllumination
       ImageInverter
-      LaplaceEnhancer
+      SharpenEdgeLaplace
       MedianFilter
       MeijeringRidgeFilter
-      MultiscaleLoGEnhancer
+      EnhanceBlobs
       NonLocalMeansDenoiser
-      OpeningSubtractBg
-      PhaseCongruencyEnhancer
+      SubtractOpening
+      EnhanceFeatures
       RankMedianEnhancer
       SubtractRollingBall
       SatoRidgeFilter
       SobelFilter
-      UnsharpMask
+      SharpenEdgeGauss
       VisuShrinkEnhancer
       WhiteTophatEnhance
       SubtractWhiteTophat

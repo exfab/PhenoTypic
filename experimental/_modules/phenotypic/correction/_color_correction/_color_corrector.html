@@ -569,7 +569,8 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Any</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">overload</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">colour</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
@@ -577,9 +578,11 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">skimage.color</span><span class="w"> </span><span class="kn">import</span> <span class="n">rgb2gray</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">...abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageCorrector</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._capture_metadata</span><span class="w"> </span><span class="kn">import</span> <span class="n">CaptureMetadata</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._color_checker_profile</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColorCheckerProfile</span>
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._grid_image</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridImage</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
 
 
@@ -608,6 +611,13 @@
 <span class="sd">      batches.</span>
 <span class="sd">    - Produce publication-ready images with accurate colour reproduction of</span>
 <span class="sd">      dyed or pigmented colonies.</span>
+
+<span class="sd">    Before correcting, each image&#39;s camera EXIF is compared against the</span>
+<span class="sd">    :attr:`~ColorCheckerProfile.capture_metadata` recorded when the profile was</span>
+<span class="sd">    fitted.  A different camera body or lens raises a :class:`UserWarning`</span>
+<span class="sd">    (the correction may be invalid); differing exposure settings (ISO, exposure</span>
+<span class="sd">    time, F-number, focal length) are logged at info level.  The check is</span>
+<span class="sd">    skipped silently when the profile carries no capture metadata.</span>
 
 <span class="sd">    Attributes:</span>
 <span class="sd">        profile: A fitted :class:`ColorCheckerProfile` supplying the</span>
@@ -672,6 +682,67 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">degree</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Polynomial expansion degree, matching the profile.&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">profile</span><span class="o">.</span><span class="n">degree</span>
+
+    <span class="nd">@overload</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">GridImage</span><span class="p">,</span> <span class="n">inplace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GridImage</span><span class="p">:</span> <span class="o">...</span>
+
+    <span class="nd">@overload</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">,</span> <span class="n">inplace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span> <span class="o">...</span>
+
+<div class="viewcode-block" id="ColorCorrector.apply">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.correction.html#phenotypic.correction.ColorCorrector.apply">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">,</span> <span class="n">inplace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply the correction, first checking capture-metadata compatibility.</span>
+
+<span class="sd">        The compatibility check runs against the *input* image (before the</span>
+<span class="sd">        defensive copy ``apply`` makes for ``inplace=False``), because</span>
+<span class="sd">        :meth:`Image.copy` does not carry imported EXIF forward.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            image: Image to correct.</span>
+<span class="sd">            inplace: When ``False`` (default) operate on a copy.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The corrected image.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_warn_on_metadata_mismatch</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="n">inplace</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_warn_on_metadata_mismatch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Warn when *image* was captured on different optics than the profile.</span>
+
+<span class="sd">        Compares the image&#39;s camera EXIF against the</span>
+<span class="sd">        :attr:`~ColorCheckerProfile.capture_metadata` recorded when the profile</span>
+<span class="sd">        was fitted.  Camera-body or lens differences raise a</span>
+<span class="sd">        :class:`UserWarning` (the correction may be invalid); exposure-setting</span>
+<span class="sd">        differences (ISO, exposure time, F-number, focal length) are only</span>
+<span class="sd">        logged at info level.  Does nothing when the profile carries no capture</span>
+<span class="sd">        metadata (e.g. an old serialised profile or one fitted from</span>
+<span class="sd">        pre-measured patch colours).</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            image: The image about to be corrected.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">expected</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">profile</span><span class="o">.</span><span class="n">capture_metadata</span>
+        <span class="k">if</span> <span class="n">expected</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="n">actual</span> <span class="o">=</span> <span class="n">CaptureMetadata</span><span class="o">.</span><span class="n">from_image</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+        <span class="n">critical</span><span class="p">,</span> <span class="n">informational</span> <span class="o">=</span> <span class="n">expected</span><span class="o">.</span><span class="n">compare</span><span class="p">(</span><span class="n">actual</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">critical</span><span class="p">:</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Image &#39;</span><span class="si">{</span><span class="n">image</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39; was captured on a different &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;camera/lens than the colour-correction profile &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="s1">&#39;; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">critical</span><span class="p">)</span><span class="si">}</span><span class="s2">). The correction may be invalid.&quot;</span><span class="p">,</span>
+                <span class="ne">UserWarning</span><span class="p">,</span>
+                <span class="n">stacklevel</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>  <span class="c1"># _warn_on_metadata_mismatch -&gt; apply -&gt; caller</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="n">informational</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="s2">&quot;Capture-setting differences for &#39;</span><span class="si">%s</span><span class="s2">&#39;: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="n">image</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                <span class="s2">&quot;; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">informational</span><span class="p">),</span>
+            <span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply root-polynomial colour correction to the image.</span>

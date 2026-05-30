@@ -623,11 +623,11 @@
 <span class="sd">          coordinates.</span>
 
 <span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`SineAlignmentRefiner` when colony intensities are</span>
+<span class="sd">        - :class:`RefineBySineFit` when colony intensities are</span>
 <span class="sd">          heterogeneous and rank-based correlation improves grid estimation.</span>
-<span class="sd">        - :class:`GridSectionLargest` for a simpler largest-per-cell strategy</span>
+<span class="sd">        - :class:`KeepSectionLargest` for a simpler largest-per-cell strategy</span>
 <span class="sd">          on GridImage inputs.</span>
-<span class="sd">        - :class:`ReduceMultipleGridObjects` for regression-based multi-</span>
+<span class="sd">        - :class:`ReduceSectionsByLine` for regression-based multi-</span>
 <span class="sd">          detection reduction within grid cells.</span>
 
 <span class="sd">    See Also:</span>
@@ -704,8 +704,8 @@
 
         <span class="c1"># Assign objects per grid cell using selection strategy</span>
         <span class="n">refined_map</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_assign_grid_objects</span><span class="p">(</span>
-            <span class="n">objmap</span><span class="p">,</span> <span class="n">row_edges</span><span class="p">,</span> <span class="n">col_edges</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">selection_mode</span><span class="p">,</span> <span class="n">image</span><span class="o">.</span><span class="n">_OBJMAP_DTYPE</span><span class="p">,</span>
-            <span class="n">intensity</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">detect_mat</span><span class="p">[:],</span> <span class="n">split_merged</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">split_merged</span><span class="p">,</span>
+                <span class="n">objmap</span><span class="p">,</span> <span class="n">row_edges</span><span class="p">,</span> <span class="n">col_edges</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">selection_mode</span><span class="p">,</span> <span class="n">image</span><span class="o">.</span><span class="n">_OBJMAP_DTYPE</span><span class="p">,</span>
+                <span class="n">intensity</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">detect_mat</span><span class="p">[:],</span> <span class="n">split_merged</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">split_merged</span><span class="p">,</span>
         <span class="p">)</span>
 
         <span class="c1"># Update image with refined map</span>

@@ -1,0 +1,60 @@
+phenotypic.refine.ReduceSectionsByLine
+======================================
+
+.. currentmodule:: phenotypic.refine
+
+.. autoclass:: ReduceSectionsByLine
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~ReduceSectionsByLine.__init__
+      ~ReduceSectionsByLine.apply
+      ~ReduceSectionsByLine.construct
+      ~ReduceSectionsByLine.copy
+      ~ReduceSectionsByLine.dict
+      ~ReduceSectionsByLine.from_orm
+      ~ReduceSectionsByLine.json
+      ~ReduceSectionsByLine.model_construct
+      ~ReduceSectionsByLine.model_copy
+      ~ReduceSectionsByLine.model_dump
+      ~ReduceSectionsByLine.model_dump_json
+      ~ReduceSectionsByLine.model_json_schema
+      ~ReduceSectionsByLine.model_parametrized_name
+      ~ReduceSectionsByLine.model_post_init
+      ~ReduceSectionsByLine.model_rebuild
+      ~ReduceSectionsByLine.model_validate
+      ~ReduceSectionsByLine.model_validate_json
+      ~ReduceSectionsByLine.model_validate_strings
+      ~ReduceSectionsByLine.parse_file
+      ~ReduceSectionsByLine.parse_obj
+      ~ReduceSectionsByLine.parse_raw
+      ~ReduceSectionsByLine.schema
+      ~ReduceSectionsByLine.schema_json
+      ~ReduceSectionsByLine.update_forward_refs
+      ~ReduceSectionsByLine.validate
+      ~ReduceSectionsByLine.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ReduceSectionsByLine.model_computed_fields
+      ~ReduceSectionsByLine.model_config
+      ~ReduceSectionsByLine.model_extra
+      ~ReduceSectionsByLine.model_fields
+      ~ReduceSectionsByLine.model_fields_set
+   
+   

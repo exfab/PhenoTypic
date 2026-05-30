@@ -583,9 +583,27 @@ table of every column it emits, with the short name (what appears in
 the parquet, prefixed with the category — e.g. <code class="docutils literal notranslate"><span class="pre">Size_Area</span></code>) and a
 one-line description.</p>
 <p>This page is generated from the <code class="docutils literal notranslate"><span class="pre">MeasurementInfo</span></code> enums in
-<code class="docutils literal notranslate"><span class="pre">phenotypic.tools_.measurement_info</span></code> and stays in sync with the code
+<code class="docutils literal notranslate"><span class="pre">phenotypic.schema</span></code> and stays in sync with the code
 automatically — do not edit <code class="docutils literal notranslate"><span class="pre">measurements_ref/index.rst</span></code> by hand; edit
 the docstrings or the registry in <code class="docutils literal notranslate"><span class="pre">docs/source/_extensions/measurements_ref.py</span></code>.</p>
+<section id="object-identifier">
+<h2>Object identifier<a class="headerlink" href="#object-identifier" title="Link to this heading">#</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">Object_Label</span></code> is the shared per-object key — the first column of every operator’s table below. Each detected colony is assigned a unique integer label so all of its measurements line up across operators when joined on this column.</p>
+<div class="pst-scrollable-table-container"><table class="table" id="id1">
+<caption><span class="caption-text">Category: <strong>Object</strong></span><a class="headerlink" href="#id1" title="Link to this table">#</a></caption>
+<thead>
+<tr class="row-odd"><th class="head"><p>Name</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Label</span></code></p></td>
+<td><p>Integer label uniquely identifying each detected object (colony) within its source image. Acts as the per-image primary key shared by every measurement table, letting all per-colony measurements be joined together and traced back to a single colony on the agar plate.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
 <section id="measuresize">
 <h2>MeasureSize<a class="headerlink" href="#measuresize" title="Link to this heading">#</a></h2>
 <p>Measure colony area and integrated intensity as lightweight size proxies.</p>
@@ -594,8 +612,8 @@ the docstrings or the registry in <code class="docutils literal notranslate"><sp
 a proxy for optical density). This is a convenience class for rapid
 size assessment without the overhead of full shape or intensity
 statistical analysis.</p>
-<div class="pst-scrollable-table-container"><table class="table" id="id1">
-<caption><span class="caption-text">Category: <strong>Size</strong></span><a class="headerlink" href="#id1" title="Link to this table">#</a></caption>
+<div class="pst-scrollable-table-container"><table class="table" id="id2">
+<caption><span class="caption-text">Category: <strong>Size</strong></span><a class="headerlink" href="#id2" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Name</p></th>
 <th class="head"><p>Description</p></th>
@@ -620,8 +638,8 @@ circularity, convex hull properties, width-based measures, Feret
 diameters, eccentricity, and best-fit ellipse parameters. The output
 DataFrame provides a full morphological profile for phenotypic
 classification and growth-pattern analysis.</p>
-<div class="pst-scrollable-table-container"><table class="table" id="id2">
-<caption><span class="caption-text">Category: <strong>Shape</strong></span><a class="headerlink" href="#id2" title="Link to this table">#</a></caption>
+<div class="pst-scrollable-table-container"><table class="table" id="id3">
+<caption><span class="caption-text">Category: <strong>Shape</strong></span><a class="headerlink" href="#id3" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Name</p></th>
 <th class="head"><p>Description</p></th>
@@ -691,8 +709,8 @@ integrated intensity, percentiles (min, Q1, median, Q3, max),
 standard deviation, coefficient of variation, and area-normalized
 density. These statistics reflect colony optical density, biomass
 accumulation, and internal heterogeneity.</p>
-<div class="pst-scrollable-table-container"><table class="table" id="id3">
-<caption><span class="caption-text">Category: <strong>Intensity</strong></span><a class="headerlink" href="#id3" title="Link to this table">#</a></caption>
+<div class="pst-scrollable-table-container"><table class="table" id="id4">
+<caption><span class="caption-text">Category: <strong>Intensity</strong></span><a class="headerlink" href="#id4" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Name</p></th>
 <th class="head"><p>Description</p></th>
@@ -746,8 +764,8 @@ accumulation, and internal heterogeneity.</p>
 intensity-weighted) for each detected colony. These spatial
 measurements form the foundation for region-of-interest extraction,
 grid alignment assessment, and neighbor-distance calculations.</p>
-<div class="pst-scrollable-table-container"><table class="table" id="id4">
-<caption><span class="caption-text">Category: <strong>Bbox</strong></span><a class="headerlink" href="#id4" title="Link to this table">#</a></caption>
+<div class="pst-scrollable-table-container"><table class="table" id="id5">
+<caption><span class="caption-text">Category: <strong>Bbox</strong></span><a class="headerlink" href="#id5" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Name</p></th>
 <th class="head"><p>Description</p></th>
@@ -796,8 +814,8 @@ or more pixel-offset scales, across four directional angles (0, 45,
 90, 135 degrees), plus direction-averaged values. These features
 quantify surface roughness, regularity, and directional patterns
 that distinguish colony morphotypes.</p>
-<div class="pst-scrollable-table-container"><table class="table" id="id5">
-<caption><span class="caption-text">Category: <strong>Texture</strong></span><a class="headerlink" href="#id5" title="Link to this table">#</a></caption>
+<div class="pst-scrollable-table-container"><table class="table" id="id6">
+<caption><span class="caption-text">Category: <strong>Texture</strong></span><a class="headerlink" href="#id6" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Name</p></th>
 <th class="head"><p>Description</p></th>
@@ -931,8 +949,8 @@ median, Q3, max, std dev, coefficient of variation), plus Lab chroma
 estimates.</p>
 <section id="colorxyz">
 <h3>ColorXYZ<a class="headerlink" href="#colorxyz" title="Link to this heading">#</a></h3>
-<div class="pst-scrollable-table-container"><table class="table" id="id6">
-<caption><span class="caption-text">Category: <strong>ColorXYZ</strong></span><a class="headerlink" href="#id6" title="Link to this table">#</a></caption>
+<div class="pst-scrollable-table-container"><table class="table" id="id7">
+<caption><span class="caption-text">Category: <strong>ColorXYZ</strong></span><a class="headerlink" href="#id7" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Name</p></th>
 <th class="head"><p>Description</p></th>
@@ -1017,8 +1035,8 @@ estimates.</p>
 </section>
 <section id="colorxy">
 <h3>Colorxy<a class="headerlink" href="#colorxy" title="Link to this heading">#</a></h3>
-<div class="pst-scrollable-table-container"><table class="table" id="id7">
-<caption><span class="caption-text">Category: <strong>Colorxy</strong></span><a class="headerlink" href="#id7" title="Link to this table">#</a></caption>
+<div class="pst-scrollable-table-container"><table class="table" id="id8">
+<caption><span class="caption-text">Category: <strong>Colorxy</strong></span><a class="headerlink" href="#id8" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Name</p></th>
 <th class="head"><p>Description</p></th>
@@ -1079,8 +1097,8 @@ estimates.</p>
 </section>
 <section id="colorlab">
 <h3>ColorLab<a class="headerlink" href="#colorlab" title="Link to this heading">#</a></h3>
-<div class="pst-scrollable-table-container"><table class="table" id="id8">
-<caption><span class="caption-text">Category: <strong>ColorLab</strong></span><a class="headerlink" href="#id8" title="Link to this table">#</a></caption>
+<div class="pst-scrollable-table-container"><table class="table" id="id9">
+<caption><span class="caption-text">Category: <strong>ColorLab</strong></span><a class="headerlink" href="#id9" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Name</p></th>
 <th class="head"><p>Description</p></th>
@@ -1171,8 +1189,8 @@ estimates.</p>
 </section>
 <section id="colorhsv">
 <h3>ColorHSV<a class="headerlink" href="#colorhsv" title="Link to this heading">#</a></h3>
-<div class="pst-scrollable-table-container"><table class="table" id="id9">
-<caption><span class="caption-text">Category: <strong>ColorHSV</strong></span><a class="headerlink" href="#id9" title="Link to this table">#</a></caption>
+<div class="pst-scrollable-table-container"><table class="table" id="id10">
+<caption><span class="caption-text">Category: <strong>ColorHSV</strong></span><a class="headerlink" href="#id10" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Name</p></th>
 <th class="head"><p>Description</p></th>
@@ -1266,8 +1284,8 @@ per-section distance transform over a local window covering the target
 cell and its immediate neighbors, so round colonies are not
 over-estimated by their bounding boxes. Edge and corner colonies report
 <code class="docutils literal notranslate"><span class="pre">NaN</span></code> for directions beyond the plate boundary.</p>
-<div class="pst-scrollable-table-container"><table class="table" id="id10">
-<caption><span class="caption-text">Category: <strong>GridSpatial</strong></span><a class="headerlink" href="#id10" title="Link to this table">#</a></caption>
+<div class="pst-scrollable-table-container"><table class="table" id="id11">
+<caption><span class="caption-text">Category: <strong>GridSpatial</strong></span><a class="headerlink" href="#id11" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Name</p></th>
 <th class="head"><p>Description</p></th>
@@ -1310,8 +1328,8 @@ and column of the grid, then compute per-colony residual error
 (Euclidean distance between observed and predicted centroid). High
 residual errors flag off-grid growth, misdetections, or plate
 warping.</p>
-<div class="pst-scrollable-table-container"><table class="table" id="id11">
-<caption><span class="caption-text">Category: <strong>GridLinReg</strong></span><a class="headerlink" href="#id11" title="Link to this table">#</a></caption>
+<div class="pst-scrollable-table-container"><table class="table" id="id12">
+<caption><span class="caption-text">Category: <strong>GridLinReg</strong></span><a class="headerlink" href="#id12" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Name</p></th>
 <th class="head"><p>Description</p></th>
@@ -1350,8 +1368,8 @@ warping.</p>
 colony centroids in each grid section. High values indicate multiple
 dispersed objects within a single well – a sign of over-segmentation,
 fragmented growth, or invasive spreading.</p>
-<div class="pst-scrollable-table-container"><table class="table" id="id12">
-<caption><span class="caption-text">Category: <strong>GridSpread</strong></span><a class="headerlink" href="#id12" title="Link to this table">#</a></caption>
+<div class="pst-scrollable-table-container"><table class="table" id="id13">
+<caption><span class="caption-text">Category: <strong>GridSpread</strong></span><a class="headerlink" href="#id13" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Name</p></th>
 <th class="head"><p>Description</p></th>
@@ -1389,8 +1407,8 @@ from threshold crossings — no peak-finding. Zones are emitted as
 concentric circles at the three scalar radii. Variance and raw mean
 per ring are retained in the intermediates for diagnostic access but
 do not drive segmentation.</p>
-<div class="pst-scrollable-table-container"><table class="table" id="id13">
-<caption><span class="caption-text">Category: <strong>SymmetricZones</strong></span><a class="headerlink" href="#id13" title="Link to this table">#</a></caption>
+<div class="pst-scrollable-table-container"><table class="table" id="id14">
+<caption><span class="caption-text">Category: <strong>SymZones</strong></span><a class="headerlink" href="#id14" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Name</p></th>
 <th class="head"><p>Description</p></th>
@@ -1456,6 +1474,7 @@ do not drive segmentation.</p>
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#object-identifier">Object identifier</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#measuresize">MeasureSize</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#measureshape">MeasureShape</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#measureintensity">MeasureIntensity</a></li>

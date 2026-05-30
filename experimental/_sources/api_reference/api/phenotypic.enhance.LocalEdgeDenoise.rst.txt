@@ -1,0 +1,71 @@
+phenotypic.enhance.LocalEdgeDenoise
+===================================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: LocalEdgeDenoise
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~LocalEdgeDenoise.__init__
+      ~LocalEdgeDenoise.apply
+      ~LocalEdgeDenoise.construct
+      ~LocalEdgeDenoise.copy
+      ~LocalEdgeDenoise.dict
+      ~LocalEdgeDenoise.from_orm
+      ~LocalEdgeDenoise.json
+      ~LocalEdgeDenoise.model_construct
+      ~LocalEdgeDenoise.model_copy
+      ~LocalEdgeDenoise.model_dump
+      ~LocalEdgeDenoise.model_dump_json
+      ~LocalEdgeDenoise.model_json_schema
+      ~LocalEdgeDenoise.model_parametrized_name
+      ~LocalEdgeDenoise.model_post_init
+      ~LocalEdgeDenoise.model_rebuild
+      ~LocalEdgeDenoise.model_validate
+      ~LocalEdgeDenoise.model_validate_json
+      ~LocalEdgeDenoise.model_validate_strings
+      ~LocalEdgeDenoise.parse_file
+      ~LocalEdgeDenoise.parse_obj
+      ~LocalEdgeDenoise.parse_raw
+      ~LocalEdgeDenoise.schema
+      ~LocalEdgeDenoise.schema_json
+      ~LocalEdgeDenoise.update_forward_refs
+      ~LocalEdgeDenoise.validate
+      ~LocalEdgeDenoise.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~LocalEdgeDenoise.model_computed_fields
+      ~LocalEdgeDenoise.model_config
+      ~LocalEdgeDenoise.model_extra
+      ~LocalEdgeDenoise.model_fields
+      ~LocalEdgeDenoise.model_fields_set
+      ~LocalEdgeDenoise.sigma_color
+      ~LocalEdgeDenoise.sigma_spatial
+      ~LocalEdgeDenoise.win_size
+      ~LocalEdgeDenoise.mode
+      ~LocalEdgeDenoise.cval
+      ~LocalEdgeDenoise.clip
+      ~LocalEdgeDenoise.use_gat
+      ~LocalEdgeDenoise.gat_gain
+      ~LocalEdgeDenoise.gat_mu
+      ~LocalEdgeDenoise.gat_read_sigma
+      ~LocalEdgeDenoise.gat_scale_factor
+   
+   

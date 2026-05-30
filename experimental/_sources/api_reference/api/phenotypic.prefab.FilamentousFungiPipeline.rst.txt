@@ -33,6 +33,7 @@ phenotypic.prefab.FilamentousFungiPipeline
       ~FilamentousFungiPipeline.get_model
       ~FilamentousFungiPipeline.get_ops
       ~FilamentousFungiPipeline.get_post
+      ~FilamentousFungiPipeline.get_qc
       ~FilamentousFungiPipeline.json
       ~FilamentousFungiPipeline.measure
       ~FilamentousFungiPipeline.model_construct
@@ -56,6 +57,7 @@ phenotypic.prefab.FilamentousFungiPipeline
       ~FilamentousFungiPipeline.set_model
       ~FilamentousFungiPipeline.set_ops
       ~FilamentousFungiPipeline.set_post
+      ~FilamentousFungiPipeline.set_qc
       ~FilamentousFungiPipeline.to_json
       ~FilamentousFungiPipeline.update_forward_refs
       ~FilamentousFungiPipeline.validate
@@ -87,5 +89,6 @@ phenotypic.prefab.FilamentousFungiPipeline
       ~FilamentousFungiPipeline.post
       ~FilamentousFungiPipeline.filters
       ~FilamentousFungiPipeline.model
+      ~FilamentousFungiPipeline.qc
    
    

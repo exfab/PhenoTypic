@@ -584,8 +584,8 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">skimage.measure</span><span class="w"> </span><span class="kn">import</span> <span class="n">approximate_polygon</span><span class="p">,</span> <span class="n">find_contours</span><span class="p">,</span> <span class="n">regionprops</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasureFeatures</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.constants_</span><span class="w"> </span><span class="kn">import</span> <span class="n">OBJECT</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">..tools_.measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">SYMMETRIC_ZONES</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">OBJECT</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">SYMMETRIC_ZONES</span>
 
 <span class="n">_NEIGHBOR_KERNEL</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
 
@@ -738,27 +738,27 @@
 <span class="sd">        pd.DataFrame: Object-level radial symmetry measurements with</span>
 <span class="sd">        columns:</span>
 
-<span class="sd">            - ObjectLabel: unique object identifier.</span>
-<span class="sd">            - SymmetricRadius_CoreRadius: inoculum core radius (pixels).</span>
-<span class="sd">            - SymmetricRadius_SymmetricRadius: first radius past the core</span>
+<span class="sd">            - Object_Label: unique object identifier.</span>
+<span class="sd">            - SymZones_CoreRadius: inoculum core radius (pixels).</span>
+<span class="sd">            - SymZones_SymmetricRadius: first radius past the core</span>
 <span class="sd">              where R̄ exceeds the symmetry threshold (pixels).</span>
-<span class="sd">            - SymmetricRadius_MeanExpansion: mean boundary-pixel distance</span>
+<span class="sd">            - SymZones_MeanExpansion: mean boundary-pixel distance</span>
 <span class="sd">              beyond the core (pixels, clamped at 0).</span>
-<span class="sd">            - SymmetricRadius_MaxExpansion: maximum mask-pixel distance</span>
+<span class="sd">            - SymZones_MaxExpansion: maximum mask-pixel distance</span>
 <span class="sd">              beyond the core (pixels, clamped at 0).</span>
-<span class="sd">            - SymmetricRadius_CoreEndRadius: mean per-angle core boundary</span>
+<span class="sd">            - SymZones_CoreEndRadius: mean per-angle core boundary</span>
 <span class="sd">              radius from the bright-fraction outward walk (pixels).</span>
-<span class="sd">            - SymmetricRadius_DenseEndRadius: mean per-angle outer radius</span>
+<span class="sd">            - SymZones_DenseEndRadius: mean per-angle outer radius</span>
 <span class="sd">              of the dense branching zone (pixels).</span>
-<span class="sd">            - SymmetricRadius_SparseEndRadius: mean per-angle outer radius</span>
+<span class="sd">            - SymZones_SparseEndRadius: mean per-angle outer radius</span>
 <span class="sd">              of the sparse branching zone, capped at the symmetric</span>
 <span class="sd">              envelope (pixels).</span>
-<span class="sd">            - SymmetricRadius_CoreArea: pixel^2 area of the inoculum core</span>
+<span class="sd">            - SymZones_CoreArea: pixel^2 area of the inoculum core</span>
 <span class="sd">              zone integrated across the 360-sector polar polygon.</span>
-<span class="sd">            - SymmetricRadius_DenseArea: pixel^2 area of the dense</span>
+<span class="sd">            - SymZones_DenseArea: pixel^2 area of the dense</span>
 <span class="sd">              branching zone (annular region between core and dense</span>
 <span class="sd">              boundaries).</span>
-<span class="sd">            - SymmetricRadius_SparseArea: pixel^2 area of the sparse</span>
+<span class="sd">            - SymZones_SparseArea: pixel^2 area of the sparse</span>
 <span class="sd">              branching zone (annular region between dense and outer</span>
 <span class="sd">              boundaries).</span>
 

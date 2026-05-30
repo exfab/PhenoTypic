@@ -561,12 +561,11 @@
                   
   <h1>Source code for phenotypic.abc_._threshold_detector</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">overload</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">ABC</span><span class="p">,</span> <span class="n">abstractmethod</span>
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._grid_image</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridImage</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">._object_detector</span><span class="w"> </span><span class="kn">import</span> <span class="n">ObjectDetector</span>
 
@@ -696,7 +695,7 @@
 <span class="sd">      morphological closing, or watershed post-processing in ObjectRefiner.</span>
 <span class="sd">    - **False positives at edges:** Use ``ignore_borders=True`` parameter or ``clear_border()``</span>
 <span class="sd">      in ObjectRefiner to remove edge-touching objects.</span>
-<span class="sd">    - **Uneven illumination (vignetting, shadows):** Apply enhancement (CLAHE, illumination</span>
+<span class="sd">    - **Uneven illumination (vignetting, shadows):** Apply enhancement (EnhanceLocalContrast, illumination</span>
 <span class="sd">      correction) before detection, or switch to local adaptive thresholding.</span>
 <span class="sd">    - **Threshold too high/low:** Visualize objmask on sample images to diagnose. Adjust</span>
 <span class="sd">      parameters and re-test on representative plates before batch processing.</span>
@@ -852,14 +851,6 @@
 <span class="sd">        &gt;&gt;&gt; # Use best detector for batch processing</span>
 <span class="sd">        &gt;&gt;&gt; print(f&quot;Selected: {type(best_detector).__name__}&quot;)</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="nd">@overload</span>
-    <span class="nd">@abstractmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span> <span class="o">...</span>
-
-    <span class="nd">@overload</span>
-    <span class="nd">@abstractmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">GridImage</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GridImage</span><span class="p">:</span> <span class="o">...</span>
 
     <span class="nd">@abstractmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>

@@ -589,8 +589,8 @@
 <span class="sd">    - **ImageEnhancer (this class):** Modify only ``image.detect_mat`` for preprocessing.</span>
 <span class="sd">      Use for: noise reduction, contrast enhancement, illumination correction.</span>
 <span class="sd">      Examples: [GaussianBlur](src/phenotypic/enhance/_gaussian_blur.py),</span>
-<span class="sd">      [CLAHE](src/phenotypic/enhance/_clahe.py),</span>
-<span class="sd">      [BilateralDenoise](src/phenotypic/enhance/_bilateral_denoise.py).</span>
+<span class="sd">      [EnhanceLocalContrast](src/phenotypic/enhance/_enhance_local_contrast.py),</span>
+<span class="sd">      [LocalEdgeDenoise](src/phenotypic/enhance/_local_edge_denoise.py).</span>
 <span class="sd">    - **ImageCorrector:** Transform entire image (rotation, cropping, perspective).</span>
 <span class="sd">      Use for: geometric corrections, global color transformations.</span>
 <span class="sd">    - **ObjectDetector:** Analyze image, produce only ``objmask`` and ``objmap``.</span>
@@ -639,9 +639,9 @@
 <span class="sd">    The following are canonical examples of ImageEnhancer implementations:</span>
 
 <span class="sd">    - [GaussianBlur](src/phenotypic/enhance/_gaussian_blur.py): Noise reduction via Gaussian filtering.</span>
-<span class="sd">    - [CLAHE](src/phenotypic/enhance/_clahe.py): Contrast-limited adaptive histogram equalization for local contrast.</span>
+<span class="sd">    - [EnhanceLocalContrast](src/phenotypic/enhance/_enhance_local_contrast.py): Contrast-limited adaptive histogram equalization for local contrast.</span>
 <span class="sd">    - ``GrayOpening``: Morphological opening using ``FootprintMixin``.</span>
-<span class="sd">    - [BilateralDenoise](src/phenotypic/enhance/_bilateral_denoise.py): Edge-preserving denoising.</span>
+<span class="sd">    - [LocalEdgeDenoise](src/phenotypic/enhance/_local_edge_denoise.py): Edge-preserving denoising.</span>
 
 <span class="sd">    **Integrity Validation: Protection of Core Data**</span>
 
@@ -766,7 +766,7 @@
 <span class="sd">        result = SubtractRollingBall(width=50).apply(image)</span>
 
 <span class="sd">        # Step 2: Boost local contrast for faint colonies</span>
-<span class="sd">        result = CLAHE(kernel_size=50, clip_limit=0.02).apply(result)</span>
+<span class="sd">        result = EnhanceLocalContrast(kernel_size=50, clip_limit=0.02).apply(result)</span>
 
 <span class="sd">        # Step 3: Smooth remaining noise</span>
 <span class="sd">        result = GaussianBlur(sigma=2).apply(result)</span>
@@ -790,12 +790,12 @@
 <span class="sd">    .. code-block:: python</span>
 
 <span class="sd">        from phenotypic import Image, ImagePipeline</span>
-<span class="sd">        from phenotypic.enhance import SubtractRollingBall, CLAHE, GaussianBlur</span>
+<span class="sd">        from phenotypic.enhance import SubtractRollingBall, EnhanceLocalContrast, GaussianBlur</span>
 <span class="sd">        from phenotypic.detect import OtsuDetector</span>
 
 <span class="sd">        pipeline = ImagePipeline()</span>
 <span class="sd">        pipeline.add(SubtractRollingBall(width=50))</span>
-<span class="sd">        pipeline.add(CLAHE(kernel_size=50, clip_limit=0.02))</span>
+<span class="sd">        pipeline.add(EnhanceLocalContrast(kernel_size=50, clip_limit=0.02))</span>
 <span class="sd">        pipeline.add(GaussianBlur(sigma=2))</span>
 <span class="sd">        pipeline.add(OtsuDetector())</span>
 
@@ -882,14 +882,14 @@
 <span class="sd">        Chaining multiple enhancements in pipeline:</span>
 
 <span class="sd">        &gt;&gt;&gt; from phenotypic import ImagePipeline</span>
-<span class="sd">        &gt;&gt;&gt; from phenotypic.enhance import GaussianBlur, CLAHE</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.enhance import GaussianBlur, EnhanceLocalContrast</span>
 <span class="sd">        &gt;&gt;&gt; from phenotypic.detect import OtsuDetector</span>
 <span class="sd">        &gt;&gt;&gt; from phenotypic.data import load_synth_yeast_plate</span>
 <span class="sd">        &gt;&gt;&gt;</span>
 <span class="sd">        &gt;&gt;&gt; image = load_synth_yeast_plate()</span>
 <span class="sd">        &gt;&gt;&gt; pipeline = ImagePipeline(pipe_cfgs=[</span>
 <span class="sd">        ...     GaussianBlur(sigma=1.5),</span>
-<span class="sd">        ...     CLAHE(clip_limit=2.0),</span>
+<span class="sd">        ...     EnhanceLocalContrast(clip_limit=2.0),</span>
 <span class="sd">        ...     OtsuDetector()</span>
 <span class="sd">        ... ])</span>
 <span class="sd">        &gt;&gt;&gt; result = pipeline.apply(image)</span>
@@ -900,10 +900,10 @@
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="nd">@overload</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">,</span> <span class="n">inplace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span> <span class="o">...</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">GridImage</span><span class="p">,</span> <span class="n">inplace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GridImage</span><span class="p">:</span> <span class="o">...</span>
 
     <span class="nd">@overload</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">GridImage</span><span class="p">,</span> <span class="n">inplace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GridImage</span><span class="p">:</span> <span class="o">...</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">,</span> <span class="n">inplace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span> <span class="o">...</span>
 
 <div class="viewcode-block" id="ImageEnhancer.apply">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.ImageEnhancer.apply">[docs]</a>
@@ -911,14 +911,6 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">,</span> <span class="n">inplace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
         <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">image</span><span class="o">=</span><span class="n">image</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="n">inplace</span><span class="p">)</span></div>
 
-
-    <span class="nd">@overload</span>
-    <span class="nd">@abstractmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span> <span class="o">...</span>
-
-    <span class="nd">@overload</span>
-    <span class="nd">@abstractmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">GridImage</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GridImage</span><span class="p">:</span> <span class="o">...</span>
 
 <div class="viewcode-block" id="ImageEnhancer._operate">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.ImageEnhancer._operate">[docs]</a>

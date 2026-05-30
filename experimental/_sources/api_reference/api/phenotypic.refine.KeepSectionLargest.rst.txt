@@ -1,0 +1,60 @@
+phenotypic.refine.KeepSectionLargest
+====================================
+
+.. currentmodule:: phenotypic.refine
+
+.. autoclass:: KeepSectionLargest
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~KeepSectionLargest.__init__
+      ~KeepSectionLargest.apply
+      ~KeepSectionLargest.construct
+      ~KeepSectionLargest.copy
+      ~KeepSectionLargest.dict
+      ~KeepSectionLargest.from_orm
+      ~KeepSectionLargest.json
+      ~KeepSectionLargest.model_construct
+      ~KeepSectionLargest.model_copy
+      ~KeepSectionLargest.model_dump
+      ~KeepSectionLargest.model_dump_json
+      ~KeepSectionLargest.model_json_schema
+      ~KeepSectionLargest.model_parametrized_name
+      ~KeepSectionLargest.model_post_init
+      ~KeepSectionLargest.model_rebuild
+      ~KeepSectionLargest.model_validate
+      ~KeepSectionLargest.model_validate_json
+      ~KeepSectionLargest.model_validate_strings
+      ~KeepSectionLargest.parse_file
+      ~KeepSectionLargest.parse_obj
+      ~KeepSectionLargest.parse_raw
+      ~KeepSectionLargest.schema
+      ~KeepSectionLargest.schema_json
+      ~KeepSectionLargest.update_forward_refs
+      ~KeepSectionLargest.validate
+      ~KeepSectionLargest.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~KeepSectionLargest.model_computed_fields
+      ~KeepSectionLargest.model_config
+      ~KeepSectionLargest.model_extra
+      ~KeepSectionLargest.model_fields
+      ~KeepSectionLargest.model_fields_set
+   
+   

@@ -603,9 +603,9 @@ allowing the copy to operate without output clipping.</p>
 <p class="admonition-title">Example</p>
 <p>Creating a clip-disabled copy of an enhancer:</p>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ClipControlMixin</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.enhance</span><span class="w"> </span><span class="kn">import</span> <span class="n">BilateralDenoise</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.enhance</span><span class="w"> </span><span class="kn">import</span> <span class="n">LocalEdgeDenoise</span>
 <span class="gp">&gt;&gt;&gt;</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">enh</span> <span class="o">=</span> <span class="n">BilateralDenoise</span><span class="p">(</span><span class="n">sigma_spatial</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">clip</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">enh</span> <span class="o">=</span> <span class="n">LocalEdgeDenoise</span><span class="p">(</span><span class="n">sigma_spatial</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">clip</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">copied</span> <span class="o">=</span> <span class="n">ClipControlMixin</span><span class="o">.</span><span class="n">_disable_clipping</span><span class="p">(</span><span class="n">enh</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="c1"># Original unchanged, copy has clip=False</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">enh</span><span class="o">.</span><span class="n">clip</span><span class="p">,</span> <span class="n">copied</span><span class="o">.</span><span class="n">clip</span>
@@ -614,14 +614,14 @@ allowing the copy to operate without output clipping.</p>
 </div>
 <p>Creating a clip-disabled copy of a pipeline:</p>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImagePipeline</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.enhance</span><span class="w"> </span><span class="kn">import</span> <span class="n">GaussianBlur</span><span class="p">,</span> <span class="n">BilateralDenoise</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.enhance</span><span class="w"> </span><span class="kn">import</span> <span class="n">GaussianBlur</span><span class="p">,</span> <span class="n">LocalEdgeDenoise</span>
 <span class="gp">&gt;&gt;&gt;</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">pipeline</span> <span class="o">=</span> <span class="n">ImagePipeline</span><span class="p">(</span><span class="n">pipe_cfgs</span><span class="o">=</span><span class="p">[</span>
 <span class="gp">... </span>    <span class="n">GaussianBlur</span><span class="p">(</span><span class="n">sigma</span><span class="o">=</span><span class="mf">1.0</span><span class="p">),</span>
-<span class="gp">... </span>    <span class="n">BilateralDenoise</span><span class="p">(</span><span class="n">sigma_spatial</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">clip</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="n">LocalEdgeDenoise</span><span class="p">(</span><span class="n">sigma_spatial</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">clip</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="gp">... </span><span class="p">])</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">copied_pipe</span> <span class="o">=</span> <span class="n">ClipControlMixin</span><span class="o">.</span><span class="n">_disable_clipping</span><span class="p">(</span><span class="n">pipeline</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Only BilateralDenoise has clip attribute, so only it is affected</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Only LocalEdgeDenoise has clip attribute, so only it is affected</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="c1"># _ops is a dict with operation names as keys</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="nb">list</span><span class="p">(</span><span class="n">copied_pipe</span><span class="o">.</span><span class="n">_ops</span><span class="o">.</span><span class="n">values</span><span class="p">())[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">clip</span>
 <span class="go">False</span>
@@ -724,7 +724,7 @@ visualization controls will be added to the widget.</p></li>
 <p>Shared plumbing for operations parameterised by user-picked <code class="docutils literal notranslate"><span class="pre">(y,</span> <span class="pre">x)</span></code> points.</p>
 <p>Operations that take a list of point coordinates as a primary parameter
 (currently <a class="reference internal" href="phenotypic.detect.html#phenotypic.detect.ManualPointDetector" title="phenotypic.detect.ManualPointDetector"><code class="xref py py-class docutils literal notranslate"><span class="pre">ManualPointDetector</span></code></a> and
-<a class="reference internal" href="phenotypic.refine.html#phenotypic.refine.ManualSelector" title="phenotypic.refine.ManualSelector"><code class="xref py py-class docutils literal notranslate"><span class="pre">ManualSelector</span></code></a>) inherit from this mixin to
+<a class="reference internal" href="phenotypic.refine.html#phenotypic.refine.ManualRefine" title="phenotypic.refine.ManualRefine"><code class="xref py py-class docutils literal notranslate"><span class="pre">ManualRefine</span></code></a>) inherit from this mixin to
 pick up two things at once:</p>
 <ul class="simple">
 <li><p><strong>A blocking napari picker.</strong> <a class="reference internal" href="#phenotypic.tools_.mixin.PointPickerMixin.napari" title="phenotypic.tools_.mixin.PointPickerMixin.napari"><code class="xref py py-meth docutils literal notranslate"><span class="pre">napari()</span></code></a> opens a desktop

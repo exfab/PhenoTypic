@@ -7,7 +7,7 @@ to *generate* an `objmap` from scratch at user-picked centres.
 
 The builder ships an in-page point-picker for two operations:
 
-- **`ManualSelector`** (`Refiner`) — keep only the labels in an existing
+- **`ManualRefine`** (`Refiner`) — keep only the labels in an existing
   ``objmap`` whose pixels overlap user-picked footprints. Useful for dropping
   false positives without re-running the detector.
 - **`ManualPointDetector`** (`Detector`) — produce an ``objmap`` from
@@ -17,7 +17,7 @@ The builder ships an in-page point-picker for two operations:
 Both operations carry a purple **PICK** badge in the operations palette so
 you can spot them at a glance.
 
-![Operations palette: ManualSelector and ManualPointDetector show the PICK badge.](../../_static/gui_images/pick_points/01_palette_with_badge.png)
+![Operations palette: ManualRefine and ManualPointDetector show the PICK badge.](../../_static/gui_images/pick_points/01_palette_with_badge.png)
 
 ## Set up a curation pipeline
 
@@ -25,10 +25,10 @@ This walkthrough curates an Otsu detection. The flow is:
 
 1. Drag `GaussianBlur` from `Corrector` onto the canvas.
 2. Drag `OtsuDetector` from `Detector`.
-3. Drag `ManualSelector` from `Refiner` (it carries the PICK badge).
+3. Drag `ManualRefine` from `Refiner` (it carries the PICK badge).
 4. Connect them in order: blur → detect → select.
 
-![Pipeline with Otsu followed by ManualSelector.](../../_static/gui_images/pick_points/02_pipeline_with_selector.png)
+![Pipeline with Otsu followed by ManualRefine.](../../_static/gui_images/pick_points/02_pipeline_with_selector.png)
 
 Run preview once so the predecessor (`OtsuDetector`) caches its output —
 the picker modal can then offer that intermediate as a clearer view for
@@ -36,7 +36,7 @@ disambiguation.
 
 ## Open the picker
 
-Click the `ManualSelector` node to open its param form in the inspector.
+Click the `ManualRefine` node to open its param form in the inspector.
 The `centers` parameter has a **Pick on image…** button instead of a text
 input.
 
@@ -80,7 +80,7 @@ count label now reflects your picks.
 
 ## Re-run preview
 
-Run preview again. The `ManualSelector` step keeps only the labels whose
+Run preview again. The `ManualRefine` step keeps only the labels whose
 pixels overlap your picked footprints; everything else drops out of the
 ``objmap``.
 
@@ -88,7 +88,7 @@ pixels overlap your picked footprints; everything else drops out of the
 
 ## When to use which
 
-- **`ManualSelector`** is the right choice when an automated detector finds
+- **`ManualRefine`** is the right choice when an automated detector finds
   *too many* objects and you want to retain a hand-picked subset. The
   surviving labels keep their original IDs, so downstream measurements
   reference the same identifiers.

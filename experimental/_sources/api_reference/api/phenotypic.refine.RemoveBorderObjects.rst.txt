@@ -1,0 +1,61 @@
+phenotypic.refine.RemoveBorderObjects
+=====================================
+
+.. currentmodule:: phenotypic.refine
+
+.. autoclass:: RemoveBorderObjects
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~RemoveBorderObjects.__init__
+      ~RemoveBorderObjects.apply
+      ~RemoveBorderObjects.construct
+      ~RemoveBorderObjects.copy
+      ~RemoveBorderObjects.dict
+      ~RemoveBorderObjects.from_orm
+      ~RemoveBorderObjects.json
+      ~RemoveBorderObjects.model_construct
+      ~RemoveBorderObjects.model_copy
+      ~RemoveBorderObjects.model_dump
+      ~RemoveBorderObjects.model_dump_json
+      ~RemoveBorderObjects.model_json_schema
+      ~RemoveBorderObjects.model_parametrized_name
+      ~RemoveBorderObjects.model_post_init
+      ~RemoveBorderObjects.model_rebuild
+      ~RemoveBorderObjects.model_validate
+      ~RemoveBorderObjects.model_validate_json
+      ~RemoveBorderObjects.model_validate_strings
+      ~RemoveBorderObjects.parse_file
+      ~RemoveBorderObjects.parse_obj
+      ~RemoveBorderObjects.parse_raw
+      ~RemoveBorderObjects.schema
+      ~RemoveBorderObjects.schema_json
+      ~RemoveBorderObjects.update_forward_refs
+      ~RemoveBorderObjects.validate
+      ~RemoveBorderObjects.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~RemoveBorderObjects.model_computed_fields
+      ~RemoveBorderObjects.model_config
+      ~RemoveBorderObjects.model_extra
+      ~RemoveBorderObjects.model_fields
+      ~RemoveBorderObjects.model_fields_set
+      ~RemoveBorderObjects.border_size
+   
+   

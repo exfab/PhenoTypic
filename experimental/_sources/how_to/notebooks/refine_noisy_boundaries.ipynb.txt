@@ -17,10 +17,10 @@
    "outputs": [],
    "source": [
     "from phenotypic.data import load_yeast_plate\n",
-    "from phenotypic.enhance import GaussianBlur, CLAHE\n",
+    "from phenotypic.enhance import GaussianBlur, EnhanceLocalContrast\n",
     "from phenotypic.detect import OtsuDetector\n",
     "from phenotypic.refine import (\n",
-    "    MaskOpener, MaskFill, SmallObjectRemover, BorderObjectRemover,\n",
+    "    MaskOpening, MaskFill, SmallObjectRemover, RemoveBorderObjects,\n",
     ")"
    ]
   },
@@ -32,7 +32,7 @@
    "source": [
     "plate = load_yeast_plate()\n",
     "plate = GaussianBlur(sigma=2.0).apply(plate)\n",
-    "plate = CLAHE(clip_limit=0.01).apply(plate)\n",
+    "plate = EnhanceLocalContrast(clip_limit=0.01).apply(plate)\n",
     "plate = OtsuDetector().apply(plate)\n",
     "print(f\"Before refinement: {plate.num_objects} objects\")\n",
     "plate.dash(overlay=True)"
@@ -53,7 +53,7 @@
    "metadata": {},
    "outputs": [],
    "source": [
-    "plate = BorderObjectRemover(border_size=1).apply(plate)\n",
+    "plate = RemoveBorderObjects(border_size=1).apply(plate)\n",
     "print(f\"After border removal: {plate.num_objects} objects\")"
    ]
   },
@@ -93,7 +93,7 @@
    "metadata": {},
    "outputs": [],
    "source": [
-    "plate = MaskOpener(width=5).apply(plate)\n",
+    "plate = MaskOpening(width=5).apply(plate)\n",
     "print(f\"After opening: {plate.num_objects} objects\")"
    ]
   },

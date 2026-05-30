@@ -22,7 +22,6 @@ phenotypic.correction.ColorCheckerProfile
       ~ColorCheckerProfile.dashboard
       ~ColorCheckerProfile.dict
       ~ColorCheckerProfile.fit
-      ~ColorCheckerProfile.from_dict
       ~ColorCheckerProfile.from_orm
       ~ColorCheckerProfile.json
       ~ColorCheckerProfile.model_construct
@@ -41,7 +40,6 @@ phenotypic.correction.ColorCheckerProfile
       ~ColorCheckerProfile.parse_raw
       ~ColorCheckerProfile.schema
       ~ColorCheckerProfile.schema_json
-      ~ColorCheckerProfile.to_dict
       ~ColorCheckerProfile.update_forward_refs
       ~ColorCheckerProfile.validate
    
@@ -63,7 +61,8 @@ phenotypic.correction.ColorCheckerProfile
       ~ColorCheckerProfile.target_illuminant
       ~ColorCheckerProfile.median_filter_size
       ~ColorCheckerProfile.stddev_mag_threshold
-      ~ColorCheckerProfile.border_distance_threshold
+      ~ColorCheckerProfile.pad_checker
+      ~ColorCheckerProfile.min_swatch_area_frac
       ~ColorCheckerProfile.core_fraction
       ~ColorCheckerProfile.ridge_lambda
       ~ColorCheckerProfile.outlier_sigma
@@ -71,5 +70,6 @@ phenotypic.correction.ColorCheckerProfile
       ~ColorCheckerProfile.correction_matrix
       ~ColorCheckerProfile.diagnostics
       ~ColorCheckerProfile.is_fitted
+      ~ColorCheckerProfile.capture_metadata
    
    

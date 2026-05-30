@@ -565,7 +565,7 @@
 <span class="sd">Flags ``(group, time)`` bins whose biological replicates disagree on a</span>
 <span class="sd">phenotype. Computes the standard error of the mean (``SE = stddev /</span>
 <span class="sd">sqrt(n)``) across replicates per timepoint, normalizes by the mean to</span>
-<span class="sd">produce a relative-SE severity, and broadcasts the per-bin scalars back</span>
+<span class="sd">produce a relative-SE metric, and broadcasts the per-bin scalars back</span>
 <span class="sd">to every replicate row in the bin so downstream curation can pick up the</span>
 <span class="sd">flag from any row.</span>
 <span class="sd">&quot;&quot;&quot;</span>
@@ -581,7 +581,7 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.analysis.abc_._quality_check</span><span class="w"> </span><span class="kn">import</span> <span class="n">QualityCheck</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColumnRef</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">QUALITY_SE</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">QUALITY_SE</span>
 
 
 <div class="viewcode-block" id="ReplicateAgreement">
@@ -592,15 +592,19 @@
 <span class="sd">    For each combination of ``self.groupby`` columns, this check splits</span>
 <span class="sd">    the group by ``self.time_label`` and computes the standard error of</span>
 <span class="sd">    the measurement across replicates at every timepoint. The relative</span>
-<span class="sd">    standard error ``severity = |SE| / |mean|`` is the per-bin severity;</span>
-<span class="sd">    bins whose severity exceeds the warn/fail thresholds are surfaced</span>
+<span class="sd">    standard error ``metric = |SE| / |mean|`` is the per-bin metric;</span>
+<span class="sd">    bins whose metric exceeds the warn/fail thresholds are surfaced</span>
 <span class="sd">    for curation. The per-bin scalars are broadcast back to every</span>
 <span class="sd">    replicate row in the bin so the GUI can pick up the flag from any</span>
 <span class="sd">    row.</span>
 
-<span class="sd">    Three guard paths short-circuit to ``severity = NaN`` so</span>
+<span class="sd">    ``_HIGHER_IS_BAD`` is ``True``: a larger relative SE means worse</span>
+<span class="sd">    replicate agreement, so the base class flags rows whose metric meets</span>
+<span class="sd">    or exceeds ``fail_threshold``.</span>
+
+<span class="sd">    Three guard paths short-circuit to ``metric = NaN`` so</span>
 <span class="sd">    under-powered or degenerate bins never gate curation (the base class</span>
-<span class="sd">    treats ``NaN`` severity as ``Status=&quot;pass&quot;``):</span>
+<span class="sd">    treats ``NaN`` metric as ``Status=&quot;pass&quot;``):</span>
 
 <span class="sd">    1. **``n &lt; min_replicates``** — too few replicates for a meaningful</span>
 <span class="sd">       standard error. Defaults to ``min_replicates=2``; raising it lets</span>
@@ -630,14 +634,18 @@
 <span class="sd">            group. Defaults to ``&quot;Metadata_Time&quot;``.</span>
 <span class="sd">        min_replicates: Minimum replicate count required before SE is</span>
 <span class="sd">            considered meaningful. Bins below this threshold receive</span>
-<span class="sd">            ``severity = NaN``.</span>
+<span class="sd">            ``metric = NaN``.</span>
 <span class="sd">        eps: Floor on ``|mean|`` below which the relative-SE ratio is</span>
 <span class="sd">            considered undefined. Bins below this floor receive</span>
-<span class="sd">            ``severity = NaN``.</span>
+<span class="sd">            ``metric = NaN``.</span>
+<span class="sd">        warn_threshold: Relative SE at which ``Status`` becomes</span>
+<span class="sd">            ``&quot;warn&quot;``. Defaults to ``0.10``.</span>
+<span class="sd">        fail_threshold: Relative SE at which ``Status`` becomes</span>
+<span class="sd">            ``&quot;fail&quot;`` and ``Flag=True``. Defaults to ``0.20``.</span>
 
 <span class="sd">    Examples:</span>
 <span class="sd">        Basic — three-replicate, four-timepoint synthetic frame; the</span>
-<span class="sd">        check adds ``QC_SE_Severity`` plus the per-bin summary columns:</span>
+<span class="sd">        check adds ``QC_SE_Metric`` plus the per-bin summary columns:</span>
 
 <span class="sd">        &gt;&gt;&gt; import pandas as pd</span>
 <span class="sd">        &gt;&gt;&gt; from phenotypic.analysis._replicate_agreement import (</span>
@@ -661,7 +669,7 @@
 <span class="sd">        ...     time_label=&quot;Metadata_Time&quot;,</span>
 <span class="sd">        ... )</span>
 <span class="sd">        &gt;&gt;&gt; result = chk.analyze(data)  # doctest: +SKIP</span>
-<span class="sd">        &gt;&gt;&gt; &quot;QC_SE_Severity&quot; in result.columns  # doctest: +SKIP</span>
+<span class="sd">        &gt;&gt;&gt; &quot;QC_SE_Metric&quot; in result.columns  # doctest: +SKIP</span>
 <span class="sd">        True</span>
 
 <span class="sd">        Advanced — only one replicate per ``(group, time)`` bin with</span>
@@ -678,15 +686,17 @@
 <span class="sd">        ...     min_replicates=2,</span>
 <span class="sd">        ... )</span>
 <span class="sd">        &gt;&gt;&gt; result = chk.analyze(singleton)  # doctest: +SKIP</span>
-<span class="sd">        &gt;&gt;&gt; bool(result[&quot;QC_SE_Severity&quot;].isna().all())  # doctest: +SKIP</span>
+<span class="sd">        &gt;&gt;&gt; bool(result[&quot;QC_SE_Metric&quot;].isna().all())  # doctest: +SKIP</span>
 <span class="sd">        True</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">name</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;SE&quot;</span>
-    <span class="n">severity_warn</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.10</span>
-    <span class="n">severity_fail</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.20</span>
+    <span class="n">_HIGHER_IS_BAD</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
     <span class="n">_exposes_agg_func</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
     <span class="n">_measurement_infoclass</span> <span class="o">=</span> <span class="n">QUALITY_SE</span>
+
+    <span class="n">warn_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.10</span>
+    <span class="n">fail_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.20</span>
 
     <span class="n">time_label</span><span class="p">:</span> <span class="n">ColumnRef</span> <span class="o">=</span> <span class="s2">&quot;Metadata_Time&quot;</span>
     <span class="n">min_replicates</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span>
@@ -702,7 +712,7 @@
 <span class="sd">        Returns:</span>
 <span class="sd">            The group frame (a copy) with five new columns appended:</span>
 <span class="sd">            ``QC_SE_Value``, ``QC_SE_Mean``, ``QC_SE_CV``,</span>
-<span class="sd">            ``QC_SE_NumReplicates``, ``QC_SE_Severity``. The severity</span>
+<span class="sd">            ``QC_SE_NumReplicates``, ``QC_SE_Metric``. The metric</span>
 <span class="sd">            column is ``NaN`` for bins that hit any of the three guard</span>
 <span class="sd">            paths documented on the class.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -712,7 +722,7 @@
         <span class="n">mean_col</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">QUALITY_SE</span><span class="o">.</span><span class="n">MEAN</span><span class="si">}</span><span class="s2">&quot;</span>
         <span class="n">cv_col</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">QUALITY_SE</span><span class="o">.</span><span class="n">CV</span><span class="si">}</span><span class="s2">&quot;</span>
         <span class="n">n_col</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">QUALITY_SE</span><span class="o">.</span><span class="n">NUM_REPLICATES</span><span class="si">}</span><span class="s2">&quot;</span>
-        <span class="n">severity_col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">severity_col</span><span class="p">()</span>
+        <span class="n">metric_col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">metric_col</span><span class="p">()</span>
 
         <span class="c1"># Initialize emitted columns so partial bins still produce a</span>
         <span class="c1"># consistent column set on return.</span>
@@ -720,7 +730,7 @@
         <span class="n">out</span><span class="p">[</span><span class="n">mean_col</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
         <span class="n">out</span><span class="p">[</span><span class="n">cv_col</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
         <span class="n">out</span><span class="p">[</span><span class="n">n_col</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="n">out</span><span class="p">[</span><span class="n">severity_col</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+        <span class="n">out</span><span class="p">[</span><span class="n">metric_col</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
 
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">out</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">out</span>
@@ -750,15 +760,15 @@
             <span class="n">degenerate</span> <span class="o">=</span> <span class="n">std_val</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">mean_val</span> <span class="o">==</span> <span class="mi">0</span>
 
             <span class="k">if</span> <span class="n">under_powered</span> <span class="ow">or</span> <span class="n">near_zero_mean</span> <span class="ow">or</span> <span class="n">degenerate</span><span class="p">:</span>
-                <span class="n">severity</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;nan&quot;</span><span class="p">)</span>
+                <span class="n">metric</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;nan&quot;</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="n">severity</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">se_val</span><span class="p">)</span> <span class="o">/</span> <span class="nb">abs</span><span class="p">(</span><span class="n">mean_val</span><span class="p">)</span>
+                <span class="n">metric</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">se_val</span><span class="p">)</span> <span class="o">/</span> <span class="nb">abs</span><span class="p">(</span><span class="n">mean_val</span><span class="p">)</span>
 
             <span class="n">out</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">idx</span><span class="p">,</span> <span class="n">value_col</span><span class="p">]</span> <span class="o">=</span> <span class="n">se_val</span>
             <span class="n">out</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">idx</span><span class="p">,</span> <span class="n">mean_col</span><span class="p">]</span> <span class="o">=</span> <span class="n">mean_val</span>
             <span class="n">out</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">idx</span><span class="p">,</span> <span class="n">cv_col</span><span class="p">]</span> <span class="o">=</span> <span class="n">cv_val</span>
             <span class="n">out</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">idx</span><span class="p">,</span> <span class="n">n_col</span><span class="p">]</span> <span class="o">=</span> <span class="n">n</span>
-            <span class="n">out</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">idx</span><span class="p">,</span> <span class="n">severity_col</span><span class="p">]</span> <span class="o">=</span> <span class="n">severity</span>
+            <span class="n">out</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">idx</span><span class="p">,</span> <span class="n">metric_col</span><span class="p">]</span> <span class="o">=</span> <span class="n">metric</span>
 
         <span class="n">out</span><span class="p">[</span><span class="n">n_col</span><span class="p">]</span> <span class="o">=</span> <span class="n">out</span><span class="p">[</span><span class="n">n_col</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">out</span>

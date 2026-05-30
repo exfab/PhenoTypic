@@ -570,28 +570,30 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Annotated</span><span class="p">,</span> <span class="n">Any</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Annotated</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">NamedTuple</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">colour</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">BaseModel</span><span class="p">,</span>
     <span class="n">ConfigDict</span><span class="p">,</span>
+    <span class="n">Field</span><span class="p">,</span>
     <span class="n">PrivateAttr</span><span class="p">,</span>
     <span class="n">WithJsonSchema</span><span class="p">,</span>
     <span class="n">field_validator</span><span class="p">,</span>
+    <span class="n">model_validator</span><span class="p">,</span>
 <span class="p">)</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">NdArrayField</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">._capture_metadata</span><span class="w"> </span><span class="kn">import</span> <span class="n">CaptureMetadata</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._helpers</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-    <span class="n">_normalize_to_unit_float</span><span class="p">,</span>
-    <span class="n">_rgb_to_lab</span><span class="p">,</span>
     <span class="n">center_and_pad_checker</span><span class="p">,</span>
     <span class="n">compute_core_mask</span><span class="p">,</span>
+    <span class="n">compute_swatch_roi_mask</span><span class="p">,</span>
     <span class="n">geometric_median</span><span class="p">,</span>
-    <span class="n">lab_checker_cluster_masks</span><span class="p">,</span>
     <span class="n">median_filter_rgb</span><span class="p">,</span>
+    <span class="n">segment_chips_by_border_fill</span><span class="p">,</span>
     <span class="n">trim_background_edges</span><span class="p">,</span>
     <span class="n">validate_patch_shape</span><span class="p">,</span>
 <span class="p">)</span>
@@ -602,26 +604,54 @@
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 
 
+<span class="k">class</span><span class="w"> </span><span class="nc">_RoiPreprocessing</span><span class="p">(</span><span class="n">NamedTuple</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Stages of per-ROI preprocessing shared by fit and the dashboard.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        original: Raw RGB crop from the source image.</span>
+<span class="sd">        trimmed: Result of :func:`trim_background_edges`.  Equals</span>
+<span class="sd">            *original* when ``pad_checker`` is ``False``.</span>
+<span class="sd">        filtered: Median-filtered RGB.</span>
+<span class="sd">        padded: RGB after the optional centring + reflect-pad.  Equals</span>
+<span class="sd">            *filtered* when ``pad_checker`` is ``False``.</span>
+<span class="sd">        padded_normed: ``[0, 1]`` float view of *padded* via the canonical</span>
+<span class="sd">            :pyattr:`Image.rgb.normed`.</span>
+<span class="sd">        lab: CIE Lab of *padded* via the canonical</span>
+<span class="sd">            :pyattr:`Image.color.Lab` accessor.</span>
+<span class="sd">        swatch_roi_mask: 2-D boolean mask, ``True`` where *padded* is a</span>
+<span class="sd">            swatch-interior pixel and ``False`` on uniform border rows or</span>
+<span class="sd">            columns (outer frame, central divider, inter-swatch gutters).</span>
+<span class="sd">            Consumed by :func:`segment_chips_by_border_fill` as the chip</span>
+<span class="sd">            source so dark-frame pixels cannot be misassigned to a chip.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">original</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">trimmed</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">filtered</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">padded</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">padded_normed</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">lab</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">swatch_roi_mask</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+
 <span class="c1"># ---------------------------------------------------------------------------</span>
 <span class="c1"># ROI-slice field annotation</span>
 <span class="c1"># ---------------------------------------------------------------------------</span>
 <span class="c1">#: A single ``slice`` ROI bound. ``slice`` is a Python-native object that</span>
 <span class="c1">#: pydantic accepts under ``arbitrary_types_allowed`` but cannot describe in</span>
 <span class="c1">#: JSON Schema, so ``WithJsonSchema`` supplies a descriptive entry. The</span>
-<span class="c1">#: ``rois`` field is transient (set at construction, deliberately dropped by</span>
-<span class="c1">#: :meth:`ColorCheckerProfile.to_dict`); the schema entry exists only so</span>
+<span class="c1">#: ``rois`` field is transient (set at construction, excluded from</span>
+<span class="c1">#: :meth:`~pydantic.BaseModel.model_dump`); the schema entry exists only so</span>
 <span class="c1">#: ``model_json_schema()`` succeeds for downstream tooling.</span>
 <span class="n">_RoiSlice</span> <span class="o">=</span> <span class="n">Annotated</span><span class="p">[</span>
     <span class="nb">slice</span><span class="p">,</span>
     <span class="n">WithJsonSchema</span><span class="p">(</span>
-        <span class="p">{</span>
-            <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;A Python slice (start, stop, step) bounding a &quot;</span>
-            <span class="s2">&quot;color-checker ROI along one image axis.&quot;</span><span class="p">,</span>
-        <span class="p">}</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;type&quot;</span>       <span class="p">:</span> <span class="s2">&quot;object&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;A Python slice (start, stop, step) bounding a &quot;</span>
+                               <span class="s2">&quot;color-checker ROI along one image axis.&quot;</span><span class="p">,</span>
+            <span class="p">}</span>
     <span class="p">),</span>
 <span class="p">]</span>
-
 
 <span class="c1"># ---------------------------------------------------------------------------</span>
 <span class="c1"># Illuminant constants</span>
@@ -651,8 +681,8 @@
         <span class="k">return</span> <span class="n">colour</span><span class="o">.</span><span class="n">CCS_ILLUMINANTS</span><span class="p">[</span><span class="s2">&quot;CIE 1931 2 Degree Standard Observer&quot;</span><span class="p">][</span><span class="n">name</span><span class="p">]</span>
     <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;Unknown illuminant &#39;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39;. Expected one of: &quot;</span>
-            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">colour</span><span class="o">.</span><span class="n">CCS_ILLUMINANTS</span><span class="p">[</span><span class="s1">&#39;CIE 1931 2 Degree Standard Observer&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;Unknown illuminant &#39;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39;. Expected one of: &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">colour</span><span class="o">.</span><span class="n">CCS_ILLUMINANTS</span><span class="p">[</span><span class="s1">&#39;CIE 1931 2 Degree Standard Observer&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span><span class="si">}</span><span class="s2">&quot;</span>
         <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="kc">None</span>
 
 
@@ -667,8 +697,8 @@
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_load_reference_data</span><span class="p">(</span>
-    <span class="n">checker_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-    <span class="n">target_illuminant</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">checker_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">target_illuminant</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Load reference Lab values and linear RGB for a colour checker.</span>
 
@@ -707,10 +737,10 @@
 
         <span class="k">if</span> <span class="n">need_adapt</span><span class="p">:</span>
             <span class="n">XYZ</span> <span class="o">=</span> <span class="n">colour</span><span class="o">.</span><span class="n">chromatic_adaptation</span><span class="p">(</span>
-                <span class="n">XYZ</span><span class="p">,</span>
-                <span class="n">XYZ_w</span><span class="o">=</span><span class="n">checker_wp_XYZ</span><span class="p">,</span>
-                <span class="n">XYZ_wr</span><span class="o">=</span><span class="n">target_wp_XYZ</span><span class="p">,</span>
-                <span class="n">transform</span><span class="o">=</span><span class="s2">&quot;Bradford&quot;</span><span class="p">,</span>
+                    <span class="n">XYZ</span><span class="p">,</span>
+                    <span class="n">XYZ_w</span><span class="o">=</span><span class="n">checker_wp_XYZ</span><span class="p">,</span>
+                    <span class="n">XYZ_wr</span><span class="o">=</span><span class="n">target_wp_XYZ</span><span class="p">,</span>
+                    <span class="n">transform</span><span class="o">=</span><span class="s2">&quot;Bradford&quot;</span><span class="p">,</span>
             <span class="p">)</span>
 
         <span class="n">Lab</span> <span class="o">=</span> <span class="n">colour</span><span class="o">.</span><span class="n">XYZ_to_Lab</span><span class="p">(</span><span class="n">XYZ</span><span class="p">,</span> <span class="n">illuminant</span><span class="o">=</span><span class="n">target_wp_xy</span><span class="p">)</span>
@@ -718,10 +748,10 @@
 
         <span class="c1"># XYZ -&gt; linear sRGB (under target illuminant / D65 for sRGB).</span>
         <span class="n">linear_rgb</span> <span class="o">=</span> <span class="n">colour</span><span class="o">.</span><span class="n">XYZ_to_RGB</span><span class="p">(</span>
-            <span class="n">XYZ</span><span class="p">,</span>
-            <span class="n">colourspace</span><span class="o">=</span><span class="n">cs</span><span class="p">,</span>
-            <span class="n">illuminant</span><span class="o">=</span><span class="n">target_wp_xy</span><span class="p">,</span>
-            <span class="n">apply_cctf_encoding</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                <span class="n">XYZ</span><span class="p">,</span>
+                <span class="n">colourspace</span><span class="o">=</span><span class="n">cs</span><span class="p">,</span>
+                <span class="n">illuminant</span><span class="o">=</span><span class="n">target_wp_xy</span><span class="p">,</span>
+                <span class="n">apply_cctf_encoding</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="n">ref_linear</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">linear_rgb</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
 
@@ -757,9 +787,19 @@
 <span class="sd">            ``&#39;D65&#39;``).</span>
 <span class="sd">        median_filter_size: Kernel size for per-ROI median filtering.</span>
 <span class="sd">        stddev_mag_threshold: Column-stddev threshold for border detection</span>
-<span class="sd">            during checker centering.</span>
-<span class="sd">        border_distance_threshold: Lab Euclidean distance below which a</span>
-<span class="sd">            pixel is classified as border rather than swatch.</span>
+<span class="sd">            during checker centering.  Ignored when ``pad_checker`` is</span>
+<span class="sd">            ``False``.</span>
+<span class="sd">        pad_checker: When ``True``, each ROI is centred and reflect-padded</span>
+<span class="sd">            via :func:`center_and_pad_checker` to recover partially-clipped</span>
+<span class="sd">            checker cards.  Defaults to ``False`` because border-fill</span>
+<span class="sd">            segmentation requires a fully-visible grid with intact gutters:</span>
+<span class="sd">            reflect-padding fabricates extra mirrored swatch cells, which</span>
+<span class="sd">            makes the connected-component count exceed the expected number</span>
+<span class="sd">            of patches and trips the strict count gate.  Only enable it for</span>
+<span class="sd">            the clustering-era clipped-card workflow.</span>
+<span class="sd">        min_swatch_area_frac: During border-fill segmentation, connected</span>
+<span class="sd">            components smaller than this fraction of the median component</span>
+<span class="sd">            area are discarded as noise before the strict chip-count gate.</span>
 <span class="sd">        core_fraction: Fraction of centroid-to-boundary distance used to</span>
 <span class="sd">            define the reliable core of each patch.</span>
 <span class="sd">        ridge_lambda: Ridge-regression regularisation parameter for the</span>
@@ -776,12 +816,38 @@
 <span class="sd">            on an unfitted profile.</span>
 <span class="sd">        diagnostics: Per-patch and aggregate quality metrics.</span>
 <span class="sd">        is_fitted: ``True`` after a successful fit.</span>
+<span class="sd">        capture_metadata: Camera EXIF (make/model, lens, ISO, exposure,</span>
+<span class="sd">            F-number, focal length) read from the calibration image during</span>
+<span class="sd">            :meth:`fit`.  ``None`` for an unfitted profile or one fitted via</span>
+<span class="sd">            :meth:`_fit_from_patch_colors` (no source image).  Serialises as a</span>
+<span class="sd">            nested object under :meth:`~pydantic.BaseModel.model_dump`; consumed</span>
+<span class="sd">            by :class:`ColorCorrector` to warn when a corrected image was shot</span>
+<span class="sd">            on different optics.  See :class:`CaptureMetadata`.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">model_config</span> <span class="o">=</span> <span class="n">ConfigDict</span><span class="p">(</span>
-        <span class="n">arbitrary_types_allowed</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-        <span class="n">validate_assignment</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">arbitrary_types_allowed</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">validate_assignment</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">extra</span><span class="o">=</span><span class="s2">&quot;forbid&quot;</span><span class="p">,</span>
     <span class="p">)</span>
+
+    <span class="nd">@model_validator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;before&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_drop_legacy_fields</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Drop fields removed since older serialised profiles were written.</span>
+
+<span class="sd">        Runs before validation, so the obsolete keys are stripped while</span>
+<span class="sd">        ``extra=&quot;forbid&quot;`` still rejects genuine typo&#39;d kwargs (the project&#39;s</span>
+<span class="sd">        strict-construction contract). ``border_distance_threshold`` was</span>
+<span class="sd">        removed when chip segmentation switched from Lab clustering to</span>
+<span class="sd">        border-fill.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">k</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;border_distance_threshold&quot;</span><span class="p">}</span>
+            <span class="p">}</span>
+        <span class="k">return</span> <span class="n">data</span>
 
     <span class="c1"># -- constructor parameters --------------------------------------------</span>
     <span class="n">checker_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;ColorChecker24 - After November 2014&quot;</span>
@@ -789,16 +855,18 @@
     <span class="n">target_illuminant</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;D65&quot;</span>
     <span class="n">median_filter_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span>
     <span class="n">stddev_mag_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">15.0</span>
-    <span class="n">border_distance_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">12.0</span>
+    <span class="n">pad_checker</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">min_swatch_area_frac</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.3</span>
     <span class="n">core_fraction</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span>
     <span class="n">ridge_lambda</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-3</span>
     <span class="n">outlier_sigma</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.0</span>
-    <span class="n">rois</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="n">_RoiSlice</span><span class="p">,</span> <span class="n">_RoiSlice</span><span class="p">]]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">rois</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="n">_RoiSlice</span><span class="p">,</span> <span class="n">_RoiSlice</span><span class="p">]]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">exclude</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
     <span class="c1"># -- post-fit state (defaults so an unfitted profile still constructs) --</span>
     <span class="n">correction_matrix</span><span class="p">:</span> <span class="n">NdArrayField</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">diagnostics</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
     <span class="n">is_fitted</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">capture_metadata</span><span class="p">:</span> <span class="n">CaptureMetadata</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
 
     <span class="c1"># -- transient (set by fit(), never serialized) ------------------------</span>
     <span class="n">_image</span><span class="p">:</span> <span class="s2">&quot;Image | None&quot;</span> <span class="o">=</span> <span class="n">PrivateAttr</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
@@ -817,9 +885,19 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Require ``core_fraction`` in ``(0, 1]`` (pre-migration guard).&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mf">0.0</span> <span class="o">&lt;</span> <span class="n">core_fraction</span> <span class="o">&lt;=</span> <span class="mf">1.0</span><span class="p">):</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;core_fraction must be in (0, 1], got </span><span class="si">{</span><span class="n">core_fraction</span><span class="si">}</span><span class="s2">&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;core_fraction must be in (0, 1], got </span><span class="si">{</span><span class="n">core_fraction</span><span class="si">}</span><span class="s2">&quot;</span>
             <span class="p">)</span>
         <span class="k">return</span> <span class="n">core_fraction</span>
+
+    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;min_swatch_area_frac&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_validate_min_swatch_area_frac</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">frac</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Require ``min_swatch_area_frac`` in ``(0, 1]``.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mf">0.0</span> <span class="o">&lt;</span> <span class="n">frac</span> <span class="o">&lt;=</span> <span class="mf">1.0</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;min_swatch_area_frac must be in (0, 1], got </span><span class="si">{</span><span class="n">frac</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">frac</span>
 
     <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;ridge_lambda&quot;</span><span class="p">)</span>
     <span class="nd">@classmethod</span>
@@ -844,34 +922,101 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ColorCheckerProfile</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Fit the profile from checker-card ROIs stored at initialisation.</span>
 
+<span class="sd">        When ``rois`` was not provided at initialisation, the entire image is</span>
+<span class="sd">        treated as a single ROI.</span>
+
 <span class="sd">        Args:</span>
 <span class="sd">            image: Source image containing visible checker cards.</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            ``self`` for method chaining.</span>
-
-<span class="sd">        Raises:</span>
-<span class="sd">            ValueError: If no ROIs were provided at initialisation.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rois</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="s2">&quot;No ROIs available. Pass rois= to the constructor.&quot;</span>
-            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">rois</span> <span class="o">=</span> <span class="p">[(</span><span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">))]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_image</span> <span class="o">=</span> <span class="n">image</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">capture_metadata</span> <span class="o">=</span> <span class="n">CaptureMetadata</span><span class="o">.</span><span class="n">from_image</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fit_from_rois</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">rois</span><span class="p">)</span></div>
 
 
+    <span class="k">def</span><span class="w"> </span><span class="nf">_preprocess_roi</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">,</span>
+            <span class="n">row_sl</span><span class="p">:</span> <span class="nb">slice</span><span class="p">,</span>
+            <span class="n">col_sl</span><span class="p">:</span> <span class="nb">slice</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_RoiPreprocessing</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Run per-ROI preprocessing and canonical Lab conversion.</span>
+
+<span class="sd">        Shared by :meth:`_fit_from_rois` and the diagnostic dashboard so</span>
+<span class="sd">        both observe the same pixels: ``pad_checker`` controls whether</span>
+<span class="sd">        ``trim_background_edges`` and ``center_and_pad_checker`` run, and</span>
+<span class="sd">        Lab is always produced via :pyattr:`Image.color.Lab` (the same</span>
+<span class="sd">        XYZ pipeline used everywhere else in the package).</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            image: Source image (provides ``gamma`` for the wrapped sub-image).</span>
+<span class="sd">            row_sl: Row slice into ``image.rgb``.</span>
+<span class="sd">            col_sl: Column slice into ``image.rgb``.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            A :class:`_RoiPreprocessing` with every preprocessing stage.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span> <span class="k">as</span> <span class="n">_Image</span>
+
+        <span class="n">original</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">rgb</span><span class="p">[</span><span class="n">row_sl</span><span class="p">,</span> <span class="n">col_sl</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">trimmed</span> <span class="o">=</span> <span class="n">trim_background_edges</span><span class="p">(</span><span class="n">original</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">pad_checker</span> <span class="k">else</span> <span class="n">original</span>
+        <span class="n">filtered</span> <span class="o">=</span> <span class="n">median_filter_rgb</span><span class="p">(</span><span class="n">trimmed</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">median_filter_size</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">pad_checker</span><span class="p">:</span>
+            <span class="n">padded</span> <span class="o">=</span> <span class="n">center_and_pad_checker</span><span class="p">(</span>
+                    <span class="n">filtered</span><span class="p">,</span>
+                    <span class="n">filter_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">median_filter_size</span><span class="p">,</span>
+                    <span class="n">stddev_mag_threshold</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">stddev_mag_threshold</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">padded</span> <span class="o">=</span> <span class="n">filtered</span>
+
+        <span class="n">sub_image</span> <span class="o">=</span> <span class="n">_Image</span><span class="p">(</span>
+                <span class="n">arr</span><span class="o">=</span><span class="n">padded</span><span class="p">,</span>
+                <span class="n">gamma</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">gamma</span><span class="p">,</span>
+                <span class="n">illuminant</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">target_illuminant</span><span class="p">,</span>  <span class="c1"># type: ignore[arg-type]</span>
+        <span class="p">)</span>
+        <span class="n">lab</span> <span class="o">=</span> <span class="n">sub_image</span><span class="o">.</span><span class="n">color</span><span class="o">.</span><span class="n">Lab</span><span class="p">[:]</span>
+        <span class="n">swatch_roi_mask</span> <span class="o">=</span> <span class="n">compute_swatch_roi_mask</span><span class="p">(</span>
+                <span class="n">lab</span><span class="p">,</span>
+                <span class="n">stddev_mag_threshold</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">stddev_mag_threshold</span><span class="p">,</span>
+                <span class="n">filter_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">median_filter_size</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">swatch_roi_mask</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                    <span class="s2">&quot;Cross-channel stddev ROI mask is empty for ROI; falling &quot;</span>
+                    <span class="s2">&quot;back to a full-ROI mask. No gutters were detected, so &quot;</span>
+                    <span class="s2">&quot;segmentation will fail the chip-count gate. Consider &quot;</span>
+                    <span class="s2">&quot;lowering stddev_mag_threshold (currently </span><span class="si">%.2f</span><span class="s2">).&quot;</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">stddev_mag_threshold</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">swatch_roi_mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">padded</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">_RoiPreprocessing</span><span class="p">(</span>
+                <span class="n">original</span><span class="o">=</span><span class="n">original</span><span class="p">,</span>
+                <span class="n">trimmed</span><span class="o">=</span><span class="n">trimmed</span><span class="p">,</span>
+                <span class="n">filtered</span><span class="o">=</span><span class="n">filtered</span><span class="p">,</span>
+                <span class="n">padded</span><span class="o">=</span><span class="n">padded</span><span class="p">,</span>
+                <span class="n">padded_normed</span><span class="o">=</span><span class="n">sub_image</span><span class="o">.</span><span class="n">rgb</span><span class="o">.</span><span class="n">normed</span><span class="p">(),</span>
+                <span class="n">lab</span><span class="o">=</span><span class="n">lab</span><span class="p">,</span>
+                <span class="n">swatch_roi_mask</span><span class="o">=</span><span class="n">swatch_roi_mask</span><span class="p">,</span>
+        <span class="p">)</span>
+
     <span class="k">def</span><span class="w"> </span><span class="nf">_fit_from_rois</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">,</span>
-        <span class="n">rois</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">slice</span><span class="p">,</span> <span class="nb">slice</span><span class="p">]],</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">,</span>
+            <span class="n">rois</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">slice</span><span class="p">,</span> <span class="nb">slice</span><span class="p">]],</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ColorCheckerProfile</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Fit the profile from one or more checker-card ROIs in an image.</span>
 
 <span class="sd">        For each ROI the function extracts the sub-image, pre-processes it</span>
 <span class="sd">        (background trimming, median filtering, centering/padding), segments</span>
-<span class="sd">        patches via nearest-neighbour Lab assignment, measures the core color</span>
-<span class="sd">        of each patch with geometric median, and pools the results.  Outlier</span>
+<span class="sd">        chips geometrically as filled connected components of the swatch ROI</span>
+<span class="sd">        mask and labels them by Hungarian colour match</span>
+<span class="sd">        (:func:`segment_chips_by_border_fill`), measures the core color of</span>
+<span class="sd">        each chip with geometric median, and pools the results.  Outlier</span>
 <span class="sd">        patches are rejected before fitting the root-polynomial matrix.</span>
 
 <span class="sd">        Args:</span>
@@ -883,7 +1028,7 @@
 <span class="sd">            ``self`` for method chaining.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">ref_Lab</span><span class="p">,</span> <span class="n">ref_linear</span><span class="p">,</span> <span class="n">target_wp_xy</span> <span class="o">=</span> <span class="n">_load_reference_data</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">checker_type</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_illuminant</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">checker_type</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_illuminant</span>
         <span class="p">)</span>
         <span class="n">patch_names</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">ref_Lab</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
         <span class="n">n_expected</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">patch_names</span><span class="p">)</span>
@@ -894,47 +1039,32 @@
         <span class="p">}</span>
         <span class="n">per_card_summary</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
 
+        <span class="n">ref_Lab_tuples</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">name</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">ref_Lab</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">patch_names</span>
+        <span class="p">}</span>
+
         <span class="k">for</span> <span class="n">roi_idx</span><span class="p">,</span> <span class="p">(</span><span class="n">row_sl</span><span class="p">,</span> <span class="n">col_sl</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">rois</span><span class="p">):</span>
-            <span class="c1"># 1. Extract sub-image and preprocess.</span>
-            <span class="n">sub_rgb</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">rgb</span><span class="p">[</span><span class="n">row_sl</span><span class="p">,</span> <span class="n">col_sl</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-            <span class="n">sub_rgb</span> <span class="o">=</span> <span class="n">trim_background_edges</span><span class="p">(</span><span class="n">sub_rgb</span><span class="p">)</span>
-            <span class="n">sub_rgb</span> <span class="o">=</span> <span class="n">median_filter_rgb</span><span class="p">(</span><span class="n">sub_rgb</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">median_filter_size</span><span class="p">)</span>
+            <span class="n">prep</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_preprocess_roi</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">row_sl</span><span class="p">,</span> <span class="n">col_sl</span><span class="p">)</span>
+            <span class="n">padded_float</span> <span class="o">=</span> <span class="n">prep</span><span class="o">.</span><span class="n">padded_normed</span>
 
-            <span class="c1"># 2. Center and pad the checker.</span>
-            <span class="n">sub_rgb_padded</span> <span class="o">=</span> <span class="n">center_and_pad_checker</span><span class="p">(</span>
-                <span class="n">sub_rgb</span><span class="p">,</span>
-                <span class="n">filter_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">median_filter_size</span><span class="p">,</span>
-                <span class="n">stddev_mag_threshold</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">stddev_mag_threshold</span><span class="p">,</span>
+            <span class="c1"># 4. Segment chips geometrically and label them by colour.</span>
+            <span class="n">blob_masks</span><span class="p">,</span> <span class="n">blob_names</span> <span class="o">=</span> <span class="n">segment_chips_by_border_fill</span><span class="p">(</span>
+                    <span class="n">prep</span><span class="o">.</span><span class="n">swatch_roi_mask</span><span class="p">,</span>
+                    <span class="n">prep</span><span class="o">.</span><span class="n">lab</span><span class="p">,</span>
+                    <span class="n">ref_Lab_tuples</span><span class="p">,</span>
+                    <span class="n">min_swatch_area_frac</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">min_swatch_area_frac</span><span class="p">,</span>
+                    <span class="n">strict</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
             <span class="p">)</span>
-
-            <span class="c1"># Re-convert padded image to Lab.</span>
-            <span class="n">padded_float</span> <span class="o">=</span> <span class="n">_normalize_to_unit_float</span><span class="p">(</span><span class="n">sub_rgb_padded</span><span class="p">)</span>
-            <span class="n">lab_padded</span> <span class="o">=</span> <span class="n">_rgb_to_lab</span><span class="p">(</span><span class="n">padded_float</span><span class="p">,</span> <span class="n">illuminant_xy</span><span class="o">=</span><span class="n">target_wp_xy</span><span class="p">)</span>
-
-            <span class="c1"># 4. Cluster masks.</span>
-            <span class="n">ref_Lab_tuples</span> <span class="o">=</span> <span class="p">{</span>
-                <span class="n">name</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">ref_Lab</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">patch_names</span>
-            <span class="p">}</span>
-            <span class="n">cluster_result</span> <span class="o">=</span> <span class="n">lab_checker_cluster_masks</span><span class="p">(</span>
-                <span class="n">lab_padded</span><span class="p">,</span>
-                <span class="n">ref_Lab_tuples</span><span class="p">,</span>
-                <span class="n">border_distance_threshold</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">border_distance_threshold</span><span class="p">,</span>
-                <span class="n">include_labels</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-            <span class="p">)</span>
-            <span class="n">masks</span><span class="p">,</span> <span class="n">bboxes</span><span class="p">,</span> <span class="n">labels</span> <span class="o">=</span> <span class="n">cluster_result</span>  <span class="c1"># type: ignore[misc]</span>
 
             <span class="n">card_detected</span> <span class="o">=</span> <span class="mi">0</span>
 
-            <span class="k">for</span> <span class="n">mask</span><span class="p">,</span> <span class="n">bbox</span><span class="p">,</span> <span class="n">label</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">masks</span><span class="p">,</span> <span class="n">bboxes</span><span class="p">,</span> <span class="n">labels</span><span class="p">):</span>
-                <span class="k">if</span> <span class="n">label</span> <span class="o">==</span> <span class="s2">&quot;border&quot;</span><span class="p">:</span>
-                    <span class="k">continue</span>
-                <span class="k">if</span> <span class="ow">not</span> <span class="n">mask</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
-                    <span class="k">continue</span>
-
+            <span class="k">for</span> <span class="n">blob_mask</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">blob_masks</span><span class="p">,</span> <span class="n">blob_names</span><span class="p">):</span>
                 <span class="c1"># 5. Compute core mask and validate.</span>
-                <span class="n">core</span> <span class="o">=</span> <span class="n">compute_core_mask</span><span class="p">(</span><span class="n">mask</span><span class="p">,</span> <span class="n">core_fraction</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">core_fraction</span><span class="p">)</span>
-                <span class="n">is_valid</span><span class="p">,</span> <span class="n">warnings</span> <span class="o">=</span> <span class="n">validate_patch_shape</span><span class="p">(</span><span class="n">core</span><span class="p">)</span>
-                <span class="n">core_pixels_fraction</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">core</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">mask</span><span class="o">.</span><span class="n">sum</span><span class="p">()),</span> <span class="mf">1.0</span><span class="p">)</span>
+                <span class="n">core</span> <span class="o">=</span> <span class="n">compute_core_mask</span><span class="p">(</span><span class="n">blob_mask</span><span class="p">,</span> <span class="n">core_fraction</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">core_fraction</span><span class="p">)</span>
+                <span class="n">_</span><span class="p">,</span> <span class="n">warnings</span> <span class="o">=</span> <span class="n">validate_patch_shape</span><span class="p">(</span><span class="n">core</span><span class="p">)</span>
+                <span class="n">core_pixels_fraction</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">core</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span>
+                        <span class="nb">float</span><span class="p">(</span><span class="n">blob_mask</span><span class="o">.</span><span class="n">sum</span><span class="p">()),</span> <span class="mf">1.0</span>
+                <span class="p">)</span>
 
                 <span class="c1"># 6. Measure color from core pixels in the padded sRGB image.</span>
                 <span class="n">core_pixels_srgb</span> <span class="o">=</span> <span class="n">padded_float</span><span class="p">[</span><span class="n">core</span><span class="p">]</span>
@@ -943,17 +1073,17 @@
 
                 <span class="c1"># Geometric median in sRGB space.</span>
                 <span class="n">patch_srgb</span> <span class="o">=</span> <span class="n">geometric_median</span><span class="p">(</span><span class="n">core_pixels_srgb</span><span class="p">)</span>
-                <span class="n">measured_srgb</span><span class="p">[</span><span class="n">label</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-                    <span class="p">(</span><span class="n">patch_srgb</span><span class="p">,</span> <span class="n">roi_idx</span><span class="p">,</span> <span class="n">core_pixels_fraction</span><span class="p">,</span> <span class="n">warnings</span><span class="p">)</span>
+                <span class="n">measured_srgb</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="p">(</span><span class="n">patch_srgb</span><span class="p">,</span> <span class="n">roi_idx</span><span class="p">,</span> <span class="n">core_pixels_fraction</span><span class="p">,</span> <span class="n">warnings</span><span class="p">)</span>
                 <span class="p">)</span>
                 <span class="n">card_detected</span> <span class="o">+=</span> <span class="mi">1</span>
 
             <span class="n">per_card_summary</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-                <span class="p">{</span>
-                    <span class="s2">&quot;roi_index&quot;</span><span class="p">:</span> <span class="n">roi_idx</span><span class="p">,</span>
-                    <span class="s2">&quot;patches_detected&quot;</span><span class="p">:</span> <span class="n">card_detected</span><span class="p">,</span>
-                    <span class="s2">&quot;patches_expected&quot;</span><span class="p">:</span> <span class="n">n_expected</span><span class="p">,</span>
-                <span class="p">}</span>
+                    <span class="p">{</span>
+                        <span class="s2">&quot;roi_index&quot;</span>       <span class="p">:</span> <span class="n">roi_idx</span><span class="p">,</span>
+                        <span class="s2">&quot;patches_detected&quot;</span><span class="p">:</span> <span class="n">card_detected</span><span class="p">,</span>
+                        <span class="s2">&quot;patches_expected&quot;</span><span class="p">:</span> <span class="n">n_expected</span><span class="p">,</span>
+                    <span class="p">}</span>
             <span class="p">)</span>
 
         <span class="c1"># 7. Pool measurements: pick the best observation per patch (highest</span>
@@ -970,25 +1100,25 @@
             <span class="n">best</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">observations</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">o</span><span class="p">:</span> <span class="n">o</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
             <span class="n">measured_rgb_final</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">best</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
             <span class="n">patch_meta</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
-                <span class="s2">&quot;roi_index&quot;</span><span class="p">:</span> <span class="n">best</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
-                <span class="s2">&quot;core_fraction_used&quot;</span><span class="p">:</span> <span class="n">best</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span>
+                <span class="s2">&quot;roi_index&quot;</span>          <span class="p">:</span> <span class="n">best</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+                <span class="s2">&quot;core_fraction_used&quot;</span> <span class="p">:</span> <span class="n">best</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span>
                 <span class="s2">&quot;validation_warnings&quot;</span><span class="p">:</span> <span class="n">best</span><span class="p">[</span><span class="mi">3</span><span class="p">],</span>
             <span class="p">}</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_fit_from_measured</span><span class="p">(</span>
-            <span class="n">measured_rgb_final</span><span class="p">,</span>
-            <span class="n">ref_Lab</span><span class="p">,</span>
-            <span class="n">ref_linear</span><span class="p">,</span>
-            <span class="n">target_wp_xy</span><span class="p">,</span>
-            <span class="n">patch_meta</span><span class="p">,</span>
-            <span class="n">per_card_summary</span><span class="p">,</span>
+                <span class="n">measured_rgb_final</span><span class="p">,</span>
+                <span class="n">ref_Lab</span><span class="p">,</span>
+                <span class="n">ref_linear</span><span class="p">,</span>
+                <span class="n">target_wp_xy</span><span class="p">,</span>
+                <span class="n">patch_meta</span><span class="p">,</span>
+                <span class="n">per_card_summary</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_fit_from_patch_colors</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="n">measured_rgb</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
-        <span class="n">patch_names</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">measured_rgb</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+            <span class="n">patch_names</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ColorCheckerProfile</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Fit from pre-measured patch colors.</span>
 
@@ -1006,16 +1136,16 @@
 <span class="sd">            ``self`` for method chaining.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">ref_Lab</span><span class="p">,</span> <span class="n">ref_linear</span><span class="p">,</span> <span class="n">target_wp_xy</span> <span class="o">=</span> <span class="n">_load_reference_data</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">checker_type</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_illuminant</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">checker_type</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_illuminant</span>
         <span class="p">)</span>
         <span class="n">all_names</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">ref_Lab</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
 
         <span class="k">if</span> <span class="n">patch_names</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">measured_rgb</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">all_names</span><span class="p">):</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;measured_rgb has </span><span class="si">{</span><span class="n">measured_rgb</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2"> rows but the &quot;</span>
-                    <span class="sa">f</span><span class="s2">&quot;checker expects </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">all_names</span><span class="p">)</span><span class="si">}</span><span class="s2"> patches. Supply &quot;</span>
-                    <span class="sa">f</span><span class="s2">&quot;patch_names explicitly if providing a subset.&quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;measured_rgb has </span><span class="si">{</span><span class="n">measured_rgb</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2"> rows but the &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;checker expects </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">all_names</span><span class="p">)</span><span class="si">}</span><span class="s2"> patches. Supply &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;patch_names explicitly if providing a subset.&quot;</span>
                 <span class="p">)</span>
             <span class="n">patch_names</span> <span class="o">=</span> <span class="n">all_names</span>
 
@@ -1025,33 +1155,33 @@
 
         <span class="n">patch_meta</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span>
             <span class="n">name</span><span class="p">:</span> <span class="p">{</span>
-                <span class="s2">&quot;roi_index&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-                <span class="s2">&quot;core_fraction_used&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
+                <span class="s2">&quot;roi_index&quot;</span>          <span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                <span class="s2">&quot;core_fraction_used&quot;</span> <span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
                 <span class="s2">&quot;validation_warnings&quot;</span><span class="p">:</span> <span class="p">[],</span>
             <span class="p">}</span>
             <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">patch_names</span>
         <span class="p">}</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_fit_from_measured</span><span class="p">(</span>
-            <span class="n">measured_dict</span><span class="p">,</span>
-            <span class="n">ref_Lab</span><span class="p">,</span>
-            <span class="n">ref_linear</span><span class="p">,</span>
-            <span class="n">target_wp_xy</span><span class="p">,</span>
-            <span class="n">patch_meta</span><span class="p">,</span>
-            <span class="n">per_card_summary</span><span class="o">=</span><span class="p">[],</span>
+                <span class="n">measured_dict</span><span class="p">,</span>
+                <span class="n">ref_Lab</span><span class="p">,</span>
+                <span class="n">ref_linear</span><span class="p">,</span>
+                <span class="n">target_wp_xy</span><span class="p">,</span>
+                <span class="n">patch_meta</span><span class="p">,</span>
+                <span class="n">per_card_summary</span><span class="o">=</span><span class="p">[],</span>
         <span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span>
 
     <span class="c1"># -- internal fitting logic ---------------------------------------------</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_fit_from_measured</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="n">measured_srgb</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
-        <span class="n">ref_Lab</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
-        <span class="n">ref_linear</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
-        <span class="n">target_wp_xy</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
-        <span class="n">patch_meta</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]],</span>
-        <span class="n">per_card_summary</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]],</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">measured_srgb</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
+            <span class="n">ref_Lab</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
+            <span class="n">ref_linear</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
+            <span class="n">target_wp_xy</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+            <span class="n">patch_meta</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]],</span>
+            <span class="n">per_card_summary</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]],</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Core fitting routine shared by both public entry points.</span>
 
@@ -1073,7 +1203,7 @@
         <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">srgb</span> <span class="ow">in</span> <span class="n">measured_srgb</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
             <span class="n">srgb_clipped</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">srgb</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
             <span class="n">XYZ</span> <span class="o">=</span> <span class="n">colour</span><span class="o">.</span><span class="n">RGB_to_XYZ</span><span class="p">(</span>
-                <span class="n">srgb_clipped</span><span class="p">,</span> <span class="n">colourspace</span><span class="o">=</span><span class="n">cs</span><span class="p">,</span> <span class="n">apply_cctf_decoding</span><span class="o">=</span><span class="kc">True</span>
+                    <span class="n">srgb_clipped</span><span class="p">,</span> <span class="n">colourspace</span><span class="o">=</span><span class="n">cs</span><span class="p">,</span> <span class="n">apply_cctf_decoding</span><span class="o">=</span><span class="kc">True</span>
             <span class="p">)</span>
             <span class="n">measured_Lab</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">colour</span><span class="o">.</span><span class="n">XYZ_to_Lab</span><span class="p">(</span><span class="n">XYZ</span><span class="p">,</span> <span class="n">illuminant</span><span class="o">=</span><span class="n">target_wp_xy</span><span class="p">)</span>
             <span class="n">measured_linear</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">colour</span><span class="o">.</span><span class="n">cctf_decoding</span><span class="p">(</span><span class="n">srgb_clipped</span><span class="p">,</span> <span class="n">function</span><span class="o">=</span><span class="s2">&quot;sRGB&quot;</span><span class="p">)</span>
@@ -1082,9 +1212,9 @@
         <span class="n">deltaE_before</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">measured_Lab</span><span class="p">:</span>
             <span class="n">dE</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span>
-                <span class="n">colour</span><span class="o">.</span><span class="n">difference</span><span class="o">.</span><span class="n">delta_E_CIE2000</span><span class="p">(</span>
-                    <span class="n">measured_Lab</span><span class="p">[</span><span class="n">name</span><span class="p">],</span> <span class="n">ref_Lab</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
-                <span class="p">)</span>
+                    <span class="n">colour</span><span class="o">.</span><span class="n">difference</span><span class="o">.</span><span class="n">delta_E_CIE2000</span><span class="p">(</span>
+                            <span class="n">measured_Lab</span><span class="p">[</span><span class="n">name</span><span class="p">],</span> <span class="n">ref_Lab</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+                    <span class="p">)</span>
             <span class="p">)</span>
             <span class="n">deltaE_before</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">dE</span>
 
@@ -1100,23 +1230,23 @@
             <span class="k">if</span> <span class="n">deltaE_before</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">threshold</span><span class="p">:</span>
                 <span class="n">rejected</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
                 <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-                    <span class="s2">&quot;Rejecting patch &#39;</span><span class="si">%s</span><span class="s2">&#39;: Delta-E 2000 = </span><span class="si">%.2f</span><span class="s2"> &gt; threshold </span><span class="si">%.2f</span><span class="s2">&quot;</span><span class="p">,</span>
-                    <span class="n">name</span><span class="p">,</span>
-                    <span class="n">deltaE_before</span><span class="p">[</span><span class="n">name</span><span class="p">],</span>
-                    <span class="n">threshold</span><span class="p">,</span>
+                        <span class="s2">&quot;Rejecting patch &#39;</span><span class="si">%s</span><span class="s2">&#39;: Delta-E 2000 = </span><span class="si">%.2f</span><span class="s2"> &gt; threshold </span><span class="si">%.2f</span><span class="s2">&quot;</span><span class="p">,</span>
+                        <span class="n">name</span><span class="p">,</span>
+                        <span class="n">deltaE_before</span><span class="p">[</span><span class="n">name</span><span class="p">],</span>
+                        <span class="n">threshold</span><span class="p">,</span>
                 <span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">kept_names</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">kept_names</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">4</span><span class="p">:</span>
             <span class="n">warnings_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;Only </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">kept_names</span><span class="p">)</span><span class="si">}</span><span class="s2"> patches remaining after outlier &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;rejection (minimum recommended: 4).&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;Only </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">kept_names</span><span class="p">)</span><span class="si">}</span><span class="s2"> patches remaining after outlier &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;rejection (minimum recommended: 4).&quot;</span>
             <span class="p">)</span>
 
         <span class="k">if</span> <span class="ow">not</span> <span class="n">kept_names</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="s2">&quot;All patches were rejected as outliers. Cannot fit correction matrix.&quot;</span>
+                    <span class="s2">&quot;All patches were rejected as outliers. Cannot fit correction matrix.&quot;</span>
             <span class="p">)</span>
 
         <span class="c1"># --- Build arrays for fitting -------------------------------------</span>
@@ -1134,10 +1264,10 @@
         <span class="c1"># Returns CCM of shape (3, F) where F = polynomial feature count</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="n">CCM</span> <span class="o">=</span> <span class="n">colour</span><span class="o">.</span><span class="n">characterisation</span><span class="o">.</span><span class="n">matrix_colour_correction_Finlayson2015</span><span class="p">(</span>
-                <span class="n">measured_arr</span><span class="p">,</span>
-                <span class="n">reference_arr</span><span class="p">,</span>
-                <span class="n">degree</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">degree</span><span class="p">,</span>  <span class="c1"># type: ignore[arg-type]</span>
-                <span class="n">root_polynomial_expansion</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                    <span class="n">measured_arr</span><span class="p">,</span>
+                    <span class="n">reference_arr</span><span class="p">,</span>
+                    <span class="n">degree</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">degree</span><span class="p">,</span>  <span class="c1"># type: ignore[arg-type]</span>
+                    <span class="n">root_polynomial_expansion</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
             <span class="p">)</span>
         <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
             <span class="c1"># Fallback: manual ridge regression.</span>
@@ -1153,24 +1283,25 @@
             <span class="n">linear_in</span> <span class="o">=</span> <span class="n">measured_linear</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
             <span class="n">corrected_linear</span> <span class="o">=</span> <span class="p">(</span>
                 <span class="n">colour</span><span class="o">.</span><span class="n">characterisation</span><span class="o">.</span><span class="n">apply_matrix_colour_correction_Finlayson2015</span><span class="p">(</span>
-                    <span class="n">linear_in</span><span class="p">,</span>
-                    <span class="n">CCM</span><span class="p">,</span>
-                    <span class="n">degree</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">degree</span><span class="p">,</span>  <span class="c1"># type: ignore[arg-type]</span>
-                    <span class="n">root_polynomial_expansion</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                        <span class="n">linear_in</span><span class="p">,</span>
+                        <span class="n">CCM</span><span class="p">,</span>
+                        <span class="n">degree</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">degree</span><span class="p">,</span>  <span class="c1"># type: ignore[arg-type]</span>
+                        <span class="n">root_polynomial_expansion</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
                 <span class="p">)</span>
             <span class="p">)</span>
             <span class="n">corrected_linear</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">corrected_linear</span><span class="o">.</span><span class="n">ravel</span><span class="p">(),</span> <span class="mf">0.0</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
             <span class="n">corrected_srgb</span> <span class="o">=</span> <span class="n">colour</span><span class="o">.</span><span class="n">cctf_encoding</span><span class="p">(</span><span class="n">corrected_linear</span><span class="p">,</span> <span class="n">function</span><span class="o">=</span><span class="s2">&quot;sRGB&quot;</span><span class="p">)</span>
-            <span class="n">corrected_srgb</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">corrected_srgb</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>  <span class="c1"># type: ignore[assignment]</span>
+            <span class="n">corrected_srgb</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">corrected_srgb</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span>
+                                     <span class="mf">1.0</span><span class="p">)</span>  <span class="c1"># type: ignore[assignment]</span>
 
             <span class="n">XYZ_corr</span> <span class="o">=</span> <span class="n">colour</span><span class="o">.</span><span class="n">RGB_to_XYZ</span><span class="p">(</span>
-                <span class="n">corrected_srgb</span><span class="p">,</span> <span class="n">colourspace</span><span class="o">=</span><span class="n">cs</span><span class="p">,</span> <span class="n">apply_cctf_decoding</span><span class="o">=</span><span class="kc">True</span>
+                    <span class="n">corrected_srgb</span><span class="p">,</span> <span class="n">colourspace</span><span class="o">=</span><span class="n">cs</span><span class="p">,</span> <span class="n">apply_cctf_decoding</span><span class="o">=</span><span class="kc">True</span>
             <span class="p">)</span>
             <span class="n">Lab_corr</span> <span class="o">=</span> <span class="n">colour</span><span class="o">.</span><span class="n">XYZ_to_Lab</span><span class="p">(</span><span class="n">XYZ_corr</span><span class="p">,</span> <span class="n">illuminant</span><span class="o">=</span><span class="n">target_wp_xy</span><span class="p">)</span>
             <span class="n">corrected_Lab</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">Lab_corr</span>
 
             <span class="n">dE</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span>
-                <span class="n">colour</span><span class="o">.</span><span class="n">difference</span><span class="o">.</span><span class="n">delta_E_CIE2000</span><span class="p">(</span><span class="n">Lab_corr</span><span class="p">,</span> <span class="n">ref_Lab</span><span class="p">[</span><span class="n">name</span><span class="p">])</span>
+                    <span class="n">colour</span><span class="o">.</span><span class="n">difference</span><span class="o">.</span><span class="n">delta_E_CIE2000</span><span class="p">(</span><span class="n">Lab_corr</span><span class="p">,</span> <span class="n">ref_Lab</span><span class="p">[</span><span class="n">name</span><span class="p">])</span>
             <span class="p">)</span>
             <span class="n">deltaE_after</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">dE</span>
 
@@ -1206,37 +1337,37 @@
         <span class="n">after_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">after_values</span><span class="p">)</span> <span class="k">if</span> <span class="n">after_values</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.0</span><span class="p">])</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">diagnostics</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s2">&quot;checker_type&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">checker_type</span><span class="p">,</span>
-            <span class="s2">&quot;degree&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">degree</span><span class="p">,</span>
-            <span class="s2">&quot;target_illuminant&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_illuminant</span><span class="p">,</span>
-            <span class="s2">&quot;n_patches_detected&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">measured_Lab</span><span class="p">),</span>
-            <span class="s2">&quot;n_patches_expected&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">all_patch_names</span><span class="p">),</span>
-            <span class="s2">&quot;n_patches_rejected&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">rejected</span><span class="p">),</span>
-            <span class="s2">&quot;rejected_patches&quot;</span><span class="p">:</span> <span class="n">rejected</span><span class="p">,</span>
-            <span class="s2">&quot;per_card_summary&quot;</span><span class="p">:</span> <span class="n">per_card_summary</span><span class="p">,</span>
-            <span class="s2">&quot;patches&quot;</span><span class="p">:</span> <span class="n">patches_diag</span><span class="p">,</span>
-            <span class="s2">&quot;mean_deltaE00_before&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">dE_values</span><span class="p">)),</span>
-            <span class="s2">&quot;mean_deltaE00_after&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">after_arr</span><span class="p">)),</span>
-            <span class="s2">&quot;max_deltaE00_after&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">after_arr</span><span class="p">)),</span>
-            <span class="s2">&quot;median_deltaE00_after&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">after_arr</span><span class="p">)),</span>
+            <span class="s2">&quot;checker_type&quot;</span>                      <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">checker_type</span><span class="p">,</span>
+            <span class="s2">&quot;degree&quot;</span>                            <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">degree</span><span class="p">,</span>
+            <span class="s2">&quot;target_illuminant&quot;</span>                 <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_illuminant</span><span class="p">,</span>
+            <span class="s2">&quot;n_patches_detected&quot;</span>                <span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">measured_Lab</span><span class="p">),</span>
+            <span class="s2">&quot;n_patches_expected&quot;</span>                <span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">all_patch_names</span><span class="p">),</span>
+            <span class="s2">&quot;n_patches_rejected&quot;</span>                <span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">rejected</span><span class="p">),</span>
+            <span class="s2">&quot;rejected_patches&quot;</span>                  <span class="p">:</span> <span class="n">rejected</span><span class="p">,</span>
+            <span class="s2">&quot;per_card_summary&quot;</span>                  <span class="p">:</span> <span class="n">per_card_summary</span><span class="p">,</span>
+            <span class="s2">&quot;patches&quot;</span>                           <span class="p">:</span> <span class="n">patches_diag</span><span class="p">,</span>
+            <span class="s2">&quot;mean_deltaE00_before&quot;</span>              <span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">dE_values</span><span class="p">)),</span>
+            <span class="s2">&quot;mean_deltaE00_after&quot;</span>               <span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">after_arr</span><span class="p">)),</span>
+            <span class="s2">&quot;max_deltaE00_after&quot;</span>                <span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">after_arr</span><span class="p">)),</span>
+            <span class="s2">&quot;median_deltaE00_after&quot;</span>             <span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">after_arr</span><span class="p">)),</span>
             <span class="s2">&quot;correction_matrix_condition_number&quot;</span><span class="p">:</span> <span class="n">cond</span><span class="p">,</span>
-            <span class="s2">&quot;warnings&quot;</span><span class="p">:</span> <span class="n">warnings_list</span><span class="p">,</span>
+            <span class="s2">&quot;warnings&quot;</span>                          <span class="p">:</span> <span class="n">warnings_list</span><span class="p">,</span>
         <span class="p">}</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">is_fitted</span> <span class="o">=</span> <span class="kc">True</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-            <span class="s2">&quot;ColorCheckerProfile fitted: </span><span class="si">%d</span><span class="s2">/</span><span class="si">%d</span><span class="s2"> patches, &quot;</span>
-            <span class="s2">&quot;mean dE00 </span><span class="si">%.2f</span><span class="s2"> -&gt; </span><span class="si">%.2f</span><span class="s2">&quot;</span><span class="p">,</span>
-            <span class="nb">len</span><span class="p">(</span><span class="n">measured_Lab</span><span class="p">),</span>
-            <span class="nb">len</span><span class="p">(</span><span class="n">all_patch_names</span><span class="p">),</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">diagnostics</span><span class="p">[</span><span class="s2">&quot;mean_deltaE00_before&quot;</span><span class="p">],</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">diagnostics</span><span class="p">[</span><span class="s2">&quot;mean_deltaE00_after&quot;</span><span class="p">],</span>
+                <span class="s2">&quot;ColorCheckerProfile fitted: </span><span class="si">%d</span><span class="s2">/</span><span class="si">%d</span><span class="s2"> patches, &quot;</span>
+                <span class="s2">&quot;mean dE00 </span><span class="si">%.2f</span><span class="s2"> -&gt; </span><span class="si">%.2f</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="nb">len</span><span class="p">(</span><span class="n">measured_Lab</span><span class="p">),</span>
+                <span class="nb">len</span><span class="p">(</span><span class="n">all_patch_names</span><span class="p">),</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">diagnostics</span><span class="p">[</span><span class="s2">&quot;mean_deltaE00_before&quot;</span><span class="p">],</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">diagnostics</span><span class="p">[</span><span class="s2">&quot;mean_deltaE00_after&quot;</span><span class="p">],</span>
         <span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_fit_ridge</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="n">measured_linear</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
-        <span class="n">reference_linear</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">measured_linear</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+            <span class="n">reference_linear</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Fallback ridge-regression fit when colour library call fails.</span>
 
@@ -1251,16 +1382,16 @@
 <span class="sd">            Correction matrix of shape ``(3, F)``.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">Phi</span> <span class="o">=</span> <span class="n">colour</span><span class="o">.</span><span class="n">characterisation</span><span class="o">.</span><span class="n">polynomial_expansion_Finlayson2015</span><span class="p">(</span>
-            <span class="n">measured_linear</span><span class="p">,</span>
-            <span class="n">degree</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">degree</span><span class="p">,</span>  <span class="c1"># type: ignore[arg-type]</span>
-            <span class="n">root_polynomial_expansion</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">measured_linear</span><span class="p">,</span>
+                <span class="n">degree</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">degree</span><span class="p">,</span>  <span class="c1"># type: ignore[arg-type]</span>
+                <span class="n">root_polynomial_expansion</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="c1"># Solve: reference = Phi @ W.T  =&gt;  W.T = (Phi^T Phi + lam I)^-1 Phi^T reference</span>
         <span class="n">AtA</span> <span class="o">=</span> <span class="n">Phi</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="n">Phi</span>
         <span class="n">F</span> <span class="o">=</span> <span class="n">AtA</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
         <span class="n">W_T</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span>
-            <span class="n">AtA</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">ridge_lambda</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="n">F</span><span class="p">),</span>
-            <span class="n">Phi</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="n">reference_linear</span><span class="p">,</span>
+                <span class="n">AtA</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">ridge_lambda</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="n">F</span><span class="p">),</span>
+                <span class="n">Phi</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="n">reference_linear</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="c1"># W_T has shape (F, 3); CCM convention in colour is (3, F)</span>
         <span class="k">return</span> <span class="n">W_T</span><span class="o">.</span><span class="n">T</span>
@@ -1268,7 +1399,7 @@
     <span class="c1"># -- reference data accessor -------------------------------------------</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_load_refs</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
+            <span class="bp">self</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Load reference Lab and linear RGB for the configured checker.</span>
 
@@ -1304,7 +1435,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_fitted</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
-                <span class="s2">&quot;Cannot create dashboard for an unfitted profile.&quot;</span>
+                    <span class="s2">&quot;Cannot create dashboard for an unfitted profile.&quot;</span>
             <span class="p">)</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.panel_</span><span class="w"> </span><span class="kn">import</span> <span class="n">require_panel</span><span class="p">,</span> <span class="n">display_or_return</span>
 
@@ -1313,7 +1444,7 @@
         <span class="kn">from</span><span class="w"> </span><span class="nn">._diagnostic_dashboard</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColorCorrectionDashboard</span>
 
         <span class="n">dashboard</span> <span class="o">=</span> <span class="n">ColorCorrectionDashboard</span><span class="p">(</span>
-            <span class="n">profile</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_image</span><span class="p">,</span> <span class="n">rois</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">rois</span><span class="p">,</span>
+                <span class="n">profile</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_image</span><span class="p">,</span> <span class="n">rois</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">rois</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="n">panel_layout</span> <span class="o">=</span> <span class="n">dashboard</span><span class="o">.</span><span class="n">panel</span><span class="p">()</span>
 
@@ -1321,69 +1452,12 @@
 
 
     <span class="c1"># -- serialisation ------------------------------------------------------</span>
-
-<div class="viewcode-block" id="ColorCheckerProfile.to_dict">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.correction.html#phenotypic.correction.ColorCheckerProfile.to_dict">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">to_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Serialise the profile to a JSON-compatible dictionary.</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            Dictionary containing all parameters and the fitted correction</span>
-<span class="sd">            matrix (as a nested list).</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">data</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s2">&quot;checker_type&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">checker_type</span><span class="p">,</span>
-            <span class="s2">&quot;degree&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">degree</span><span class="p">,</span>
-            <span class="s2">&quot;target_illuminant&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_illuminant</span><span class="p">,</span>
-            <span class="s2">&quot;median_filter_size&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">median_filter_size</span><span class="p">,</span>
-            <span class="s2">&quot;stddev_mag_threshold&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">stddev_mag_threshold</span><span class="p">,</span>
-            <span class="s2">&quot;border_distance_threshold&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">border_distance_threshold</span><span class="p">,</span>
-            <span class="s2">&quot;core_fraction&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">core_fraction</span><span class="p">,</span>
-            <span class="s2">&quot;ridge_lambda&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">ridge_lambda</span><span class="p">,</span>
-            <span class="s2">&quot;outlier_sigma&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">outlier_sigma</span><span class="p">,</span>
-            <span class="s2">&quot;is_fitted&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_fitted</span><span class="p">,</span>
-        <span class="p">}</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">correction_matrix</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">data</span><span class="p">[</span><span class="s2">&quot;correction_matrix&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">correction_matrix</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">diagnostics</span><span class="p">:</span>
-            <span class="n">data</span><span class="p">[</span><span class="s2">&quot;diagnostics&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">diagnostics</span>
-        <span class="k">return</span> <span class="n">data</span></div>
-
-
-<div class="viewcode-block" id="ColorCheckerProfile.from_dict">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.correction.html#phenotypic.correction.ColorCheckerProfile.from_dict">[docs]</a>
-    <span class="nd">@classmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">from_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">ColorCheckerProfile</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Reconstruct a profile from a serialised dictionary.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            data: Dictionary previously produced by :meth:`to_dict`.</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            Reconstructed ``ColorCheckerProfile`` instance.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">profile</span> <span class="o">=</span> <span class="bp">cls</span><span class="p">(</span>
-            <span class="n">checker_type</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;checker_type&quot;</span><span class="p">,</span> <span class="s2">&quot;ColorChecker24 - After November 2014&quot;</span><span class="p">),</span>
-            <span class="n">degree</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;degree&quot;</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span>
-            <span class="n">target_illuminant</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;target_illuminant&quot;</span><span class="p">,</span> <span class="s2">&quot;D65&quot;</span><span class="p">),</span>
-            <span class="n">median_filter_size</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;median_filter_size&quot;</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span>
-            <span class="n">stddev_mag_threshold</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;stddev_mag_threshold&quot;</span><span class="p">,</span> <span class="mf">15.0</span><span class="p">),</span>
-            <span class="n">border_distance_threshold</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;border_distance_threshold&quot;</span><span class="p">,</span> <span class="mf">12.0</span><span class="p">),</span>
-            <span class="n">core_fraction</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;core_fraction&quot;</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">),</span>
-            <span class="n">ridge_lambda</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;ridge_lambda&quot;</span><span class="p">,</span> <span class="mf">1e-3</span><span class="p">),</span>
-            <span class="n">outlier_sigma</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;outlier_sigma&quot;</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">),</span>
-        <span class="p">)</span>
-        <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;correction_matrix&quot;</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">profile</span><span class="o">.</span><span class="n">correction_matrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span>
-                <span class="n">data</span><span class="p">[</span><span class="s2">&quot;correction_matrix&quot;</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span>
-            <span class="p">)</span>
-        <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;diagnostics&quot;</span><span class="p">):</span>
-            <span class="n">profile</span><span class="o">.</span><span class="n">diagnostics</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;diagnostics&quot;</span><span class="p">]</span>
-        <span class="n">profile</span><span class="o">.</span><span class="n">is_fitted</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;is_fitted&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
-        <span class="n">profile</span><span class="o">.</span><span class="n">rois</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="n">profile</span><span class="o">.</span><span class="n">_image</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="k">return</span> <span class="n">profile</span></div>
-
+    <span class="c1">#</span>
+    <span class="c1"># ``ColorCheckerProfile`` is a pydantic ``BaseModel``: serialise via</span>
+    <span class="c1"># :meth:`~pydantic.BaseModel.model_dump` (use ``mode=&quot;json&quot;`` for a</span>
+    <span class="c1"># JSON-native dict — ``NdArrayField`` rewrites ``correction_matrix`` to a</span>
+    <span class="c1"># nested list, and ``rois`` is field-level ``exclude=True``) and round-trip</span>
+    <span class="c1"># via :meth:`~pydantic.BaseModel.model_validate`.</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
         <span class="n">status</span> <span class="o">=</span> <span class="s2">&quot;fitted&quot;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_fitted</span> <span class="k">else</span> <span class="s2">&quot;unfitted&quot;</span>

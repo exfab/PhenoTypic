@@ -33,6 +33,7 @@ phenotypic.prefab.RoundPeaksPipeline
       ~RoundPeaksPipeline.get_model
       ~RoundPeaksPipeline.get_ops
       ~RoundPeaksPipeline.get_post
+      ~RoundPeaksPipeline.get_qc
       ~RoundPeaksPipeline.json
       ~RoundPeaksPipeline.measure
       ~RoundPeaksPipeline.model_construct
@@ -56,6 +57,7 @@ phenotypic.prefab.RoundPeaksPipeline
       ~RoundPeaksPipeline.set_model
       ~RoundPeaksPipeline.set_ops
       ~RoundPeaksPipeline.set_post
+      ~RoundPeaksPipeline.set_qc
       ~RoundPeaksPipeline.to_json
       ~RoundPeaksPipeline.update_forward_refs
       ~RoundPeaksPipeline.validate
@@ -87,5 +89,6 @@ phenotypic.prefab.RoundPeaksPipeline
       ~RoundPeaksPipeline.post
       ~RoundPeaksPipeline.filters
       ~RoundPeaksPipeline.model
+      ~RoundPeaksPipeline.qc
    
    

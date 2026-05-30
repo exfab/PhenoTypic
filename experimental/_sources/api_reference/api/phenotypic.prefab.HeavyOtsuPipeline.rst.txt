@@ -33,6 +33,7 @@ phenotypic.prefab.HeavyOtsuPipeline
       ~HeavyOtsuPipeline.get_model
       ~HeavyOtsuPipeline.get_ops
       ~HeavyOtsuPipeline.get_post
+      ~HeavyOtsuPipeline.get_qc
       ~HeavyOtsuPipeline.json
       ~HeavyOtsuPipeline.measure
       ~HeavyOtsuPipeline.model_construct
@@ -56,6 +57,7 @@ phenotypic.prefab.HeavyOtsuPipeline
       ~HeavyOtsuPipeline.set_model
       ~HeavyOtsuPipeline.set_ops
       ~HeavyOtsuPipeline.set_post
+      ~HeavyOtsuPipeline.set_qc
       ~HeavyOtsuPipeline.to_json
       ~HeavyOtsuPipeline.update_forward_refs
       ~HeavyOtsuPipeline.validate
@@ -87,5 +89,6 @@ phenotypic.prefab.HeavyOtsuPipeline
       ~HeavyOtsuPipeline.post
       ~HeavyOtsuPipeline.filters
       ~HeavyOtsuPipeline.model
+      ~HeavyOtsuPipeline.qc
    
    

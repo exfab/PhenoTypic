@@ -567,7 +567,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">PrefabPipeline</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.correction</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridAligner</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect</span><span class="w"> </span><span class="kn">import</span> <span class="n">WatershedDetector</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.enhance</span><span class="w"> </span><span class="kn">import</span> <span class="n">CLAHE</span><span class="p">,</span> <span class="n">GaussianBlur</span><span class="p">,</span> <span class="n">MedianFilter</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.enhance</span><span class="w"> </span><span class="kn">import</span> <span class="n">EnhanceLocalContrast</span><span class="p">,</span> <span class="n">GaussianBlur</span><span class="p">,</span> <span class="n">MedianFilter</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.measure</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">MeasureColor</span><span class="p">,</span>
     <span class="n">MeasureIntensity</span><span class="p">,</span>
@@ -575,11 +575,11 @@
     <span class="n">MeasureTexture</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.refine</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-    <span class="n">BorderObjectRemover</span><span class="p">,</span>
+    <span class="n">RemoveBorderObjects</span><span class="p">,</span>
     <span class="n">MaskFill</span><span class="p">,</span>
-    <span class="n">LowCircularityRemover</span><span class="p">,</span>
+    <span class="n">RemoveNonCircular</span><span class="p">,</span>
     <span class="n">GridOversizedObjectRemover</span><span class="p">,</span>
-    <span class="n">ReduceMultipleGridObjects</span><span class="p">,</span>
+    <span class="n">ReduceSectionsByLine</span><span class="p">,</span>
 <span class="p">)</span>
 
 
@@ -595,13 +595,13 @@
 
 <span class="sd">    Steps:</span>
 <span class="sd">        1. GaussianBlur — smooth noise</span>
-<span class="sd">        2. CLAHE — boost local contrast</span>
+<span class="sd">        2. EnhanceLocalContrast — boost local contrast</span>
 <span class="sd">        3. MedianFilter — remove residual speckle</span>
 <span class="sd">        4. WatershedDetector — region-growing segmentation</span>
-<span class="sd">        5. BorderObjectRemover — remove partial edge colonies</span>
-<span class="sd">        6. LowCircularityRemover — remove non-circular artifacts</span>
+<span class="sd">        5. RemoveBorderObjects — remove partial edge colonies</span>
+<span class="sd">        6. RemoveNonCircular — remove non-circular artifacts</span>
 <span class="sd">        7. GridOversizedObjectRemover — remove merged multi-well objects</span>
-<span class="sd">        8. ReduceMultipleGridObjects — keep one colony per well</span>
+<span class="sd">        8. ReduceSectionsByLine — keep one colony per well</span>
 <span class="sd">        9. GridAligner — straighten the grid</span>
 <span class="sd">        10. MaskFill — fill interior holes</span>
 
@@ -688,26 +688,26 @@
                 <span class="n">relabel</span><span class="o">=</span><span class="n">watershed_relabel</span><span class="p">,</span>
                 <span class="n">ignore_zeros</span><span class="o">=</span><span class="n">watershed_ignore_zeros</span><span class="p">,</span>
         <span class="p">)</span>
-        <span class="n">border_remover</span> <span class="o">=</span> <span class="n">BorderObjectRemover</span><span class="p">(</span><span class="n">border_size</span><span class="o">=</span><span class="n">border_remover_size</span><span class="p">)</span>
-        <span class="n">min_residual_reducer</span> <span class="o">=</span> <span class="n">ReduceMultipleGridObjects</span><span class="p">()</span>
+        <span class="n">border_remover</span> <span class="o">=</span> <span class="n">RemoveBorderObjects</span><span class="p">(</span><span class="n">border_size</span><span class="o">=</span><span class="n">border_remover_size</span><span class="p">)</span>
+        <span class="n">min_residual_reducer</span> <span class="o">=</span> <span class="n">ReduceSectionsByLine</span><span class="p">()</span>
 
         <span class="n">ops</span> <span class="o">=</span> <span class="p">[</span>
             <span class="n">GaussianBlur</span><span class="p">(</span>
                     <span class="n">sigma</span><span class="o">=</span><span class="n">gaussian_sigma</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="n">gaussian_mode</span><span class="p">,</span> <span class="n">truncate</span><span class="o">=</span><span class="n">gaussian_truncate</span>
             <span class="p">),</span>
-            <span class="n">CLAHE</span><span class="p">(),</span>
+            <span class="n">EnhanceLocalContrast</span><span class="p">(),</span>
             <span class="n">MedianFilter</span><span class="p">(),</span>
             <span class="n">watershed_detector</span><span class="p">,</span>
             <span class="n">border_remover</span><span class="p">,</span>
             <span class="n">GridOversizedObjectRemover</span><span class="p">(),</span>
-            <span class="n">LowCircularityRemover</span><span class="p">(</span><span class="n">cutoff</span><span class="o">=</span><span class="n">circularity_cutoff</span><span class="p">),</span>
+            <span class="n">RemoveNonCircular</span><span class="p">(</span><span class="n">cutoff</span><span class="o">=</span><span class="n">circularity_cutoff</span><span class="p">),</span>
             <span class="n">min_residual_reducer</span><span class="p">,</span>
             <span class="n">GridAligner</span><span class="p">(),</span>
             <span class="n">watershed_detector</span><span class="p">,</span>
             <span class="n">GridOversizedObjectRemover</span><span class="p">(),</span>
             <span class="n">min_residual_reducer</span><span class="p">,</span>
             <span class="n">border_remover</span><span class="p">,</span>
-            <span class="n">LowCircularityRemover</span><span class="p">(</span><span class="n">cutoff</span><span class="o">=</span><span class="n">circularity_cutoff</span><span class="p">),</span>
+            <span class="n">RemoveNonCircular</span><span class="p">(</span><span class="n">cutoff</span><span class="o">=</span><span class="n">circularity_cutoff</span><span class="p">),</span>
             <span class="n">MaskFill</span><span class="p">(),</span>
         <span class="p">]</span>
 

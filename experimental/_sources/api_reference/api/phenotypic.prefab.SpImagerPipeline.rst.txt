@@ -33,6 +33,7 @@ phenotypic.prefab.SpImagerPipeline
       ~SpImagerPipeline.get_model
       ~SpImagerPipeline.get_ops
       ~SpImagerPipeline.get_post
+      ~SpImagerPipeline.get_qc
       ~SpImagerPipeline.json
       ~SpImagerPipeline.measure
       ~SpImagerPipeline.model_construct
@@ -56,6 +57,7 @@ phenotypic.prefab.SpImagerPipeline
       ~SpImagerPipeline.set_model
       ~SpImagerPipeline.set_ops
       ~SpImagerPipeline.set_post
+      ~SpImagerPipeline.set_qc
       ~SpImagerPipeline.to_json
       ~SpImagerPipeline.update_forward_refs
       ~SpImagerPipeline.validate
@@ -87,5 +89,6 @@ phenotypic.prefab.SpImagerPipeline
       ~SpImagerPipeline.post
       ~SpImagerPipeline.filters
       ~SpImagerPipeline.model
+      ~SpImagerPipeline.qc
    
    

@@ -28,7 +28,6 @@ phenotypic.tools\_.constants\_
       IMAGE_TYPES
       IO
       METADATA
-      OBJECT
       PIPE_STATUS
    
    

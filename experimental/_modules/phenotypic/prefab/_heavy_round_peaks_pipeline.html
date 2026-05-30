@@ -565,12 +565,12 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">PrefabPipeline</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.enhance</span><span class="w"> </span><span class="kn">import</span> <span class="n">CLAHE</span><span class="p">,</span> <span class="n">MedianFilter</span><span class="p">,</span> <span class="n">BM3DDenoiser</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.enhance</span><span class="w"> </span><span class="kn">import</span> <span class="n">EnhanceLocalContrast</span><span class="p">,</span> <span class="n">MedianFilter</span><span class="p">,</span> <span class="n">BM3DDenoiser</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect</span><span class="w"> </span><span class="kn">import</span> <span class="n">RoundPeaksDetector</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.correction</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridAligner</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.refine</span><span class="w"> </span><span class="kn">import</span> <span class="n">ReduceMultipleGridObjects</span><span class="p">,</span> <span class="n">GridOversizedObjectRemover</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.refine</span><span class="w"> </span><span class="kn">import</span> <span class="n">BorderObjectRemover</span><span class="p">,</span> <span class="n">SmallObjectRemover</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.refine</span><span class="w"> </span><span class="kn">import</span> <span class="n">MaskFill</span><span class="p">,</span> <span class="n">MaskOpener</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.refine</span><span class="w"> </span><span class="kn">import</span> <span class="n">ReduceSectionsByLine</span><span class="p">,</span> <span class="n">GridOversizedObjectRemover</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.refine</span><span class="w"> </span><span class="kn">import</span> <span class="n">RemoveBorderObjects</span><span class="p">,</span> <span class="n">SmallObjectRemover</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.refine</span><span class="w"> </span><span class="kn">import</span> <span class="n">MaskFill</span><span class="p">,</span> <span class="n">MaskOpening</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.measure</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">MeasureIntensity</span><span class="p">,</span>
     <span class="n">MeasureShape</span><span class="p">,</span>
@@ -585,20 +585,20 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Detect and measure round colonies using peak detection with full refinement.</span>
 
 <span class="sd">    An extended version of :class:`RoundPeaksPipeline` that adds BM3D denoising,</span>
-<span class="sd">    CLAHE contrast enhancement, morphological refinement, grid alignment, and a</span>
+<span class="sd">    EnhanceLocalContrast contrast enhancement, morphological refinement, grid alignment, and a</span>
 <span class="sd">    second detection pass for improved accuracy on challenging plates.</span>
 
 <span class="sd">    Steps:</span>
 <span class="sd">        1. BM3DDenoiser — high-quality denoising</span>
-<span class="sd">        2. CLAHE — boost local contrast</span>
+<span class="sd">        2. EnhanceLocalContrast — boost local contrast</span>
 <span class="sd">        3. MedianFilter — remove residual speckle</span>
 <span class="sd">        4. RoundPeaksDetector — first detection pass</span>
-<span class="sd">        5. MaskOpener, BorderObjectRemover, SmallObjectRemover, MaskFill — cleanup</span>
-<span class="sd">        6. GridOversizedObjectRemover, ReduceMultipleGridObjects — grid refinement</span>
+<span class="sd">        5. MaskOpening, RemoveBorderObjects, SmallObjectRemover, MaskFill — cleanup</span>
+<span class="sd">        6. GridOversizedObjectRemover, ReduceSectionsByLine — grid refinement</span>
 <span class="sd">        7. GridAligner — straighten the grid</span>
 <span class="sd">        8. RoundPeaksDetector — second detection pass after alignment</span>
-<span class="sd">        9. BorderObjectRemover, SmallObjectRemover, MaskFill — final cleanup</span>
-<span class="sd">        10. ReduceMultipleGridObjects — final grid refinement</span>
+<span class="sd">        9. RemoveBorderObjects, SmallObjectRemover, MaskFill — final cleanup</span>
+<span class="sd">        10. ReduceSectionsByLine — final grid refinement</span>
 
 <span class="sd">    Measurements: MeasureShape, MeasureColor, MeasureIntensity, MeasureTexture.</span>
 
@@ -630,7 +630,8 @@
             <span class="n">bm3d_clip</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
             <span class="n">clahe_kernel_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
             <span class="n">clahe_clip_limit</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.01</span><span class="p">,</span>
-            <span class="n">median_mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;nearest&quot;</span><span class="p">,</span> <span class="s2">&quot;reflect&quot;</span><span class="p">,</span> <span class="s2">&quot;constant&quot;</span><span class="p">,</span> <span class="s2">&quot;mirror&quot;</span><span class="p">,</span> <span class="s2">&quot;wrap&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;nearest&quot;</span><span class="p">,</span>
+            <span class="n">median_mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span>
+                <span class="s2">&quot;nearest&quot;</span><span class="p">,</span> <span class="s2">&quot;reflect&quot;</span><span class="p">,</span> <span class="s2">&quot;constant&quot;</span><span class="p">,</span> <span class="s2">&quot;mirror&quot;</span><span class="p">,</span> <span class="s2">&quot;wrap&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;nearest&quot;</span><span class="p">,</span>
             <span class="n">median_shape</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;disk&quot;</span><span class="p">,</span> <span class="s2">&quot;square&quot;</span><span class="p">,</span> <span class="s2">&quot;diamond&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;diamond&quot;</span><span class="p">,</span>
             <span class="n">median_radius</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
             <span class="n">median_cval</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
@@ -646,13 +647,15 @@
             <span class="n">detector_min_peak_distance</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
             <span class="n">detector_peak_prominence</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
             <span class="n">detector_edge_refinement</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-            <span class="n">detector_selection_mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;dominant&quot;</span><span class="p">,</span> <span class="s2">&quot;centered&quot;</span><span class="p">,</span> <span class="s2">&quot;regularized&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;dominant&quot;</span><span class="p">,</span>
+            <span class="n">detector_selection_mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span>
+                <span class="s2">&quot;dominant&quot;</span><span class="p">,</span> <span class="s2">&quot;centered&quot;</span><span class="p">,</span> <span class="s2">&quot;regularized&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;dominant&quot;</span><span class="p">,</span>
             <span class="n">detector_split_merged</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
             <span class="c1"># Grid alignment</span>
             <span class="n">grid_aligner_axis</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
             <span class="n">grid_aligner_mode</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;edge&quot;</span><span class="p">,</span>
             <span class="c1"># Morphology / refinement</span>
-            <span class="n">mask_opener_footprint</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;auto&quot;</span><span class="p">,</span> <span class="s2">&quot;disk&quot;</span><span class="p">,</span> <span class="s2">&quot;square&quot;</span><span class="p">,</span> <span class="s2">&quot;diamond&quot;</span><span class="p">]</span> <span class="o">|</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="s2">&quot;auto&quot;</span><span class="p">,</span>
+            <span class="n">mask_opener_footprint</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span>
+                                       <span class="s2">&quot;auto&quot;</span><span class="p">,</span> <span class="s2">&quot;disk&quot;</span><span class="p">,</span> <span class="s2">&quot;square&quot;</span><span class="p">,</span> <span class="s2">&quot;diamond&quot;</span><span class="p">]</span> <span class="o">|</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="s2">&quot;auto&quot;</span><span class="p">,</span>
             <span class="n">mask_opener_width</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
             <span class="n">mask_opener_n_iter</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
             <span class="n">border_remover_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
@@ -689,10 +692,10 @@
 <span class="sd">            bm3d_clip: Whether to clip denoised values to the [0, 1] range. Disabling may</span>
 <span class="sd">                preserve subtle intensity variations but can produce out-of-range values.</span>
 <span class="sd">            clahe_kernel_size: Determines the size of the kernel used for local contrast enhancement</span>
-<span class="sd">                via CLAHE. Larger sizes improve contrast over broader areas, but may over-amplify</span>
+<span class="sd">                via EnhanceLocalContrast. Larger sizes improve contrast over broader areas, but may over-amplify</span>
 <span class="sd">                large background variations. Smaller sizes enhance localized details but may</span>
 <span class="sd">                introduce noise.</span>
-<span class="sd">            clahe_clip_limit: Contrast clipping limit for CLAHE. Lower values produce more subtle</span>
+<span class="sd">            clahe_clip_limit: Contrast clipping limit for EnhanceLocalContrast. Lower values produce more subtle</span>
 <span class="sd">                enhancement; higher values amplify local contrast more aggressively, which can</span>
 <span class="sd">                over-enhance noise.</span>
 <span class="sd">            median_mode: Boundary handling mode for median filtering. Controls how pixel values</span>
@@ -800,40 +803,43 @@
         <span class="p">)</span>
 
         <span class="n">ops</span> <span class="o">=</span> <span class="p">[</span>
-            <span class="n">BM3DDenoiser</span><span class="p">(</span><span class="n">sigma_psd</span><span class="o">=</span><span class="n">bm3d_sigma</span><span class="p">,</span> <span class="n">block_size</span><span class="o">=</span><span class="n">bm3d_block_size</span><span class="p">,</span> <span class="n">stage_arg</span><span class="o">=</span><span class="n">bm3d_stage_arg</span><span class="p">,</span> <span class="n">clip</span><span class="o">=</span><span class="n">bm3d_clip</span><span class="p">),</span>
-            <span class="n">CLAHE</span><span class="p">(</span><span class="n">kernel_size</span><span class="o">=</span><span class="n">clahe_kernel_size</span><span class="p">,</span> <span class="n">clip_limit</span><span class="o">=</span><span class="n">clahe_clip_limit</span><span class="p">),</span>
-            <span class="n">MedianFilter</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="n">median_mode</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="n">median_shape</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="n">median_radius</span><span class="p">,</span> <span class="n">cval</span><span class="o">=</span><span class="n">median_cval</span><span class="p">),</span>
+            <span class="n">BM3DDenoiser</span><span class="p">(</span><span class="n">sigma_psd</span><span class="o">=</span><span class="n">bm3d_sigma</span><span class="p">,</span> <span class="n">block_size</span><span class="o">=</span><span class="n">bm3d_block_size</span><span class="p">,</span>
+                         <span class="n">stage_arg</span><span class="o">=</span><span class="n">bm3d_stage_arg</span><span class="p">,</span> <span class="n">clip</span><span class="o">=</span><span class="n">bm3d_clip</span><span class="p">),</span>
+            <span class="n">EnhanceLocalContrast</span><span class="p">(</span><span class="n">kernel_size</span><span class="o">=</span><span class="n">clahe_kernel_size</span><span class="p">,</span> <span class="n">clip_limit</span><span class="o">=</span><span class="n">clahe_clip_limit</span><span class="p">),</span>
+            <span class="n">MedianFilter</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="n">median_mode</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="n">median_shape</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="n">median_radius</span><span class="p">,</span>
+                         <span class="n">cval</span><span class="o">=</span><span class="n">median_cval</span><span class="p">),</span>
             <span class="c1"># First detection pass</span>
             <span class="n">RoundPeaksDetector</span><span class="p">(</span><span class="o">**</span><span class="n">detector_kwargs</span><span class="p">),</span>
-            <span class="n">MaskOpener</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="n">mask_opener_footprint</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="n">mask_opener_width</span><span class="p">,</span> <span class="n">n_iter</span><span class="o">=</span><span class="n">mask_opener_n_iter</span><span class="p">),</span>
-            <span class="n">BorderObjectRemover</span><span class="p">(</span><span class="n">border_size</span><span class="o">=</span><span class="n">border_remover_size</span><span class="p">),</span>
+            <span class="n">MaskOpening</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="n">mask_opener_footprint</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="n">mask_opener_width</span><span class="p">,</span>
+                        <span class="n">n_iter</span><span class="o">=</span><span class="n">mask_opener_n_iter</span><span class="p">),</span>
+            <span class="n">RemoveBorderObjects</span><span class="p">(</span><span class="n">border_size</span><span class="o">=</span><span class="n">border_remover_size</span><span class="p">),</span>
             <span class="n">SmallObjectRemover</span><span class="p">(</span><span class="n">min_size</span><span class="o">=</span><span class="n">small_object_min_size</span><span class="p">),</span>
             <span class="n">MaskFill</span><span class="p">(</span><span class="n">structure</span><span class="o">=</span><span class="n">mask_fill_structure</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="n">mask_fill_origin</span><span class="p">),</span>
             <span class="n">GridOversizedObjectRemover</span><span class="p">(),</span>
-            <span class="n">ReduceMultipleGridObjects</span><span class="p">(),</span>
+            <span class="n">ReduceSectionsByLine</span><span class="p">(),</span>
             <span class="n">GridAligner</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="n">grid_aligner_axis</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="n">grid_aligner_mode</span><span class="p">),</span>
             <span class="c1"># Second detection pass</span>
             <span class="n">RoundPeaksDetector</span><span class="p">(</span><span class="o">**</span><span class="n">detector_kwargs</span><span class="p">),</span>
-            <span class="n">MaskOpener</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="kc">None</span><span class="p">),</span>
-            <span class="n">BorderObjectRemover</span><span class="p">(</span><span class="n">border_size</span><span class="o">=</span><span class="n">border_remover_size</span><span class="p">),</span>
+            <span class="n">MaskOpening</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="kc">None</span><span class="p">),</span>
+            <span class="n">RemoveBorderObjects</span><span class="p">(</span><span class="n">border_size</span><span class="o">=</span><span class="n">border_remover_size</span><span class="p">),</span>
             <span class="n">SmallObjectRemover</span><span class="p">(</span><span class="n">min_size</span><span class="o">=</span><span class="n">small_object_min_size</span><span class="p">),</span>
             <span class="n">GridOversizedObjectRemover</span><span class="p">(),</span>
             <span class="n">MaskFill</span><span class="p">(</span><span class="n">structure</span><span class="o">=</span><span class="n">mask_fill_structure</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="n">mask_fill_origin</span><span class="p">),</span>
-            <span class="n">ReduceMultipleGridObjects</span><span class="p">(),</span>
+            <span class="n">ReduceSectionsByLine</span><span class="p">(),</span>
         <span class="p">]</span>
 
         <span class="n">meas</span> <span class="o">=</span> <span class="p">[</span>
             <span class="n">MeasureShape</span><span class="p">(),</span>
             <span class="n">MeasureColor</span><span class="p">(</span>
-                <span class="n">white_chroma_max</span><span class="o">=</span><span class="n">color_white_chroma_max</span><span class="p">,</span>
-                <span class="n">chroma_min</span><span class="o">=</span><span class="n">color_chroma_min</span><span class="p">,</span>
-                <span class="n">include_XYZ</span><span class="o">=</span><span class="n">color_include_XYZ</span><span class="p">,</span>
+                    <span class="n">white_chroma_max</span><span class="o">=</span><span class="n">color_white_chroma_max</span><span class="p">,</span>
+                    <span class="n">chroma_min</span><span class="o">=</span><span class="n">color_chroma_min</span><span class="p">,</span>
+                    <span class="n">include_XYZ</span><span class="o">=</span><span class="n">color_include_XYZ</span><span class="p">,</span>
             <span class="p">),</span>
             <span class="n">MeasureTexture</span><span class="p">(</span>
-                <span class="n">scale</span><span class="o">=</span><span class="n">texture_scale</span><span class="p">,</span>
-                <span class="n">quant_lvl</span><span class="o">=</span><span class="n">texture_quant_lvl</span><span class="p">,</span>
-                <span class="n">enhance</span><span class="o">=</span><span class="n">texture_enhance</span><span class="p">,</span>
-                <span class="n">warn</span><span class="o">=</span><span class="n">texture_warn</span><span class="p">,</span>
+                    <span class="n">scale</span><span class="o">=</span><span class="n">texture_scale</span><span class="p">,</span>
+                    <span class="n">quant_lvl</span><span class="o">=</span><span class="n">texture_quant_lvl</span><span class="p">,</span>
+                    <span class="n">enhance</span><span class="o">=</span><span class="n">texture_enhance</span><span class="p">,</span>
+                    <span class="n">warn</span><span class="o">=</span><span class="n">texture_warn</span><span class="p">,</span>
             <span class="p">),</span>
             <span class="n">MeasureIntensity</span><span class="p">(),</span>
         <span class="p">]</span>

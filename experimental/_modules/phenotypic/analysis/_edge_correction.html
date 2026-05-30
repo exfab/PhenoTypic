@@ -562,6 +562,8 @@
   <h1>Source code for phenotypic.analysis._edge_correction</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span>
+
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">joblib</span><span class="w"> </span><span class="kn">import</span> <span class="n">delayed</span><span class="p">,</span> <span class="n">Parallel</span>
@@ -572,7 +574,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">field_validator</span><span class="p">,</span> <span class="n">PrivateAttr</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColumnRef</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">EDGE_CORRECTION</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">EDGE_CORRECTION</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">SetAnalyzer</span>
 
 
@@ -901,7 +903,7 @@
 <span class="sd">            &gt;&gt;&gt; import pandas as pd</span>
 <span class="sd">            &gt;&gt;&gt; import numpy as np</span>
 <span class="sd">            &gt;&gt;&gt; from phenotypic.analysis import EdgeCorrector</span>
-<span class="sd">            &gt;&gt;&gt; from phenotypic.tools_.measurement_info import GRID</span>
+<span class="sd">            &gt;&gt;&gt; from phenotypic.schema import GRID</span>
 <span class="sd">            &gt;&gt;&gt; # Create sample 96-well data (8 rows x 12 cols)</span>
 <span class="sd">            &gt;&gt;&gt; np.random.seed(42)</span>
 <span class="sd">            &gt;&gt;&gt; data = pd.DataFrame({</span>
@@ -945,7 +947,7 @@
 <span class="sd">            &gt;&gt;&gt; corrected = corrector.analyze(data)  # doctest: +SKIP</span>
 <span class="sd">            &gt;&gt;&gt; # Each plate-condition combo gets its own threshold</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">GRID</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">GRID</span>
 
         <span class="c1"># Validate input</span>
         <span class="k">if</span> <span class="n">data</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
@@ -1017,7 +1019,7 @@
             <span class="n">figsize</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
             <span class="n">max_groups</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span>
             <span class="n">collapsed</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-            <span class="n">criteria</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">criteria</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
             <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Figure</span><span class="p">,</span> <span class="n">plt</span><span class="o">.</span><span class="n">Axes</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Visualize edge correction results with interior/edge colony comparisons.</span>
@@ -1037,7 +1039,7 @@
 <span class="sd">            collapsed (bool, optional): If True (default), show all groups stacked vertically</span>
 <span class="sd">                on a single axis with y-offsets. If False, create a grid of subplots with</span>
 <span class="sd">                one group per subplot.</span>
-<span class="sd">            criteria (dict[str, any], optional): Filter groups before visualization using</span>
+<span class="sd">            criteria (dict[str, Any], optional): Filter groups before visualization using</span>
 <span class="sd">                column-value criteria (e.g., {&#39;Plate&#39;: &#39;P1&#39;, &#39;Condition&#39;: [&#39;WT&#39;, &#39;KO&#39;]}).</span>
 <span class="sd">                Filtering uses SetAnalyzer._filter_by with AND logic across criteria.</span>
 <span class="sd">            **kwargs: Additional matplotlib parameters:</span>
@@ -1499,7 +1501,7 @@
 <span class="sd">            - If p-value &gt; self.pvalue, threshold = np.inf (no correction applied)</span>
 <span class="sd">            - Threshold = mean of top_n interior values if correction applies</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">GRID</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">GRID</span>
 
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">group</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
             <span class="k">return</span> <span class="kc">None</span>
@@ -1682,7 +1684,7 @@
 <span class="sd">            ...     pvalue=0.05</span>
 <span class="sd">            ... )  # doctest: +SKIP</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">GRID</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">GRID</span>
 
         <span class="n">section_col</span> <span class="o">=</span> <span class="n">GRID</span><span class="o">.</span><span class="n">ROW_MAJOR_IDX</span>
 

@@ -1,0 +1,70 @@
+phenotypic.enhance.EnhanceFeatures
+==================================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: EnhanceFeatures
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~EnhanceFeatures.__init__
+      ~EnhanceFeatures.apply
+      ~EnhanceFeatures.construct
+      ~EnhanceFeatures.copy
+      ~EnhanceFeatures.dict
+      ~EnhanceFeatures.from_orm
+      ~EnhanceFeatures.json
+      ~EnhanceFeatures.model_construct
+      ~EnhanceFeatures.model_copy
+      ~EnhanceFeatures.model_dump
+      ~EnhanceFeatures.model_dump_json
+      ~EnhanceFeatures.model_json_schema
+      ~EnhanceFeatures.model_parametrized_name
+      ~EnhanceFeatures.model_post_init
+      ~EnhanceFeatures.model_rebuild
+      ~EnhanceFeatures.model_validate
+      ~EnhanceFeatures.model_validate_json
+      ~EnhanceFeatures.model_validate_strings
+      ~EnhanceFeatures.parse_file
+      ~EnhanceFeatures.parse_obj
+      ~EnhanceFeatures.parse_raw
+      ~EnhanceFeatures.schema
+      ~EnhanceFeatures.schema_json
+      ~EnhanceFeatures.update_forward_refs
+      ~EnhanceFeatures.validate
+      ~EnhanceFeatures.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~EnhanceFeatures.model_computed_fields
+      ~EnhanceFeatures.model_config
+      ~EnhanceFeatures.model_extra
+      ~EnhanceFeatures.model_fields
+      ~EnhanceFeatures.model_fields_set
+      ~EnhanceFeatures.n_scale
+      ~EnhanceFeatures.n_orient
+      ~EnhanceFeatures.min_wavelength
+      ~EnhanceFeatures.mult
+      ~EnhanceFeatures.sigma_onf
+      ~EnhanceFeatures.k
+      ~EnhanceFeatures.cutoff
+      ~EnhanceFeatures.g
+      ~EnhanceFeatures.noise_method
+      ~EnhanceFeatures.output
+   
+   

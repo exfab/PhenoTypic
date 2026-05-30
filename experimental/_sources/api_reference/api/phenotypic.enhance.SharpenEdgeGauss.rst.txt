@@ -1,0 +1,64 @@
+phenotypic.enhance.SharpenEdgeGauss
+===================================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: SharpenEdgeGauss
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~SharpenEdgeGauss.__init__
+      ~SharpenEdgeGauss.apply
+      ~SharpenEdgeGauss.construct
+      ~SharpenEdgeGauss.copy
+      ~SharpenEdgeGauss.dict
+      ~SharpenEdgeGauss.from_orm
+      ~SharpenEdgeGauss.json
+      ~SharpenEdgeGauss.model_construct
+      ~SharpenEdgeGauss.model_copy
+      ~SharpenEdgeGauss.model_dump
+      ~SharpenEdgeGauss.model_dump_json
+      ~SharpenEdgeGauss.model_json_schema
+      ~SharpenEdgeGauss.model_parametrized_name
+      ~SharpenEdgeGauss.model_post_init
+      ~SharpenEdgeGauss.model_rebuild
+      ~SharpenEdgeGauss.model_validate
+      ~SharpenEdgeGauss.model_validate_json
+      ~SharpenEdgeGauss.model_validate_strings
+      ~SharpenEdgeGauss.parse_file
+      ~SharpenEdgeGauss.parse_obj
+      ~SharpenEdgeGauss.parse_raw
+      ~SharpenEdgeGauss.schema
+      ~SharpenEdgeGauss.schema_json
+      ~SharpenEdgeGauss.update_forward_refs
+      ~SharpenEdgeGauss.validate
+      ~SharpenEdgeGauss.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~SharpenEdgeGauss.model_computed_fields
+      ~SharpenEdgeGauss.model_config
+      ~SharpenEdgeGauss.model_extra
+      ~SharpenEdgeGauss.model_fields
+      ~SharpenEdgeGauss.model_fields_set
+      ~SharpenEdgeGauss.radius
+      ~SharpenEdgeGauss.amount
+      ~SharpenEdgeGauss.preserve_range
+      ~SharpenEdgeGauss.n_iter
+   
+   

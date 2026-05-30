@@ -607,10 +607,10 @@
 <span class="sd">        ...         df[self.column] = self.value</span>
 <span class="sd">        ...         return df</span>
 <span class="sd">        &gt;&gt;&gt; post = AddConstant(column=&quot;Metadata_Flag&quot;, value=&quot;OK&quot;)</span>
-<span class="sd">        &gt;&gt;&gt; df = pd.DataFrame({&quot;ObjectLabel&quot;: [1, 2]})</span>
+<span class="sd">        &gt;&gt;&gt; df = pd.DataFrame({&quot;Object_Label&quot;: [1, 2]})</span>
 <span class="sd">        &gt;&gt;&gt; result = post.apply(df)</span>
 <span class="sd">        &gt;&gt;&gt; list(result.columns)</span>
-<span class="sd">        [&#39;ObjectLabel&#39;, &#39;Metadata_Flag&#39;]</span>
+<span class="sd">        [&#39;Object_Label&#39;, &#39;Metadata_Flag&#39;]</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="nd">@abstractmethod</span>

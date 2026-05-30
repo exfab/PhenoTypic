@@ -54,6 +54,11 @@
       processing_report_html_path
       processing_state_path
       progress_dir
+      qc_config_json_path
+      qc_dir
+      qc_members_parquet_path
+      qc_review_state_path
+      qc_summary_parquet_path
       read_run_manifest
       recompile_dir
       recompile_status_dir

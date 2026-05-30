@@ -1,0 +1,62 @@
+phenotypic.refine.MaskWhiteTophat
+=================================
+
+.. currentmodule:: phenotypic.refine
+
+.. autoclass:: MaskWhiteTophat
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~MaskWhiteTophat.__init__
+      ~MaskWhiteTophat.apply
+      ~MaskWhiteTophat.construct
+      ~MaskWhiteTophat.copy
+      ~MaskWhiteTophat.dict
+      ~MaskWhiteTophat.from_orm
+      ~MaskWhiteTophat.json
+      ~MaskWhiteTophat.model_construct
+      ~MaskWhiteTophat.model_copy
+      ~MaskWhiteTophat.model_dump
+      ~MaskWhiteTophat.model_dump_json
+      ~MaskWhiteTophat.model_json_schema
+      ~MaskWhiteTophat.model_parametrized_name
+      ~MaskWhiteTophat.model_post_init
+      ~MaskWhiteTophat.model_rebuild
+      ~MaskWhiteTophat.model_validate
+      ~MaskWhiteTophat.model_validate_json
+      ~MaskWhiteTophat.model_validate_strings
+      ~MaskWhiteTophat.parse_file
+      ~MaskWhiteTophat.parse_obj
+      ~MaskWhiteTophat.parse_raw
+      ~MaskWhiteTophat.schema
+      ~MaskWhiteTophat.schema_json
+      ~MaskWhiteTophat.update_forward_refs
+      ~MaskWhiteTophat.validate
+      ~MaskWhiteTophat.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~MaskWhiteTophat.model_computed_fields
+      ~MaskWhiteTophat.model_config
+      ~MaskWhiteTophat.model_extra
+      ~MaskWhiteTophat.model_fields
+      ~MaskWhiteTophat.model_fields_set
+      ~MaskWhiteTophat.shape
+      ~MaskWhiteTophat.width
+   
+   

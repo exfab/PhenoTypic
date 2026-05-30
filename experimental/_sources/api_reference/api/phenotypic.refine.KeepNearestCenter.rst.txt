@@ -1,0 +1,60 @@
+phenotypic.refine.KeepNearestCenter
+===================================
+
+.. currentmodule:: phenotypic.refine
+
+.. autoclass:: KeepNearestCenter
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~KeepNearestCenter.__init__
+      ~KeepNearestCenter.apply
+      ~KeepNearestCenter.construct
+      ~KeepNearestCenter.copy
+      ~KeepNearestCenter.dict
+      ~KeepNearestCenter.from_orm
+      ~KeepNearestCenter.json
+      ~KeepNearestCenter.model_construct
+      ~KeepNearestCenter.model_copy
+      ~KeepNearestCenter.model_dump
+      ~KeepNearestCenter.model_dump_json
+      ~KeepNearestCenter.model_json_schema
+      ~KeepNearestCenter.model_parametrized_name
+      ~KeepNearestCenter.model_post_init
+      ~KeepNearestCenter.model_rebuild
+      ~KeepNearestCenter.model_validate
+      ~KeepNearestCenter.model_validate_json
+      ~KeepNearestCenter.model_validate_strings
+      ~KeepNearestCenter.parse_file
+      ~KeepNearestCenter.parse_obj
+      ~KeepNearestCenter.parse_raw
+      ~KeepNearestCenter.schema
+      ~KeepNearestCenter.schema_json
+      ~KeepNearestCenter.update_forward_refs
+      ~KeepNearestCenter.validate
+      ~KeepNearestCenter.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~KeepNearestCenter.model_computed_fields
+      ~KeepNearestCenter.model_config
+      ~KeepNearestCenter.model_extra
+      ~KeepNearestCenter.model_fields
+      ~KeepNearestCenter.model_fields_set
+   
+   

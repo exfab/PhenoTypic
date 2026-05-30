@@ -560,7 +560,7 @@
                 <article class="bd-article">
                   
   <h1>Source code for phenotypic.analysis.abc_._quality_check</h1><div class="highlight"><pre>
-<span></span><span class="sd">&quot;&quot;&quot;Base ABC for severity-driven quality-control checks on measurement frames.&quot;&quot;&quot;</span>
+<span></span><span class="sd">&quot;&quot;&quot;Base ABC for metric-driven quality-control checks on measurement frames.&quot;&quot;&quot;</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
@@ -569,9 +569,9 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">ClassVar</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Field</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Field</span><span class="p">,</span> <span class="n">model_validator</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">QUALITY_CHECK</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">OBJECT</span><span class="p">,</span> <span class="n">QUALITY_CHECK</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">._set_analyzer</span><span class="w"> </span><span class="kn">import</span> <span class="n">SetAnalyzer</span>
 
@@ -584,33 +584,46 @@
 <span class="sd">    ``QualityCheck`` is a thin layer over :class:`SetAnalyzer` that</span>
 <span class="sd">    standardizes how subclasses surface flagged rows for downstream</span>
 <span class="sd">    curation. Subclasses implement a single ``_compute(group)`` hook</span>
-<span class="sd">    that augments one group with at minimum a ``QC_&lt;name&gt;_Severity``</span>
-<span class="sd">    column. The base class then derives two companion columns from</span>
-<span class="sd">    severity:</span>
+<span class="sd">    that augments one group with at minimum a raw, directional</span>
+<span class="sd">    ``QC_&lt;name&gt;_Metric`` column (the check&#39;s headline value in its own</span>
+<span class="sd">    units). The base class then derives two companion columns from the</span>
+<span class="sd">    metric, using the check&#39;s ``_HIGHER_IS_BAD`` direction flag to decide</span>
+<span class="sd">    which side of each threshold is &quot;bad&quot;:</span>
 
-<span class="sd">    * ``QC_&lt;name&gt;_Flag`` (``bool``): ``True`` when severity is at or</span>
-<span class="sd">      above ``severity_fail``. Rows with ``Flag=True`` are the ones the</span>
-<span class="sd">      results-viewer GUI offers to mark for curation removal.</span>
+<span class="sd">    * ``QC_&lt;name&gt;_Flag`` (``bool``): ``True`` when the metric crosses</span>
+<span class="sd">      ``fail_threshold`` in the bad direction. When ``_HIGHER_IS_BAD`` is</span>
+<span class="sd">      ``True`` that means ``metric &gt;= fail_threshold``; when ``False``</span>
+<span class="sd">      (e.g. an agreement score where lower is worse) it means</span>
+<span class="sd">      ``metric &lt;= fail_threshold``. Rows with ``Flag=True`` are the ones</span>
+<span class="sd">      the results-viewer GUI offers to mark for curation removal.</span>
 <span class="sd">    * ``QC_&lt;name&gt;_Status`` (``str``): tri-state label derived from the</span>
-<span class="sd">      same severity column. ``&quot;pass&quot;`` for ``severity &lt; severity_warn``,</span>
-<span class="sd">      ``&quot;warn&quot;`` for ``severity_warn &lt;= severity &lt; severity_fail``,</span>
-<span class="sd">      ``&quot;fail&quot;`` for ``severity &gt;= severity_fail``. Only ``&quot;fail&quot;``</span>
-<span class="sd">      triggers ``Flag=True``; the ``&quot;warn&quot;`` tier is informational.</span>
+<span class="sd">      same metric column. With ``_HIGHER_IS_BAD=True``: ``&quot;pass&quot;`` until</span>
+<span class="sd">      ``metric &gt;= warn_threshold`` (``&quot;warn&quot;``), then</span>
+<span class="sd">      ``metric &gt;= fail_threshold`` (``&quot;fail&quot;``), with</span>
+<span class="sd">      ``warn_threshold &lt;= fail_threshold``. With ``_HIGHER_IS_BAD=False``</span>
+<span class="sd">      the comparisons invert to ``&lt;=`` with</span>
+<span class="sd">      ``fail_threshold &lt;= warn_threshold``. Only ``&quot;fail&quot;`` triggers</span>
+<span class="sd">      ``Flag=True``; the ``&quot;warn&quot;`` tier is informational.</span>
 
-<span class="sd">    NaN severities (e.g. under-powered replicate bins in</span>
+<span class="sd">    NaN metrics (e.g. under-powered replicate bins in</span>
 <span class="sd">    :class:`ReplicateAgreement`) are treated as ``&quot;pass&quot;`` with</span>
 <span class="sd">    ``Flag=False`` so degenerate groups never gate curation.</span>
 
-<span class="sd">    Subclasses set two class-level attributes that drive column naming</span>
-<span class="sd">    and docstring autogeneration:</span>
+<span class="sd">    Subclasses set class-level attributes that drive column naming,</span>
+<span class="sd">    threshold direction, and docstring autogeneration:</span>
 
 <span class="sd">    * ``name`` — short identifier composed into output column names</span>
 <span class="sd">      (``QC_&lt;name&gt;_Flag`` and friends). Must be set on every concrete</span>
 <span class="sd">      subclass.</span>
+<span class="sd">    * ``_HIGHER_IS_BAD`` — ``True`` when a larger metric value is worse</span>
+<span class="sd">      (the common case), ``False`` when a smaller value is worse (e.g. an</span>
+<span class="sd">      agreement score). Intrinsic to the metric, not user-tunable; it has</span>
+<span class="sd">      **no default on the base** and must be set on every concrete</span>
+<span class="sd">      subclass.</span>
 <span class="sd">    * ``_measurement_infoclass`` — optional per-subclass</span>
 <span class="sd">      :class:`MeasurementInfo` enum documenting any check-specific</span>
 <span class="sd">      columns the subclass emits beyond the generic</span>
-<span class="sd">      ``Flag``/``Severity``/``Status`` trio. When set,</span>
+<span class="sd">      ``Flag``/``Metric``/``Status`` trio. When set,</span>
 <span class="sd">      ``__init_subclass__`` appends its RST table to the subclass</span>
 <span class="sd">      docstring.</span>
 
@@ -621,13 +634,14 @@
 <span class="sd">    Attributes:</span>
 <span class="sd">        name: Short identifier composed into output column names. Set on</span>
 <span class="sd">            each concrete subclass (e.g. ``&quot;Count&quot;``, ``&quot;SE&quot;``).</span>
-<span class="sd">        severity_warn: Severity at/above which ``Status=&quot;warn&quot;``.</span>
-<span class="sd">            A class-level constant; subclasses may override it by</span>
-<span class="sd">            re-declaring the ``ClassVar`` in their class body.</span>
-<span class="sd">        severity_fail: Severity at/above which ``Status=&quot;fail&quot;`` and</span>
-<span class="sd">            ``Flag=True``. A class-level constant; subclasses may</span>
-<span class="sd">            override it by re-declaring the ``ClassVar`` in their</span>
-<span class="sd">            class body.</span>
+<span class="sd">        warn_threshold: Metric value (in the check&#39;s own units) at which</span>
+<span class="sd">            ``Status`` becomes ``&quot;warn&quot;`` in the bad direction. A pydantic</span>
+<span class="sd">            instance field; subclasses override the default by</span>
+<span class="sd">            re-declaring it, and callers may override it per instance.</span>
+<span class="sd">        fail_threshold: Metric value at which ``Status`` becomes</span>
+<span class="sd">            ``&quot;fail&quot;`` and ``Flag=True`` in the bad direction. A pydantic</span>
+<span class="sd">            instance field; subclasses override the default by</span>
+<span class="sd">            re-declaring it, and callers may override it per instance.</span>
 <span class="sd">        unmatched_groups: Groups that the check could not evaluate (for</span>
 <span class="sd">            example, expected counts whose group key never appeared in</span>
 <span class="sd">            the data). Populated by subclasses that need to report</span>
@@ -635,21 +649,71 @@
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">name</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">_HIGHER_IS_BAD</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span>
     <span class="n">_exposes_agg_func</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
     <span class="n">_measurement_infoclass</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">type</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
 
-    <span class="n">severity_warn</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.05</span>
-    <span class="n">severity_fail</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.10</span>
+    <span class="n">warn_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.05</span>
+    <span class="n">fail_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.10</span>
     <span class="n">unmatched_groups</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+
+    <span class="nd">@model_validator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;after&quot;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_validate_threshold_order</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QualityCheck</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Reject thresholds ordered against the check&#39;s bad direction.</span>
+
+<span class="sd">        The ``warn`` tier must always sit between ``&quot;pass&quot;`` and ``&quot;fail&quot;``</span>
+<span class="sd">        in the metric&#39;s bad direction, so the two thresholds have a fixed</span>
+<span class="sd">        ordering that depends only on ``_HIGHER_IS_BAD``:</span>
+
+<span class="sd">        * ``_HIGHER_IS_BAD=True``  → ``warn_threshold &lt;= fail_threshold``</span>
+<span class="sd">          (a larger metric is worse, so ``fail`` is the higher boundary).</span>
+<span class="sd">        * ``_HIGHER_IS_BAD=False`` → ``warn_threshold &gt;= fail_threshold``</span>
+<span class="sd">          (a smaller metric is worse, so ``fail`` is the lower boundary).</span>
+
+<span class="sd">        Equality is allowed — it collapses the ``warn`` band so the check</span>
+<span class="sd">        is purely pass/fail. A mis-ordered pair would silently invert the</span>
+<span class="sd">        tri-state (e.g. a lower-is-bad check that fails *above* its warn</span>
+<span class="sd">        line), so it raises ``ValueError`` (surfaced by pydantic as a</span>
+<span class="sd">        ``ValidationError``) at construction.</span>
+
+<span class="sd">        Intermediate ABCs that have not yet bound ``_HIGHER_IS_BAD`` skip</span>
+<span class="sd">        the check so the base class stays instantiable for test doubles.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The validated instance.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If the thresholds are ordered against the bad</span>
+<span class="sd">                direction implied by ``_HIGHER_IS_BAD``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">higher_is_bad</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">),</span> <span class="s2">&quot;_HIGHER_IS_BAD&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">higher_is_bad</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span>
+        <span class="k">if</span> <span class="n">higher_is_bad</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">warn_threshold</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">fail_threshold</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;warn_threshold must be &lt;= fail_threshold for a &quot;</span>
+                <span class="s2">&quot;higher-is-bad check &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;(got warn=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">warn_threshold</span><span class="si">}</span><span class="s2">, &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;fail=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">fail_threshold</span><span class="si">}</span><span class="s2">)&quot;</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">higher_is_bad</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">warn_threshold</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">fail_threshold</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;warn_threshold must be &gt;= fail_threshold for a &quot;</span>
+                <span class="s2">&quot;lower-is-bad check &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;(got warn=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">warn_threshold</span><span class="si">}</span><span class="s2">, &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;fail=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">fail_threshold</span><span class="si">}</span><span class="s2">)&quot;</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span>
 
     <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_compute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Add the check&#39;s metric columns to one group.</span>
 
-<span class="sd">        Must add at minimum the severity column (``QC_&lt;name&gt;_Severity``).</span>
-<span class="sd">        May add check-specific columns documented by</span>
-<span class="sd">        ``_measurement_infoclass``. ``Flag`` and ``Status`` are computed</span>
-<span class="sd">        by the base class from severity, so subclasses must not set them</span>
+<span class="sd">        Must add at minimum the metric column (``QC_&lt;name&gt;_Metric``), the</span>
+<span class="sd">        raw headline value in the check&#39;s own units. May add</span>
+<span class="sd">        check-specific columns documented by ``_measurement_infoclass``.</span>
+<span class="sd">        ``Flag`` and ``Status`` are derived by the base class from the</span>
+<span class="sd">        metric and ``_HIGHER_IS_BAD``, so subclasses must not set them</span>
 <span class="sd">        directly.</span>
 
 <span class="sd">        Args:</span>
@@ -658,7 +722,8 @@
 
 <span class="sd">        Returns:</span>
 <span class="sd">            The group frame (typically a copy) augmented with the</span>
-<span class="sd">            severity column and any check-specific metric columns.</span>
+<span class="sd">            ``QC_&lt;name&gt;_Metric`` column and any check-specific metric</span>
+<span class="sd">            columns.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
 <div class="viewcode-block" id="QualityCheck.analyze">
@@ -668,11 +733,18 @@
 
 <span class="sd">        Iterates over ``data.groupby(self.groupby, dropna=False)``,</span>
 <span class="sd">        delegates per-group computation to :meth:`_compute`, and adds</span>
-<span class="sd">        three generic columns derived from severity:</span>
+<span class="sd">        three generic columns derived from the metric:</span>
 
-<span class="sd">        * ``QC_&lt;name&gt;_Severity`` (carry-through from ``_compute``)</span>
+<span class="sd">        * ``QC_&lt;name&gt;_Metric`` (carry-through from ``_compute``)</span>
 <span class="sd">        * ``QC_&lt;name&gt;_Flag`` (``bool``)</span>
 <span class="sd">        * ``QC_&lt;name&gt;_Status`` (``&quot;pass&quot;`` / ``&quot;warn&quot;`` / ``&quot;fail&quot;``)</span>
+
+<span class="sd">        ``Flag`` and ``Status`` are directional. With</span>
+<span class="sd">        ``_HIGHER_IS_BAD=True`` a row fails when ``metric &gt;=</span>
+<span class="sd">        fail_threshold`` and warns when ``metric &gt;= warn_threshold``;</span>
+<span class="sd">        with ``_HIGHER_IS_BAD=False`` the comparisons invert to ``&lt;=``.</span>
+<span class="sd">        A ``NaN`` metric always yields ``Status=&quot;pass&quot;`` and</span>
+<span class="sd">        ``Flag=False``.</span>
 
 <span class="sd">        Rows are never dropped. The augmented frame is stored on</span>
 <span class="sd">        :attr:`_latest_measurements` and returned.</span>
@@ -697,7 +769,7 @@
                 <span class="sa">f</span><span class="s2">&quot;Missing required columns for QualityCheck: </span><span class="si">{</span><span class="n">missing</span><span class="si">}</span><span class="s2">&quot;</span>
             <span class="p">)</span>
 
-        <span class="n">severity_col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">severity_col</span><span class="p">()</span>
+        <span class="n">metric_col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">metric_col</span><span class="p">()</span>
         <span class="n">flag_col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">flag_col</span><span class="p">()</span>
         <span class="n">status_col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">status_col</span><span class="p">()</span>
 
@@ -709,16 +781,22 @@
             <span class="n">result</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">pieces</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">result</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-            <span class="n">result</span><span class="p">[</span><span class="n">severity_col</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+            <span class="n">result</span><span class="p">[</span><span class="n">metric_col</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
 
-        <span class="n">severity</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_numeric</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="n">severity_col</span><span class="p">],</span> <span class="n">errors</span><span class="o">=</span><span class="s2">&quot;coerce&quot;</span><span class="p">)</span>
-        <span class="n">flag</span> <span class="o">=</span> <span class="n">severity</span><span class="o">.</span><span class="n">ge</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">severity_fail</span><span class="p">)</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">bool</span><span class="p">)</span>
+        <span class="n">metric</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_numeric</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="n">metric_col</span><span class="p">],</span> <span class="n">errors</span><span class="o">=</span><span class="s2">&quot;coerce&quot;</span><span class="p">)</span>
         <span class="n">status</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="s2">&quot;pass&quot;</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">result</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">object</span><span class="p">)</span>
-        <span class="n">status</span> <span class="o">=</span> <span class="n">status</span><span class="o">.</span><span class="n">mask</span><span class="p">(</span><span class="n">severity</span><span class="o">.</span><span class="n">ge</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">severity_warn</span><span class="p">),</span> <span class="s2">&quot;warn&quot;</span><span class="p">)</span>
-        <span class="n">status</span> <span class="o">=</span> <span class="n">status</span><span class="o">.</span><span class="n">mask</span><span class="p">(</span><span class="n">severity</span><span class="o">.</span><span class="n">ge</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">severity_fail</span><span class="p">),</span> <span class="s2">&quot;fail&quot;</span><span class="p">)</span>
-        <span class="n">status</span> <span class="o">=</span> <span class="n">status</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">severity</span><span class="o">.</span><span class="n">notna</span><span class="p">(),</span> <span class="s2">&quot;pass&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_HIGHER_IS_BAD</span><span class="p">:</span>
+            <span class="n">flag</span> <span class="o">=</span> <span class="n">metric</span><span class="o">.</span><span class="n">ge</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">fail_threshold</span><span class="p">)</span>
+            <span class="n">status</span> <span class="o">=</span> <span class="n">status</span><span class="o">.</span><span class="n">mask</span><span class="p">(</span><span class="n">metric</span><span class="o">.</span><span class="n">ge</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">warn_threshold</span><span class="p">),</span> <span class="s2">&quot;warn&quot;</span><span class="p">)</span>
+            <span class="n">status</span> <span class="o">=</span> <span class="n">status</span><span class="o">.</span><span class="n">mask</span><span class="p">(</span><span class="n">metric</span><span class="o">.</span><span class="n">ge</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">fail_threshold</span><span class="p">),</span> <span class="s2">&quot;fail&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">flag</span> <span class="o">=</span> <span class="n">metric</span><span class="o">.</span><span class="n">le</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">fail_threshold</span><span class="p">)</span>
+            <span class="n">status</span> <span class="o">=</span> <span class="n">status</span><span class="o">.</span><span class="n">mask</span><span class="p">(</span><span class="n">metric</span><span class="o">.</span><span class="n">le</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">warn_threshold</span><span class="p">),</span> <span class="s2">&quot;warn&quot;</span><span class="p">)</span>
+            <span class="n">status</span> <span class="o">=</span> <span class="n">status</span><span class="o">.</span><span class="n">mask</span><span class="p">(</span><span class="n">metric</span><span class="o">.</span><span class="n">le</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">fail_threshold</span><span class="p">),</span> <span class="s2">&quot;fail&quot;</span><span class="p">)</span>
+        <span class="n">flag</span> <span class="o">=</span> <span class="n">flag</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">bool</span><span class="p">)</span>
+        <span class="n">status</span> <span class="o">=</span> <span class="n">status</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">metric</span><span class="o">.</span><span class="n">notna</span><span class="p">(),</span> <span class="s2">&quot;pass&quot;</span><span class="p">)</span>
 
-        <span class="n">result</span><span class="p">[</span><span class="n">severity_col</span><span class="p">]</span> <span class="o">=</span> <span class="n">severity</span>
+        <span class="n">result</span><span class="p">[</span><span class="n">metric_col</span><span class="p">]</span> <span class="o">=</span> <span class="n">metric</span>
         <span class="n">result</span><span class="p">[</span><span class="n">flag_col</span><span class="p">]</span> <span class="o">=</span> <span class="n">flag</span>
         <span class="n">result</span><span class="p">[</span><span class="n">status_col</span><span class="p">]</span> <span class="o">=</span> <span class="n">status</span>
 
@@ -731,27 +809,39 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">summary</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Return a one-row-per-group summary of the most recent analyze.</span>
 
+<span class="sd">        The aggregate columns are **prefixed with ``qc_``** so they can</span>
+<span class="sd">        never collide with a ``groupby`` column on ``reset_index`` — a</span>
+<span class="sd">        plate-layout column literally named ``status`` or ``num_rows``</span>
+<span class="sd">        would otherwise raise. The summary therefore always carries the</span>
+<span class="sd">        group key columns *plus* the four prefixed aggregates.</span>
+
 <span class="sd">        Returns:</span>
-<span class="sd">            DataFrame with columns ``[*self.groupby, &quot;num_rows&quot;,</span>
-<span class="sd">            &quot;num_flagged&quot;, &quot;max_severity&quot;, &quot;status&quot;]``. The ``status``</span>
-<span class="sd">            column is the worst status across the group: ``&quot;fail&quot;``</span>
+<span class="sd">            DataFrame with columns ``[*self.groupby, &quot;qc_n_members&quot;,</span>
+<span class="sd">            &quot;qc_n_flagged&quot;, &quot;qc_worst_metric&quot;, &quot;qc_status&quot;]``.</span>
+<span class="sd">            ``qc_worst_metric`` is the extreme metric value in the bad</span>
+<span class="sd">            direction across the group: ``group[metric_col].max()`` when</span>
+<span class="sd">            ``_HIGHER_IS_BAD`` is ``True``, else ``group[metric_col].min()``.</span>
+<span class="sd">            ``qc_status`` is the worst status across the group: ``&quot;fail&quot;``</span>
 <span class="sd">            wins over ``&quot;warn&quot;`` which wins over ``&quot;pass&quot;``.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">rank</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;pass&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;warn&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;fail&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">}</span>
         <span class="n">inv_rank</span> <span class="o">=</span> <span class="p">{</span><span class="n">v</span><span class="p">:</span> <span class="n">k</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">rank</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
 
         <span class="n">df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_latest_measurements</span>
-        <span class="n">severity_col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">severity_col</span><span class="p">()</span>
+        <span class="n">metric_col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">metric_col</span><span class="p">()</span>
         <span class="n">flag_col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">flag_col</span><span class="p">()</span>
         <span class="n">status_col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">status_col</span><span class="p">()</span>
+        <span class="n">higher_is_bad</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_HIGHER_IS_BAD</span>
 
         <span class="k">def</span><span class="w"> </span><span class="nf">_summarize</span><span class="p">(</span><span class="n">group</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
             <span class="n">worst</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">group</span><span class="p">[</span><span class="n">status_col</span><span class="p">]</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">rank</span><span class="p">)</span><span class="o">.</span><span class="n">max</span><span class="p">())</span>
+            <span class="n">metric</span> <span class="o">=</span> <span class="n">group</span><span class="p">[</span><span class="n">metric_col</span><span class="p">]</span>
+            <span class="n">worst_metric</span> <span class="o">=</span> <span class="n">metric</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="k">if</span> <span class="n">higher_is_bad</span> <span class="k">else</span> <span class="n">metric</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
             <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">({</span>
-                <span class="s2">&quot;num_rows&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">group</span><span class="p">)),</span>
-                <span class="s2">&quot;num_flagged&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">group</span><span class="p">[</span><span class="n">flag_col</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">()),</span>
-                <span class="s2">&quot;max_severity&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">group</span><span class="p">[</span><span class="n">severity_col</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()),</span>
-                <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="n">inv_rank</span><span class="p">[</span><span class="n">worst</span><span class="p">],</span>
+                <span class="s2">&quot;qc_n_members&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">group</span><span class="p">)),</span>
+                <span class="s2">&quot;qc_n_flagged&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">group</span><span class="p">[</span><span class="n">flag_col</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">()),</span>
+                <span class="s2">&quot;qc_worst_metric&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">worst_metric</span><span class="p">),</span>
+                <span class="s2">&quot;qc_status&quot;</span><span class="p">:</span> <span class="n">inv_rank</span><span class="p">[</span><span class="n">worst</span><span class="p">],</span>
             <span class="p">})</span>
 
         <span class="n">grouped</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">groupby</span><span class="p">,</span> <span class="n">dropna</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
@@ -762,11 +852,11 @@
 <div class="viewcode-block" id="QualityCheck.flagged_keys">
 <a class="viewcode-back" href="../../../../api_reference/phenotypic.analysis.abc_.html#phenotypic.analysis.abc_.QualityCheck.flagged_keys">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">flagged_keys</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return (``Metadata_ImageFile``, ``ObjectLabel``) pairs to curate.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return (``Metadata_ImageFile``, ``Object_Label``) pairs to curate.</span>
 
 <span class="sd">        Used by the GUI &quot;Mark all flagged for removal&quot; button. Requires</span>
 <span class="sd">        the analyzed frame to carry both ``Metadata_ImageFile`` and</span>
-<span class="sd">        ``ObjectLabel`` columns (the curation key used by</span>
+<span class="sd">        ``Object_Label`` columns (the curation key used by</span>
 <span class="sd">        ``STORE_REMOVED_KEYS``). Returns an empty list when those</span>
 <span class="sd">        columns are absent or when no rows were flagged.</span>
 
@@ -776,27 +866,70 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_latest_measurements</span>
         <span class="n">flag_col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">flag_col</span><span class="p">()</span>
+        <span class="n">label_col</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">OBJECT</span><span class="o">.</span><span class="n">LABEL</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">flag_col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
             <span class="k">return</span> <span class="p">[]</span>
-        <span class="k">if</span> <span class="s2">&quot;Metadata_ImageFile&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span> <span class="ow">or</span> <span class="s2">&quot;ObjectLabel&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="k">if</span> <span class="s2">&quot;Metadata_ImageFile&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span> <span class="ow">or</span> <span class="n">label_col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
             <span class="k">return</span> <span class="p">[]</span>
         <span class="n">flagged</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="n">flag_col</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">bool</span><span class="p">),</span>
-                         <span class="p">[</span><span class="s2">&quot;Metadata_ImageFile&quot;</span><span class="p">,</span> <span class="s2">&quot;ObjectLabel&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+                         <span class="p">[</span><span class="s2">&quot;Metadata_ImageFile&quot;</span><span class="p">,</span> <span class="n">label_col</span><span class="p">]]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
         <span class="k">if</span> <span class="n">flagged</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
             <span class="k">return</span> <span class="p">[]</span>
         <span class="n">flagged</span> <span class="o">=</span> <span class="n">flagged</span><span class="o">.</span><span class="n">drop_duplicates</span><span class="p">()</span>
         <span class="k">return</span> <span class="p">[</span>
-            <span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">Metadata_ImageFile</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">ObjectLabel</span><span class="p">))</span>
+            <span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">Metadata_ImageFile</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">Object_Label</span><span class="p">))</span>
             <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">flagged</span><span class="o">.</span><span class="n">itertuples</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
         <span class="p">]</span></div>
 
 
-<div class="viewcode-block" id="QualityCheck.severity_col">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.analysis.abc_.html#phenotypic.analysis.abc_.QualityCheck.severity_col">[docs]</a>
+<div class="viewcode-block" id="QualityCheck.group_members">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.analysis.abc_.html#phenotypic.analysis.abc_.QualityCheck.group_members">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">group_members</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">tuple</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Map each group key to its member rows for worklists/galleries.</span>
+
+<span class="sd">        Walks the most recent analyzed frame and, for every group key</span>
+<span class="sd">        produced by ``data.groupby(self.groupby, dropna=False)``, collects</span>
+<span class="sd">        the rows that belong to it as ``(Metadata_ImageFile, Object_Label,</span>
+<span class="sd">        member_value)`` tuples, where ``member_value`` is the row&#39;s</span>
+<span class="sd">        ``self.on`` value (the column the check operates on). The mapping</span>
+<span class="sd">        preserves group iteration order.</span>
+
+<span class="sd">        Mirrors :meth:`flagged_keys`&#39;s guard: if the analyzed frame lacks</span>
+<span class="sd">        either ``Metadata_ImageFile`` or the object-label column, an empty</span>
+<span class="sd">        mapping is returned rather than raising.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Ordered mapping of group key (always a tuple, even for a</span>
+<span class="sd">            single ``groupby`` column) to a list of</span>
+<span class="sd">            ``(image_file, object_label, member_value)`` tuples. Empty</span>
+<span class="sd">            when the curation key columns are absent.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_latest_measurements</span>
+        <span class="n">label_col</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">OBJECT</span><span class="o">.</span><span class="n">LABEL</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s2">&quot;Metadata_ImageFile&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span> <span class="ow">or</span> <span class="n">label_col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{}</span>
+
+        <span class="n">members</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">tuple</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">group</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">groupby</span><span class="p">,</span> <span class="n">dropna</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+            <span class="n">key_tuple</span> <span class="o">=</span> <span class="n">key</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)</span> <span class="k">else</span> <span class="p">(</span><span class="n">key</span><span class="p">,)</span>
+            <span class="n">image_files</span> <span class="o">=</span> <span class="n">group</span><span class="p">[</span><span class="s2">&quot;Metadata_ImageFile&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+            <span class="n">labels</span> <span class="o">=</span> <span class="n">group</span><span class="p">[</span><span class="n">label_col</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+            <span class="n">values</span> <span class="o">=</span> <span class="n">group</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">on</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+            <span class="n">members</span><span class="p">[</span><span class="n">key_tuple</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">image_file</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">label</span><span class="p">),</span> <span class="n">value</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">image_file</span><span class="p">,</span> <span class="n">label</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
+                    <span class="n">image_files</span><span class="p">,</span> <span class="n">labels</span><span class="p">,</span> <span class="n">values</span>
+                <span class="p">)</span>
+            <span class="p">]</span>
+        <span class="k">return</span> <span class="n">members</span></div>
+
+
+<div class="viewcode-block" id="QualityCheck.metric_col">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.analysis.abc_.html#phenotypic.analysis.abc_.QualityCheck.metric_col">[docs]</a>
     <span class="nd">@classmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">severity_col</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the severity column name for this check.&quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;QC_</span><span class="si">{</span><span class="bp">cls</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">_Severity&quot;</span></div>
+    <span class="k">def</span><span class="w"> </span><span class="nf">metric_col</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the metric column name for this check.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;QC_</span><span class="si">{</span><span class="bp">cls</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">_Metric&quot;</span></div>
 
 
 <div class="viewcode-block" id="QualityCheck.flag_col">

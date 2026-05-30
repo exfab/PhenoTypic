@@ -1,0 +1,62 @@
+phenotypic.enhance.SharpenEdgeLaplace
+=====================================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: SharpenEdgeLaplace
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~SharpenEdgeLaplace.__init__
+      ~SharpenEdgeLaplace.apply
+      ~SharpenEdgeLaplace.construct
+      ~SharpenEdgeLaplace.copy
+      ~SharpenEdgeLaplace.dict
+      ~SharpenEdgeLaplace.from_orm
+      ~SharpenEdgeLaplace.json
+      ~SharpenEdgeLaplace.model_construct
+      ~SharpenEdgeLaplace.model_copy
+      ~SharpenEdgeLaplace.model_dump
+      ~SharpenEdgeLaplace.model_dump_json
+      ~SharpenEdgeLaplace.model_json_schema
+      ~SharpenEdgeLaplace.model_parametrized_name
+      ~SharpenEdgeLaplace.model_post_init
+      ~SharpenEdgeLaplace.model_rebuild
+      ~SharpenEdgeLaplace.model_validate
+      ~SharpenEdgeLaplace.model_validate_json
+      ~SharpenEdgeLaplace.model_validate_strings
+      ~SharpenEdgeLaplace.parse_file
+      ~SharpenEdgeLaplace.parse_obj
+      ~SharpenEdgeLaplace.parse_raw
+      ~SharpenEdgeLaplace.schema
+      ~SharpenEdgeLaplace.schema_json
+      ~SharpenEdgeLaplace.update_forward_refs
+      ~SharpenEdgeLaplace.validate
+      ~SharpenEdgeLaplace.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~SharpenEdgeLaplace.model_computed_fields
+      ~SharpenEdgeLaplace.model_config
+      ~SharpenEdgeLaplace.model_extra
+      ~SharpenEdgeLaplace.model_fields
+      ~SharpenEdgeLaplace.model_fields_set
+      ~SharpenEdgeLaplace.kernel_size
+      ~SharpenEdgeLaplace.mask
+   
+   

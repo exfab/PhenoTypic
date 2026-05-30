@@ -33,6 +33,7 @@ phenotypic.prefab.HeavyWatershedPipeline
       ~HeavyWatershedPipeline.get_model
       ~HeavyWatershedPipeline.get_ops
       ~HeavyWatershedPipeline.get_post
+      ~HeavyWatershedPipeline.get_qc
       ~HeavyWatershedPipeline.json
       ~HeavyWatershedPipeline.measure
       ~HeavyWatershedPipeline.model_construct
@@ -56,6 +57,7 @@ phenotypic.prefab.HeavyWatershedPipeline
       ~HeavyWatershedPipeline.set_model
       ~HeavyWatershedPipeline.set_ops
       ~HeavyWatershedPipeline.set_post
+      ~HeavyWatershedPipeline.set_qc
       ~HeavyWatershedPipeline.to_json
       ~HeavyWatershedPipeline.update_forward_refs
       ~HeavyWatershedPipeline.validate
@@ -87,5 +89,6 @@ phenotypic.prefab.HeavyWatershedPipeline
       ~HeavyWatershedPipeline.post
       ~HeavyWatershedPipeline.filters
       ~HeavyWatershedPipeline.model
+      ~HeavyWatershedPipeline.qc
    
    

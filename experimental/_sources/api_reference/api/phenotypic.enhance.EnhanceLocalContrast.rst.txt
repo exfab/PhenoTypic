@@ -1,0 +1,62 @@
+phenotypic.enhance.EnhanceLocalContrast
+=======================================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: EnhanceLocalContrast
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~EnhanceLocalContrast.__init__
+      ~EnhanceLocalContrast.apply
+      ~EnhanceLocalContrast.construct
+      ~EnhanceLocalContrast.copy
+      ~EnhanceLocalContrast.dict
+      ~EnhanceLocalContrast.from_orm
+      ~EnhanceLocalContrast.json
+      ~EnhanceLocalContrast.model_construct
+      ~EnhanceLocalContrast.model_copy
+      ~EnhanceLocalContrast.model_dump
+      ~EnhanceLocalContrast.model_dump_json
+      ~EnhanceLocalContrast.model_json_schema
+      ~EnhanceLocalContrast.model_parametrized_name
+      ~EnhanceLocalContrast.model_post_init
+      ~EnhanceLocalContrast.model_rebuild
+      ~EnhanceLocalContrast.model_validate
+      ~EnhanceLocalContrast.model_validate_json
+      ~EnhanceLocalContrast.model_validate_strings
+      ~EnhanceLocalContrast.parse_file
+      ~EnhanceLocalContrast.parse_obj
+      ~EnhanceLocalContrast.parse_raw
+      ~EnhanceLocalContrast.schema
+      ~EnhanceLocalContrast.schema_json
+      ~EnhanceLocalContrast.update_forward_refs
+      ~EnhanceLocalContrast.validate
+      ~EnhanceLocalContrast.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~EnhanceLocalContrast.model_computed_fields
+      ~EnhanceLocalContrast.model_config
+      ~EnhanceLocalContrast.model_extra
+      ~EnhanceLocalContrast.model_fields
+      ~EnhanceLocalContrast.model_fields_set
+      ~EnhanceLocalContrast.kernel_size
+      ~EnhanceLocalContrast.clip_limit
+   
+   

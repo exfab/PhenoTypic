@@ -581,7 +581,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">._base_operation</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseOperation</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.exceptions_</span><span class="w"> </span><span class="kn">import</span> <span class="n">OperationFailedError</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.funcs_</span><span class="w"> </span><span class="kn">import</span> <span class="n">validate_measure_integrity</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.constants_</span><span class="w"> </span><span class="kn">import</span> <span class="n">OBJECT</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">OBJECT</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">catch_warnings_decorator</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
@@ -722,7 +722,7 @@
 <span class="sd">    Implementing a custom colony measurement class:</span>
 
 <span class="sd">    &gt;&gt;&gt; from phenotypic.abc_ import MeasureFeatures</span>
-<span class="sd">    &gt;&gt;&gt; from phenotypic.tools_.constants_ import OBJECT</span>
+<span class="sd">    &gt;&gt;&gt; from phenotypic.schema import OBJECT</span>
 <span class="sd">    &gt;&gt;&gt; import pandas as pd</span>
 <span class="sd">    &gt;&gt;&gt; import numpy as np</span>
 <span class="sd">    &gt;&gt;&gt; class MeasureCustom(MeasureFeatures):</span>
@@ -832,7 +832,7 @@
 <span class="sd">        Custom feature engineering: growth density index:</span>
 
 <span class="sd">        &gt;&gt;&gt; from phenotypic.abc_ import MeasureFeatures</span>
-<span class="sd">        &gt;&gt;&gt; from phenotypic.tools_.constants_ import OBJECT</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.schema import OBJECT</span>
 <span class="sd">        &gt;&gt;&gt; import pandas as pd</span>
 <span class="sd">        &gt;&gt;&gt; import numpy as np</span>
 <span class="sd">        &gt;&gt;&gt; class MeasureGrowthDensity(MeasureFeatures):</span>
@@ -1603,7 +1603,7 @@
             <span class="n">out_dtype</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span>
             <span class="n">array</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
             <span class="n">objmap</span><span class="p">:</span> <span class="n">ArrayLike</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-            <span class="n">default</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="nb">float</span> <span class="o">|</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+            <span class="n">default</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
             <span class="n">pass_positions</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply a custom function to each labeled region in an array (advanced helper).</span>

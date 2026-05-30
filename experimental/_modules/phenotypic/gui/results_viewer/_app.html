@@ -607,16 +607,18 @@
     <span class="n">CFG_OUTPUT_ROOT</span><span class="p">,</span>
     <span class="n">CFG_QC_AUGMENTED_FRAME</span><span class="p">,</span>
     <span class="n">CFG_QC_INSTANCES_CACHE</span><span class="p">,</span>
+    <span class="n">CFG_QC_PIPELINE</span><span class="p">,</span>
     <span class="n">CFG_QC_RECIPE</span><span class="p">,</span>
     <span class="n">CFG_URL_PREFIX</span><span class="p">,</span>
     <span class="n">MOUNT_HOME</span><span class="p">,</span>
+    <span class="n">QC_CROPS_URL_SEGMENT</span><span class="p">,</span>
     <span class="n">SANDBOX_API_VIEWER_OUTPUT_ROOT</span><span class="p">,</span>
     <span class="n">TITLE_VIEWER</span><span class="p">,</span>
 <span class="p">)</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui._qc_recipe</span><span class="w"> </span><span class="kn">import</span> <span class="n">QcRecipe</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui._schema_cache</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasurementSchema</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui._design</span><span class="w"> </span><span class="kn">import</span> <span class="n">COLOR_BLUE</span><span class="p">,</span> <span class="n">COLOR_SURFACE</span><span class="p">,</span> <span class="n">inject_design_tokens</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui._shared</span><span class="w"> </span><span class="kn">import</span> <span class="n">register_shared_static</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui._shared.tiles</span><span class="w"> </span><span class="kn">import</span> <span class="n">register_crop_route</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui.results_viewer</span><span class="w"> </span><span class="kn">import</span> <span class="n">_ids</span> <span class="k">as</span> <span class="n">ids</span><span class="p">,</span> <span class="n">_tile_routes</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui.results_viewer._callbacks</span><span class="w"> </span><span class="kn">import</span> <span class="n">register_callbacks</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui.results_viewer._filtered_state</span><span class="w"> </span><span class="kn">import</span> <span class="n">FilteredMeasurements</span>
@@ -627,6 +629,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui.results_viewer._output_root</span><span class="w"> </span><span class="kn">import</span> <span class="n">OutputRoot</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui.results_viewer.colony_view</span><span class="w"> </span><span class="kn">import</span> <span class="n">_crop_routes</span> <span class="k">as</span> <span class="n">colony_crop_routes</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui.shell._ids</span><span class="w"> </span><span class="kn">import</span> <span class="n">SHELL_SIDEBAR_SELECTION_STORE</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.qc</span><span class="w"> </span><span class="kn">import</span> <span class="n">QcRecipe</span>
 
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 
@@ -745,6 +748,9 @@
     <span class="n">filtered_state</span> <span class="o">=</span> <span class="n">FilteredMeasurements</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">output_root</span><span class="o">.</span><span class="n">root</span><span class="p">,</span> <span class="n">output_root</span><span class="o">.</span><span class="n">master_df</span><span class="p">)</span>
     <span class="n">app</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="n">CFG_FILTERED_STATE</span><span class="p">]</span> <span class="o">=</span> <span class="n">filtered_state</span>
     <span class="n">colony_crop_routes</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">output_root</span><span class="p">)</span>
+    <span class="c1"># QC Review tab serves the same centered crops under its own segment</span>
+    <span class="c1"># so the colony-view ``/crops`` and the Review gallery never collide.</span>
+    <span class="n">register_crop_route</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">output_root</span><span class="p">,</span> <span class="n">QC_CROPS_URL_SEGMENT</span><span class="p">)</span>
 
     <span class="c1"># MeasurementSchema cache shared by the Heatmap tab (and a future</span>
     <span class="c1"># QC tab) - lazily built once per app instance. Idempotent: do not</span>
@@ -759,10 +765,16 @@
     <span class="c1"># gracefully falls back to the plain filtered frame until then.</span>
     <span class="n">app</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">CFG_QC_AUGMENTED_FRAME</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
 
-    <span class="c1"># QC recipe sidecar + per-revision instance cache. Loading is cheap</span>
-    <span class="c1"># (a single JSON read) and the cache is keyed on the recipe revision</span>
-    <span class="c1"># counter so a stale entry can never serve a moved configuration.</span>
+    <span class="c1"># QC recipe is now the ``qc`` section of ``pipeline.json`` (pipeline-</span>
+    <span class="c1"># backed adapter), not the legacy ``.viewer_cache/qc_recipe.json``</span>
+    <span class="c1"># sidecar. Fold any legacy sidecar into the pipeline exactly once, then</span>
+    <span class="c1"># load the recipe + the full pipeline (for the Review tab&#39;s in-session</span>
+    <span class="c1"># recompute via ``run_qc``). The per-revision instance cache is keyed</span>
+    <span class="c1"># on the recipe revision counter so a stale entry can never serve a</span>
+    <span class="c1"># moved configuration.</span>
+    <span class="n">QcRecipe</span><span class="o">.</span><span class="n">migrate_from_sidecar</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">output_root</span><span class="o">.</span><span class="n">root</span><span class="p">))</span>
     <span class="n">app</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="n">CFG_QC_RECIPE</span><span class="p">]</span> <span class="o">=</span> <span class="n">QcRecipe</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">output_root</span><span class="o">.</span><span class="n">root</span><span class="p">))</span>
+    <span class="n">app</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="n">CFG_QC_PIPELINE</span><span class="p">]</span> <span class="o">=</span> <span class="n">_load_qc_pipeline</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">output_root</span><span class="o">.</span><span class="n">root</span><span class="p">))</span>
     <span class="n">app</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">CFG_QC_INSTANCES_CACHE</span><span class="p">,</span> <span class="p">{})</span>
 
     <span class="n">app</span><span class="o">.</span><span class="n">layout</span> <span class="o">=</span> <span class="n">build_app_layout</span><span class="p">(</span><span class="n">output_root</span><span class="p">,</span> <span class="n">filtered_state</span><span class="p">,</span> <span class="n">url_prefix</span><span class="o">=</span><span class="n">url_prefix</span><span class="p">)</span>
@@ -770,6 +782,43 @@
 
     <span class="k">return</span> <span class="n">app</span></div>
 
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_load_qc_pipeline</span><span class="p">(</span><span class="n">output_root_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Deserialize the output root&#39;s ``pipeline.json`` for QC recompute.</span>
+
+<span class="sd">    The QC Review tab&#39;s per-group recompute hands this pipeline to</span>
+<span class="sd">    :func:`phenotypic.qc._runner.run_qc`, so it must carry the same ``qc``</span>
+<span class="sd">    entries the CLI persisted. Loaded tolerantly (``skip_unknown_analyzers``)</span>
+<span class="sd">    so a stale analyzer class never blocks viewer boot, and degrades to</span>
+<span class="sd">    ``None`` when the file is absent or unreadable — recompute then no-ops</span>
+<span class="sd">    rather than raising.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        output_root_path: The results-viewer output root.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        The deserialized ``ImagePipeline``, or ``None`` when no usable</span>
+<span class="sd">        ``pipeline.json`` exists.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image_pipeline</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImagePipeline</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_</span><span class="w"> </span><span class="kn">import</span> <span class="n">pipeline_json_path</span>
+
+    <span class="n">pipeline_path</span> <span class="o">=</span> <span class="n">pipeline_json_path</span><span class="p">(</span><span class="n">output_root_path</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">pipeline_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ImagePipeline</span><span class="o">.</span><span class="n">from_json</span><span class="p">(</span>
+            <span class="n">pipeline_path</span><span class="p">,</span> <span class="n">skip_unknown_analyzers</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">load_warnings</span><span class="o">=</span><span class="p">[]</span>
+        <span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>  <span class="c1"># noqa: BLE001 - boot-time tolerance; recompute no-ops</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+            <span class="s2">&quot;Could not load pipeline.json at </span><span class="si">%s</span><span class="s2"> for QC recompute; the Review &quot;</span>
+            <span class="s2">&quot;tab&#39;s per-group recompute will be unavailable this session.&quot;</span><span class="p">,</span>
+            <span class="n">pipeline_path</span><span class="p">,</span>
+            <span class="n">exc_info</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_register_empty_state_callbacks</span><span class="p">(</span><span class="n">app</span><span class="p">:</span> <span class="n">dash</span><span class="o">.</span><span class="n">Dash</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">url_prefix</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>

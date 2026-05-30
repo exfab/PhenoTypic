@@ -604,11 +604,11 @@
 <span class="sd">        - Size-selective cleanup where only fragments below a threshold merge.</span>
 
 <span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`TransitiveDistanceMerger` for chained merging of all nearby</span>
+<span class="sd">        - :class:`MergeFragmentChains` for chained merging of all nearby</span>
 <span class="sd">          objects regardless of size.</span>
 <span class="sd">        - :class:`SmallToLargeMerger` for merging small objects into the</span>
 <span class="sd">          largest nearby colony.</span>
-<span class="sd">        - :class:`MaskCloser` for bridging narrow gaps morphologically.</span>
+<span class="sd">        - :class:`MaskClosing` for bridging narrow gaps morphologically.</span>
 
 <span class="sd">    See Also:</span>
 <span class="sd">        :doc:`/how_to/notebooks/merge_fragmented_detections` for fragment</span>
@@ -671,7 +671,7 @@
 
         <span class="c1"># Extract properties</span>
         <span class="n">props</span> <span class="o">=</span> <span class="n">regionprops_table</span><span class="p">(</span>
-            <span class="n">label_image</span><span class="o">=</span><span class="n">objmap</span><span class="p">,</span> <span class="n">properties</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;label&quot;</span><span class="p">,</span> <span class="s2">&quot;centroid&quot;</span><span class="p">,</span> <span class="s2">&quot;area&quot;</span><span class="p">]</span>
+                <span class="n">label_image</span><span class="o">=</span><span class="n">objmap</span><span class="p">,</span> <span class="n">properties</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;label&quot;</span><span class="p">,</span> <span class="s2">&quot;centroid&quot;</span><span class="p">,</span> <span class="s2">&quot;area&quot;</span><span class="p">]</span>
         <span class="p">)</span>
         <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">props</span><span class="p">)</span>
 

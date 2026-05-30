@@ -66,6 +66,6 @@ def _operate(self, image):
     objmap = image.objmap[:]
     rows = []
     for prop in regionprops(objmap):
-        rows.append({"ObjectLabel": prop.label, "MyMetric": ...})
+        rows.append({"Object_Label": prop.label, "MyMetric": ...})
     return pd.DataFrame(rows)
 ```

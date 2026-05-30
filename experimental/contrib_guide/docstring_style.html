@@ -602,11 +602,11 @@ it?” – Explanation pages answer “how and why does it work?”</p>
 <tbody>
 <tr class="row-even"><td><p>Simple (1-3 params)</p></td>
 <td><p>25–40</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">GaussianBlur</span></code>, <code class="docutils literal notranslate"><span class="pre">MaskDilator</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">GaussianBlur</span></code>, <code class="docutils literal notranslate"><span class="pre">MaskDilation</span></code></p></td>
 </tr>
 <tr class="row-odd"><td><p>Moderate (4-8 params)</p></td>
 <td><p>40–60</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">OtsuDetector</span></code>, <code class="docutils literal notranslate"><span class="pre">CLAHE</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">OtsuDetector</span></code>, <code class="docutils literal notranslate"><span class="pre">EnhanceLocalContrast</span></code></p></td>
 </tr>
 <tr class="row-even"><td><p>Complex (8+ params)</p></td>
 <td><p>60–90</p></td>
@@ -838,7 +838,7 @@ method. Place at the end of the docstring, after Examples.</p>
 </div>
 <p><strong>When to include references:</strong></p>
 <ul class="simple">
-<li><p>The operation implements a named algorithm (Otsu, Frangi, BM3D, CLAHE, etc.)</p></li>
+<li><p>The operation implements a named algorithm (Otsu, Frangi, BM3D, EnhanceLocalContrast, etc.)</p></li>
 <li><p>The operation references a specific paper’s formulation or parameters</p></li>
 <li><p>The operation uses a domain-specific technique from published literature</p></li>
 </ul>

@@ -24,10 +24,14 @@
       DoubleSoftplus
       EdgeCorrector
       ExpectedVsDetectedCount
+      ICC
       LinearSoftplus
       LogGrowthModel
       MADOutlierRemover
+      MaxModifiedZScore
+      RelativeMAD
       ReplicateAgreement
+      TukeyOutlierFraction
       TukeyOutlierRemover
    
    

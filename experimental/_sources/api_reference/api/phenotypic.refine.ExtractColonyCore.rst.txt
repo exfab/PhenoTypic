@@ -1,0 +1,65 @@
+phenotypic.refine.ExtractColonyCore
+===================================
+
+.. currentmodule:: phenotypic.refine
+
+.. autoclass:: ExtractColonyCore
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~ExtractColonyCore.__init__
+      ~ExtractColonyCore.apply
+      ~ExtractColonyCore.construct
+      ~ExtractColonyCore.copy
+      ~ExtractColonyCore.dict
+      ~ExtractColonyCore.from_orm
+      ~ExtractColonyCore.json
+      ~ExtractColonyCore.model_construct
+      ~ExtractColonyCore.model_copy
+      ~ExtractColonyCore.model_dump
+      ~ExtractColonyCore.model_dump_json
+      ~ExtractColonyCore.model_json_schema
+      ~ExtractColonyCore.model_parametrized_name
+      ~ExtractColonyCore.model_post_init
+      ~ExtractColonyCore.model_rebuild
+      ~ExtractColonyCore.model_validate
+      ~ExtractColonyCore.model_validate_json
+      ~ExtractColonyCore.model_validate_strings
+      ~ExtractColonyCore.parse_file
+      ~ExtractColonyCore.parse_obj
+      ~ExtractColonyCore.parse_raw
+      ~ExtractColonyCore.schema
+      ~ExtractColonyCore.schema_json
+      ~ExtractColonyCore.update_forward_refs
+      ~ExtractColonyCore.validate
+      ~ExtractColonyCore.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ExtractColonyCore.model_computed_fields
+      ~ExtractColonyCore.model_config
+      ~ExtractColonyCore.model_extra
+      ~ExtractColonyCore.model_fields
+      ~ExtractColonyCore.model_fields_set
+      ~ExtractColonyCore.n_components
+      ~ExtractColonyCore.separation_threshold
+      ~ExtractColonyCore.min_core_area
+      ~ExtractColonyCore.morph_open_radius
+      ~ExtractColonyCore.morph_close_radius
+   
+   

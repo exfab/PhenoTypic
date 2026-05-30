@@ -562,7 +562,7 @@
   <h1>Source code for phenotypic.analysis._mad_outlier</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Callable</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
@@ -570,13 +570,15 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">field_validator</span><span class="p">,</span> <span class="n">PrivateAttr</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">.</span><span class="w"> </span><span class="kn">import</span> <span class="n">_qc_math</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">SetAnalyzer</span>
 
 <span class="c1"># Iglewicz &amp; Hoaglin (1993) consistency constant: for a normal distribution</span>
 <span class="c1"># sigma ~= 1.4826 * MAD, and 0.6745 ~= 1 / 1.4826. Multiplying the absolute</span>
 <span class="c1"># deviation by 0.6745 / MAD therefore estimates the deviation in units of</span>
 <span class="c1"># sigma, putting the modified Z-score on the same scale as a standard Z-score.</span>
-<span class="n">_MAD_CONSISTENCY</span> <span class="o">=</span> <span class="mf">0.6745</span>
+<span class="c1"># The canonical definition now lives in ``_qc_math`` so QC checks reuse it.</span>
+<span class="n">_MAD_CONSISTENCY</span> <span class="o">=</span> <span class="n">_qc_math</span><span class="o">.</span><span class="n">MAD_CONSISTENCY</span>
 
 
 <div class="viewcode-block" id="MADOutlierRemover">
@@ -773,9 +775,9 @@
             <span class="n">figsize</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
             <span class="n">max_groups</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span>
             <span class="n">collapsed</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-            <span class="n">criteria</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">criteria</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
             <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="n">plt</span><span class="o">.</span><span class="n">Figure</span><span class="p">,</span> <span class="n">plt</span><span class="o">.</span><span class="n">Axes</span><span class="p">):</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">plt</span><span class="o">.</span><span class="n">Figure</span><span class="p">,</span> <span class="n">plt</span><span class="o">.</span><span class="n">Axes</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Visualize outlier detection results.</span>
 
 <span class="sd">        Creates a visualization showing the distribution of values with outliers</span>
@@ -898,7 +900,7 @@
             <span class="n">group_col</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
             <span class="n">figsize</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
             <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="n">plt</span><span class="o">.</span><span class="n">Figure</span><span class="p">,</span> <span class="n">plt</span><span class="o">.</span><span class="n">Axes</span><span class="p">):</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">plt</span><span class="o">.</span><span class="n">Figure</span><span class="p">,</span> <span class="n">plt</span><span class="o">.</span><span class="n">Axes</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Create individual subplots for each group.&quot;&quot;&quot;</span>
         <span class="c1"># Extract figure-level kwargs</span>
         <span class="n">fig_kwargs</span> <span class="o">=</span> <span class="p">{</span>
@@ -1054,7 +1056,7 @@
             <span class="n">group_col</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
             <span class="n">figsize</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
             <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="n">plt</span><span class="o">.</span><span class="n">Figure</span><span class="p">,</span> <span class="n">plt</span><span class="o">.</span><span class="n">Axes</span><span class="p">):</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">plt</span><span class="o">.</span><span class="n">Figure</span><span class="p">,</span> <span class="n">plt</span><span class="o">.</span><span class="n">Axes</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Create collapsed stacked view with all groups in single plot.&quot;&quot;&quot;</span>
         <span class="c1"># Extract figure-level kwargs</span>
         <span class="n">fig_kwargs</span> <span class="o">=</span> <span class="p">{</span>
@@ -1272,6 +1274,10 @@
 <span class="sd">            is an outlier when ``|value - median| &gt; threshold * half_width``.</span>
 <span class="sd">            ``half_width`` is ``0.0`` only when every value is identical.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Compute the median / absolute deviations / MAD once and derive both</span>
+        <span class="c1"># the scores and the half-width from them, mirroring</span>
+        <span class="c1"># ``_qc_math.modified_z_scores`` without re-reducing the array.</span>
+        <span class="n">values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
         <span class="n">median</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmedian</span><span class="p">(</span><span class="n">values</span><span class="p">))</span>
         <span class="n">abs_dev</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">values</span> <span class="o">-</span> <span class="n">median</span><span class="p">)</span>
         <span class="n">mad</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmedian</span><span class="p">(</span><span class="n">abs_dev</span><span class="p">))</span>

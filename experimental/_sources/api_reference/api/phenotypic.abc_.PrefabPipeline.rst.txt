@@ -33,6 +33,7 @@ phenotypic.abc\_.PrefabPipeline
       ~PrefabPipeline.get_model
       ~PrefabPipeline.get_ops
       ~PrefabPipeline.get_post
+      ~PrefabPipeline.get_qc
       ~PrefabPipeline.json
       ~PrefabPipeline.measure
       ~PrefabPipeline.model_construct
@@ -56,6 +57,7 @@ phenotypic.abc\_.PrefabPipeline
       ~PrefabPipeline.set_model
       ~PrefabPipeline.set_ops
       ~PrefabPipeline.set_post
+      ~PrefabPipeline.set_qc
       ~PrefabPipeline.to_json
       ~PrefabPipeline.update_forward_refs
       ~PrefabPipeline.validate
@@ -87,5 +89,6 @@ phenotypic.abc\_.PrefabPipeline
       ~PrefabPipeline.post
       ~PrefabPipeline.filters
       ~PrefabPipeline.model
+      ~PrefabPipeline.qc
    
    

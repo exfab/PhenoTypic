@@ -1,0 +1,6 @@
+phenotypic.tools\_.qc\_config\_json\_path
+=========================================
+
+.. currentmodule:: phenotypic.tools_
+
+.. autofunction:: qc_config_json_path

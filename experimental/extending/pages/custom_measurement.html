@@ -613,7 +613,7 @@ colonies.</p>
             <span class="n">height</span> <span class="o">=</span> <span class="n">prop</span><span class="o">.</span><span class="n">bbox</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">-</span> <span class="n">prop</span><span class="o">.</span><span class="n">bbox</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
             <span class="n">width</span> <span class="o">=</span> <span class="n">prop</span><span class="o">.</span><span class="n">bbox</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">-</span> <span class="n">prop</span><span class="o">.</span><span class="n">bbox</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
             <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
-                <span class="s2">&quot;ObjectLabel&quot;</span><span class="p">:</span> <span class="n">prop</span><span class="o">.</span><span class="n">label</span><span class="p">,</span>
+                <span class="s2">&quot;Object_Label&quot;</span><span class="p">:</span> <span class="n">prop</span><span class="o">.</span><span class="n">label</span><span class="p">,</span>
                 <span class="s2">&quot;AspectRatio&quot;</span><span class="p">:</span> <span class="n">height</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="n">width</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
             <span class="p">})</span>
         <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span>
@@ -624,7 +624,7 @@ colonies.</p>
 <ul class="simple">
 <li><p>Read from <code class="docutils literal notranslate"><span class="pre">objmap</span></code> and image data (<code class="docutils literal notranslate"><span class="pre">gray</span></code>, <code class="docutils literal notranslate"><span class="pre">rgb</span></code>)</p></li>
 <li><p>Return a <code class="docutils literal notranslate"><span class="pre">pd.DataFrame</span></code> with one row per object</p></li>
-<li><p>Include an <code class="docutils literal notranslate"><span class="pre">ObjectLabel</span></code> column matching <code class="docutils literal notranslate"><span class="pre">objmap</span></code> labels</p></li>
+<li><p>Include an <code class="docutils literal notranslate"><span class="pre">Object_Label</span></code> column matching <code class="docutils literal notranslate"><span class="pre">objmap</span></code> labels</p></li>
 <li><p>Do not modify the image</p></li>
 </ul>
 </section>

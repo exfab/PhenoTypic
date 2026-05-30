@@ -12,9 +12,23 @@ the parquet, prefixed with the category — e.g. ``Size_Area``) and a
 one-line description.
 
 This page is generated from the ``MeasurementInfo`` enums in
-``phenotypic.tools_.measurement_info`` and stays in sync with the code
+``phenotypic.schema`` and stays in sync with the code
 automatically — do not edit ``measurements_ref/index.rst`` by hand; edit
 the docstrings or the registry in ``docs/source/_extensions/measurements_ref.py``.
+
+
+Object identifier
+-----------------
+
+``Object_Label`` is the shared per-object key — the first column of every operator's table below. Each detected colony is assigned a unique integer label so all of its measurements line up across operators when joined on this column.
+
+.. list-table:: Category: **Object**
+   :header-rows: 1
+
+   * - Name
+     - Description
+   * - ``Label``
+     - Integer label uniquely identifying each detected object (colony) within its source image. Acts as the per-image primary key shared by every measurement table, letting all per-colony measurements be joined together and traced back to a single colony on the agar plate.
 
 
 MeasureSize
@@ -592,7 +606,7 @@ concentric circles at the three scalar radii. Variance and raw mean
 per ring are retained in the intermediates for diagnostic access but
 do not drive segmentation.
 
-.. list-table:: Category: **SymmetricZones**
+.. list-table:: Category: **SymZones**
    :header-rows: 1
 
    * - Name

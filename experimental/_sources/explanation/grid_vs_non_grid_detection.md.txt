@@ -20,7 +20,7 @@ all connected foreground regions as separate objects.
 - No concept of wells or sections
 - Cannot distinguish "two colonies in one well" from "one colony each
   in two wells"
-- Refiners like `ReduceMultipleGridObjects` are not available
+- Refiners like `ReduceSectionsByLine` are not available
 
 ## Grid Detection (GridImage)
 

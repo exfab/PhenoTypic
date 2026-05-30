@@ -598,7 +598,7 @@ is added automatically if missing.</p></li>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.post</span><span class="w"> </span><span class="kn">import</span> <span class="n">AppendString</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
 <span class="gp">... </span>    <span class="s2">&quot;Metadata_Temp&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;30&quot;</span><span class="p">,</span> <span class="s2">&quot;37&quot;</span><span class="p">],</span>
-<span class="gp">... </span>    <span class="s2">&quot;ObjectLabel&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="s2">&quot;Object_Label&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span>
 <span class="gp">... </span><span class="p">})</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">op</span> <span class="o">=</span> <span class="n">AppendString</span><span class="p">(</span><span class="n">column</span><span class="o">=</span><span class="s2">&quot;Temp&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="s2">&quot;C&quot;</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">result</span> <span class="o">=</span> <span class="n">op</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
@@ -1447,7 +1447,7 @@ kept.</p>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.post</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExpandMetadata</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
 <span class="gp">... </span>    <span class="s2">&quot;Metadata_ImageName&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;WT_30C_24h&quot;</span><span class="p">,</span> <span class="s2">&quot;mut_37C_48h&quot;</span><span class="p">],</span>
-<span class="gp">... </span>    <span class="s2">&quot;ObjectLabel&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="s2">&quot;Object_Label&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span>
 <span class="gp">... </span><span class="p">})</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">expand</span> <span class="o">=</span> <span class="n">ExpandMetadata</span><span class="p">(</span>
 <span class="gp">... </span>    <span class="n">column</span><span class="o">=</span><span class="s2">&quot;ImageName&quot;</span><span class="p">,</span>
@@ -2309,7 +2309,7 @@ are kept.</p>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
 <span class="gp">... </span>    <span class="s2">&quot;Metadata_Strain&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;WT&quot;</span><span class="p">,</span> <span class="s2">&quot;mut&quot;</span><span class="p">],</span>
 <span class="gp">... </span>    <span class="s2">&quot;Metadata_Condition&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;30C&quot;</span><span class="p">,</span> <span class="s2">&quot;37C&quot;</span><span class="p">],</span>
-<span class="gp">... </span>    <span class="s2">&quot;ObjectLabel&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="s2">&quot;Object_Label&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span>
 <span class="gp">... </span><span class="p">})</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">merge</span> <span class="o">=</span> <span class="n">MergeMetadata</span><span class="p">(</span>
 <span class="gp">... </span>    <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;Strain&quot;</span><span class="p">,</span> <span class="s2">&quot;Condition&quot;</span><span class="p">],</span>
@@ -3152,7 +3152,7 @@ is added automatically if missing.</p></li>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.post</span><span class="w"> </span><span class="kn">import</span> <span class="n">PrependString</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
 <span class="gp">... </span>    <span class="s2">&quot;Metadata_ID&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;001&quot;</span><span class="p">,</span> <span class="s2">&quot;002&quot;</span><span class="p">],</span>
-<span class="gp">... </span>    <span class="s2">&quot;ObjectLabel&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="s2">&quot;Object_Label&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span>
 <span class="gp">... </span><span class="p">})</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">op</span> <span class="o">=</span> <span class="n">PrependString</span><span class="p">(</span><span class="n">column</span><span class="o">=</span><span class="s2">&quot;ID&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="s2">&quot;WT-&quot;</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">result</span> <span class="o">=</span> <span class="n">op</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>

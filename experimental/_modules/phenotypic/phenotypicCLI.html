@@ -1215,6 +1215,14 @@
          <span class="s2">&quot;their HDFs (threaded by --n-jobs, alpha from --overlay-alpha), &quot;</span>
          <span class="s2">&quot;runs analysis, rebuilds manifest, and regenerates dashboard.&quot;</span><span class="p">,</span>
 <span class="p">)</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span>
+    <span class="s2">&quot;--no-qc&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;no_qc&quot;</span><span class="p">,</span>
+    <span class="n">is_flag</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Skip the QC compute step in finalize. QC otherwise runs &quot;</span>
+         <span class="s2">&quot;whenever the pipeline has a non-empty &#39;qc&#39; section (writing the &quot;</span>
+         <span class="s2">&quot;qc/ artifact and resetting GUI review progress).&quot;</span><span class="p">,</span>
+<span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">phenotypic_cli</span><span class="p">(</span>
     <span class="n">pipeline_json</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">],</span>
     <span class="n">input_path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">],</span>
@@ -1243,6 +1251,7 @@
     <span class="n">checkpoint_interval</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
     <span class="n">skip_validation</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
     <span class="n">recompile</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">],</span>
+    <span class="n">no_qc</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Execute a PhenoTypic pipeline on images.</span>
@@ -1315,6 +1324,7 @@
                     <span class="n">checkpoint_interval</span><span class="o">=</span><span class="n">checkpoint_interval</span><span class="p">,</span>
                     <span class="n">slurm_args</span><span class="o">=</span><span class="n">slurm_args_dict</span><span class="p">,</span>
                     <span class="n">wait</span><span class="o">=</span><span class="n">wait</span><span class="p">,</span>
+                    <span class="n">no_qc</span><span class="o">=</span><span class="n">no_qc</span><span class="p">,</span>
                 <span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">_handle_recompile</span><span class="p">(</span>
@@ -1323,6 +1333,7 @@
                     <span class="n">include_dataset_column</span><span class="p">,</span>
                     <span class="n">overlay_alpha</span><span class="p">,</span>
                     <span class="n">n_jobs</span><span class="p">,</span>
+                    <span class="n">no_qc</span><span class="o">=</span><span class="n">no_qc</span><span class="p">,</span>
                 <span class="p">)</span>
             <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
 
@@ -1796,6 +1807,7 @@
                 <span class="n">datasets</span><span class="p">,</span>
                 <span class="n">metadata_csv</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">metadata_csv</span><span class="p">,</span>
                 <span class="n">pipeline</span><span class="o">=</span><span class="n">finalizer_pipeline</span><span class="p">,</span>
+                <span class="n">no_qc</span><span class="o">=</span><span class="n">no_qc</span><span class="p">,</span>
             <span class="p">)</span>
             <span class="k">if</span> <span class="n">master_path</span><span class="p">:</span>
                 <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✓ Master measurements: </span><span class="si">{</span><span class="n">master_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -1993,6 +2005,7 @@
     <span class="n">checkpoint_interval</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
     <span class="n">slurm_args</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
     <span class="n">wait</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+    <span class="n">no_qc</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Submit recompile work as a SLURM array chain.</span>
 
@@ -2006,6 +2019,9 @@
 <span class="sd">            positive; otherwise defaults to 500 files per shard.</span>
 <span class="sd">        slurm_args: Parsed SLURM key/value arguments.</span>
 <span class="sd">        wait: Whether to wait for the finalizer task status.</span>
+<span class="sd">        no_qc: Forwarded from ``--no-qc`` to skip QC compute on the</span>
+<span class="sd">            finalizer task (stashed on the finalizer task metadata so the</span>
+<span class="sd">            recompile worker reads it).</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
@@ -2046,6 +2062,7 @@
     <span class="k">if</span> <span class="n">tasks</span> <span class="ow">and</span> <span class="n">tasks</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;task_type&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="n">TASK_FINALIZE</span><span class="p">:</span>
         <span class="n">finalizer_task_index</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">tasks</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
         <span class="n">tasks</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="n">JobMetadataKey</span><span class="o">.</span><span class="n">METADATA_CSV</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">metadata_csv</span><span class="p">)</span> <span class="k">if</span> <span class="n">metadata_csv</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="n">tasks</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="n">JobMetadataKey</span><span class="o">.</span><span class="n">NO_QC</span><span class="p">]</span> <span class="o">=</span> <span class="n">no_qc</span>
 
     <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span><span class="s2">&quot;[cyan]Querying SLURM array limits...[/cyan]&quot;</span><span class="p">)</span>
     <span class="n">array_limit</span> <span class="o">=</span> <span class="n">get_slurm_array_limit</span><span class="p">()</span>
@@ -2068,6 +2085,7 @@
             <span class="n">include_dataset_column</span><span class="p">,</span>
             <span class="n">overlay_alpha</span><span class="p">,</span>
             <span class="o">-</span><span class="mi">1</span><span class="p">,</span>
+            <span class="n">no_qc</span><span class="o">=</span><span class="n">no_qc</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="k">return</span>
 
@@ -2241,6 +2259,7 @@
     <span class="n">include_dataset_column</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
     <span class="n">overlay_alpha</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
     <span class="n">n_jobs</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">no_qc</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Recompile master measurements and dashboard from existing results.</span>
 
@@ -2262,6 +2281,8 @@
 <span class="sd">        n_jobs: Worker thread count for overlay regeneration.</span>
 <span class="sd">            Forwarded from the ``--n-jobs`` CLI flag (``-1`` = all</span>
 <span class="sd">            cores, ``1`` = single-threaded).</span>
+<span class="sd">        no_qc: Forwarded from ``--no-qc`` to skip the QC compute step</span>
+<span class="sd">            in finalize.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">rich.console</span><span class="w"> </span><span class="kn">import</span> <span class="n">Console</span>
 
@@ -2292,6 +2313,7 @@
         <span class="n">dataset_names</span><span class="o">=</span><span class="n">dataset_names</span><span class="p">,</span>
         <span class="n">include_dataset_column</span><span class="o">=</span><span class="n">include_dataset_column</span><span class="p">,</span>
         <span class="n">metadata_csv</span><span class="o">=</span><span class="n">metadata_csv</span><span class="p">,</span>
+        <span class="n">no_qc</span><span class="o">=</span><span class="n">no_qc</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="k">if</span> <span class="n">master_path</span><span class="p">:</span>
         <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[green]Master measurements: </span><span class="si">{</span><span class="n">master_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>

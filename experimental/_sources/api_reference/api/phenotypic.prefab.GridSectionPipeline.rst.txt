@@ -33,6 +33,7 @@ phenotypic.prefab.GridSectionPipeline
       ~GridSectionPipeline.get_model
       ~GridSectionPipeline.get_ops
       ~GridSectionPipeline.get_post
+      ~GridSectionPipeline.get_qc
       ~GridSectionPipeline.json
       ~GridSectionPipeline.measure
       ~GridSectionPipeline.model_construct
@@ -56,6 +57,7 @@ phenotypic.prefab.GridSectionPipeline
       ~GridSectionPipeline.set_model
       ~GridSectionPipeline.set_ops
       ~GridSectionPipeline.set_post
+      ~GridSectionPipeline.set_qc
       ~GridSectionPipeline.to_json
       ~GridSectionPipeline.update_forward_refs
       ~GridSectionPipeline.validate
@@ -87,5 +89,6 @@ phenotypic.prefab.GridSectionPipeline
       ~GridSectionPipeline.post
       ~GridSectionPipeline.filters
       ~GridSectionPipeline.model
+      ~GridSectionPipeline.qc
    
    

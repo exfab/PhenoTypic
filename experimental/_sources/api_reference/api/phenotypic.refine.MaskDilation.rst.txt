@@ -1,0 +1,63 @@
+phenotypic.refine.MaskDilation
+==============================
+
+.. currentmodule:: phenotypic.refine
+
+.. autoclass:: MaskDilation
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~MaskDilation.__init__
+      ~MaskDilation.apply
+      ~MaskDilation.construct
+      ~MaskDilation.copy
+      ~MaskDilation.dict
+      ~MaskDilation.from_orm
+      ~MaskDilation.json
+      ~MaskDilation.model_construct
+      ~MaskDilation.model_copy
+      ~MaskDilation.model_dump
+      ~MaskDilation.model_dump_json
+      ~MaskDilation.model_json_schema
+      ~MaskDilation.model_parametrized_name
+      ~MaskDilation.model_post_init
+      ~MaskDilation.model_rebuild
+      ~MaskDilation.model_validate
+      ~MaskDilation.model_validate_json
+      ~MaskDilation.model_validate_strings
+      ~MaskDilation.parse_file
+      ~MaskDilation.parse_obj
+      ~MaskDilation.parse_raw
+      ~MaskDilation.schema
+      ~MaskDilation.schema_json
+      ~MaskDilation.update_forward_refs
+      ~MaskDilation.validate
+      ~MaskDilation.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~MaskDilation.model_computed_fields
+      ~MaskDilation.model_config
+      ~MaskDilation.model_extra
+      ~MaskDilation.model_fields
+      ~MaskDilation.model_fields_set
+      ~MaskDilation.shape
+      ~MaskDilation.width
+      ~MaskDilation.n_iter
+   
+   

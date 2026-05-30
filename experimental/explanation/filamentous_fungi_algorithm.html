@@ -653,7 +653,7 @@ fail depending on noise in your scene</p>
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">inoculum_detector</span></code></p></td>
-<td><p>ObjectDetector or ImagePipeline for centres. Defaults to <code class="docutils literal notranslate"><span class="pre">InoculumDetector</span></code> + <code class="docutils literal notranslate"><span class="pre">GridSectionLargest</span></code> for grid plates. Replace with a species-specific centre detector if the default doesn’t pick up your inoculation points.</p></td>
+<td><p>ObjectDetector or ImagePipeline for centres. Defaults to <code class="docutils literal notranslate"><span class="pre">InoculumDetector</span></code> + <code class="docutils literal notranslate"><span class="pre">KeepSectionLargest</span></code> for grid plates. Replace with a species-specific centre detector if the default doesn’t pick up your inoculation points.</p></td>
 </tr>
 </tbody>
 </table>
@@ -1078,7 +1078,7 @@ correction:</p>
 <ol class="arabic simple">
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">StableDenoise</span></code></strong> (BM3D) — removes Poisson-Gaussian noise without
 destroying thin filaments.</p></li>
-<li><p><strong><code class="docutils literal notranslate"><span class="pre">HomomorphicFilter</span></code></strong> — corrects uneven illumination so phase
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">FlattenIllumination</span></code></strong> — corrects uneven illumination so phase
 congruency isn’t driven by intensity gradients.</p></li>
 </ol>
 <p>The <code class="docutils literal notranslate"><span class="pre">FilamentousFungiPipeline</span></code> prefab chains these automatically.</p>

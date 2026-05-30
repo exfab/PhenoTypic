@@ -20,7 +20,7 @@ class MeasureAspectRatio(MeasureFeatures):
             height = prop.bbox[2] - prop.bbox[0]
             width = prop.bbox[3] - prop.bbox[1]
             rows.append({
-                "ObjectLabel": prop.label,
+                "Object_Label": prop.label,
                 "AspectRatio": height / max(width, 1),
             })
         return pd.DataFrame(rows)
@@ -30,5 +30,5 @@ class MeasureAspectRatio(MeasureFeatures):
 
 - Read from `objmap` and image data (`gray`, `rgb`)
 - Return a `pd.DataFrame` with one row per object
-- Include an `ObjectLabel` column matching `objmap` labels
+- Include an `Object_Label` column matching `objmap` labels
 - Do not modify the image

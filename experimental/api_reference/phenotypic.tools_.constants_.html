@@ -575,7 +575,7 @@
 Constants are organized by module and functionality.</p>
 <dl>
 <dt>Note: Class names are defined in ALL_CAPS to avoid namespace conflicts with actual classes</dt><dd><p>in the codebase (e.g., GRID_DEP vs an actual Grid class). When importing, use the format:</p>
-<div class="highlight-python3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools</span>\<span class="n">_</span><span class="o">.</span><span class="n">constants_</span> <span class="kn">import</span><span class="w"> </span><span class="nn">IMAGE_MODE</span><span class="o">,</span><span class="w"> </span><span class="nn">OBJECT</span>
+<div class="highlight-python3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools</span>\<span class="n">_</span><span class="o">.</span><span class="n">constants_</span> <span class="kn">import</span><span class="w"> </span><span class="nn">IMAGE_MODE</span><span class="o">,</span><span class="w"> </span><span class="nn">METADATA</span>
 </pre></div>
 </div>
 </dd>
@@ -593,7 +593,7 @@ variable names, and path helpers shared between the CLI and GUI.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="phenotypic.tools_.constants_.ConstantLabels">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.constants_.</span></span><span class="sig-name descname"><span class="pre">ConstantLabels</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">new_class_name</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">names</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">module</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qualname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/constants_.html#ConstantLabels"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.constants_.ConstantLabels" title="Link to this definition">#</a></dt>
-<dd><p>Bases: <a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.MeasurementInfo" title="phenotypic.abc_._measurement_info.MeasurementInfo"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasurementInfo</span></code></a></p>
+<dd><p>Bases: <a class="reference internal" href="phenotypic.schema.html#phenotypic.schema.MeasurementInfo" title="phenotypic.schema._measurement_info.MeasurementInfo"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasurementInfo</span></code></a></p>
 <p>Base class for constant labels in phenotypic. This class is to distinguish
 between ConstantLabels and MeasurementInfo usages.</p>
 <dl class="py method">
@@ -2189,7 +2189,7 @@ which category it belongs to without explicitly referencing the class.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="phenotypic.tools_.constants_.METADATA">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.constants_.</span></span><span class="sig-name descname"><span class="pre">METADATA</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/constants_.html#METADATA"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.constants_.METADATA" title="Link to this definition">#</a></dt>
-<dd><p>Bases: <a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.MeasurementInfo" title="phenotypic.abc_._measurement_info.MeasurementInfo"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasurementInfo</span></code></a></p>
+<dd><p>Bases: <a class="reference internal" href="phenotypic.schema.html#phenotypic.schema.MeasurementInfo" title="phenotypic.schema._measurement_info.MeasurementInfo"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasurementInfo</span></code></a></p>
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tools_.constants_.METADATA.append_rst_to_doc">
 <em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">append_rst_to_doc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">module</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><span class="pre">object</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.tools_.constants_.METADATA.append_rst_to_doc" title="Link to this definition">#</a></dt>
@@ -2836,21 +2836,9 @@ which category it belongs to without explicitly referencing the class.</p>
 </dd></dl>
 
 <dl class="py class">
-<dt class="sig sig-object py" id="phenotypic.tools_.constants_.OBJECT">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.constants_.</span></span><span class="sig-name descname"><span class="pre">OBJECT</span></span><a class="reference internal" href="../_modules/phenotypic/tools_/constants_.html#OBJECT"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.constants_.OBJECT" title="Link to this definition">#</a></dt>
-<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
-<p>Constants for object information properties.</p>
-<dl class="py attribute">
-<dt class="sig sig-object py" id="phenotypic.tools_.constants_.OBJECT.LABEL">
-<span class="sig-name descname"><span class="pre">LABEL</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ObjectLabel'</span></em><a class="headerlink" href="#phenotypic.tools_.constants_.OBJECT.LABEL" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
-<dl class="py class">
 <dt class="sig sig-object py" id="phenotypic.tools_.constants_.PIPE_STATUS">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.constants_.</span></span><span class="sig-name descname"><span class="pre">PIPE_STATUS</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/constants_.html#PIPE_STATUS"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.constants_.PIPE_STATUS" title="Link to this definition">#</a></dt>
-<dd><p>Bases: <a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.MeasurementInfo" title="phenotypic.abc_._measurement_info.MeasurementInfo"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasurementInfo</span></code></a></p>
+<dd><p>Bases: <a class="reference internal" href="phenotypic.schema.html#phenotypic.schema.MeasurementInfo" title="phenotypic.schema._measurement_info.MeasurementInfo"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasurementInfo</span></code></a></p>
 <p>Constants for image set status.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tools_.constants_.PIPE_STATUS.append_rst_to_doc">
@@ -3775,10 +3763,6 @@ which category it belongs to without explicitly referencing the class.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.constants_.METADATA.PARENT_UUID"><code class="docutils literal notranslate"><span class="pre">METADATA.PARENT_UUID</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.constants_.METADATA.SUFFIX"><code class="docutils literal notranslate"><span class="pre">METADATA.SUFFIX</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.constants_.METADATA.UUID"><code class="docutils literal notranslate"><span class="pre">METADATA.UUID</span></code></a></li>
-</ul>
-</li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.constants_.OBJECT"><code class="docutils literal notranslate"><span class="pre">OBJECT</span></code></a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.constants_.OBJECT.LABEL"><code class="docutils literal notranslate"><span class="pre">OBJECT.LABEL</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.constants_.PIPE_STATUS"><code class="docutils literal notranslate"><span class="pre">PIPE_STATUS</span></code></a><ul class="visible nav section-nav flex-column">

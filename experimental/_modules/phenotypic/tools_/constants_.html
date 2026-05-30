@@ -568,7 +568,7 @@
 <span class="sd">Note: Class names are defined in ALL_CAPS to avoid namespace conflicts with actual classes</span>
 <span class="sd">    in the codebase (e.g., GRID_DEP vs an actual Grid class). When importing, use the format::</span>
 
-<span class="sd">        from phenotypic.tools_.constants_ import IMAGE_MODE, OBJECT</span>
+<span class="sd">        from phenotypic.tools_.constants_ import IMAGE_MODE, METADATA</span>
 
 <span class="sd">See also</span>
 <span class="sd">--------</span>
@@ -584,7 +584,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">packaging.version</span><span class="w"> </span><span class="kn">import</span> <span class="n">Version</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasurementInfo</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasurementInfo</span>
 
 
 <div class="viewcode-block" id="ConstantLabels">
@@ -665,16 +665,6 @@
 
     <span class="n">SRGB</span> <span class="o">=</span> <span class="s2">&quot;sRGB&quot;</span><span class="p">,</span> <span class="s2">&quot;Standard sRGB gamma correction for display&quot;</span>
     <span class="n">LINEAR</span> <span class="o">=</span> <span class="s2">&quot;Linear&quot;</span><span class="p">,</span> <span class="s2">&quot;Linear RGB with no gamma correction&quot;</span></div>
-
-
-
-<span class="c1"># Object information constants</span>
-<div class="viewcode-block" id="OBJECT">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.constants_.html#phenotypic.tools_.constants_.OBJECT">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">OBJECT</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Constants for object information properties.&quot;&quot;&quot;</span>
-
-    <span class="n">LABEL</span> <span class="o">=</span> <span class="s2">&quot;ObjectLabel&quot;</span></div>
 
 
 

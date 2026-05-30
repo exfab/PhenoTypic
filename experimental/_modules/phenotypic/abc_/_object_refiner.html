@@ -596,7 +596,7 @@
 <span class="sd">    - **Size filtering:** Use for removing dust, noise, agar artifacts (too small) or unrealistic regions</span>
 <span class="sd">      (too large). Example: [SmallObjectRemover](src/phenotypic/refine/_small_object_remover.py).</span>
 <span class="sd">    - **Morphological cleanup:** Use for fragmented edges, thin protrusions, internal gaps. Example:</span>
-<span class="sd">      [MaskDilator](src/phenotypic/refine/_mask_dilator.py) (uses FootprintMixin).</span>
+<span class="sd">      [MaskDilation](src/phenotypic/refine/_mask_dilation.py) (uses FootprintMixin).</span>
 <span class="sd">    - **Hole filling:** Use for voids from uneven illumination or pigment patterns within colonies.</span>
 <span class="sd">    - **Shape filtering:** Use for removing elongated artifacts, merged colonies, low-circularity debris.</span>
 <span class="sd">    - **Merging operations:** Use for bridging fragmented colonies or combining nearby regions. Example:</span>
@@ -704,8 +704,8 @@
 <span class="sd">    - **Hole filling:** Fill interior voids within colony masks for solid shape representation.</span>
 <span class="sd">      Targets: voids from uneven illumination, pigment heterogeneity. Improves area measurements.</span>
 
-<span class="sd">    - **Morphological operations:** Erosion, dilation, opening, closing with [MaskDilator](src/phenotypic/refine/_mask_dilator.py),</span>
-<span class="sd">      [MaskEroder](src/phenotypic/refine/_mask_eroder.py), [MaskOpener](src/phenotypic/refine/_mask_opener.py).</span>
+<span class="sd">    - **Morphological operations:** Erosion, dilation, opening, closing with [MaskDilation](src/phenotypic/refine/_mask_dilation.py),</span>
+<span class="sd">      [MaskErosion](src/phenotypic/refine/_mask_erosion.py), [MaskOpening](src/phenotypic/refine/_mask_opening.py).</span>
 <span class="sd">      Targets: fragmented edges, thin protrusions, internal gaps. Uses FootprintMixin for shape control.</span>
 
 <span class="sd">    - **Border removal:** Remove or exclude objects touching image/well boundaries.</span>
@@ -761,7 +761,7 @@
 <span class="sd">    **Morphological Operations with FootprintMixin**</span>
 
 <span class="sd">    For operations requiring morphological structuring elements (dilation, erosion, opening, closing),</span>
-<span class="sd">    inherit from FootprintMixin. See [MaskDilator](src/phenotypic/refine/_mask_dilator.py) for example:</span>
+<span class="sd">    inherit from FootprintMixin. See [MaskDilation](src/phenotypic/refine/_mask_dilation.py) for example:</span>
 
 <span class="sd">    .. code-block:: python</span>
 
@@ -890,13 +890,13 @@
 <span class="sd">    .. code-block:: python</span>
 
 <span class="sd">        from phenotypic import Image, ImagePipeline</span>
-<span class="sd">        from phenotypic.refine import SmallObjectRemover, MaskFill, LowCircularityRemover</span>
+<span class="sd">        from phenotypic.refine import SmallObjectRemover, MaskFill, RemoveNonCircular</span>
 
 <span class="sd">        # Build a refinement pipeline</span>
 <span class="sd">        pipeline = ImagePipeline()</span>
 <span class="sd">        pipeline.add(SmallObjectRemover(min_size=100))          # Remove dust/noise</span>
 <span class="sd">        pipeline.add(MaskFill())                                 # Fill holes in colonies</span>
-<span class="sd">        pipeline.add(LowCircularityRemover(cutoff=0.75))        # Remove elongated artifacts</span>
+<span class="sd">        pipeline.add(RemoveNonCircular(cutoff=0.75))        # Remove elongated artifacts</span>
 
 <span class="sd">        # Apply to detected image</span>
 <span class="sd">        image = Image.imread(&#39;plate.jpg&#39;)</span>
@@ -1101,7 +1101,7 @@
 <span class="sd">        &gt;&gt;&gt; from scipy.ndimage import label as ndi_label, distance_transform_edt</span>
 <span class="sd">        &gt;&gt;&gt; from skimage.morphology import dilation</span>
 <span class="sd">        &gt;&gt;&gt; import numpy as np</span>
-<span class="sd">        &gt;&gt;&gt; class TransitiveDistanceMerger(ObjectRefiner):</span>
+<span class="sd">        &gt;&gt;&gt; class MergeFragmentChains(ObjectRefiner):</span>
 <span class="sd">        ...     &#39;&#39;&#39;Merge objects within specified distance via distance transform.&#39;&#39;&#39;</span>
 <span class="sd">        ...</span>
 <span class="sd">        ...     merge_distance: int = 5</span>
@@ -1126,7 +1126,7 @@
 <span class="sd">        &gt;&gt;&gt; image = load_synth_yeast_plate()</span>
 <span class="sd">        &gt;&gt;&gt; detected = OtsuDetector().apply(image)</span>
 <span class="sd">        &gt;&gt;&gt; # Merge fragments within 10-pixel distance</span>
-<span class="sd">        &gt;&gt;&gt; merger = TransitiveDistanceMerger(merge_distance=10)</span>
+<span class="sd">        &gt;&gt;&gt; merger = MergeFragmentChains(merge_distance=10)</span>
 <span class="sd">        &gt;&gt;&gt; merged = merger.apply(detected)</span>
 <span class="sd">        &gt;&gt;&gt; print(f&quot;Merged nearby objects: {detected.objmap[:].max()} -&gt; {merged.objmap[:].max()}&quot;)</span>
 
@@ -1136,7 +1136,7 @@
 <span class="sd">        &gt;&gt;&gt; from phenotypic.enhance import GaussianBlur</span>
 <span class="sd">        &gt;&gt;&gt; from phenotypic.detect import OtsuDetector</span>
 <span class="sd">        &gt;&gt;&gt; from phenotypic.refine import (</span>
-<span class="sd">        ...     SmallObjectRemover, MaskFill, LowCircularityRemover</span>
+<span class="sd">        ...     SmallObjectRemover, MaskFill, RemoveNonCircular</span>
 <span class="sd">        ... )</span>
 <span class="sd">        &gt;&gt;&gt; from phenotypic.measure import MeasureColor</span>
 <span class="sd">        &gt;&gt;&gt; # Build complete processing pipeline with enhancement, detection, and refinement</span>
@@ -1148,7 +1148,7 @@
 <span class="sd">        &gt;&gt;&gt; # Refinement (chain multiple cleanup operations)</span>
 <span class="sd">        &gt;&gt;&gt; pipeline.add(SmallObjectRemover(min_size=100))          # Remove dust</span>
 <span class="sd">        &gt;&gt;&gt; pipeline.add(MaskFill())                                 # Fill internal holes</span>
-<span class="sd">        &gt;&gt;&gt; pipeline.add(LowCircularityRemover(cutoff=0.75))        # Remove merged/irregular</span>
+<span class="sd">        &gt;&gt;&gt; pipeline.add(RemoveNonCircular(cutoff=0.75))        # Remove merged/irregular</span>
 <span class="sd">        &gt;&gt;&gt; # Measurement</span>
 <span class="sd">        &gt;&gt;&gt; pipeline.add(MeasureColor())</span>
 <span class="sd">        &gt;&gt;&gt; # Load images and process</span>
@@ -1164,10 +1164,10 @@
     <span class="n">_footprint_shapes</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">set</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;square&quot;</span><span class="p">,</span> <span class="s2">&quot;diamond&quot;</span><span class="p">,</span> <span class="s2">&quot;disk&quot;</span><span class="p">}</span>
 
     <span class="nd">@overload</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">,</span> <span class="n">inplace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span> <span class="o">...</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">GridImage</span><span class="p">,</span> <span class="n">inplace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GridImage</span><span class="p">:</span> <span class="o">...</span>
 
     <span class="nd">@overload</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">GridImage</span><span class="p">,</span> <span class="n">inplace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GridImage</span><span class="p">:</span> <span class="o">...</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">,</span> <span class="n">inplace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span> <span class="o">...</span>
 
 <div class="viewcode-block" id="ObjectRefiner.apply">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.ObjectRefiner.apply">[docs]</a>
@@ -1175,14 +1175,6 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">,</span> <span class="n">inplace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
         <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">image</span><span class="o">=</span><span class="n">image</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="n">inplace</span><span class="p">)</span></div>
 
-
-    <span class="nd">@overload</span>
-    <span class="nd">@abstractmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span> <span class="o">...</span>
-
-    <span class="nd">@overload</span>
-    <span class="nd">@abstractmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">GridImage</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GridImage</span><span class="p">:</span> <span class="o">...</span>
 
 <div class="viewcode-block" id="ObjectRefiner._operate">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.ObjectRefiner._operate">[docs]</a>

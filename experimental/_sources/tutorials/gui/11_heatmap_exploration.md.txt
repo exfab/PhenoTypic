@@ -57,7 +57,7 @@ On a real grid-aware run, the top strip shows four controls:
 ![Color picker dropdown open showing the union of measurement and QC severity columns.](../../_static/gui_images/heatmap_exploration/02_color_picker_open.png)
 
 The heatmap renders below the strip. Hover labels carry
-`(row, col) — value — ImageFile — ObjectLabel`. Curated cells —
+`(row, col) — value — ImageFile — Object_Label`. Curated cells —
 those tracked in `STORE_REMOVED_KEYS` — render as `COLOR_MUTED`
 × markers on a secondary `go.Scatter` trace, visually distinct from
 genuinely low-value cells in the colormap.

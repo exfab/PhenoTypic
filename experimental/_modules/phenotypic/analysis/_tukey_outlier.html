@@ -562,7 +562,7 @@
   <h1>Source code for phenotypic.analysis._tukey_outlier</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Callable</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
@@ -570,6 +570,7 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">field_validator</span><span class="p">,</span> <span class="n">PrivateAttr</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">.</span><span class="w"> </span><span class="kn">import</span> <span class="n">_qc_math</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">SetAnalyzer</span>
 
 
@@ -747,9 +748,9 @@
             <span class="n">figsize</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
             <span class="n">max_groups</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span>
             <span class="n">collapsed</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-            <span class="n">criteria</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">criteria</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
             <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="n">plt</span><span class="o">.</span><span class="n">Figure</span><span class="p">,</span> <span class="n">plt</span><span class="o">.</span><span class="n">Axes</span><span class="p">):</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">plt</span><span class="o">.</span><span class="n">Figure</span><span class="p">,</span> <span class="n">plt</span><span class="o">.</span><span class="n">Axes</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Visualize outlier detection results.</span>
 
 <span class="sd">        Creates a visualization showing the distribution of values with outliers highlighted</span>
@@ -877,7 +878,7 @@
             <span class="n">group_col</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
             <span class="n">figsize</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
             <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="n">plt</span><span class="o">.</span><span class="n">Figure</span><span class="p">,</span> <span class="n">plt</span><span class="o">.</span><span class="n">Axes</span><span class="p">):</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">plt</span><span class="o">.</span><span class="n">Figure</span><span class="p">,</span> <span class="n">plt</span><span class="o">.</span><span class="n">Axes</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Create individual subplots for each group.&quot;&quot;&quot;</span>
         <span class="c1"># Extract figure-level kwargs</span>
         <span class="n">fig_kwargs</span> <span class="o">=</span> <span class="p">{</span>
@@ -911,13 +912,9 @@
 
             <span class="c1"># Dynamically compute outlier flags for this group</span>
             <span class="n">values</span> <span class="o">=</span> <span class="n">group_data</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">on</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
-            <span class="n">q1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="mi">25</span><span class="p">)</span>
-            <span class="n">q3</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="mi">75</span><span class="p">)</span>
-            <span class="n">iqr</span> <span class="o">=</span> <span class="n">q3</span> <span class="o">-</span> <span class="n">q1</span>
-            <span class="n">lower_fence</span> <span class="o">=</span> <span class="n">q1</span> <span class="o">-</span> <span class="p">(</span><span class="n">iqr</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">k</span><span class="p">)</span>
-            <span class="n">upper_fence</span> <span class="o">=</span> <span class="n">q3</span> <span class="o">+</span> <span class="p">(</span><span class="n">iqr</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">k</span><span class="p">)</span>
+            <span class="n">lower_fence</span><span class="p">,</span> <span class="n">upper_fence</span> <span class="o">=</span> <span class="n">_qc_math</span><span class="o">.</span><span class="n">tukey_fences</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">k</span><span class="p">)</span>
 
-            <span class="n">is_outlier</span> <span class="o">=</span> <span class="p">(</span><span class="n">values</span> <span class="o">&lt;</span> <span class="n">lower_fence</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">values</span> <span class="o">&gt;</span> <span class="n">upper_fence</span><span class="p">)</span>
+            <span class="n">is_outlier</span> <span class="o">=</span> <span class="n">_qc_math</span><span class="o">.</span><span class="n">tukey_outlier_mask</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">k</span><span class="p">)</span>
             <span class="n">group_data</span><span class="p">[</span><span class="s2">&quot;_is_outlier&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">is_outlier</span>
 
             <span class="c1"># Separate inliers and outliers</span>
@@ -1034,7 +1031,7 @@
             <span class="n">group_col</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
             <span class="n">figsize</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
             <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="n">plt</span><span class="o">.</span><span class="n">Figure</span><span class="p">,</span> <span class="n">plt</span><span class="o">.</span><span class="n">Axes</span><span class="p">):</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">plt</span><span class="o">.</span><span class="n">Figure</span><span class="p">,</span> <span class="n">plt</span><span class="o">.</span><span class="n">Axes</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Create collapsed stacked view with all groups in single plot.&quot;&quot;&quot;</span>
         <span class="c1"># Extract figure-level kwargs</span>
         <span class="n">fig_kwargs</span> <span class="o">=</span> <span class="p">{</span>
@@ -1063,14 +1060,10 @@
 
             <span class="c1"># Dynamically compute outlier flags for this group</span>
             <span class="n">values</span> <span class="o">=</span> <span class="n">group_data</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">on</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
-            <span class="n">q1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="mi">25</span><span class="p">)</span>
-            <span class="n">q3</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="mi">75</span><span class="p">)</span>
-            <span class="n">iqr</span> <span class="o">=</span> <span class="n">q3</span> <span class="o">-</span> <span class="n">q1</span>
+            <span class="n">lower_fence</span><span class="p">,</span> <span class="n">upper_fence</span> <span class="o">=</span> <span class="n">_qc_math</span><span class="o">.</span><span class="n">tukey_fences</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">k</span><span class="p">)</span>
             <span class="n">median</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="mi">50</span><span class="p">)</span>
-            <span class="n">lower_fence</span> <span class="o">=</span> <span class="n">q1</span> <span class="o">-</span> <span class="p">(</span><span class="n">iqr</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">k</span><span class="p">)</span>
-            <span class="n">upper_fence</span> <span class="o">=</span> <span class="n">q3</span> <span class="o">+</span> <span class="p">(</span><span class="n">iqr</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">k</span><span class="p">)</span>
 
-            <span class="n">is_outlier</span> <span class="o">=</span> <span class="p">(</span><span class="n">values</span> <span class="o">&lt;</span> <span class="n">lower_fence</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">values</span> <span class="o">&gt;</span> <span class="n">upper_fence</span><span class="p">)</span>
+            <span class="n">is_outlier</span> <span class="o">=</span> <span class="n">_qc_math</span><span class="o">.</span><span class="n">tukey_outlier_mask</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">k</span><span class="p">)</span>
             <span class="n">group_data</span><span class="p">[</span><span class="s2">&quot;_is_outlier&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">is_outlier</span>
 
             <span class="c1"># Separate inliers and outliers</span>
@@ -1258,13 +1251,7 @@
 <span class="sd">            Filtered DataFrame containing rows that fall within the calculated IQR thresholds.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">values</span> <span class="o">=</span> <span class="n">group</span><span class="p">[</span><span class="n">on</span><span class="p">]</span>
-        <span class="n">q1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="mi">25</span><span class="p">)</span>
-        <span class="n">q3</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="mi">75</span><span class="p">)</span>
-        <span class="n">iqr</span> <span class="o">=</span> <span class="n">q3</span> <span class="o">-</span> <span class="n">q1</span>
-
-        <span class="n">lower_fence</span> <span class="o">=</span> <span class="n">q1</span> <span class="o">-</span> <span class="p">(</span><span class="n">iqr</span> <span class="o">*</span> <span class="n">k</span><span class="p">)</span>
-        <span class="n">upper_fence</span> <span class="o">=</span> <span class="n">q3</span> <span class="o">+</span> <span class="p">(</span><span class="n">iqr</span> <span class="o">*</span> <span class="n">k</span><span class="p">)</span>
-
+        <span class="n">lower_fence</span><span class="p">,</span> <span class="n">upper_fence</span> <span class="o">=</span> <span class="n">_qc_math</span><span class="o">.</span><span class="n">tukey_fences</span><span class="p">(</span><span class="n">values</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(),</span> <span class="n">k</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">group</span><span class="p">[(</span><span class="n">values</span> <span class="o">&gt;=</span> <span class="n">lower_fence</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">values</span> <span class="o">&lt;=</span> <span class="n">upper_fence</span><span class="p">)]</span></div>
 
 </pre></div>

@@ -563,14 +563,11 @@
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Union</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">Tuple</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">phenotypic</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.data._sample_image_data</span><span class="w"> </span><span class="kn">import</span> <span class="n">__current_file_dir</span>
 
 
@@ -881,30 +878,6 @@
 
 
 <span class="c1"># --- Loaders ---</span>
-
-<div class="viewcode-block" id="load_synthetic_colony">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.data.html#phenotypic.data.load_synthetic_colony">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">load_synthetic_colony</span><span class="p">(</span>
-        <span class="n">mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;array&quot;</span><span class="p">,</span> <span class="s2">&quot;Image&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;array&quot;</span><span class="p">,</span>
-<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">Image</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Loads synthetic colony data from a pre-saved file.&quot;&quot;&quot;</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
-
-    <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span>
-            <span class="n">Path</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">relpath</span><span class="p">(</span><span class="n">__current_file_dir</span> <span class="o">/</span> <span class="s2">&quot;synthetic_colony.npz&quot;</span><span class="p">,</span>
-                                 <span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()))</span>
-    <span class="p">)</span>
-    <span class="k">match</span> <span class="n">mode</span><span class="p">:</span>
-        <span class="k">case</span> <span class="s2">&quot;array&quot;</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;array&quot;</span><span class="p">]</span>
-        <span class="k">case</span> <span class="s2">&quot;Image&quot;</span><span class="p">:</span>
-            <span class="n">image</span> <span class="o">=</span> <span class="n">Image</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;array&quot;</span><span class="p">])</span>
-            <span class="n">image</span><span class="o">.</span><span class="n">objmask</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;objmask&quot;</span><span class="p">]</span>
-            <span class="k">return</span> <span class="n">image</span>
-        <span class="k">case</span><span class="w"> </span><span class="k">_</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Invalid mode&quot;</span><span class="p">)</span></div>
-
-
 
 <div class="viewcode-block" id="load_synth_yeast_plate">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.data.html#phenotypic.data.load_synth_yeast_plate">[docs]</a>

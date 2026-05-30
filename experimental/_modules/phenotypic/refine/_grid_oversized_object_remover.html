@@ -570,8 +570,8 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridObjectRefiner</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.constants_</span><span class="w"> </span><span class="kn">import</span> <span class="n">OBJECT</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">BBOX</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">OBJECT</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">BBOX</span>
 
 
 <div class="viewcode-block" id="GridOversizedObjectRemover">
@@ -596,7 +596,7 @@
 <span class="sd">          should contain one confined colony.</span>
 
 <span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`GridSectionLargest` when you want to keep the single</span>
+<span class="sd">        - :class:`KeepSectionLargest` when you want to keep the single</span>
 <span class="sd">          largest object per cell rather than removing oversized ones.</span>
 <span class="sd">        - :class:`GridAlignmentRefiner` for full grid-aware dominant-object</span>
 <span class="sd">          selection.</span>

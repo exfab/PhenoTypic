@@ -545,6 +545,7 @@
 <li class="toctree-l2"><a class="reference internal" href="12_aux_wire_in_dag.html">Wire an aux in the DAG</a></li>
 <li class="toctree-l2"><a class="reference internal" href="13_wire_pipeline_as_aux.html">Wire a Pipeline container as aux</a></li>
 <li class="toctree-l2"><a class="reference internal" href="14_fix_validation_issues.html">Fix validation issues</a></li>
+<li class="toctree-l2"><a class="reference internal" href="15_qc_review.html">QC review walkthrough</a></li>
 </ul>
 </details></li>
 </ul>
@@ -673,7 +674,7 @@ and <code class="docutils literal notranslate"><span class="pre">Mark</span> <sp
 </ul>
 <p>Switch to the <code class="docutils literal notranslate"><span class="pre">Plate</span></code> tab and remove a flagged colony (or hit the
 per-card <code class="docutils literal notranslate"><span class="pre">Mark</span> <span class="pre">all</span> <span class="pre">flagged</span> <span class="pre">for</span> <span class="pre">removal</span></code> button to union every flagged
-<code class="docutils literal notranslate"><span class="pre">(ImageFile,</span> <span class="pre">ObjectLabel)</span></code> into <code class="docutils literal notranslate"><span class="pre">STORE_REMOVED_KEYS</span></code> in one click).
+<code class="docutils literal notranslate"><span class="pre">(ImageFile,</span> <span class="pre">Object_Label)</span></code> into <code class="docutils literal notranslate"><span class="pre">STORE_REMOVED_KEYS</span></code> in one click).
 Switching back to the QC tab shows the card re-rendered with the new
 severity.</p>
 </section>
@@ -681,7 +682,7 @@ severity.</p>
 <h2>Common gotchas<a class="headerlink" href="#common-gotchas" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p><strong>Metadata schema:</strong> <code class="docutils literal notranslate"><span class="pre">ExpectedVsDetectedCount</span></code> reads
-<code class="docutils literal notranslate"><span class="pre">Metadata_ImageFile</span></code> + <code class="docutils literal notranslate"><span class="pre">ObjectLabel</span></code> from the supplied CSV. If the
+<code class="docutils literal notranslate"><span class="pre">Metadata_ImageFile</span></code> + <code class="docutils literal notranslate"><span class="pre">Object_Label</span></code> from the supplied CSV. If the
 CSV has a different column name (e.g. legacy <code class="docutils literal notranslate"><span class="pre">ImageName</span></code>), the
 check raises at instantiation time and the recipe records a
 load-warning instead of breaking the boot. The warning banner at

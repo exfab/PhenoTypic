@@ -596,9 +596,9 @@
 <span class="sd">      image.grid to make position-aware decisions (e.g., filter colonies oversized for their well).</span>
 <span class="sd">    - **Oversized colonies:** [GridOversizedObjectRemover](src/phenotypic/refine/_grid_oversized_object_remover.py)</span>
 <span class="sd">      removes objects spanning nearly entire well (merged colonies, segmentation spillover).</span>
-<span class="sd">    - **Per-well largest:** [GridSectionLargest](src/phenotypic/refine/_grid_section_largest.py) keeps</span>
+<span class="sd">    - **Per-well largest:** [KeepSectionLargest](src/phenotypic/refine/_keep_section_largest.py) keeps</span>
 <span class="sd">      only the largest object per grid cell (one colony per well).</span>
-<span class="sd">    - **Multi-well reducer:** [ReduceMultipleGridObjects](src/phenotypic/refine/_min_residual_error_reducer.py)</span>
+<span class="sd">    - **Multi-well reducer:** [ReduceSectionsByLine](src/phenotypic/refine/_reduce_multiple_grid_objects.py)</span>
 <span class="sd">      merges multiple objects per well into single representative region.</span>
 <span class="sd">    - **Border handling:** Grid structure enables identifying and filtering objects near plate/well</span>
 <span class="sd">      edges that may be incomplete or distorted.</span>

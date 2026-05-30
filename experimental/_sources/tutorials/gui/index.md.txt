@@ -30,6 +30,7 @@ the images aligned with the implementation.
 | [Wire an aux in the DAG](12_aux_wire_in_dag.md) | Drag a detector block onto the canvas, draw a purple aux wire to a consumer's bottom-edge aux port (post-redesign primary aux flow). |
 | [Wire a Pipeline as aux](13_wire_pipeline_as_aux.md) | Wrap a multi-step chain inside a `Pipeline` container, then wire the container as a single aux producer. |
 | [Fix validation issues](14_fix_validation_issues.md) | Triage the toolbar issue badge — pan to the offending block, see the validator's explanation, resolve, re-enable preview. |
+| [QC review walkthrough](15_qc_review.md) | Switch the QC tab to Review; walk worst-first groups for a module, curate in the tile gallery, mark reviewed, and watch the metric recompute in place. |
 
 ## Prerequisites
 
@@ -59,4 +60,5 @@ hub, see the [GUI hub guide](../../how_to/pages/gui_hub.md). This walkthrough is
 12_aux_wire_in_dag
 13_wire_pipeline_as_aux
 14_fix_validation_issues
+15_qc_review
 ```

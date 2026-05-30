@@ -617,7 +617,7 @@
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.data</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_yeast_plate</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.enhance</span><span class="w"> </span><span class="kn">import</span> <span class="n">GaussianBlur</span><span class="p">,</span> <span class="n">CLAHE</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.enhance</span><span class="w"> </span><span class="kn">import</span> <span class="n">GaussianBlur</span><span class="p">,</span> <span class="n">EnhanceLocalContrast</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">OtsuDetector</span><span class="p">,</span> <span class="n">TriangleDetector</span><span class="p">,</span> <span class="n">HysteresisDetector</span><span class="p">,</span>
     <span class="n">WatershedDetector</span><span class="p">,</span> <span class="n">RoundPeaksDetector</span><span class="p">,</span>
@@ -633,7 +633,7 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Apply enhancement + detector to a fresh plate, return (result, count).&quot;&quot;&quot;</span>
     <span class="n">plate</span> <span class="o">=</span> <span class="n">load_yeast_plate</span><span class="p">()</span>
     <span class="n">plate</span> <span class="o">=</span> <span class="n">GaussianBlur</span><span class="p">(</span><span class="n">sigma</span><span class="o">=</span><span class="mf">2.0</span><span class="p">)</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">plate</span><span class="p">)</span>
-    <span class="n">plate</span> <span class="o">=</span> <span class="n">CLAHE</span><span class="p">(</span><span class="n">clip_limit</span><span class="o">=</span><span class="mf">0.01</span><span class="p">)</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">plate</span><span class="p">)</span>
+    <span class="n">plate</span> <span class="o">=</span> <span class="n">EnhanceLocalContrast</span><span class="p">(</span><span class="n">clip_limit</span><span class="o">=</span><span class="mf">0.01</span><span class="p">)</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">plate</span><span class="p">)</span>
     <span class="n">plate</span> <span class="o">=</span> <span class="n">detector</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">plate</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">plate</span><span class="p">,</span> <span class="n">plate</span><span class="o">.</span><span class="n">num_objects</span>
 </pre></div>

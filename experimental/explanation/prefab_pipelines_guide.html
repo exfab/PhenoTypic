@@ -653,9 +653,9 @@ workflow. Each is tuned for a specific imaging scenario.</p>
 <p><strong>Best for:</strong> General-purpose colony detection on clean, well-lit plates
 with uniform backgrounds.</p>
 <p><strong>Pipeline steps:</strong>
-GaussianBlur → CLAHE → MedianFilter → SobelFilter → OtsuDetector →
-MaskOpener → BorderObjectRemover → SmallObjectRemover → MaskFill →
-GridOversizedObjectRemover → ReduceMultipleGridObjects → GridAligner</p>
+GaussianBlur → EnhanceLocalContrast → MedianFilter → SobelFilter → OtsuDetector →
+MaskOpening → RemoveBorderObjects → SmallObjectRemover → MaskFill →
+GridOversizedObjectRemover → ReduceSectionsByLine → GridAligner</p>
 <p><strong>Measurements:</strong> MeasureShape, MeasureColor, MeasureTexture,
 MeasureIntensity</p>
 <p><strong>When to choose:</strong> This is the default starting point. Try it first;

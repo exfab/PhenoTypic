@@ -13,7 +13,6 @@ Subpackages
    :maxdepth: 4
 
    phenotypic.tools_.branch_pathfinding
-   phenotypic.tools_.measurement_info
    phenotypic.tools_.mixin
    phenotypic.tools_.napari_
    phenotypic.tools_.register

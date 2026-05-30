@@ -580,10 +580,10 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.enhance._contrast_streching</span><span class="w"> </span><span class="kn">import</span> <span class="n">ContrastStretching</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.enhance._gray_opening</span><span class="w"> </span><span class="kn">import</span> <span class="n">GrayOpening</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.enhance._median_filter</span><span class="w"> </span><span class="kn">import</span> <span class="n">MedianFilter</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.enhance._multiscale_log_enhancer</span><span class="w"> </span><span class="kn">import</span> <span class="n">MultiscaleLoGEnhancer</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.enhance._enhance_blobs</span><span class="w"> </span><span class="kn">import</span> <span class="n">EnhanceBlobs</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.enhance._subtract_gaussian</span><span class="w"> </span><span class="kn">import</span> <span class="n">SubtractGaussian</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.refine._gmm_core_extractor</span><span class="w"> </span><span class="kn">import</span> <span class="n">GMMCoreExtractor</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.refine._grid_section_largest</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridSectionLargest</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.refine._extract_colony_core</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExtractColonyCore</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.refine._keep_section_largest</span><span class="w"> </span><span class="kn">import</span> <span class="n">KeepSectionLargest</span>
 
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 
@@ -768,12 +768,12 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_log_memory_usage</span><span class="p">(</span><span class="s2">&quot;MedianFilter&quot;</span><span class="p">)</span>
 
         <span class="c1"># --- Step 4: Multi-scale LoG blob enhancement ---</span>
-        <span class="n">MultiscaleLoGEnhancer</span><span class="p">(</span>
+        <span class="n">EnhanceBlobs</span><span class="p">(</span>
                 <span class="n">min_radius</span><span class="o">=</span><span class="n">log_min_radius</span><span class="p">,</span>
                 <span class="n">max_radius</span><span class="o">=</span><span class="n">log_max_radius</span><span class="p">,</span>
                 <span class="n">num_scales</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span>
         <span class="p">)</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">work</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_log_memory_usage</span><span class="p">(</span><span class="s2">&quot;MultiscaleLoGEnhancer&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_log_memory_usage</span><span class="p">(</span><span class="s2">&quot;EnhanceBlobs&quot;</span><span class="p">)</span>
 
         <span class="c1"># --- Step 5: Contrast stretching ---</span>
         <span class="n">ContrastStretching</span><span class="p">()</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">work</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -797,19 +797,19 @@
 
         <span class="c1"># --- Step 8: GridImage → keep largest per cell ---</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">work</span><span class="p">,</span> <span class="n">GridImage</span><span class="p">):</span>
-            <span class="n">GridSectionLargest</span><span class="p">()</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">work</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_log_memory_usage</span><span class="p">(</span><span class="s2">&quot;GridSectionLargest&quot;</span><span class="p">)</span>
+            <span class="n">KeepSectionLargest</span><span class="p">()</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">work</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_log_memory_usage</span><span class="p">(</span><span class="s2">&quot;KeepSectionLargest&quot;</span><span class="p">)</span>
 
         <span class="c1"># --- Step 9: Optional GMM core extraction ---</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">enable_gmm</span><span class="p">:</span>
-            <span class="n">GMMCoreExtractor</span><span class="p">(</span>
+            <span class="n">ExtractColonyCore</span><span class="p">(</span>
                     <span class="n">n_components</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">gmm_n_components</span><span class="p">,</span>
                     <span class="n">separation_threshold</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">gmm_separation_threshold</span><span class="p">,</span>
                     <span class="n">min_core_area</span><span class="o">=</span><span class="n">gmm_min_area</span><span class="p">,</span>
                     <span class="n">morph_open_radius</span><span class="o">=</span><span class="n">gmm_morph_open</span><span class="p">,</span>
                     <span class="n">morph_close_radius</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
             <span class="p">)</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">work</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_log_memory_usage</span><span class="p">(</span><span class="s2">&quot;GMMCoreExtractor&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_log_memory_usage</span><span class="p">(</span><span class="s2">&quot;ExtractColonyCore&quot;</span><span class="p">)</span>
 
         <span class="c1"># --- Step 10: Copy results back ---</span>
         <span class="n">image</span><span class="o">.</span><span class="n">objmask</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">work</span><span class="o">.</span><span class="n">objmask</span><span class="p">[:]</span>

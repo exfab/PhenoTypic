@@ -21,6 +21,7 @@
       :template: class.rst
       :nosignatures:
    
+      CaptureMetadata
       ColorCheckerProfile
       ColorCorrector
       ColorDenoise

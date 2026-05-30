@@ -591,9 +591,9 @@
 <span class="sd">        Creating a clip-disabled copy of an enhancer:</span>
 
 <span class="sd">        &gt;&gt;&gt; from phenotypic.tools_ import ClipControlMixin</span>
-<span class="sd">        &gt;&gt;&gt; from phenotypic.enhance import BilateralDenoise</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.enhance import LocalEdgeDenoise</span>
 <span class="sd">        &gt;&gt;&gt;</span>
-<span class="sd">        &gt;&gt;&gt; enh = BilateralDenoise(sigma_spatial=5, clip=True)</span>
+<span class="sd">        &gt;&gt;&gt; enh = LocalEdgeDenoise(sigma_spatial=5, clip=True)</span>
 <span class="sd">        &gt;&gt;&gt; copied = ClipControlMixin._disable_clipping(enh)</span>
 <span class="sd">        &gt;&gt;&gt; # Original unchanged, copy has clip=False</span>
 <span class="sd">        &gt;&gt;&gt; enh.clip, copied.clip</span>
@@ -602,14 +602,14 @@
 <span class="sd">        Creating a clip-disabled copy of a pipeline:</span>
 
 <span class="sd">        &gt;&gt;&gt; from phenotypic import ImagePipeline</span>
-<span class="sd">        &gt;&gt;&gt; from phenotypic.enhance import GaussianBlur, BilateralDenoise</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.enhance import GaussianBlur, LocalEdgeDenoise</span>
 <span class="sd">        &gt;&gt;&gt;</span>
 <span class="sd">        &gt;&gt;&gt; pipeline = ImagePipeline(pipe_cfgs=[</span>
 <span class="sd">        ...     GaussianBlur(sigma=1.0),</span>
-<span class="sd">        ...     BilateralDenoise(sigma_spatial=5, clip=True)</span>
+<span class="sd">        ...     LocalEdgeDenoise(sigma_spatial=5, clip=True)</span>
 <span class="sd">        ... ])</span>
 <span class="sd">        &gt;&gt;&gt; copied_pipe = ClipControlMixin._disable_clipping(pipeline)</span>
-<span class="sd">        &gt;&gt;&gt; # Only BilateralDenoise has clip attribute, so only it is affected</span>
+<span class="sd">        &gt;&gt;&gt; # Only LocalEdgeDenoise has clip attribute, so only it is affected</span>
 <span class="sd">        &gt;&gt;&gt; # _ops is a dict with operation names as keys</span>
 <span class="sd">        &gt;&gt;&gt; list(copied_pipe._ops.values())[1].clip</span>
 <span class="sd">        False</span>
@@ -645,9 +645,9 @@
 
 <span class="sd">        Example:</span>
 <span class="sd">            &gt;&gt;&gt; from phenotypic.tools_ import ClipControlMixin</span>
-<span class="sd">            &gt;&gt;&gt; from phenotypic.enhance import BilateralDenoise</span>
+<span class="sd">            &gt;&gt;&gt; from phenotypic.enhance import LocalEdgeDenoise</span>
 <span class="sd">            &gt;&gt;&gt;</span>
-<span class="sd">            &gt;&gt;&gt; enh = BilateralDenoise(sigma_spatial=5, clip=True)</span>
+<span class="sd">            &gt;&gt;&gt; enh = LocalEdgeDenoise(sigma_spatial=5, clip=True)</span>
 <span class="sd">            &gt;&gt;&gt; copied = ClipControlMixin._disable_clipping(enh)</span>
 <span class="sd">            &gt;&gt;&gt; assert enh.clip == True  # Original unchanged</span>
 <span class="sd">            &gt;&gt;&gt; assert copied.clip == False  # Copy has clipping disabled</span>

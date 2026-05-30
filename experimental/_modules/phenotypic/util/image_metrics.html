@@ -1092,7 +1092,7 @@
             <span class="n">snr</span> <span class="o">=</span> <span class="n">metrics</span><span class="p">[</span><span class="s2">&quot;snr&quot;</span><span class="p">]</span>
             <span class="k">if</span> <span class="n">snr</span> <span class="o">&lt;</span> <span class="n">THRESHOLDS</span><span class="p">[</span><span class="s2">&quot;snr&quot;</span><span class="p">][</span><span class="s2">&quot;critical&quot;</span><span class="p">]:</span>
                 <span class="n">quality</span> <span class="o">=</span> <span class="s2">&quot;critically low&quot;</span>
-                <span class="n">action</span> <span class="o">=</span> <span class="s2">&quot;Strong denoising required (BilateralDenoise, MedianFilter).&quot;</span>
+                <span class="n">action</span> <span class="o">=</span> <span class="s2">&quot;Strong denoising required (LocalEdgeDenoise, MedianFilter).&quot;</span>
             <span class="k">elif</span> <span class="n">snr</span> <span class="o">&lt;</span> <span class="n">THRESHOLDS</span><span class="p">[</span><span class="s2">&quot;snr&quot;</span><span class="p">][</span><span class="s2">&quot;marginal&quot;</span><span class="p">]:</span>
                 <span class="n">quality</span> <span class="o">=</span> <span class="s2">&quot;marginal&quot;</span>
                 <span class="n">action</span> <span class="o">=</span> <span class="s2">&quot;Light denoising recommended (GaussianBlur sigma=0.5-1.0).&quot;</span>
@@ -1105,10 +1105,10 @@
             <span class="n">rms</span> <span class="o">=</span> <span class="n">metrics</span><span class="p">[</span><span class="s2">&quot;rms_contrast&quot;</span><span class="p">]</span>
             <span class="k">if</span> <span class="n">rms</span> <span class="o">&lt;</span> <span class="n">THRESHOLDS</span><span class="p">[</span><span class="s2">&quot;rms_contrast&quot;</span><span class="p">][</span><span class="s2">&quot;critical&quot;</span><span class="p">]:</span>
                 <span class="n">quality</span> <span class="o">=</span> <span class="s2">&quot;critically low&quot;</span>
-                <span class="n">action</span> <span class="o">=</span> <span class="s2">&quot;Strong contrast enhancement required (CLAHE, HistogramEqualization).&quot;</span>
+                <span class="n">action</span> <span class="o">=</span> <span class="s2">&quot;Strong contrast enhancement required (EnhanceLocalContrast, HistogramEqualization).&quot;</span>
             <span class="k">elif</span> <span class="n">rms</span> <span class="o">&lt;</span> <span class="n">THRESHOLDS</span><span class="p">[</span><span class="s2">&quot;rms_contrast&quot;</span><span class="p">][</span><span class="s2">&quot;marginal&quot;</span><span class="p">]:</span>
                 <span class="n">quality</span> <span class="o">=</span> <span class="s2">&quot;marginal&quot;</span>
-                <span class="n">action</span> <span class="o">=</span> <span class="s2">&quot;Contrast enhancement recommended (CLAHE clip_limit=2.0).&quot;</span>
+                <span class="n">action</span> <span class="o">=</span> <span class="s2">&quot;Contrast enhancement recommended (EnhanceLocalContrast clip_limit=2.0).&quot;</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">quality</span> <span class="o">=</span> <span class="s2">&quot;adequate&quot;</span>
                 <span class="n">action</span> <span class="o">=</span> <span class="s2">&quot;Contrast is sufficient for detection.&quot;</span>
@@ -1174,7 +1174,7 @@
         <span class="n">corr_len</span> <span class="o">=</span> <span class="n">noise</span><span class="p">[</span><span class="s2">&quot;correlation_length&quot;</span><span class="p">]</span>
         <span class="k">if</span> <span class="n">snr</span> <span class="o">&lt;</span> <span class="n">THRESHOLDS</span><span class="p">[</span><span class="s2">&quot;snr&quot;</span><span class="p">][</span><span class="s2">&quot;critical&quot;</span><span class="p">]:</span>
             <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-                    <span class="s2">&quot;Apply strong denoising: BilateralDenoise(sigma_spatial=3, sigma_intensity=0.1)&quot;</span>
+                    <span class="s2">&quot;Apply strong denoising: LocalEdgeDenoise(sigma_spatial=3, sigma_intensity=0.1)&quot;</span>
             <span class="p">)</span>
         <span class="k">elif</span> <span class="n">snr</span> <span class="o">&lt;</span> <span class="n">THRESHOLDS</span><span class="p">[</span><span class="s2">&quot;snr&quot;</span><span class="p">][</span><span class="s2">&quot;marginal&quot;</span><span class="p">]:</span>
             <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Apply light denoising: GaussianBlur(sigma=0.5-1.0)&quot;</span><span class="p">)</span>
@@ -1190,11 +1190,11 @@
         <span class="n">dynamic</span> <span class="o">=</span> <span class="n">contrast</span><span class="p">[</span><span class="s2">&quot;dynamic_range&quot;</span><span class="p">]</span>
         <span class="k">if</span> <span class="n">rms</span> <span class="o">&lt;</span> <span class="n">THRESHOLDS</span><span class="p">[</span><span class="s2">&quot;rms_contrast&quot;</span><span class="p">][</span><span class="s2">&quot;critical&quot;</span><span class="p">]:</span>
             <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-                    <span class="s2">&quot;Apply contrast enhancement: CLAHE(clip_limit=3.0) or HistogramEqualization&quot;</span>
+                    <span class="s2">&quot;Apply contrast enhancement: EnhanceLocalContrast(clip_limit=3.0) or HistogramEqualization&quot;</span>
             <span class="p">)</span>
         <span class="k">elif</span> <span class="n">rms</span> <span class="o">&lt;</span> <span class="n">THRESHOLDS</span><span class="p">[</span><span class="s2">&quot;rms_contrast&quot;</span><span class="p">][</span><span class="s2">&quot;marginal&quot;</span><span class="p">]:</span>
             <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-                <span class="s2">&quot;Consider CLAHE(clip_limit=2.0) for improved contrast&quot;</span><span class="p">)</span>
+                <span class="s2">&quot;Consider EnhanceLocalContrast(clip_limit=2.0) for improved contrast&quot;</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="n">dynamic</span> <span class="o">&lt;</span> <span class="mf">0.3</span><span class="p">:</span>
             <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>

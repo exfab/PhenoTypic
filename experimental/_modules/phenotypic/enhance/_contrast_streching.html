@@ -580,7 +580,7 @@
 
 <span class="sd">    Rescales pixel values based on lower and upper percentiles, compressing</span>
 <span class="sd">    outliers (specular highlights, deep shadows) while expanding the range</span>
-<span class="sd">    where colony intensities reside. Simpler and faster than CLAHE, with no</span>
+<span class="sd">    where colony intensities reside. Simpler and faster than EnhanceLocalContrast, with no</span>
 <span class="sd">    local tile artifacts.</span>
 
 <span class="sd">    Args:</span>
@@ -599,8 +599,8 @@
 <span class="sd">        - Quick preprocessing before global thresholding (Otsu, Triangle).</span>
 
 <span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`CLAHE` when illumination varies spatially across the plate.</span>
-<span class="sd">        - :class:`HomomorphicFilter` when the primary issue is a brightness</span>
+<span class="sd">        - :class:`EnhanceLocalContrast` when illumination varies spatially across the plate.</span>
+<span class="sd">        - :class:`FlattenIllumination` when the primary issue is a brightness</span>
 <span class="sd">          gradient rather than narrow dynamic range.</span>
 
 <span class="sd">    See Also:</span>

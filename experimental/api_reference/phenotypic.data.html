@@ -678,65 +678,9 @@ target. Use for fungi-specific correction workflow tutorials.</p>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="phenotypic.data.load_plate_series">
-<span class="sig-prename descclassname"><span class="pre">phenotypic.data.</span></span><span class="sig-name descname"><span class="pre">load_plate_series</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'array'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'Image'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'GridImage'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'array'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">np.ndarray</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Image</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">GridImage</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/phenotypic/data/_sample_image_data.html#load_plate_series"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.data.load_plate_series" title="Link to this definition">#</a></dt>
-<dd><p>Return a series of plate images across 6 time samples</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>mode</strong> (<em>Literal</em><em>[</em><em>'array'</em><em>, </em><em>'Image'</em><em>, </em><em>'GridImage'</em><em>]</em>)</p>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>List[Union[np.ndarray, Image, GridImage]]</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="phenotypic.data.load_smear_plate_12hr">
-<span class="sig-prename descclassname"><span class="pre">phenotypic.data.</span></span><span class="sig-name descname"><span class="pre">load_smear_plate_12hr</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'array'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'Image'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'GridImage'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'array'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">np.ndarray</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Image</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">GridImage</span></span></span><a class="reference internal" href="../_modules/phenotypic/data/_sample_image_data.html#load_smear_plate_12hr"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.data.load_smear_plate_12hr" title="Link to this definition">#</a></dt>
-<dd><p>Returns a plate image array of K. Marxianus that contains noise such as smears</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>mode</strong> (<em>Literal</em><em>[</em><em>'array'</em><em>, </em><em>'Image'</em><em>, </em><em>'GridImage'</em><em>]</em>)</p>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>Union[np.ndarray, Image, GridImage]</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="phenotypic.data.load_smear_plate_24hr">
-<span class="sig-prename descclassname"><span class="pre">phenotypic.data.</span></span><span class="sig-name descname"><span class="pre">load_smear_plate_24hr</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'array'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'Image'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'GridImage'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'array'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">np.ndarray</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Image</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">GridImage</span></span></span><a class="reference internal" href="../_modules/phenotypic/data/_sample_image_data.html#load_smear_plate_24hr"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.data.load_smear_plate_24hr" title="Link to this definition">#</a></dt>
-<dd><p>Returns a plate image array of K. Marxianus that contains noise such as smears</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>mode</strong> (<em>Literal</em><em>[</em><em>'array'</em><em>, </em><em>'Image'</em><em>, </em><em>'GridImage'</em><em>]</em>)</p>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>Union[np.ndarray, Image, GridImage]</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
 <dt class="sig sig-object py" id="phenotypic.data.load_synth_yeast_plate">
 <span class="sig-prename descclassname"><span class="pre">phenotypic.data.</span></span><span class="sig-name descname"><span class="pre">load_synth_yeast_plate</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/data/_synthetic_data.html#load_synth_yeast_plate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.data.load_synth_yeast_plate" title="Link to this definition">#</a></dt>
 <dd><p>Returns a phenotypic.GridImage of a synthetic plate with the colonies detected</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="phenotypic.data.load_synthetic_colony">
-<span class="sig-prename descclassname"><span class="pre">phenotypic.data.</span></span><span class="sig-name descname"><span class="pre">load_synthetic_colony</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><span class="pre">Literal</span></a><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'array'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'Image'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'array'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">TypeAliasForwardRef</span><span class="p"><span class="pre">(</span></span><span class="s"><span class="pre">'numpy.ndarray'</span></span><span class="p"><span class="pre">)</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Image</span></span></span><a class="reference internal" href="../_modules/phenotypic/data/_synthetic_data.html#load_synthetic_colony"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.data.load_synthetic_colony" title="Link to this definition">#</a></dt>
-<dd><p>Loads synthetic colony data from a pre-saved file.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>mode</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><em>Literal</em></a><em>[</em><em>'array'</em><em>, </em><em>'Image'</em><em>]</em>)</p>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>TypeAliasForwardRef(‘numpy.ndarray’) | <em>Image</em></p>
-</dd>
-</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -885,11 +829,7 @@ target. Use for tutorials and how-to guides that demonstrate cropping
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.data.load_fungi_plate_full"><code class="docutils literal notranslate"><span class="pre">load_fungi_plate_full()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.data.load_plate_12hr"><code class="docutils literal notranslate"><span class="pre">load_plate_12hr()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.data.load_plate_72hr"><code class="docutils literal notranslate"><span class="pre">load_plate_72hr()</span></code></a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.data.load_plate_series"><code class="docutils literal notranslate"><span class="pre">load_plate_series()</span></code></a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.data.load_smear_plate_12hr"><code class="docutils literal notranslate"><span class="pre">load_smear_plate_12hr()</span></code></a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.data.load_smear_plate_24hr"><code class="docutils literal notranslate"><span class="pre">load_smear_plate_24hr()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.data.load_synth_yeast_plate"><code class="docutils literal notranslate"><span class="pre">load_synth_yeast_plate()</span></code></a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.data.load_synthetic_colony"><code class="docutils literal notranslate"><span class="pre">load_synthetic_colony()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.data.load_yeast_plate"><code class="docutils literal notranslate"><span class="pre">load_yeast_plate()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.data.load_yeast_plate_full"><code class="docutils literal notranslate"><span class="pre">load_yeast_plate_full()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.data.make_synthetic_colony"><code class="docutils literal notranslate"><span class="pre">make_synthetic_colony()</span></code></a></li>

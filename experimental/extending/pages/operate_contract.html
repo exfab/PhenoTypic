@@ -656,7 +656,7 @@ base class handles this automatically when you return the same
     <span class="n">objmap</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span>
     <span class="n">rows</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="k">for</span> <span class="n">prop</span> <span class="ow">in</span> <span class="n">regionprops</span><span class="p">(</span><span class="n">objmap</span><span class="p">):</span>
-        <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="s2">&quot;ObjectLabel&quot;</span><span class="p">:</span> <span class="n">prop</span><span class="o">.</span><span class="n">label</span><span class="p">,</span> <span class="s2">&quot;MyMetric&quot;</span><span class="p">:</span> <span class="o">...</span><span class="p">})</span>
+        <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="s2">&quot;Object_Label&quot;</span><span class="p">:</span> <span class="n">prop</span><span class="o">.</span><span class="n">label</span><span class="p">,</span> <span class="s2">&quot;MyMetric&quot;</span><span class="p">:</span> <span class="o">...</span><span class="p">})</span>
     <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span>
 </pre></div>
 </div>

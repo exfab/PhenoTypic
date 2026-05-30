@@ -1,0 +1,7 @@
+phenotypic.qc package
+=====================
+
+.. automodule:: phenotypic.qc
+   :members:
+   :show-inheritance:
+   :undoc-members:
