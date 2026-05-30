@@ -13,7 +13,7 @@ import pandas as pd
 import pytest
 
 from phenotypic.analysis import DoubleSoftplus, LinearSoftplus
-from phenotypic.tools_.measurement_info import (
+from phenotypic.schema import (
     LINEAR_SOFTPLUS_MODEL,
     MODEL_METRICS,
 )

@@ -5,7 +5,7 @@ RST documentation surface inherited from :class:`MeasurementInfo`.
 """
 from __future__ import annotations
 
-from phenotypic.tools_.measurement_info._quality_se import QUALITY_SE
+from phenotypic.schema._quality_se import QUALITY_SE
 
 
 class TestMemberValues:

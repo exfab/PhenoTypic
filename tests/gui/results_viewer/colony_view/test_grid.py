@@ -194,7 +194,7 @@ def _make_output_root(tmp_path: Path) -> OutputRoot:
         {
             "Metadata_Dataset": ["plate1"] * 4,
             "Metadata_ImageFile": ["img-001", "img-001", "img-002", "img-002"],
-            "ObjectLabel": [1, 2, 1, 2],
+            "Object_Label": [1, 2, 1, 2],
             "Bbox_MinRR": [0, 5, 10, 15],
             "Bbox_MaxRR": [40, 45, 50, 55],
             "Bbox_MinCC": [0, 5, 10, 15],

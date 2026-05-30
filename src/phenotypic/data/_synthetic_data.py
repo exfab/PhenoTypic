@@ -1,14 +1,11 @@
 from __future__ import annotations
 
 import math
-import os
-from pathlib import Path
-from typing import Iterable, Literal, Tuple, Union
+from typing import Iterable, Tuple
 
 import numpy as np
 
 import phenotypic
-from phenotypic import Image
 from phenotypic.data._sample_image_data import __current_file_dir
 
 
@@ -310,27 +307,6 @@ def make_synthetic_filamentous_plate(
 
 
 # --- Loaders ---
-
-def load_synthetic_colony(
-        mode: Literal["array", "Image"] = "array",
-) -> Union[np.ndarray, Image]:
-    """Loads synthetic colony data from a pre-saved file."""
-    from phenotypic import Image
-
-    data = np.load(
-            Path(os.path.relpath(__current_file_dir / "synthetic_colony.npz",
-                                 Path.cwd()))
-    )
-    match mode:
-        case "array":
-            return data["array"]
-        case "Image":
-            image = Image(data["array"])
-            image.objmask[:] = data["objmask"]
-            return image
-        case _:
-            raise ValueError("Invalid mode")
-
 
 def load_synth_yeast_plate():
     """Returns a phenotypic.GridImage of a synthetic plate with the colonies detected"""

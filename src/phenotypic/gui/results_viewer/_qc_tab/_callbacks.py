@@ -52,15 +52,22 @@ from phenotypic.gui._config import (
 )
 from phenotypic.gui._operation_registry import OperationRegistry
 from phenotypic.gui._param_forms import param_form, parse_widget_value
-from phenotypic.gui._qc_recipe import QcRecipe
 from phenotypic.gui.results_viewer import _ids as viewer_ids
-from phenotypic.gui.results_viewer._filtered_state import get_curated_frame
+from phenotypic.gui.results_viewer._filtered_state import (
+    KEY_COLUMNS,
+    get_curated_frame,
+)
 from phenotypic.gui.results_viewer._qc_tab import _ids as ids
 from phenotypic.gui.results_viewer._qc_tab._check_card import build_check_card
 from phenotypic.gui.results_viewer._qc_tab._layout import (
     _banner_style,
     _render_load_warnings,
 )
+from phenotypic.gui.results_viewer._qc_tab.review import (
+    _ids as review_ids,
+    register_review_callbacks,
+)
+from phenotypic.qc import QcRecipe
 
 logger = logging.getLogger(__name__)
 
@@ -133,31 +140,31 @@ def _error_figure(*, check_name: str, message: str) -> go.Figure:
 def _render_summary_strip(summary_df: pd.DataFrame) -> str:
     """Render the summary strip text from a check's per-group summary.
 
-    Example output: ``"groups: 4 | flagged: 1 | max severity: 0.12"``
+    Example output: ``"groups: 4 | flagged: 1 | worst metric: 0.12"``
     (spec line 1218).
 
     Args:
         summary_df: One-row-per-group frame as produced by
             :meth:`QualityCheck.summary`. Must carry the columns
-            ``num_flagged``, ``max_severity`` and ``status``.
+            ``qc_n_flagged``, ``qc_worst_metric`` and ``qc_status``.
 
     Returns:
         A single string for display in the per-card summary chip. NaN
-        ``max_severity`` is rendered as ``"nan"``.
+        ``qc_worst_metric`` is rendered as ``"nan"``.
     """
     groups = int(len(summary_df))
-    if groups == 0 or "num_flagged" not in summary_df.columns:
-        return "groups: 0 | flagged: 0 | max severity: nan"
+    if groups == 0 or "qc_n_flagged" not in summary_df.columns:
+        return "groups: 0 | flagged: 0 | worst metric: nan"
 
-    flagged = int(summary_df["num_flagged"].fillna(0).astype(int).sum())
-    max_severity_raw = pd.to_numeric(
-        summary_df["max_severity"], errors="coerce"
+    flagged = int(summary_df["qc_n_flagged"].fillna(0).astype(int).sum())
+    worst_metric_raw = pd.to_numeric(
+        summary_df["qc_worst_metric"], errors="coerce"
     )
-    if max_severity_raw.empty or max_severity_raw.dropna().empty:
-        severity_str = "nan"
+    if worst_metric_raw.empty or worst_metric_raw.dropna().empty:
+        metric_str = "nan"
     else:
-        severity_str = f"{float(max_severity_raw.max()):.2f}"
-    return f"groups: {groups} | flagged: {flagged} | max severity: {severity_str}"
+        metric_str = f"{float(worst_metric_raw.max()):.2f}"
+    return f"groups: {groups} | flagged: {flagged} | worst metric: {metric_str}"
 
 
 def _worst_status(summary_df: pd.DataFrame) -> Literal["pass", "warn", "fail"]:
@@ -167,9 +174,9 @@ def _worst_status(summary_df: pd.DataFrame) -> Literal["pass", "warn", "fail"]:
     frame or missing column is treated as ``"pass"`` so a degenerate
     check never spuriously alarms.
     """
-    if summary_df.empty or "status" not in summary_df.columns:
+    if summary_df.empty or "qc_status" not in summary_df.columns:
         return "pass"
-    statuses = summary_df["status"].astype(str).tolist()
+    statuses = summary_df["qc_status"].astype(str).tolist()
     if not statuses:
         return "pass"
     worst_rank = max((_STATUS_RANK.get(s, 0) for s in statuses), default=0)
@@ -185,7 +192,7 @@ def _left_join_qc_columns(
     left: pl.DataFrame,
     right: pd.DataFrame,
     *,
-    on: tuple[str, str] = ("Metadata_ImageFile", "ObjectLabel"),
+    on: tuple[str, str] = KEY_COLUMNS,
 ) -> pl.DataFrame:
     """Left-join a check's analyze() output onto the augmented frame.
 
@@ -195,8 +202,8 @@ def _left_join_qc_columns(
             (pandas). Carries QC columns plus whatever rows the check
             iterated over.
         on: Join key columns. Defaults to
-            ``("Metadata_ImageFile", "ObjectLabel")`` — the curation
-            key used by ``STORE_REMOVED_KEYS``.
+            :data:`KEY_COLUMNS` (``("Metadata_ImageFile", "Object_Label")``)
+            — the curation key used by ``STORE_REMOVED_KEYS``.
 
     Returns:
         A new polars DataFrame with the same row count as ``left`` and
@@ -853,6 +860,39 @@ def register_qc_callbacks(app: dash.Dash) -> None:
         )
         return True, body, "success"
 
+    # -----------------------------------------------------------------
+    # Callback G: Configure | Review sub-view toggle
+    # -----------------------------------------------------------------
+    @app.callback(
+        Output(review_ids.QC_CONFIGURE_VIEW_ID, "style"),
+        Output(review_ids.QC_REVIEW_VIEW_ID, "style"),
+        Output(review_ids.STORE_QC_SUBVIEW, "data"),
+        Input(review_ids.QC_SUBVIEW_TOGGLE_ID, "value"),
+    )
+    def _switch_subview(
+        subview: str | None,
+    ) -> tuple[dict[str, str], dict[str, str], str]:
+        """Show the selected sub-view via ``style.display`` (no rebuild)."""
+        review = (subview or review_ids.QC_SUBVIEW_CONFIGURE) == (
+            review_ids.QC_SUBVIEW_REVIEW
+        )
+        configure_style = {"display": "none" if review else "block"}
+        # Plain block, no height cap: the Review view sizes to its content
+        # so the gallery flows down and the ``qc-tab-root`` wrapper (which
+        # has ``overflow: auto``) scrolls the whole page. The Review view's
+        # sticky header + sidebar keep the nav pinned during that scroll.
+        review_style = {"display": "block" if review else "none"}
+        return (
+            configure_style,
+            review_style,
+            review_ids.QC_SUBVIEW_REVIEW if review else review_ids.QC_SUBVIEW_CONFIGURE,
+        )
+
+    # Review sub-view owns its own callback bundle (worklist, detail,
+    # curation, recompute, review-state). Registered here so the QC tab's
+    # single ``register_qc_callbacks`` entry wires both sub-views.
+    register_review_callbacks(app)
+
 
 # ---------------------------------------------------------------------------
 # Export helper
@@ -910,8 +950,8 @@ def _export_qc_report(
 
         summary_frame = check.summary()
         status_counts: dict[str, int] = {"pass": 0, "warn": 0, "fail": 0}
-        if "status" in summary_frame.columns:
-            for s, cnt in summary_frame["status"].value_counts().items():
+        if "qc_status" in summary_frame.columns:
+            for s, cnt in summary_frame["qc_status"].value_counts().items():
                 key = str(s)
                 if key in status_counts:
                     status_counts[key] = int(cnt)
@@ -922,20 +962,20 @@ def _export_qc_report(
                 "params": dict(entry.params),
                 "num_rows": int(len(result)),
                 "num_flagged": int(
-                    summary_frame["num_flagged"].fillna(0).astype(int).sum()
+                    summary_frame["qc_n_flagged"].fillna(0).astype(int).sum()
                 )
-                if "num_flagged" in summary_frame.columns
+                if "qc_n_flagged" in summary_frame.columns
                 else 0,
                 "max_severity": (
                     float(
                         pd.to_numeric(
                             summary_frame.get(
-                                "max_severity", pd.Series(dtype=float)
+                                "qc_worst_metric", pd.Series(dtype=float)
                             ),
                             errors="coerce",
                         ).max()
                     )
-                    if "max_severity" in summary_frame.columns
+                    if "qc_worst_metric" in summary_frame.columns
                     and not summary_frame.empty
                     else float("nan")
                 ),

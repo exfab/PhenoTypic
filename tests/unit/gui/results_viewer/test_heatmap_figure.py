@@ -39,7 +39,7 @@ def _make_minimal_frame(
                     "Size_Area": float(100 + r * 10 + c),
                 }
                 if add_label:
-                    rec["ObjectLabel"] = label_counter
+                    rec["Object_Label"] = label_counter
                 if add_time:
                     rec["Metadata_Time"] = 4
                 records.append(rec)
@@ -72,7 +72,7 @@ class TestEmptyStateNoGridColumns:
         frame = pl.DataFrame(
             {
                 "Metadata_ImageFile": ["image_a.tif"] * 4,
-                "ObjectLabel": list(range(1, 5)),
+                "Object_Label": list(range(1, 5)),
                 "Size_Area": [10.0, 20.0, 30.0, 40.0],
             }
         )
@@ -108,7 +108,7 @@ class TestImageFilterAppliedBeforeAggregator:
                     "image_b.tif",
                     "image_b.tif",
                 ],
-                "ObjectLabel": [1, 2, 3, 4],
+                "Object_Label": [1, 2, 3, 4],
                 "Grid_RowNum": [1, 1, 1, 1],
                 "Grid_ColNum": [1, 1, 1, 1],
                 "Size_Area": [1.0, 5.0, 100.0, 200.0],
@@ -136,7 +136,7 @@ class TestAggregatorSemantics:
         frame = pl.DataFrame(
             {
                 "Metadata_ImageFile": ["image_a.tif"] * 2,
-                "ObjectLabel": [1, 2],
+                "Object_Label": [1, 2],
                 "Grid_RowNum": [1, 1],
                 "Grid_ColNum": [1, 1],
                 "Size_Area": [1.0, 3.0],
@@ -161,7 +161,7 @@ class TestRemovedOverlay:
 
     def test_removed_cells_render_overlay_trace(self) -> None:
         frame = _make_minimal_frame(rows=2, cols=2)
-        # ObjectLabel 1 is the (image_a.tif, 1, 1) cell per the helper.
+        # Object_Label 1 is the (image_a.tif, 1, 1) cell per the helper.
         # Make sure that's the one we're targeting:
         # the helper labels in order rows->cols, so (img_a, r=1, c=1)
         # gets label 1.
@@ -208,7 +208,7 @@ class TestTimeFilter:
         frame = pl.DataFrame(
             {
                 "Metadata_ImageFile": ["image_a.tif"] * 4,
-                "ObjectLabel": [1, 2, 3, 4],
+                "Object_Label": [1, 2, 3, 4],
                 "Grid_RowNum": [1, 1, 1, 1],
                 "Grid_ColNum": [1, 1, 1, 1],
                 "Metadata_Time": [4, 4, 8, 8],
@@ -236,14 +236,14 @@ class TestNanOnlyPivot:
         frame = pl.DataFrame(
             {
                 "Metadata_ImageFile": ["image_a.tif"] * 4,
-                "ObjectLabel": [1, 2, 3, 4],
+                "Object_Label": [1, 2, 3, 4],
                 "Grid_RowNum": [1, 1, 2, 2],
                 "Grid_ColNum": [1, 2, 1, 2],
                 "Size_Area": [None, None, None, None],
             },
             schema={
                 "Metadata_ImageFile": pl.String,
-                "ObjectLabel": pl.Int64,
+                "Object_Label": pl.Int64,
                 "Grid_RowNum": pl.Int64,
                 "Grid_ColNum": pl.Int64,
                 "Size_Area": pl.Float64,
@@ -269,7 +269,7 @@ class TestPandasInputAccepted:
         frame = pd.DataFrame(
             {
                 "Metadata_ImageFile": ["image_a.tif"] * 4,
-                "ObjectLabel": [1, 2, 3, 4],
+                "Object_Label": [1, 2, 3, 4],
                 "Grid_RowNum": [1, 1, 2, 2],
                 "Grid_ColNum": [1, 2, 1, 2],
                 "Size_Area": [1.0, 2.0, 3.0, 4.0],

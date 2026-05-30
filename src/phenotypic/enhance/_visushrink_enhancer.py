@@ -59,7 +59,7 @@ class VisuShrinkEnhancer(_GATSupportMixin, ImageDenoiser):
           preserves more detail in regions with varying noise levels.
         - :class:`BM3DDenoiser` for state-of-the-art structured noise
           removal at higher computational cost.
-        - :class:`BilateralDenoise` for edge-preserving smoothing without
+        - :class:`LocalEdgeDenoise` for edge-preserving smoothing without
           wavelet decomposition.
 
     References:

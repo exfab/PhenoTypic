@@ -57,6 +57,13 @@ regenerates them on Ubuntu and uploads as a build artifact for
 spot-checking, but cross-platform font rendering means committed PNGs
 should come from a developer workstation, not CI.
 
+The capture regenerates the **full** screenshot set, so unrelated
+tutorials' PNGs shift by a few bytes (font-rendering noise) on every
+run. **Commit them all — do not cherry-pick or `git checkout --` the
+collateral.** Full regeneration + commit-everything keeps the workflow
+simple and the committed render internally consistent; the accepted
+cost is occasional binary churn in history.
+
 ---
 
 ## Architecture
@@ -129,6 +136,7 @@ operations copy data; avoid unnecessary intermediate allocations.
 
 - [_core/CLAUDE.md](src/phenotypic/_core/CLAUDE.md) — Image class, accessors
 - [abc_/CLAUDE.md](src/phenotypic/abc_/CLAUDE.md) — ABC hierarchy, implementation
+- [schema/CLAUDE.md](src/phenotypic/schema/CLAUDE.md) — public measurement schema (`MeasurementInfo` base + header enums)
 - [tools_/CLAUDE.md](src/phenotypic/tools_/CLAUDE.md) — mixins, utilities
 - [settings_/CLAUDE.md](src/phenotypic/settings_/CLAUDE.md) — global config
 - [enhance/CLAUDE.md](src/phenotypic/enhance/CLAUDE.md) — enhancer conventions
@@ -156,8 +164,10 @@ exist, add a test asserting their values match.
 `ConstantLabels`** (in `phenotypic.tools_.constants_`). Each member is a
 `(label, description)` tuple, the description is accessible to callers, and the existing
 pattern (override `category()` classmethod, optionally `__new__` for bare-label values)
-is the project convention. Examples: `GAMMA_ENCODINGS`, `PIPE_STATUS`, `METADATA`, the
-per-feature `MeasurementInfo` enums in `tools_/measurement_info/`. Do not modify these
+is the project convention. The `MeasurementInfo` base class lives in the public
+`phenotypic.schema` package; framework-config constant enums (`GAMMA_ENCODINGS`,
+`PIPE_STATUS`, `METADATA`) stay in `phenotypic.tools_.constants_`, while the
+per-feature measurement-column enums live in `phenotypic.schema`. Do not modify these
 classes' internals to satisfy the generic `MyEnum(value)` normalization — their bespoke
 coercion (e.g. `_GAMMA_COERCE` for `GAMMA_ENCODINGS`) is intentional.
 
@@ -191,7 +201,9 @@ never derive `Literal` from runtime expressions.
   `OtsuDetector(True)` — pydantic models take no positional args. Unknown kwargs and
   invalid values raise `pydantic.ValidationError`.
 - **Measurement columns are category-prefixed:** `Size_Area`, `Shape_Circularity`,
-  `Intensity_MeanIntensity`, etc.
+  `Intensity_MeanIntensity`, etc. The header enums are the **public**
+  `phenotypic.schema` package (`from phenotypic.schema import SHAPE, SIZE, ...`);
+  the old `phenotypic.tools_.measurement_info` path was removed.
   `MeasurementInfo.get_labels()` returns unprefixed names; `get_headers()` returns the
   prefixed column names used in DataFrames.
 - **Analysis classes use `.analyze()`:** `EdgeCorrector.analyze(df)`,

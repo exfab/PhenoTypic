@@ -7,8 +7,8 @@ import numpy as np
 from phenotypic import GridImage
 from phenotypic.grid import ManualGridFinder
 from phenotypic.measure import MeasureGridSpatial
-from phenotypic.tools_.constants_ import OBJECT
-from phenotypic.tools_.measurement_info import GRID_SPATIAL, GRID
+from phenotypic.schema import OBJECT
+from phenotypic.schema import GRID_SPATIAL, GRID
 
 
 def _circle(objmap: np.ndarray, label: int, rr: int, cc: int, radius: int) -> None:
@@ -70,7 +70,7 @@ class TestMeasureGridSpatial:
         """Verify all expected columns are present in output."""
         df = measurer.measure(sample_image)
 
-        # First column must be ObjectLabel
+        # First column must be Object_Label
         assert df.columns[0] == OBJECT.LABEL
 
         # All GRID_SPATIAL columns must be present
@@ -94,7 +94,7 @@ class TestMeasureGridSpatial:
         assert len(df) == len(grid_info)
 
     def test_object_labels_match(self, sample_image, measurer):
-        """Verify ObjectLabel column matches grid info labels."""
+        """Verify Object_Label column matches grid info labels."""
         df = measurer.measure(sample_image)
         grid_info = sample_image.grid.info(include_metadata=False)
         np.testing.assert_array_equal(

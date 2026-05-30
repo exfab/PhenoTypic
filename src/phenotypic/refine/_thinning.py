@@ -43,7 +43,7 @@ class Thinning(ObjectRefiner):
     Consider Also:
         - :class:`Skeletonize` for direct medial-axis extraction without
           iterative control.
-        - :class:`MaskEroder` for uniform inward shrinking with a
+        - :class:`MaskErosion` for uniform inward shrinking with a
           configurable structuring element.
         - :class:`SeparateObjects` for watershed-based separation of
           touching colonies.

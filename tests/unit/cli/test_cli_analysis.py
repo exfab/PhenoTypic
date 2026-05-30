@@ -43,7 +43,7 @@ def _synthetic_growth_master() -> pl.DataFrame:
                 rows.append({
                     "Metadata_Strain": strain,
                     "Metadata_Time": float(t),
-                    "ObjectLabel": rep,
+                    "Object_Label": rep,
                     "Shape_Area": float(n + (rep - 1) * 5),
                 })
     return pl.DataFrame(rows)
@@ -132,7 +132,7 @@ class TestEmitAnalysisOutputs:
 
     def test_analysis_failure_is_non_fatal(self, tmp_path: Path) -> None:
         # Master frame missing the column the model needs.
-        master = pl.DataFrame({"Metadata_Strain": ["A"], "ObjectLabel": [1]})
+        master = pl.DataFrame({"Metadata_Strain": ["A"], "Object_Label": [1]})
         pipeline = ImagePipeline(
             model=LogGrowthModel(
                 on="Shape_Area",  # not present in the frame

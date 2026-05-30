@@ -43,10 +43,10 @@ class PostMeasurement(BaseOperation, ABC):
         ...         df[self.column] = self.value
         ...         return df
         >>> post = AddConstant(column="Metadata_Flag", value="OK")
-        >>> df = pd.DataFrame({"ObjectLabel": [1, 2]})
+        >>> df = pd.DataFrame({"Object_Label": [1, 2]})
         >>> result = post.apply(df)
         >>> list(result.columns)
-        ['ObjectLabel', 'Metadata_Flag']
+        ['Object_Label', 'Metadata_Flag']
     """
 
     @abstractmethod

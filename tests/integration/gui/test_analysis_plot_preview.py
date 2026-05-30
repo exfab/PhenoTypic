@@ -59,7 +59,7 @@ def _logistic_growth_frame() -> pl.DataFrame:
                     "Metadata_ImageFile": f"{strain}_t{t}",
                     "Metadata_Strain": strain,
                     "Metadata_Time": float(t),
-                    "ObjectLabel": rep,
+                    "Object_Label": rep,
                     "Shape_Area": float(n + (rep - 1) * 5),
                 })
     return pl.DataFrame(rows)

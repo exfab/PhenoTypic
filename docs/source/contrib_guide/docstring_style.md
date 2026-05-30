@@ -12,8 +12,8 @@ it?" -- Explanation pages answer "how and why does it work?"
 
 | Operation complexity | Target lines | Example |
 |---------------------|-------------|---------|
-| Simple (1-3 params) | 25--40 | `GaussianBlur`, `MaskDilator` |
-| Moderate (4-8 params) | 40--60 | `OtsuDetector`, `CLAHE` |
+| Simple (1-3 params) | 25--40 | `GaussianBlur`, `MaskDilation` |
+| Moderate (4-8 params) | 40--60 | `OtsuDetector`, `EnhanceLocalContrast` |
 | Complex (8+ params) | 60--90 | `FilamentousFungiDetector`, `RoundPeaksDetector` |
 
 These are guidelines, not hard limits. Prefer clarity over brevity, but respect
@@ -255,7 +255,7 @@ References:
 
 **When to include references:**
 
-- The operation implements a named algorithm (Otsu, Frangi, BM3D, CLAHE, etc.)
+- The operation implements a named algorithm (Otsu, Frangi, BM3D, EnhanceLocalContrast, etc.)
 - The operation references a specific paper's formulation or parameters
 - The operation uses a domain-specific technique from published literature
 

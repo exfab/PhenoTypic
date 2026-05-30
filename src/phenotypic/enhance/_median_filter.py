@@ -39,7 +39,7 @@ class MedianFilter(ImageEnhancer):
     Consider Also:
         - :class:`GaussianBlur` for faster, simpler smoothing when edge
           preservation is less critical.
-        - :class:`BilateralDenoise` for edge-preserving smoothing with
+        - :class:`LocalEdgeDenoise` for edge-preserving smoothing with
           continuous intensity gradients.
         - :class:`RankMedianEnhancer` for configurable rank-based filtering
           with explicit footprint control.

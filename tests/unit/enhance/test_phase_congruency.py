@@ -1,5 +1,5 @@
 """
-Tests for PhaseCongruencyEnhancer.
+Tests for EnhanceFeatures.
 
 Tests parameter validation, output properties, and basic functionality.
 """
@@ -8,59 +8,59 @@ import pytest
 import numpy as np
 
 from phenotypic import Image
-from phenotypic.enhance import PhaseCongruencyEnhancer
+from phenotypic.enhance import EnhanceFeatures
 
 
 class TestPhaseCongruencyEnhancerParameterValidation:
-    """Test PhaseCongruencyEnhancer parameter validation."""
+    """Test EnhanceFeatures parameter validation."""
 
     def test_n_scale_less_than_one_raises_error(self):
         """Test that n_scale < 1 raises ValueError."""
         with pytest.raises(ValueError, match="n_scale must be >= 1"):
-            PhaseCongruencyEnhancer(n_scale=0)
+            EnhanceFeatures(n_scale=0)
 
     def test_n_orient_less_than_one_raises_error(self):
         """Test that n_orient < 1 raises ValueError."""
         with pytest.raises(ValueError, match="n_orient must be >= 1"):
-            PhaseCongruencyEnhancer(n_orient=0)
+            EnhanceFeatures(n_orient=0)
 
     def test_min_wavelength_less_than_two_raises_error(self):
         """Test that min_wavelength < 2 raises ValueError."""
         with pytest.raises(ValueError, match="min_wavelength must be >= 2"):
-            PhaseCongruencyEnhancer(min_wavelength=1.5)
+            EnhanceFeatures(min_wavelength=1.5)
 
     def test_mult_less_than_or_equal_one_raises_error(self):
         """Test that mult <= 1 raises ValueError."""
         with pytest.raises(ValueError, match="mult must be > 1"):
-            PhaseCongruencyEnhancer(mult=1.0)
+            EnhanceFeatures(mult=1.0)
         with pytest.raises(ValueError, match="mult must be > 1"):
-            PhaseCongruencyEnhancer(mult=0.5)
+            EnhanceFeatures(mult=0.5)
 
     def test_sigma_onf_out_of_range_raises_error(self):
         """Test that sigma_onf outside [0.1, 1.0] raises ValueError."""
         with pytest.raises(ValueError, match="sigma_onf must be in"):
-            PhaseCongruencyEnhancer(sigma_onf=0.05)
+            EnhanceFeatures(sigma_onf=0.05)
         with pytest.raises(ValueError, match="sigma_onf must be in"):
-            PhaseCongruencyEnhancer(sigma_onf=1.5)
+            EnhanceFeatures(sigma_onf=1.5)
 
     def test_negative_k_raises_error(self):
         """Test that k < 0 raises ValueError."""
         with pytest.raises(ValueError, match="k must be >= 0"):
-            PhaseCongruencyEnhancer(k=-1.0)
+            EnhanceFeatures(k=-1.0)
 
     def test_cutoff_out_of_range_raises_error(self):
         """Test that cutoff outside (0, 1) raises ValueError."""
         with pytest.raises(ValueError, match="cutoff must be in"):
-            PhaseCongruencyEnhancer(cutoff=0.0)
+            EnhanceFeatures(cutoff=0.0)
         with pytest.raises(ValueError, match="cutoff must be in"):
-            PhaseCongruencyEnhancer(cutoff=1.0)
+            EnhanceFeatures(cutoff=1.0)
 
     def test_g_non_positive_raises_error(self):
         """Test that g <= 0 raises ValueError."""
         with pytest.raises(ValueError, match="g must be > 0"):
-            PhaseCongruencyEnhancer(g=0.0)
+            EnhanceFeatures(g=0.0)
         with pytest.raises(ValueError, match="g must be > 0"):
-            PhaseCongruencyEnhancer(g=-5.0)
+            EnhanceFeatures(g=-5.0)
 
     def test_invalid_output_raises_error(self):
         """Test that invalid output mode raises ValueError.
@@ -70,11 +70,11 @@ class TestPhaseCongruencyEnhancerParameterValidation:
         ``ValueError``) rather than the legacy hand-rolled message.
         """
         with pytest.raises(ValueError, match="Input should be"):
-            PhaseCongruencyEnhancer(output="invalid")
+            EnhanceFeatures(output="invalid")
 
     def test_valid_parameters_accepted(self):
         """Test that valid parameters are accepted."""
-        enhancer = PhaseCongruencyEnhancer(
+        enhancer = EnhanceFeatures(
             n_scale=4,
             n_orient=6,
             min_wavelength=3.0,
@@ -99,7 +99,7 @@ class TestPhaseCongruencyEnhancerParameterValidation:
 
 
 class TestPhaseCongruencyEnhancerOutputProperties:
-    """Test PhaseCongruencyEnhancer output properties."""
+    """Test EnhanceFeatures output properties."""
 
     @pytest.fixture
     def synthetic_image(self):
@@ -117,45 +117,45 @@ class TestPhaseCongruencyEnhancerOutputProperties:
 
     def test_output_shape_preserved(self, synthetic_image):
         """Test that output has same shape as input."""
-        enhancer = PhaseCongruencyEnhancer(n_scale=3, n_orient=4)
+        enhancer = EnhanceFeatures(n_scale=3, n_orient=4)
         result = enhancer.apply(synthetic_image)
         assert result.detect_mat[:].shape == synthetic_image.detect_mat[:].shape
 
     def test_output_range_clipped_to_unit_interval(self, synthetic_image):
         """Test that output is in [0, 1] range."""
-        enhancer = PhaseCongruencyEnhancer()
+        enhancer = EnhanceFeatures()
         result = enhancer.apply(synthetic_image)
         assert result.detect_mat[:].min() >= 0.0
         assert result.detect_mat[:].max() <= 1.0
 
     def test_pc_sum_output_mode(self, synthetic_image):
         """Test pc_sum output mode works."""
-        enhancer = PhaseCongruencyEnhancer(output="pc_sum")
+        enhancer = EnhanceFeatures(output="pc_sum")
         result = enhancer.apply(synthetic_image)
         assert result.detect_mat[:].shape == synthetic_image.detect_mat[:].shape
 
     def test_M_output_mode(self, synthetic_image):
         """Test M (edge strength) output mode works."""
-        enhancer = PhaseCongruencyEnhancer(output="M")
+        enhancer = EnhanceFeatures(output="M")
         result = enhancer.apply(synthetic_image)
         assert result.detect_mat[:].shape == synthetic_image.detect_mat[:].shape
 
     def test_m_output_mode(self, synthetic_image):
         """Test m (corner strength) output mode works."""
-        enhancer = PhaseCongruencyEnhancer(output="m")
+        enhancer = EnhanceFeatures(output="m")
         result = enhancer.apply(synthetic_image)
         assert result.detect_mat[:].shape == synthetic_image.detect_mat[:].shape
 
     def test_uniform_image_low_response(self, uniform_image):
         """Test that uniform image produces low phase congruency."""
-        enhancer = PhaseCongruencyEnhancer(n_scale=3, n_orient=4)
+        enhancer = EnhanceFeatures(n_scale=3, n_orient=4)
         result = enhancer.apply(uniform_image)
         # Uniform regions should have low PC values
         assert result.detect_mat[:].mean() < 0.3
 
 
 class TestPhaseCongruencyEnhancerEdgeDetection:
-    """Test PhaseCongruencyEnhancer edge detection capabilities."""
+    """Test EnhanceFeatures edge detection capabilities."""
 
     def test_vertical_edge_detected(self):
         """Test that vertical edges are detected with high M values."""
@@ -164,7 +164,7 @@ class TestPhaseCongruencyEnhancerEdgeDetection:
         arr[:, 64:] = 1.0
         image = Image(arr=arr)
 
-        enhancer = PhaseCongruencyEnhancer(output="M", n_scale=3, n_orient=4)
+        enhancer = EnhanceFeatures(output="M", n_scale=3, n_orient=4)
         result = enhancer.apply(image)
 
         # Edge region (columns ~60-68) should have higher values than uniform regions
@@ -182,7 +182,7 @@ class TestPhaseCongruencyEnhancerEdgeDetection:
         arr[64:, :] = 1.0
         image = Image(arr=arr)
 
-        enhancer = PhaseCongruencyEnhancer(output="M", n_scale=3, n_orient=4)
+        enhancer = EnhanceFeatures(output="M", n_scale=3, n_orient=4)
         result = enhancer.apply(image)
 
         # Edge region (rows ~60-68) should have higher values than uniform regions
@@ -210,26 +210,26 @@ class TestPhaseCongruencyEnhancerNoiseHandling:
 
     def test_noise_method_median(self, noisy_image):
         """Test median noise estimation method (-1)."""
-        enhancer = PhaseCongruencyEnhancer(noise_method=-1, n_scale=3, n_orient=4)
+        enhancer = EnhanceFeatures(noise_method=-1, n_scale=3, n_orient=4)
         result = enhancer.apply(noisy_image)
         assert result.detect_mat[:].shape == noisy_image.detect_mat[:].shape
 
     def test_noise_method_mode(self, noisy_image):
         """Test mode noise estimation method (-2)."""
-        enhancer = PhaseCongruencyEnhancer(noise_method=-2, n_scale=3, n_orient=4)
+        enhancer = EnhanceFeatures(noise_method=-2, n_scale=3, n_orient=4)
         result = enhancer.apply(noisy_image)
         assert result.detect_mat[:].shape == noisy_image.detect_mat[:].shape
 
     def test_noise_method_fixed(self, noisy_image):
         """Test fixed noise threshold (>= 0)."""
-        enhancer = PhaseCongruencyEnhancer(noise_method=0.1, n_scale=3, n_orient=4)
+        enhancer = EnhanceFeatures(noise_method=0.1, n_scale=3, n_orient=4)
         result = enhancer.apply(noisy_image)
         assert result.detect_mat[:].shape == noisy_image.detect_mat[:].shape
 
     def test_higher_k_reduces_response(self, noisy_image):
         """Test that higher k (more noise rejection) reduces overall response."""
-        enhancer_low_k = PhaseCongruencyEnhancer(k=2.0, n_scale=3, n_orient=4)
-        enhancer_high_k = PhaseCongruencyEnhancer(k=10.0, n_scale=3, n_orient=4)
+        enhancer_low_k = EnhanceFeatures(k=2.0, n_scale=3, n_orient=4)
+        enhancer_high_k = EnhanceFeatures(k=10.0, n_scale=3, n_orient=4)
 
         result_low_k = enhancer_low_k.apply(noisy_image)
         result_high_k = enhancer_high_k.apply(noisy_image)
@@ -247,7 +247,7 @@ class TestPhaseCongruencyEnhancerIntegration:
         image = Image(arr=arr)
         original_rgb = image.rgb[:].copy()
 
-        enhancer = PhaseCongruencyEnhancer(n_scale=3, n_orient=4)
+        enhancer = EnhanceFeatures(n_scale=3, n_orient=4)
         enhancer.apply(image)
 
         # Original image rgb should be unchanged
@@ -259,7 +259,7 @@ class TestPhaseCongruencyEnhancerIntegration:
         image = Image(arr=arr)
         original_gray = image.gray[:].copy()
 
-        enhancer = PhaseCongruencyEnhancer(n_scale=3, n_orient=4)
+        enhancer = EnhanceFeatures(n_scale=3, n_orient=4)
         enhancer.apply(image)
 
         # Original image gray should be unchanged
@@ -271,7 +271,7 @@ class TestPhaseCongruencyEnhancerIntegration:
         image = Image(arr=arr)
         original_detect_mat = image.detect_mat[:].copy()
 
-        enhancer = PhaseCongruencyEnhancer(n_scale=3, n_orient=4)
+        enhancer = EnhanceFeatures(n_scale=3, n_orient=4)
         result = enhancer.apply(image, inplace=True)
 
         # Result should be the same object

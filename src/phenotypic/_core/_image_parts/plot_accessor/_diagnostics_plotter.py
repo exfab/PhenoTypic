@@ -81,7 +81,7 @@ class DiagnosticsPlotter(BasePlotter):
             how_to_read=f"X-axis: intensity (0-{self._max_intensity}), Y-axis: frequency. Blue=data, red=Gaussian fit",
             good_values="Bell-shaped, centered, uses full dynamic range",
             poor_values="Bimodal, clipped at edges, very narrow spread",
-            pipeline_link="CLAHE, ContrastStretching, GammaCorrection",
+            pipeline_link="EnhanceLocalContrast, ContrastStretching, GammaCorrection",
         )
 
     # ============================================================================

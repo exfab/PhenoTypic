@@ -29,7 +29,7 @@ def _seed_cli_output(parent: Path) -> Path:
         "Metadata_Dataset": ["d"] * 2,
         "Metadata_ImageFile": ["a", "b"],
         "Metadata_Strain": ["A", "B"],
-        "ObjectLabel": [1, 1],
+        "Object_Label": [1, 1],
         "Shape_Area": [100.0, 200.0],
     })
     df.write_parquet(out / "master_measurements.parquet")

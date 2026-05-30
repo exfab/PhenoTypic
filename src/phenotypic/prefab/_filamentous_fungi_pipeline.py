@@ -6,7 +6,7 @@ from phenotypic import ImagePipeline
 from phenotypic.abc_ import PrefabPipeline, ObjectDetector
 from phenotypic.correction import StableDenoise
 from phenotypic.detect import FilamentousFungiDetector
-from phenotypic.enhance import HomomorphicFilter
+from phenotypic.enhance import FlattenIllumination
 from phenotypic.detect._inoculum_detector import InoculumDetector
 from phenotypic.measure import (
     MeasureGridSpatial,
@@ -14,7 +14,7 @@ from phenotypic.measure import (
     MeasureShape,
     MeasureTexture,
 )
-from phenotypic.refine import GridSectionLargest
+from phenotypic.refine import KeepSectionLargest
 
 if TYPE_CHECKING:
     pass
@@ -26,7 +26,7 @@ class FilamentousFungiPipeline(PrefabPipeline):
     Pipeline Steps:
         1. ``StableDenoise`` -- Variance-stabilized BM3D denoising for Poisson-Gaussian
            noise removal on gray and detect_mat channels.
-        2. ``HomomorphicFilter`` -- Illumination normalization via
+        2. ``FlattenIllumination`` -- Illumination normalization via
            frequency-domain filtering on detect_mat.
         3. ``FilamentousFungiDetector`` -- Two-stage detection (inoculum +
            dual-mask reconnection) with Euclidean Voronoi partition and
@@ -53,7 +53,7 @@ class FilamentousFungiPipeline(PrefabPipeline):
             is provided. Default 100.0.
         inoculum_detector: Custom ObjectDetector or ImagePipeline that
             identifies fungal centers/nuclei. When None, builds a default
-            pipeline of ``InoculumDetector`` + ``GridSectionLargest``.
+            pipeline of ``InoculumDetector`` + ``KeepSectionLargest``.
         max_colony_radius_px: Largest colony radius (in pixels) the
             detector should handle. Sizes scene-derived spatial
             parameters for this worst case. Default 250.
@@ -139,7 +139,7 @@ class FilamentousFungiPipeline(PrefabPipeline):
                                 min_diameter=inoculum_min_diameter,
                                 max_diameter=inoculum_max_diameter,
                         ),
-                        GridSectionLargest(),
+                        KeepSectionLargest(),
                     ]
             )
 
@@ -148,7 +148,7 @@ class FilamentousFungiPipeline(PrefabPipeline):
                     block_size=bm3d_block_size,
                     stage_arg=bm3d_stage_arg,
             ),
-            HomomorphicFilter(
+            FlattenIllumination(
                     sigma=homo_sigma,
                     gamma_low=homo_gamma_low,
                     gamma_high=homo_gamma_high,

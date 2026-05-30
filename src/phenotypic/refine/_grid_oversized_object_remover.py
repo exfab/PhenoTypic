@@ -8,8 +8,8 @@ if TYPE_CHECKING:
 import numpy as np
 
 from phenotypic.abc_ import GridObjectRefiner
-from phenotypic.tools_.constants_ import OBJECT
-from phenotypic.tools_.measurement_info import BBOX
+from phenotypic.schema import OBJECT
+from phenotypic.schema import BBOX
 
 
 class GridOversizedObjectRemover(GridObjectRefiner):
@@ -32,7 +32,7 @@ class GridOversizedObjectRemover(GridObjectRefiner):
           should contain one confined colony.
 
     Consider Also:
-        - :class:`GridSectionLargest` when you want to keep the single
+        - :class:`KeepSectionLargest` when you want to keep the single
           largest object per cell rather than removing oversized ones.
         - :class:`GridAlignmentRefiner` for full grid-aware dominant-object
           selection.

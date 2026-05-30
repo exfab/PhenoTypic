@@ -12,8 +12,8 @@ import pandas as pd
 from scipy import ndimage as ndi
 
 from phenotypic.abc_ import GridMeasureFeatures
-from phenotypic.tools_.constants_ import OBJECT
-from phenotypic.tools_.measurement_info import GRID_SPATIAL, GRID
+from phenotypic.schema import OBJECT
+from phenotypic.schema import GRID_SPATIAL, GRID
 
 
 class MeasureGridSpatial(GridMeasureFeatures):

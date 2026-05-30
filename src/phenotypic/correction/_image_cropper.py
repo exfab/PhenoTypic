@@ -36,7 +36,7 @@ class ImageCropper(ImageCorrector):
 
     Consider Also:
         - :class:`ImagePadder` for adding pixels instead of removing them.
-        - :class:`BorderObjectRemover` for removing edge-touching colonies
+        - :class:`RemoveBorderObjects` for removing edge-touching colonies
           without changing image dimensions.
 
     See Also:

@@ -167,7 +167,7 @@ class OperationRegistry:
         >>> # Get operations by category
         >>> enhancers = registry.get_by_category('Enhancer')
         >>> print([op.name for op in enhancers])
-        ['GaussianBlur', 'CLAHE', 'MedianFilter', ...]
+        ['GaussianBlur', 'EnhanceLocalContrast', 'MedianFilter', ...]
         >>>
         >>> # Get specific operation info
         >>> info = registry.get('GaussianBlur')

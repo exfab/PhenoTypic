@@ -44,6 +44,7 @@ from phenotypic.tools_ import (
     DIR_MEASUREMENTS,
     DIR_OVERLAYS,
     DIR_PROGRESS,
+    DIR_QC,
     DIR_RESULTS,
     JOB_METADATA_JSON,
     MANIFEST_JSON,
@@ -52,6 +53,10 @@ from phenotypic.tools_ import (
     MEASUREMENTS_CSV,
     MEASUREMENTS_PARQUET,
     PIPELINE_JSON,
+    QC_CONFIG_JSON,
+    QC_MEMBERS_PARQUET,
+    QC_REVIEW_STATE_JSON,
+    QC_SUMMARY_PARQUET,
     STDOUT_LOG,
 )
 
@@ -82,6 +87,7 @@ __all__ = [
     "CFG_QC_RECIPE",
     "CFG_QC_INSTANCES_CACHE",
     "CFG_QC_AUGMENTED_FRAME",
+    "CFG_QC_PIPELINE",
     # Sandbox subdirectories
     "SANDBOX_GUI_DIRNAME",
     "SANDBOX_PRESETS_SUBDIR",
@@ -99,9 +105,14 @@ __all__ = [
     "JOB_METADATA_JSON",
     "MANIFEST_JSON",
     "STDOUT_LOG",
+    "QC_SUMMARY_PARQUET",
+    "QC_MEMBERS_PARQUET",
+    "QC_CONFIG_JSON",
+    "QC_REVIEW_STATE_JSON",
     # Directory names — re-exported from phenotypic.tools_
     "RESULTS_DIRNAME",
     "PROGRESS_DIRNAME",
+    "QC_DIRNAME",
     "DIR_INSPECT",
     "DIR_MEASUREMENTS",
     "DIR_OVERLAYS",
@@ -112,6 +123,7 @@ __all__ = [
     "BUILDER_TILES_PREFIX",
     "VIEWER_TILES_PREFIX",
     "COLONY_CROPS_URL_SEGMENT",
+    "QC_CROPS_URL_SEGMENT",
     # Closed value-set aliases
     "ChannelName",
     # Tunables
@@ -232,6 +244,16 @@ CFG_QC_INSTANCES_CACHE: str = "pheno_qc_instances"
 #: enforced. Spec lines 756-759.
 CFG_QC_AUGMENTED_FRAME: str = "pheno_qc_augmented_frame"
 
+#: ``app.server.config[CFG_QC_PIPELINE]`` — the
+#: :class:`~phenotypic._core._image_pipeline.ImagePipeline` deserialized
+#: from the active output root's ``pipeline.json`` at boot. The QC Review
+#: tab's per-group recompute hands this to
+#: :func:`phenotypic.qc._runner.run_qc` so the in-session recompute uses
+#: exactly the same checks the CLI persisted. ``None`` when no
+#: ``pipeline.json`` exists (or it failed to load) — recompute degrades to
+#: a no-op in that case. Spec §D.5.
+CFG_QC_PIPELINE: str = "pheno_qc_pipeline"
+
 # ---------------------------------------------------------------------------
 # Sandbox subdirectories
 # ---------------------------------------------------------------------------
@@ -268,7 +290,9 @@ VIEWER_CACHE_DIRNAME: str = ".viewer_cache"
 #   MEASUREMENTS_CSV, MEASUREMENTS_PARQUET,
 #   ANALYSIS_CSV, ANALYSIS_PARQUET,
 #   PIPELINE_JSON, JOB_METADATA_JSON, MANIFEST_JSON, STDOUT_LOG,
-#   DIR_RESULTS, DIR_PROGRESS, DASHBOARD_HTML
+#   QC_SUMMARY_PARQUET, QC_MEMBERS_PARQUET, QC_CONFIG_JSON,
+#   QC_REVIEW_STATE_JSON,
+#   DIR_RESULTS, DIR_PROGRESS, DIR_QC, DASHBOARD_HTML
 #
 # ---------------------------------------------------------------------------
 # GUI-only convenience aliases for re-exported CLI artifact names
@@ -279,6 +303,9 @@ RESULTS_DIRNAME: str = DIR_RESULTS
 
 #: ``progress`` — the CLI output ``progress/`` directory name.
 PROGRESS_DIRNAME: str = DIR_PROGRESS
+
+#: ``qc`` — the CLI output ``qc/`` artifact directory name.
+QC_DIRNAME: str = DIR_QC
 
 #: ``dashboard.html`` — the generated dashboard artifact filename.
 DASHBOARD_FILENAME: str = DASHBOARD_HTML
@@ -306,6 +333,14 @@ VIEWER_TILES_PREFIX: str = "/tiles"
 
 #: URL path segment used for per-colony crop images.
 COLONY_CROPS_URL_SEGMENT: str = "crops"
+
+#: URL path segment used for the QC Review tab's colony crops. Distinct
+#: from :data:`COLONY_CROPS_URL_SEGMENT` so the two crop blueprints mount
+#: under separate names on the same Flask server (see
+#: :func:`phenotypic.gui._shared.tiles.register_crop_route`). Both routes
+#: serve identical centered PNGs; the namespaces are kept apart only so
+#: the blueprint registrations never collide.
+QC_CROPS_URL_SEGMENT: str = "qc-crops"
 
 # ---------------------------------------------------------------------------
 # Closed value-set aliases

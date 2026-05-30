@@ -9,7 +9,7 @@ from typing_extensions import Self
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
     from phenotypic._core._grid_image import GridImage
-    from phenotypic.enhance._phase_congruency import _PhaseCong3Result
+    from phenotypic.enhance._enhance_features import _PhaseCong3Result
 
 from scipy.ndimage import center_of_mass, label as ndi_label
 from skimage.filters import threshold_otsu
@@ -21,13 +21,13 @@ from phenotypic import ImagePipeline
 from phenotypic.enhance import (
     SubtractGaussian,
     ContrastStretching,
-    PhaseCongruencyEnhancer,
+    EnhanceFeatures,
 )
 from phenotypic.tools_.typing_ import OperationField
 
 from phenotypic.detect import HysteresisDetector
 from phenotypic.detect._inoculum_detector import InoculumDetector
-from phenotypic.refine import GridSectionLargest
+from phenotypic.refine import KeepSectionLargest
 
 from phenotypic.tools_.branch_pathfinding import (
     _apply_distance_gap_penalty_inplace,
@@ -67,7 +67,7 @@ class FilamentousFungiDetector(GridObjectDetector):
         inoculum_detector: ObjectDetector or ImagePipeline that identifies
             compact fungal centres/nuclei. Should produce small, tight
             regions at inoculation points. Default uses an internal
-            InoculumDetector + GridSectionLargest pipeline.
+            InoculumDetector + KeepSectionLargest pipeline.
 
         max_colony_radius_px: Largest colony radius (in pixels) the
             detector should handle. Sizes scene-derived spatial
@@ -166,6 +166,7 @@ class FilamentousFungiDetector(GridObjectDetector):
         :doc:`/explanation/detection_strategies_compared`
             In-depth comparison of all detection strategies.
     """
+
     @staticmethod
     def __build_center_pipe() -> "ImagePipeline":
         """Build the default inoculum-center detection pipeline.
@@ -176,7 +177,7 @@ class FilamentousFungiDetector(GridObjectDetector):
         their own migration phase completes.
         """
         return ImagePipeline(
-                ops=[InoculumDetector(), GridSectionLargest()]
+                ops=[InoculumDetector(), KeepSectionLargest()]
         )
 
     # Scene-derivation multipliers (private; override in subclass to tune).
@@ -195,11 +196,11 @@ class FilamentousFungiDetector(GridObjectDetector):
     # Algorithm internals (hidden from the constructor; override in subclass
     # to tune). ``ClassVar` keeps them out of ``model_fields`` so they are
     # not constructor parameters, matching the pre-migration behaviour.
-    beta: ClassVar[float] = 2.0          # anisotropy exponent in composite cost
-    gamma: ClassVar[float] = 1.2         # MAD penalty weight in composite cost numerator
-    gauss_n_iter: ClassVar[int] = 2      # SubtractGaussian iterations
-    delta: ClassVar[float] = 1.0         # Dijkstra radial retreat penalty
-    pct_n_orient: ClassVar[int] = 8      # phase congruency angular resolution
+    beta: ClassVar[float] = 2.0  # anisotropy exponent in composite cost
+    gamma: ClassVar[float] = 1.2  # MAD penalty weight in composite cost numerator
+    gauss_n_iter: ClassVar[int] = 2  # SubtractGaussian iterations
+    delta: ClassVar[float] = 1.0  # Dijkstra radial retreat penalty
+    pct_n_orient: ClassVar[int] = 8  # phase congruency angular resolution
 
     # ── Inoculum detector (None → default pipeline, filled by validator) ──
     # ``OperationField`` preserves the concrete detector/pipeline class
@@ -237,7 +238,7 @@ class FilamentousFungiDetector(GridObjectDetector):
         Reproduces the body of the pre-migration ``__init__``:
 
         * a ``None`` ``inoculum_detector`` is replaced with the lazily
-          built default ``InoculumDetector`` + ``GridSectionLargest``
+          built default ``InoculumDetector`` + ``KeepSectionLargest``
           pipeline (the field default cannot be a live pipeline because
           operations are uninstantiable at class-definition time);
         * each scene-derivation override left at ``None`` is computed
@@ -331,7 +332,7 @@ class FilamentousFungiDetector(GridObjectDetector):
         del enhanced_work  # no longer valid after destructive call
 
         # Mask B: PCT branches
-        pct_result = PhaseCongruencyEnhancer(
+        pct_result = EnhanceFeatures(
                 n_orient=self.pct_n_orient,
                 min_wavelength=self.pct_min_wavelength,
                 k=self.edge_noise_threshold,

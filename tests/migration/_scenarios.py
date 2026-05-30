@@ -70,26 +70,26 @@ ANALYZER_NAMES: tuple[str, ...] = (
 
 # Abstract base names that must never themselves be treated as scenarios.
 _ABC_NAMES: frozenset[str] = frozenset(
-    {
-        "BaseOperation",
-        "ImageOperation",
-        "ImageEnhancer",
-        "ImageDenoiser",
-        "ImageCorrector",
-        "ObjectDetector",
-        "ObjectRefiner",
-        "ThresholdDetector",
-        "GpuDetector",
-        "GridOperation",
-        "GridFinder",
-        "GridCorrector",
-        "GridObjectRefiner",
-        "GridMeasureFeatures",
-        "GridObjectDetector",
-        "MeasureFeatures",
-        "PostMeasurement",
-        "PrefabPipeline",
-    }
+        {
+            "BaseOperation",
+            "ImageOperation",
+            "ImageEnhancer",
+            "ImageDenoiser",
+            "ImageCorrector",
+            "ObjectDetector",
+            "ObjectRefiner",
+            "ThresholdDetector",
+            "GpuDetector",
+            "GridOperation",
+            "GridFinder",
+            "GridCorrector",
+            "GridObjectRefiner",
+            "GridMeasureFeatures",
+            "GridObjectDetector",
+            "MeasureFeatures",
+            "PostMeasurement",
+            "PrefabPipeline",
+        }
 )
 
 # --- Input-category constants -------------------------------------------
@@ -166,13 +166,13 @@ def _expected_vs_detected_args() -> dict[str, Any]:
     )
     return {
         "metadata": metadata,
-        "groupby": ["Metadata_ImageName"],
+        "groupby" : ["Metadata_ImageName"],
     }
 
 
 # Maps class name -> zero-arg factory returning required ctor kwargs.
 REQUIRED_ARGS: dict[str, Any] = {
-    "ManualGridFinder": _manual_grid_finder_args,
+    "ManualGridFinder"       : _manual_grid_finder_args,
     "ExpectedVsDetectedCount": _expected_vs_detected_args,
 }
 
@@ -183,16 +183,16 @@ REQUIRED_ARGS: dict[str, Any] = {
 # reference frame. ``_ensure_prefix`` adds the ``Metadata_`` prefix, so
 # bare names like ``"ImageName"`` resolve to ``"Metadata_ImageName"``.
 DEFAULT_ARG_OVERRIDES: dict[str, dict[str, Any]] = {
-    "AppendString": {"column": "ImageName", "value": "_suffix"},
-    "PrependString": {"column": "ImageName", "value": "prefix_"},
+    "AppendString"  : {"column": "ImageName", "value": "_suffix"},
+    "PrependString" : {"column": "ImageName", "value": "prefix_"},
     "ExpandMetadata": {
-        "column": "Tag",
-        "labels": ["Plate", "Hour", "Rep"],
+        "column"   : "Tag",
+        "labels"   : ["Plate", "Hour", "Rep"],
         "delimiter": "-",
     },
-    "MergeMetadata": {
-        "columns": ["ImageName", "Time"],
-        "label": "Combined",
+    "MergeMetadata" : {
+        "columns"  : ["ImageName", "Time"],
+        "label"    : "Combined",
         "delimiter": "_",
     },
 }
@@ -202,22 +202,22 @@ DEFAULT_ARG_OVERRIDES: dict[str, dict[str, Any]] = {
 # ``image.grid`` inside ``_operate``, so the ABC-based router would route
 # them to a plain ``Image`` that has no grid. Pin them to a grid input.
 CATEGORY_OVERRIDES: dict[str, str] = {
-    "GridSectionLargest": CATEGORY_DETECTED_GRID,
+    "KeepSectionLargest": CATEGORY_DETECTED_GRID,
 }
 
 # Standard analyzer keyword set (column-based analyzers share this).
 _ANALYZER_BASE_ARGS: dict[str, Any] = {
-    "on": "Size_Area",
+    "on"     : "Size_Area",
     "groupby": ["Metadata_ImageName"],
 }
 
 # Per-analyzer default keyword overrides (merged onto _ANALYZER_BASE_ARGS).
 _ANALYZER_DEFAULT_ARGS: dict[str, dict[str, Any]] = {
     "TukeyOutlierRemover": dict(_ANALYZER_BASE_ARGS),
-    "EdgeCorrector": dict(_ANALYZER_BASE_ARGS),
-    "ReplicateAgreement": dict(_ANALYZER_BASE_ARGS),
-    "LogGrowthModel": {
-        "on": "Size_Area",
+    "EdgeCorrector"      : dict(_ANALYZER_BASE_ARGS),
+    "ReplicateAgreement" : dict(_ANALYZER_BASE_ARGS),
+    "LogGrowthModel"     : {
+        "on"     : "Size_Area",
         "groupby": ["Metadata_ImageName", "Grid_RowNum", "Grid_ColNum"],
     },
     # ExpectedVsDetectedCount's required args come from REQUIRED_ARGS.
@@ -226,16 +226,16 @@ _ANALYZER_DEFAULT_ARGS: dict[str, dict[str, Any]] = {
 # Classes that cannot be auto-defaulted and have no curated minimal arg
 # set -- recorded as skipped by the capture script with this reason.
 UNCAPTURABLE: dict[str, str] = {
-    "ColorCorrector": (
+    "ColorCorrector"    : (
         "requires a fitted ColorCheckerProfile (a color-chart "
         "calibration object); no synthetic plate carries one"
     ),
-    "MergeGridObj": (
-        "pre-existing library bug: MergeGridObj._operate never "
+    "MergeWithinSection": (
+        "pre-existing library bug: MergeWithinSection._operate never "
         "returns the image (implicitly returns None), so there is no "
         "result to freeze as a golden on the current code"
     ),
-    "GridApply": (
+    "GridApply"         : (
         "not part of the original 137-class migration scope: it was a "
         "plain wrapper class promoted to a pydantic GridCorrector during "
         "Phase 6 green-up so it could slot into a pydantic ImagePipeline. "
@@ -331,13 +331,13 @@ def _manual_point_detector_args() -> dict[str, Any]:
     """ManualPointDetector seeded with a few plate-interior centers."""
     return {
         "centers": [(150, 200), (300, 400), (450, 600)],
-        "shape": "disk",
-        "width": 20,
+        "shape"  : "disk",
+        "width"  : 20,
     }
 
 
 def _manual_selector_args() -> dict[str, Any]:
-    """ManualSelector keeping objects near three plate-interior points."""
+    """ManualRefine keeping objects near three plate-interior points."""
     return {"centers": [(150, 200), (300, 400), (450, 600)]}
 
 
@@ -345,75 +345,75 @@ CURATED_EXTRAS: tuple[_CuratedExtra, ...] = (
     # -- detect --
     _CuratedExtra("OtsuDetector", "ignore_zeros", {"ignore_zeros": True}),
     _CuratedExtra(
-        "OtsuDetector", "keep_borders", {"ignore_borders": False}
+            "OtsuDetector", "keep_borders", {"ignore_borders": False}
     ),
     _CuratedExtra("LiDetector", "ignore_zeros", {"ignore_zeros": True}),
     _CuratedExtra(
-        "UserThreshold", "high_thresh", {"threshold": 0.7}
+            "UserThreshold", "high_thresh", {"threshold": 0.7}
     ),
     _CuratedExtra(
-        "CannyDetector", "tight_sigma", {"sigma": 2.0, "min_size": 30}
+            "CannyDetector", "tight_sigma", {"sigma": 2.0, "min_size": 30}
     ),
     _CuratedExtra(
-        "WatershedDetector",
-        "compact_small",
-        {"min_size": 30, "compactness": 0.01},
-        stochastic=True,
+            "WatershedDetector",
+            "compact_small",
+            {"min_size": 30, "compactness": 0.01},
+            stochastic=True,
     ),
     _CuratedExtra(
-        "InoculumDetector",
-        "gmm_off",
-        {"enable_gmm": False},
-        stochastic=True,
+            "InoculumDetector",
+            "gmm_off",
+            {"enable_gmm": False},
+            stochastic=True,
     ),
     _CuratedExtra(
-        "ManualPointDetector",
-        "seeded_centers",
-        _manual_point_detector_args,
+            "ManualPointDetector",
+            "seeded_centers",
+            _manual_point_detector_args,
     ),
     _CuratedExtra(
-        "ManualGridPointDetector",
-        "two_corners",
-        {"coord1": (60, 70), "coord2": (540, 730), "width": 18},
+            "ManualGridPointDetector",
+            "two_corners",
+            {"coord1": (60, 70), "coord2": (540, 730), "width": 18},
     ),
     # -- enhance --
     _CuratedExtra("GaussianBlur", "sigma4", {"sigma": 4.0}),
     _CuratedExtra(
-        "GaussianBlur",
-        "constant_mode",
-        {"sigma": 2.0, "mode": "constant", "cval": 0.0},
+            "GaussianBlur",
+            "constant_mode",
+            {"sigma": 2.0, "mode": "constant", "cval": 0.0},
     ),
-    _CuratedExtra("CLAHE", "small_kernel", {"kernel_size": 32}),
+    _CuratedExtra("EnhanceLocalContrast", "small_kernel", {"kernel_size": 32}),
     _CuratedExtra("MedianFilter", "wide", {"width": 9}),
     _CuratedExtra(
-        "SubtractRollingBall", "small_ball", {"radius": 50}
+            "SubtractRollingBall", "small_ball", {"radius": 50}
     ),
-    _CuratedExtra("UnsharpMask", "strong", {"amount": 2.0}),
+    _CuratedExtra("SharpenEdgeGauss", "strong", {"amount": 2.0}),
     # -- refine --
     _CuratedExtra(
-        "SmallObjectRemover", "aggressive", {"min_size": 256}
+            "SmallObjectRemover", "aggressive", {"min_size": 256}
     ),
     _CuratedExtra(
-        "MaskDilator", "disk3x", {"width": 5, "n_iter": 2}
+            "MaskDilation", "disk3x", {"width": 5, "n_iter": 2}
     ),
     _CuratedExtra(
-        "BorderObjectRemover", "wide_margin", {"border_size": 60}
+            "RemoveBorderObjects", "wide_margin", {"border_size": 60}
     ),
     _CuratedExtra(
-        "ManualSelector", "seeded_centers", _manual_selector_args
+            "ManualRefine", "seeded_centers", _manual_selector_args
     ),
     # -- measure --
     _CuratedExtra(
-        "MeasureColor", "with_xyz", {"include_XYZ": True}
+            "MeasureColor", "with_xyz", {"include_XYZ": True}
     ),
     _CuratedExtra(
-        "MeasureSymmetricZones",
-        "intensity_method",
-        {"method": "intensity", "n_annuli": 60},
+            "MeasureSymmetricZones",
+            "intensity_method",
+            {"method": "intensity", "n_annuli": 60},
     ),
     # -- analysis --
     _CuratedExtra(
-        "TukeyOutlierRemover", "k3", {**_ANALYZER_BASE_ARGS, "k": 3.0}
+            "TukeyOutlierRemover", "k3", {**_ANALYZER_BASE_ARGS, "k": 3.0}
     ),
 )
 
@@ -440,7 +440,7 @@ def discover_operations() -> dict[str, list[type]]:
         pkg = importlib.import_module(f"phenotypic.{subpkg}")
         found: dict[str, type] = {}
         for _finder, modname, _ispkg in pkgutil.walk_packages(
-            pkg.__path__, f"{pkg.__name__}."
+                pkg.__path__, f"{pkg.__name__}."
         ):
             try:
                 module = importlib.import_module(modname)
@@ -448,10 +448,10 @@ def discover_operations() -> dict[str, list[type]]:
                 continue
             for name, obj in inspect.getmembers(module, inspect.isclass):
                 if (
-                    issubclass(obj, BaseOperation)
-                    and obj.__module__ == modname
-                    and not inspect.isabstract(obj)
-                    and name not in _ABC_NAMES
+                        issubclass(obj, BaseOperation)
+                        and obj.__module__ == modname
+                        and not inspect.isabstract(obj)
+                        and name not in _ABC_NAMES
                 ):
                     found[name] = obj
         discovered[subpkg] = [found[n] for n in sorted(found)]
@@ -583,18 +583,18 @@ def components_for(cls: type) -> tuple[str, ...]:
 
 # Operations whose default scenario depends on a numpy RNG draw.
 _STOCHASTIC_DEFAULTS: frozenset[str] = frozenset(
-    {
-        "InoculumDetector",
-        "WatershedDetector",
-        "FilamentousFungiDetector",
-        "GMMCoreExtractor",
-        "ChanVeseDetector",
-    }
+        {
+            "InoculumDetector",
+            "WatershedDetector",
+            "FilamentousFungiDetector",
+            "ExtractColonyCore",
+            "ChanVeseDetector",
+        }
 )
 
 # nn/ detectors need model checkpoints -> structural-only capture.
 _STRUCTURAL_ONLY: frozenset[str] = frozenset(
-    {"Sam2Detector", "MicroSamDetector"}
+        {"Sam2Detector", "MicroSamDetector"}
 )
 
 # Operations that are *not bit-reproducible* even on the unmigrated
@@ -605,7 +605,7 @@ _STRUCTURAL_ONLY: frozenset[str] = frozenset(
 # Confirmed by running each twice during harness development: the
 # detect_mat differed by < 1e-6.
 TOLERANT_OPS: dict[str, float] = {
-    "BM3DDenoiser": 1e-5,
+    "BM3DDenoiser" : 1e-5,
     "StableDenoise": 1e-5,
 }
 
@@ -661,7 +661,7 @@ def build_scenarios() -> list[Scenario]:
                 kwargs_factory = _as_factory(REQUIRED_ARGS[name])
             else:
                 kwargs_factory = _as_factory(
-                    DEFAULT_ARG_OVERRIDES.get(name, {})
+                        DEFAULT_ARG_OVERRIDES.get(name, {})
                 )
             invocation = invocation_for(cls, subpkg)
             components = (
@@ -670,19 +670,19 @@ def build_scenarios() -> list[Scenario]:
                 else ()
             )
             scenarios.append(
-                Scenario(
-                    scenario_id=f"{subpkg}.{name}",
-                    subpackage=subpkg,
-                    class_name=name,
-                    variant="defaults",
-                    kwargs_factory=kwargs_factory,
-                    category=category_for(cls, subpkg),
-                    invocation=invocation,
-                    components=components,
-                    stochastic=name in _STOCHASTIC_DEFAULTS,
-                    structural_only=name in _STRUCTURAL_ONLY,
-                    tolerance=TOLERANT_OPS.get(name, 0.0),
-                )
+                    Scenario(
+                            scenario_id=f"{subpkg}.{name}",
+                            subpackage=subpkg,
+                            class_name=name,
+                            variant="defaults",
+                            kwargs_factory=kwargs_factory,
+                            category=category_for(cls, subpkg),
+                            invocation=invocation,
+                            components=components,
+                            stochastic=name in _STOCHASTIC_DEFAULTS,
+                            structural_only=name in _STRUCTURAL_ONLY,
+                            tolerance=TOLERANT_OPS.get(name, 0.0),
+                    )
             )
 
     # 2. Auto-default scenarios for analyzers.
@@ -694,18 +694,18 @@ def build_scenarios() -> list[Scenario]:
             kwargs_factory = _as_factory(REQUIRED_ARGS[name])
         else:
             kwargs_factory = _as_factory(
-                _ANALYZER_DEFAULT_ARGS.get(name, _ANALYZER_BASE_ARGS)
+                    _ANALYZER_DEFAULT_ARGS.get(name, _ANALYZER_BASE_ARGS)
             )
         scenarios.append(
-            Scenario(
-                scenario_id=f"analysis.{name}",
-                subpackage="analysis",
-                class_name=name,
-                variant="defaults",
-                kwargs_factory=kwargs_factory,
-                category=CATEGORY_REFERENCE,
-                invocation=INVOKE_ANALYZE,
-            )
+                Scenario(
+                        scenario_id=f"analysis.{name}",
+                        subpackage="analysis",
+                        class_name=name,
+                        variant="defaults",
+                        kwargs_factory=kwargs_factory,
+                        category=CATEGORY_REFERENCE,
+                        invocation=INVOKE_ANALYZE,
+                )
         )
 
     # 3. Curated extras.
@@ -724,24 +724,24 @@ def build_scenarios() -> list[Scenario]:
             else ()
         )
         scenarios.append(
-            Scenario(
-                scenario_id=(
-                    f"{subpkg}.{extra.class_name}.{extra.variant}"
-                ),
-                subpackage=subpkg,
-                class_name=extra.class_name,
-                variant=extra.variant,
-                kwargs_factory=_as_factory(extra.kwargs),
-                category=category_for(cls, subpkg),
-                invocation=invocation,
-                components=components,
-                stochastic=(
-                    extra.stochastic
-                    or extra.class_name in _STOCHASTIC_DEFAULTS
-                ),
-                structural_only=extra.class_name in _STRUCTURAL_ONLY,
-                tolerance=TOLERANT_OPS.get(extra.class_name, 0.0),
-            )
+                Scenario(
+                        scenario_id=(
+                            f"{subpkg}.{extra.class_name}.{extra.variant}"
+                        ),
+                        subpackage=subpkg,
+                        class_name=extra.class_name,
+                        variant=extra.variant,
+                        kwargs_factory=_as_factory(extra.kwargs),
+                        category=category_for(cls, subpkg),
+                        invocation=invocation,
+                        components=components,
+                        stochastic=(
+                                extra.stochastic
+                                or extra.class_name in _STOCHASTIC_DEFAULTS
+                        ),
+                        structural_only=extra.class_name in _STRUCTURAL_ONLY,
+                        tolerance=TOLERANT_OPS.get(extra.class_name, 0.0),
+                )
         )
 
     return scenarios
@@ -767,6 +767,6 @@ def resolve_class(scenario: Scenario) -> type:
         if cls.__name__ == scenario.class_name:
             return cls
     raise LookupError(
-        f"Class {scenario.class_name!r} not found in "
-        f"subpackage {scenario.subpackage!r}."
+            f"Class {scenario.class_name!r} not found in "
+            f"subpackage {scenario.subpackage!r}."
     )

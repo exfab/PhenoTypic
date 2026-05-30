@@ -11,7 +11,7 @@ The tests share a function-scoped sandbox helper that:
 1. Builds the standard E2E sandbox layout.
 2. Replaces the empty placeholder ``master_measurements.parquet`` with
    a real polars frame carrying the columns the QC machinery needs
-   (``Metadata_ImageFile``, ``Metadata_Dataset``, ``ObjectLabel``,
+   (``Metadata_ImageFile``, ``Metadata_Dataset``, ``Object_Label``,
    ``Size_Area``, ``Grid_RowNum``, ``Grid_ColNum``, ``Metadata_Time``).
 3. Pre-seeds ``<output>/.viewer_cache/qc_recipe.json`` directly so the
    tests do not depend on the OperationRegistry being stashed on the
@@ -82,7 +82,7 @@ def _build_real_master_df() -> pl.DataFrame:
                         "Metadata_Dataset": "ds1",
                         "Metadata_ImageFile": image,
                         "Metadata_Time": 0.0,
-                        "ObjectLabel": label,
+                        "Object_Label": label,
                         "Grid_RowNum": r,
                         "Grid_ColNum": c,
                         "Size_Area": float(100 + r * 10 + c),
@@ -258,8 +258,8 @@ def _se_entry(
     instance_id: str,
     on: str = "Size_Area",
     groupby: tuple[str, ...] = ("Metadata_ImageFile",),
-    severity_warn: float = 0.10,
-    severity_fail: float = 0.20,
+    warn_threshold: float = 0.10,
+    fail_threshold: float = 0.20,
     enabled: bool = True,
 ) -> dict:
     """Build one ReplicateAgreement entry suitable for ``qc_recipe.json``."""
@@ -271,8 +271,8 @@ def _se_entry(
             "on": on,
             "groupby": list(groupby),
             "time_label": "Metadata_Time",
-            "severity_warn": severity_warn,
-            "severity_fail": severity_fail,
+            "warn_threshold": warn_threshold,
+            "fail_threshold": fail_threshold,
             "min_replicates": 2,
         },
     }
@@ -293,7 +293,7 @@ def _count_entry(
         "params": {
             "metadata": metadata_path,
             "groupby": list(groupby),
-            "on": "ObjectLabel",
+            "on": "Object_Label",
         },
     }
 
@@ -306,7 +306,7 @@ def _write_count_metadata(output_dir: Path) -> Path:
     for image in _IMAGES:
         for _ in range(_NUM_ROWS * _NUM_COLS):
             label += 1
-            rows.append({"Metadata_ImageFile": image, "ObjectLabel": label})
+            rows.append({"Metadata_ImageFile": image, "Object_Label": label})
     pl.DataFrame(rows).write_csv(csv_path)
     return csv_path
 
@@ -368,11 +368,11 @@ def test_edit_check_modal(
     output_rel: str,
     output_dir: Path,
 ) -> None:
-    """Edit pre-fills current params and persists ``severity_warn`` change.
+    """Edit pre-fills current params and persists ``warn_threshold`` change.
 
     Spec line 1212. Pre-seeds one ReplicateAgreement entry on disk,
     invokes its per-card edit button, asserts the modal opens with the
-    SE class selected, and finally rewrites ``severity_warn`` directly
+    SE class selected, and finally rewrites ``warn_threshold`` directly
     on the recipe via ``QcRecipe.update`` and confirms the disk reads
     back the new value. We exercise the persistence half through the
     recipe API rather than the modal form to keep the test independent
@@ -384,7 +384,7 @@ def test_edit_check_modal(
         output_dir,
         {
             "version": 1,
-            "checks": [_se_entry(instance_id=instance_id, severity_warn=0.10)],
+            "checks": [_se_entry(instance_id=instance_id, warn_threshold=0.10)],
         },
     )
     _hand_off_viewer(page, hub_url, output_rel)
@@ -397,18 +397,18 @@ def test_edit_check_modal(
     )
 
     # Mutate the on-disk recipe to simulate a modal submit on
-    # ``severity_warn``. ``QcRecipe.update`` is what the modal callback
+    # ``warn_threshold``. ``QcRecipe.update`` is what the modal callback
     # ultimately invokes.
     from phenotypic.gui._qc_recipe import QcRecipe
 
     recipe = QcRecipe.load(output_dir)
     new_params = dict(recipe.entries[0].params)
-    new_params["severity_warn"] = 0.05
+    new_params["warn_threshold"] = 0.05
     assert recipe.update(instance_id, params=new_params)
 
     on_disk = _read_recipe(output_dir)
     target = next(c for c in on_disk["checks"] if c["instance_id"] == instance_id)
-    assert target["params"]["severity_warn"] == 0.05
+    assert target["params"]["warn_threshold"] == 0.05
 
 
 def test_toggle_check_enabled(
@@ -731,7 +731,7 @@ def test_summary_strip_counts(
     """Summary strip text matches the analyzer's ``summary()`` output.
 
     Spec line 1218. The format is
-    ``"groups: N | flagged: K | max severity: X.YZ"``.
+    ``"groups: N | flagged: K | worst metric: X.YZ"``.
     """
     instance_id = "qc-SE-summary00"
     _seed_qc_recipe(
@@ -759,7 +759,7 @@ def test_summary_strip_counts(
     import re
 
     assert re.match(
-        r"groups: \d+ \| flagged: \d+ \| max severity: (\d+\.\d{2}|nan)",
+        r"groups: \d+ \| flagged: \d+ \| worst metric: (\d+\.\d{2}|nan)",
         text,
     ), f"summary strip did not match expected format: {text!r}"
 
@@ -796,7 +796,7 @@ def test_mark_flagged_pushes_to_removed_keys(
     for image in _IMAGES:
         for _ in range(100):
             label += 1
-            rows.append({"Metadata_ImageFile": image, "ObjectLabel": label})
+            rows.append({"Metadata_ImageFile": image, "Object_Label": label})
     csv_path = output_dir / "count_metadata.csv"
     pl.DataFrame(rows).write_csv(csv_path)
 

@@ -79,8 +79,8 @@ TIER 2 (Concrete Measurers - Depend on Tier 0-1)
 TIER 3 (Refiners - Create DataFrames from regionprops)
 ├── refine/_small_to_large_merger.py → ObjectRefiner
 ├── refine/_nearest_neighbor_merger.py → ObjectRefiner
-├── refine/_transitive_distance_merger.py → ObjectRefiner
-└── refine/_circularity_modifier.py → ObjectRefiner
+├── refine/_merge_fragment_chains.py → ObjectRefiner
+└── refine/_remove_non_circular.py → ObjectRefiner
 
 TIER 4 (Analysis Classes - Receive DataFrames)
 ├── analysis/_tukey_outlier.py → SetAnalyzer
@@ -303,7 +303,7 @@ All refiners create temporary DataFrames from `regionprops_table()` for internal
   - `pd.DataFrame(props)`, column selection, `.values`
 - **Complexity**: **LOW**
 
-#### **4.2 `refine/_transitive_distance_merger.py`**
+#### **4.2 `refine/_merge_fragment_chains.py`**
 - **Pandas usage**: Basic
   - `pd.DataFrame(props)`, column selection
 - **Complexity**: **LOW**
@@ -313,7 +313,7 @@ All refiners create temporary DataFrames from `regionprops_table()` for internal
   - `pd.DataFrame()`, boolean indexing, multi-column selection
 - **Complexity**: **LOW**
 
-#### **4.4 `refine/_circularity_modifier.py`** (Most complex)
+#### **4.4 `refine/_remove_non_circular.py`** (Most complex)
 - **Pandas usage**: Medium-complex
   - `pd.DataFrame()`, `.rename()`, `.set_index()`, column arithmetic, boolean indexing, `.index.to_numpy()`
 - **Complexity**: **MEDIUM** - Index manipulation
@@ -504,9 +504,9 @@ All refiners create temporary DataFrames from `regionprops_table()` for internal
 | **3.8** | `measure/_measure_texture.py` | Medium | 1.1 | Pipelines | LOW | MEDIUM |
 | **3.9** | `measure/_measure_grid_linreg_stats.py` | Complex | 2.1 → 1.1 | Pipelines | LOW | **HIGH** |
 | **4.1** | `refine/_nearest_neighbor_merger.py` | Basic | None | Pipelines | LOW | LOW |
-| **4.2** | `refine/_transitive_distance_merger.py` | Basic | None | Pipelines | LOW | LOW |
+| **4.2** | `refine/_merge_fragment_chains.py` | Basic | None | Pipelines | LOW | LOW |
 | **4.3** | `refine/_small_to_large_merger.py` | Medium | None | Pipelines | LOW | LOW |
-| **4.4** | `refine/_circularity_modifier.py` | Medium | None | Pipelines | LOW | MEDIUM |
+| **4.4** | `refine/_remove_non_circular.py` | Medium | None | Pipelines | LOW | MEDIUM |
 | **5.1** | `analysis/_tukey_outlier.py` | Medium | 1.2 | User code | MEDIUM | MEDIUM |
 | **5.2** | `analysis/_log_growth_model.py` | Extensive | 2.3 → 1.2 | User code | MEDIUM | **HIGH** |
 | **5.3** | `analysis/_edge_correction.py` | Very Extensive | 1.2 | User code | MEDIUM | **VERY HIGH** |
@@ -734,7 +734,7 @@ Files with minimal pandas usage that can be deprioritized:
    - Only uses `pd.Interval` and `is_scalar`
    - Can be migrated late with minimal impact
 
-2. **`refine/_circularity_modifier.py`** (Priority 4.4):
+2. **`refine/_remove_non_circular.py`** (Priority 4.4):
    - Internal DataFrame usage only
    - Not on critical path
 
@@ -842,8 +842,8 @@ All files referenced in this plan:
 **Refiner files** (4 files):
 - `/Users/alex/Projects/PhenoTypic/src/phenotypic/refine/_small_to_large_merger.py`
 - `/Users/alex/Projects/PhenoTypic/src/phenotypic/refine/_nearest_neighbor_merger.py`
-- `/Users/alex/Projects/PhenoTypic/src/phenotypic/refine/_transitive_distance_merger.py`
-- `/Users/alex/Projects/PhenoTypic/src/phenotypic/refine/_circularity_modifier.py`
+- `/Users/alex/Projects/PhenoTypic/src/phenotypic/refine/_merge_fragment_chains.py`
+- `/Users/alex/Projects/PhenoTypic/src/phenotypic/refine/_remove_non_circular.py`
 
 **Analysis files** (3 files):
 - `/Users/alex/Projects/PhenoTypic/src/phenotypic/analysis/_tukey_outlier.py`

@@ -3,12 +3,12 @@ from typing import Literal
 import numpy as np
 
 from phenotypic.abc_ import PrefabPipeline
-from phenotypic.enhance import CLAHE, MedianFilter, BM3DDenoiser
+from phenotypic.enhance import EnhanceLocalContrast, MedianFilter, BM3DDenoiser
 from phenotypic.detect import RoundPeaksDetector
 from phenotypic.correction import GridAligner
-from phenotypic.refine import ReduceMultipleGridObjects, GridOversizedObjectRemover
-from phenotypic.refine import BorderObjectRemover, SmallObjectRemover
-from phenotypic.refine import MaskFill, MaskOpener
+from phenotypic.refine import ReduceSectionsByLine, GridOversizedObjectRemover
+from phenotypic.refine import RemoveBorderObjects, SmallObjectRemover
+from phenotypic.refine import MaskFill, MaskOpening
 from phenotypic.measure import (
     MeasureIntensity,
     MeasureShape,
@@ -21,20 +21,20 @@ class HeavyRoundPeaksPipeline(PrefabPipeline):
     """Detect and measure round colonies using peak detection with full refinement.
 
     An extended version of :class:`RoundPeaksPipeline` that adds BM3D denoising,
-    CLAHE contrast enhancement, morphological refinement, grid alignment, and a
+    EnhanceLocalContrast contrast enhancement, morphological refinement, grid alignment, and a
     second detection pass for improved accuracy on challenging plates.
 
     Steps:
         1. BM3DDenoiser — high-quality denoising
-        2. CLAHE — boost local contrast
+        2. EnhanceLocalContrast — boost local contrast
         3. MedianFilter — remove residual speckle
         4. RoundPeaksDetector — first detection pass
-        5. MaskOpener, BorderObjectRemover, SmallObjectRemover, MaskFill — cleanup
-        6. GridOversizedObjectRemover, ReduceMultipleGridObjects — grid refinement
+        5. MaskOpening, RemoveBorderObjects, SmallObjectRemover, MaskFill — cleanup
+        6. GridOversizedObjectRemover, ReduceSectionsByLine — grid refinement
         7. GridAligner — straighten the grid
         8. RoundPeaksDetector — second detection pass after alignment
-        9. BorderObjectRemover, SmallObjectRemover, MaskFill — final cleanup
-        10. ReduceMultipleGridObjects — final grid refinement
+        9. RemoveBorderObjects, SmallObjectRemover, MaskFill — final cleanup
+        10. ReduceSectionsByLine — final grid refinement
 
     Measurements: MeasureShape, MeasureColor, MeasureIntensity, MeasureTexture.
 
@@ -64,7 +64,8 @@ class HeavyRoundPeaksPipeline(PrefabPipeline):
             bm3d_clip: bool = True,
             clahe_kernel_size: int | None = None,
             clahe_clip_limit: float = 0.01,
-            median_mode: Literal["nearest", "reflect", "constant", "mirror", "wrap"] = "nearest",
+            median_mode: Literal[
+                "nearest", "reflect", "constant", "mirror", "wrap"] = "nearest",
             median_shape: Literal["disk", "square", "diamond"] = "diamond",
             median_radius: int = 5,
             median_cval: float = 0.0,
@@ -80,13 +81,15 @@ class HeavyRoundPeaksPipeline(PrefabPipeline):
             detector_min_peak_distance: int | None = None,
             detector_peak_prominence: float | None = None,
             detector_edge_refinement: bool = True,
-            detector_selection_mode: Literal["dominant", "centered", "regularized"] = "dominant",
+            detector_selection_mode: Literal[
+                "dominant", "centered", "regularized"] = "dominant",
             detector_split_merged: bool = True,
             # Grid alignment
             grid_aligner_axis: int = 0,
             grid_aligner_mode: str = "edge",
             # Morphology / refinement
-            mask_opener_footprint: Literal["auto", "disk", "square", "diamond"] | np.ndarray | None = "auto",
+            mask_opener_footprint: Literal[
+                                       "auto", "disk", "square", "diamond"] | np.ndarray | None = "auto",
             mask_opener_width: int = 5,
             mask_opener_n_iter: int = 1,
             border_remover_size: int | float = 1,
@@ -123,10 +126,10 @@ class HeavyRoundPeaksPipeline(PrefabPipeline):
             bm3d_clip: Whether to clip denoised values to the [0, 1] range. Disabling may
                 preserve subtle intensity variations but can produce out-of-range values.
             clahe_kernel_size: Determines the size of the kernel used for local contrast enhancement
-                via CLAHE. Larger sizes improve contrast over broader areas, but may over-amplify
+                via EnhanceLocalContrast. Larger sizes improve contrast over broader areas, but may over-amplify
                 large background variations. Smaller sizes enhance localized details but may
                 introduce noise.
-            clahe_clip_limit: Contrast clipping limit for CLAHE. Lower values produce more subtle
+            clahe_clip_limit: Contrast clipping limit for EnhanceLocalContrast. Lower values produce more subtle
                 enhancement; higher values amplify local contrast more aggressively, which can
                 over-enhance noise.
             median_mode: Boundary handling mode for median filtering. Controls how pixel values
@@ -234,40 +237,43 @@ class HeavyRoundPeaksPipeline(PrefabPipeline):
         )
 
         ops = [
-            BM3DDenoiser(sigma_psd=bm3d_sigma, block_size=bm3d_block_size, stage_arg=bm3d_stage_arg, clip=bm3d_clip),
-            CLAHE(kernel_size=clahe_kernel_size, clip_limit=clahe_clip_limit),
-            MedianFilter(mode=median_mode, shape=median_shape, width=median_radius, cval=median_cval),
+            BM3DDenoiser(sigma_psd=bm3d_sigma, block_size=bm3d_block_size,
+                         stage_arg=bm3d_stage_arg, clip=bm3d_clip),
+            EnhanceLocalContrast(kernel_size=clahe_kernel_size, clip_limit=clahe_clip_limit),
+            MedianFilter(mode=median_mode, shape=median_shape, width=median_radius,
+                         cval=median_cval),
             # First detection pass
             RoundPeaksDetector(**detector_kwargs),
-            MaskOpener(shape=mask_opener_footprint, width=mask_opener_width, n_iter=mask_opener_n_iter),
-            BorderObjectRemover(border_size=border_remover_size),
+            MaskOpening(shape=mask_opener_footprint, width=mask_opener_width,
+                        n_iter=mask_opener_n_iter),
+            RemoveBorderObjects(border_size=border_remover_size),
             SmallObjectRemover(min_size=small_object_min_size),
             MaskFill(structure=mask_fill_structure, origin=mask_fill_origin),
             GridOversizedObjectRemover(),
-            ReduceMultipleGridObjects(),
+            ReduceSectionsByLine(),
             GridAligner(axis=grid_aligner_axis, mode=grid_aligner_mode),
             # Second detection pass
             RoundPeaksDetector(**detector_kwargs),
-            MaskOpener(shape=None),
-            BorderObjectRemover(border_size=border_remover_size),
+            MaskOpening(shape=None),
+            RemoveBorderObjects(border_size=border_remover_size),
             SmallObjectRemover(min_size=small_object_min_size),
             GridOversizedObjectRemover(),
             MaskFill(structure=mask_fill_structure, origin=mask_fill_origin),
-            ReduceMultipleGridObjects(),
+            ReduceSectionsByLine(),
         ]
 
         meas = [
             MeasureShape(),
             MeasureColor(
-                white_chroma_max=color_white_chroma_max,
-                chroma_min=color_chroma_min,
-                include_XYZ=color_include_XYZ,
+                    white_chroma_max=color_white_chroma_max,
+                    chroma_min=color_chroma_min,
+                    include_XYZ=color_include_XYZ,
             ),
             MeasureTexture(
-                scale=texture_scale,
-                quant_lvl=texture_quant_lvl,
-                enhance=texture_enhance,
-                warn=texture_warn,
+                    scale=texture_scale,
+                    quant_lvl=texture_quant_lvl,
+                    enhance=texture_enhance,
+                    warn=texture_warn,
             ),
             MeasureIntensity(),
         ]

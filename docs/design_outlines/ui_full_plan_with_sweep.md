@@ -380,7 +380,7 @@ class ParameterSweep:
         **Programmatic Usage (like PipeGridSearch):**
 
         >>> from phenotypic.ui.sweep import ParameterSweep
-        >>> from phenotypic.enhance import GaussianBlur, CLAHE
+        >>> from phenotypic.enhance import GaussianBlur, EnhanceLocalContrast
         >>> from phenotypic.detect import OtsuDetector
         >>> from phenotypic import GridImage
         >>>
@@ -388,7 +388,7 @@ class ParameterSweep:
         >>> pipe_cfgs = {
         ...     "DetectionPipeline": [
         ...         (GaussianBlur(), {"sigma": [1.0, 1.5, 2.0, 2.5]}),
-        ...         (CLAHE(), {"clip_limit": [1.5, 2.0, 2.5]}),
+        ...         (EnhanceLocalContrast(), {"clip_limit": [1.5, 2.0, 2.5]}),
         ...         (OtsuDetector(), {"ignore_zeros": [True, False]}),
         ...     ]
         ... }
@@ -505,7 +505,7 @@ class SweepConfigurator(param.Parameterized):
 │  │ │ ▶ DetectionPipeline    │ │  │ Parallel Jobs:    [-1   ] │ │
 │  │ │   - GaussianBlur:      │ │  │ Ground Truth Dir: [______] │ │
 │  │ │     sigma: [1,1.5,2]   │ │  │                            │ │
-│  │ │   - CLAHE:             │ │  │ ### Data to Save           │ │
+│  │ │   - EnhanceLocalContrast:             │ │  │ ### Data to Save           │ │
 │  │ │     clip_limit: [1.5,2]│ │  │ [x] RGB                    │ │
 │  │ │   - OtsuDetector:      │ │  │ [x] Grayscale              │ │
 │  │ │     ignore_zeros: T/F  │ │  │ [x] Detection Matrix     │ │
@@ -544,7 +544,7 @@ The HTML viewer is generated via Jinja2 templates with keyboard navigation for c
       "config_file": "pipelines/DetectionPipeline_000.json",
       "parameters": {
         "GaussianBlur.sigma": 1.0,
-        "CLAHE.clip_limit": 1.5,
+        "EnhanceLocalContrast.clip_limit": 1.5,
         "OtsuDetector.ignore_zeros": true
       }
     }

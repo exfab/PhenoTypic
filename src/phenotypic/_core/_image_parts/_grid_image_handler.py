@@ -17,7 +17,7 @@ from phenotypic._core._image_parts.accessors import GridAccessor
 from phenotypic.grid import AutoGridFinder
 from phenotypic.measure import MeasureBounds
 from phenotypic.tools_.constants_ import IMAGE_TYPES, METADATA
-from phenotypic.tools_.measurement_info import BBOX
+from phenotypic.schema import BBOX
 from phenotypic.tools_.exceptions_ import IllegalAssignmentError
 from .._image import Image
 

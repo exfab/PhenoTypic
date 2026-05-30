@@ -1,6 +1,6 @@
 """QC tab for the results viewer.
 
-Per-check :class:`~phenotypic.gui._qc_recipe.QcRecipe`-driven UI: each
+Per-check :class:`~phenotypic.qc.QcRecipe`-driven UI: each
 entry renders as a card with a Plotly figure, a summary strip, and four
 lifecycle controls (edit / enable / duplicate / delete). The cards are
 backed by a shared add/edit/duplicate :class:`dbc.Modal` that hosts a

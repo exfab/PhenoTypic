@@ -10,9 +10,9 @@ from phenotypic import ImagePipeline, Image
 from phenotypic._core._pipeline_parts._serializable_pipeline import SerializablePipeline
 from phenotypic.data import load_colony
 from phenotypic.detect import OtsuDetector
-from phenotypic.enhance import GaussianBlur, CLAHE
+from phenotypic.enhance import GaussianBlur, EnhanceLocalContrast
 from phenotypic.measure import MeasureShape, MeasureIntensity, MeasureColor
-from phenotypic.refine import SmallObjectRemover, BorderObjectRemover
+from phenotypic.refine import SmallObjectRemover, RemoveBorderObjects
 
 
 class TestBasicSerialization:
@@ -127,11 +127,11 @@ class TestParameterSerialization:
     def test_string_parameters(self):
         """Test serialization of string parameters."""
         # Create a pipeline with an operation that has string parameters
-        pipe = ImagePipeline(ops=[CLAHE()])
+        pipe = ImagePipeline(ops=[EnhanceLocalContrast()])
         json_str = pipe.to_json()
 
         loaded_pipe = ImagePipeline.from_json(json_str)
-        assert "CLAHE" in loaded_pipe._ops
+        assert "EnhanceLocalContrast" in loaded_pipe._ops
 
     def test_list_parameters(self):
         """Test serialization of list parameters."""
@@ -188,7 +188,7 @@ class TestRoundtripFunctionality:
                     GaussianBlur(sigma=2),
                     OtsuDetector(ignore_zeros=True),
                     SmallObjectRemover(min_size=25),
-                    BorderObjectRemover(border_size=10),
+                    RemoveBorderObjects(border_size=10),
                 ],
                 meas=[MeasureShape(), MeasureIntensity(), MeasureColor()],
                 benchmark=True,
@@ -348,11 +348,11 @@ class TestEdgeCases:
         """Old JSON without nrows/ncols keys still loads cleanly."""
         legacy_json = json.dumps({
             "pipe_cfgs": {},
-            "meas": {},
-            "post": {},
-            "name": "legacy",
-            "desc": None,
-            "reset": False,
+            "meas"     : {},
+            "post"     : {},
+            "name"     : "legacy",
+            "desc"     : None,
+            "reset"    : False,
         })
 
         loaded = ImagePipeline.from_json(legacy_json)
@@ -375,7 +375,8 @@ class TestEdgeCases:
         assert loaded_pipe._verbose is False
 
         # Can override with parameters
-        loaded_pipe_with_flags = ImagePipeline.from_json(json_str, benchmark=True, verbose=True)
+        loaded_pipe_with_flags = ImagePipeline.from_json(json_str, benchmark=True,
+                                                         verbose=True)
         assert loaded_pipe_with_flags._benchmark is True
         assert loaded_pipe_with_flags._verbose is True
 
@@ -439,11 +440,11 @@ class TestPreMigrationBackwardCompat:
             "desc"     : "saved before the pydantic migration",
             "reset"    : False,
             "pipe_cfgs": {
-                "GaussianBlur": {
+                "GaussianBlur"      : {
                     "class" : "GaussianBlur",
                     "params": {"sigma": 3.0, "mode": "reflect"},
                 },
-                "OtsuDetector": {
+                "OtsuDetector"      : {
                     "class" : "OtsuDetector",
                     "params": {"ignore_zeros": True, "ignore_borders": False},
                 },
@@ -461,14 +462,14 @@ class TestPreMigrationBackwardCompat:
 
         # Build the equivalent pipeline directly and compare.
         expected = ImagePipeline(
-            ops=[
-                GaussianBlur(sigma=3.0, mode="reflect"),
-                OtsuDetector(ignore_zeros=True, ignore_borders=False),
-                SmallObjectRemover(min_size=40),
-            ],
-            meas=[MeasureShape()],
-            name="legacy_pipeline",
-            desc="saved before the pydantic migration",
+                ops=[
+                    GaussianBlur(sigma=3.0, mode="reflect"),
+                    OtsuDetector(ignore_zeros=True, ignore_borders=False),
+                    SmallObjectRemover(min_size=40),
+                ],
+                meas=[MeasureShape()],
+                name="legacy_pipeline",
+                desc="saved before the pydantic migration",
         )
 
         assert loaded.name == expected.name == "legacy_pipeline"
@@ -494,7 +495,7 @@ class TestPreMigrationBackwardCompat:
 
         # A re-serialized round-trip of the loaded pipeline is stable.
         assert ImagePipeline.from_json(loaded.to_json()).to_json() == \
-            loaded.to_json()
+               loaded.to_json()
 
     def test_loads_pre_migration_legacy_nested_operation_list(self):
         """Legacy ``__type__: operation_list`` nesting still reconstructs.
@@ -717,8 +718,8 @@ class TestPipelineAsOperationSerialization:
     def test_nested_pipeline_with_measurements_preserved(self):
         """Test that measurements inside a nested pipeline are preserved."""
         inner = ImagePipeline(
-            ops=[OtsuDetector()],
-            meas=[MeasureShape(), MeasureIntensity()],
+                ops=[OtsuDetector()],
+                meas=[MeasureShape(), MeasureIntensity()],
         )
         outer = ImagePipeline(ops=[inner])
 
@@ -751,7 +752,7 @@ class TestPipelineAsOperationSerialization:
         """Test pipeline containing both regular operations and nested pipelines."""
         inner = ImagePipeline(ops=[OtsuDetector()])
         outer = ImagePipeline(
-            ops=[GaussianBlur(sigma=2), inner, SmallObjectRemover(min_size=50)]
+                ops=[GaussianBlur(sigma=2), inner, SmallObjectRemover(min_size=50)]
         )
 
         loaded = ImagePipeline.from_json(outer.to_json())
@@ -764,9 +765,9 @@ class TestPipelineAsOperationSerialization:
     def test_inner_pipeline_name_and_desc_preserved(self):
         """Test that inner pipeline name and desc are preserved."""
         inner = ImagePipeline(
-            ops=[OtsuDetector()],
-            name="inner_pipe",
-            desc="Inner pipeline description",
+                ops=[OtsuDetector()],
+                name="inner_pipe",
+                desc="Inner pipeline description",
         )
         outer = ImagePipeline(ops=[inner])
 
@@ -780,7 +781,7 @@ class TestPipelineAsOperationSerialization:
         from phenotypic.prefab import FilamentousFungiPipeline
 
         found = SerializablePipeline._find_class_in_phenotypic(
-            "FilamentousFungiPipeline"
+                "FilamentousFungiPipeline"
         )
         assert found is FilamentousFungiPipeline
 
@@ -807,5 +808,3 @@ class TestPipelineAsOperationSerialization:
         for name in prefab_names:
             found = SerializablePipeline._find_class_in_phenotypic(name)
             assert found is not None, f"{name} not found in phenotypic namespace"
-
-

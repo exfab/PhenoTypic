@@ -21,7 +21,7 @@ from phenotypic._core._pipeline_parts._napari_pipeline_viewer import (
 from phenotypic._core._image_pipeline import ImagePipeline
 from phenotypic.abc_ import ImageCorrector
 from phenotypic.detect import OtsuDetector
-from phenotypic.enhance import GaussianBlur, CLAHE
+from phenotypic.enhance import GaussianBlur, EnhanceLocalContrast
 from phenotypic.measure import MeasureSize
 from phenotypic.refine import SmallObjectRemover
 
@@ -99,7 +99,7 @@ class TestNapariLayersFor:
         assert result == [("detect_mat", False)]
 
     def test_clahe_enhancer_returns_detect_mat(self):
-        result = _napari_layers_for(CLAHE())
+        result = _napari_layers_for(EnhanceLocalContrast())
         assert result == [("detect_mat", False)]
 
     def test_detector_returns_objmap(self):

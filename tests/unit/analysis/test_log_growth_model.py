@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 
 from phenotypic.analysis._log_growth_model import LogGrowthModel
-from phenotypic.tools_.measurement_info import LOG_GROWTH_MODEL, MODEL_METRICS
+from phenotypic.schema import LOG_GROWTH_MODEL, MODEL_METRICS
 
 
 class TestLogGrowthModel:

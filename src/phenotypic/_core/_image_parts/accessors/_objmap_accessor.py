@@ -346,7 +346,7 @@ class ObjectMap(NapariLabelsMixin, SingleChannelAccessor):
             cmap: str = "tab10",
             ax: None | plt.Axes = None,
             mpl_params: None | dict = None,
-    ) -> (plt.Figure, plt.Axes):
+    ) -> tuple[plt.Figure, plt.Axes]:
         """Display the object map using matplotlib's imshow.
 
         This method visualizes the labeled object map using matplotlib. Each

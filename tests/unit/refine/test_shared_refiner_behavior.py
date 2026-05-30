@@ -1,4 +1,4 @@
-"""Shared tests for refiner behavior across GridAlignmentRefiner and SineAlignmentRefiner.
+"""Shared tests for refiner behavior across GridAlignmentRefiner and RefineBySineFit.
 
 These tests verify common behavior that is identical for both refiners,
 avoiding duplication.
@@ -10,8 +10,8 @@ import pytest
 import numpy as np
 from phenotypic import Image, GridImage
 from phenotypic.detect import OtsuDetector, RoundPeaksDetector
-from phenotypic.refine import GridAlignmentRefiner, SineAlignmentRefiner
-REFINERS = [GridAlignmentRefiner, SineAlignmentRefiner]
+from phenotypic.refine import GridAlignmentRefiner, RefineBySineFit
+REFINERS = [GridAlignmentRefiner, RefineBySineFit]
 
 
 class TestRefinerBasicsShared:
@@ -177,11 +177,11 @@ class TestRefinerPipelineShared:
     def test_pipeline_integration(self, RefinerClass, synth_plate):
         """Test refiner in a complete processing pipeline."""
         from phenotypic import ImagePipeline
-        from phenotypic.enhance import GaussianBlur, CLAHE
+        from phenotypic.enhance import GaussianBlur, EnhanceLocalContrast
 
         pipeline = ImagePipeline(ops=[
             GaussianBlur(sigma=1),
-            CLAHE(clip_limit=2),
+            EnhanceLocalContrast(clip_limit=2),
             RoundPeaksDetector(),
             RefinerClass(),
         ])

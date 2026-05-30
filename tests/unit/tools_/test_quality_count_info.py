@@ -1,7 +1,7 @@
 """Tests for the ``QUALITY_COUNT`` measurement-info enum."""
 from __future__ import annotations
 
-from phenotypic.tools_.measurement_info._quality_count import QUALITY_COUNT
+from phenotypic.schema._quality_count import QUALITY_COUNT
 
 
 class TestQualityCountMembers:

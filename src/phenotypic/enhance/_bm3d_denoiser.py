@@ -60,7 +60,7 @@ class BM3DDenoiser(_GATSupportMixin, ImageDenoiser):
           three-step pipeline with one operation).
 
     Consider Also:
-        - :class:`BilateralDenoise` for faster edge-preserving denoising
+        - :class:`LocalEdgeDenoise` for faster edge-preserving denoising
           when structured noise is not the primary concern.
         - :class:`NonLocalMeansDenoiser` for patch-based denoising with
           lower computational overhead.

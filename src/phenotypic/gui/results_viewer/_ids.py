@@ -530,7 +530,7 @@ def colony_cell_id(image_file: str, label: int) -> Dict[str, str | int]:
 
     Args:
         image_file: ``Metadata_ImageFile`` for the cell's representative colony.
-        label: ``ObjectLabel`` for the cell's representative colony.
+        label: ``Object_Label`` for the cell's representative colony.
 
     Returns:
         Dict of shape ``{"type": "colony-cell", "image_file": image_file, "label": label}``.
@@ -543,7 +543,7 @@ def colony_cell_remove_btn_id(image_file: str, label: int) -> Dict[str, str | in
 
     Args:
         image_file: ``Metadata_ImageFile`` for the cell's representative colony.
-        label: ``ObjectLabel`` for the cell's representative colony.
+        label: ``Object_Label`` for the cell's representative colony.
 
     Returns:
         Dict of shape
@@ -561,7 +561,7 @@ def colony_cell_count_badge_id(image_file: str, label: int) -> Dict[str, str | i
 
     Args:
         image_file: ``Metadata_ImageFile`` for the cell's representative colony.
-        label: ``ObjectLabel`` for the cell's representative colony.
+        label: ``Object_Label`` for the cell's representative colony.
 
     Returns:
         Dict of shape
@@ -579,7 +579,7 @@ def colony_cell_popover_body_id(image_file: str, label: int) -> Dict[str, str | 
 
     Args:
         image_file: ``Metadata_ImageFile`` for the cell's representative colony.
-        label: ``ObjectLabel`` for the cell's representative colony.
+        label: ``Object_Label`` for the cell's representative colony.
 
     Returns:
         Dict of shape
@@ -598,7 +598,7 @@ def colony_cell_popover_data_id(image_file: str, label: int) -> Dict[str, str | 
 
     Args:
         image_file: ``Metadata_ImageFile`` for the cell's representative colony.
-        label: ``ObjectLabel`` for the cell's representative colony.
+        label: ``Object_Label`` for the cell's representative colony.
 
     Returns:
         Dict of shape
@@ -616,7 +616,7 @@ def colony_cell_expand_btn_id(image_file: str, label: int) -> Dict[str, str | in
 
     Args:
         image_file: ``Metadata_ImageFile`` for the cell's representative colony.
-        label: ``ObjectLabel`` for the cell's representative colony.
+        label: ``Object_Label`` for the cell's representative colony.
 
     Returns:
         Dict of shape

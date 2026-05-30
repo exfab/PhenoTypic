@@ -1,10 +1,9 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, overload
+from typing import TYPE_CHECKING
 from abc import ABC, abstractmethod
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
-    from phenotypic._core._grid_image import GridImage
 
 from ._object_detector import ObjectDetector
 
@@ -132,7 +131,7 @@ class ThresholdDetector(ObjectDetector, ABC):
       morphological closing, or watershed post-processing in ObjectRefiner.
     - **False positives at edges:** Use ``ignore_borders=True`` parameter or ``clear_border()``
       in ObjectRefiner to remove edge-touching objects.
-    - **Uneven illumination (vignetting, shadows):** Apply enhancement (CLAHE, illumination
+    - **Uneven illumination (vignetting, shadows):** Apply enhancement (EnhanceLocalContrast, illumination
       correction) before detection, or switch to local adaptive thresholding.
     - **Threshold too high/low:** Visualize objmask on sample images to diagnose. Adjust
       parameters and re-test on representative plates before batch processing.
@@ -288,14 +287,6 @@ class ThresholdDetector(ObjectDetector, ABC):
         >>> # Use best detector for batch processing
         >>> print(f"Selected: {type(best_detector).__name__}")
     """
-
-    @overload
-    @abstractmethod
-    def _operate(self, image: Image) -> Image: ...
-
-    @overload
-    @abstractmethod
-    def _operate(self, image: GridImage) -> GridImage: ...
 
     @abstractmethod
     def _operate(self, image: Image) -> Image:

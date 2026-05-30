@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Callable
+from typing import Any, Callable
 
 import numpy as np
 import pandas as pd
@@ -8,6 +8,7 @@ from joblib import delayed, Parallel
 import matplotlib.pyplot as plt
 from pydantic import field_validator, PrivateAttr
 
+from . import _qc_math
 from .abc_ import SetAnalyzer
 
 
@@ -178,9 +179,9 @@ class TukeyOutlierRemover(SetAnalyzer):
             figsize: tuple[int, int] | None = None,
             max_groups: int = 20,
             collapsed: bool = True,
-            criteria: dict[str, any] | None = None,
+            criteria: dict[str, Any] | None = None,
             **kwargs,
-    ) -> (plt.Figure, plt.Axes):
+    ) -> tuple[plt.Figure, plt.Axes]:
         """Visualize outlier detection results.
 
         Creates a visualization showing the distribution of values with outliers highlighted
@@ -307,7 +308,7 @@ class TukeyOutlierRemover(SetAnalyzer):
             group_col: str,
             figsize: tuple[int, int] | None,
             **kwargs,
-    ) -> (plt.Figure, plt.Axes):
+    ) -> tuple[plt.Figure, plt.Axes]:
         """Create individual subplots for each group."""
         # Extract figure-level kwargs
         fig_kwargs = {
@@ -341,13 +342,9 @@ class TukeyOutlierRemover(SetAnalyzer):
 
             # Dynamically compute outlier flags for this group
             values = group_data[self.on].values
-            q1 = np.percentile(values, 25)
-            q3 = np.percentile(values, 75)
-            iqr = q3 - q1
-            lower_fence = q1 - (iqr * self.k)
-            upper_fence = q3 + (iqr * self.k)
+            lower_fence, upper_fence = _qc_math.tukey_fences(values, self.k)
 
-            is_outlier = (values < lower_fence) | (values > upper_fence)
+            is_outlier = _qc_math.tukey_outlier_mask(values, self.k)
             group_data["_is_outlier"] = is_outlier
 
             # Separate inliers and outliers
@@ -464,7 +461,7 @@ class TukeyOutlierRemover(SetAnalyzer):
             group_col: str,
             figsize: tuple[int, int] | None,
             **kwargs,
-    ) -> (plt.Figure, plt.Axes):
+    ) -> tuple[plt.Figure, plt.Axes]:
         """Create collapsed stacked view with all groups in single plot."""
         # Extract figure-level kwargs
         fig_kwargs = {
@@ -493,14 +490,10 @@ class TukeyOutlierRemover(SetAnalyzer):
 
             # Dynamically compute outlier flags for this group
             values = group_data[self.on].values
-            q1 = np.percentile(values, 25)
-            q3 = np.percentile(values, 75)
-            iqr = q3 - q1
+            lower_fence, upper_fence = _qc_math.tukey_fences(values, self.k)
             median = np.percentile(values, 50)
-            lower_fence = q1 - (iqr * self.k)
-            upper_fence = q3 + (iqr * self.k)
 
-            is_outlier = (values < lower_fence) | (values > upper_fence)
+            is_outlier = _qc_math.tukey_outlier_mask(values, self.k)
             group_data["_is_outlier"] = is_outlier
 
             # Separate inliers and outliers
@@ -685,11 +678,5 @@ class TukeyOutlierRemover(SetAnalyzer):
             Filtered DataFrame containing rows that fall within the calculated IQR thresholds.
         """
         values = group[on]
-        q1 = np.percentile(values, 25)
-        q3 = np.percentile(values, 75)
-        iqr = q3 - q1
-
-        lower_fence = q1 - (iqr * k)
-        upper_fence = q3 + (iqr * k)
-
+        lower_fence, upper_fence = _qc_math.tukey_fences(values.to_numpy(), k)
         return group[(values >= lower_fence) & (values <= upper_fence)]

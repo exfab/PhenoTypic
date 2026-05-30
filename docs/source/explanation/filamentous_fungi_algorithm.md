@@ -53,7 +53,7 @@ fail depending on noise in your scene
 
 | Param               | Role                                                                                                                                                                                                                        |
 |---------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `inoculum_detector` | ObjectDetector or ImagePipeline for centres. Defaults to `InoculumDetector` + `GridSectionLargest` for grid plates. Replace with a species-specific centre detector if the default doesn't pick up your inoculation points. |
+| `inoculum_detector` | ObjectDetector or ImagePipeline for centres. Defaults to `InoculumDetector` + `KeepSectionLargest` for grid plates. Replace with a species-specific centre detector if the default doesn't pick up your inoculation points. |
 
 ---
 
@@ -329,7 +329,7 @@ correction:
 
 1. **`StableDenoise`** (BM3D) — removes Poisson-Gaussian noise without
    destroying thin filaments.
-2. **`HomomorphicFilter`** — corrects uneven illumination so phase
+2. **`FlattenIllumination`** — corrects uneven illumination so phase
    congruency isn't driven by intensity gradients.
 
 The `FilamentousFungiPipeline` prefab chains these automatically.

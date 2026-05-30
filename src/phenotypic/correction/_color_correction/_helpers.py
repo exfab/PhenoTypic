@@ -1,9 +1,9 @@
 """Private helper functions for color correction pipeline.
 
 Provides image filtering, border detection, run-length analysis, checker card
-centering/padding, swatch mask generation, Hungarian matching, geometric
-median computation, background trimming, core mask extraction, and patch
-shape validation.
+centering/padding, border-fill chip segmentation, Hungarian matching,
+geometric median computation, background trimming, core mask extraction, and
+patch shape validation.
 """
 
 from __future__ import annotations
@@ -12,7 +12,7 @@ from typing import Literal
 
 import colour
 import numpy as np
-from scipy.ndimage import median_filter
+from scipy.ndimage import binary_fill_holes, label, median_filter
 from scipy.optimize import linear_sum_assignment
 
 _SRGB_CS = colour.RGB_COLOURSPACES["sRGB"]
@@ -147,6 +147,47 @@ def find_cross_channel_stddev_magnitude(
     if return_stddev:
         return magnitude, stddev_arr
     return magnitude
+
+
+def compute_swatch_roi_mask(
+    lab_image: np.ndarray,
+    stddev_mag_threshold: float = 15.0,
+    filter_size: int = 10,
+) -> np.ndarray:
+    """Build a 2-D ROI mask that excludes uniform border rows and columns.
+
+    Computes cross-channel Lab stddev magnitude along both axes via
+    :func:`find_cross_channel_stddev_magnitude`. Columns and rows whose
+    magnitude is at or below *stddev_mag_threshold* are classified as
+    border (uniformly dark checker frame, central divider, inter-swatch
+    gutters). The returned mask is ``True`` only where both the row and
+    column survive the threshold — i.e. swatch interiors.
+
+    The mask is consumed by :func:`segment_chips_by_border_fill`: its ``True``
+    regions are the chips and its ``False`` lines separate them, so a dark
+    frame can never be misidentified as the black F4 patch.
+
+    Args:
+        lab_image: CIE Lab image with shape ``(H, W, 3)``.
+        stddev_mag_threshold: Threshold (inclusive) below which a row or
+            column is treated as uniform border.
+        filter_size: Kernel size for the median pre-filter inside
+            :func:`find_cross_channel_stddev_magnitude`.
+
+    Returns:
+        Boolean array of shape ``(H, W)``. ``True`` for swatch-interior
+        pixels, ``False`` for any pixel sitting on a border row or border
+        column.
+    """
+    col_mag = find_cross_channel_stddev_magnitude(
+        lab_image, axis=0, filter_size=filter_size,
+    )  # shape (1, W)
+    row_mag = find_cross_channel_stddev_magnitude(
+        lab_image, axis=1, filter_size=filter_size,
+    )  # shape (H, 1)
+    col_swatch = (np.asarray(col_mag) > stddev_mag_threshold).ravel()  # (W,)
+    row_swatch = (np.asarray(row_mag) > stddev_mag_threshold).ravel()  # (H,)
+    return row_swatch[:, None] & col_swatch[None, :]
 
 
 # ---------------------------------------------------------------------------
@@ -383,133 +424,123 @@ def geometric_median(
 
 
 # ---------------------------------------------------------------------------
-# Swatch mask generation via nearest-neighbour Lab assignment
+# Chip segmentation by border-fill connected components + Hungarian labelling
 # ---------------------------------------------------------------------------
 
 
-def lab_checker_cluster_masks(
+def segment_chips_by_border_fill(
+    swatch_roi_mask: np.ndarray,
     lab_image: np.ndarray,
     ref_Lab: dict[str, tuple[float, float, float]],
-    border_distance_threshold: float = 12.0,
-    border_label: str = "border",
-    roi_mask: np.ndarray | None = None,
-    include_labels: bool = False,
-) -> (
-    tuple[list[np.ndarray], list[np.ndarray]]
-    | tuple[list[np.ndarray], list[np.ndarray], list[str]]
-):
-    """Assign each pixel in a Lab checker image to the nearest reference swatch.
+    min_swatch_area_frac: float = 0.3,
+    strict: bool = True,
+) -> tuple[list[np.ndarray], list[str]]:
+    """Segment checker chips geometrically, then label them by colour.
 
-    For every pixel the Euclidean distance in Lab space to each reference
-    colour is computed.  The pixel is assigned to the nearest reference if
-    that distance is below *border_distance_threshold*; otherwise it is
-    classified as border/background.
+    Instead of assigning pixels to reference colours one at a time, this
+    treats each enclosed region of *swatch_roi_mask* (the swatch interiors,
+    separated by the uniform frame/divider/gutter ``False`` lines produced by
+    :func:`compute_swatch_roi_mask`) as one chip:
+
+    1. Fill enclosed holes in the mask.  Gutters run to the outer frame, which
+       touches the image edge, so they are never filled — only true holes
+       inside a chip are.
+    2. Connected-component label the filled mask (4-connectivity) → one blob
+       per chip.
+    3. Drop components smaller than ``min_swatch_area_frac`` of the reference
+       swatch area (the median of the largest ``len(ref_Lab)`` components, so
+       the floor stays stable however many noise specks were labelled).
+    4. Assign each surviving blob a reference name by an optimal one-to-one
+       Hungarian match of its median Lab against *ref_Lab*
+       (:func:`hungarian_match_swatches`).
+
+    Membership is geometric, so a dark or ambiguous chip can neither be stolen
+    by a neighbour nor dropped for being far from every reference; colour is
+    used only for the global label assignment.
 
     Args:
-        lab_image: Image in CIE Lab space with shape ``(H, W, 3)``.
-        ref_Lab: Mapping of swatch identifiers to target Lab triplets.
-        border_distance_threshold: Minimum Euclidean distance (Delta-E*ab)
-            required to mark a pixel as border rather than assigning it to the
-            closest swatch.
-        border_label: Key used for the border mask in the output lists.  Must
-            not collide with any key in *ref_Lab*.
-        roi_mask: Optional boolean mask selecting pixels to consider.  Pixels
-            outside receive ``False`` in all output masks.
-        include_labels: If ``True``, a third list of label strings is
-            returned alongside the masks and bounding boxes.
+        swatch_roi_mask: 2-D boolean mask, ``True`` on swatch interiors.
+        lab_image: CIE Lab image with shape ``(H, W, 3)`` aligned to the mask.
+        ref_Lab: Mapping of reference patch names to Lab triplets.
+        min_swatch_area_frac: Components below this fraction of the reference
+            swatch area are discarded before the count gate.
+        strict: When ``True`` (fit path), raise :class:`ValueError` if the
+            number of kept blobs does not equal ``len(ref_Lab)``.  When
+            ``False`` (dashboard), return whatever was found.
 
     Returns:
-        A tuple ``(masks, bboxes)`` where *masks* is a list of boolean arrays
-        with shape ``(H, W)`` and *bboxes* stores
-        ``[min_row, min_col, max_row, max_col]`` for each mask.  The list
-        order follows *ref_Lab* insertion order, with a final entry for
-        *border_label*.  When *include_labels* is ``True``, returns
-        ``(masks, bboxes, labels)``.
+        ``(blob_masks, blob_names)`` — index-aligned lists of boolean chip
+        masks and their matched reference names.  When *strict* is ``False``
+        and more blobs survive than there are references, the surplus blobs
+        are returned with sentinel ``"unmatched_<i>"`` names so callers can
+        surface (rather than hide) them.  In the ``strict`` path every blob
+        receives a real reference name.
 
     Raises:
-        ValueError: If input shapes are inconsistent or *border_label*
-            clashes with a reference key.
+        ValueError: If shapes are inconsistent, or (when *strict*) the kept
+            blob count differs from the expected number of patches.
     """
     if lab_image.ndim != 3 or lab_image.shape[-1] != 3:
         raise ValueError("lab_image must have shape (H, W, 3).")
+    if swatch_roi_mask.shape != lab_image.shape[:2]:
+        raise ValueError("swatch_roi_mask must match lab_image spatial dims.")
 
-    if border_label in ref_Lab:
-        raise ValueError("border_label must not clash with reference swatch keys.")
+    n_expected = len(ref_Lab)
 
-    H, W, _ = lab_image.shape
-    ref_names = list(ref_Lab.keys())
-    ref_array = np.asarray(
-        [ref_Lab[name] for name in ref_names], dtype=np.float64
+    filled = binary_fill_holes(swatch_roi_mask.astype(bool))
+    labeled, _ = label(filled)
+
+    areas = np.bincount(labeled.ravel())
+    if areas.size:
+        areas[0] = 0  # drop background label 0
+    component_labels = np.nonzero(areas)[0]
+
+    if component_labels.size == 0:
+        if strict:
+            raise ValueError(
+                f"Border-fill segmentation found 0 chips, expected "
+                f"{n_expected}. The swatch ROI mask is empty — the card may "
+                f"have no detectable gutters (try lowering stddev_mag_threshold)."
+            )
+        return [], []
+
+    # Reference swatch area = median of the largest ``n_expected`` components.
+    # Taking the median over the largest blobs (rather than all of them) keeps
+    # the size floor robust no matter how many tiny noise specks ``label``
+    # produced along a slightly noisy gutter.
+    comp_areas = areas[component_labels]
+    largest = np.sort(comp_areas)[::-1][:n_expected]
+    ref_area = float(np.median(largest))
+    keep = [
+        int(lbl)
+        for lbl in component_labels
+        if areas[lbl] >= min_swatch_area_frac * ref_area
+    ]
+
+    if strict and len(keep) != n_expected:
+        raise ValueError(
+            f"Border-fill segmentation found {len(keep)} chips, expected "
+            f"{n_expected}. Gutters may have merged adjacent chips (try "
+            f"raising stddev_mag_threshold) or the card is partially occluded."
+        )
+
+    observed_Lab = np.vstack(
+        [np.median(lab_image[labeled == lbl], axis=0) for lbl in keep]
     )
-    if ref_array.ndim != 2 or ref_array.shape[1] != 3:
-        raise ValueError("ref_Lab values must be Lab triplets of length 3.")
+    mapping = hungarian_match_swatches(observed_Lab, ref_Lab)  # {name: row}
+    row_to_name = {row: name for name, row in mapping.items()}
 
-    if roi_mask is not None:
-        if roi_mask.shape != (H, W):
-            raise ValueError("roi_mask must match the spatial dimensions of lab_image.")
-        roi_mask = roi_mask.astype(bool)
-    else:
-        roi_mask = np.ones((H, W), dtype=bool)
+    # Every kept blob is returned so the count reflects reality. Surplus blobs
+    # beyond ``n_expected`` (only possible when not strict) get a sentinel name
+    # so the dashboard can surface them rather than hiding them.
+    blob_masks: list[np.ndarray] = []
+    blob_names: list[str] = []
+    for row, lbl in enumerate(keep):
+        name = row_to_name.get(row, f"unmatched_{row}")
+        blob_masks.append(labeled == lbl)
+        blob_names.append(name)
 
-    lab_flat = lab_image.reshape(-1, 3).astype(np.float64)
-    roi_flat = roi_mask.ravel()
-
-    active_pixels = lab_flat[roi_flat]
-    if active_pixels.size == 0:
-        raise ValueError("roi_mask selects zero pixels; nothing to cluster.")
-
-    # Compute distances in chunks to avoid O(N * R * 3) memory spike.
-    from scipy.spatial.distance import cdist
-
-    n_active = active_pixels.shape[0]
-    chunk_size = max(1, min(n_active, 100_000))
-    closest_idx = np.empty(n_active, dtype=int)
-    min_dist = np.empty(n_active, dtype=np.float64)
-
-    for start in range(0, n_active, chunk_size):
-        end = min(start + chunk_size, n_active)
-        dists = cdist(active_pixels[start:end], ref_array, metric="euclidean")
-        closest_idx[start:end] = np.argmin(dists, axis=1)
-        min_dist[start:end] = dists[np.arange(end - start), closest_idx[start:end]]
-
-    border_active = min_dist > border_distance_threshold
-
-    # Map back to full image raster.
-    labels_flat = np.full(lab_flat.shape[0], fill_value=-1, dtype=int)
-    labels_flat[roi_flat] = closest_idx
-
-    borders_flat = np.zeros(lab_flat.shape[0], dtype=bool)
-    borders_flat[roi_flat] = border_active
-
-    # Border pixels must not be assigned to any swatch.
-    labels_flat[borders_flat] = -1
-
-    label_image_2d = labels_flat.reshape(H, W)
-    border_mask_2d = borders_flat.reshape(H, W)
-
-    def _mask_bbox(mask: np.ndarray) -> np.ndarray:
-        ys, xs = np.nonzero(mask)
-        if ys.size == 0:
-            return np.array([0, 0, 0, 0], dtype=int)
-        return np.array([ys.min(), xs.min(), ys.max() + 1, xs.max() + 1], dtype=int)
-
-    mask_list: list[np.ndarray] = []
-    bbox_list: list[np.ndarray] = []
-    label_list: list[str] = []
-
-    for idx, name in enumerate(ref_names):
-        swatch_mask = label_image_2d == idx
-        mask_list.append(swatch_mask)
-        bbox_list.append(_mask_bbox(swatch_mask))
-        label_list.append(name)
-
-    mask_list.append(border_mask_2d)
-    bbox_list.append(_mask_bbox(border_mask_2d))
-    label_list.append(border_label)
-
-    if include_labels:
-        return mask_list, bbox_list, label_list
-    return mask_list, bbox_list
+    return blob_masks, blob_names
 
 
 # ---------------------------------------------------------------------------

@@ -5,7 +5,7 @@ import pandas as pd
 
 from phenotypic.analysis.abc_ import ModelFitter
 from phenotypic.tools_ import ColumnRef
-from phenotypic.tools_.measurement_info import LOG_GROWTH_MODEL, MODEL_METRICS
+from phenotypic.schema import LOG_GROWTH_MODEL, MODEL_METRICS
 
 
 class LogGrowthModel(ModelFitter):

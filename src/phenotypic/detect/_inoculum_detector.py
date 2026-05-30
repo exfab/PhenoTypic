@@ -18,10 +18,10 @@ from phenotypic.detect._round_peaks_detector import RoundPeaksDetector
 from phenotypic.enhance._contrast_streching import ContrastStretching
 from phenotypic.enhance._gray_opening import GrayOpening
 from phenotypic.enhance._median_filter import MedianFilter
-from phenotypic.enhance._multiscale_log_enhancer import MultiscaleLoGEnhancer
+from phenotypic.enhance._enhance_blobs import EnhanceBlobs
 from phenotypic.enhance._subtract_gaussian import SubtractGaussian
-from phenotypic.refine._gmm_core_extractor import GMMCoreExtractor
-from phenotypic.refine._grid_section_largest import GridSectionLargest
+from phenotypic.refine._extract_colony_core import ExtractColonyCore
+from phenotypic.refine._keep_section_largest import KeepSectionLargest
 
 logger = logging.getLogger(__name__)
 
@@ -204,12 +204,12 @@ class InoculumDetector(ObjectDetector):
         self._log_memory_usage("MedianFilter")
 
         # --- Step 4: Multi-scale LoG blob enhancement ---
-        MultiscaleLoGEnhancer(
+        EnhanceBlobs(
                 min_radius=log_min_radius,
                 max_radius=log_max_radius,
                 num_scales=15,
         ).apply(work, inplace=True)
-        self._log_memory_usage("MultiscaleLoGEnhancer")
+        self._log_memory_usage("EnhanceBlobs")
 
         # --- Step 5: Contrast stretching ---
         ContrastStretching().apply(work, inplace=True)
@@ -233,19 +233,19 @@ class InoculumDetector(ObjectDetector):
 
         # --- Step 8: GridImage → keep largest per cell ---
         if isinstance(work, GridImage):
-            GridSectionLargest().apply(work, inplace=True)
-            self._log_memory_usage("GridSectionLargest")
+            KeepSectionLargest().apply(work, inplace=True)
+            self._log_memory_usage("KeepSectionLargest")
 
         # --- Step 9: Optional GMM core extraction ---
         if self.enable_gmm:
-            GMMCoreExtractor(
+            ExtractColonyCore(
                     n_components=self.gmm_n_components,
                     separation_threshold=self.gmm_separation_threshold,
                     min_core_area=gmm_min_area,
                     morph_open_radius=gmm_morph_open,
                     morph_close_radius=2,
             ).apply(work, inplace=True)
-            self._log_memory_usage("GMMCoreExtractor")
+            self._log_memory_usage("ExtractColonyCore")
 
         # --- Step 10: Copy results back ---
         image.objmask[:] = work.objmask[:]

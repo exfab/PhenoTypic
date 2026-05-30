@@ -1,6 +1,6 @@
 """Heatmap tab for the results viewer.
 
-Renders a Plotly heatmap of any measurement (or QC severity) column
+Renders a Plotly heatmap of any measurement (or QC metric) column
 laid out by ``Grid_RowNum`` x ``Grid_ColNum``. Curated colonies render
 as an overlay of `x`-markers in the muted brand color so the user can
 distinguish "excluded" from "low value".

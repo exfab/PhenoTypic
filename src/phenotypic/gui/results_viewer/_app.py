@@ -42,16 +42,18 @@ from phenotypic.gui._config import (
     CFG_OUTPUT_ROOT,
     CFG_QC_AUGMENTED_FRAME,
     CFG_QC_INSTANCES_CACHE,
+    CFG_QC_PIPELINE,
     CFG_QC_RECIPE,
     CFG_URL_PREFIX,
     MOUNT_HOME,
+    QC_CROPS_URL_SEGMENT,
     SANDBOX_API_VIEWER_OUTPUT_ROOT,
     TITLE_VIEWER,
 )
-from phenotypic.gui._qc_recipe import QcRecipe
 from phenotypic.gui._schema_cache import MeasurementSchema
 from phenotypic.gui._design import COLOR_BLUE, COLOR_SURFACE, inject_design_tokens
 from phenotypic.gui._shared import register_shared_static
+from phenotypic.gui._shared.tiles import register_crop_route
 from phenotypic.gui.results_viewer import _ids as ids, _tile_routes
 from phenotypic.gui.results_viewer._callbacks import register_callbacks
 from phenotypic.gui.results_viewer._filtered_state import FilteredMeasurements
@@ -62,6 +64,7 @@ from phenotypic.gui.results_viewer._layout import (
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 from phenotypic.gui.results_viewer.colony_view import _crop_routes as colony_crop_routes
 from phenotypic.gui.shell._ids import SHELL_SIDEBAR_SELECTION_STORE
+from phenotypic.qc import QcRecipe
 
 logger = logging.getLogger(__name__)
 
@@ -178,6 +181,9 @@ def create_app(
     filtered_state = FilteredMeasurements.load(output_root.root, output_root.master_df)
     app.server.config[CFG_FILTERED_STATE] = filtered_state
     colony_crop_routes.register(app, output_root)
+    # QC Review tab serves the same centered crops under its own segment
+    # so the colony-view ``/crops`` and the Review gallery never collide.
+    register_crop_route(app, output_root, QC_CROPS_URL_SEGMENT)
 
     # MeasurementSchema cache shared by the Heatmap tab (and a future
     # QC tab) - lazily built once per app instance. Idempotent: do not
@@ -192,16 +198,59 @@ def create_app(
     # gracefully falls back to the plain filtered frame until then.
     app.server.config.setdefault(CFG_QC_AUGMENTED_FRAME, None)
 
-    # QC recipe sidecar + per-revision instance cache. Loading is cheap
-    # (a single JSON read) and the cache is keyed on the recipe revision
-    # counter so a stale entry can never serve a moved configuration.
+    # QC recipe is now the ``qc`` section of ``pipeline.json`` (pipeline-
+    # backed adapter), not the legacy ``.viewer_cache/qc_recipe.json``
+    # sidecar. Fold any legacy sidecar into the pipeline exactly once, then
+    # load the recipe + the full pipeline (for the Review tab's in-session
+    # recompute via ``run_qc``). The per-revision instance cache is keyed
+    # on the recipe revision counter so a stale entry can never serve a
+    # moved configuration.
+    QcRecipe.migrate_from_sidecar(Path(output_root.root))
     app.server.config[CFG_QC_RECIPE] = QcRecipe.load(Path(output_root.root))
+    app.server.config[CFG_QC_PIPELINE] = _load_qc_pipeline(Path(output_root.root))
     app.server.config.setdefault(CFG_QC_INSTANCES_CACHE, {})
 
     app.layout = build_app_layout(output_root, filtered_state, url_prefix=url_prefix)
     register_callbacks(app, output_root)
 
     return app
+
+
+def _load_qc_pipeline(output_root_path: Path):
+    """Deserialize the output root's ``pipeline.json`` for QC recompute.
+
+    The QC Review tab's per-group recompute hands this pipeline to
+    :func:`phenotypic.qc._runner.run_qc`, so it must carry the same ``qc``
+    entries the CLI persisted. Loaded tolerantly (``skip_unknown_analyzers``)
+    so a stale analyzer class never blocks viewer boot, and degrades to
+    ``None`` when the file is absent or unreadable — recompute then no-ops
+    rather than raising.
+
+    Args:
+        output_root_path: The results-viewer output root.
+
+    Returns:
+        The deserialized ``ImagePipeline``, or ``None`` when no usable
+        ``pipeline.json`` exists.
+    """
+    from phenotypic._core._image_pipeline import ImagePipeline
+    from phenotypic.tools_ import pipeline_json_path
+
+    pipeline_path = pipeline_json_path(output_root_path)
+    if not pipeline_path.exists():
+        return None
+    try:
+        return ImagePipeline.from_json(
+            pipeline_path, skip_unknown_analyzers=True, load_warnings=[]
+        )
+    except Exception:  # noqa: BLE001 - boot-time tolerance; recompute no-ops
+        logger.warning(
+            "Could not load pipeline.json at %s for QC recompute; the Review "
+            "tab's per-group recompute will be unavailable this session.",
+            pipeline_path,
+            exc_info=True,
+        )
+        return None
 
 
 def _register_empty_state_callbacks(app: dash.Dash, *, url_prefix: str) -> None:

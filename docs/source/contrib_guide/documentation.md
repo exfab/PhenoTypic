@@ -217,7 +217,7 @@ Import specific operations directly when demonstrating them:
 
 ```python
 from phenotypic.detect import OtsuDetector
-from phenotypic.enhance import GaussianBlur, CLAHE
+from phenotypic.enhance import GaussianBlur, EnhanceLocalContrast
 ```
 
 ### Sample Data

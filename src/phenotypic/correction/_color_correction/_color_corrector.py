@@ -7,7 +7,8 @@ and detect_mat in a single pass.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+import warnings
+from typing import TYPE_CHECKING, Any, overload
 
 import colour
 import numpy as np
@@ -15,9 +16,11 @@ from pydantic import PrivateAttr, field_validator
 from skimage.color import rgb2gray
 
 from ...abc_ import ImageCorrector
+from ._capture_metadata import CaptureMetadata
 from ._color_checker_profile import ColorCheckerProfile
 
 if TYPE_CHECKING:
+    from phenotypic._core._grid_image import GridImage
     from phenotypic._core._image import Image
 
 
@@ -44,6 +47,13 @@ class ColorCorrector(ImageCorrector):
       batches.
     - Produce publication-ready images with accurate colour reproduction of
       dyed or pigmented colonies.
+
+    Before correcting, each image's camera EXIF is compared against the
+    :attr:`~ColorCheckerProfile.capture_metadata` recorded when the profile was
+    fitted.  A different camera body or lens raises a :class:`UserWarning`
+    (the correction may be invalid); differing exposure settings (ISO, exposure
+    time, F-number, focal length) are logged at info level.  The check is
+    skipped silently when the profile carries no capture metadata.
 
     Attributes:
         profile: A fitted :class:`ColorCheckerProfile` supplying the
@@ -105,6 +115,64 @@ class ColorCorrector(ImageCorrector):
     def degree(self) -> int:
         """Polynomial expansion degree, matching the profile."""
         return self.profile.degree
+
+    @overload
+    def apply(self, image: GridImage, inplace: bool = False) -> GridImage: ...
+
+    @overload
+    def apply(self, image: Image, inplace: bool = False) -> Image: ...
+
+    def apply(self, image: Image, inplace: bool = False) -> Image:
+        """Apply the correction, first checking capture-metadata compatibility.
+
+        The compatibility check runs against the *input* image (before the
+        defensive copy ``apply`` makes for ``inplace=False``), because
+        :meth:`Image.copy` does not carry imported EXIF forward.
+
+        Args:
+            image: Image to correct.
+            inplace: When ``False`` (default) operate on a copy.
+
+        Returns:
+            The corrected image.
+        """
+        self._warn_on_metadata_mismatch(image)
+        return super().apply(image, inplace=inplace)
+
+    def _warn_on_metadata_mismatch(self, image: Image) -> None:
+        """Warn when *image* was captured on different optics than the profile.
+
+        Compares the image's camera EXIF against the
+        :attr:`~ColorCheckerProfile.capture_metadata` recorded when the profile
+        was fitted.  Camera-body or lens differences raise a
+        :class:`UserWarning` (the correction may be invalid); exposure-setting
+        differences (ISO, exposure time, F-number, focal length) are only
+        logged at info level.  Does nothing when the profile carries no capture
+        metadata (e.g. an old serialised profile or one fitted from
+        pre-measured patch colours).
+
+        Args:
+            image: The image about to be corrected.
+        """
+        expected = self.profile.capture_metadata
+        if expected is None:
+            return
+        actual = CaptureMetadata.from_image(image)
+        critical, informational = expected.compare(actual)
+        if critical:
+            warnings.warn(
+                f"Image '{image.name}' was captured on a different "
+                f"camera/lens than the colour-correction profile "
+                f"({'; '.join(critical)}). The correction may be invalid.",
+                UserWarning,
+                stacklevel=3,  # _warn_on_metadata_mismatch -> apply -> caller
+            )
+        if informational:
+            self._logger.info(
+                "Capture-setting differences for '%s': %s",
+                image.name,
+                "; ".join(informational),
+            )
 
     def _operate(self, image: Image) -> Image:
         """Apply root-polynomial colour correction to the image.

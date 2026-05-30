@@ -79,8 +79,7 @@ Repository = "https://github.com/Wheeldon-Lab/PhenoTypic"
 
 gui = [
     # Napari visualization
-    "napari[optional,pyqt5]>=0.5.4,<0.7.0;sys_platform!='darwin'",
-    "napari[all]>=0.5.4;sys_platform=='darwin'",
+    "napari[optional,pyqt6]",
     # Panel GUI components
     "panel>=1.3",
     "param>=2.0",
@@ -131,6 +130,9 @@ dev = [
     "playwright>=1.45.0;sys_platform!='win32'",
     # FEATURES.md syntax + Test-ref pre-commit hook (see scripts/check_features_md.py).
     "pre-commit>=3.7.0",
+    "pandas-stubs>=2.3.3.260113",
+    "types-tqdm>=4.67.3.20260518",
+    "types-psutil>=7.2.2.20260518",
 ]
 docs = [
     "sphinx",
@@ -190,3 +192,35 @@ line-length = 79
 
 [tool.mypy]
 plugins = ["pydantic.mypy"]
+
+# Third-party libraries that ship neither type stubs nor a py.typed marker.
+# pandas/tqdm/psutil are covered by the *-stubs / types-* packages in the dev
+# dependency group; the modules below have no stubs available, so silence the
+# import-untyped / import-not-found noise rather than littering the source with
+# per-import `# type: ignore`s.
+[[tool.mypy.overrides]]
+module = [
+    "napari.*",
+    "plotly.*",
+    "h5py",
+    "h5py.*",
+    "bm3d",
+    "bm3d.*",
+    "joblib",
+    "ipywidgets",
+    "sklearn.*",
+    "sam2.*",
+    "rawpy",
+    "numba",
+    "mahotas",
+    "vispy.*",
+    "ruptures",
+    "pooch",
+    "param",
+    "qtpy.*",
+    # Optional accelerator / conda-only backends not installed in the dev env:
+    # micro_sam is conda-only (not on PyPI); habana_frameworks is Intel Gaudi.
+    "micro_sam.*",
+    "habana_frameworks.*",
+]
+ignore_missing_imports = true

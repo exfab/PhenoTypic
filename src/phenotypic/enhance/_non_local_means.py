@@ -62,7 +62,7 @@ class NonLocalMeansDenoiser(_GATSupportMixin, ImageDenoiser):
     Consider Also:
         - :class:`BM3DDenoiser` for state-of-the-art structured noise
           removal at higher computational cost.
-        - :class:`BilateralDenoise` for faster edge-preserving denoising
+        - :class:`LocalEdgeDenoise` for faster edge-preserving denoising
           without patch comparison.
         - :class:`BayesShrinkEnhancer` for adaptive wavelet denoising with
           spatially varying thresholds.

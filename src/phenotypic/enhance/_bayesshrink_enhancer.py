@@ -62,7 +62,7 @@ class BayesShrinkEnhancer(_GATSupportMixin, ImageDenoiser):
           threshold when spatial noise uniformity is acceptable.
         - :class:`BM3DDenoiser` for state-of-the-art denoising of structured
           noise patterns.
-        - :class:`BilateralDenoise` for edge-preserving smoothing without
+        - :class:`LocalEdgeDenoise` for edge-preserving smoothing without
           wavelet decomposition.
 
     See Also:

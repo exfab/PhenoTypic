@@ -507,6 +507,7 @@ def finalize_post_master_outputs(
     master_df: "pl.DataFrame",
     pipeline: Optional["ImagePipeline"],
     metadata_csv: Optional[Path] = None,
+    no_qc: bool = False,
 ) -> "pl.DataFrame":
     """Run every CLI side effect that follows a freshly written master file.
 
@@ -564,6 +565,15 @@ def finalize_post_master_outputs(
             can reference joined columns. Only the mirror (and its
             derivatives) carry external metadata — never the master
             archive on disk.
+        no_qc: When ``True``, skip the QC compute step entirely (no ``qc/``
+            artifact is written and the GUI review state is left as-is).
+            When ``False`` (default), QC runs whenever the pipeline has a
+            non-empty ``qc`` section: the GUI-owned
+            :data:`~phenotypic.tools_.QC_REVIEW_STATE_JSON` is cleared
+            (a fresh CLI run resets review progress) and
+            :func:`phenotypic.qc.run_qc` writes the ``qc/`` artifact from
+            the post-applied + metadata-joined frame. QC failures are
+            logged and never affect the authoritative master files.
 
     Returns:
         The post-applied frame (with external metadata joined when
@@ -600,6 +610,27 @@ def finalize_post_master_outputs(
     _persist_pipeline_to_output_dir(output_dir, pipeline)
     _emit_analysis_outputs(output_dir, post_df, pipeline)
 
+    # QC compute + review-progress reset. A fresh CLI run is "a different
+    # run", so the GUI-owned review_state.json is cleared regardless of
+    # whether QC then recomputes (so stale review progress never carries
+    # across a rerun). The ``qc/`` artifact is rewritten by ``run_qc`` only
+    # when QC is enabled and configured; failures are isolated so the
+    # authoritative master files are never affected.
+    _reset_qc_review_state(output_dir)
+    if not no_qc and pipeline.get_qc():
+        try:
+            # Import the submodule directly (not ``phenotypic.qc``) so QC
+            # compute is only pulled in on the path that needs it, keeping
+            # the qc package __init__ free of an eager _runner import.
+            from phenotypic.qc._runner import run_qc
+
+            run_qc(post_df.to_pandas(), pipeline, output_dir)
+        except Exception:
+            logger.warning(
+                "QC compute failed (master/measurements still written)",
+                exc_info=True,
+            )
+
     try:
         # Splits operate on the post-applied frame so per-feature
         # spreadsheets match what the GUI viewer reads from
@@ -613,6 +644,35 @@ def finalize_post_master_outputs(
         )
 
     return post_df
+
+
+def _reset_qc_review_state(output_dir: Path) -> None:
+    """Delete ``qc/review_state.json`` if present (CLI rerun resets review).
+
+    The GUI owns ``review_state.json`` (per-module review progress); a fresh
+    CLI recompile/remeasure is a new run, so any prior review progress is
+    cleared here. ``run_qc`` itself never touches this file, so the GUI's
+    in-session recompute preserves progress — only the CLI finalize path
+    resets it.
+
+    Best-effort: a missing file is a no-op and a failed unlink is logged at
+    WARNING rather than raising.
+
+    Args:
+        output_dir: Run output root.
+    """
+    from phenotypic.tools_ import qc_review_state_path
+
+    state_path = qc_review_state_path(output_dir)
+    if not state_path.exists():
+        return
+    try:
+        state_path.unlink()
+        logger.debug("Reset QC review state at %s", state_path)
+    except OSError:
+        logger.warning(
+            "Failed to reset QC review state at %s", state_path, exc_info=True
+        )
 
 
 def split_master_by_feature(
@@ -703,6 +763,7 @@ def aggregate_measurements(
     include_dataset_column: bool = True,
     metadata_csv: Optional[Path] = None,
     pipeline: Optional["ImagePipeline"] = None,
+    no_qc: bool = False,
 ) -> Optional[Path]:
     """Aggregate per-image Parquet files into a master CSV via DuckDB.
 
@@ -737,6 +798,8 @@ def aggregate_measurements(
             copy in *output_dir*; if it cannot be recovered, the split
             step is skipped and a warning is logged (the master files are
             still written).
+        no_qc: Forwarded to :func:`finalize_post_master_outputs` to skip
+            the QC compute step. See that function for details.
 
     Returns:
         Path to ``master_measurements.csv``, or ``None`` if no
@@ -834,7 +897,8 @@ def aggregate_measurements(
 
     resolved_pipeline = pipeline if pipeline is not None else _load_pipeline_from_output_dir(output_dir)
     finalize_post_master_outputs(
-        output_dir, master_df, resolved_pipeline, metadata_csv=metadata_csv
+        output_dir, master_df, resolved_pipeline,
+        metadata_csv=metadata_csv, no_qc=no_qc,
     )
 
     return master_csv_path
@@ -1363,6 +1427,7 @@ class OutputManager:
         datasets: List[Dataset],
         metadata_csv: Optional[Path] = None,
         pipeline: Optional["ImagePipeline"] = None,
+        no_qc: bool = False,
     ) -> Optional[Path]:
         """Aggregate per-image measurement Parquet files into master CSV.
 
@@ -1373,6 +1438,8 @@ class OutputManager:
             pipeline: Optional in-memory pipeline used to split the
                 aggregated master into per-feature sub-spreadsheets. See
                 :func:`aggregate_measurements` for fallback behavior.
+            no_qc: Forwarded to skip the QC compute step. See
+                :func:`finalize_post_master_outputs`.
 
         Returns:
             Path to master_measurements.csv, or None if no measurements found.
@@ -1383,4 +1450,5 @@ class OutputManager:
             include_dataset_column=self.include_dataset_column,
             metadata_csv=metadata_csv,
             pipeline=pipeline,
+            no_qc=no_qc,
         )

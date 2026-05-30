@@ -309,6 +309,10 @@ class ImageDataManager:
 
         self._metadata.protected = deepcopy(input_cls._metadata.protected)
         self._metadata.public = deepcopy(input_cls._metadata.public)
+        # Carry imported (EXIF/file) metadata forward so a copy or derived
+        # image retains its capture provenance. private (UUID) is intentionally
+        # left fresh — see ImageHandler.copy.
+        self._metadata.imported = deepcopy(input_cls._metadata.imported)
         return
 
     def _set_from_array(self, arr: np.ndarray) -> None:

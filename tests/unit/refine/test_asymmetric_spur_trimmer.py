@@ -1,4 +1,4 @@
-"""Tests for AsymmetricSpurTrimmer."""
+"""Tests for TrimAsymmetry."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import pytest
 from skimage.draw import disk, rectangle
 
 from phenotypic import Image, ImagePipeline
-from phenotypic.refine import AsymmetricSpurTrimmer
+from phenotypic.refine import TrimAsymmetry
 
 
 # =====================================================================
@@ -120,12 +120,12 @@ class TestCircularColonyNoTrim:
 
     def test_pure_rsym_mode(self, round_colony: Image) -> None:
         before = round_colony.objmap[:].copy()
-        refined = AsymmetricSpurTrimmer().apply(round_colony)
+        refined = TrimAsymmetry().apply(round_colony)
         np.testing.assert_array_equal(refined.objmap[:], before)
 
     def test_beehive_mode(self, round_colony: Image) -> None:
         before = round_colony.objmap[:].copy()
-        refined = AsymmetricSpurTrimmer(beehive_threshold=0.002).apply(
+        refined = TrimAsymmetry(beehive_threshold=0.002).apply(
                 round_colony
         )
         np.testing.assert_array_equal(refined.objmap[:], before)
@@ -136,7 +136,7 @@ class TestLopsidedSpurPureRsym:
 
     def test_spur_removed_body_preserved(self, spurred_colony: Image) -> None:
         before_area = int((spurred_colony.objmap[:] == 1).sum())
-        refined = AsymmetricSpurTrimmer().apply(spurred_colony)
+        refined = TrimAsymmetry().apply(spurred_colony)
         after_area = int((refined.objmap[:] == 1).sum())
 
         # Spur should be clearly shorter than before — a meaningful fraction trimmed.
@@ -159,7 +159,7 @@ class TestLinearBranchPreservedBeehiveMode:
 
     def test_linear_branch_kept(self, linear_branch_colony: Image) -> None:
         before = linear_branch_colony.objmap[:].copy()
-        refined = AsymmetricSpurTrimmer(beehive_threshold=0.002).apply(
+        refined = TrimAsymmetry(beehive_threshold=0.002).apply(
                 linear_branch_colony
         )
         # The linear strip past R_sym is topologically linear → holes=0 → kept.
@@ -171,7 +171,7 @@ class TestWebNoiseTrimmedBeehiveMode:
     """Beehive mode removes reticulated web regions past R_sym."""
 
     def test_web_removed(self, web_noise_colony: Image) -> None:
-        refined = AsymmetricSpurTrimmer(
+        refined = TrimAsymmetry(
                 beehive_threshold=0.002,
         ).apply(web_noise_colony)
 
@@ -191,7 +191,7 @@ class TestSmallObjectSkipped:
         image = _make_image(objmap)
 
         before = image.objmap[:].copy()
-        refined = AsymmetricSpurTrimmer(min_object_area=100).apply(image)
+        refined = TrimAsymmetry(min_object_area=100).apply(image)
         np.testing.assert_array_equal(refined.objmap[:], before)
 
 
@@ -206,7 +206,7 @@ class TestSmallCcSkippedBeehiveMode:
         image = _make_image(objmap)
 
         before = image.objmap[:].copy()
-        refined = AsymmetricSpurTrimmer(
+        refined = TrimAsymmetry(
                 beehive_threshold=0.002, min_cc_area=50,
         ).apply(image)
         np.testing.assert_array_equal(refined.objmap[:], before)
@@ -219,7 +219,7 @@ class TestMultiColonyIndependent:
             self, two_colonies_one_spurred: Image
     ) -> None:
         before = two_colonies_one_spurred.objmap[:].copy()
-        refined = AsymmetricSpurTrimmer().apply(two_colonies_one_spurred)
+        refined = TrimAsymmetry().apply(two_colonies_one_spurred)
         after = refined.objmap[:]
 
         # Label-1 disk (no spur) must be byte-for-byte identical.
@@ -236,7 +236,7 @@ class TestBeehiveThresholdMonotonic:
         originals = int((web_noise_colony.objmap[:] > 0).sum())
         for threshold in [0.0, 0.002, 0.01, 0.05, 1.0]:
             img = _make_image(web_noise_colony.objmap[:].copy())
-            refined = AsymmetricSpurTrimmer(
+            refined = TrimAsymmetry(
                     beehive_threshold=threshold,
             ).apply(img)
             trimmed_counts.append(
@@ -253,7 +253,7 @@ class TestJsonRoundtrip:
     """Serialize and deserialize via ImagePipeline; attributes survive."""
 
     def test_attributes_match(self) -> None:
-        trimmer = AsymmetricSpurTrimmer(
+        trimmer = TrimAsymmetry(
                 symmetry_threshold=0.4,
                 beehive_threshold=0.003,
                 min_cc_area=75,
@@ -264,9 +264,9 @@ class TestJsonRoundtrip:
         restored = ImagePipeline.from_json(pipeline.to_json())
 
         ops = restored.get_ops()
-        restored_trimmer = ops["AsymmetricSpurTrimmer"]
+        restored_trimmer = ops["TrimAsymmetry"]
 
-        assert isinstance(restored_trimmer, AsymmetricSpurTrimmer)
+        assert isinstance(restored_trimmer, TrimAsymmetry)
         assert restored_trimmer.symmetry_threshold == 0.4
         assert restored_trimmer.beehive_threshold == 0.003
         assert restored_trimmer.min_cc_area == 75
@@ -284,7 +284,7 @@ class TestProtectedComponents:
         before_gray = spurred_colony.gray[:].copy()
         before_detect = spurred_colony.detect_mat[:].copy()
 
-        refined = AsymmetricSpurTrimmer().apply(spurred_colony)
+        refined = TrimAsymmetry().apply(spurred_colony)
 
         np.testing.assert_array_equal(refined.rgb[:], before_rgb)
         np.testing.assert_array_equal(refined.gray[:], before_gray)
@@ -310,7 +310,7 @@ class TestIntensityModeSmoke:
         image = Image(arr=rgb)
         image.objmap[:] = objmap.astype(image.objmap[:].dtype)
 
-        refined = AsymmetricSpurTrimmer(method="intensity").apply(image)
+        refined = TrimAsymmetry(method="intensity").apply(image)
         # Spur should still be trimmed (intensity-weighted centroid lives on
         # the disk body since the spur has the same gray level but way fewer pixels).
         assert (refined.objmap[:] > 0).sum() < (image.objmap[:] > 0).sum()
@@ -321,7 +321,7 @@ class TestIntensityModeSmoke:
         """All-zero gray would break centroid_weighted; op must fall back."""
         # spurred_colony has an all-zero RGB/gray backing; intensity mode must
         # still run and produce a valid result (fallback to distance centroid).
-        refined = AsymmetricSpurTrimmer(method="intensity").apply(spurred_colony)
+        refined = TrimAsymmetry(method="intensity").apply(spurred_colony)
         assert refined.objmap[:].max() >= 0
 
 
@@ -330,12 +330,12 @@ class TestInvalidConstructorArgs:
 
     def test_symmetry_threshold_out_of_range(self) -> None:
         with pytest.raises(ValueError):
-            AsymmetricSpurTrimmer(symmetry_threshold=1.5)
+            TrimAsymmetry(symmetry_threshold=1.5)
 
     def test_negative_beehive_threshold(self) -> None:
         with pytest.raises(ValueError):
-            AsymmetricSpurTrimmer(beehive_threshold=-0.01)
+            TrimAsymmetry(beehive_threshold=-0.01)
 
     def test_invalid_method(self) -> None:
         with pytest.raises(ValueError):
-            AsymmetricSpurTrimmer(method="bogus")  # type: ignore[arg-type]
+            TrimAsymmetry(method="bogus")  # type: ignore[arg-type]

@@ -52,9 +52,9 @@ class SeparateObjects(ObjectRefiner):
           constraints.
 
     Consider Also:
-        - :class:`MaskOpener` for gentle separation of lightly touching
+        - :class:`MaskOpening` for gentle separation of lightly touching
           colonies without watershed.
-        - :class:`MaskEroder` for uniform inward shrinking that may
+        - :class:`MaskErosion` for uniform inward shrinking that may
           separate touching edges.
         - :class:`GridAlignmentRefiner` when off-grid artifacts are the
           main concern rather than merged colonies.
@@ -274,8 +274,10 @@ class SeparateObjects(ObjectRefiner):
 
         if is_gridimage:
             # Use grid boundaries to constrain peaks (one per cell)
-            row_edges = np.round(image.grid.get_row_edges()).astype(int)  # type: ignore[attr-defined]
-            col_edges = np.round(image.grid.get_col_edges()).astype(int)  # type: ignore[attr-defined]
+            row_edges = np.round(image.grid.get_row_edges()).astype(
+                    int)  # type: ignore[attr-defined]
+            col_edges = np.round(image.grid.get_col_edges()).astype(
+                    int)  # type: ignore[attr-defined]
             logger.info(
                     f"SeparateObjects: grid={len(row_edges) - 1}x{len(col_edges) - 1} cells")
             peaks = self._find_peaks_gridimage(score_map, objmask, row_edges, col_edges)

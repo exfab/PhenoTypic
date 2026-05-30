@@ -41,7 +41,7 @@ PANEL_A_HISTOGRAM = PanelDescription(
         how_to_read="X-axis: intensity (0-255), Y-axis: frequency. Blue=data, red=Gaussian fit",
         good_values="Bell-shaped, centered, uses full dynamic range",
         poor_values="Bimodal, clipped at edges, very narrow spread",
-        pipeline_link="CLAHE, ContrastStretching, GammaCorrection",
+        pipeline_link="EnhanceLocalContrast, ContrastStretching, GammaCorrection",
 )
 
 PANEL_B_AUTOCORR = PanelDescription(
@@ -51,7 +51,7 @@ PANEL_B_AUTOCORR = PanelDescription(
         how_to_read="Center=max correlation. Width indicates noise correlation length",
         good_values="Tight central peak (uncorrelated noise, easy to filter)",
         poor_values="Wide/elongated peak (structured noise, harder to remove)",
-        pipeline_link="GaussianBlur, BilateralDenoise, MedianFilter",
+        pipeline_link="GaussianBlur, LocalEdgeDenoise, MedianFilter",
 )
 
 PANEL_C_PSD = PanelDescription(
@@ -81,7 +81,7 @@ PANEL_E_CONTRAST = PanelDescription(
         how_to_read="Brighter=higher local contrast. Reveals edge strength",
         good_values="High values at colony boundaries, low in background",
         poor_values="Uniformly low (flat image) or noisy (texture dominates)",
-        pipeline_link="CLAHE, UnsharpMask, LocalContrastEnhance",
+        pipeline_link="EnhanceLocalContrast, SharpenEdgeGauss, LocalContrastEnhance",
 )
 
 PANEL_F_BARS = PanelDescription(
@@ -91,7 +91,7 @@ PANEL_F_BARS = PanelDescription(
         how_to_read="Bar height shows metric value. Colors: green=good, yellow=marginal, red=poor",
         good_values="All bars in green zone (RMS>0.05, Michelson>0.3)",
         poor_values="Bars in red zone indicate insufficient contrast",
-        pipeline_link="CLAHE, ContrastStretching, HistogramEqualization",
+        pipeline_link="EnhanceLocalContrast, ContrastStretching, HistogramEqualization",
 )
 
 PANEL_G_GRADIENT = PanelDescription(
@@ -101,7 +101,7 @@ PANEL_G_GRADIENT = PanelDescription(
         how_to_read="Brighter=stronger edges. Reveals structure boundaries",
         good_values="Sharp colony edges, minimal background texture",
         poor_values="Weak edges, noisy background, double edges",
-        pipeline_link="UnsharpMask, GaussianBlur (pre-smooth), CannyDetector",
+        pipeline_link="SharpenEdgeGauss, GaussianBlur (pre-smooth), CannyDetector",
 )
 
 PANEL_H_COHERENCE = PanelDescription(
@@ -111,7 +111,7 @@ PANEL_H_COHERENCE = PanelDescription(
         how_to_read="Brighter=stronger directional pattern (edges, ridges)",
         good_values="High at colony boundaries, low in uniform regions",
         poor_values="Uniformly high (texture) or low (no structure)",
-        pipeline_link="CoherenceEnhancingDiffusion, DirectionalFilter",
+        pipeline_link="StructureSmoothing, DirectionalFilter",
 )
 
 PANEL_I_RIDGE = PanelDescription(
@@ -141,7 +141,7 @@ PANEL_K_VARIANCE = PanelDescription(
         how_to_read="Brighter=higher variance. Reveals texture and noise",
         good_values="High in colonies, low in background",
         poor_values="High everywhere (noisy) or uniform (no features)",
-        pipeline_link="BilateralDenoise, MedianFilter, VarianceFilter",
+        pipeline_link="LocalEdgeDenoise, MedianFilter, VarianceFilter",
 )
 
 __all__ = [

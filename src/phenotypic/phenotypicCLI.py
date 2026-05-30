@@ -647,6 +647,14 @@ def _display_execution_config(config: ExecutionConfig, datasets: list) -> None:
          "their HDFs (threaded by --n-jobs, alpha from --overlay-alpha), "
          "runs analysis, rebuilds manifest, and regenerates dashboard.",
 )
+@click.option(
+    "--no-qc",
+    "no_qc",
+    is_flag=True,
+    help="Skip the QC compute step in finalize. QC otherwise runs "
+         "whenever the pipeline has a non-empty 'qc' section (writing the "
+         "qc/ artifact and resetting GUI review progress).",
+)
 def phenotypic_cli(
     pipeline_json: Optional[Path],
     input_path: Optional[Path],
@@ -675,6 +683,7 @@ def phenotypic_cli(
     checkpoint_interval: Optional[int],
     skip_validation: bool,
     recompile: Optional[Path],
+    no_qc: bool,
 ):
     """
     Execute a PhenoTypic pipeline on images.
@@ -747,6 +756,7 @@ def phenotypic_cli(
                     checkpoint_interval=checkpoint_interval,
                     slurm_args=slurm_args_dict,
                     wait=wait,
+                    no_qc=no_qc,
                 )
             else:
                 _handle_recompile(
@@ -755,6 +765,7 @@ def phenotypic_cli(
                     include_dataset_column,
                     overlay_alpha,
                     n_jobs,
+                    no_qc=no_qc,
                 )
             sys.exit(0)
 
@@ -1228,6 +1239,7 @@ def phenotypic_cli(
                 datasets,
                 metadata_csv=config.metadata_csv,
                 pipeline=finalizer_pipeline,
+                no_qc=no_qc,
             )
             if master_path:
                 click.echo(f"✓ Master measurements: {master_path}")
@@ -1425,6 +1437,7 @@ def _handle_recompile_slurm(
     checkpoint_interval: Optional[int],
     slurm_args: dict[str, Any],
     wait: bool,
+    no_qc: bool = False,
 ) -> None:
     """Submit recompile work as a SLURM array chain.
 
@@ -1438,6 +1451,9 @@ def _handle_recompile_slurm(
             positive; otherwise defaults to 500 files per shard.
         slurm_args: Parsed SLURM key/value arguments.
         wait: Whether to wait for the finalizer task status.
+        no_qc: Forwarded from ``--no-qc`` to skip QC compute on the
+            finalizer task (stashed on the finalizer task metadata so the
+            recompile worker reads it).
     """
     import json
     from datetime import datetime
@@ -1478,6 +1494,7 @@ def _handle_recompile_slurm(
     if tasks and tasks[-1].get("task_type") == TASK_FINALIZE:
         finalizer_task_index = len(tasks) - 1
         tasks[-1][JobMetadataKey.METADATA_CSV] = str(metadata_csv) if metadata_csv else None
+        tasks[-1][JobMetadataKey.NO_QC] = no_qc
 
     console.print("[cyan]Querying SLURM array limits...[/cyan]")
     array_limit = get_slurm_array_limit()
@@ -1500,6 +1517,7 @@ def _handle_recompile_slurm(
             include_dataset_column,
             overlay_alpha,
             -1,
+            no_qc=no_qc,
         )
         return
 
@@ -1673,6 +1691,7 @@ def _handle_recompile(
     include_dataset_column: bool,
     overlay_alpha: float,
     n_jobs: int,
+    no_qc: bool = False,
 ) -> None:
     """Recompile master measurements and dashboard from existing results.
 
@@ -1694,6 +1713,8 @@ def _handle_recompile(
         n_jobs: Worker thread count for overlay regeneration.
             Forwarded from the ``--n-jobs`` CLI flag (``-1`` = all
             cores, ``1`` = single-threaded).
+        no_qc: Forwarded from ``--no-qc`` to skip the QC compute step
+            in finalize.
     """
     from rich.console import Console
 
@@ -1724,6 +1745,7 @@ def _handle_recompile(
         dataset_names=dataset_names,
         include_dataset_column=include_dataset_column,
         metadata_csv=metadata_csv,
+        no_qc=no_qc,
     )
     if master_path:
         console.print(f"[green]Master measurements: {master_path}")

@@ -45,7 +45,7 @@ class GaussianBlur(ImageEnhancer):
     Consider Also:
         - :class:`MedianFilter` when salt-and-pepper noise dominates and edge
           preservation is important.
-        - :class:`BilateralDenoise` for smoothing within regions while keeping
+        - :class:`LocalEdgeDenoise` for smoothing within regions while keeping
           colony boundaries sharp.
         - :class:`StableDenoise` for highest-quality BM3D denoising on critical
           experiments.

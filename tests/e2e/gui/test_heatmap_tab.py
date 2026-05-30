@@ -70,7 +70,7 @@ def _default_master_df() -> pl.DataFrame:
                         "Metadata_Dataset": "ds1",
                         "Metadata_ImageFile": image,
                         "Metadata_Time": 0.0,
-                        "ObjectLabel": label,
+                        "Object_Label": label,
                         "Grid_RowNum": r,
                         "Grid_ColNum": c,
                         "Size_Area": float(100 + r * 10 + c),
@@ -176,8 +176,8 @@ def _se_entry(
     instance_id: str,
     on: str = "Size_Area",
     groupby: tuple[str, ...] = ("Metadata_ImageFile",),
-    severity_warn: float = 0.10,
-    severity_fail: float = 0.20,
+    warn_threshold: float = 0.10,
+    fail_threshold: float = 0.20,
     enabled: bool = True,
 ) -> dict:
     """Build a ReplicateAgreement recipe entry."""
@@ -189,8 +189,8 @@ def _se_entry(
             "on": on,
             "groupby": list(groupby),
             "time_label": "Metadata_Time",
-            "severity_warn": severity_warn,
-            "severity_fail": severity_fail,
+            "warn_threshold": warn_threshold,
+            "fail_threshold": fail_threshold,
             "min_replicates": 2,
         },
     }
@@ -319,10 +319,10 @@ def test_color_picker_lists_measurements_and_qc_severities(
     output_rel: str,
     output_dir: Path,
 ) -> None:
-    """Color picker options = measurement columns ∪ ``QC_*_Severity``.
+    """Color picker options = measurement columns ∪ ``QC_*_Metric``.
 
     Spec line 1222. After a ReplicateAgreement check is configured the
-    augmented frame should expose ``QC_SE_Severity`` and the dropdown
+    augmented frame should expose ``QC_SE_Metric`` and the dropdown
     should include it. Removing the check should contract the list.
     """
     instance_id = "qc-SE-color000"
@@ -338,7 +338,7 @@ def test_color_picker_lists_measurements_and_qc_severities(
     page.wait_for_selector("#heatmap-color-picker", timeout=10_000)
 
     # Activate the QC tab so the card-body refresh callback writes
-    # CFG_QC_AUGMENTED_FRAME with QC_SE_Severity, then switch back to
+    # CFG_QC_AUGMENTED_FRAME with QC_SE_Metric, then switch back to
     # the Heatmap tab and read the color picker options.
     page.locator("a.nav-link", has_text="QC").first.click()
     page.wait_for_function(
@@ -357,10 +357,10 @@ def test_color_picker_lists_measurements_and_qc_severities(
     )
     # Per spec line 800: "The color-picker option list also reads from
     # the cached augmented frame: union of measurements columns plus any
-    # QC_*_Severity columns present in the augmented frame." With a
-    # ReplicateAgreement configured, QC_SE_Severity must appear.
-    assert "QC_SE_Severity" in options, (
-        "Heatmap color picker missing QC_SE_Severity even though a "
+    # QC_*_Metric columns present in the augmented frame." With a
+    # ReplicateAgreement configured, QC_SE_Metric must appear.
+    assert "QC_SE_Metric" in options, (
+        "Heatmap color picker missing QC_SE_Metric even though a "
         "ReplicateAgreement check is configured. Wave D's "
         "`_refresh_heatmap_controls` callback in "
         "src/phenotypic/gui/results_viewer/_heatmap_tab/_callbacks.py "
@@ -368,7 +368,7 @@ def test_color_picker_lists_measurements_and_qc_severities(
         "STORE_REMOVED_KEYS; it does NOT subscribe to "
         "STORE_QC_AUGMENTED_REVISION, so the picker option list is "
         "not refreshed when the QC writer populates "
-        "CFG_QC_AUGMENTED_FRAME with new QC_*_Severity columns. "
+        "CFG_QC_AUGMENTED_FRAME with new QC_*_Metric columns. "
         f"Got options: {options!r}"
     )
 
@@ -398,7 +398,7 @@ def test_aggregator_semantics(
                         "Metadata_Dataset": "ds1",
                         "Metadata_ImageFile": image,
                         "Metadata_Time": 4.0,
-                        "ObjectLabel": label,
+                        "Object_Label": label,
                         "Grid_RowNum": r,
                         "Grid_ColNum": c,
                         "Size_Area": 100.0,
@@ -412,7 +412,7 @@ def test_aggregator_semantics(
             "Metadata_Dataset": "ds1",
             "Metadata_ImageFile": _IMAGES[0],
             "Metadata_Time": 4.0,
-            "ObjectLabel": label,
+            "Object_Label": label,
             "Grid_RowNum": 2,
             "Grid_ColNum": 3,
             "Size_Area": 200.0,
@@ -540,7 +540,7 @@ def test_image_picker(
                         "Metadata_Dataset": "ds1",
                         "Metadata_ImageFile": _IMAGES[0],
                         "Metadata_Time": t,
-                        "ObjectLabel": idx,
+                        "Object_Label": idx,
                         "Grid_RowNum": 1,
                         "Grid_ColNum": 1,
                         "Size_Area": 100.0 + t,
@@ -607,7 +607,7 @@ def test_removed_cells_visually_distinct(
     ``Mark all flagged for removal`` button — this updates
     ``STORE_REMOVED_KEYS``, which the Heatmap render callback
     subscribes to and which causes the overlay traces to be
-    emitted for every matched ``(image_file, ObjectLabel)``.
+    emitted for every matched ``(image_file, Object_Label)``.
 
     A naive approach of pre-trimming the on-disk
     ``measurements.parquet`` mirror does not work: ``OutputRoot``
@@ -623,7 +623,7 @@ def test_removed_cells_visually_distinct(
     for image in _IMAGES:
         for _ in range(100):
             label += 1
-            rows.append({"Metadata_ImageFile": image, "ObjectLabel": label})
+            rows.append({"Metadata_ImageFile": image, "Object_Label": label})
     csv_path = output_dir / "count_metadata.csv"
     pl.DataFrame(rows).write_csv(csv_path)
     instance_id = "qc-Count-overly"
@@ -639,7 +639,7 @@ def test_removed_cells_visually_distinct(
                     "params": {
                         "metadata": str(csv_path),
                         "groupby": ["Metadata_ImageFile"],
-                        "on": "ObjectLabel",
+                        "on": "Object_Label",
                     },
                 },
             ],
@@ -723,7 +723,7 @@ def _no_grid_df_factory() -> pl.DataFrame:
                 "Metadata_Dataset": "ds1",
                 "Metadata_ImageFile": _IMAGES[0],
                 "Metadata_Time": 0.0,
-                "ObjectLabel": idx,
+                "Object_Label": idx,
                 "Size_Area": 100.0 + idx,
             }
             for idx in range(6)
@@ -788,13 +788,13 @@ def test_heatmap_renders_qc_augmented_frame_not_stale(
     Race-condition edge from spec lines 775-798. With a configured
     ReplicateAgreement check and the user driving curation via the QC
     card's Mark-flagged-for-removal button, switching the color picker
-    to ``QC_SE_Severity`` should reflect the post-curation augmented
+    to ``QC_SE_Metric`` should reflect the post-curation augmented
     frame — not a stale pre-curation read.
 
     Driving curation through Mark-flagged-for-removal also bumps
     ``STORE_REMOVED_KEYS``, which triggers the heatmap controls-refresh
     callback so the picker option list re-emits with any newly-present
-    ``QC_*_Severity`` columns.
+    ``QC_*_Metric`` columns.
     """
     # Seed a Count check whose metadata expects more colonies than the
     # master frame contains; every group is flagged so Mark-flagged-for-
@@ -804,7 +804,7 @@ def test_heatmap_renders_qc_augmented_frame_not_stale(
     for image in _IMAGES:
         for _ in range(100):
             label += 1
-            rows.append({"Metadata_ImageFile": image, "ObjectLabel": label})
+            rows.append({"Metadata_ImageFile": image, "Object_Label": label})
     csv_path = output_dir / "count_metadata.csv"
     pl.DataFrame(rows).write_csv(csv_path)
 
@@ -822,7 +822,7 @@ def test_heatmap_renders_qc_augmented_frame_not_stale(
                     "params": {
                         "metadata": str(csv_path),
                         "groupby": ["Metadata_ImageFile"],
-                        "on": "ObjectLabel",
+                        "on": "Object_Label",
                     },
                 },
                 _se_entry(instance_id=se_id),
@@ -852,17 +852,17 @@ def test_heatmap_renders_qc_augmented_frame_not_stale(
     page.wait_for_selector("#heatmap-color-picker", timeout=10_000)
     page.wait_for_timeout(2_500)
     options = _dash_dropdown_options(page, "heatmap-color-picker")
-    assert "QC_SE_Severity" in options, (
-        "Heatmap color picker missing QC_SE_Severity after Mark-flagged-"
+    assert "QC_SE_Metric" in options, (
+        "Heatmap color picker missing QC_SE_Metric after Mark-flagged-"
         "for-removal triggered STORE_REMOVED_KEYS update. The Wave D "
         "controls-refresh callback should re-fire when the QC writer "
         "(re-)populates CFG_QC_AUGMENTED_FRAME. "
         f"Got options: {options!r}"
     )
 
-    # Switch the color picker to QC_SE_Severity and confirm the figure
+    # Switch the color picker to QC_SE_Metric and confirm the figure
     # renders without falling into the stale-frame empty-state.
-    _dash_dropdown_pick(page, "heatmap-color-picker", "QC_SE_Severity")
+    _dash_dropdown_pick(page, "heatmap-color-picker", "QC_SE_Metric")
     page.wait_for_timeout(1_500)
 
     has_data = page.evaluate(
@@ -875,6 +875,6 @@ def test_heatmap_renders_qc_augmented_frame_not_stale(
         """
     )
     assert has_data, (
-        "Heatmap did not render data after switching to QC_SE_Severity; "
+        "Heatmap did not render data after switching to QC_SE_Metric; "
         "augmented frame may have been read stale."
     )

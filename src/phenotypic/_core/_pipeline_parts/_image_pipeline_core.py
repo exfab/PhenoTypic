@@ -15,7 +15,7 @@ from pydantic import (
     field_validator,
 )
 
-from phenotypic.tools_.constants_ import OBJECT
+from phenotypic.schema import OBJECT
 
 if TYPE_CHECKING:
     from phenotypic._core._grid_image import GridImage
@@ -32,6 +32,10 @@ from phenotypic.abc_ import MeasureFeatures, BaseOperation, ImageOperation
 from phenotypic.abc_._post_measurement import PostMeasurement
 from phenotypic.analysis.abc_._model_fitter import ModelFitter
 from phenotypic.analysis.abc_._set_analyzer import SetAnalyzer
+# Import the entry type from the qc._recipe *submodule* (not the package
+# __init__) so the edge stays ``_core -> qc._recipe -> analysis.abc_`` and
+# never pulls in qc._runner / _cli / gui at module load.
+from phenotypic.qc._recipe import QcRecipeEntry
 from phenotypic.tools_.mixin import LazyWidgetMixin
 
 logger = logging.getLogger("ImagePipeline")
@@ -201,6 +205,15 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
     post: Dict[str, PostMeasurement] = {}
     filters: Dict[str, SetAnalyzer] = {}
     model: Optional[ModelFitter] = None
+    # QC config: an ordered LIST of ``{instance_id, class, enabled, params}``
+    # entries (not a name-keyed dict like ``filters``, and not bare
+    # ``QualityCheck`` instances — the entries carry the stable
+    # ``instance_id``/``enabled`` metadata the GUI per-card IDs and
+    # ``review_state.json`` key off). Excluded from ``model_dump``: the
+    # pipeline (de)serializer emits/reads the ``qc`` array explicitly via the
+    # dedicated entry shape, so it must not also leak through the generic
+    # pydantic dump.
+    qc: List[QcRecipeEntry] = Field(default_factory=list, exclude=True)
 
     # Internal (non-config) benchmarking state — never serialized.
     _operation_times: Dict[str, float] = PrivateAttr(default_factory=dict)
@@ -264,6 +277,33 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         """Coerce a ``list``/``dict``/``None`` of filters into a dict."""
         return _normalize_operation_collection(
             value, "filters", SetAnalyzer
+        )
+
+    @field_validator("qc", mode="before")
+    @classmethod
+    def _normalize_qc(cls, value: Any) -> Any:
+        """Coerce a ``None``/``list`` of QC entries into a list.
+
+        ``qc`` is always an ordered list of :class:`QcRecipeEntry`. ``None``
+        (e.g. an explicit ``qc=None`` from a legacy loader) yields an empty
+        list; a list passes through for pydantic to validate each entry.
+        Any other type raises so a misuse fails loudly at construction.
+
+        Args:
+            value: The raw ``qc`` argument.
+
+        Returns:
+            A list of entries (empty for ``None``).
+
+        Raises:
+            TypeError: If ``value`` is neither ``None`` nor a list.
+        """
+        if value is None:
+            return []
+        if isinstance(value, list):
+            return value
+        raise TypeError(
+            f"qc must be a list of QcRecipeEntry or None, got {type(value)}"
         )
 
     # ------------------------------------------------------------------ #
@@ -342,6 +382,15 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
     @_model.setter
     def _model(self, value: Optional[ModelFitter]) -> None:
         self.model = value
+
+    @property
+    def _qc(self) -> List[QcRecipeEntry]:
+        """Legacy/protected alias for the QC config entry list."""
+        return self.qc
+
+    @_qc.setter
+    def _qc(self, value: List[QcRecipeEntry]) -> None:
+        self.qc = value
 
     @property
     def _benchmark(self) -> bool:
@@ -542,6 +591,36 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                 or ``None`` when no model is set.
         """
         return self._model
+
+    def set_qc(self, qc: Optional[List[QcRecipeEntry]]) -> None:
+        """Set the QC config entry list.
+
+        Mirrors :meth:`set_post` / :meth:`set_filters` but the QC section is
+        an ordered **list** of :class:`QcRecipeEntry` (carrying stable
+        ``instance_id``/``enabled`` metadata), not a name-keyed dict.
+
+        Args:
+            qc: A list of :class:`QcRecipeEntry`, or ``None`` to clear.
+
+        Raises:
+            TypeError: If ``qc`` is neither a list nor ``None`` (raised by
+                the ``_normalize_qc`` validator on assignment).
+        """
+        self.qc = qc if qc is not None else []
+
+    def get_qc(self) -> List[QcRecipeEntry]:
+        """Get a copy of the QC config entry list.
+
+        Returns a shallow copy so callers cannot mutate the pipeline's
+        internal list by appending/removing. The entries themselves are
+        shared (they are lightweight config dataclasses); ``run_qc`` and the
+        GUI only read them and instantiate fresh checks from their params.
+
+        Returns:
+            List[QcRecipeEntry]: Ordered QC config entries. Empty when no
+                checks are configured.
+        """
+        return list(self._qc)
 
     def analyze(self, df: pd.DataFrame) -> pd.DataFrame:
         """Run the analysis chain (filters then model) against an aggregate frame.

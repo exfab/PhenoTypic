@@ -41,7 +41,7 @@ def _make_master_df(pipeline: ImagePipeline) -> pl.DataFrame:
     cols: dict[str, list] = {
         "Metadata_Dataset": ["ds1", "ds1", "ds1"],
         "Metadata_ImageFile": ["img1", "img1", "img2"],
-        "ObjectLabel": [1, 2, 1],
+        "Object_Label": [1, 2, 1],
         "RowNum": [0, 0, 1],
         "ColNum": [0, 1, 0],
     }
@@ -157,7 +157,7 @@ class TestSplitMasterByFeature:
         for key in ("MeasureSize", "MeasureShape"):
             df = pl.read_csv(tmp_path / "measurements_by_feature" / f"{key}.csv")
             for meta_col in ("Metadata_Dataset", "Metadata_ImageFile",
-                             "ObjectLabel", "RowNum", "ColNum"):
+                             "Object_Label", "RowNum", "ColNum"):
                 assert meta_col in df.columns, (
                     f"{meta_col} missing from {key} split"
                 )
@@ -197,7 +197,7 @@ class TestSplitMasterByFeature:
 
     def test_empty_meas_returns_empty(self, tmp_path: Path) -> None:
         pipeline = ImagePipeline()  # no measurers
-        master = pl.DataFrame({"Metadata_Dataset": ["ds"], "ObjectLabel": [1]})
+        master = pl.DataFrame({"Metadata_Dataset": ["ds"], "Object_Label": [1]})
         assert split_master_by_feature(master, tmp_path, pipeline) == {}
         assert not (tmp_path / "measurements_by_feature").exists()
 
@@ -237,7 +237,7 @@ class TestAggregateMeasurementsAutoResolve:
         row = pl.DataFrame({
             "Metadata_Dataset": ["ds1"],
             "Metadata_ImageFile": ["img1"],
-            "ObjectLabel": [1],
+            "Object_Label": [1],
             "RowNum": [0],
             "ColNum": [0],
             "Size_Area": [10.0],
@@ -297,7 +297,7 @@ class TestAggregateMeasurementsAutoResolve:
         pl.DataFrame({
             "Metadata_Dataset": ["ds1"],
             "Metadata_ImageFile": ["img1"],
-            "ObjectLabel": [1],
+            "Object_Label": [1],
             "Size_Area": [10.0],
         }).write_parquet(ds_dir / "img1.parquet")
 

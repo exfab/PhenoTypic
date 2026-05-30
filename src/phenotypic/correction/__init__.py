@@ -8,7 +8,7 @@ detect_mat).
 """
 
 from ._bayesshrink_corrector import BayesShrinkCorrector
-from ._color_correction import ColorCheckerProfile, ColorCorrector
+from ._color_correction import CaptureMetadata, ColorCheckerProfile, ColorCorrector
 from ._color_denoise import ColorDenoise
 from ._stable_denoise import StableDenoise
 from ._grid_aligner import GridAligner
@@ -17,6 +17,7 @@ from ._image_cropper import ImageCropper
 from ._image_padder import ImagePadder
 
 __all__ = [
+    "CaptureMetadata",
     "ColorCheckerProfile",
     "ColorCorrector",
     "ColorDenoise",

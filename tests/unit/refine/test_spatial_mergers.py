@@ -1,6 +1,6 @@
 """Tests for spatial merger ObjectRefiner classes.
 
-Covers TransitiveDistanceMerger, NearestNeighborMerger, and SmallToLargeMerger
+Covers MergeFragmentChains, NearestNeighborMerger, and SmallToLargeMerger
 with edge cases and algorithm-specific behavior validation.
 """
 
@@ -8,7 +8,7 @@ import pytest
 import numpy as np
 from phenotypic import Image
 from phenotypic.refine import (
-    TransitiveDistanceMerger,
+    MergeFragmentChains,
     NearestNeighborMerger,
     SmallToLargeMerger,
 )
@@ -95,28 +95,28 @@ def size_mixed_image():
 
 
 # =====================================================================
-# TransitiveDistanceMerger Tests
+# MergeFragmentChains Tests
 # =====================================================================
 
 
 class TestTransitiveDistanceMerger:
-    """Test suite for TransitiveDistanceMerger."""
+    """Test suite for MergeFragmentChains."""
 
     def test_empty_objmap(self, empty_image):
         """Empty objmap should return unchanged."""
-        merger = TransitiveDistanceMerger(distance_threshold=20.0)
+        merger = MergeFragmentChains(distance_threshold=20.0)
         result = merger.apply(empty_image)
         assert result.objmap[:].max() == 0
 
     def test_single_object(self, single_object_image):
         """Single object should return unchanged."""
-        merger = TransitiveDistanceMerger(distance_threshold=20.0)
+        merger = MergeFragmentChains(distance_threshold=20.0)
         result = merger.apply(single_object_image)
         assert result.objmap[:].max() == 1
 
     def test_no_merges_distant_objects(self, two_distant_objects_image):
         """Objects beyond threshold should not merge."""
-        merger = TransitiveDistanceMerger(distance_threshold=20.0)
+        merger = MergeFragmentChains(distance_threshold=20.0)
         result = merger.apply(two_distant_objects_image)
         # Should have 2 objects still
         assert result.objmap[:].max() == 2
@@ -124,7 +124,7 @@ class TestTransitiveDistanceMerger:
     def test_merges_close_objects(self, two_close_objects_image):
         """Objects within threshold should reduce in count."""
         original_count = two_close_objects_image.objmap[:].max()
-        merger = TransitiveDistanceMerger(distance_threshold=50.0)
+        merger = MergeFragmentChains(distance_threshold=50.0)
         result = merger.apply(two_close_objects_image)
         # Objects within threshold should merge or at least not increase
         assert result.objmap[:].max() <= original_count
@@ -132,21 +132,21 @@ class TestTransitiveDistanceMerger:
     def test_chain_transitive_closure(self, chain_objects_image):
         """Chain A-B-C should merge via transitive closure."""
         original_count = chain_objects_image.objmap[:].max()
-        merger = TransitiveDistanceMerger(distance_threshold=25.0)
+        merger = MergeFragmentChains(distance_threshold=25.0)
         result = merger.apply(chain_objects_image)
         # Transitive merging should reduce object count
         assert result.objmap[:].max() <= original_count
 
     def test_no_merges_with_tight_threshold(self, chain_objects_image):
         """Very tight threshold should prevent merging."""
-        merger = TransitiveDistanceMerger(distance_threshold=5.0)
+        merger = MergeFragmentChains(distance_threshold=5.0)
         result = merger.apply(chain_objects_image)
         # No objects should merge (all distances > 5px)
         assert result.objmap[:].max() == 3
 
     def test_relabeled_consecutively(self, chain_objects_image):
         """Merged result should have consecutive labels starting from 1."""
-        merger = TransitiveDistanceMerger(distance_threshold=50.0)
+        merger = MergeFragmentChains(distance_threshold=50.0)
         result = merger.apply(chain_objects_image)
         objmap = result.objmap[:]
         unique_labels = np.unique(objmap[objmap > 0])
@@ -157,14 +157,14 @@ class TestTransitiveDistanceMerger:
     def test_immutability_default(self, single_object_image):
         """Default apply() should not modify original."""
         original_max = single_object_image.objmap[:].max()
-        merger = TransitiveDistanceMerger(distance_threshold=30.0)
+        merger = MergeFragmentChains(distance_threshold=30.0)
         merger.apply(single_object_image)  # Default: inplace=False
         # Original should be unchanged
         assert single_object_image.objmap[:].max() == original_max
 
     def test_inplace_modification(self, chain_objects_image):
         """inplace=True should modify original."""
-        merger = TransitiveDistanceMerger(distance_threshold=25.0)
+        merger = MergeFragmentChains(distance_threshold=25.0)
         result = merger.apply(chain_objects_image, inplace=True)
         # Result should be same object
         assert result is chain_objects_image
@@ -172,15 +172,15 @@ class TestTransitiveDistanceMerger:
     def test_invalid_threshold_raises_error(self):
         """Non-positive threshold should raise ValueError."""
         with pytest.raises(ValueError, match="distance_threshold must be positive"):
-            TransitiveDistanceMerger(distance_threshold=0)
+            MergeFragmentChains(distance_threshold=0)
         with pytest.raises(ValueError, match="distance_threshold must be positive"):
-            TransitiveDistanceMerger(distance_threshold=-10)
+            MergeFragmentChains(distance_threshold=-10)
 
     def test_protected_components(self, two_close_objects_image):
         """RGB, gray, detect_mat should remain unchanged."""
         # Store original RGB
         original_rgb = two_close_objects_image.rgb[:].copy()
-        merger = TransitiveDistanceMerger(distance_threshold=30.0)
+        merger = MergeFragmentChains(distance_threshold=30.0)
         result = merger.apply(two_close_objects_image)
         # RGB should be unchanged
         assert np.array_equal(result.rgb[:], original_rgb)
@@ -190,7 +190,7 @@ class TestTransitiveDistanceMerger:
         original = two_close_objects_image.objmap[:]
         original_coverage = (original > 0).sum()
 
-        merger = TransitiveDistanceMerger(distance_threshold=30.0)
+        merger = MergeFragmentChains(distance_threshold=30.0)
         result = merger.apply(two_close_objects_image)
 
         merged = result.objmap[:]
@@ -427,7 +427,7 @@ class TestMergerIntegration:
     def test_chaining_refiners(self, chain_objects_image):
         """Multiple refiners can be chained."""
         # Apply transitive merger then nearest neighbor
-        merger1 = TransitiveDistanceMerger(distance_threshold=20.0)
+        merger1 = MergeFragmentChains(distance_threshold=20.0)
         merger2 = NearestNeighborMerger(distance_threshold=15.0, min_size=50)
 
         result1 = merger1.apply(chain_objects_image)
@@ -440,7 +440,7 @@ class TestMergerIntegration:
         """Mergers should work in ImagePipeline."""
         from phenotypic import ImagePipeline
 
-        pipeline = ImagePipeline(ops=[TransitiveDistanceMerger(distance_threshold=20.0)])
+        pipeline = ImagePipeline(ops=[MergeFragmentChains(distance_threshold=20.0)])
 
         # Should apply without error
         result = pipeline.apply(chain_objects_image)
@@ -450,7 +450,7 @@ class TestMergerIntegration:
         """Merger instances should be picklable (for parallel execution)."""
         import pickle
 
-        merger1 = TransitiveDistanceMerger(distance_threshold=25.0)
+        merger1 = MergeFragmentChains(distance_threshold=25.0)
         merger2 = NearestNeighborMerger(distance_threshold=20.0, min_size=50)
         merger3 = SmallToLargeMerger(distance_threshold=30.0, size_threshold=100)
 

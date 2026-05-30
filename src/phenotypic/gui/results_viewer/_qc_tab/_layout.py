@@ -5,7 +5,7 @@ Top-level shape (vertical stack):
 1. Top strip — ``+ Add check`` and ``Export QC report`` buttons plus a
    ``dbc.Toast`` for success/failure announcements.
 2. Load-warning banner — shown only when
-   :class:`~phenotypic.gui._qc_recipe.QcRecipe.load_warnings` is
+   :class:`~phenotypic.qc.QcRecipe.load_warnings` is
    non-empty at boot.
 3. Cards container — atomically rebuilt by the card-list-render
    callback so the card count tracks the recipe.
@@ -34,9 +34,11 @@ from phenotypic.gui._design import (
     COLOR_SURFACE,
     FONT_SIZE_LABEL,
 )
-from phenotypic.gui._qc_recipe import QcRecipe, QcRecipeLoadWarning
+from phenotypic.qc import QcRecipe, QcRecipeLoadWarning
 from phenotypic.gui.results_viewer._qc_tab import _ids as ids
 from phenotypic.gui.results_viewer._qc_tab._check_card import build_check_card
+from phenotypic.gui.results_viewer._qc_tab.review import _ids as review_ids
+from phenotypic.gui.results_viewer._qc_tab.review import build_review_view
 
 logger = logging.getLogger(__name__)
 
@@ -247,22 +249,39 @@ def _build_qc_modal() -> dbc.Modal:
 # ---------------------------------------------------------------------------
 
 
-def build_qc_tab_body(recipe: QcRecipe) -> Component:
-    """Build the QC tab body.
+def _build_subview_toggle() -> Component:
+    """Build the Configure | Review segmented switch + its mirror store."""
+    return html.Div(
+        [
+            dbc.RadioItems(
+                id=review_ids.QC_SUBVIEW_TOGGLE_ID,
+                options=[
+                    {"label": "Configure", "value": review_ids.QC_SUBVIEW_CONFIGURE},
+                    {"label": "Review", "value": review_ids.QC_SUBVIEW_REVIEW},
+                ],
+                value=review_ids.QC_SUBVIEW_CONFIGURE,
+                inline=True,
+                class_name="btn-group",
+                input_class_name="btn-check",
+                label_class_name="btn btn-outline-primary btn-sm",
+                label_checked_class_name="active",
+            ),
+            dcc.Store(
+                id=review_ids.STORE_QC_SUBVIEW,
+                data=review_ids.QC_SUBVIEW_CONFIGURE,
+                storage_type="memory",
+            ),
+        ],
+        style={
+            "padding": "0.5rem 1rem",
+            "borderBottom": f"1px solid {COLOR_BORDER}",
+            "background": COLOR_SURFACE,
+        },
+    )
 
-    Mounts the top strip, load-warning banner, cards container, the
-    shared add/edit modal, and the hidden ``editing-instance`` store.
-    The cards container is seeded with one card per *enabled* entry in
-    ``recipe`` so the first render does not need a callback fire; the
-    card-list-render callback owns subsequent rebuilds.
 
-    Args:
-        recipe: The loaded :class:`QcRecipe` for the active output
-            directory.
-
-    Returns:
-        A :class:`dash.html.Div` ready to drop into a :class:`dbc.Tab`.
-    """
+def _build_configure_view(recipe: QcRecipe) -> Component:
+    """Build the Configure sub-view: the existing per-check card editor."""
     return html.Div(
         [
             _build_top_strip(),
@@ -286,6 +305,42 @@ def build_qc_tab_body(recipe: QcRecipe) -> Component:
                 id=ids.STORE_QC_EDITING_INSTANCE,
                 data=None,
                 storage_type="memory",
+            ),
+        ],
+        id=review_ids.QC_CONFIGURE_VIEW_ID,
+    )
+
+
+def build_qc_tab_body(recipe: QcRecipe) -> Component:
+    """Build the QC tab body: Configure | Review segmented sub-views.
+
+    The tab hosts a segmented toggle that swaps between **Configure** (the
+    existing per-check card editor, seeded with one card per *enabled*
+    entry) and **Review** (the master–detail curation walkthrough). Both
+    sub-views are mounted at once; the active one is shown via
+    ``style.display`` by the sub-view switch callback so neither has to be
+    rebuilt on toggle.
+
+    Args:
+        recipe: The loaded :class:`QcRecipe` for the active output
+            directory.
+
+    Returns:
+        A :class:`dash.html.Div` ready to drop into a :class:`dbc.Tab`.
+    """
+    return html.Div(
+        [
+            _build_subview_toggle(),
+            _build_configure_view(recipe),
+            html.Div(
+                children=build_review_view(),
+                id=review_ids.QC_REVIEW_VIEW_ID,
+                # Hidden until the toggle flips to Review. No height cap:
+                # the Review view sizes to its content and the
+                # ``qc-tab-root`` wrapper scrolls the page; its sticky
+                # header + sidebar keep the nav pinned (the switch callback
+                # just toggles ``display`` block/none).
+                style={"display": "none"},
             ),
         ],
         className="qc-tab-root",

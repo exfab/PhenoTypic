@@ -54,7 +54,7 @@ class HessianFilter(ImageEnhancer):
         - :class:`SatoRidgeFilter` for continuous tube-like structures where
           Hessian eigenvalue ratios provide cleaner ridge responses.
         - :class:`MeijeringRidgeFilter` for very fine neurite-like filaments.
-        - :class:`LaplaceEnhancer` for simpler second-derivative edge
+        - :class:`SharpenEdgeLaplace` for simpler second-derivative edge
           detection without multi-scale analysis.
 
     See Also:

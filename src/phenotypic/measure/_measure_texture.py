@@ -10,8 +10,8 @@ from pydantic import field_validator
 from skimage import exposure
 
 from phenotypic.abc_ import MeasureFeatures
-from phenotypic.tools_.constants_ import OBJECT
-from ..tools_.measurement_info import TEXTURE
+from phenotypic.schema import OBJECT
+from phenotypic.schema import TEXTURE
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image

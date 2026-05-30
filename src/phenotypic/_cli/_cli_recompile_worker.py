@@ -393,8 +393,10 @@ def _run_post_master_steps(
         pipeline = _load_pipeline_from_output_dir(output_dir)
         metadata_csv_str = task.get(JobMetadataKey.METADATA_CSV)
         metadata_csv = Path(str(metadata_csv_str)) if metadata_csv_str else None
+        no_qc = bool(task.get(JobMetadataKey.NO_QC, False))
         plugin_df = finalize_post_master_outputs(
-            output_dir, merged_df, pipeline, metadata_csv=metadata_csv
+            output_dir, merged_df, pipeline,
+            metadata_csv=metadata_csv, no_qc=no_qc,
         )
 
     try:

@@ -84,10 +84,10 @@ class XyzAccessor(ColorSpaceAccessor):
         Notes:
             - RGB normalization ensures input values are in [0, 1] range expected
               by colour.RGB_to_XYZ.
-            - For sRGB images: cctf_decoding=True applies inverse OECF to convert
-              from sRGB's perceptually-encoded values to linear RGB.
-            - For linear RGB (GAMMA_ENCODINGS.LINEAR): cctf_decoding=False treats
-              RGB values as already linear.
+            - For sRGB images: apply_cctf_decoding=True applies the inverse
+              OECF to convert sRGB's perceptually-encoded values to linear RGB.
+            - For linear RGB (GAMMA_ENCODINGS.LINEAR): apply_cctf_decoding=False
+              treats RGB values as already linear.
             - D50 whitepoint is dynamically set based on self._root_image.observer
               to ensure chromatic adaptation consistency.
             - Results are read-only (non-writeable) due to parent class __getitem__
@@ -116,7 +116,7 @@ class XyzAccessor(ColorSpaceAccessor):
                         RGB=self._root_image.rgb.normed(),
                         colourspace=sRGB_D50,
                         illuminant=sRGB_D50.whitepoint,
-                        cctf_decoding=True,
+                        apply_cctf_decoding=True,
                 )
             case (GAMMA_ENCODINGS.SRGB, "D65"):
                 return colour.RGB_to_XYZ(
@@ -125,26 +125,26 @@ class XyzAccessor(ColorSpaceAccessor):
                         illuminant=colour.CCS_ILLUMINANTS[self._root_image._observer][
                             "D65"
                         ],
-                        cctf_decoding=True,
+                        apply_cctf_decoding=True,
                 )
             case (GAMMA_ENCODINGS.LINEAR, "D50"):
                 sRGB_D50.whitepoint = colour.CCS_ILLUMINANTS[
                     self._root_image._observer
                 ]["D50"]
                 return colour.RGB_to_XYZ(
-                        rgb=self._root_image.rgb.normed(),
+                        RGB=self._root_image.rgb.normed(),
                         colourspace=colour.RGB_COLOURSPACES["sRGB"],
                         illuminant=sRGB_D50.whitepoint,
-                        cctf_decoding=False,
+                        apply_cctf_decoding=False,
                 )
             case (GAMMA_ENCODINGS.LINEAR, "D65"):
                 return colour.RGB_to_XYZ(
-                        rgb=self._root_image.rgb.normed(),
+                        RGB=self._root_image.rgb.normed(),
                         colourspace=colour.RGB_COLOURSPACES["sRGB"],
                         illuminant=colour.CCS_ILLUMINANTS[self._root_image._observer][
                             "D65"
                         ],
-                        cctf_decoding=False,
+                        apply_cctf_decoding=False,
                 )
             case _:
                 raise ValueError(

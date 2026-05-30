@@ -13,7 +13,7 @@ from phenotypic.detect import OtsuDetector
 from phenotypic.enhance import GaussianBlur
 from phenotypic.measure import MeasureShape
 from phenotypic.prefab import HeavyOtsuPipeline
-from phenotypic.refine import BorderObjectRemover, SmallObjectRemover
+from phenotypic.refine import RemoveBorderObjects, SmallObjectRemover
 
 from unit.test_fixtures import (
     walk_package_for_measurements,
@@ -44,12 +44,12 @@ _SKIP_PREFABS: set[str] = set()
 
 _all_prefabs = [
     pytest.param(
-        f"phenotypic.prefab.{name}",
-        getattr(phenotypic.prefab, name),
-        marks=pytest.mark.xfail(
-            reason="GridApply requires mandatory image_op arg",
-            strict=True,
-        ),
+            f"phenotypic.prefab.{name}",
+            getattr(phenotypic.prefab, name),
+            marks=pytest.mark.xfail(
+                    reason="GridApply requires mandatory image_op arg",
+                    strict=True,
+            ),
     )
     if name in _SKIP_PREFABS
     else (f"phenotypic.prefab.{name}", getattr(phenotypic.prefab, name))
@@ -155,7 +155,7 @@ def test_operation_params_survive_roundtrip():
     pipe = ImagePipeline(ops=[
         GaussianBlur(sigma=3.5, mode="reflect"),
         OtsuDetector(ignore_zeros=True, ignore_borders=False),
-        BorderObjectRemover(border_size=7),
+        RemoveBorderObjects(border_size=7),
         ImagePadder(left=10, right=20, top=5, bottom=15, mode="constant"),
     ])
 
@@ -169,7 +169,7 @@ def test_operation_params_survive_roundtrip():
     assert det.ignore_zeros is True
     assert det.ignore_borders is False
 
-    rem = loaded._ops["BorderObjectRemover"]
+    rem = loaded._ops["RemoveBorderObjects"]
     assert rem.border_size == 7
 
     pad = loaded._ops["ImagePadder"]
@@ -225,14 +225,14 @@ def test_pipeline_embedded_in_pipeline():
 def test_prefab_embedded_in_pipeline():
     """PrefabPipeline nested in a parent ImagePipeline preserves class and params."""
     prefab = HeavyOtsuPipeline(gaussian_sigma=5)
-    outer = ImagePipeline(ops=[prefab, BorderObjectRemover(border_size=12)])
+    outer = ImagePipeline(ops=[prefab, RemoveBorderObjects(border_size=12)])
 
     loaded = ImagePipeline.from_json(outer.to_json())
     ops = list(loaded._ops.values())
 
     assert len(ops) == 2
     assert type(ops[0]).__name__ == "HeavyOtsuPipeline"
-    assert isinstance(ops[1], BorderObjectRemover)
+    assert isinstance(ops[1], RemoveBorderObjects)
     assert ops[1].border_size == 12
 
     inner_first = list(ops[0]._ops.values())[0]
@@ -245,9 +245,9 @@ def test_prefab_embedded_in_pipeline():
 def test_file_roundtrip():
     """Pipeline serialization to file and back preserves structure."""
     pipe = ImagePipeline(
-        ops=[GaussianBlur(sigma=4), OtsuDetector()],
-        meas=[MeasureShape()],
-        name="file_test",
+            ops=[GaussianBlur(sigma=4), OtsuDetector()],
+            meas=[MeasureShape()],
+            name="file_test",
     )
 
     with tempfile.TemporaryDirectory() as tmpdir:

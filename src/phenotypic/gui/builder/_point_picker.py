@@ -16,7 +16,7 @@ Click capture is delegated to the clientside JS layer at
 ``PICKER_STAGED_STORE`` via ``dash_clientside.set_props``.
 
 The module reuses :func:`_dzi_tiler.tile`, :data:`_TILE_NAME_RE`,
-:func:`_is_safe_path_component`, and :func:`_json_error` from the results
+:func:`is_safe_path_component`, and :func:`_json_error` from the results
 viewer's tile-routes module so this blueprint behaves like the public
 viewer's tile route — same on-disk layout, same path-traversal hardening.
 """
@@ -52,10 +52,10 @@ from phenotypic.gui.builder._state import (
     current_scope,
     state_from_json,
 )
+from phenotypic.gui._shared.tiles import is_safe_path_component
 from phenotypic.gui.results_viewer import _dzi_tiler
 from phenotypic.gui.results_viewer._tile_routes import (
     _TILE_NAME_RE,
-    _is_safe_path_component,
     _json_error,
 )
 
@@ -65,7 +65,7 @@ logger = logging.getLogger(__name__)
 _VALID_SOURCES = ("rgb", "intermediate")
 
 #: Session ids in the URL must look UUID-shaped (lowercase hex + hyphens).
-#: We reuse :func:`_is_safe_path_component` for the basic charset check and
+#: We reuse :func:`is_safe_path_component` for the basic charset check and
 #: layer this regex on top to reject anything obviously wrong (too short to
 #: be a UUID, missing the hyphen pattern, etc.).
 _SESSION_ID_RE = re.compile(r"^[A-Za-z0-9._-]+$")
@@ -80,7 +80,7 @@ _SESSION_ID_MIN_LEN = 8
 def _safe_session_id(session_id: str) -> bool:
     """Return ``True`` if *session_id* is safe to embed in a filesystem path.
 
-    Validates two things on top of :func:`_is_safe_path_component`:
+    Validates two things on top of :func:`is_safe_path_component`:
 
     * The id is at least :data:`_SESSION_ID_MIN_LEN` characters (UUIDs are
       36; we accept the looser bound to avoid breaking tests that pass
@@ -96,7 +96,7 @@ def _safe_session_id(session_id: str) -> bool:
     """
     if not session_id or len(session_id) < _SESSION_ID_MIN_LEN:
         return False
-    if not _is_safe_path_component(session_id):
+    if not is_safe_path_component(session_id):
         return False
     return bool(_SESSION_ID_RE.match(session_id))
 

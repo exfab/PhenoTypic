@@ -1,4 +1,4 @@
-"""Base ABC for severity-driven quality-control checks on measurement frames."""
+"""Base ABC for metric-driven quality-control checks on measurement frames."""
 
 from __future__ import annotations
 
@@ -7,9 +7,9 @@ from abc import ABC
 from typing import Any, ClassVar
 
 import pandas as pd
-from pydantic import Field
+from pydantic import Field, model_validator
 
-from phenotypic.tools_.measurement_info import QUALITY_CHECK
+from phenotypic.schema import OBJECT, QUALITY_CHECK
 
 from ._set_analyzer import SetAnalyzer
 
@@ -20,33 +20,46 @@ class QualityCheck(SetAnalyzer, ABC):
     ``QualityCheck`` is a thin layer over :class:`SetAnalyzer` that
     standardizes how subclasses surface flagged rows for downstream
     curation. Subclasses implement a single ``_compute(group)`` hook
-    that augments one group with at minimum a ``QC_<name>_Severity``
-    column. The base class then derives two companion columns from
-    severity:
+    that augments one group with at minimum a raw, directional
+    ``QC_<name>_Metric`` column (the check's headline value in its own
+    units). The base class then derives two companion columns from the
+    metric, using the check's ``_HIGHER_IS_BAD`` direction flag to decide
+    which side of each threshold is "bad":
 
-    * ``QC_<name>_Flag`` (``bool``): ``True`` when severity is at or
-      above ``severity_fail``. Rows with ``Flag=True`` are the ones the
-      results-viewer GUI offers to mark for curation removal.
+    * ``QC_<name>_Flag`` (``bool``): ``True`` when the metric crosses
+      ``fail_threshold`` in the bad direction. When ``_HIGHER_IS_BAD`` is
+      ``True`` that means ``metric >= fail_threshold``; when ``False``
+      (e.g. an agreement score where lower is worse) it means
+      ``metric <= fail_threshold``. Rows with ``Flag=True`` are the ones
+      the results-viewer GUI offers to mark for curation removal.
     * ``QC_<name>_Status`` (``str``): tri-state label derived from the
-      same severity column. ``"pass"`` for ``severity < severity_warn``,
-      ``"warn"`` for ``severity_warn <= severity < severity_fail``,
-      ``"fail"`` for ``severity >= severity_fail``. Only ``"fail"``
-      triggers ``Flag=True``; the ``"warn"`` tier is informational.
+      same metric column. With ``_HIGHER_IS_BAD=True``: ``"pass"`` until
+      ``metric >= warn_threshold`` (``"warn"``), then
+      ``metric >= fail_threshold`` (``"fail"``), with
+      ``warn_threshold <= fail_threshold``. With ``_HIGHER_IS_BAD=False``
+      the comparisons invert to ``<=`` with
+      ``fail_threshold <= warn_threshold``. Only ``"fail"`` triggers
+      ``Flag=True``; the ``"warn"`` tier is informational.
 
-    NaN severities (e.g. under-powered replicate bins in
+    NaN metrics (e.g. under-powered replicate bins in
     :class:`ReplicateAgreement`) are treated as ``"pass"`` with
     ``Flag=False`` so degenerate groups never gate curation.
 
-    Subclasses set two class-level attributes that drive column naming
-    and docstring autogeneration:
+    Subclasses set class-level attributes that drive column naming,
+    threshold direction, and docstring autogeneration:
 
     * ``name`` — short identifier composed into output column names
       (``QC_<name>_Flag`` and friends). Must be set on every concrete
       subclass.
+    * ``_HIGHER_IS_BAD`` — ``True`` when a larger metric value is worse
+      (the common case), ``False`` when a smaller value is worse (e.g. an
+      agreement score). Intrinsic to the metric, not user-tunable; it has
+      **no default on the base** and must be set on every concrete
+      subclass.
     * ``_measurement_infoclass`` — optional per-subclass
       :class:`MeasurementInfo` enum documenting any check-specific
       columns the subclass emits beyond the generic
-      ``Flag``/``Severity``/``Status`` trio. When set,
+      ``Flag``/``Metric``/``Status`` trio. When set,
       ``__init_subclass__`` appends its RST table to the subclass
       docstring.
 
@@ -57,13 +70,14 @@ class QualityCheck(SetAnalyzer, ABC):
     Attributes:
         name: Short identifier composed into output column names. Set on
             each concrete subclass (e.g. ``"Count"``, ``"SE"``).
-        severity_warn: Severity at/above which ``Status="warn"``.
-            A class-level constant; subclasses may override it by
-            re-declaring the ``ClassVar`` in their class body.
-        severity_fail: Severity at/above which ``Status="fail"`` and
-            ``Flag=True``. A class-level constant; subclasses may
-            override it by re-declaring the ``ClassVar`` in their
-            class body.
+        warn_threshold: Metric value (in the check's own units) at which
+            ``Status`` becomes ``"warn"`` in the bad direction. A pydantic
+            instance field; subclasses override the default by
+            re-declaring it, and callers may override it per instance.
+        fail_threshold: Metric value at which ``Status`` becomes
+            ``"fail"`` and ``Flag=True`` in the bad direction. A pydantic
+            instance field; subclasses override the default by
+            re-declaring it, and callers may override it per instance.
         unmatched_groups: Groups that the check could not evaluate (for
             example, expected counts whose group key never appeared in
             the data). Populated by subclasses that need to report
@@ -71,21 +85,71 @@ class QualityCheck(SetAnalyzer, ABC):
     """
 
     name: ClassVar[str]
+    _HIGHER_IS_BAD: ClassVar[bool]
     _exposes_agg_func: ClassVar[bool] = False
     _measurement_infoclass: ClassVar[type | None] = None
 
-    severity_warn: ClassVar[float] = 0.05
-    severity_fail: ClassVar[float] = 0.10
+    warn_threshold: float = 0.05
+    fail_threshold: float = 0.10
     unmatched_groups: list = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _validate_threshold_order(self) -> QualityCheck:
+        """Reject thresholds ordered against the check's bad direction.
+
+        The ``warn`` tier must always sit between ``"pass"`` and ``"fail"``
+        in the metric's bad direction, so the two thresholds have a fixed
+        ordering that depends only on ``_HIGHER_IS_BAD``:
+
+        * ``_HIGHER_IS_BAD=True``  → ``warn_threshold <= fail_threshold``
+          (a larger metric is worse, so ``fail`` is the higher boundary).
+        * ``_HIGHER_IS_BAD=False`` → ``warn_threshold >= fail_threshold``
+          (a smaller metric is worse, so ``fail`` is the lower boundary).
+
+        Equality is allowed — it collapses the ``warn`` band so the check
+        is purely pass/fail. A mis-ordered pair would silently invert the
+        tri-state (e.g. a lower-is-bad check that fails *above* its warn
+        line), so it raises ``ValueError`` (surfaced by pydantic as a
+        ``ValidationError``) at construction.
+
+        Intermediate ABCs that have not yet bound ``_HIGHER_IS_BAD`` skip
+        the check so the base class stays instantiable for test doubles.
+
+        Returns:
+            The validated instance.
+
+        Raises:
+            ValueError: If the thresholds are ordered against the bad
+                direction implied by ``_HIGHER_IS_BAD``.
+        """
+        higher_is_bad = getattr(type(self), "_HIGHER_IS_BAD", None)
+        if higher_is_bad is None:
+            return self
+        if higher_is_bad and self.warn_threshold > self.fail_threshold:
+            raise ValueError(
+                "warn_threshold must be <= fail_threshold for a "
+                "higher-is-bad check "
+                f"(got warn={self.warn_threshold}, "
+                f"fail={self.fail_threshold})"
+            )
+        if not higher_is_bad and self.warn_threshold < self.fail_threshold:
+            raise ValueError(
+                "warn_threshold must be >= fail_threshold for a "
+                "lower-is-bad check "
+                f"(got warn={self.warn_threshold}, "
+                f"fail={self.fail_threshold})"
+            )
+        return self
 
     @abc.abstractmethod
     def _compute(self, group: pd.DataFrame) -> pd.DataFrame:
         """Add the check's metric columns to one group.
 
-        Must add at minimum the severity column (``QC_<name>_Severity``).
-        May add check-specific columns documented by
-        ``_measurement_infoclass``. ``Flag`` and ``Status`` are computed
-        by the base class from severity, so subclasses must not set them
+        Must add at minimum the metric column (``QC_<name>_Metric``), the
+        raw headline value in the check's own units. May add
+        check-specific columns documented by ``_measurement_infoclass``.
+        ``Flag`` and ``Status`` are derived by the base class from the
+        metric and ``_HIGHER_IS_BAD``, so subclasses must not set them
         directly.
 
         Args:
@@ -94,7 +158,8 @@ class QualityCheck(SetAnalyzer, ABC):
 
         Returns:
             The group frame (typically a copy) augmented with the
-            severity column and any check-specific metric columns.
+            ``QC_<name>_Metric`` column and any check-specific metric
+            columns.
         """
 
     def analyze(self, data: pd.DataFrame) -> pd.DataFrame:
@@ -102,11 +167,18 @@ class QualityCheck(SetAnalyzer, ABC):
 
         Iterates over ``data.groupby(self.groupby, dropna=False)``,
         delegates per-group computation to :meth:`_compute`, and adds
-        three generic columns derived from severity:
+        three generic columns derived from the metric:
 
-        * ``QC_<name>_Severity`` (carry-through from ``_compute``)
+        * ``QC_<name>_Metric`` (carry-through from ``_compute``)
         * ``QC_<name>_Flag`` (``bool``)
         * ``QC_<name>_Status`` (``"pass"`` / ``"warn"`` / ``"fail"``)
+
+        ``Flag`` and ``Status`` are directional. With
+        ``_HIGHER_IS_BAD=True`` a row fails when ``metric >=
+        fail_threshold`` and warns when ``metric >= warn_threshold``;
+        with ``_HIGHER_IS_BAD=False`` the comparisons invert to ``<=``.
+        A ``NaN`` metric always yields ``Status="pass"`` and
+        ``Flag=False``.
 
         Rows are never dropped. The augmented frame is stored on
         :attr:`_latest_measurements` and returned.
@@ -131,7 +203,7 @@ class QualityCheck(SetAnalyzer, ABC):
                 f"Missing required columns for QualityCheck: {missing}"
             )
 
-        severity_col = self.severity_col()
+        metric_col = self.metric_col()
         flag_col = self.flag_col()
         status_col = self.status_col()
 
@@ -143,16 +215,22 @@ class QualityCheck(SetAnalyzer, ABC):
             result = pd.concat(pieces, axis=0)
         else:
             result = data.iloc[0:0].copy()
-            result[severity_col] = pd.Series(dtype=float)
+            result[metric_col] = pd.Series(dtype=float)
 
-        severity = pd.to_numeric(result[severity_col], errors="coerce")
-        flag = severity.ge(self.severity_fail).fillna(False).astype(bool)
+        metric = pd.to_numeric(result[metric_col], errors="coerce")
         status = pd.Series("pass", index=result.index, dtype=object)
-        status = status.mask(severity.ge(self.severity_warn), "warn")
-        status = status.mask(severity.ge(self.severity_fail), "fail")
-        status = status.where(severity.notna(), "pass")
+        if self._HIGHER_IS_BAD:
+            flag = metric.ge(self.fail_threshold)
+            status = status.mask(metric.ge(self.warn_threshold), "warn")
+            status = status.mask(metric.ge(self.fail_threshold), "fail")
+        else:
+            flag = metric.le(self.fail_threshold)
+            status = status.mask(metric.le(self.warn_threshold), "warn")
+            status = status.mask(metric.le(self.fail_threshold), "fail")
+        flag = flag.fillna(False).astype(bool)
+        status = status.where(metric.notna(), "pass")
 
-        result[severity_col] = severity
+        result[metric_col] = metric
         result[flag_col] = flag
         result[status_col] = status
 
@@ -162,27 +240,39 @@ class QualityCheck(SetAnalyzer, ABC):
     def summary(self) -> pd.DataFrame:
         """Return a one-row-per-group summary of the most recent analyze.
 
+        The aggregate columns are **prefixed with ``qc_``** so they can
+        never collide with a ``groupby`` column on ``reset_index`` — a
+        plate-layout column literally named ``status`` or ``num_rows``
+        would otherwise raise. The summary therefore always carries the
+        group key columns *plus* the four prefixed aggregates.
+
         Returns:
-            DataFrame with columns ``[*self.groupby, "num_rows",
-            "num_flagged", "max_severity", "status"]``. The ``status``
-            column is the worst status across the group: ``"fail"``
+            DataFrame with columns ``[*self.groupby, "qc_n_members",
+            "qc_n_flagged", "qc_worst_metric", "qc_status"]``.
+            ``qc_worst_metric`` is the extreme metric value in the bad
+            direction across the group: ``group[metric_col].max()`` when
+            ``_HIGHER_IS_BAD`` is ``True``, else ``group[metric_col].min()``.
+            ``qc_status`` is the worst status across the group: ``"fail"``
             wins over ``"warn"`` which wins over ``"pass"``.
         """
         rank = {"pass": 0, "warn": 1, "fail": 2}
         inv_rank = {v: k for k, v in rank.items()}
 
         df = self._latest_measurements
-        severity_col = self.severity_col()
+        metric_col = self.metric_col()
         flag_col = self.flag_col()
         status_col = self.status_col()
+        higher_is_bad = self._HIGHER_IS_BAD
 
         def _summarize(group: pd.DataFrame) -> pd.Series:
             worst = int(group[status_col].map(rank).max())
+            metric = group[metric_col]
+            worst_metric = metric.max() if higher_is_bad else metric.min()
             return pd.Series({
-                "num_rows": int(len(group)),
-                "num_flagged": int(group[flag_col].sum()),
-                "max_severity": float(group[severity_col].max()),
-                "status": inv_rank[worst],
+                "qc_n_members": int(len(group)),
+                "qc_n_flagged": int(group[flag_col].sum()),
+                "qc_worst_metric": float(worst_metric),
+                "qc_status": inv_rank[worst],
             })
 
         grouped = df.groupby(self.groupby, dropna=False)
@@ -190,11 +280,11 @@ class QualityCheck(SetAnalyzer, ABC):
         return summary
 
     def flagged_keys(self) -> list[tuple[str, int]]:
-        """Return (``Metadata_ImageFile``, ``ObjectLabel``) pairs to curate.
+        """Return (``Metadata_ImageFile``, ``Object_Label``) pairs to curate.
 
         Used by the GUI "Mark all flagged for removal" button. Requires
         the analyzed frame to carry both ``Metadata_ImageFile`` and
-        ``ObjectLabel`` columns (the curation key used by
+        ``Object_Label`` columns (the curation key used by
         ``STORE_REMOVED_KEYS``). Returns an empty list when those
         columns are absent or when no rows were flagged.
 
@@ -204,24 +294,64 @@ class QualityCheck(SetAnalyzer, ABC):
         """
         df = self._latest_measurements
         flag_col = self.flag_col()
+        label_col = str(OBJECT.LABEL)
         if flag_col not in df.columns:
             return []
-        if "Metadata_ImageFile" not in df.columns or "ObjectLabel" not in df.columns:
+        if "Metadata_ImageFile" not in df.columns or label_col not in df.columns:
             return []
         flagged = df.loc[df[flag_col].fillna(False).astype(bool),
-                         ["Metadata_ImageFile", "ObjectLabel"]].dropna()
+                         ["Metadata_ImageFile", label_col]].dropna()
         if flagged.empty:
             return []
         flagged = flagged.drop_duplicates()
         return [
-            (str(row.Metadata_ImageFile), int(row.ObjectLabel))
+            (str(row.Metadata_ImageFile), int(row.Object_Label))
             for row in flagged.itertuples(index=False)
         ]
 
+    def group_members(self) -> dict[tuple, list[tuple[str, int, Any]]]:
+        """Map each group key to its member rows for worklists/galleries.
+
+        Walks the most recent analyzed frame and, for every group key
+        produced by ``data.groupby(self.groupby, dropna=False)``, collects
+        the rows that belong to it as ``(Metadata_ImageFile, Object_Label,
+        member_value)`` tuples, where ``member_value`` is the row's
+        ``self.on`` value (the column the check operates on). The mapping
+        preserves group iteration order.
+
+        Mirrors :meth:`flagged_keys`'s guard: if the analyzed frame lacks
+        either ``Metadata_ImageFile`` or the object-label column, an empty
+        mapping is returned rather than raising.
+
+        Returns:
+            Ordered mapping of group key (always a tuple, even for a
+            single ``groupby`` column) to a list of
+            ``(image_file, object_label, member_value)`` tuples. Empty
+            when the curation key columns are absent.
+        """
+        df = self._latest_measurements
+        label_col = str(OBJECT.LABEL)
+        if "Metadata_ImageFile" not in df.columns or label_col not in df.columns:
+            return {}
+
+        members: dict[tuple, list[tuple[str, int, Any]]] = {}
+        for key, group in df.groupby(self.groupby, dropna=False):
+            key_tuple = key if isinstance(key, tuple) else (key,)
+            image_files = group["Metadata_ImageFile"].tolist()
+            labels = group[label_col].tolist()
+            values = group[self.on].tolist()
+            members[key_tuple] = [
+                (str(image_file), int(label), value)
+                for image_file, label, value in zip(
+                    image_files, labels, values
+                )
+            ]
+        return members
+
     @classmethod
-    def severity_col(cls) -> str:
-        """Return the severity column name for this check."""
-        return f"QC_{cls.name}_Severity"
+    def metric_col(cls) -> str:
+        """Return the metric column name for this check."""
+        return f"QC_{cls.name}_Metric"
 
     @classmethod
     def flag_col(cls) -> str:

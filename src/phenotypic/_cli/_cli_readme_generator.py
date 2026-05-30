@@ -138,8 +138,8 @@ No measurements configured in this pipeline."""
             "The following measurements are extracted for each detected object:",
         ]
 
-        from phenotypic.tools_.constants_ import OBJECT
-        from phenotypic.tools_.measurement_info import BBOX
+        from phenotypic.schema import OBJECT
+        from phenotypic.schema import BBOX
 
         sections.append(
             "\n### Object\n\n"
@@ -153,7 +153,7 @@ No measurements configured in this pipeline."""
             sections.append(bbox_table)
 
         if self.config.image_type == "GridImage":
-            from phenotypic.tools_.measurement_info import GRID
+            from phenotypic.schema import GRID
 
             grid_table = self._generate_measurement_table(GRID)
             if grid_table:
@@ -183,7 +183,7 @@ No measurements configured in this pipeline."""
         Looks for class attributes that are MeasurementInfo subclasses or
         references to measurement info in the measurer's implementation.
         """
-        from phenotypic.tools_.measurement_info import (
+        from phenotypic.schema import (
             SHAPE,
             INTENSITY,
             TEXTURE,

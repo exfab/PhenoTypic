@@ -9,19 +9,27 @@ modeling across time courses, and Tukey-style outlier removal for colony metrics
 from ._double_softplus import DoubleSoftplus
 from ._edge_correction import EdgeCorrector
 from ._expected_vs_detected import ExpectedVsDetectedCount
+from ._icc import ICC
 from ._linear_softplus import LinearSoftplus
 from ._log_growth_model import LogGrowthModel
 from ._mad_outlier import MADOutlierRemover
+from ._max_modz import MaxModifiedZScore
+from ._relative_mad import RelativeMAD
 from ._replicate_agreement import ReplicateAgreement
+from ._tukey_fraction import TukeyOutlierFraction
 from ._tukey_outlier import TukeyOutlierRemover
 
 __all__ = [
     "DoubleSoftplus",
     "EdgeCorrector",
     "ExpectedVsDetectedCount",
+    "ICC",
     "LinearSoftplus",
     "LogGrowthModel",
     "MADOutlierRemover",
+    "MaxModifiedZScore",
+    "RelativeMAD",
     "ReplicateAgreement",
+    "TukeyOutlierFraction",
     "TukeyOutlierRemover",
 ]

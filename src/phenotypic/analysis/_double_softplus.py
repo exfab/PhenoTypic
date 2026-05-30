@@ -10,7 +10,7 @@ from phenotypic.analysis.abc_._linear_softplus_base import (
     _DEFAULT_BETA,
     _LinearSoftplusBase,
 )
-from phenotypic.tools_.measurement_info import (
+from phenotypic.schema import (
     DOUBLE_SOFTPLUS_MODEL,
     MODEL_METRICS,
 )
@@ -79,6 +79,28 @@ class DoubleSoftplus(_LinearSoftplusBase):
         shoulder_slope_ratio (float): Fraction of peak ``ds/dt`` below
             which the tail slope counts as a saturation shoulder for
             mode dispatch. Defaults to ``0.05``.
+
+    .. note::
+        **``f_scale`` is unit-sensitive only on the unweighted fit
+        path.** The inherited ``f_scale`` (see :class:`ModelFitter`) is
+        the Huber/robust inlier–outlier threshold expressed in *residual
+        units*, and those units depend on whether the fit is weighted:
+
+        - **Weighted** (``stderr_label`` set, or the default
+          auto-derived replicate SEM when timepoints carry ≥2
+          replicates): residuals are divided by σ and are therefore
+          dimensionless, so ``f_scale=1.0`` means "one standard error"
+          and is invariant to the units of ``on``. No retuning is
+          needed when the measurement scale changes.
+        - **Unweighted** (no σ — e.g. single-replicate timepoints):
+          residuals are in the native units of ``on``, so ``f_scale``
+          is an absolute size threshold. If those units change (e.g.
+          radius in px → mm, which shrinks residuals ~50×) ``f_scale``
+          must be rescaled to match, or the default robust
+          ``loss="huber"`` never reaches its linear arm and silently
+          degrades to ordinary least squares — losing all outlier
+          suppression. ``loss="linear"`` ignores ``f_scale`` and is
+          unaffected.
     """
 
     _measurement_infoclass = DOUBLE_SOFTPLUS_MODEL

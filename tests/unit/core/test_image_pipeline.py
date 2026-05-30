@@ -4,7 +4,7 @@ from phenotypic import Image, GridImage, ImagePipeline
 from phenotypic._core._pipeline_parts import IntermediateResult
 from phenotypic.correction import GridAligner
 from phenotypic.detect import OtsuDetector
-from phenotypic.enhance import CLAHE, ContrastStretching, GaussianBlur, MedianFilter
+from phenotypic.enhance import EnhanceLocalContrast, ContrastStretching, GaussianBlur, MedianFilter
 from phenotypic.measure import (
     MeasureColor,
     MeasureIntensity,
@@ -12,11 +12,11 @@ from phenotypic.measure import (
     MeasureTexture,
 )
 from phenotypic.refine import (
-    BorderObjectRemover,
-    LowCircularityRemover,
+    RemoveBorderObjects,
+    RemoveNonCircular,
     SmallObjectRemover,
-    ResidualOutlierRemover,
-    ReduceMultipleGridObjects,
+    RemoveGridOutliers,
+    ReduceSectionsByLine,
 )
 from phenotypic.grid import GridApply
 from ..resources.TestHelper import timeit
@@ -40,7 +40,7 @@ def test_pipeline_on_image(plate_grid_images):
             ops={
                 "blur"     : GaussianBlur(sigma=5),
                 "detection": OtsuDetector(),
-                "remove"   : BorderObjectRemover(border_size=50),
+                "remove"   : RemoveBorderObjects(border_size=50),
             },
             meas={
                 "MeasureColor"    : MeasureColor(),
@@ -103,14 +103,14 @@ def test_kmarx_pipeline_pickleable(plate_grid_images):
     pipe = ImagePipeline(
             pipe_cfgs={
                 "blur"                            : GaussianBlur(sigma=2),
-                "clahe"                           : CLAHE(),
+                "clahe"                           : EnhanceLocalContrast(),
                 "median filter"                   : MedianFilter(),
                 "detection"                       : OtsuDetector(),
-                "border_removal"                  : BorderObjectRemover(border_size=50),
-                "low circularity remover"         : LowCircularityRemover(cutoff=0.6),
+                "border_removal"                  : RemoveBorderObjects(border_size=50),
+                "low circularity remover"         : RemoveNonCircular(cutoff=0.6),
                 "small object remover"            : SmallObjectRemover(min_size=100),
-                "Reduce by section residual error": ReduceMultipleGridObjects(),
-                "outlier removal"                 : ResidualOutlierRemover(),
+                "Reduce by section residual error": ReduceSectionsByLine(),
+                "outlier removal"                 : RemoveGridOutliers(),
                 "align"                           : GridAligner(),
                 "section-level detect"            : GridApply(
                         image_op=ImagePipeline(
@@ -123,7 +123,7 @@ def test_kmarx_pipeline_pickleable(plate_grid_images):
                         )
                 ),
                 "small object remover 2"          : SmallObjectRemover(min_size=100),
-                "grid_reduction"                  : ReduceMultipleGridObjects(),
+                "grid_reduction"                  : ReduceSectionsByLine(),
             }
     )
     pickle.dumps(pipe.apply_and_measure)
@@ -137,11 +137,11 @@ def test_kmarx_pipeline_pickleable(plate_grid_images):
 def _make_three_op_pipeline():
     """Helper: build a 3-op pipeline used by several intermediate tests."""
     return ImagePipeline(
-        ops={
-            "blur": GaussianBlur(sigma=5),
-            "detection": OtsuDetector(),
-            "remove": BorderObjectRemover(border_size=50),
-        },
+            ops={
+                "blur"     : GaussianBlur(sigma=5),
+                "detection": OtsuDetector(),
+                "remove"   : RemoveBorderObjects(border_size=50),
+            },
     )
 
 
@@ -252,8 +252,8 @@ def test_apply_with_intermediates_inplace_false(plate_12hr_grid_image):
 def test_benchmark_memory_columns(plate_12hr_grid_image):
     """benchmark_results() DataFrame contains the new memory columns."""
     pipe = ImagePipeline(
-        ops=[GaussianBlur(sigma=5), OtsuDetector()],
-        benchmark=True,
+            ops=[GaussianBlur(sigma=5), OtsuDetector()],
+            benchmark=True,
     )
     pipe.apply(plate_12hr_grid_image)
     df = pipe.benchmark_results()
@@ -274,8 +274,8 @@ def test_benchmark_memory_columns(plate_12hr_grid_image):
 def test_benchmark_memory_populated(plate_12hr_grid_image):
     """_operation_memory and _operation_rss are filled when benchmark=True."""
     pipe = ImagePipeline(
-        ops={"blur": GaussianBlur(sigma=5), "detect": OtsuDetector()},
-        benchmark=True,
+            ops={"blur": GaussianBlur(sigma=5), "detect": OtsuDetector()},
+            benchmark=True,
     )
     pipe.apply(plate_12hr_grid_image)
 
@@ -293,11 +293,11 @@ def test_benchmark_memory_populated(plate_12hr_grid_image):
 def test_benchmark_nested_pipeline_expansion(plate_12hr_grid_image):
     """Sub-rows appear for nested ImagePipeline operations."""
     inner = ImagePipeline(
-        ops={"inner_blur": GaussianBlur(sigma=3), "inner_detect": OtsuDetector()},
+            ops={"inner_blur": GaussianBlur(sigma=3), "inner_detect": OtsuDetector()},
     )
     outer = ImagePipeline(
-        ops={"outer_blur": GaussianBlur(sigma=5), "nested": inner},
-        benchmark=True,
+            ops={"outer_blur": GaussianBlur(sigma=5), "nested": inner},
+            benchmark=True,
     )
     outer.apply(plate_12hr_grid_image)
     df = outer.benchmark_results()
@@ -323,9 +323,10 @@ def test_benchmark_nested_pipeline_expansion(plate_12hr_grid_image):
     assert len(total_row) == 1
     top_level = df[
         (df["Process Type"] == "Operation") & ~df["Process Name"].str.startswith("  ")
-    ]
+        ]
     assert abs(
-        total_row["Execution Time (s)"].iloc[0] - top_level["Execution Time (s)"].sum()
+            total_row["Execution Time (s)"].iloc[0] - top_level[
+                "Execution Time (s)"].sum()
     ) < 1e-9
 
 
@@ -333,8 +334,8 @@ def test_benchmark_nested_pipeline_expansion(plate_12hr_grid_image):
 def test_benchmark_no_memory_when_disabled(plate_12hr_grid_image):
     """Memory dicts stay empty when benchmark=False."""
     pipe = ImagePipeline(
-        ops=[GaussianBlur(sigma=5), OtsuDetector()],
-        benchmark=False,
+            ops=[GaussianBlur(sigma=5), OtsuDetector()],
+            benchmark=False,
     )
     pipe.apply(plate_12hr_grid_image)
 

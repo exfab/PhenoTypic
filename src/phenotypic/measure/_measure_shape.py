@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import ClassVar, TYPE_CHECKING
 
-from phenotypic.tools_.constants_ import OBJECT
+from phenotypic.schema import OBJECT
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -14,7 +14,7 @@ from scipy.ndimage import distance_transform_edt
 import numpy as np
 
 from phenotypic.abc_ import MeasureFeatures
-from ..tools_.measurement_info import SHAPE
+from phenotypic.schema import SHAPE
 
 
 class MeasureShape(MeasureFeatures):

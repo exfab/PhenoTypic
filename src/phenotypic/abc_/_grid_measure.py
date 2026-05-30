@@ -77,7 +77,7 @@ class GridMeasureFeatures(MeasureFeatures, ABC):
 
         from phenotypic.abc_ import GridMeasureFeatures
         from phenotypic import GridImage
-        from phenotypic.tools_.constants_ import OBJECT
+        from phenotypic.schema import OBJECT
         import pandas as pd
 
         class GridMeasureWellOccupancy(GridMeasureFeatures):
@@ -211,7 +211,7 @@ class GridMeasureFeatures(MeasureFeatures, ABC):
 
         >>> from phenotypic import GridImage
         >>> from phenotypic.abc_ import GridMeasureFeatures
-        >>> from phenotypic.tools_.constants_ import OBJECT
+        >>> from phenotypic.schema import OBJECT
         >>> import pandas as pd
         >>> class MeasureWellOccupancy(GridMeasureFeatures):
         ...     '''Measure total area occupied in each well.'''

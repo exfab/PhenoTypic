@@ -46,7 +46,7 @@ class GrayOpening(ImageEnhancer, FootprintMixin):
           small bright structures.
         - :class:`SubtractWhiteTophat` for subtracting small bright artifacts
           while retaining the background.
-        - :class:`BilateralDenoise` for noise reduction that preserves edges
+        - :class:`LocalEdgeDenoise` for noise reduction that preserves edges
           without morphological assumptions.
 
     See Also:

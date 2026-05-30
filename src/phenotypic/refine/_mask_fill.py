@@ -36,9 +36,9 @@ class MaskFill(ObjectRefiner):
         - Pre-measurement cleanup to ensure simply connected shapes.
 
     Consider Also:
-        - :class:`MaskCloser` for bridging narrow gaps *between* fragments
+        - :class:`MaskClosing` for bridging narrow gaps *between* fragments
           rather than filling holes *within* objects.
-        - :class:`MaskOpener` for the opposite effect — removing thin
+        - :class:`MaskOpening` for the opposite effect — removing thin
           connections between objects.
 
     See Also:

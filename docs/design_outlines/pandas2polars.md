@@ -29,7 +29,7 @@ Ordered for root pandas dependencies first (break upstream contracts before touc
   - Files: `src/phenotypic/abc_/_grid_finder.py`, `src/phenotypic/abc_/_grid_corrector.py`, `src/phenotypic/grid/_manual_grid_finder.py`, `src/phenotypic/grid/_auto_grid_finder.py`.  
   - Tasks: Refactor DataFrame outputs (cuts/binning) and grid alignment helpers to Polars ops.
 - [ ] 7) Update refinement operations  
-  - Files: `src/phenotypic/refine/_transitive_distance_merger.py`, `_nearest_neighbor_merger.py`, `_small_to_large_merger.py`, `_circularity_modifier.py`.  
+  - Files: `src/phenotypic/refine/_merge_fragment_chains.py`, `_nearest_neighbor_merger.py`, `_small_to_large_merger.py`, `_remove_non_circular.py`.  
   - Tasks: Replace pd merges/groupbys with Polars joins/aggregations.
 - [ ] 8) Port measurement implementations  
   - Files: `src/phenotypic/measure/_measure_intensity.py`, `_measure_shape.py`, `_measure_color_composition.py`, `_measure_bounds.py`, `_measure_texture.py`, `_measure_color.py`, `_measure_grid_linreg_stats.py`, `_measure_grid_spread.py`, `_measure_size.py`, doc line in `src/phenotypic/measure/__init__.py`.  

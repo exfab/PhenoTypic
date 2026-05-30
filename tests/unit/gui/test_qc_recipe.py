@@ -59,7 +59,7 @@ def metadata_csv(tmp_path: Path) -> Path:
     df = pd.DataFrame(
         {
             "Metadata_ImageFile": ["plate1.png"] * 96,
-            "ObjectLabel": list(range(96)),
+            "Object_Label": list(range(96)),
         }
     )
     df.to_csv(path, index=False)
@@ -155,7 +155,7 @@ class TestAdd:
             {
                 "metadata": str(metadata_csv),
                 "groupby": ["Metadata_ImageFile"],
-                "on": "ObjectLabel",
+                "on": "Object_Label",
                 "severity_warn": 0.05,
                 "severity_fail": 0.10,
             },
@@ -590,7 +590,7 @@ class TestEntryRoundTrip:
     def test_to_dict_then_from_dict_yields_equivalent_entry(self) -> None:
         original = QcRecipeEntry(
             cls=ExpectedVsDetectedCount,
-            params={"groupby": ["A"], "on": "ObjectLabel"},
+            params={"groupby": ["A"], "on": "Object_Label"},
             instance_id="qc-Count-12345678",
             enabled=False,
         )

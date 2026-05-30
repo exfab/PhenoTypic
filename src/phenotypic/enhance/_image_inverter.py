@@ -36,7 +36,7 @@ class ImageInverter(ImageEnhancer):
     Consider Also:
         - :class:`SetDetectMode` when switching the detection channel
           (e.g., to red or green) would resolve the contrast issue.
-        - :class:`UnsharpMask` when the issue is low contrast rather
+        - :class:`SharpenEdgeGauss` when the issue is low contrast rather
           than inverted polarity.
 
     See Also:

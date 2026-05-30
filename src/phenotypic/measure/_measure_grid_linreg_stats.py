@@ -9,8 +9,8 @@ import pandas as pd
 from scipy.spatial.distance import euclidean
 
 from phenotypic.abc_ import GridMeasureFeatures
-from phenotypic.tools_.constants_ import OBJECT
-from phenotypic.tools_.measurement_info import BBOX, GRID, GRID_LINREG_STATS
+from phenotypic.schema import OBJECT
+from phenotypic.schema import BBOX, GRID, GRID_LINREG_STATS
 
 
 class MeasureGridLinRegStats(GridMeasureFeatures):

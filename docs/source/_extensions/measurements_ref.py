@@ -31,33 +31,33 @@ logger = sphinx_logging.getLogger(__name__)
 # documented elsewhere. Order here drives section order on the rendered page.
 _REGISTRY: list[tuple[str, list[str]]] = [
     ("phenotypic.measure._measure_size.MeasureSize",
-        ["phenotypic.tools_.measurement_info.SIZE"]),
+        ["phenotypic.schema.SIZE"]),
     ("phenotypic.measure._measure_shape.MeasureShape",
-        ["phenotypic.tools_.measurement_info.SHAPE"]),
+        ["phenotypic.schema.SHAPE"]),
     ("phenotypic.measure._measure_intensity.MeasureIntensity",
-        ["phenotypic.tools_.measurement_info.INTENSITY"]),
+        ["phenotypic.schema.INTENSITY"]),
     ("phenotypic.measure._measure_bounds.MeasureBounds",
-        ["phenotypic.tools_.measurement_info.BBOX"]),
+        ["phenotypic.schema.BBOX"]),
     ("phenotypic.measure._measure_texture.MeasureTexture",
-        ["phenotypic.tools_.measurement_info.TEXTURE"]),
+        ["phenotypic.schema.TEXTURE"]),
     ("phenotypic.measure._measure_color.MeasureColor",
         [
-            "phenotypic.tools_.measurement_info.ColorXYZ",
-            "phenotypic.tools_.measurement_info.Colorxy",
-            "phenotypic.tools_.measurement_info.ColorLab",
-            "phenotypic.tools_.measurement_info.ColorHSV",
+            "phenotypic.schema.ColorXYZ",
+            "phenotypic.schema.Colorxy",
+            "phenotypic.schema.ColorLab",
+            "phenotypic.schema.ColorHSV",
         ]),
     # MeasureColorComposition is commented out of ``phenotypic.measure.__all__``
     # pending completion (see the TODO in ``measure/__init__.py``). Re-add it
     # to the registry when it ships.
     ("phenotypic.measure._measure_grid_spatial.MeasureGridSpatial",
-        ["phenotypic.tools_.measurement_info.GRID_SPATIAL"]),
+        ["phenotypic.schema.GRID_SPATIAL"]),
     ("phenotypic.measure._measure_grid_linreg_stats.MeasureGridLinRegStats",
-        ["phenotypic.tools_.measurement_info.GRID_LINREG_STATS"]),
+        ["phenotypic.schema.GRID_LINREG_STATS"]),
     ("phenotypic.measure._measure_grid_spread.MeasureGridSpread",
-        ["phenotypic.tools_.measurement_info.GRID_SPREAD"]),
+        ["phenotypic.schema.GRID_SPREAD"]),
     ("phenotypic.measure._measure_symmetric_zones.MeasureSymmetricZones",
-        ["phenotypic.tools_.measurement_info.SYMMETRIC_ZONES"]),
+        ["phenotypic.schema.SYMMETRIC_ZONES"]),
 ]
 
 
@@ -76,7 +76,7 @@ the parquet, prefixed with the category — e.g. ``Size_Area``) and a
 one-line description.
 
 This page is generated from the ``MeasurementInfo`` enums in
-``phenotypic.tools_.measurement_info`` and stays in sync with the code
+``phenotypic.schema`` and stays in sync with the code
 automatically — do not edit ``measurements_ref/index.rst`` by hand; edit
 the docstrings or the registry in ``docs/source/_extensions/measurements_ref.py``.
 
@@ -146,6 +146,31 @@ def _lead_paragraphs(doc: str, max_paragraphs: int = 3) -> str:
 def _build_page(output_path: str) -> None:
     """Assemble the full RST page and write it to ``output_path``."""
     out: list[str] = [_PAGE_INTRO]
+
+    # ``Object_Label`` is shared across every operator rather than owned by one
+    # ``MeasureFeature``, so it has no registry entry — emit it as a leading
+    # section above the per-operator tables.
+    try:
+        object_info = _import("phenotypic.schema.OBJECT")
+    except (ImportError, AttributeError) as err:
+        logger.warning(
+            "measurements_ref: could not import phenotypic.schema.OBJECT: %s", err
+        )
+    else:
+        object_heading = "Object identifier"
+        out.append(object_heading)
+        out.append("-" * len(object_heading))
+        out.append("")
+        out.append(
+            "``Object_Label`` is the shared per-object key — the first column of "
+            "every operator's table below. Each detected colony is assigned a "
+            "unique integer label so all of its measurements line up across "
+            "operators when joined on this column."
+        )
+        out.append("")
+        out.append(object_info.rst_table())
+        out.append("")
+        out.append("")
 
     for measure_path, info_paths in _REGISTRY:
         try:

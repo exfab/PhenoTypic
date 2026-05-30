@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, overload
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
-    from phenotypic._core._grid_image import GridImage
 
 from ._object_detector import ObjectDetector
 
@@ -80,14 +79,6 @@ class GpuDetector(ObjectDetector, ABC):
         GPU-requiring detectors in the class hierarchy and enable the
         CLI to make informed resource-allocation decisions.
     """
-
-    @overload
-    @abstractmethod
-    def _operate(self, image: Image) -> Image: ...
-
-    @overload
-    @abstractmethod
-    def _operate(self, image: GridImage) -> GridImage: ...
 
     @abstractmethod
     def _operate(self, image: Image) -> Image:

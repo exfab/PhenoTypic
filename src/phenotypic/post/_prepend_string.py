@@ -31,7 +31,7 @@ class PrependString(PostMeasurement):
         >>> from phenotypic.post import PrependString
         >>> df = pd.DataFrame({
         ...     "Metadata_ID": ["001", "002"],
-        ...     "ObjectLabel": [1, 2],
+        ...     "Object_Label": [1, 2],
         ... })
         >>> op = PrependString(column="ID", value="WT-")
         >>> result = op.apply(df)

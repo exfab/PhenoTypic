@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import ClassVar, TYPE_CHECKING
 
-from phenotypic.tools_.constants_ import OBJECT
+from phenotypic.schema import OBJECT
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 import pandas as pd
 
 from phenotypic.abc_ import MeasureFeatures
-from ..tools_.measurement_info import INTENSITY
+from phenotypic.schema import INTENSITY
 
 
 class MeasureIntensity(MeasureFeatures):
@@ -61,7 +61,7 @@ class MeasureIntensity(MeasureFeatures):
 
     def _operate(self, image: Image) -> pd.DataFrame:
         from phenotypic.measure._measure_shape import MeasureShape
-        from ..tools_.measurement_info import SHAPE
+        from phenotypic.schema import SHAPE
 
         intensity_matrix, objmap = image.gray[:].copy(), image.objmap[:].copy()
         measurements = {

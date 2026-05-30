@@ -41,7 +41,7 @@ class RankMedianEnhancer(ImageEnhancer):
         - Grid-like imaging artifacts when using a ``'square'`` footprint.
 
     Consider Also:
-        - :class:`BilateralDenoise` for edge-preserving Gaussian noise
+        - :class:`LocalEdgeDenoise` for edge-preserving Gaussian noise
           removal without the intensity quantization of rank filters.
         - :class:`NonLocalMeansDenoiser` for patch-based denoising that
           preserves texture better on noisy plates.

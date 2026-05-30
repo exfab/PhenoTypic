@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Callable
+from typing import Any, Callable
 
 import numpy as np
 import pandas as pd
@@ -8,13 +8,15 @@ from joblib import delayed, Parallel
 import matplotlib.pyplot as plt
 from pydantic import field_validator, PrivateAttr
 
+from . import _qc_math
 from .abc_ import SetAnalyzer
 
 # Iglewicz & Hoaglin (1993) consistency constant: for a normal distribution
 # sigma ~= 1.4826 * MAD, and 0.6745 ~= 1 / 1.4826. Multiplying the absolute
 # deviation by 0.6745 / MAD therefore estimates the deviation in units of
 # sigma, putting the modified Z-score on the same scale as a standard Z-score.
-_MAD_CONSISTENCY = 0.6745
+# The canonical definition now lives in ``_qc_math`` so QC checks reuse it.
+_MAD_CONSISTENCY = _qc_math.MAD_CONSISTENCY
 
 
 class MADOutlierRemover(SetAnalyzer):
@@ -204,9 +206,9 @@ class MADOutlierRemover(SetAnalyzer):
             figsize: tuple[int, int] | None = None,
             max_groups: int = 20,
             collapsed: bool = True,
-            criteria: dict[str, any] | None = None,
+            criteria: dict[str, Any] | None = None,
             **kwargs,
-    ) -> (plt.Figure, plt.Axes):
+    ) -> tuple[plt.Figure, plt.Axes]:
         """Visualize outlier detection results.
 
         Creates a visualization showing the distribution of values with outliers
@@ -328,7 +330,7 @@ class MADOutlierRemover(SetAnalyzer):
             group_col: str,
             figsize: tuple[int, int] | None,
             **kwargs,
-    ) -> (plt.Figure, plt.Axes):
+    ) -> tuple[plt.Figure, plt.Axes]:
         """Create individual subplots for each group."""
         # Extract figure-level kwargs
         fig_kwargs = {
@@ -484,7 +486,7 @@ class MADOutlierRemover(SetAnalyzer):
             group_col: str,
             figsize: tuple[int, int] | None,
             **kwargs,
-    ) -> (plt.Figure, plt.Axes):
+    ) -> tuple[plt.Figure, plt.Axes]:
         """Create collapsed stacked view with all groups in single plot."""
         # Extract figure-level kwargs
         fig_kwargs = {
@@ -699,6 +701,10 @@ class MADOutlierRemover(SetAnalyzer):
             is an outlier when ``|value - median| > threshold * half_width``.
             ``half_width`` is ``0.0`` only when every value is identical.
         """
+        # Compute the median / absolute deviations / MAD once and derive both
+        # the scores and the half-width from them, mirroring
+        # ``_qc_math.modified_z_scores`` without re-reducing the array.
+        values = np.asarray(values, dtype=float)
         median = float(np.nanmedian(values))
         abs_dev = np.abs(values - median)
         mad = float(np.nanmedian(abs_dev))
