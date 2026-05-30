@@ -3,12 +3,15 @@
 The shell composes (left → right):
 
 * a header bar with the app title, a one-line ``pipeline.json`` chip, a
-  ``Lock views`` switch, and a monospace subtitle showing the absolute
+  ``Filters`` toggle (with an active-filter count badge), a ``Lock
+  views`` switch, and a monospace subtitle showing the absolute
   output-root path;
-* a two-column body: the filter sidebar (left) and a tabbed right
-  column with two tabs — a scrollable cards ``Plate`` view (with an
-  ``+ Add card`` button) and a per-colony ``Colony`` grid view; both
-  tab bodies stay mounted so switching is a CSS-only operation;
+* a full-width tabbed body — a scrollable cards ``Plate`` view (with an
+  ``+ Add card`` button), a per-colony ``Colony`` grid, and the ``QC``
+  and ``Heatmap`` tabs; all tab bodies stay mounted so switching is a
+  CSS-only operation;
+* a right-docked ``dbc.Offcanvas`` (boots closed) that hosts the filter
+  sidebar, opened/closed by the header ``Filters`` toggle;
 * every shared ``dcc.Store`` instance the rest of the viewer reads
   (filter spec, image pairs, card list, lock-views, plus the colony-
   view curation, selection-delta, and grid-order stores).
@@ -136,12 +139,33 @@ def _build_header(output_root: OutputRoot, *, url_prefix: str = MOUNT_HOME) -> C
         style={"marginTop": "0.1rem"},
     )
 
+    filters_toggle = dbc.Button(
+        [
+            "Filters",
+            dbc.Badge(
+                "",
+                id=ids.FILTER_TOGGLE_BADGE_ID,
+                color="primary",
+                pill=True,
+                className="ms-2",
+                style={"display": "none"},
+            ),
+        ],
+        id=ids.BTN_FILTERS_TOGGLE,
+        color="secondary",
+        outline=True,
+        size="sm",
+        n_clicks=0,
+        className="ms-2",
+    )
+
     top_row = html.Div(
         [
             logo,
             title,
             pipeline_chip,
             html.Div(style={"flex": "1 1 auto"}),  # spacer
+            filters_toggle,
             lock_switch,
         ],
         className="d-flex align-items-center",
@@ -371,12 +395,12 @@ def build_app_layout(
     """Compose the top-level Dash component tree for the results viewer.
 
     Mounts every shared ``dcc.Store``, the header bar, the dismissable
-    startup banner, and the two-column body. The right-hand column is
-    a :class:`dbc.Tabs` switching between the existing per-image
-    ``Plate`` view (cards) and the per-colony ``Colony`` grid view; both
-    tab bodies stay mounted at all times so switching is a CSS-only
-    operation (no callback re-render of either subtree). Sub-trees defer
-    to their owning modules (``_filter_panel`` for the sidebar;
+    startup banner, a full-width :class:`dbc.Tabs` body (``Plate`` cards,
+    per-colony ``Colony`` grid, ``QC``, ``Heatmap`` — all kept mounted so
+    switching is a CSS-only operation with no subtree re-render), and a
+    right-docked :class:`dbc.Offcanvas` that hosts the filter sidebar and
+    boots closed (opened from the header ``Filters`` toggle). Sub-trees
+    defer to their owning modules (``_filter_panel`` for the sidebar;
     ``_viewer_card`` for cards; ``colony_view._layout`` for the grid).
 
     Args:
@@ -433,29 +457,30 @@ def build_app_layout(
         active_tab=ids.TAB_PLATE_ID,
     )
 
-    body = dbc.Row(
-        [
-            dbc.Col(
-                sidebar,
-                width=12,
-                lg=3,
-                className="px-3 py-3",
-                style={"background": _BG},
-            ),
-            dbc.Col(
-                tabs,
-                width=12,
-                lg=9,
-                className="px-0",
-                style={"background": _BG},
-            ),
-        ],
-        className="g-0",
-        style={"minHeight": "calc(100vh - 7rem)", "alignItems": "stretch"},
+    body = html.Div(
+        tabs,
+        className="results-viewer-body",
+        style={
+            "background": _BG,
+            "minHeight": "calc(100vh - 7rem)",
+        },
+    )
+
+    # The filter panel now lives in a right-docked offcanvas opened from
+    # the top-bar Filters toggle, so every tab renders full-width by
+    # default and filtering stays one click away.
+    filter_offcanvas = dbc.Offcanvas(
+        sidebar,
+        id=ids.OFFCANVAS_FILTER_ID,
+        title="Filter",
+        placement="end",
+        is_open=False,
+        scrollable=True,
+        backdrop=True,
     )
 
     return html.Div(
-        [stores, header, banner, body],
+        [stores, header, banner, body, filter_offcanvas],
         id="results-viewer-root",
         style={"background": _BG, "minHeight": "100vh"},
     )

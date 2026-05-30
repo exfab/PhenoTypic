@@ -55,6 +55,7 @@ from dash import ALL, Input, Output
 
 from phenotypic.gui._config import CFG_FILTERED_STATE
 from phenotypic.gui.results_viewer import (
+    _filter_offcanvas,
     _filter_panel,
     _ids as ids,
     _layout,
@@ -91,6 +92,7 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
     filtered_state: FilteredMeasurements = app.server.config[CFG_FILTERED_STATE]
     _layout.register_callbacks(app, output_root)
     _filter_panel.register_callbacks(app, output_root, filtered_state)
+    _filter_offcanvas.register_filter_offcanvas_callbacks(app)
     _viewer_card.register_callbacks(app, output_root)
     _colony_callbacks.register_callbacks(app, output_root, filtered_state)
     register_heatmap_callbacks(app)
