@@ -617,7 +617,10 @@ def register_review_callbacks(app: dash.Dash) -> None:
 
     # -----------------------------------------------------------------
     # C. Group selection → detail header + faceted gallery.
-    #    Fires on worklist row click AND on selection-store change.
+    #    Fires on worklist row click AND on selection-store change. A row
+    #    click that changes the selection only writes the store; the
+    #    resulting store-input echo renders the detail once (module switch
+    #    and mark/next render through the same store-input path).
     # -----------------------------------------------------------------
     @app.callback(
         Output(rids.QC_REVIEW_DETAIL_HEADER_ID, "children"),
@@ -636,9 +639,21 @@ def register_review_callbacks(app: dash.Dash) -> None:
         deltas: dict[str, dict[str, Any]] | None,
     ):
         triggered = callback_context.triggered_id
-        # A row click wins over the stored selection.
-        if isinstance(triggered, dict) and triggered.get("type") == "qc-worklist-row":
-            selected_encoded = triggered.get("key")
+        is_row_click = (
+            isinstance(triggered, dict)
+            and triggered.get("type") == "qc-worklist-row"
+        )
+        if is_row_click:
+            clicked_key = triggered.get("key")
+            # A row click that *changes* the selection only needs to update
+            # the store: that write re-fires this callback on the store-input
+            # path, which renders the detail once. Rendering here too would
+            # paint the identical pane twice. (A re-click of the already-open
+            # group leaves the store unchanged and so never echoes, so we
+            # still fall through and render to refresh it.)
+            if clicked_key != selected_encoded:
+                return no_update, no_update, clicked_key
+            selected_encoded = clicked_key
         if not instance_id or not selected_encoded:
             return [], [], no_update
 

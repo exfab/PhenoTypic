@@ -294,12 +294,13 @@ class QualityCheck(SetAnalyzer, ABC):
         """
         df = self._latest_measurements
         flag_col = self.flag_col()
+        label_col = str(OBJECT.LABEL)
         if flag_col not in df.columns:
             return []
-        if "Metadata_ImageFile" not in df.columns or str(OBJECT.LABEL) not in df.columns:
+        if "Metadata_ImageFile" not in df.columns or label_col not in df.columns:
             return []
         flagged = df.loc[df[flag_col].fillna(False).astype(bool),
-                         ["Metadata_ImageFile", str(OBJECT.LABEL)]].dropna()
+                         ["Metadata_ImageFile", label_col]].dropna()
         if flagged.empty:
             return []
         flagged = flagged.drop_duplicates()

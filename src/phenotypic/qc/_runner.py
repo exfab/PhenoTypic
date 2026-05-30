@@ -48,6 +48,7 @@ if TYPE_CHECKING:
     from phenotypic._core._image_pipeline import ImagePipeline
     from phenotypic.analysis.abc_ import QualityCheck
 
+from phenotypic.schema import OBJECT
 from phenotypic.tools_ import (
     qc_config_json_path,
     qc_members_parquet_path,
@@ -57,6 +58,9 @@ from phenotypic.tools_ import (
 from ._recipe import QcRecipeEntry
 
 logger = logging.getLogger(__name__)
+
+#: Per-object primary-key column shared by every measurement table.
+_OBJECT_LABEL: str = str(OBJECT.LABEL)
 
 #: Status severity ranking used to order the worklist worst-first.
 _STATUS_RANK: dict[str, int] = {"pass": 0, "warn": 1, "fail": 2}
@@ -78,7 +82,7 @@ _SUMMARY_TAIL_COLS: tuple[str, ...] = (
 _MEMBERS_LEAD_COLS: tuple[str, ...] = ("instance_id",)
 _MEMBERS_TAIL_COLS: tuple[str, ...] = (
     "Metadata_ImageFile",
-    "Object_Label",
+    _OBJECT_LABEL,
     "member_value",
 )
 
@@ -276,7 +280,7 @@ def _build_member_rows(
     splice_cols = [
         col
         for col in check.groupby
-        if col not in ("Metadata_ImageFile", "Object_Label")
+        if col not in ("Metadata_ImageFile", _OBJECT_LABEL)
     ]
     groupby_cols = list(check.groupby)
     members = check.group_members()
@@ -293,7 +297,7 @@ def _build_member_rows(
                 "instance_id": entry.instance_id,
                 **key_map,
                 "Metadata_ImageFile": image_file,
-                "Object_Label": object_label,
+                _OBJECT_LABEL: object_label,
                 "member_value": member_value,
             })
 

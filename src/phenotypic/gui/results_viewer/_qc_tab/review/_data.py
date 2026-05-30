@@ -241,6 +241,7 @@ def summary_stats(module_summary: pl.DataFrame) -> dict[str, Any]:
             "warn": 0,
             "pass": 0,
             "insufficient": 0,
+            "colonies_removed": 0,
             "median_metric": None,
         }
 

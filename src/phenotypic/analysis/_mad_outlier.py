@@ -701,7 +701,10 @@ class MADOutlierRemover(SetAnalyzer):
             is an outlier when ``|value - median| > threshold * half_width``.
             ``half_width`` is ``0.0`` only when every value is identical.
         """
-        scores = _qc_math.modified_z_scores(values)
+        # Compute the median / absolute deviations / MAD once and derive both
+        # the scores and the half-width from them, mirroring
+        # ``_qc_math.modified_z_scores`` without re-reducing the array.
+        values = np.asarray(values, dtype=float)
         median = float(np.nanmedian(values))
         abs_dev = np.abs(values - median)
         mad = float(np.nanmedian(abs_dev))
@@ -710,10 +713,10 @@ class MADOutlierRemover(SetAnalyzer):
             mean_ad = float(np.nanmean(abs_dev))
             if mean_ad == 0.0:
                 # All values identical -- no outliers possible.
-                return scores, median, 0.0
-            return scores, median, mean_ad
+                return np.zeros_like(values, dtype=float), median, 0.0
+            return abs_dev / mean_ad, median, mean_ad
 
-        return scores, median, mad / _MAD_CONSISTENCY
+        return _MAD_CONSISTENCY * abs_dev / mad, median, mad / _MAD_CONSISTENCY
 
     @staticmethod
     def _mad_bounds(
