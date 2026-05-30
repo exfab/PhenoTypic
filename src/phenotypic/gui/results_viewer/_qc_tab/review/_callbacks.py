@@ -68,6 +68,8 @@ from phenotypic.gui.results_viewer._filtered_state import (
 )
 from phenotypic.gui.results_viewer._qc_tab.review import _data, _ids as rids
 from phenotypic.gui.results_viewer._qc_tab.review._layout import (
+    _SUMMARY_HEADER_HEIGHT,
+    clamp_sidebar_width,
     collapsed_sidebar_style,
     expanded_sidebar_style,
 )
@@ -1040,37 +1042,55 @@ def _next_unreviewed(
 # ---------------------------------------------------------------------------
 
 
-def sidebar_collapse_state(
-    collapsed: bool,
+def sidebar_layout_state(
+    collapsed: bool, width_px: object
 ) -> tuple[dict[str, str], dict[str, str], str]:
     """Return (sidebar wrapper style, worklist style, chevron glyph) for a state.
 
-    Pure + module-level so the collapse logic is unit-testable without a
-    Dash app. Collapsed → the worklist is hidden and the wrapper shrinks
-    to a thin chevron rail (the detail/gallery pane, ``flex: 1 1 auto``,
-    reclaims the freed width); expanded → the worklist shows and the
-    wrapper takes its (resizable) intrinsic width.
+    Pure + module-level so the layout logic is unit-testable without a
+    Dash app. Combines BOTH the collapse flag and the user's dragged width
+    (the JS splitter persists px to ``STORE_QC_SIDEBAR_WIDTH``) into one
+    worklist style, so a single callback owns ``worklist.style`` and the
+    two stores can never fight over it:
+
+    * collapsed → worklist hidden, wrapper shrinks to a thin chevron rail
+      (the detail/gallery pane, ``flex: 1 1 auto``, reclaims the freed
+      width); chevron ``▶`` (click to expand).
+    * expanded → worklist shown at the clamped ``width_px``; chevron ``◀``.
+
+    The width is applied even when collapsed (display:none), so expanding
+    restores the user's dragged width rather than the default.
 
     Args:
         collapsed: Whether the sidebar is collapsed.
+        width_px: The persisted sidebar width (clamped via
+            :func:`clamp_sidebar_width`).
 
     Returns:
-        ``(sidebar_style, worklist_style, chevron_text)`` — ``chevron_text``
-        is ``▶`` when collapsed (click to expand) / ``◀`` when expanded.
+        ``(sidebar_style, worklist_style, chevron_text)``.
     """
+    width = clamp_sidebar_width(width_px)
+    worklist_style: dict[str, str] = {
+        "width": f"{width}px",
+        "overflow": "auto",
+        "maxHeight": f"calc(100vh - {_SUMMARY_HEADER_HEIGHT} - 2rem)",
+        "padding": "0.5rem",
+        "display": "none" if collapsed else "block",
+    }
     if collapsed:
-        return collapsed_sidebar_style(), {"display": "none"}, "▶"
-    return expanded_sidebar_style(), {"display": "block"}, "◀"
+        return collapsed_sidebar_style(), worklist_style, "▶"
+    return expanded_sidebar_style(), worklist_style, "◀"
 
 
 def _register_sidebar_callbacks(app: dash.Dash) -> None:
-    """Register the worklist sidebar collapse/expand chevron callback.
+    """Register the worklist sidebar collapse + resize callback.
 
-    Clicking the chevron flips :data:`STORE_QC_SIDEBAR_COLLAPSED`; the
-    sidebar wrapper style + worklist visibility + chevron glyph follow
-    from :func:`sidebar_collapse_state`. The detail/gallery pane reclaims
-    the freed width automatically via its ``flex: 1 1 auto`` sizing — no
-    explicit gallery-width output needed.
+    A SINGLE callback owns ``worklist.style`` so the collapse flag and the
+    dragged width never fight over it. Fires on the chevron click (which
+    flips :data:`STORE_QC_SIDEBAR_COLLAPSED`) and on
+    :data:`STORE_QC_SIDEBAR_WIDTH` changes (the JS drag-splitter persists
+    the dragged px on mouse-up). The detail/gallery pane reclaims any
+    freed width automatically via its ``flex: 1 1 auto`` sizing.
     """
 
     @app.callback(
@@ -1079,28 +1099,33 @@ def _register_sidebar_callbacks(app: dash.Dash) -> None:
         Output(rids.QC_REVIEW_WORKLIST_ID, "style"),
         Output(rids.QC_REVIEW_SIDEBAR_TOGGLE_ID, "children"),
         Input(rids.QC_REVIEW_SIDEBAR_TOGGLE_ID, "n_clicks"),
+        Input(rids.STORE_QC_SIDEBAR_WIDTH, "data"),
         State(rids.STORE_QC_SIDEBAR_COLLAPSED, "data"),
-        State(rids.QC_REVIEW_WORKLIST_ID, "style"),
         prevent_initial_call=True,
     )
-    def _toggle_sidebar(
+    def _apply_sidebar_layout(
         _clicks: int | None,
+        width_px: object,
         collapsed: bool | None,
-        worklist_style: dict[str, str] | None,
     ):
-        new_collapsed = not bool(collapsed)
-        sidebar_style, vis, glyph = sidebar_collapse_state(new_collapsed)
-        # Preserve the user's drag-resized width: merge the visibility flip
-        # onto the live worklist style rather than replacing it wholesale.
-        merged_worklist = dict(worklist_style or {})
-        merged_worklist.update(vis)
-        return new_collapsed, sidebar_style, merged_worklist, glyph
+        # Only the chevron toggles collapsed; a width-store change (drag)
+        # keeps the current collapsed state.
+        triggered = callback_context.triggered_id
+        new_collapsed = (
+            not bool(collapsed)
+            if triggered == rids.QC_REVIEW_SIDEBAR_TOGGLE_ID
+            else bool(collapsed)
+        )
+        sidebar_style, worklist_style, glyph = sidebar_layout_state(
+            new_collapsed, width_px
+        )
+        return new_collapsed, sidebar_style, worklist_style, glyph
 
 
 __all__ = [
     "register_review_callbacks",
     "toggle_review_tile",
     "bulk_review_curation",
-    "sidebar_collapse_state",
+    "sidebar_layout_state",
 ]
 

@@ -19,9 +19,15 @@ from phenotypic.gui.results_viewer._qc_tab._layout import build_qc_tab_body
 from phenotypic.gui.results_viewer._qc_tab.review import _ids as rids
 from phenotypic.gui.results_viewer._qc_tab.review._callbacks import (
     _render_summary_header,
-    sidebar_collapse_state,
+    sidebar_layout_state,
 )
-from phenotypic.gui.results_viewer._qc_tab.review._layout import build_review_view
+from phenotypic.gui.results_viewer._qc_tab.review._layout import (
+    SIDEBAR_DEFAULT_WIDTH_PX,
+    SIDEBAR_MAX_WIDTH_PX,
+    SIDEBAR_MIN_WIDTH_PX,
+    build_review_view,
+    clamp_sidebar_width,
+)
 from phenotypic.qc import QcRecipe
 
 
@@ -88,6 +94,7 @@ def test_review_view_mounts_every_callback_target() -> None:
         rids.QC_REVIEW_SUMMARY_HEADER_ID,
         rids.QC_REVIEW_SIDEBAR_ID,
         rids.QC_REVIEW_WORKLIST_ID,
+        rids.QC_REVIEW_SPLITTER_ID,
         rids.QC_REVIEW_SIDEBAR_TOGGLE_ID,
         rids.QC_REVIEW_DETAIL_HEADER_ID,
         rids.QC_REVIEW_GALLERY_ID,
@@ -100,6 +107,7 @@ def test_review_view_mounts_every_callback_target() -> None:
         rids.STORE_QC_SELECTED_GROUP,
         rids.STORE_QC_RECOMPUTE_DELTAS,
         rids.STORE_QC_SIDEBAR_COLLAPSED,
+        rids.STORE_QC_SIDEBAR_WIDTH,
     }
     missing = expected - ids
     assert not missing, f"Review layout missing callback targets: {missing}"
@@ -165,18 +173,42 @@ def _find_by_id(component: object, target_id: str) -> object | None:
     return None
 
 
-def test_worklist_is_narrow_default_and_resizable() -> None:
-    """The worklist has a narrow default width and a native resize grip."""
+def test_worklist_has_narrow_default_width() -> None:
+    """The worklist starts at the narrow default width (was 280px)."""
     worklist = _find_by_id(build_review_view(), rids.QC_REVIEW_WORKLIST_ID)
     assert worklist is not None
-    style = worklist.style or {}
-    # Narrower than the old 280px default.
-    assert style.get("width") == "180px"
-    # Native, dependency-free horizontal resize (requires overflow != visible).
-    assert style.get("resize") == "horizontal"
-    assert style.get("overflow") == "auto"
-    assert style.get("minWidth") == "140px"
-    assert style.get("maxWidth") == "380px"
+    assert (worklist.style or {}).get("width") == f"{SIDEBAR_DEFAULT_WIDTH_PX}px"
+    assert SIDEBAR_DEFAULT_WIDTH_PX == 180
+
+
+def test_review_mounts_drag_splitter_and_width_store() -> None:
+    """The Review view mounts the resize splitter handle + its width store."""
+    view = build_review_view()
+    splitter = _find_by_id(view, rids.QC_REVIEW_SPLITTER_ID)
+    assert splitter is not None
+    assert (splitter.style or {}).get("cursor") == "col-resize"
+    # The width store seeds the default; the JS splitter writes the dragged px.
+    store = _find_by_id(view, rids.STORE_QC_SIDEBAR_WIDTH)
+    assert store is not None
+    assert store.data == SIDEBAR_DEFAULT_WIDTH_PX
+
+
+def test_clamp_sidebar_width_bounds_and_fallback() -> None:
+    """``clamp_sidebar_width`` mirrors the JS clamp: bound + default-on-garbage.
+
+    This is the automatable proof of the resizer's width logic (the JS
+    splitter applies the identical clamp), so the drag's effect is covered
+    without actuating a real pointer drag.
+    """
+    # In-range passes through (rounded).
+    assert clamp_sidebar_width(250) == 250
+    assert clamp_sidebar_width(250.4) == 250
+    # Below min / above max clamp to the bounds.
+    assert clamp_sidebar_width(50) == SIDEBAR_MIN_WIDTH_PX == 140
+    assert clamp_sidebar_width(9999) == SIDEBAR_MAX_WIDTH_PX == 380
+    # Garbage / None falls back to the default.
+    assert clamp_sidebar_width(None) == SIDEBAR_DEFAULT_WIDTH_PX
+    assert clamp_sidebar_width("nope") == SIDEBAR_DEFAULT_WIDTH_PX
 
 
 def test_sidebar_has_collapse_chevron() -> None:
@@ -186,21 +218,28 @@ def test_sidebar_has_collapse_chevron() -> None:
     assert toggle.children == "◀"
 
 
-def test_sidebar_collapse_state_flips_visibility_and_glyph() -> None:
-    """``sidebar_collapse_state`` flips worklist visibility + chevron glyph.
+def test_sidebar_layout_state_combines_collapse_and_width() -> None:
+    """``sidebar_layout_state`` flips visibility/glyph AND applies the dragged width.
 
-    Regression guard for the collapse callback: collapsed hides the
-    worklist and shows the ▶ expand glyph; expanded shows the worklist and
-    the ◀ collapse glyph. The detail pane reclaims width via flex (no
-    explicit gallery output), so this is the full behavioural contract.
+    Regression guard for the single sidebar callback: collapsed hides the
+    worklist + shows ▶; expanded shows it at the (clamped) dragged width +
+    ◀. The persisted width is applied even when collapsed, so expanding
+    restores the user's width rather than the default.
     """
-    expanded_style, expanded_vis, expanded_glyph = sidebar_collapse_state(False)
-    assert expanded_vis == {"display": "block"}
-    assert expanded_glyph == "◀"
-    assert expanded_style.get("position") == "sticky"
+    # Expanded at a user-dragged 260px.
+    exp_sidebar, exp_worklist, exp_glyph = sidebar_layout_state(False, 260)
+    assert exp_worklist["display"] == "block"
+    assert exp_worklist["width"] == "260px"
+    assert exp_glyph == "◀"
+    assert exp_sidebar.get("position") == "sticky"
 
-    collapsed_style, collapsed_vis, collapsed_glyph = sidebar_collapse_state(True)
-    assert collapsed_vis == {"display": "none"}
-    assert collapsed_glyph == "▶"
-    # Collapsed wrapper stays sticky (the chevron rail remains in view).
-    assert collapsed_style.get("position") == "sticky"
+    # Collapsed: hidden + ▶, but the 260px width is retained for re-expand.
+    col_sidebar, col_worklist, col_glyph = sidebar_layout_state(True, 260)
+    assert col_worklist["display"] == "none"
+    assert col_worklist["width"] == "260px"
+    assert col_glyph == "▶"
+    assert col_sidebar.get("position") == "sticky"
+
+    # An out-of-range / garbage width is clamped/defaulted, never raw.
+    _, clamped_worklist, _ = sidebar_layout_state(False, 9999)
+    assert clamped_worklist["width"] == f"{SIDEBAR_MAX_WIDTH_PX}px"

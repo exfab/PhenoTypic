@@ -401,3 +401,105 @@
         }, 100);
     }
 })();
+
+/* ============================================================
+ * (G) QC Review worklist drag-splitter.
+ *
+ * A thin handle (#qc-review-splitter) between the worklist sidebar and
+ * the detail/gallery pane. Dragging it widens/narrows the worklist
+ * (#qc-review-worklist) live, clamped to [MIN, MAX] px; on mouse-up the
+ * final width is persisted to the Dash store `store-qc-sidebar-width`
+ * via window.dash_clientside.set_props, so a Python callback can re-apply
+ * it across re-renders + collapse. Mirrors the colony shift-click bridge:
+ * poll-to-attach + a <body> MutationObserver re-attach, both idempotent
+ * via a dataset flag.
+ *
+ * `clampSidebarWidth` is exposed on the namespace so a test can drive the
+ * exact clamp the drag uses without a real pointer drag.
+ * ============================================================ */
+(function () {
+    "use strict";
+    const ns = window.__phenotypicResultsViewer =
+        window.__phenotypicResultsViewer || {};
+
+    const MIN_W = 140;
+    const MAX_W = 380;
+
+    ns.clampSidebarWidth = function (px) {
+        const n = Math.round(Number(px));
+        if (!Number.isFinite(n)) return 180;  // default
+        return Math.max(MIN_W, Math.min(MAX_W, n));
+    };
+
+    function persistWidth(px) {
+        const dc = window.dash_clientside;
+        if (!dc || typeof dc.set_props !== "function") {
+            console.warn("[results_viewer] dash_clientside.set_props unavailable");
+            return;
+        }
+        dc.set_props("store-qc-sidebar-width", { data: px });
+    }
+
+    function attachSplitter(handle) {
+        if (handle.dataset._qcSplitter === "1") return;
+        handle.dataset._qcSplitter = "1";
+        handle.addEventListener("mousedown", function (downEvt) {
+            const worklist = document.getElementById("qc-review-worklist");
+            if (!worklist) return;
+            downEvt.preventDefault();  // don't text-select while dragging
+            const startX = downEvt.clientX;
+            const startW = worklist.getBoundingClientRect().width;
+            // Visual feedback during the drag.
+            document.body.style.userSelect = "none";
+            document.body.style.cursor = "col-resize";
+
+            function onMove(moveEvt) {
+                const next = ns.clampSidebarWidth(startW + (moveEvt.clientX - startX));
+                worklist.style.width = next + "px";
+            }
+            function onUp() {
+                document.removeEventListener("mousemove", onMove);
+                document.removeEventListener("mouseup", onUp);
+                document.body.style.userSelect = "";
+                document.body.style.cursor = "";
+                const finalW = ns.clampSidebarWidth(
+                    worklist.getBoundingClientRect().width
+                );
+                worklist.style.width = finalW + "px";
+                persistWidth(finalW);  // survives re-renders + collapse
+            }
+            document.addEventListener("mousemove", onMove);
+            document.addEventListener("mouseup", onUp);
+        });
+        console.info("[results_viewer] QC review splitter attached");
+    }
+
+    function tryAttach() {
+        const handle = document.getElementById("qc-review-splitter");
+        if (!handle) return false;
+        attachSplitter(handle);
+        return true;
+    }
+
+    if (!tryAttach()) {
+        const interval = setInterval(function () {
+            if (tryAttach()) clearInterval(interval);
+        }, 100);
+    }
+
+    // Re-attach if Dash re-mounts the Review subtree (tab/sub-view switch).
+    function startReattachObserver() {
+        if (!document.body) return false;
+        const obs = new MutationObserver(function () {
+            const handle = document.getElementById("qc-review-splitter");
+            if (handle) attachSplitter(handle);  // idempotent
+        });
+        obs.observe(document.body, { childList: true, subtree: true });
+        return true;
+    }
+    if (!startReattachObserver()) {
+        const bodyInterval = setInterval(function () {
+            if (startReattachObserver()) clearInterval(bodyInterval);
+        }, 100);
+    }
+})();

@@ -88,10 +88,16 @@ QC_REVIEW_SUMMARY_HEADER_ID: str = "qc-review-summary-header"
 QC_REVIEW_SIDEBAR_ID: str = "qc-review-sidebar"
 
 #: Left worklist container — rebuilt (frozen order) on module switch and
-#: on ↻ Re-sort; individual rows update in place after recompute. Carries
-#: a narrow default width + native ``resize: horizontal`` so the user can
-#: drag-adjust it.
+#: on ↻ Re-sort; individual rows update in place after recompute. Its
+#: width is driven by :data:`STORE_QC_SIDEBAR_WIDTH` (set by the JS
+#: drag-splitter), clamped to [140, 380] px.
 QC_REVIEW_WORKLIST_ID: str = "qc-review-worklist"
+
+#: Thin draggable splitter handle between the worklist sidebar and the
+#: detail/gallery pane. A clientside drag (see ``results_viewer.js``)
+#: updates the sidebar width live and persists the final px to
+#: :data:`STORE_QC_SIDEBAR_WIDTH` on mouse-up.
+QC_REVIEW_SPLITTER_ID: str = "qc-review-splitter"
 
 #: Chevron button collapsing/expanding the sidebar to/from a thin rail.
 #: Glyph flips ◀ (collapse) / ▶ (expand) with state.
@@ -100,6 +106,12 @@ QC_REVIEW_SIDEBAR_TOGGLE_ID: str = "qc-review-sidebar-toggle"
 #: ``dcc.Store`` (memory) holding the sidebar collapsed flag (bool). A
 #: callback toggles the sidebar wrapper style + chevron glyph from it.
 STORE_QC_SIDEBAR_COLLAPSED: str = "store-qc-sidebar-collapsed"
+
+#: ``dcc.Store`` (memory) holding the user's dragged sidebar width in px.
+#: Written by the JS drag-splitter on mouse-up; a Dash callback applies it
+#: to the worklist's ``style.width`` so the width survives re-renders and
+#: collapse/expand. Defaults to :data:`SIDEBAR_DEFAULT_WIDTH_PX`.
+STORE_QC_SIDEBAR_WIDTH: str = "store-qc-sidebar-width"
 
 #: ``dcc.Store`` holding the frozen worklist order for the active module
 #: as a list of encoded group keys (so recompute can update a row in place
@@ -220,8 +232,10 @@ __all__ = [
     # Worklist
     "QC_REVIEW_SIDEBAR_ID",
     "QC_REVIEW_WORKLIST_ID",
+    "QC_REVIEW_SPLITTER_ID",
     "QC_REVIEW_SIDEBAR_TOGGLE_ID",
     "STORE_QC_SIDEBAR_COLLAPSED",
+    "STORE_QC_SIDEBAR_WIDTH",
     "STORE_QC_WORKLIST_ORDER",
     "STORE_QC_SELECTED_GROUP",
     "STORE_QC_RECOMPUTE_DELTAS",

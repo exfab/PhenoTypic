@@ -106,8 +106,35 @@ def _build_toolbar() -> Component:
     )
 
 
-#: Default worklist width (narrower than the old 280px per user feedback).
-_SIDEBAR_DEFAULT_WIDTH: str = "180px"
+#: Worklist sidebar width bounds (px), the single source of truth shared by
+#: the default store value, the width-apply callback's clamp, and the JS
+#: drag-splitter. Narrower default than the old 280px per user feedback.
+SIDEBAR_DEFAULT_WIDTH_PX: int = 180
+SIDEBAR_MIN_WIDTH_PX: int = 140
+SIDEBAR_MAX_WIDTH_PX: int = 380
+
+
+def clamp_sidebar_width(px: object) -> int:
+    """Clamp a candidate sidebar width to ``[MIN, MAX]`` px (falls back to default).
+
+    Single source of truth for the width clamp — the JS drag-splitter
+    mirrors these same bounds, and the width-apply callback routes through
+    here so a malformed / out-of-range store value can never produce an
+    invalid sidebar width. Non-numeric input falls back to the default.
+
+    Args:
+        px: Candidate width (the store value; may be ``None`` / a string /
+            out of range after a JS write or a stale store).
+
+    Returns:
+        An ``int`` width within ``[SIDEBAR_MIN_WIDTH_PX,
+        SIDEBAR_MAX_WIDTH_PX]``.
+    """
+    try:
+        value = int(round(float(px)))  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return SIDEBAR_DEFAULT_WIDTH_PX
+    return max(SIDEBAR_MIN_WIDTH_PX, min(SIDEBAR_MAX_WIDTH_PX, value))
 
 
 def expanded_sidebar_style() -> dict[str, str]:
@@ -169,13 +196,10 @@ def _build_sidebar() -> Component:
         id=rids.QC_REVIEW_WORKLIST_ID,
         children=[],
         style={
-            # Narrow default + native horizontal resize grip (no JS / no
-            # new dependency): the user drags the bottom-right corner to
-            # widen/narrow within [140, 380] px.
-            "width": _SIDEBAR_DEFAULT_WIDTH,
-            "minWidth": "140px",
-            "maxWidth": "380px",
-            "resize": "horizontal",
+            # Width is driven by STORE_QC_SIDEBAR_WIDTH (the JS drag-
+            # splitter writes the dragged px; a callback applies it here)
+            # so it survives re-renders + collapse. Starts at the default.
+            "width": f"{SIDEBAR_DEFAULT_WIDTH_PX}px",
             "overflow": "auto",
             # Bounded height so a long worklist scrolls internally without
             # ever pushing the gallery off-screen.
@@ -190,16 +214,43 @@ def _build_sidebar() -> Component:
     )
 
 
+def _build_splitter() -> Component:
+    """Build the thin draggable splitter between the sidebar and the gallery.
+
+    A visible 6px grab handle; the clientside drag logic in
+    ``results_viewer.js`` widens/narrows the worklist live as the user
+    drags and persists the final width (clamped) to
+    :data:`STORE_QC_SIDEBAR_WIDTH` on mouse-up. ``flex: 0 0 auto`` keeps
+    it from stretching; ``cursor: col-resize`` signals the affordance.
+    """
+    return html.Div(
+        id=rids.QC_REVIEW_SPLITTER_ID,
+        children=[],
+        title="Drag to resize the worklist",
+        style={
+            "flex": "0 0 auto",
+            "alignSelf": "stretch",
+            "width": "6px",
+            "minHeight": f"calc(100vh - {_SUMMARY_HEADER_HEIGHT})",
+            "cursor": "col-resize",
+            "background": COLOR_BORDER,
+            "position": "sticky",
+            "top": _SUMMARY_HEADER_HEIGHT,
+        },
+    )
+
+
 def _build_body() -> Component:
     """Build the master–detail body: collapsible sticky sidebar + page-scroll detail.
 
     The body is a flex *row* aligned to the top. The whole page scrolls
     (the Review view no longer caps its height), so the detail/gallery
     pane grows with its content and tiles flow down the page. The
-    worklist sidebar is collapsible (chevron) and resizable (native grip),
-    and stays ``position: sticky`` so it and the summary header remain in
-    view while the gallery scrolls; the detail pane reclaims any width the
-    sidebar gives up.
+    worklist sidebar is collapsible (chevron) and resizable (a draggable
+    splitter handle sits between it and the gallery), and stays
+    ``position: sticky`` so it and the summary header remain in view while
+    the gallery scrolls; the detail pane reclaims any width the sidebar
+    gives up.
     """
     detail = html.Div(
         [
@@ -217,7 +268,7 @@ def _build_body() -> Component:
         },
     )
     return html.Div(
-        [_build_sidebar(), detail],
+        [_build_sidebar(), _build_splitter(), detail],
         className="d-flex",
         style={"alignItems": "flex-start"},
     )
@@ -316,6 +367,9 @@ def build_review_view() -> Component:
             dcc.Store(id=rids.STORE_QC_SELECTED_GROUP, data=None),
             dcc.Store(id=rids.STORE_QC_RECOMPUTE_DELTAS, data={}),
             dcc.Store(id=rids.STORE_QC_SIDEBAR_COLLAPSED, data=False),
+            dcc.Store(
+                id=rids.STORE_QC_SIDEBAR_WIDTH, data=SIDEBAR_DEFAULT_WIDTH_PX
+            ),
         ],
         className="qc-review-root d-flex flex-column",
         # No height cap / overflow lock: the view sizes to its content so
