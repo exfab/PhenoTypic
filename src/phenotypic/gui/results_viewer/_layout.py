@@ -33,8 +33,8 @@ from dash import Input, Output, dcc, html
 from dash.development.base_component import Component
 
 from phenotypic.gui._config import CFG_QC_RECIPE, MOUNT_HOME, SSH_TUNNEL_HINT
-from phenotypic.gui._qc_recipe import QcRecipe
 from phenotypic.gui._schema_cache import MeasurementSchema
+from phenotypic.qc import QcRecipe
 from phenotypic.gui._shared import SHARED_LOGO_PATH
 from phenotypic.gui._design import (
     COLOR_BG,

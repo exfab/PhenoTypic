@@ -163,10 +163,13 @@ def test_register_crop_route_serves_centered_png_under_custom_segment(
 ) -> None:
     """The factory mounts under an arbitrary segment and serves a sized PNG."""
     app = create_app(output_root)
-    register_crop_route(app, output_root, "qc-crops")
+    # Use a test-only segment; ``create_app`` already mounts ``/crops``
+    # (colony view) and ``/qc-crops`` (QC review) at boot, so a fresh
+    # segment exercises the factory without a blueprint-name collision.
+    register_crop_route(app, output_root, "extra-crops")
     client = app.server.test_client()
 
-    resp = client.get("/qc-crops/d1/img-1/7.png?size=24")
+    resp = client.get("/extra-crops/d1/img-1/7.png?size=24")
     assert resp.status_code == 200
     assert resp.mimetype == "image/png"
     img = PILImage.open(io.BytesIO(resp.data))
@@ -178,25 +181,26 @@ def test_register_crop_route_validates_size_and_label(
 ) -> None:
     """Missing size → 400; unknown label → 404."""
     app = create_app(output_root)
-    register_crop_route(app, output_root, "qc-crops")
+    register_crop_route(app, output_root, "extra-crops")
     client = app.server.test_client()
 
-    assert client.get("/qc-crops/d1/img-1/7.png").status_code == 400
-    assert client.get("/qc-crops/d1/img-1/99.png?size=24").status_code == 404
+    assert client.get("/extra-crops/d1/img-1/7.png").status_code == 400
+    assert client.get("/extra-crops/d1/img-1/99.png?size=24").status_code == 404
 
 
 def test_register_crop_route_distinct_segments_coexist(
     output_root: OutputRoot,
 ) -> None:
-    """Two segments register without a blueprint-name collision."""
+    """Multiple crop segments register without a blueprint-name collision."""
     app = create_app(output_root)
-    # The colony "/crops" route is already mounted by create_app; mount a
-    # second segment and confirm both answer.
-    register_crop_route(app, output_root, "qc-crops")
+    # ``create_app`` already mounts ``/crops`` (colony) and ``/qc-crops``
+    # (QC review); mount a third segment and confirm all three answer.
+    register_crop_route(app, output_root, "extra-crops")
     client = app.server.test_client()
 
     assert client.get("/crops/d1/img-1/7.png?size=24").status_code == 200
     assert client.get("/qc-crops/d1/img-1/7.png?size=24").status_code == 200
+    assert client.get("/extra-crops/d1/img-1/7.png?size=24").status_code == 200
 
 
 # ---------------------------------------------------------------------------

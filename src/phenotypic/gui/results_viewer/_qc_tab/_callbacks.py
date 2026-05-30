@@ -52,7 +52,6 @@ from phenotypic.gui._config import (
 )
 from phenotypic.gui._operation_registry import OperationRegistry
 from phenotypic.gui._param_forms import param_form, parse_widget_value
-from phenotypic.gui._qc_recipe import QcRecipe
 from phenotypic.gui.results_viewer import _ids as viewer_ids
 from phenotypic.gui.results_viewer._filtered_state import (
     KEY_COLUMNS,
@@ -64,6 +63,11 @@ from phenotypic.gui.results_viewer._qc_tab._layout import (
     _banner_style,
     _render_load_warnings,
 )
+from phenotypic.gui.results_viewer._qc_tab.review import (
+    _ids as review_ids,
+    register_review_callbacks,
+)
+from phenotypic.qc import QcRecipe
 
 logger = logging.getLogger(__name__)
 
@@ -855,6 +859,39 @@ def register_qc_callbacks(app: dash.Dash) -> None:
             ]
         )
         return True, body, "success"
+
+    # -----------------------------------------------------------------
+    # Callback G: Configure | Review sub-view toggle
+    # -----------------------------------------------------------------
+    @app.callback(
+        Output(review_ids.QC_CONFIGURE_VIEW_ID, "style"),
+        Output(review_ids.QC_REVIEW_VIEW_ID, "style"),
+        Output(review_ids.STORE_QC_SUBVIEW, "data"),
+        Input(review_ids.QC_SUBVIEW_TOGGLE_ID, "value"),
+    )
+    def _switch_subview(
+        subview: str | None,
+    ) -> tuple[dict[str, str], dict[str, str], str]:
+        """Show the selected sub-view via ``style.display`` (no rebuild)."""
+        review = (subview or review_ids.QC_SUBVIEW_CONFIGURE) == (
+            review_ids.QC_SUBVIEW_REVIEW
+        )
+        configure_style = {"display": "none" if review else "block"}
+        # Plain block, no height cap: the Review view sizes to its content
+        # so the gallery flows down and the ``qc-tab-root`` wrapper (which
+        # has ``overflow: auto``) scrolls the whole page. The Review view's
+        # sticky header + sidebar keep the nav pinned during that scroll.
+        review_style = {"display": "block" if review else "none"}
+        return (
+            configure_style,
+            review_style,
+            review_ids.QC_SUBVIEW_REVIEW if review else review_ids.QC_SUBVIEW_CONFIGURE,
+        )
+
+    # Review sub-view owns its own callback bundle (worklist, detail,
+    # curation, recompute, review-state). Registered here so the QC tab's
+    # single ``register_qc_callbacks`` entry wires both sub-views.
+    register_review_callbacks(app)
 
 
 # ---------------------------------------------------------------------------

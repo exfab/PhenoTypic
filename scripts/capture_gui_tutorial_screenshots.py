@@ -298,6 +298,7 @@ def capture_workflow_screenshots(base_url: str, headed: bool = False) -> None:
             _capture_analysis(context, base_url)
             _capture_aux_ports(context, base_url)
             _capture_qc_curation_loop(context, base_url)
+            _capture_qc_review(context, base_url)
             _capture_heatmap_exploration(context, base_url)
             _capture_aux_wire_in_dag(context, base_url)
             _capture_wire_pipeline_as_aux(context, base_url)
@@ -936,6 +937,96 @@ def _capture_qc_curation_loop(context, base_url: str) -> None:
     page.close()
 
 
+def _capture_qc_review(context, base_url: str) -> None:
+    """Capture the QC review walkthrough workflow.
+
+    Spec §D. Drives the Results Viewer's QC tab into its **Review**
+    sub-view — the master–detail walkthrough that walks the
+    worst-agreeing groups for a selected QC module, reuses the
+    colony-view tile gallery for per-colony curation, and recomputes the
+    module after each curated group.
+
+    The hub-mounted viewer has no ``output_root`` until the sidebar binds
+    one, so the populated Review state (worklist + detail gallery) is
+    captured from the standalone viewer in :func:`_qc_review_loaded_shots`.
+    This hub capture records the empty-state entry point:
+
+    1. ``01_empty_state.png`` — the QC tab in the hub viewer's empty
+       state, before a module/output is bound.
+    """
+    print("[shot] workflow=qc_review")
+    page = _new_page(context, base_url, "/results/")
+    page.wait_for_timeout(800)
+    qc_tab = page.locator('a[role="tab"]:has-text("QC")').first
+    if qc_tab.count() > 0:
+        try:
+            qc_tab.click(timeout=2000)
+            page.wait_for_timeout(600)
+        except Exception:  # pragma: no cover - best-effort
+            pass
+    _save(page, "qc_review", "01_empty_state.png")
+    page.close()
+
+
+def _qc_review_loaded_shots(page) -> None:
+    """Capture loaded-state QC Review screenshots in the standalone viewer.
+
+    The standalone launcher has a real ``output_root`` carrying a ``qc/``
+    artifact, so flipping the QC tab's Configure | Review toggle renders a
+    populated worklist + detail gallery. Captures:
+
+    * ``02_review_worklist.png`` — the Review sub-view with the module
+      picker, summary header, and worst-first worklist.
+    * ``03_detail_gallery.png`` — the detail pane for the first
+      (worst) group: header + tile gallery + action bar.
+    """
+    qc_tab = page.locator('a[role="tab"]:has-text("QC")').first
+    if qc_tab.count() == 0:
+        print("[shot]   qc_review: QC tab not found — loaded captures skipped")
+        return
+    try:
+        qc_tab.click(timeout=3000)
+        page.wait_for_timeout(800)
+    except Exception:  # pragma: no cover - best-effort
+        pass
+
+    # Flip the Configure | Review segmented toggle to Review. The dbc
+    # RadioItems renders the option as a Bootstrap ``btn-check`` radio
+    # whose <input> is ``display:none``; click its <label> (matched by the
+    # input's id suffix) with ``force=True``, then wait for the Review
+    # container to actually become visible + its worklist to render before
+    # shooting — a plain click+sleep raced the callback and captured the
+    # Configure view.
+    review_label = page.locator(
+        'label[for$="qc-subview-toggle_input_review"]'
+    ).first
+    if review_label.count() > 0:
+        try:
+            review_label.click(timeout=2000, force=True)
+            page.wait_for_function(
+                "() => {"
+                "  const v = document.querySelector('#qc-review-view');"
+                "  return v && getComputedStyle(v).display !== 'none';"
+                "}",
+                timeout=5000,
+            )
+            page.wait_for_selector(".qc-worklist-row", timeout=5000)
+            page.wait_for_timeout(500)
+        except Exception:  # pragma: no cover - best-effort
+            pass
+    _save(page, "qc_review", "02_review_worklist.png")
+
+    # Click the first (worst) worklist row to populate the detail pane.
+    first_row = page.locator(".qc-worklist-row").first
+    if first_row.count() > 0:
+        try:
+            first_row.click(timeout=2000)
+            page.wait_for_timeout(1500)
+        except Exception:  # pragma: no cover - best-effort
+            pass
+    _save(page, "qc_review", "03_detail_gallery.png")
+
+
 def _capture_heatmap_exploration(context, base_url: str) -> None:
     """Capture the Heatmap exploration workflow.
 
@@ -1406,6 +1497,7 @@ def capture_standalone_viewer_screenshots(headed: bool = False) -> None:
                 page.wait_for_timeout(400)
 
                 _qc_curation_loop_loaded_shots(page)
+                _qc_review_loaded_shots(page)
                 _heatmap_exploration_loaded_shots(page)
 
                 page.close()

@@ -305,12 +305,18 @@ under both standalone and dispatcher-mounted launches.
 
 ## QC tab
 
-The Results Viewer's QC tab composes one Plotly card per configured
-`QualityCheck` analyzer. Each card subscribes to `STORE_REMOVED_KEYS`
+The Results Viewer's QC tab is a single tab with a **Configure | Review**
+segmented toggle. **Configure** composes one Plotly card per configured
+`QualityCheck` analyzer; each card subscribes to `STORE_REMOVED_KEYS`
 so the figure + summary strip + status badge re-render on every curation
 tick without a manual refresh, and the recipe-mutation callbacks bump
 `STORE_QC_RECIPE_REVISION` so the card-list-render callback can swap the
-DOM atomically when entries are added / edited / removed.
+DOM atomically when entries are added / edited / removed. The recipe is
+now the `qc` array of `pipeline.json` (pipeline-backed
+`phenotypic.qc.QcRecipe`, migrated once from any legacy
+`.viewer_cache/qc_recipe.json` sidecar). **Review** is the master–detail
+curation walkthrough (worklist → detail gallery → per-group recompute);
+its affordances are listed in the next section.
 
 | Feature                                  | Element                                 | Expected behaviour                                                                                                                                                         | Status     | Test layer | Test ref                                                                 |
 |------------------------------------------|-----------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------|------------|--------------------------------------------------------------------------|
@@ -327,6 +333,39 @@ DOM atomically when entries are added / edited / removed.
 | QC tab — Load-warning banner             | Top-strip banner                        | Visible when `recipe.load_warnings` is non-empty; lists `instance_id` + reason for each unresolved entry.                                                                  | ✅ shipping | e2e        | tests/e2e/gui/test_qc_tab.py::test_load_warning_banner                   |
 | QC tab — Export button enabled state     | "Export QC report" disabled gate        | Disabled when no checks configured; enabled after first add.                                                                                                               | ✅ shipping | e2e        | tests/e2e/gui/test_qc_tab.py::test_export_button_disabled_when_no_checks |
 | STORE_QC_RECIPE_REVISION                 | `dcc.Store` mounted in viewer           | Bumps on every `QcRecipe.{add,remove,update}`; drives card-list-render callback.                                                                                           | ✅ shipping | unit       | tests/unit/gui/test_qc_recipe.py::test_revision_bumps_on_mutation        |
+
+## QC Review sub-view
+
+The QC tab's **Review** mode (`_qc_tab/review/`) is a master–detail
+walkthrough of the worst-agreeing groups for a selected QC module. It
+reads the CLI-written `qc/qc_summary.parquet` + `qc/qc_members.parquet`,
+reuses the colony-view tile gallery (`gui/_shared/tiles.build_tile_grid`)
+for per-colony curation against the shared `STORE_REMOVED_KEYS`, and
+recomputes the module in-session after each curated group (`run_qc` on the
+post-applied frame minus removals — never `finalize_*`). Per-module review
+progress lives in GUI-owned `qc/review_state.json` and is reset by the CLI
+on the next recompile/remeasure. The data layer (`review/_data.py`) and
+review-state store (`review/_review_state.py`) are pure and unit-tested;
+recompute parity with the CLI artifact is integration-tested.
+
+| Feature | Element | Expected behaviour | Status | Test layer | Test ref |
+|---------|---------|--------------------|--------|------------|----------|
+| QC tab — Configure \| Review toggle | `qc-subview-toggle` segmented control | Switches the QC tab between the Configure card editor and the Review walkthrough via `style.display` (no rebuild). | ✅ shipping | integration | tests/integration/gui/test_qc_review_recompute.py::test_create_app_boots_with_review_and_qc_crop_route |
+| QC Review — Module picker | `qc-review-module-picker` dropdown | Options are the enabled `qc` entries (one per `instance_id`) from `qc_summary`; switching repoints worklist + summary + detail. | ✅ shipping | unit | tests/unit/gui/results_viewer/test_qc_review_data.py::test_module_options_and_groupby_recovery |
+| QC Review — Worst-first worklist | `qc-review-worklist` sidebar | Groups sorted worst-first by frozen `rank`; reviewed rows show ✓ and dim; a "moved/changed" hint appears after recompute. | ✅ shipping | unit | tests/unit/gui/results_viewer/test_qc_review_data.py::test_worklist_is_worst_first |
+| QC Review — Resizable worklist | `qc-review-worklist` resize grip | Narrow 180px default; native `resize: horizontal` drag grip lets the user widen/narrow within [140, 380]px (no JS dependency). | ✅ shipping | unit | tests/unit/gui/results_viewer/test_qc_review_layout.py::test_worklist_is_narrow_default_and_resizable |
+| QC Review — Collapse chevron | `qc-review-sidebar-toggle` chevron | Collapses the worklist sidebar to a thin chevron rail (◀→▶) so the gallery reclaims the freed width; expands back. State in `STORE_QC_SIDEBAR_COLLAPSED`. | ✅ shipping | unit | tests/unit/gui/results_viewer/test_qc_review_layout.py::test_sidebar_collapse_state_flips_visibility_and_glyph |
+| QC Review — ↻ Re-sort queue button | `qc-review-resort-btn` | The only control that reorders the worklist; recompute updates rows in place without reordering. | ✅ shipping | unit | tests/unit/gui/results_viewer/test_qc_review_data.py::test_worklist_is_worst_first |
+| QC Review — Show filter | `qc-review-show-filter` radio | `unreviewed` / `all` / `fail+warn` filters the worklist while preserving frozen order. | ✅ shipping | unit | tests/unit/gui/results_viewer/test_qc_review_data.py::test_worklist_is_worst_first |
+| QC Review — Summary header | `qc-review-summary-header` stat tiles | total / fail / warn / pass / insufficient / reviewed / removed / median-metric; NaN/insufficient counted separately from `pass`. | ✅ shipping | unit | tests/unit/gui/results_viewer/test_qc_review_data.py::test_summary_stats_nan_is_insufficient_not_pass |
+| QC Review — Detail tile gallery | `qc-review-gallery` (`build_tile_grid`) | One faceted row per timepoint for time-course checks (else one flat gallery); tiles served by the `qc-crops` crop route. | ✅ shipping | unit | tests/unit/gui/results_viewer/test_qc_review_data.py::test_facet_by_timepoint |
+| QC Review — Per-tile remove/restore | `qc-review-tile-remove` per-tile button | Toggles the colony in the shared `FilteredMeasurements` removal set / `STORE_REMOVED_KEYS`; removed tiles dim. | ✅ shipping | integration | tests/integration/gui/test_qc_review_recompute.py::test_create_app_boots_with_review_and_qc_crop_route |
+| QC Review — Bulk remove/restore | `qc-review-bulk-remove-btn` / `…-restore` | Applies `remove_many` / `restore_many` to the multi-selected tiles then clears the selection. | ✅ shipping | integration | tests/integration/gui/test_qc_review_recompute.py::test_create_app_boots_with_review_and_qc_crop_route |
+| QC Review — Per-group recompute | Mark-reviewed / Next with changes | Runs `run_qc` in-session on the post-applied frame minus removals (matches the CLI artifact); updates the row in place; never wipes review state. | ✅ shipping | integration | tests/integration/gui/test_qc_review_recompute.py::test_recompute_matches_cli_for_identical_removals |
+| QC Review — Before→after metric delta | `qc-review-detail-header` | Detail header shows `before → after` metric and new status after a recompute. | ✅ shipping | integration | tests/integration/gui/test_qc_review_recompute.py::test_recompute_matches_cli_for_identical_removals |
+| QC Review — Mark reviewed | `qc-review-mark-reviewed-btn` | Marks the open group reviewed (per-module `qc/review_state.json`); auto-marks a curated group on advance; preserved in-session, reset by CLI finalize. | ✅ shipping | unit | tests/unit/gui/results_viewer/test_qc_review_data.py::test_review_state_round_trip |
+| QC Review — Review-state reset on rerun | `qc/review_state.json` | GUI-written only; `run_qc` never touches it; the CLI clears it on recompile/remeasure so a fresh run restarts the queue. | ✅ shipping | integration | tests/integration/gui/test_qc_review_recompute.py::test_recompute_does_not_touch_review_state |
+| QC Review — Pipeline-backed recipe | Configure add/edit/delete | Configure edits the `qc` array of `pipeline.json` (not the legacy sidecar); a legacy `.viewer_cache/qc_recipe.json` is migrated once at boot. | ✅ shipping | integration | tests/integration/gui/test_qc_review_recompute.py::test_legacy_sidecar_is_migrated_into_pipeline |
 
 ## Heatmap tab
 

@@ -579,15 +579,24 @@ def build_tile_grid(
             )
         )
 
+    # Full-width responsive grid: ``auto-fill`` packs as many
+    # ``display_size``-wide columns as the container affords (more on wide
+    # screens, fewer when narrow) and ``1fr`` lets each column stretch to
+    # fill the row, so the gallery uses ALL the horizontal space instead
+    # of a fixed-width strip. The grid grows with its content (no fixed
+    # height / internal scroll) so tiles flow down the page.
     gallery = html.Div(
         children,
         className="colony-grid tile-gallery",
         style={
-            "display": "flex",
-            "flexWrap": "wrap",
+            "display": "grid",
+            "gridTemplateColumns": (
+                f"repeat(auto-fill, minmax({display_size}px, 1fr))"
+            ),
             "gap": f"{gap_px}px",
             "padding": "0.5rem",
             "alignItems": "flex-start",
+            "justifyItems": "center",
         },
     )
     return gallery, grid_order

@@ -87,6 +87,7 @@ __all__ = [
     "CFG_QC_RECIPE",
     "CFG_QC_INSTANCES_CACHE",
     "CFG_QC_AUGMENTED_FRAME",
+    "CFG_QC_PIPELINE",
     # Sandbox subdirectories
     "SANDBOX_GUI_DIRNAME",
     "SANDBOX_PRESETS_SUBDIR",
@@ -122,6 +123,7 @@ __all__ = [
     "BUILDER_TILES_PREFIX",
     "VIEWER_TILES_PREFIX",
     "COLONY_CROPS_URL_SEGMENT",
+    "QC_CROPS_URL_SEGMENT",
     # Closed value-set aliases
     "ChannelName",
     # Tunables
@@ -242,6 +244,16 @@ CFG_QC_INSTANCES_CACHE: str = "pheno_qc_instances"
 #: enforced. Spec lines 756-759.
 CFG_QC_AUGMENTED_FRAME: str = "pheno_qc_augmented_frame"
 
+#: ``app.server.config[CFG_QC_PIPELINE]`` — the
+#: :class:`~phenotypic._core._image_pipeline.ImagePipeline` deserialized
+#: from the active output root's ``pipeline.json`` at boot. The QC Review
+#: tab's per-group recompute hands this to
+#: :func:`phenotypic.qc._runner.run_qc` so the in-session recompute uses
+#: exactly the same checks the CLI persisted. ``None`` when no
+#: ``pipeline.json`` exists (or it failed to load) — recompute degrades to
+#: a no-op in that case. Spec §D.5.
+CFG_QC_PIPELINE: str = "pheno_qc_pipeline"
+
 # ---------------------------------------------------------------------------
 # Sandbox subdirectories
 # ---------------------------------------------------------------------------
@@ -321,6 +333,14 @@ VIEWER_TILES_PREFIX: str = "/tiles"
 
 #: URL path segment used for per-colony crop images.
 COLONY_CROPS_URL_SEGMENT: str = "crops"
+
+#: URL path segment used for the QC Review tab's colony crops. Distinct
+#: from :data:`COLONY_CROPS_URL_SEGMENT` so the two crop blueprints mount
+#: under separate names on the same Flask server (see
+#: :func:`phenotypic.gui._shared.tiles.register_crop_route`). Both routes
+#: serve identical centered PNGs; the namespaces are kept apart only so
+#: the blueprint registrations never collide.
+QC_CROPS_URL_SEGMENT: str = "qc-crops"
 
 # ---------------------------------------------------------------------------
 # Closed value-set aliases
