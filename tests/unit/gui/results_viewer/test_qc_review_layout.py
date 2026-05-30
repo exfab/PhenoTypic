@@ -19,7 +19,10 @@ from phenotypic.gui.results_viewer._qc_tab._layout import build_qc_tab_body
 from phenotypic.gui.results_viewer._qc_tab.review import _ids as rids
 from phenotypic.gui.results_viewer._qc_tab.review._callbacks import (
     _render_summary_header,
+    _row_metric_status,
+    render_worklist_row_metric_cell,
     sidebar_layout_state,
+    worklist_row_metric_update,
 )
 from phenotypic.gui.results_viewer._qc_tab.review._layout import (
     SIDEBAR_DEFAULT_WIDTH_PX,
@@ -243,3 +246,135 @@ def test_sidebar_layout_state_combines_collapse_and_width() -> None:
     # An out-of-range / garbage width is clamped/defaulted, never raw.
     _, clamped_worklist, _ = sidebar_layout_state(False, 9999)
     assert clamped_worklist["width"] == f"{SIDEBAR_MAX_WIDTH_PX}px"
+
+
+# ---------------------------------------------------------------------------
+# Worklist row metric/badge in-place update after recompute (spec §D.5)
+# ---------------------------------------------------------------------------
+
+
+def _metric_text_of(cell_children: list) -> str:
+    """Extract the metric text from a worklist-row metric cell's children."""
+    return cell_children[0].children
+
+
+def _badge_of(cell_children: list):
+    """Extract the status badge from a worklist-row metric cell's children."""
+    return cell_children[1]
+
+
+def test_metric_cell_renders_metric_and_status_badge() -> None:
+    """The metric cell pairs the formatted metric with a status-coloured badge."""
+    cell = render_worklist_row_metric_cell(0.281, "fail")
+    assert _metric_text_of(cell).strip() == "0.281"
+    badge = _badge_of(cell)
+    assert badge.children == "fail"
+    assert badge.color == "danger"
+    # NaN / None metric renders the insufficient sentinel.
+    insuf = render_worklist_row_metric_cell(None, "insufficient")
+    assert _metric_text_of(insuf).strip() == "insuf."
+    assert _badge_of(insuf).color == "secondary"
+
+
+def test_metric_cell_appends_moved_hint() -> None:
+    """``moved=True`` appends the ⤳ changed-after-recompute hint to the cell."""
+    cell = render_worklist_row_metric_cell(0.226, "warn", moved=True)
+    assert len(cell) == 3
+    assert cell[2].children == " ⤳"
+    # No hint when the metric was unchanged.
+    assert len(render_worklist_row_metric_cell(0.226, "warn", moved=False)) == 2
+
+
+def test_worklist_row_metric_update_flips_value_and_badge_in_place() -> None:
+    """A recompute delta rewrites the row cell's metric AND badge in place.
+
+    This is the regression that would have caught the stale-worklist-row
+    bug: before the fix the worklist row kept the frozen-frame metric/badge
+    after a curate→recompute. The delta carries the recomputed ``after``
+    metric + ``status_after`` straight from the rewritten qc_summary
+    artifact, so the cell flips from (0.281, fail) to (0.226, warn) — the
+    badge colour changes too, not just the number.
+    """
+    delta = {
+        "before": 0.281,
+        "after": 0.226,
+        "status_after": "warn",
+        "moved": True,
+    }
+    cell = worklist_row_metric_update(delta)
+    assert _metric_text_of(cell).strip() == "0.226"
+    badge = _badge_of(cell)
+    assert badge.children == "warn"
+    assert badge.color == "warning"  # flipped from danger
+    # The ⤳ moved hint is present because the metric changed.
+    assert cell[2].children == " ⤳"
+
+
+def test_worklist_row_metric_update_is_noop_without_delta() -> None:
+    """A row with no recompute delta is left untouched (no cross-row repaint).
+
+    The per-row MATCH callback fires for *every* row when the deltas store
+    changes; rows that were not recomputed must short-circuit to
+    ``dash.no_update`` so recomputing group A never repaints group B.
+    """
+    from dash import no_update
+
+    assert worklist_row_metric_update(None) is no_update
+    assert worklist_row_metric_update({}) is no_update
+
+
+def test_worklist_row_metric_update_falls_back_when_status_missing() -> None:
+    """A delta without ``status_after`` keeps a non-blank badge (neutral)."""
+    cell = worklist_row_metric_update({"after": 0.5, "moved": True})
+    badge = _badge_of(cell)
+    assert badge.children == "insufficient"
+    assert badge.color == "secondary"
+    # An explicit fallback status is honoured over the neutral default.
+    cell2 = worklist_row_metric_update(
+        {"after": 0.5, "moved": False}, fallback_status="pass"
+    )
+    assert _badge_of(cell2).children == "pass"
+
+
+def test_encoded_key_recovered_from_match_output_shapes() -> None:
+    """The MATCH callback recovers the row's encoded key from its output id.
+
+    Pins both shapes Dash may hand the single-output MATCH callback (a bare
+    dict, or a one-element list), and the defensive ``None`` on a malformed
+    id — so the in-place update targets the right row and degrades to a
+    no-op rather than raising.
+    """
+    from phenotypic.gui.results_viewer._qc_tab.review._callbacks import (
+        _encoded_key_from_output,
+    )
+
+    resolved_id = {
+        "type": "qc-worklist-row-metric",
+        "instance": "qc-SE-1a2b",
+        "key": '["plate_002"]',
+    }
+    bare = {"id": resolved_id, "property": "children"}
+    assert _encoded_key_from_output(bare) == '["plate_002"]'
+    assert _encoded_key_from_output([bare]) == '["plate_002"]'
+    # Malformed shapes degrade to None (callback no-ops, never raises).
+    assert _encoded_key_from_output(None) is None
+    assert _encoded_key_from_output({"property": "children"}) is None
+    assert _encoded_key_from_output([]) is None
+
+
+def test_row_metric_status_prefers_recompute_delta() -> None:
+    """A full re-render (module switch / re-sort) carries the recompute value.
+
+    ``_row_metric_status`` resolves a row's display metric/status, and a
+    recompute delta's ``after``/``status_after`` must win over the frozen
+    summary row so a re-render does not regress to the pre-recompute value.
+    """
+    frozen = {"metric": 0.281, "status": "fail"}
+    # No delta → frozen values.
+    assert _row_metric_status(frozen, {}) == (0.281, "fail")
+    # With a delta → after values win.
+    metric, status = _row_metric_status(
+        frozen, {"after": 0.226, "status_after": "warn", "moved": True}
+    )
+    assert metric == 0.226
+    assert status == "warn"

@@ -226,19 +226,90 @@ def _render_worklist_rows(
         encoded = encode_group_key(key_values)
         is_reviewed = review_state.is_reviewed(instance_id, key_values)
         delta = deltas.get(encoded, {})
+        # Prefer the in-session recompute's after-metric/status when this
+        # group has been recomputed, so a full re-render (module switch /
+        # ↻ Re-sort) carries the recomputed value, not the frozen-frame one.
+        metric, status = _row_metric_status(record, delta)
         rows.append(
             _render_worklist_row(
                 instance_id=instance_id,
                 encoded=encoded,
                 key_values=key_values,
-                metric=record.get("metric"),
-                status=str(record.get("status")),
+                metric=metric,
+                status=status,
                 is_reviewed=is_reviewed,
                 is_selected=encoded == selected_encoded,
                 moved=bool(delta.get("moved")),
             )
         )
     return rows
+
+
+def _row_metric_status(
+    record: dict[str, Any], delta: dict[str, Any]
+) -> tuple[Any, str]:
+    """Resolve a row's display metric + status, preferring a recompute delta.
+
+    The frozen worklist frame carries the metric/status committed by the
+    last ``run_qc`` artifact write. When an in-session recompute has
+    produced a delta for this group, its ``after`` metric and
+    ``status_after`` are the authoritative current values, so they win.
+
+    Args:
+        record: The group's frozen summary row.
+        delta: The group's recompute delta (``{}`` when never recomputed).
+
+    Returns:
+        ``(metric, status)`` for display.
+    """
+    if delta:
+        return delta.get("after"), str(
+            delta.get("status_after", record.get("status"))
+        )
+    return record.get("metric"), str(record.get("status"))
+
+
+def render_worklist_row_metric_cell(
+    metric: Any, status: str, *, moved: bool = False
+) -> list[Component]:
+    """Build the metric-span + status-badge children of one worklist-row cell.
+
+    Module-level + pure so the in-place metric/badge update callback
+    (:func:`_register_worklist_row_metric_callback`) and the initial
+    row render share **one** rendering of the cell — and so the recompute
+    update is unit-testable without booting Dash. The status drives the
+    badge colour, so swapping in the recompute ``after`` status here flips
+    the badge in place (never leaving a stale colour beside a new number).
+    The ``⤳`` "changed after recompute" hint lives **inside** this cell so
+    the in-place update can add it without re-rendering the whole row.
+
+    Args:
+        metric: The group's metric value (``None`` / NaN renders ``insuf.``).
+        status: The group's QC status (``fail`` / ``warn`` / ``pass`` /
+            ``insufficient``) — drives the badge colour.
+        moved: Whether this group's metric changed in an in-session
+            recompute (appends the ``⤳`` hint).
+
+    Returns:
+        The ``[Span(metric_text), Badge(status)[, Span(⤳)]]`` children list.
+    """
+    children: list[Component] = [
+        html.Span(f" {_format_metric(metric)} "),
+        dbc.Badge(
+            status,
+            color=_BADGE_COLOR_BY_STATUS.get(status, "secondary"),
+            className="ms-1",
+        ),
+    ]
+    if moved:
+        children.append(
+            html.Span(
+                " ⤳",
+                title="metric changed after recompute",
+                style={"color": COLOR_MUTED},
+            )
+        )
+    return children
 
 
 def _render_worklist_row(
@@ -254,30 +325,16 @@ def _render_worklist_row(
 ) -> Component:
     """Render one worklist row."""
     label = " / ".join("∅" if v is None else str(v) for v in key_values)
-    metric_text = _format_metric(metric)
-    badge = dbc.Badge(
-        status,
-        color=_BADGE_COLOR_BY_STATUS.get(status, "secondary"),
-        className="ms-1",
-    )
     children: list[Component] = [
         html.Span(label, style={"fontFamily": FONT_FAMILY_MONO}),
         html.Span(
             id=rids.worklist_row_metric_id(instance_id, encoded),
-            children=[html.Span(f" {metric_text} "), badge],
+            children=render_worklist_row_metric_cell(metric, status, moved=moved),
             style={"marginLeft": "auto"},
         ),
     ]
     if is_reviewed:
         children.insert(0, html.Span("✓ ", style={"color": "#1e7d34"}))
-    if moved:
-        children.append(
-            html.Span(
-                " ⤳",
-                title="metric changed after recompute",
-                style={"color": COLOR_MUTED},
-            )
-        )
     return html.Button(
         children,
         id=rids.worklist_row_id(instance_id, encoded),
@@ -454,6 +511,22 @@ def _metric_for_group(
     return None if record is None else record.get("metric")
 
 
+def _metric_status_for_group(
+    summary_df: pl.DataFrame | None,
+    instance_id: str,
+    groupby_cols: list[str],
+    key_values: tuple[Any, ...],
+) -> tuple[Any, str | None]:
+    """Read one group's ``(metric, status)`` from a (re)loaded summary frame."""
+    if summary_df is None:
+        return None, None
+    record = _data.group_record(summary_df, instance_id, groupby_cols, key_values)
+    if record is None:
+        return None, None
+    status = record.get("status")
+    return record.get("metric"), None if status is None else str(status)
+
+
 def _recompute_after_curation(
     instance_id: str,
     groupby_cols: list[str],
@@ -474,7 +547,10 @@ def _recompute_after_curation(
         metric_before: The group's metric prior to this recompute.
 
     Returns:
-        ``{"before", "after", "moved"}`` for the group, or ``None``.
+        ``{"before", "after", "status_after", "moved"}`` for the group, or
+        ``None``. ``status_after`` is the recomputed QC status straight
+        from the rewritten artifact (so the worklist badge flips to the
+        authoritative new status — no GUI-side threshold re-derivation).
     """
     output_root = _output_root()
     pipeline = current_app.config.get(CFG_QC_PIPELINE)
@@ -492,11 +568,16 @@ def _recompute_after_curation(
         return None
 
     new_summary = _data.load_qc_summary(output_root)
-    metric_after = _metric_for_group(
+    metric_after, status_after = _metric_status_for_group(
         new_summary, instance_id, groupby_cols, key_values
     )
     moved = not _metrics_equal(metric_before, metric_after)
-    return {"before": metric_before, "after": metric_after, "moved": moved}
+    return {
+        "before": metric_before,
+        "after": metric_after,
+        "status_after": status_after,
+        "moved": moved,
+    }
 
 
 def _metrics_equal(a: Any, b: Any) -> bool:
@@ -696,6 +777,7 @@ def register_review_callbacks(app: dash.Dash) -> None:
 
     _register_curation_callbacks(app)
     _register_review_progress_callbacks(app)
+    _register_worklist_row_metric_callback(app)
     _register_sidebar_callbacks(app)
 
 
@@ -1053,6 +1135,94 @@ def _next_unreviewed(
 
 
 # ---------------------------------------------------------------------------
+# In-place worklist-row metric/badge update (after recompute)
+# ---------------------------------------------------------------------------
+
+
+def worklist_row_metric_update(
+    delta: dict[str, Any] | None, fallback_status: str | None = None
+) -> list[Component] | Any:
+    """Return the in-place metric-cell children for a recompute delta, or no-op.
+
+    Module-level + pure so the per-row update callback is unit-testable
+    without booting Dash. Given a group's recompute ``delta``, renders the
+    ``after`` metric + recomputed ``status_after`` badge (with the ``⤳``
+    changed hint when ``moved``) so the frozen worklist row reflects the
+    recompute **in place** — same span, no reorder, no full-list flash.
+    Returns ``dash.no_update`` when there is no delta for this row (so a
+    recompute on group A never repaints group B's cell).
+
+    Args:
+        delta: This group's recompute delta
+            (``{"after", "status_after", "moved"}``), or ``None`` / ``{}``
+            when the group was never recomputed.
+        fallback_status: Status to use when the delta omits
+            ``status_after`` (a partial recompute) — keeps the badge from
+            blanking. ``None`` falls back to ``"insufficient"`` (neutral).
+
+    Returns:
+        The new cell children list, or ``dash.no_update``.
+    """
+    if not delta:
+        return no_update
+    status = delta.get("status_after") or fallback_status or "insufficient"
+    return render_worklist_row_metric_cell(
+        delta.get("after"), str(status), moved=bool(delta.get("moved"))
+    )
+
+
+def _register_worklist_row_metric_callback(app: dash.Dash) -> None:
+    """Register the per-row in-place metric/badge update (spec §D.5).
+
+    A ``MATCH`` callback keyed on the worklist row's ``key`` (encoded group
+    key) listens to :data:`STORE_QC_RECOMPUTE_DELTAS` and rewrites **only**
+    that row's metric-cell ``children`` (metric span + status badge + ⤳
+    hint) when a delta exists for it. Targeting the per-row metric span —
+    not the whole worklist — preserves the frozen order, the scroll
+    position, and the current selection: no row is re-created, so the
+    sticky sidebar never jumps and the open group stays open. Rows with no
+    delta short-circuit to ``no_update`` (their cell is untouched).
+    """
+
+    @app.callback(
+        Output(
+            {"type": "qc-worklist-row-metric", "instance": MATCH, "key": MATCH},
+            "children",
+        ),
+        Input(rids.STORE_QC_RECOMPUTE_DELTAS, "data"),
+        prevent_initial_call=True,
+    )
+    def _update_worklist_row_metric(deltas: dict[str, dict[str, Any]] | None):
+        """Update one worklist row's metric/badge in place from its delta."""
+        triggered_output = callback_context.outputs_list
+        encoded = _encoded_key_from_output(triggered_output)
+        if encoded is None:
+            return no_update
+        delta = (deltas or {}).get(encoded)
+        return worklist_row_metric_update(delta)
+
+
+def _encoded_key_from_output(outputs_list: Any) -> str | None:
+    """Recover the matched row's encoded group key from the callback output id.
+
+    A ``MATCH`` output's ``outputs_list`` carries the concrete id the
+    wildcard resolved to; the ``key`` field is the encoded group key the
+    row was rendered with. Returns ``None`` if the shape is unexpected (so
+    the callback degrades to a no-op rather than raising).
+    """
+    entry = outputs_list
+    if isinstance(entry, list):
+        entry = entry[0] if entry else None
+    if not isinstance(entry, dict):
+        return None
+    component_id = entry.get("id")
+    if not isinstance(component_id, dict):
+        return None
+    key = component_id.get("key")
+    return key if isinstance(key, str) else None
+
+
+# ---------------------------------------------------------------------------
 # Sidebar collapse / expand
 # ---------------------------------------------------------------------------
 
@@ -1142,5 +1312,7 @@ __all__ = [
     "toggle_review_tile",
     "bulk_review_curation",
     "sidebar_layout_state",
+    "render_worklist_row_metric_cell",
+    "worklist_row_metric_update",
 ]
 

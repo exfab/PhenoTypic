@@ -25,6 +25,7 @@ from PIL import Image as PILImage
 from phenotypic import ImagePipeline
 from phenotypic.analysis import ReplicateAgreement
 from phenotypic.gui._config import (
+    CFG_FILTERED_STATE,
     CFG_QC_PIPELINE,
     CFG_QC_RECIPE,
     QC_CROPS_URL_SEGMENT,
@@ -238,6 +239,48 @@ def test_legacy_sidecar_is_migrated_into_pipeline(tmp_path: Path) -> None:
     # And it landed in pipeline.json's qc array.
     payload = json.loads((tmp_path / "pipeline.json").read_text(encoding="utf-8"))
     assert any(e["instance_id"] == _INSTANCE_ID for e in payload.get("qc", []))
+
+
+def test_recompute_delta_carries_after_status(output_root, tmp_path: Path) -> None:
+    """The in-session recompute delta carries the recomputed ``status_after``.
+
+    Regression guard for the worklist-row-stale-metric/badge fix (spec
+    §D.5): the delta the worklist row consumes must include both the new
+    metric AND the recomputed status (read straight from the rewritten
+    qc_summary), so the in-place row update flips the badge colour — not
+    just the number. Removing the wild img-2 outlier tightens the group,
+    so its metric moves and the delta reports a concrete ``status_after``.
+    """
+    from phenotypic.gui.results_viewer._qc_tab.review import _callbacks, _data
+
+    app = create_app(output_root)
+    filtered = app.server.config[CFG_FILTERED_STATE]
+    filtered.remove_many([("img-2", 3)])
+
+    groupby_cols = _data.groupby_cols_for(
+        _data.load_qc_summary(output_root), _INSTANCE_ID
+    )
+    summary_before = _data.load_qc_summary(output_root)
+    metric_before = _data.group_record(
+        summary_before, _INSTANCE_ID, groupby_cols, ("img-2",)
+    )["metric"]
+
+    with app.server.app_context():
+        delta = _callbacks._recompute_after_curation(
+            _INSTANCE_ID, groupby_cols, ("img-2",), metric_before
+        )
+
+    assert delta is not None
+    assert delta["moved"] is True
+    assert delta["after"] != metric_before
+    # The recomputed status is present and is a real QC status label, so the
+    # worklist badge can flip to it in place.
+    assert delta["status_after"] in {"fail", "warn", "pass", "insufficient"}
+
+    # And the in-place cell update renders that after-metric + status badge.
+    cell = _callbacks.worklist_row_metric_update(delta)
+    badge = cell[1]
+    assert badge.children == delta["status_after"]
 
 
 def test_review_per_tile_curation_contract(output_root, tmp_path: Path) -> None:
