@@ -1036,7 +1036,7 @@ class MeasureFeatures(BaseOperation, ABC):
             out_dtype: np.dtype,
             array: np.ndarray,
             objmap: ArrayLike = None,
-            default: int | float | np.nan = np.nan,
+            default: int | float = np.nan,
             pass_positions: bool = False,
     ):
         """Apply a custom function to each labeled region in an array (advanced helper).

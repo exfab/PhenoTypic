@@ -600,22 +600,14 @@ class ObjectRefiner(ImageOperation, ABC):
     _footprint_shapes: ClassVar[set[str]] = {"square", "diamond", "disk"}
 
     @overload
-    def apply(self, image: Image, inplace: bool = False) -> Image: ...
+    def apply(self, image: GridImage, inplace: bool = False) -> GridImage: ...
 
     @overload
-    def apply(self, image: GridImage, inplace: bool = False) -> GridImage: ...
+    def apply(self, image: Image, inplace: bool = False) -> Image: ...
 
     @validate_operation_integrity("image.rgb", "image.gray", "image.detect_mat")
     def apply(self, image: Image, inplace: bool = False) -> Image:
         return super().apply(image=image, inplace=inplace)
-
-    @overload
-    @abstractmethod
-    def _operate(self, image: Image) -> Image: ...
-
-    @overload
-    @abstractmethod
-    def _operate(self, image: GridImage) -> GridImage: ...
 
     @abstractmethod
     def _operate(self, image: Image) -> Image:

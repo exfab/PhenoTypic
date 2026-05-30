@@ -8,7 +8,7 @@ file collection, and organization into datasets.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict, List
+from typing import Any, Dict, List
 
 from phenotypic.tools_.constants_ import IO
 from phenotypic.tools_ import default_output_dir_name, DIR_RESULTS, DIR_HDF
@@ -235,7 +235,7 @@ def collect_image_paths(input_path: Path) -> List[Path]:
     return all_images
 
 
-def get_input_structure_summary(input_path: Path) -> Dict[str, any]:
+def get_input_structure_summary(input_path: Path) -> Dict[str, Any]:
     """
     Get summary information about input structure without collecting files.
 

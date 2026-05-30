@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Callable
+from typing import Any, Callable
 
 import numpy as np
 import pandas as pd
@@ -179,9 +179,9 @@ class TukeyOutlierRemover(SetAnalyzer):
             figsize: tuple[int, int] | None = None,
             max_groups: int = 20,
             collapsed: bool = True,
-            criteria: dict[str, any] | None = None,
+            criteria: dict[str, Any] | None = None,
             **kwargs,
-    ) -> (plt.Figure, plt.Axes):
+    ) -> tuple[plt.Figure, plt.Axes]:
         """Visualize outlier detection results.
 
         Creates a visualization showing the distribution of values with outliers highlighted
@@ -308,7 +308,7 @@ class TukeyOutlierRemover(SetAnalyzer):
             group_col: str,
             figsize: tuple[int, int] | None,
             **kwargs,
-    ) -> (plt.Figure, plt.Axes):
+    ) -> tuple[plt.Figure, plt.Axes]:
         """Create individual subplots for each group."""
         # Extract figure-level kwargs
         fig_kwargs = {
@@ -461,7 +461,7 @@ class TukeyOutlierRemover(SetAnalyzer):
             group_col: str,
             figsize: tuple[int, int] | None,
             **kwargs,
-    ) -> (plt.Figure, plt.Axes):
+    ) -> tuple[plt.Figure, plt.Axes]:
         """Create collapsed stacked view with all groups in single plot."""
         # Extract figure-level kwargs
         fig_kwargs = {

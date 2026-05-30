@@ -216,7 +216,7 @@ class HsvAccessor(ColorSpaceAccessor):
 
     def show(
             self, figsize: Tuple[int, int] = (10, 8), title: str = None, shrink=0.2
-    ) -> (plt.Figure, plt.Axes):
+    ) -> tuple[plt.Figure, plt.Axes]:
         """Display HSV channels as color-mapped images with colorbars.
 
         Creates a visualization of all three HSV channels stacked vertically, with
@@ -275,7 +275,7 @@ class HsvAccessor(ColorSpaceAccessor):
 
     def show_objects(
             self, figsize: Tuple[int, int] = (10, 8), title: str = None, shrink=0.6
-    ) -> (plt.Figure, plt.Axes):
+    ) -> tuple[plt.Figure, plt.Axes]:
         """Display HSV channels for segmented objects only, masked by object mask.
 
         Creates a visualization of all three HSV channels stacked vertically, with

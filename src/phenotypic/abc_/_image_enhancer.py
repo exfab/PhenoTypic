@@ -336,22 +336,14 @@ class ImageEnhancer(FootprintMixin, ImageOperation, ABC):
     """
 
     @overload
-    def apply(self, image: Image, inplace: bool = False) -> Image: ...
+    def apply(self, image: GridImage, inplace: bool = False) -> GridImage: ...
 
     @overload
-    def apply(self, image: GridImage, inplace: bool = False) -> GridImage: ...
+    def apply(self, image: Image, inplace: bool = False) -> Image: ...
 
     @validate_operation_integrity("image.rgb", "image.gray")
     def apply(self, image: Image, inplace: bool = False) -> Image:
         return super().apply(image=image, inplace=inplace)
-
-    @overload
-    @abstractmethod
-    def _operate(self, image: Image) -> Image: ...
-
-    @overload
-    @abstractmethod
-    def _operate(self, image: GridImage) -> GridImage: ...
 
     @abstractmethod
     def _operate(self, image: Image) -> Image:

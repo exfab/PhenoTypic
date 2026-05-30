@@ -390,11 +390,11 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
     _image_ref: Any = PrivateAttr(default=None)
 
     @overload
-    def apply(self, image: Image, inplace: bool = False) -> Image:
+    def apply(self, image: GridImage, inplace: bool = False) -> GridImage:
         ...
 
     @overload
-    def apply(self, image: GridImage, inplace: bool = False) -> GridImage:
+    def apply(self, image: Image, inplace: bool = False) -> Image:
         ...
 
     def apply(self, image: Image, inplace=False) -> Image:
@@ -424,16 +424,6 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
                     f"{self.__class__.__name__} failed on image {image.name}:\n"
                     f"{traceback.format_exc()}"
             ) from e
-
-    @overload
-    @abstractmethod
-    def _operate(self, image: Image) -> Image:
-        ...
-
-    @overload
-    @abstractmethod
-    def _operate(self, image: GridImage) -> GridImage:
-        ...
 
     @abstractmethod
     def _operate(self, image: Image) -> Image:

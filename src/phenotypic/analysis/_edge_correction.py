@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import pandas as pd
 from joblib import delayed, Parallel
@@ -448,7 +450,7 @@ class EdgeCorrector(SetAnalyzer):
             figsize: tuple[int, int] | None = None,
             max_groups: int = 20,
             collapsed: bool = True,
-            criteria: dict[str, any] | None = None,
+            criteria: dict[str, Any] | None = None,
             **kwargs,
     ) -> tuple[Figure, plt.Axes]:
         """Visualize edge correction results with interior/edge colony comparisons.
@@ -468,7 +470,7 @@ class EdgeCorrector(SetAnalyzer):
             collapsed (bool, optional): If True (default), show all groups stacked vertically
                 on a single axis with y-offsets. If False, create a grid of subplots with
                 one group per subplot.
-            criteria (dict[str, any], optional): Filter groups before visualization using
+            criteria (dict[str, Any], optional): Filter groups before visualization using
                 column-value criteria (e.g., {'Plate': 'P1', 'Condition': ['WT', 'KO']}).
                 Filtering uses SetAnalyzer._filter_by with AND logic across criteria.
             **kwargs: Additional matplotlib parameters:
