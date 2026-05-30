@@ -112,6 +112,12 @@ jobs:
             python-version: "3.12"
 
     runs-on: ${{ matrix.os }}
+    # Headless Qt: the napari ``gui`` extra now pulls PyQt6, whose QtGui is
+    # imported by the pytest-qt plugin at configure time. Qt6's default xcb
+    # platform plugin needs a display; ``offscreen`` lets the qtbot widget
+    # tests run on the displayless runner. (PyQt5 did not require this.)
+    env:
+      QT_QPA_PLATFORM: offscreen
     steps:
       - uses: actions/checkout@v6
 
@@ -123,7 +129,12 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y exiftool
+          # exiftool: raw image metadata. The Qt6 runtime libs (libEGL/libGL/
+          # libxkbcommon/libdbus) are required by PyQt6's QtGui, which the
+          # pytest-qt plugin imports at configure time -- without libEGL.so.1
+          # the whole session aborts with an INTERNALERROR before collection.
+          sudo apt-get install -y \
+            exiftool libegl1 libgl1 libxkbcommon0 libdbus-1-3
 
       - name: Install uv
         uses: astral-sh/setup-uv@v8.1.0

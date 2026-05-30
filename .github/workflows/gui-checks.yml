@@ -160,6 +160,10 @@ jobs:
     name: 'Playwright E2E + integration GUI tests'
     needs: features-md-gate
     runs-on: ubuntu-latest
+    # Headless Qt for the integration suite: pytest-qt imports PyQt6's QtGui
+    # at configure time and Qt6's default xcb plugin needs a display.
+    env:
+      QT_QPA_PLATFORM: offscreen
     steps:
       - uses: actions/checkout@v6
 
@@ -171,7 +175,11 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y exiftool
+          # Qt6 runtime libs (libEGL/libGL/libxkbcommon/libdbus) are needed by
+          # PyQt6's QtGui, imported by pytest-qt at configure time; without
+          # libEGL.so.1 the integration pytest session aborts (INTERNALERROR).
+          sudo apt-get install -y \
+            exiftool libegl1 libgl1 libxkbcommon0 libdbus-1-3
 
       - name: Install uv
         uses: astral-sh/setup-uv@v8.1.0
