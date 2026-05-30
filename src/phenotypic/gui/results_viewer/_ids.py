@@ -73,6 +73,12 @@ BTN_ADD_CARD = "btn-add-card"
 #: Toggles the cross-card viewport-locking behaviour.
 BTN_LOCK_VIEWS_TOGGLE = "btn-lock-views-toggle"
 
+#: Top-bar button that opens/closes the right-docked filter offcanvas.
+BTN_FILTERS_TOGGLE = "btn-filters-toggle"
+
+#: Count badge on the Filters toggle showing the number of active filter rows.
+FILTER_TOGGLE_BADGE_ID = "filter-toggle-badge"
+
 
 # ---------------------------------------------------------------------------
 # Static layout anchors used by the JS layer
@@ -95,6 +101,10 @@ FILTER_ROWS_CONTAINER_ID = "filter-rows-container"
 #: Read-only chip showing how many image pairs survive the active
 #: filter (text reflects the size of ``STORE_IMAGE_PAIRS``).
 FILTER_MATCH_COUNT_ID = "filter-match-count"
+
+#: Right-docked ``dbc.Offcanvas`` hosting the filter panel; its ``is_open``
+#: is driven by :data:`BTN_FILTERS_TOGGLE`.
+OFFCANVAS_FILTER_ID = "filter-offcanvas"
 
 
 # ---------------------------------------------------------------------------
@@ -633,10 +643,13 @@ __all__ = [
     "BTN_ADD_FILTER_ROW",
     "BTN_ADD_CARD",
     "BTN_LOCK_VIEWS_TOGGLE",
+    "BTN_FILTERS_TOGGLE",
+    "FILTER_TOGGLE_BADGE_ID",
     "CARDS_CONTAINER_ID",
     "HEADER_PIPELINE_CHIP_ID",
     "FILTER_ROWS_CONTAINER_ID",
     "FILTER_MATCH_COUNT_ID",
+    "OFFCANVAS_FILTER_ID",
     "filter_row_id",
     "filter_row_column_id",
     "filter_row_values_id",
