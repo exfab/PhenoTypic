@@ -33,6 +33,7 @@ Critical invariants (spec §D risk refinements):
 
 from __future__ import annotations
 
+import functools
 import logging
 from pathlib import Path
 from typing import Any
@@ -52,6 +53,8 @@ from phenotypic.gui._config import (
     CFG_URL_PREFIX,
     MOUNT_HOME,
     QC_CROPS_URL_SEGMENT,
+    TILE_DIM_DEFAULT,
+    stepped_alpha_from_trigger,
 )
 from phenotypic.gui._design import (
     COLOR_BORDER,
@@ -102,17 +105,35 @@ def _url_prefix() -> str:
     return current_app.config.get(CFG_URL_PREFIX, MOUNT_HOME)
 
 
-def _qc_crop_url(dataset: str, image_file: str, label: int, crop_size: int) -> str:
+def _qc_crop_url(
+    dataset: str,
+    image_file: str,
+    label: int,
+    crop_size: int,
+    *,
+    dim_alpha: float = 0.0,
+) -> str:
     """Build a QC-gallery crop ``<img>`` src for one tile.
 
     Points at the QC crop route mounted under
     :data:`QC_CROPS_URL_SEGMENT` (see
     :func:`phenotypic.gui._shared.tiles.register_crop_route`).
+
+    Args:
+        dataset: ``Metadata_Dataset`` of the tile's colony.
+        image_file: ``Metadata_ImageFile`` of the tile's colony.
+        label: ``Object_Label`` of the tile's colony.
+        crop_size: Server crop side length, in pixels (``?size=``).
+        dim_alpha: Tile-spotlight strength forwarded to the crop route as
+            ``&dim=``. ``0.0`` (default) is today's full-context crop.
+            Bound per-render via :func:`functools.partial` so the 4-arg
+            ``url_builder`` protocol :func:`build_tile_grid` expects is
+            preserved.
     """
     prefix = _url_prefix()
     return (
         f"{prefix}{QC_CROPS_URL_SEGMENT}/{dataset}/{image_file}/"
-        f"{label}.png?size={crop_size}"
+        f"{label}.png?size={crop_size}&dim={dim_alpha}"
     )
 
 
@@ -419,19 +440,32 @@ def _render_faceted_gallery(
     crop_size: int,
     display_size: int,
     has_overlay,
+    dim_alpha: float = 0.0,
 ) -> Component:
     """Render the faceted tile gallery: one row per timepoint facet.
 
     Each facet row is a flat :func:`build_tile_grid` gallery; when there is
     a single ``None`` facet (not a time-course), this collapses to one
     unlabelled gallery.
+
+    Args:
+        facets: ``(timepoint, keys)`` pairs (one per facet row).
+        removed: ``(image_file, label)`` keys currently removed.
+        crop_size: Server crop side length, in pixels.
+        display_size: CSS render size, in pixels, for each tile.
+        has_overlay: ``(dataset, image_file) -> bool`` overlay probe.
+        dim_alpha: Tile-spotlight strength threaded onto each crop URL as
+            ``&dim=`` via a :func:`functools.partial` over
+            :func:`_qc_crop_url`. ``0.0`` (default) keeps the full-context
+            crop.
     """
+    url_builder = functools.partial(_qc_crop_url, dim_alpha=dim_alpha)
     rows: list[Component] = []
     single_facet = len(facets) == 1 and facets[0][0] is None
     for timepoint, keys in facets:
         gallery, _order = build_tile_grid(
             keys,
-            _qc_crop_url,
+            url_builder,
             selected=set(),
             removed=removed,
             crop_size=crop_size,
@@ -709,6 +743,7 @@ def register_review_callbacks(app: dash.Dash) -> None:
         Output(rids.STORE_QC_SELECTED_GROUP, "data", allow_duplicate=True),
         Input({"type": "qc-worklist-row", "instance": ALL, "key": ALL}, "n_clicks"),
         Input(rids.STORE_QC_SELECTED_GROUP, "data"),
+        Input(viewer_ids.STORE_TILE_DIM_ALPHA, "data"),
         State(rids.QC_REVIEW_MODULE_PICKER_ID, "value"),
         State(rids.STORE_QC_RECOMPUTE_DELTAS, "data"),
         prevent_initial_call=True,
@@ -716,6 +751,7 @@ def register_review_callbacks(app: dash.Dash) -> None:
     def _render_detail(
         _row_clicks: list[int | None],
         selected_encoded: str | None,
+        dim_alpha: float | None,
         instance_id: str | None,
         deltas: dict[str, dict[str, Any]] | None,
     ):
@@ -762,6 +798,7 @@ def register_review_callbacks(app: dash.Dash) -> None:
         deltas = deltas or {}
         delta = deltas.get(selected_encoded, {})
 
+        alpha = TILE_DIM_DEFAULT if dim_alpha is None else float(dim_alpha)
         header = _render_detail_header(key_values, record, delta, n_removed)
         gallery = _render_faceted_gallery(
             facets,
@@ -769,11 +806,43 @@ def register_review_callbacks(app: dash.Dash) -> None:
             crop_size=_crop_size_for(keys, output_root),
             display_size=120,
             has_overlay=output_root.has_overlay,
+            dim_alpha=alpha,
         )
         # Record last-visited group for this module.
         review_state = _load_review_state()
         review_state.set_last(instance_id, key_values)
         return header, gallery, selected_encoded
+
+    # -----------------------------------------------------------------
+    # D. Tile-spotlight ``dim`` stepper → shared store. Writes the same
+    #    STORE_TILE_DIM_ALPHA the colony stepper writes (allow_duplicate)
+    #    so both toolbars drive one strength; the readout sync + both
+    #    galleries' renders subscribe to the store.
+    # -----------------------------------------------------------------
+    @app.callback(
+        Output(viewer_ids.STORE_TILE_DIM_ALPHA, "data", allow_duplicate=True),
+        Input(rids.QC_REVIEW_DIM_MINUS, "n_clicks"),
+        Input(rids.QC_REVIEW_DIM_PLUS, "n_clicks"),
+        State(viewer_ids.STORE_TILE_DIM_ALPHA, "data"),
+        prevent_initial_call=True,
+    )
+    def _step_qc_review_dim(
+        _minus_clicks: int | None,
+        _plus_clicks: int | None,
+        current: float | None,
+    ) -> float:
+        """Step the shared spotlight strength on a Review ``−``/``+`` click.
+
+        Thin adapter over the pure, Dash-free
+        :func:`stepped_alpha_from_trigger` helper (direction from
+        ``dash.ctx.triggered_id``; clamp/round inside the helper).
+        """
+        return stepped_alpha_from_trigger(
+            dash.ctx.triggered_id,
+            current,
+            plus_id=rids.QC_REVIEW_DIM_PLUS,
+            minus_id=rids.QC_REVIEW_DIM_MINUS,
+        )
 
     _register_curation_callbacks(app)
     _register_review_progress_callbacks(app)

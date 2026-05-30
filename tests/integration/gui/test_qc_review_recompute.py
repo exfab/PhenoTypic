@@ -318,3 +318,82 @@ def test_review_per_tile_curation_contract(output_root, tmp_path: Path) -> None:
     )
     assert ("img-1", 1) not in filtered.removed_keys
     assert ("img-2", 2) not in filtered.removed_keys
+
+
+def _collect_img_srcs(component: object) -> list[str]:
+    """Recursively collect every ``html.Img.src`` in a Dash component tree."""
+    srcs: list[str] = []
+
+    def _walk(node: object) -> None:
+        src = getattr(node, "src", None)
+        if isinstance(src, str):
+            srcs.append(src)
+        children = getattr(node, "children", None)
+        if isinstance(children, (list, tuple)):
+            for child in children:
+                _walk(child)
+        elif children is not None:
+            _walk(children)
+
+    _walk(component)
+    return srcs
+
+
+def test_qc_gallery_threads_dim_alpha_into_tile_urls(output_root) -> None:
+    """The Review faceted gallery threads the store alpha onto each ``&dim=``.
+
+    Drives :func:`_render_faceted_gallery` (the unit the detail-render
+    callback calls) inside an app context so ``_qc_crop_url`` resolves the
+    mount prefix, and asserts every tile ``<img src>`` carries the exact
+    store alpha as ``&dim=``.
+    """
+    from phenotypic.gui.results_viewer._qc_tab.review._callbacks import (
+        _render_faceted_gallery,
+    )
+
+    app = create_app(output_root)
+    alpha = 0.35
+    facets = [
+        (None, [("d1", "img-1", 1), ("d1", "img-1", 2), ("d1", "img-2", 3)]),
+    ]
+
+    with app.server.app_context():
+        gallery = _render_faceted_gallery(
+            facets,
+            removed=set(),
+            crop_size=48,
+            display_size=120,
+            has_overlay=output_root.has_overlay,
+            dim_alpha=alpha,
+        )
+
+    srcs = _collect_img_srcs(gallery)
+    assert len(srcs) == 3
+    for src in srcs:
+        assert QC_CROPS_URL_SEGMENT in src
+        assert "?size=48" in src
+        assert f"&dim={alpha}" in src
+
+
+def test_qc_gallery_default_dim_alpha_is_zero(output_root) -> None:
+    """No ``dim_alpha`` degrades the gallery URLs to ``&dim=0.0``."""
+    from phenotypic.gui.results_viewer._qc_tab.review._callbacks import (
+        _render_faceted_gallery,
+    )
+
+    app = create_app(output_root)
+    facets = [(None, [("d1", "img-1", 1)])]
+
+    with app.server.app_context():
+        gallery = _render_faceted_gallery(
+            facets,
+            removed=set(),
+            crop_size=48,
+            display_size=120,
+            has_overlay=output_root.has_overlay,
+        )
+
+    srcs = _collect_img_srcs(gallery)
+    assert srcs
+    for src in srcs:
+        assert "&dim=0.0" in src

@@ -95,6 +95,79 @@ class TestConfigConstants:
         assert "import werkzeug" not in src
 
 
+class TestTileDimConstants:
+    """Tile-spotlight dim policy lives in ``_config`` (shared, dash-free)."""
+
+    def test_dim_bounds_and_default_are_in_range(self) -> None:
+        """MIN ≤ DEFAULT ≤ MAX, and MAX stays below a fully-black 1.0."""
+        assert _config.TILE_DIM_MIN == 0.0
+        assert _config.TILE_DIM_MAX == 0.9
+        assert _config.TILE_DIM_STEP == 0.05
+        assert _config.TILE_DIM_MIN <= _config.TILE_DIM_DEFAULT <= _config.TILE_DIM_MAX
+        # Capped below 1.0 so a faint context cue always remains.
+        assert _config.TILE_DIM_MAX < 1.0
+
+    def test_step_dim_alpha_steps_by_one_increment(self) -> None:
+        assert _config.step_dim_alpha(0.6, +1) == 0.65
+        assert _config.step_dim_alpha(0.6, -1) == 0.55
+
+    def test_step_dim_alpha_clamps_to_bounds(self) -> None:
+        assert _config.step_dim_alpha(_config.TILE_DIM_MAX, +1) == _config.TILE_DIM_MAX
+        assert _config.step_dim_alpha(_config.TILE_DIM_MIN, -1) == _config.TILE_DIM_MIN
+
+    def test_step_dim_alpha_is_two_decimal_safe(self) -> None:
+        """Repeated stepping rounds clean to two decimals (no float drift)."""
+        value = 0.0
+        for _ in range(6):
+            value = _config.step_dim_alpha(value, +1)
+        assert value == 0.30
+
+    def test_stepped_alpha_from_trigger_picks_direction(self) -> None:
+        """The firing button id maps to the right ``±`` direction."""
+        up = _config.stepped_alpha_from_trigger(
+            "plus", 0.60, plus_id="plus", minus_id="minus"
+        )
+        down = _config.stepped_alpha_from_trigger(
+            "minus", 0.60, plus_id="plus", minus_id="minus"
+        )
+        assert up == 0.65
+        assert down == 0.55
+
+    def test_stepped_alpha_from_trigger_clamps_via_step_dim_alpha(self) -> None:
+        """Clamping routes through ``step_dim_alpha`` (bounds + round)."""
+        at_max = _config.stepped_alpha_from_trigger(
+            "plus", _config.TILE_DIM_MAX, plus_id="plus", minus_id="minus"
+        )
+        at_min = _config.stepped_alpha_from_trigger(
+            "minus", _config.TILE_DIM_MIN, plus_id="plus", minus_id="minus"
+        )
+        assert at_max == _config.TILE_DIM_MAX
+        assert at_min == _config.TILE_DIM_MIN
+
+    def test_stepped_alpha_from_trigger_none_current_uses_default(self) -> None:
+        """A ``None`` store value falls back to ``TILE_DIM_DEFAULT``."""
+        out = _config.stepped_alpha_from_trigger(
+            "plus", None, plus_id="plus", minus_id="minus"
+        )
+        assert out == _config.step_dim_alpha(_config.TILE_DIM_DEFAULT, +1)
+
+    def test_stepped_alpha_from_trigger_unknown_id_steps_up(self) -> None:
+        """An unrecognised trigger (e.g. mount echo) steps up, never down."""
+        out = _config.stepped_alpha_from_trigger(
+            None, 0.60, plus_id="plus", minus_id="minus"
+        )
+        assert out == 0.65
+
+
+class TestTileDimDesignToken:
+    """The blend-toward colour is a tuple visual token in ``_design``."""
+
+    def test_tile_dim_rgb_is_black_tuple(self) -> None:
+        assert _design.TILE_DIM_RGB == (0, 0, 0)
+        assert isinstance(_design.TILE_DIM_RGB, tuple)
+        assert len(_design.TILE_DIM_RGB) == 3
+
+
 class TestAddLauncherArgs:
     """``add_launcher_args`` adds a consistent --host/--port/--debug block."""
 

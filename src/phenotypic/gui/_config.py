@@ -126,6 +126,13 @@ __all__ = [
     "QC_CROPS_URL_SEGMENT",
     # Closed value-set aliases
     "ChannelName",
+    # Tile-spotlight dim strength (shared by both toolbars + the crop route)
+    "TILE_DIM_DEFAULT",
+    "TILE_DIM_STEP",
+    "TILE_DIM_MIN",
+    "TILE_DIM_MAX",
+    "step_dim_alpha",
+    "stepped_alpha_from_trigger",
     # Tunables
     "DEFAULT_IDLE_RELEASE_SECONDS",
     "RSS_INTERVAL_MS",
@@ -348,6 +355,95 @@ QC_CROPS_URL_SEGMENT: str = "qc-crops"
 
 #: Image channel names supported by the builder inspector previews.
 ChannelName = Literal["rgb", "gray", "detect_mat", "objmap"]
+
+# ---------------------------------------------------------------------------
+# Tile-spotlight dim strength (shared numeric policy)
+# ---------------------------------------------------------------------------
+#
+# Single source of truth for the colony-crop "spotlight" effect: the crop
+# route fades each tile's surroundings toward black by ``dim_alpha`` while
+# keeping the target colony's bbox at full opacity. The same bounds drive
+# the route-side clamp on ``?dim=`` and the UI ``−``/``+`` steppers in both
+# the colony-view and QC-review toolbars, so they can never disagree.
+
+#: Default spotlight strength when the viewer first loads — the effect is
+#: on by default. ``0.0`` would restore today's full-context crop.
+TILE_DIM_DEFAULT: float = 0.6
+
+#: Increment per ``−``/``+`` stepper click.
+TILE_DIM_STEP: float = 0.05
+
+#: Lowest allowed spotlight strength. ``0.0`` disables the effect entirely
+#: (full-context crop, identical to the pre-feature output).
+TILE_DIM_MIN: float = 0.0
+
+#: Highest allowed spotlight strength. Capped below ``1.0`` so the
+#: surroundings never go fully black — a faint context cue always remains.
+TILE_DIM_MAX: float = 0.9
+
+
+def step_dim_alpha(current: float, direction: int) -> float:
+    """Step the tile-spotlight strength one click and clamp it to range.
+
+    Pure arithmetic shared by both toolbars' ``−``/``+`` callbacks so the
+    stepping logic stays unit-testable without Dash. The result is rounded
+    to two decimal places to avoid binary-float drift accumulating across
+    repeated clicks (e.g. ``0.1 + 0.05 + 0.05`` landing on
+    ``0.20000000000000001``).
+
+    Args:
+        current: The strength before the click, typically read from the
+            shared ``STORE_TILE_DIM_ALPHA`` store.
+        direction: ``+1`` for the ``+`` button, ``-1`` for the ``−``
+            button.
+
+    Returns:
+        ``current + direction * TILE_DIM_STEP`` clamped to
+        ``[TILE_DIM_MIN, TILE_DIM_MAX]`` and rounded to two decimals.
+    """
+    stepped = current + direction * TILE_DIM_STEP
+    clamped = min(TILE_DIM_MAX, max(TILE_DIM_MIN, stepped))
+    return round(clamped, 2)
+
+
+def stepped_alpha_from_trigger(
+    triggered_id: object,
+    current: float | None,
+    *,
+    plus_id: str,
+    minus_id: str,
+) -> float:
+    """Resolve a ``−``/``+`` stepper click into the next clamped strength.
+
+    The thin, **Dash-free** decision shared by both toolbars' stepper
+    callbacks (so the Dash callback body stays a one-line adapter over
+    this unit-testable helper, per the GUI's inline-closure-500 gotcha).
+    Maps the firing button id to a direction and defers the arithmetic to
+    :func:`step_dim_alpha`.
+
+    Args:
+        triggered_id: ``dash.ctx.triggered_id`` — the id of the button
+            that fired (``plus_id`` or ``minus_id``). An unrecognised /
+            ``None`` value (e.g. an initial-mount echo) is treated as a
+            ``+`` so the strength never silently jumps backwards.
+        current: The strength before the click (the store value); ``None``
+            falls back to :data:`TILE_DIM_DEFAULT`.
+        plus_id: Component id of the ``+`` (step-up) button.
+        minus_id: Component id of the ``−`` (step-down) button.
+
+    Returns:
+        The next strength, clamped to ``[TILE_DIM_MIN, TILE_DIM_MAX]``.
+    """
+    base = TILE_DIM_DEFAULT if current is None else float(current)
+    if triggered_id == minus_id:
+        direction = -1
+    elif triggered_id == plus_id:
+        direction = 1
+    else:
+        # Unrecognised / initial-mount echo: step up rather than down so
+        # the strength never silently jumps backwards.
+        direction = 1
+    return step_dim_alpha(base, direction)
 
 # ---------------------------------------------------------------------------
 # Tunables

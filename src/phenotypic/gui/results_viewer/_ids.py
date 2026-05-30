@@ -465,6 +465,20 @@ COLONY_TILE_SIZE_SLIDER_ID = "colony-tile-size-slider"
 #: Toggle that turns the per-cell objmap/contour overlay on or off.
 COLONY_OVERLAY_TOGGLE_ID = "colony-overlay-toggle"
 
+#: ``−`` button of the colony-view tile-spotlight ``dim`` stepper. Each
+#: click steps the shared :data:`STORE_TILE_DIM_ALPHA` strength down by
+#: :data:`phenotypic.gui._config.TILE_DIM_STEP` (clamped at
+#: :data:`TILE_DIM_MIN`).
+COLONY_DIM_MINUS = "colony-dim-minus"
+
+#: ``+`` button of the colony-view tile-spotlight ``dim`` stepper. Steps
+#: the shared strength up by ``TILE_DIM_STEP`` (clamped at ``TILE_DIM_MAX``).
+COLONY_DIM_PLUS = "colony-dim-plus"
+
+#: Read-only ``dim 0.60`` readout between the colony stepper's buttons.
+#: Synced from :data:`STORE_TILE_DIM_ALPHA` by the shared readout callback.
+COLONY_DIM_READOUT = "colony-dim-readout"
+
 
 # ---------------------------------------------------------------------------
 # Bulk action bar
@@ -498,6 +512,14 @@ COLONY_BULK_CLEAR_BTN_ID = "colony-bulk-clear-btn"
 #: ``"<image_file>::<label>"`` strings. Persisted across reloads so manual
 #: curation survives a page refresh.
 STORE_REMOVED_KEYS = "store-removed-keys"
+
+#: ``dcc.Store`` holding the tile-spotlight ``dim`` strength (a float in
+#: ``[TILE_DIM_MIN, TILE_DIM_MAX]``) shared by **both** the colony-view and
+#: QC-Review tile galleries. The ``−``/``+`` steppers in each toolbar write
+#: it (via :func:`phenotypic.gui._config.step_dim_alpha`); both galleries'
+#: render callbacks read it and thread it onto each crop URL as ``&dim=``.
+#: ``storage_type="local"`` so the chosen strength survives reloads.
+STORE_TILE_DIM_ALPHA = "store-tile-dim-alpha"
 
 
 # ---------------------------------------------------------------------------
@@ -676,12 +698,16 @@ __all__ = [
     "COLONY_BTN_REFRESH_ID",
     "COLONY_TILE_SIZE_SLIDER_ID",
     "COLONY_OVERLAY_TOGGLE_ID",
+    "COLONY_DIM_MINUS",
+    "COLONY_DIM_PLUS",
+    "COLONY_DIM_READOUT",
     "COLONY_BULK_BAR_ID",
     "COLONY_BULK_COUNT_LABEL_ID",
     "COLONY_BULK_REMOVE_BTN_ID",
     "COLONY_BULK_RESTORE_BTN_ID",
     "COLONY_BULK_CLEAR_BTN_ID",
     "STORE_REMOVED_KEYS",
+    "STORE_TILE_DIM_ALPHA",
     "STORE_COLONY_SELECTION",
     "STORE_COLONY_SELECTION_DELTA",
     "STORE_COLONY_GRID_ORDER",

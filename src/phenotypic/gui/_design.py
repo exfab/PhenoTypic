@@ -52,6 +52,8 @@ __all__ = [
     "OI_PURPLE",
     "OI_YELLOW",
     "OI_GREY",
+    # ---- Visual tokens (non-palette) ----
+    "TILE_DIM_RGB",
     # ---- Type scale / radius / shadow / motion ----
     "TEXT_XS",
     "TEXT_SM",
@@ -191,6 +193,20 @@ OI_BLUE: str = "#0072B2"
 OI_PURPLE: str = "#CC79A7"
 OI_YELLOW: str = "#F0E442"
 OI_GREY: str = "#BBBBBB"
+
+# ---------------------------------------------------------------------------
+# Visual tokens (non-palette)
+# ---------------------------------------------------------------------------
+#
+# Values that are colours but not part of the brand/UI or data palettes.
+
+#: The blend-toward colour for the tile-spotlight dim pass — the surroundings
+#: of each colony crop fade toward this RGB. Black ``(0, 0, 0)`` matches the
+#: ``pad_value`` of :func:`phenotypic.gui._shared.tiles.crop_overlay` so the
+#: out-of-image padding and the dimmed in-image surroundings read as one
+#: continuous black backdrop. Tuple form (not a hex string) so it drops
+#: straight into the NumPy blend and the PIL ``Image.new`` fill.
+TILE_DIM_RGB: tuple[int, int, int] = (0, 0, 0)
 
 # ---------------------------------------------------------------------------
 # Type scale (rem-based; tuned for ~15 px body)

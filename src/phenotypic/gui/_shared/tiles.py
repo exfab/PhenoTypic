@@ -39,10 +39,13 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import dash
+import numpy as np
 from dash import html
 from dash.development.base_component import Component
 from flask import Blueprint, Response
 from PIL import Image as PILImage
+
+from phenotypic.gui._design import TILE_DIM_RGB
 
 if TYPE_CHECKING:
     from phenotypic.gui.results_viewer._output_root import OutputRoot
@@ -76,12 +79,61 @@ def _load_overlay_rgb(path: str, mtime_ns: int) -> PILImage.Image:
         return img.convert("RGB")
 
 
+def _clamp(value: int, low: int, high: int) -> int:
+    """Clamp ``value`` to the inclusive ``[low, high]`` integer range."""
+    return max(low, min(high, value))
+
+
+def _dim_outside_bbox(
+    canvas: np.ndarray,
+    keep: tuple[int, int, int, int],
+    *,
+    alpha: float,
+    bg: tuple[int, int, int] = TILE_DIM_RGB,
+) -> np.ndarray:
+    """Blend the pixels outside the keep-rectangle toward ``bg`` by ``alpha``.
+
+    The tile-spotlight effect: leave the target colony's bbox rectangle at
+    full opacity and fade everything around it toward black so the measured
+    colony is unambiguous on a crowded plate. The keep-rectangle is an
+    axis-aligned hard boundary — inside is untouched, outside is dimmed at
+    full strength, with a crisp edge.
+
+    Args:
+        canvas: The assembled crop, an ``(size, size, 3)`` uint8 array.
+        keep: ``(top, left, bottom, right)`` of the keep-rectangle in
+            canvas pixels. A degenerate rectangle (``bottom <= top`` or
+            ``right <= left``) keeps nothing, so the whole canvas dims.
+        alpha: Dim strength in ``[0, 1]``. ``alpha <= 0.0`` is a no-op and
+            returns ``canvas`` unchanged (the regression-safe fast path).
+        bg: RGB colour the dimmed pixels blend toward. Defaults to
+            :data:`phenotypic.gui._design.TILE_DIM_RGB` (black).
+
+    Returns:
+        A new ``(size, size, 3)`` uint8 array with the surroundings dimmed,
+        or ``canvas`` itself when ``alpha <= 0.0``.
+    """
+    if alpha <= 0.0:
+        return canvas
+    out = canvas.astype(np.float32)
+    mask = np.ones(canvas.shape[:2], dtype=bool)
+    top, left, bottom, right = keep
+    if bottom > top and right > left:
+        mask[top:bottom, left:right] = False  # keep-rect = not dimmed
+    bgv = np.asarray(bg, dtype=np.float32)
+    out[mask] = out[mask] * (1.0 - alpha) + bgv * alpha
+    return out.astype(np.uint8)
+
+
 def crop_overlay(
     png_path: Path,
     center_rr: float,
     center_cc: float,
     size: int,
     pad_value: tuple[int, int, int] = (0, 0, 0),
+    *,
+    dim_alpha: float = 0.0,
+    bbox: tuple[float, float, float, float] | None = None,
 ) -> bytes:
     """Crop an overlay PNG to a fixed ``size`` x ``size`` window centered on a colony.
 
@@ -104,6 +156,18 @@ def crop_overlay(
             positive.
         pad_value: RGB fill colour used for any portion of the crop that
             falls outside the source image. Defaults to black.
+        dim_alpha: Tile-spotlight strength. When ``> 0`` (and ``bbox`` is
+            given), pixels outside the target colony's bbox rectangle are
+            blended toward :data:`phenotypic.gui._design.TILE_DIM_RGB` by
+            this fraction, leaving the bbox interior untouched. ``0.0``
+            (the default) disables the effect — the output is then
+            byte-for-byte identical to the pre-feature crop.
+        bbox: ``(min_rr, max_rr, min_cc, max_cc)`` of the target colony in
+            image pixels (from ``master_measurements.parquet``). Used only
+            when ``dim_alpha > 0`` to locate the keep-rectangle. ``None``
+            (the default) disables dimming regardless of ``dim_alpha``, so
+            older masters lacking the ``Bbox_Min/Max`` columns degrade to a
+            plain crop.
 
     Returns:
         PNG-encoded bytes of the ``size`` x ``size`` crop in RGB mode.
@@ -140,6 +204,25 @@ def crop_overlay(
         paste_x = max(0, -left_unclamped)
         paste_y = max(0, -top_unclamped)
         result.paste(region, (paste_x, paste_y))
+
+    # Tile-spotlight dim pass. Skipped entirely (no PIL<->ndarray round
+    # trip) when disabled, so the disabled path is byte-for-byte identical
+    # to the pre-feature output.
+    if dim_alpha > 0.0 and bbox is not None:
+        min_rr, max_rr, min_cc, max_cc = bbox
+        # Keep-rectangle in canvas pixels, computed from the SAME unclamped
+        # origin that drives the paste so it tracks the bbox even when the
+        # colony sits near an image edge (negative unclamped origin).
+        keep_top = _clamp(round(min_rr) - top_unclamped, 0, size)
+        keep_bottom = _clamp(round(max_rr) - top_unclamped, 0, size)
+        keep_left = _clamp(round(min_cc) - left_unclamped, 0, size)
+        keep_right = _clamp(round(max_cc) - left_unclamped, 0, size)
+        dimmed = _dim_outside_bbox(
+            np.asarray(result),
+            (keep_top, keep_left, keep_bottom, keep_right),
+            alpha=dim_alpha,
+        )
+        result = PILImage.fromarray(dimmed)
 
     buf = io.BytesIO()
     result.save(buf, format="PNG")
@@ -243,10 +326,15 @@ def register_crop_route(
     import polars as pl
     from flask import request
 
+    from phenotypic.gui._config import TILE_DIM_MAX, TILE_DIM_MIN
     from phenotypic.gui.results_viewer._filtered_state import (
         KEY_IMAGE_FILE,
         KEY_OBJECT_LABEL,
     )
+
+    # Bbox extent columns used to locate the spotlight keep-rectangle.
+    # Older masters may lack them — handled gracefully below (bbox=None).
+    _BBOX_EXTENT_COLS = ("Bbox_MinRR", "Bbox_MaxRR", "Bbox_MinCC", "Bbox_MaxCC")
 
     bp = Blueprint(
         f"results_viewer_crops_{segment}", __name__, url_prefix=f"/{segment}"
@@ -286,17 +374,34 @@ def register_crop_route(
                 400,
             )
 
+        # --- 3b. Dim-strength parsing ------------------------------------
+        # The tile-spotlight strength rides the URL as ``?dim=`` exactly
+        # like ``?size=``. Unlike size it is *clamped*, never rejected — a
+        # stray value should soften (or disable) the spotlight, not break
+        # the tile. Omitted ⇒ 0.0 ⇒ undimmed, so legacy/cached URLs without
+        # ``dim`` keep their full-context crop.
+        dim = request.args.get("dim", type=float, default=0.0)
+        dim = min(TILE_DIM_MAX, max(TILE_DIM_MIN, dim))
+
         # --- 4. Lookup ----------------------------------------------------
         # Cast key columns explicitly so the comparison still matches when
         # the master frame stores Metadata_ImageFile as Categorical or
-        # Object_Label as a narrower int type.
+        # Object_Label as a narrower int type. Pull the bbox extent columns
+        # alongside the centroid when present; older masters lacking them
+        # fall through to bbox=None (no dimming).
+        has_bbox_cols = all(
+            col in output_root.master_df.columns for col in _BBOX_EXTENT_COLS
+        )
+        select_cols = ["Bbox_CenterRR", "Bbox_CenterCC"]
+        if has_bbox_cols:
+            select_cols.extend(_BBOX_EXTENT_COLS)
         try:
             row = (
                 output_root.master_df.filter(
                     (pl.col(KEY_IMAGE_FILE).cast(pl.String) == stem)
                     & (pl.col(KEY_OBJECT_LABEL).cast(pl.Int64) == label_int)
                 )
-                .select(["Bbox_CenterRR", "Bbox_CenterCC"])
+                .select(select_cols)
                 .head(1)
             )
         except Exception:
@@ -317,6 +422,18 @@ def register_crop_route(
         center_rr = float(row.get_column("Bbox_CenterRR")[0])
         center_cc = float(row.get_column("Bbox_CenterCC")[0])
 
+        # Spotlight keep-rectangle source. ``(min_rr, max_rr, min_cc,
+        # max_cc)`` when the columns are present, else None (graceful
+        # degrade — crop_overlay then skips the dim pass regardless of dim).
+        bbox: tuple[float, float, float, float] | None = None
+        if has_bbox_cols:
+            bbox = (
+                float(row.get_column("Bbox_MinRR")[0]),
+                float(row.get_column("Bbox_MaxRR")[0]),
+                float(row.get_column("Bbox_MinCC")[0]),
+                float(row.get_column("Bbox_MaxCC")[0]),
+            )
+
         # --- 5. Overlay path ---------------------------------------------
         if not output_root.has_overlay(dataset, stem):
             return (
@@ -327,7 +444,14 @@ def register_crop_route(
 
         # --- 6. Crop ------------------------------------------------------
         try:
-            png_bytes = crop_overlay(overlay_png, center_rr, center_cc, size)
+            png_bytes = crop_overlay(
+                overlay_png,
+                center_rr,
+                center_cc,
+                size,
+                dim_alpha=dim,
+                bbox=bbox,
+            )
         except Exception:
             logger.exception(
                 "Crop generation failed for dataset=%s stem=%s label=%d size=%d",
