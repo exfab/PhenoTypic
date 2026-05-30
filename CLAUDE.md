@@ -57,6 +57,13 @@ regenerates them on Ubuntu and uploads as a build artifact for
 spot-checking, but cross-platform font rendering means committed PNGs
 should come from a developer workstation, not CI.
 
+The capture regenerates the **full** screenshot set, so unrelated
+tutorials' PNGs shift by a few bytes (font-rendering noise) on every
+run. **Commit them all — do not cherry-pick or `git checkout --` the
+collateral.** Full regeneration + commit-everything keeps the workflow
+simple and the committed render internally consistent; the accepted
+cost is occasional binary churn in history.
+
 ---
 
 ## Architecture
