@@ -30,7 +30,12 @@ from typing import Any
 import dash
 from dash import ALL, MATCH, Input, Output, State, callback_context, no_update
 
+from phenotypic.gui._config import (
+    TILE_DIM_DEFAULT,
+    stepped_alpha_from_trigger,
+)
 from phenotypic.gui.results_viewer import _ids as ids
+from phenotypic.gui.results_viewer._qc_tab.review import _ids as qc_review_ids
 from phenotypic.gui.results_viewer._filter_state import FilterSpec
 from phenotypic.gui.results_viewer._filtered_state import (
     FilteredMeasurements,
@@ -117,6 +122,7 @@ def register_callbacks(
         Input(ids.COLONY_Y_AXIS_DROPDOWN_ID, "value"),
         Input(ids.COLONY_BTN_REFRESH_ID, "n_clicks"),
         Input(ids.COLONY_TILE_SIZE_SLIDER_ID, "value"),
+        Input(ids.STORE_TILE_DIM_ALPHA, "data"),
         Input(ids.TABS_ID, "active_tab"),
     )
     def _render_colony_grid(
@@ -126,6 +132,7 @@ def register_callbacks(
         y_axis: str | None,
         refresh_clicks: int | None,
         tile_size: int | None,
+        dim_alpha: float | None,
         active_tab: str | None,
     ) -> tuple[Any, Any, Any]:
         """Rebuild the grid whenever any of its data inputs change.
@@ -162,6 +169,7 @@ def register_callbacks(
         slider_value = max(64, min(400, slider_value))
         display_size = min(slider_value, max_size)
         removed_keys = set(decode_removed_keys_payload(removed_payload))
+        alpha = TILE_DIM_DEFAULT if dim_alpha is None else float(dim_alpha)
 
         # Selection styling is applied by the JS lifecycle layer, so we
         # always render the grid as if nothing were selected. This
@@ -175,6 +183,7 @@ def register_callbacks(
             set(),
             output_root,
             display_size=display_size,
+            dim_alpha=alpha,
         )
         info = (
             f"crop {max_size}px → {display_size}px "
@@ -577,13 +586,65 @@ def register_callbacks(
             return no_update
         if crop_size <= 0 or display_size <= 0:
             return no_update
+        try:
+            dim_alpha = float(data.get("dim_alpha") or 0.0)
+        except (TypeError, ValueError):
+            dim_alpha = 0.0
         removed_keys = set(decode_removed_keys_payload(removed_payload))
         return build_stack_popover_rows(
             members,
             crop_size=crop_size,
             display_size=display_size,
             removed_keys=removed_keys,
+            dim_alpha=dim_alpha,
         )
+
+    # ----------------------------------------------------------------------
+    # 8. Colony tile-spotlight ``dim`` stepper → shared store
+    # ----------------------------------------------------------------------
+
+    @app.callback(
+        Output(ids.STORE_TILE_DIM_ALPHA, "data", allow_duplicate=True),
+        Input(ids.COLONY_DIM_MINUS, "n_clicks"),
+        Input(ids.COLONY_DIM_PLUS, "n_clicks"),
+        State(ids.STORE_TILE_DIM_ALPHA, "data"),
+        prevent_initial_call=True,
+    )
+    def _step_colony_dim(
+        _minus_clicks: int | None,
+        _plus_clicks: int | None,
+        current: float | None,
+    ) -> float:
+        """Step the shared spotlight strength on a colony ``−``/``+`` click.
+
+        Thin adapter over the pure, Dash-free
+        :func:`stepped_alpha_from_trigger` helper (direction from
+        ``dash.ctx.triggered_id``; clamp/round inside the helper).
+        """
+        return stepped_alpha_from_trigger(
+            dash.ctx.triggered_id,
+            current,
+            plus_id=ids.COLONY_DIM_PLUS,
+            minus_id=ids.COLONY_DIM_MINUS,
+        )
+
+    # ----------------------------------------------------------------------
+    # 9. Shared readout sync — keep BOTH toolbars' ``dim`` readouts in step
+    #    with the shared store. Registered here (once) because the colony
+    #    surface always mounts with the viewer; the QC readout id is present
+    #    too (suppress_callback_exceptions guards the rare absent case).
+    # ----------------------------------------------------------------------
+
+    @app.callback(
+        Output(ids.COLONY_DIM_READOUT, "children"),
+        Output(qc_review_ids.QC_REVIEW_DIM_READOUT, "children"),
+        Input(ids.STORE_TILE_DIM_ALPHA, "data"),
+    )
+    def _sync_dim_readouts(dim_alpha: float | None) -> tuple[str, str]:
+        """Render ``dim 0.60`` into both galleries' readouts from the store."""
+        alpha = TILE_DIM_DEFAULT if dim_alpha is None else float(dim_alpha)
+        text = f"dim {alpha:.2f}"
+        return text, text
 
 
 __all__ = ["register_callbacks"]

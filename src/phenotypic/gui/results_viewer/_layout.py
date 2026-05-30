@@ -35,7 +35,12 @@ import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 from dash import Input, Output, dcc, html
 from dash.development.base_component import Component
 
-from phenotypic.gui._config import CFG_QC_RECIPE, MOUNT_HOME, SSH_TUNNEL_HINT
+from phenotypic.gui._config import (
+    CFG_QC_RECIPE,
+    MOUNT_HOME,
+    SSH_TUNNEL_HINT,
+    TILE_DIM_DEFAULT,
+)
 from phenotypic.gui._schema_cache import MeasurementSchema
 from phenotypic.qc import QcRecipe
 from phenotypic.gui._shared import SHARED_LOGO_PATH
@@ -330,6 +335,15 @@ def _build_stores(filtered_state: "FilteredMeasurements") -> Component:
                 id=ids.STORE_COLONY_GRID_ORDER,
                 data=[],
                 storage_type="memory",
+            ),
+            # Tile-spotlight ``dim`` strength shared by the colony-view and
+            # QC-Review galleries' ``−``/``+`` steppers. ``local`` storage
+            # so the chosen strength survives a full page reload (the
+            # effect is on by default at ``TILE_DIM_DEFAULT``).
+            dcc.Store(
+                id=ids.STORE_TILE_DIM_ALPHA,
+                data=TILE_DIM_DEFAULT,
+                storage_type="local",
             ),
             # QC revision tickers - mounted by Wave D so the Heatmap
             # tab's callbacks can subscribe before Wave E ships the QC

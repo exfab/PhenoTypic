@@ -24,6 +24,7 @@ import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 from dash import dcc, html
 from dash.development.base_component import Component
 
+from phenotypic.gui._config import TILE_DIM_DEFAULT
 from phenotypic.gui._design import (
     COLOR_BG,
     COLOR_BLUE,
@@ -50,6 +51,73 @@ _BG = COLOR_BG
 # ---------------------------------------------------------------------------
 # Sub-builders
 # ---------------------------------------------------------------------------
+
+
+def _build_dim_stepper(
+    *,
+    minus_id: str,
+    plus_id: str,
+    readout_id: str,
+) -> Component:
+    """Build the ``[ − ]  dim 0.60  [ + ]`` tile-spotlight stepper.
+
+    A compact control wiring the shared
+    :data:`phenotypic.gui.results_viewer._ids.STORE_TILE_DIM_ALPHA`
+    strength: the ``−``/``+`` buttons step it one click (a callback
+    rebuilds the tile grid), and the readout span shows the current
+    strength (synced from the store by the shared readout callback). The
+    readout text is seeded from :data:`TILE_DIM_DEFAULT` so it reads
+    correctly before the first store echo.
+
+    Args:
+        minus_id: Component id for the ``−`` (step-down) button.
+        plus_id: Component id for the ``+`` (step-up) button.
+        readout_id: Component id for the ``dim 0.60`` readout span.
+
+    Returns:
+        A flex ``html.Div`` matching the toolbar's widget styling.
+    """
+    minus_btn = dbc.Button(
+        "−",
+        id=minus_id,
+        n_clicks=0,
+        color="secondary",
+        outline=True,
+        size="sm",
+        title="Soften the colony-spotlight dimming",
+        style={"padding": "0 0.5rem", "lineHeight": "1.2"},
+    )
+    readout = html.Span(
+        f"dim {TILE_DIM_DEFAULT:.2f}",
+        id=readout_id,
+        style={
+            "fontFamily": FONT_FAMILY_MONO,
+            "fontSize": FONT_SIZE_LABEL,
+            "color": _NAVY,
+            "minWidth": "4.5rem",
+            "textAlign": "center",
+            "whiteSpace": "nowrap",
+        },
+    )
+    plus_btn = dbc.Button(
+        "+",
+        id=plus_id,
+        n_clicks=0,
+        color="secondary",
+        outline=True,
+        size="sm",
+        title="Strengthen the colony-spotlight dimming",
+        style={"padding": "0 0.5rem", "lineHeight": "1.2"},
+    )
+    return html.Div(
+        [minus_btn, readout, plus_btn],
+        style={
+            "display": "flex",
+            "alignItems": "center",
+            "gap": "0.35rem",
+            "flex": "0 0 auto",
+        },
+    )
 
 
 def _build_toolbar() -> Component:
@@ -157,6 +225,12 @@ def _build_toolbar() -> Component:
         },
     )
 
+    dim_stepper = _build_dim_stepper(
+        minus_id=ids.COLONY_DIM_MINUS,
+        plus_id=ids.COLONY_DIM_PLUS,
+        readout_id=ids.COLONY_DIM_READOUT,
+    )
+
     return html.Div(
         [
             html.Div(
@@ -168,6 +242,7 @@ def _build_toolbar() -> Component:
                 style={"display": "flex", "alignItems": "center", "gap": "0.25rem"},
             ),
             tile_size_slider,
+            dim_stepper,
             crop_size_info,
             refresh_button,
         ],

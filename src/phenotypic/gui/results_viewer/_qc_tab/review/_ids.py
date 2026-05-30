@@ -66,6 +66,20 @@ QC_SHOW_UNREVIEWED: str = "unreviewed"
 QC_SHOW_ALL: str = "all"
 QC_SHOW_FAIL_WARN: str = "fail_warn"
 
+#: ``−`` button of the Review tile-spotlight ``dim`` stepper. Each click
+#: steps the shared ``STORE_TILE_DIM_ALPHA`` strength (owned by the
+#: results-viewer layer) down by
+#: :data:`phenotypic.gui._config.TILE_DIM_STEP`.
+QC_REVIEW_DIM_MINUS: str = "qc-review-dim-minus"
+
+#: ``+`` button of the Review tile-spotlight ``dim`` stepper. Steps the
+#: shared strength up by ``TILE_DIM_STEP``.
+QC_REVIEW_DIM_PLUS: str = "qc-review-dim-plus"
+
+#: Read-only ``dim 0.60`` readout between the Review stepper's buttons.
+#: Synced from ``STORE_TILE_DIM_ALPHA`` by the shared readout callback.
+QC_REVIEW_DIM_READOUT: str = "qc-review-dim-readout"
+
 
 # ---------------------------------------------------------------------------
 # Summary header (stat tiles)
@@ -227,6 +241,9 @@ __all__ = [
     "QC_SHOW_UNREVIEWED",
     "QC_SHOW_ALL",
     "QC_SHOW_FAIL_WARN",
+    "QC_REVIEW_DIM_MINUS",
+    "QC_REVIEW_DIM_PLUS",
+    "QC_REVIEW_DIM_READOUT",
     # Summary header
     "QC_REVIEW_SUMMARY_HEADER_ID",
     # Worklist

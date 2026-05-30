@@ -236,3 +236,103 @@ def test_build_grid_returns_component_and_row_major_order(tmp_path: Path) -> Non
     for img, label in grid_order:
         assert isinstance(img, str)
         assert isinstance(label, int)
+
+
+# -------------------------------------------------------------------------
+# Tile-spotlight dim threading (Phase 3)
+# -------------------------------------------------------------------------
+
+
+def _collect_img_srcs(component: object) -> list[str]:
+    """Recursively collect every ``html.Img.src`` in a Dash component tree."""
+    srcs: list[str] = []
+
+    def _walk(node: object) -> None:
+        src = getattr(node, "src", None)
+        if isinstance(src, str):
+            srcs.append(src)
+        children = getattr(node, "children", None)
+        if isinstance(children, (list, tuple)):
+            for child in children:
+                _walk(child)
+        elif children is not None:
+            _walk(children)
+
+    _walk(component)
+    return srcs
+
+
+def _make_output_root_with_overlays(tmp_path: Path) -> OutputRoot:
+    """Like ``_make_output_root`` but writes real overlay PNGs.
+
+    ``build_grid`` only emits an ``<img>`` when ``OutputRoot.has_overlay``
+    is True, which is backed by an on-disk scan — so the dim-threading test
+    needs actual PNG files for every represented colony's image.
+    """
+    from PIL import Image as PILImage
+
+    master = pl.DataFrame(
+        {
+            "Metadata_Dataset": ["plate1"] * 4,
+            "Metadata_ImageFile": ["img-001", "img-001", "img-002", "img-002"],
+            "Object_Label": [1, 2, 1, 2],
+            "Bbox_MinRR": [0, 5, 10, 15],
+            "Bbox_MaxRR": [40, 45, 50, 55],
+            "Bbox_MinCC": [0, 5, 10, 15],
+            "Bbox_MaxCC": [40, 45, 50, 55],
+            "Bbox_CenterRR": [20, 25, 30, 35],
+            "Bbox_CenterCC": [20, 25, 30, 35],
+            "Grid_RowNum": [1, 2, 1, 2],
+            "Grid_ColNum": [1, 1, 2, 2],
+        }
+    )
+    overlays = tmp_path / "results" / "plate1" / "overlays"
+    overlays.mkdir(parents=True)
+    for stem in ("img-001", "img-002"):
+        PILImage.new("RGB", (64, 64), (200, 0, 0)).save(overlays / f"{stem}.png")
+    master.write_parquet(tmp_path / "master_measurements.parquet")
+    return OutputRoot.discover(tmp_path)
+
+
+def test_build_grid_threads_dim_alpha_into_tile_urls(tmp_path: Path) -> None:
+    """Each tile ``<img src>`` carries ``&dim=<alpha>`` from ``build_grid``."""
+    root = _make_output_root_with_overlays(tmp_path)
+    alpha = 0.45
+
+    component, grid_order = build_grid(
+        df=root.master_df,
+        x_axis_col="Grid_ColNum",
+        y_axis_col="Grid_RowNum",
+        max_size=64,
+        removed_keys=set(),
+        selected_keys=set(),
+        output_root=root,
+        dim_alpha=alpha,
+    )
+
+    srcs = _collect_img_srcs(component)
+    assert len(srcs) == len(grid_order) == 4
+    # Every tile URL threads the exact store alpha as the ``&dim=`` param.
+    for src in srcs:
+        assert "?size=" in src
+        assert f"&dim={alpha}" in src
+
+
+def test_build_grid_default_dim_alpha_is_zero(tmp_path: Path) -> None:
+    """With no ``dim_alpha`` the URLs degrade to today's ``&dim=0.0``."""
+    root = _make_output_root_with_overlays(tmp_path)
+
+    component, _order = build_grid(
+        df=root.master_df,
+        x_axis_col="Grid_ColNum",
+        y_axis_col="Grid_RowNum",
+        max_size=64,
+        removed_keys=set(),
+        selected_keys=set(),
+        output_root=root,
+    )
+
+    srcs = _collect_img_srcs(component)
+    assert srcs
+    for src in srcs:
+        assert "&dim=0.0" in src
