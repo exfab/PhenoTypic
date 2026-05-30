@@ -25,11 +25,13 @@ from __future__ import annotations
 from dash import dcc, html
 from dash.development.base_component import Component
 
+from phenotypic.gui._config import TILE_DIM_DEFAULT
 from phenotypic.gui._design import (
     COLOR_BORDER,
     COLOR_MUTED,
     COLOR_NAVY,
     COLOR_SURFACE,
+    FONT_FAMILY_MONO,
     FONT_SIZE_CAPTION,
     FONT_SIZE_LABEL,
 )
@@ -44,6 +46,58 @@ import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 #: as the page scrolls. A small over-estimate is harmless (a few px gap);
 #: under-estimating would let the sidebar slide under the header.
 _SUMMARY_HEADER_HEIGHT: str = "64px"
+
+
+def _build_dim_stepper() -> Component:
+    """Build the ``[ − ]  dim 0.60  [ + ]`` tile-spotlight stepper.
+
+    Mirrors the colony-view stepper but with the Review toolbar's
+    ``dbc`` button styling. Wires the shared
+    :data:`phenotypic.gui.results_viewer._ids.STORE_TILE_DIM_ALPHA`
+    strength via the ``−``/``+`` buttons (a callback rebuilds the
+    gallery); the readout span is synced from the store by the shared
+    readout callback and seeded from :data:`TILE_DIM_DEFAULT`.
+
+    Returns:
+        A flex ``html.Div`` matching the Review toolbar's widget styling.
+    """
+    minus_btn = dbc.Button(
+        "−",
+        id=rids.QC_REVIEW_DIM_MINUS,
+        n_clicks=0,
+        color="secondary",
+        outline=True,
+        size="sm",
+        title="Soften the colony-spotlight dimming",
+        style={"padding": "0 0.5rem", "lineHeight": "1.2"},
+    )
+    readout = html.Span(
+        f"dim {TILE_DIM_DEFAULT:.2f}",
+        id=rids.QC_REVIEW_DIM_READOUT,
+        style={
+            "fontFamily": FONT_FAMILY_MONO,
+            "fontSize": FONT_SIZE_LABEL,
+            "color": COLOR_NAVY,
+            "minWidth": "4.5rem",
+            "textAlign": "center",
+            "whiteSpace": "nowrap",
+        },
+    )
+    plus_btn = dbc.Button(
+        "+",
+        id=rids.QC_REVIEW_DIM_PLUS,
+        n_clicks=0,
+        color="secondary",
+        outline=True,
+        size="sm",
+        title="Strengthen the colony-spotlight dimming",
+        style={"padding": "0 0.5rem", "lineHeight": "1.2"},
+    )
+    return html.Div(
+        [minus_btn, readout, plus_btn],
+        className="d-flex align-items-center",
+        style={"gap": "0.35rem", "flex": "0 0 auto"},
+    )
 
 
 def _build_toolbar() -> Component:
@@ -90,6 +144,7 @@ def _build_toolbar() -> Component:
             ),
             chips,
             html.Div(style={"flex": "1 1 auto"}),  # spacer
+            _build_dim_stepper(),
             show_filter,
             resort_btn,
         ],

@@ -23,6 +23,7 @@ Plus :func:`expand_range` for resolving shift+click slices.
 
 from __future__ import annotations
 
+import functools
 from collections.abc import Mapping
 from typing import Any
 
@@ -301,17 +302,36 @@ def _build_axis_label(value: object, *, axis: str, max_width_px: int) -> Compone
     )
 
 
-def _colony_crop_url(dataset: str, image_file: str, label: int, crop_size: int) -> str:
+def _colony_crop_url(
+    dataset: str,
+    image_file: str,
+    label: int,
+    crop_size: int,
+    *,
+    dim_alpha: float = 0.0,
+) -> str:
     """Build the colony-view crop ``<img>`` src for one cell.
 
     The shared :func:`phenotypic.gui._shared.tiles.build_tile_cell` calls
     this to fill each tile's ``<img>``; it points at the ``/crops`` route
     mounted by :func:`colony_view._crop_routes.register`.
+
+    Args:
+        dataset: ``Metadata_Dataset`` of the represented colony.
+        image_file: ``Metadata_ImageFile`` of the represented colony.
+        label: ``Object_Label`` of the represented colony.
+        crop_size: Server crop side length, in pixels (the ``?size=``
+            param the crop route requires).
+        dim_alpha: Tile-spotlight strength forwarded to the crop route as
+            ``&dim=``. ``0.0`` (the default) is today's full-context crop.
+            Bound per-render via :func:`functools.partial` so the 4-arg
+            ``url_builder`` protocol expected by ``build_tile_cell`` is
+            preserved.
     """
     prefix = _url_prefix()
     return (
         f"{prefix}{COLONY_CROPS_URL_SEGMENT}/{dataset}/{image_file}/"
-        f"{label}.png?size={crop_size}"
+        f"{label}.png?size={crop_size}&dim={dim_alpha}"
     )
 
 
@@ -352,6 +372,7 @@ def _build_cell(
     is_removed: bool,
     is_selected: bool,
     members: list[tuple[str, str, int]] | None = None,
+    dim_alpha: float = 0.0,
 ) -> Component:
     """Render the chrome + crop for a single grid cell.
 
@@ -376,6 +397,9 @@ def _build_cell(
         is_removed: Whether the representative colony is in the curated
             removal set. Toggles the icon and dims the crop.
         is_selected: Whether the cell is in the active multi-select.
+        dim_alpha: Tile-spotlight strength threaded onto every crop URL in
+            the cell (the main tile and any stack-popover thumbnails) as
+            ``&dim=``. ``0.0`` (default) keeps today's full-context crop.
 
     Returns:
         A component ready to drop into the grid container.
@@ -401,6 +425,7 @@ def _build_cell(
                     members=members,
                     crop_size=max_size,
                     display_size=display_size,
+                    dim_alpha=dim_alpha,
                 )
             )
 
@@ -413,7 +438,8 @@ def _build_cell(
         has_overlay=has_overlay,
         is_removed=is_removed,
         is_selected=is_selected,
-        url_builder=_colony_crop_url,
+        # Bind the spotlight strength onto the 4-arg url_builder protocol.
+        url_builder=functools.partial(_colony_crop_url, dim_alpha=dim_alpha),
         remove_button=_colony_remove_button(image_file, label, is_removed),
         extra_children=extra_children,
         # Reserve room beneath the frame for the stack tab to peek out.
@@ -429,6 +455,7 @@ def _build_stack_popover(
     members: list[tuple[str, str, int]],
     crop_size: int,
     display_size: int,
+    dim_alpha: float = 0.0,
 ) -> list[Component]:
     """Render the click-to-expand stack popover with a deferred body.
 
@@ -467,6 +494,7 @@ def _build_stack_popover(
             "members": [[im, ds, lbl] for im, ds, lbl in members],
             "crop_size": int(crop_size),
             "display_size": int(display_size),
+            "dim_alpha": float(dim_alpha),
         },
     )
     return [popover, store]
@@ -478,6 +506,7 @@ def build_stack_popover_rows(
     crop_size: int,
     display_size: int,
     removed_keys: set[tuple[str, int]],
+    dim_alpha: float = 0.0,
 ) -> list[Component]:
     """Render the per-member rows that populate a stack popover body.
 
@@ -485,12 +514,23 @@ def build_stack_popover_rows(
     user first opens a multi-colony cell's badge. Each member colony
     renders as a small ``<img>`` with its label beneath; removed
     colonies are dimmed.
+
+    Args:
+        members: ``(image_file, dataset, label)`` tuples to render.
+        crop_size: Server crop side length, in pixels.
+        display_size: CSS render size, in pixels, for each thumbnail.
+        removed_keys: ``(image_file, label)`` keys currently removed.
+        dim_alpha: Tile-spotlight strength threaded onto each thumbnail's
+            crop URL as ``&dim=`` so the popover matches the parent grid.
     """
     rows: list[Component] = []
     prefix = _url_prefix()
     for image_file, dataset, label in members:
         is_removed = (image_file, label) in removed_keys
-        crop_url = f"{prefix}{COLONY_CROPS_URL_SEGMENT}/{dataset}/{image_file}/{label}.png?size={crop_size}"
+        crop_url = (
+            f"{prefix}{COLONY_CROPS_URL_SEGMENT}/{dataset}/{image_file}/"
+            f"{label}.png?size={crop_size}&dim={dim_alpha}"
+        )
         rows.append(
             html.Div(
                 [
@@ -532,6 +572,7 @@ def build_grid(
     selected_keys: set[tuple[str, int]],
     output_root: OutputRoot,
     display_size: int | None = None,
+    dim_alpha: float = 0.0,
 ) -> tuple[Component, list[tuple[str, int]]]:
     """Render the colony-grid component and its row-major key order.
 
@@ -572,6 +613,9 @@ def build_grid(
             the grid into the viewport without re-cropping; the browser
             scales the ``<img>`` and ``object-fit: cover`` keeps the
             colony centred.
+        dim_alpha: Tile-spotlight strength threaded onto every crop URL as
+            ``&dim=`` (read from the shared ``STORE_TILE_DIM_ALPHA``).
+            ``0.0`` (default) is today's full-context crop.
 
     Returns:
         A tuple ``(component, grid_order)``. ``grid_order`` is the
@@ -695,6 +739,7 @@ def build_grid(
                     is_removed=key in removed_keys,
                     is_selected=key in selected_keys,
                     members=typed_members,
+                    dim_alpha=dim_alpha,
                 )
             )
 
