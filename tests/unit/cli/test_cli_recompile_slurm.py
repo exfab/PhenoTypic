@@ -205,7 +205,9 @@ def test_recompile_slurm_dispatcher_falls_back_to_local_when_no_scripts(
             wait=False,
         )
 
-    mock_local.assert_called_once_with(output_dir, None, True, 0.3, -1)
+    mock_local.assert_called_once_with(
+        output_dir, None, True, 0.3, -1, no_qc=False
+    )
     mock_submit.assert_not_called()
 
 

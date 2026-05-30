@@ -56,7 +56,9 @@ class TestRecompileCliRouting:
             )
 
         assert result.exit_code == 0, result.output
-        mock_local.assert_called_once_with(output_dir, None, True, 0.3, -1)
+        mock_local.assert_called_once_with(
+            output_dir, None, True, 0.3, -1, no_qc=False
+        )
         mock_slurm.assert_not_called()
 
     def test_recompile_with_slurm_uses_slurm_handler(
@@ -90,6 +92,7 @@ class TestRecompileCliRouting:
             checkpoint_interval=None,
             slurm_args={"slurm_partition": "compute", "time": 30},
             wait=False,
+            no_qc=False,
         )
 
     def test_recompile_force_local_overrides_slurm(
@@ -113,7 +116,9 @@ class TestRecompileCliRouting:
             )
 
         assert result.exit_code == 0, result.output
-        mock_local.assert_called_once_with(output_dir, None, True, 0.3, -1)
+        mock_local.assert_called_once_with(
+            output_dir, None, True, 0.3, -1, no_qc=False
+        )
         mock_slurm.assert_not_called()
 
 
