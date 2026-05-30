@@ -10,7 +10,8 @@ import pandas as pd
 from skimage.measure import regionprops
 from typing import List
 
-from phenotypic.tools_.constants_ import METADATA, IMAGE_TYPES
+from phenotypic.schema import METADATA
+from phenotypic.tools_.constants_ import IMAGE_TYPES
 from phenotypic.schema import OBJECT
 
 

@@ -36,7 +36,8 @@ import skimage as ski
 
 import phenotypic
 from phenotypic.tools_.exceptions_ import UnsupportedFileTypeError
-from phenotypic.tools_.constants_ import GAMMA_ENCODINGS, IO, METADATA
+from phenotypic.schema import METADATA
+from phenotypic.tools_.constants_ import GAMMA_ENCODINGS, IO
 from phenotypic.tools_.hdf_ import HDF
 from ._image_color_handler import ImageColorSpace
 
@@ -72,6 +73,54 @@ def _decode_meta(s: Any) -> Any:
         return json.loads(s)
     except (json.JSONDecodeError, ValueError, TypeError):
         return s
+
+
+# Legacy metadata-key shim.
+# Files written before the ``METADATA`` enum gained its ``Metadata_`` category
+# prefix stored framework metadata keys *bare* (e.g. ``ImageName``, ``BitDepth``,
+# ``UUID``). Map those legacy bare keys to their current prefixed form on load so
+# old HDF5 outputs stay readable. Built from the enum so it tracks any future
+# member additions: ``{"ImageName": "Metadata_ImageName", ...}``.
+_LEGACY_METADATA_KEY_MAP: dict[str, str] = {
+    member.label: member.value for member in METADATA
+}
+
+
+def _remap_legacy_metadata_key(key: str) -> str:
+    """Return the current ``Metadata_*`` key for a legacy bare metadata key.
+
+    Idempotent and targeted: already-prefixed keys (new files) and arbitrary
+    user-supplied keys pass through unchanged — only the known framework labels
+    are remapped.
+    """
+    return _LEGACY_METADATA_KEY_MAP.get(key, key)
+
+
+class _BackCompatUnpickler(pickle.Unpickler):
+    """Unpickler that resolves classes which moved since older pickles were written.
+
+    ``METADATA`` moved from ``phenotypic.tools_.constants_`` to the public
+    ``phenotypic.schema`` package. Pickled ``image.metadata`` dicts key on
+    ``METADATA`` enum *members*, which unpickle by their class's import path — so
+    pre-move pickles would otherwise fail with ``AttributeError`` at load time.
+    Remapping the old path here lets them load; because enum members resolve by
+    name, an old bare-valued ``METADATA.IMAGE_NAME`` resolves to the current
+    ``Metadata_``-prefixed member, auto-upgrading both keys and values.
+
+    Scoped to the moved symbol only and used solely for unpickling — it does not
+    reintroduce ``METADATA`` into ``constants_``'s import namespace.
+    """
+
+    _MOVED_CLASSES: dict[tuple[str, str], tuple[str, str]] = {
+        ("phenotypic.tools_.constants_", "METADATA"): (
+            "phenotypic.schema",
+            "METADATA",
+        ),
+    }
+
+    def find_class(self, module: str, name: str):
+        module, name = self._MOVED_CLASSES.get((module, name), (module, name))
+        return super().find_class(module, name)
 
 
 class ImageIOHandler(ImageColorSpace):
@@ -494,11 +543,19 @@ class ImageIOHandler(ImageColorSpace):
             if source_property in ("Image.rgb", "Image.gray"):
                 if "protected" in phenotypic_data:
                     for key, value in phenotypic_data["protected"].items():
+                        # Remap legacy bare keys (pre-Metadata_ prefix) first, so
+                        # the critical-field skip below matches old files too.
+                        key = _remap_legacy_metadata_key(key)
                         # Don't overwrite critical protected fields
                         if key not in (METADATA.UUID, METADATA.IMAGE_NAME):
                             image._metadata.protected[key] = value
                 if "public" in phenotypic_data:
-                    image._metadata.public.update(phenotypic_data["public"])
+                    image._metadata.public.update(
+                            {
+                                _remap_legacy_metadata_key(k): v
+                                for k, v in phenotypic_data["public"].items()
+                            }
+                    )
 
         # Store remaining imported metadata
         image._metadata.imported.update(imported_metadata)
@@ -868,9 +925,14 @@ class ImageIOHandler(ImageColorSpace):
                 # so the same logic is a no-op for them but keeps behaviour
                 # uniform across sections.
                 for key in attrs:
-                    if key in target:
+                    # Remap legacy bare keys (pre-Metadata_ prefix) before the
+                    # membership check, so an old file's "ImageName" matches the
+                    # constructor-populated "Metadata_ImageName" and is skipped
+                    # rather than added as a stale duplicate.
+                    mapped = _remap_legacy_metadata_key(key)
+                    if mapped in target:
                         continue
-                    target[key] = _decode_meta(attrs[key])
+                    target[mapped] = _decode_meta(attrs[key])
 
         return img
 
@@ -918,7 +980,7 @@ class ImageIOHandler(ImageColorSpace):
             img._metadata.protected.clear()
             img._metadata.protected.update(
                     {
-                        k: int(prot[k])
+                        _remap_legacy_metadata_key(k): int(prot[k])
                         if isinstance(prot[k], str) and prot[k].isdigit()
                         else prot[k]
                         for k in prot
@@ -930,7 +992,7 @@ class ImageIOHandler(ImageColorSpace):
             img._metadata.public.clear()
             img._metadata.public.update(
                     {
-                        k: int(pub[k])
+                        _remap_legacy_metadata_key(k): int(pub[k])
                         if isinstance(pub[k], str) and pub[k].isdigit()
                         else pub[k]
                         for k in pub
@@ -1071,8 +1133,12 @@ class ImageIOHandler(ImageColorSpace):
             >>> loaded = Image.load_pickle('photo.pkl')
             >>> isinstance(loaded, Image)  # True
         """
+        # Pickle trust model is unchanged from the prior ``pickle.load`` call:
+        # callers load their own previously-saved image pickles. The custom
+        # unpickler only remaps the moved ``METADATA`` class so pre-move pickles
+        # still load; it does not relax any trust assumptions.
         with open(filename, "rb") as f:
-            loaded = pickle.load(f)
+            loaded = _BackCompatUnpickler(f).load()  # noqa: S301 - user's own pickle
 
         # Check if pickle contains grid_finder -> use GridImage
         has_grid_finder = "grid_finder" in loaded
@@ -1112,8 +1178,17 @@ class ImageIOHandler(ImageColorSpace):
         )
         instance._data.detect_mode = loaded.get("_data.detect_mode", "gray")
         instance.objmap[:] = loaded["objmap"]
-        instance._metadata.protected = loaded["protected_metadata"]
-        instance._metadata.public = loaded["public_metadata"]
+        # Remap legacy bare metadata keys (pre-Metadata_ prefix) to their current
+        # prefixed form. No-op for new pickles (keys are already prefixed) and for
+        # arbitrary user keys.
+        instance._metadata.protected = {
+                _remap_legacy_metadata_key(k): v
+                for k, v in loaded["protected_metadata"].items()
+        }
+        instance._metadata.public = {
+                _remap_legacy_metadata_key(k): v
+                for k, v in loaded["public_metadata"].items()
+        }
 
         # If mode is not 'gray', reinitialize to ensure correct source channel
         if instance._data.detect_mode != "gray":

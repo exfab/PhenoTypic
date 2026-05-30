@@ -59,8 +59,9 @@ Module layout
 See also
 --------
 :mod:`phenotypic.tools_.constants_`
-    Image-data and measurement enums (``IMAGE_MODE``, ``IMAGE_TYPES``,
-    ``GAMMA_ENCODINGS``, ``METADATA``, ``PIPE_STATUS``).
+    Image-data and framework-config enums (``IMAGE_MODE``, ``IMAGE_TYPES``,
+    ``GAMMA_ENCODINGS``, ``PIPE_STATUS``). The ``METADATA`` enum and the
+    experimental-tag vocabulary now live in :mod:`phenotypic.schema`.
 :mod:`phenotypic.tools_.typing_`
     Literal aliases for closed value sets used at public boundaries
     (``ExecutionMode``, ``ImageTypeName``, …).

@@ -96,6 +96,14 @@ class MeasurementInfo(str, Enum):
         >>> MeasureShape.__doc__ = SHAPE.append_rst_to_doc(MeasureShape)
     """
 
+    # Per-member attributes assigned in ``__new__``. Declared here (as bare
+    # annotations, never assigned at class scope) so they are visible to type
+    # checkers without becoming enum members — CPython's Enum ignores
+    # annotations that have no value.
+    label: str
+    desc: str
+    pair: tuple[str, str]
+
     @classmethod
     def category(cls) -> str:
         """Return the category name for this measurement enumeration.
