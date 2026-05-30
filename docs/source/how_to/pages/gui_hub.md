@@ -62,7 +62,7 @@ carries zero or more capability badges:
 |-------|---------|
 | `img` | Directory contains image files |
 | `cfg` | File is a PhenoTypic pipeline JSON |
-| `out` | Directory is a CLI output root (`master_measurements.parquet` + `results/`) |
+| `out` | Directory is a CLI output root (`deliverables/master_measurements.parquet` + `results/`) |
 | `?` | Directory could not be listed due to a permission error |
 
 Hidden files (names starting with `.`) and symlinks whose targets fall outside
@@ -122,11 +122,13 @@ Once a local run starts, stdout (and stderr, which is merged into stdout) is
 teed to `<output_dir>/.gui_log/stdout.log` and to a 5000-line in-memory ring
 buffer. The log-tail panel polls the ring buffer on a short interval.
 
-Once `dashboard.html` lands in the output directory, the iframe panel points
-at `/runs/<rel>/dashboard.html`. The `/runs/` route is registered on the hub's
-Flask server directly — not under the dispatcher middleware — so the URL works
-regardless of which tab is active. The iframed dashboard polls its own progress
-files using relative URLs, which the `/runs/` route resolves inside the sandbox.
+Once `dashboard.html` lands in the output directory's `deliverables/`
+subfolder, the iframe panel points at
+`/runs/<rel>/deliverables/dashboard.html`. The `/runs/` route is registered on
+the hub's Flask server directly — not under the dispatcher middleware — so the
+URL works regardless of which tab is active. The iframed dashboard polls its own
+progress files using relative URLs, which the `/runs/` route resolves inside the
+sandbox.
 
 **Cancel** sends SIGTERM to the subprocess and waits up to 10 seconds. If the
 subprocess does not exit within that window, SIGKILL is sent. The GUI also

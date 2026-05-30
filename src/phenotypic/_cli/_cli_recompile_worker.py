@@ -22,10 +22,10 @@ from phenotypic.tools_ import (
     DIR_RECOMPILE_SHARDS,
     DIR_RECOMPILE_STATUS,
     DIR_RESULTS,
-    MASTER_MEASUREMENTS_CSV,
-    MASTER_MEASUREMENTS_PARQUET,
     JobMetadataKey,
     load_image_from_hdf,
+    master_measurements_csv_path,
+    master_measurements_parquet_path,
     task_status_filename,
     shard_parquet_filename,
 )
@@ -340,13 +340,13 @@ def _write_master_outputs_from_shards(output_dir: Path) -> Any | None:
     # what the per-image workers measured.
 
     try:
-        _atomic_write(output_dir / MASTER_MEASUREMENTS_CSV, master_df.write_csv)
+        _atomic_write(master_measurements_csv_path(output_dir), master_df.write_csv)
     except Exception:
         logger.error("Failed to save master CSV during recompile finalize")
         raise
     try:
         _atomic_write(
-            output_dir / MASTER_MEASUREMENTS_PARQUET,
+            master_measurements_parquet_path(output_dir),
             lambda p: master_df.write_parquet(
                 p, compression="zstd", compression_level=3
             ),

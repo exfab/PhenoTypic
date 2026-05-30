@@ -23,11 +23,22 @@ module shouldn't pull in.
 The CLI ↔ GUI shared output filenames (``MASTER_MEASUREMENTS_PARQUET``,
 ``MEASUREMENTS_CSV``, ``MEASUREMENTS_PARQUET``, ``ANALYSIS_CSV``,
 ``ANALYSIS_PARQUET``, ``PIPELINE_JSON``, ``RESULTS_DIRNAME``,
-``PROGRESS_DIRNAME``, ``DASHBOARD_FILENAME``)
+``PROGRESS_DIRNAME``, ``DELIVERABLES_DIRNAME``, ``DASHBOARD_FILENAME``)
 are re-exports of canonical constants in :mod:`phenotypic.tools_._io_constants`.
 The single source of truth is one level up; this module re-exports for
 ergonomic GUI imports. New filenames written by the CLI should be added
 to ``_io_constants.py``, not here.
+
+These are bare *filenames*, not paths. The user-facing run artifacts
+(``master_measurements.*``, ``measurements.*``, ``measurements_by_feature/``,
+``analysis.*``, ``dashboard.html``, ``analysis.html``,
+``processing_report.html``, ``README.md``, ``pipeline.json``) now resolve
+under ``<output>/deliverables/`` — ``DELIVERABLES_DIRNAME`` (= ``"deliverables"``,
+backed by ``DIR_DELIVERABLES`` in :mod:`phenotypic.tools_`). Join them via the
+``phenotypic.tools_`` path helpers (``deliverables_dir(output)``,
+``master_measurements_parquet_path(output)``, …). ``RESULTS_DIRNAME`` /
+``PROGRESS_DIRNAME`` / ``QC_DIRNAME`` and ``processing_state.json`` are *not*
+deliverables and stay at the output-dir root.
 """
 from __future__ import annotations
 
@@ -40,6 +51,7 @@ from phenotypic.tools_ import (
     ANALYSIS_CSV,
     ANALYSIS_PARQUET,
     DASHBOARD_HTML,
+    DIR_DELIVERABLES,
     DIR_INSPECT,
     DIR_MEASUREMENTS,
     DIR_OVERLAYS,
@@ -113,6 +125,7 @@ __all__ = [
     "RESULTS_DIRNAME",
     "PROGRESS_DIRNAME",
     "QC_DIRNAME",
+    "DELIVERABLES_DIRNAME",
     "DIR_INSPECT",
     "DIR_MEASUREMENTS",
     "DIR_OVERLAYS",
@@ -299,7 +312,14 @@ VIEWER_CACHE_DIRNAME: str = ".viewer_cache"
 #   PIPELINE_JSON, JOB_METADATA_JSON, MANIFEST_JSON, STDOUT_LOG,
 #   QC_SUMMARY_PARQUET, QC_MEMBERS_PARQUET, QC_CONFIG_JSON,
 #   QC_REVIEW_STATE_JSON,
-#   DIR_RESULTS, DIR_PROGRESS, DIR_QC, DASHBOARD_HTML
+#   DIR_RESULTS, DIR_PROGRESS, DIR_QC, DIR_DELIVERABLES, DASHBOARD_HTML
+#
+# These are filenames/dirnames only. The user-facing artifacts
+# (master/measurements/analysis frames, the per-feature splits, the
+# generated HTML reports, README, and pipeline.json) now resolve under
+# ``<output>/deliverables/`` (DELIVERABLES_DIRNAME / DIR_DELIVERABLES) via the
+# phenotypic.tools_ path helpers (deliverables_dir, master_measurements_parquet_path,
+# …). DIR_RESULTS / DIR_PROGRESS / DIR_QC stay at the output-dir root.
 #
 # ---------------------------------------------------------------------------
 # GUI-only convenience aliases for re-exported CLI artifact names
@@ -313,6 +333,13 @@ PROGRESS_DIRNAME: str = DIR_PROGRESS
 
 #: ``qc`` — the CLI output ``qc/`` artifact directory name.
 QC_DIRNAME: str = DIR_QC
+
+#: ``deliverables`` — the CLI output ``deliverables/`` directory holding all
+#: user-facing run outputs (master/measurements/analysis frames, the
+#: per-feature splits, the generated dashboard/analysis/report HTML, README,
+#: and the canonical pipeline.json). The shell classifier's CLI-output and
+#: dashboard markers and the run console's run-file URLs compose through this.
+DELIVERABLES_DIRNAME: str = DIR_DELIVERABLES
 
 #: ``dashboard.html`` — the generated dashboard artifact filename.
 DASHBOARD_FILENAME: str = DASHBOARD_HTML

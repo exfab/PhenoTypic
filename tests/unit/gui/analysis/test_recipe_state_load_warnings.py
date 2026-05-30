@@ -25,15 +25,15 @@ from phenotypic import ImagePipeline
 from phenotypic._core._pipeline_parts._serializable_pipeline import (
     PipelineLoadWarning,
 )
-from phenotypic.gui._config import PIPELINE_JSON
 from phenotypic.gui.analysis import _ids as analysis_ids
 from phenotypic.gui.analysis._layout import _build_load_warnings_banner
 from phenotypic.gui.analysis._recipe_state import RecipeState
+from phenotypic.tools_ import pipeline_json_path
 
 
 def _write_pipeline_with_unknown_classes(output_dir: Path) -> Path:
-    """Seed ``<output_dir>/pipeline.json`` with one good + two bad analyzer
-    entries: a renamed filter and a renamed model.
+    """Seed ``<output_dir>/deliverables/pipeline.json`` with one good + two
+    bad analyzer entries: a renamed filter and a renamed model.
     """
     payload = {
         "version": "test",
@@ -60,7 +60,8 @@ def _write_pipeline_with_unknown_classes(output_dir: Path) -> Path:
             "params": {},
         },
     }
-    path = output_dir / PIPELINE_JSON
+    path = pipeline_json_path(output_dir)
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2))
     return path
 
@@ -137,7 +138,9 @@ def test_recipe_state_load_no_warnings_when_all_classes_resolve(
         },
         "model": None,
     }
-    (tmp_path / PIPELINE_JSON).write_text(json.dumps(payload))
+    clean_path = pipeline_json_path(tmp_path)
+    clean_path.parent.mkdir(parents=True, exist_ok=True)
+    clean_path.write_text(json.dumps(payload))
 
     state = RecipeState.load(tmp_path)
     assert state.load_warnings == []

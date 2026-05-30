@@ -22,8 +22,9 @@ The exploration loop:
 ## Prerequisites
 
 - A CLI run that emitted `Grid_RowNum` / `Grid_ColNum` columns into
-  `measurements.parquet` (i.e. a `GridFinder`-aware pipeline). The
-  empty-state placeholder is rendered when these columns are absent.
+  `deliverables/measurements.parquet` (i.e. a `GridFinder`-aware
+  pipeline). The empty-state placeholder is rendered when these columns
+  are absent.
 - Optionally, one or more configured QC checks (see
   [QC curation loop](10_qc_curation_loop.md)) so the color picker
   surfaces `QC_*_Severity` columns.

@@ -12,6 +12,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, List
 
+from phenotypic.tools_ import readme_md_path
+
 if TYPE_CHECKING:
     from phenotypic._core._image_pipeline import ImagePipeline
     from phenotypic._cli._cli_types import ExecutionConfig, Dataset
@@ -46,7 +48,7 @@ class READMEGenerator:
         Returns:
             Path to generated README.md file.
         """
-        readme_path = output_dir / "README.md"
+        readme_path = readme_md_path(output_dir)
 
         sections = [
             self._generate_header(),
@@ -57,6 +59,9 @@ class READMEGenerator:
         ]
 
         content = "\n\n".join(filter(None, sections))
+        # The README writer does not go through the atomic writer, so the
+        # deliverables/ directory may not exist yet — create it explicitly.
+        readme_path.parent.mkdir(parents=True, exist_ok=True)
         readme_path.write_text(content, encoding="utf-8")
 
         return readme_path
@@ -87,24 +92,25 @@ Image Type: {self.config.image_type}{grid_info}"""
 
 ```
 output_folder/
-+-- results/                      # All dataset results
++-- deliverables/                     # User-facing run outputs
+|   +-- master_measurements.csv       # Aggregated measurements (all datasets)
+|   +-- measurements.csv              # Editable copy used by the GUI results viewer (refreshed on every run)
+|   +-- measurements.parquet          # Parquet companion of measurements.csv
+|   +-- pipeline.json                 # Reproducibility spec (operations + filters + model)
+|   +-- analysis.csv                  # Model-fit output (only when pipeline has a `model` configured)
+|   +-- analysis.parquet              # Parquet companion of analysis.csv
+|   +-- dashboard.html                # Live processing dashboard
+|   +-- analysis.html                 # Analysis & visualization
+|   +-- processing_report.html        # HTML summary report
+|   +-- README.md                     # This file
++-- results/                          # All dataset results
 {dataset_list}
-|       +-- hdf/                  # Processed images as single .h5 per input (layers + metadata + grid state)
-|       +-- measurements/         # Per-image Parquet measurement files
-|       +-- overlays/             # Detection overlay PNGs (one per input image)
-+-- dashboard.html                # Live processing dashboard
-+-- analysis.html                 # Analysis & visualization
-+-- master_measurements.csv       # Aggregated measurements (all datasets)
-+-- measurements.csv              # Editable copy used by the GUI results viewer (refreshed on every run)
-+-- measurements.parquet          # Parquet companion of measurements.csv
-+-- pipeline.json                 # Reproducibility spec (operations + filters + model)
-+-- analysis.csv                  # Model-fit output (only when pipeline has a `model` configured)
-+-- analysis.parquet              # Parquet companion of analysis.csv
-+-- processing_state.json         # Resume/state tracking
-+-- processing_report.html        # HTML summary report
-+-- logs/                         # Execution logs
-|   +-- slurm/                    # SLURM job logs (if applicable)
-+-- README.md                     # This file
+|       +-- hdf/                      # Processed images as single .h5 per input (layers + metadata + grid state)
+|       +-- measurements/             # Per-image Parquet measurement files
+|       +-- overlays/                 # Detection overlay PNGs (one per input image)
++-- processing_state.json             # Resume/state tracking
++-- logs/                             # Execution logs
+|   +-- slurm/                        # SLURM job logs (if applicable)
 ```"""
 
     def _generate_layers_section(self) -> str:

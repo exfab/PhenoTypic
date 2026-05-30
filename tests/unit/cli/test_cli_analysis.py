@@ -16,6 +16,11 @@ import pytest
 
 from phenotypic import ImagePipeline
 from phenotypic.analysis import LogGrowthModel, TukeyOutlierRemover
+from phenotypic.tools_ import (
+    analysis_csv_path,
+    analysis_parquet_path,
+    pipeline_json_path,
+)
 from phenotypic._cli._cli_output_manager import (
     _emit_analysis_outputs,
     _load_pipeline_from_output_dir,
@@ -55,7 +60,7 @@ class TestPersistPipelineJson:
     def test_writes_pipeline_json_to_output_dir(self, tmp_path: Path) -> None:
         pipeline = ImagePipeline(name="canonical-pipeline")
         target = _persist_pipeline_to_output_dir(tmp_path, pipeline)
-        assert target == tmp_path / "pipeline.json"
+        assert target == pipeline_json_path(tmp_path)
         assert target.exists()
 
     def test_round_trip_via_load_pipeline_from_output_dir(
@@ -82,8 +87,8 @@ class TestEmitAnalysisOutputs:
         master = _synthetic_growth_master()
         result = _emit_analysis_outputs(tmp_path, master, ImagePipeline())
         assert result is None
-        assert not (tmp_path / "analysis.csv").exists()
-        assert not (tmp_path / "analysis.parquet").exists()
+        assert not analysis_csv_path(tmp_path).exists()
+        assert not analysis_parquet_path(tmp_path).exists()
 
     def test_writes_csv_and_parquet_when_model_configured(
         self, tmp_path: Path
@@ -100,10 +105,10 @@ class TestEmitAnalysisOutputs:
         result = _emit_analysis_outputs(tmp_path, master, pipeline)
         assert result is not None
         path, n_rows = result
-        assert path == tmp_path / "analysis.parquet"
+        assert path == analysis_parquet_path(tmp_path)
         assert n_rows > 0
-        assert (tmp_path / "analysis.csv").exists()
-        assert (tmp_path / "analysis.parquet").exists()
+        assert analysis_csv_path(tmp_path).exists()
+        assert analysis_parquet_path(tmp_path).exists()
         assert pl.read_parquet(path).height == n_rows
 
     def test_filter_chain_runs_before_model(self, tmp_path: Path) -> None:
@@ -125,7 +130,7 @@ class TestEmitAnalysisOutputs:
         )
         result = _emit_analysis_outputs(tmp_path, master, pipeline)
         assert result is not None
-        loaded = pl.read_parquet(tmp_path / "analysis.parquet")
+        loaded = pl.read_parquet(analysis_parquet_path(tmp_path))
         # One fit per strain group.
         assert loaded.height <= master["Metadata_Strain"].n_unique()
         assert loaded.height > 0
@@ -143,8 +148,8 @@ class TestEmitAnalysisOutputs:
         )
         result = _emit_analysis_outputs(tmp_path, master, pipeline)
         assert result is None
-        assert not (tmp_path / "analysis.csv").exists()
-        assert not (tmp_path / "analysis.parquet").exists()
+        assert not analysis_csv_path(tmp_path).exists()
+        assert not analysis_parquet_path(tmp_path).exists()
 
 
 class TestLoadPipelinePrefersCanonical:

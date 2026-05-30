@@ -41,6 +41,8 @@ from typing import Iterator
 
 import pytest
 
+from phenotypic.gui._config import DELIVERABLES_DIRNAME
+
 if os.environ.get("PLAYWRIGHT") != "1":
     pytest.skip(
         "Set PLAYWRIGHT=1 to run browser E2E tests "
@@ -54,8 +56,8 @@ if os.environ.get("PLAYWRIGHT") != "1":
 # ---------------------------------------------------------------------------
 
 def _write_sample_dashboard(output_dir: Path) -> None:
-    """Generate a real ``dashboard.html`` (with the postMessage hook) in
-    ``output_dir`` so the iframe assertion has live HTML to load."""
+    """Generate a real ``dashboard.html`` (with the postMessage hook) under
+    ``output_dir/deliverables/`` so the iframe assertion has live HTML to load."""
     from phenotypic._cli._dashboard._generator import generate_dashboard
 
     generate_dashboard(output_dir, execution_mode="local")
@@ -76,10 +78,11 @@ def _build_sandbox(parent_dir: Path) -> Path:
                     image.tif
                 results/
                     CliOutputExample/
-                        master_measurements.parquet
+                        deliverables/
+                            master_measurements.parquet
+                            dashboard.html
                         results/
                             Run_0/
-                        dashboard.html
                         progress/
                             manifest.json
 
@@ -95,10 +98,12 @@ def _build_sandbox(parent_dir: Path) -> Path:
     (plate / "image.tif").write_bytes(b"")
 
     # CLI output dir under ``results/``. The classifier checks for
-    # master_measurements.parquet + a ``results/`` subdir.
+    # deliverables/master_measurements.parquet + a ``results/`` subdir.
     output_dir = sandbox / "results" / "CliOutputExample"
     output_dir.mkdir(parents=True)
-    (output_dir / "master_measurements.parquet").write_bytes(b"")
+    deliverables = output_dir / DELIVERABLES_DIRNAME
+    deliverables.mkdir()
+    (deliverables / "master_measurements.parquet").write_bytes(b"")
     (output_dir / "results").mkdir()  # the inner results/ subdir
     (output_dir / "results" / "Run_0").mkdir()
 

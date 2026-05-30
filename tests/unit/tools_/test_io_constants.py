@@ -42,6 +42,7 @@ from phenotypic.tools_ import (
     dataset_overlays_dir,
     dataset_results_dir,
     default_output_dir_name,
+    deliverables_dir,
     event_log_path,
     job_metadata_path,
     manifest_json_path,
@@ -53,6 +54,7 @@ from phenotypic.tools_ import (
     pipeline_json_path,
     processing_state_path,
     progress_dir,
+    readme_md_path,
     resolve_execution_mode,
     results_dir,
     shard_parquet_filename,
@@ -236,22 +238,25 @@ class TestPathHelpers:
         assert processing_state_path(output) == output / "processing_state.json"
 
     def test_master_measurements_paths(self, output: Path) -> None:
-        assert master_measurements_csv_path(output) == output / "master_measurements.csv"
-        assert master_measurements_parquet_path(output) == output / "master_measurements.parquet"
+        deliv = output / "deliverables"
+        assert master_measurements_csv_path(output) == deliv / "master_measurements.csv"
+        assert master_measurements_parquet_path(output) == deliv / "master_measurements.parquet"
 
     def test_measurements_mirror_paths(self, output: Path) -> None:
-        assert measurements_csv_path(output) == output / "measurements.csv"
-        assert measurements_parquet_path(output) == output / "measurements.parquet"
+        deliv = output / "deliverables"
+        assert measurements_csv_path(output) == deliv / "measurements.csv"
+        assert measurements_parquet_path(output) == deliv / "measurements.parquet"
 
     def test_analysis_paths(self, output: Path) -> None:
-        assert analysis_csv_path(output) == output / "analysis.csv"
-        assert analysis_parquet_path(output) == output / "analysis.parquet"
+        deliv = output / "deliverables"
+        assert analysis_csv_path(output) == deliv / "analysis.csv"
+        assert analysis_parquet_path(output) == deliv / "analysis.parquet"
 
     def test_pipeline_json_path(self, output: Path) -> None:
-        assert pipeline_json_path(output) == output / "pipeline.json"
+        assert pipeline_json_path(output) == output / "deliverables" / "pipeline.json"
 
     def test_dashboard_html_path(self, output: Path) -> None:
-        assert dashboard_html_path(output) == output / "dashboard.html"
+        assert dashboard_html_path(output) == output / "deliverables" / "dashboard.html"
 
     def test_progress_sidecar_paths(self, output: Path) -> None:
         assert job_metadata_path(output) == output / "progress" / "job_metadata.json"
@@ -264,7 +269,9 @@ class TestPathHelpers:
         assert dataset_overlays_dir(output, "ds1") == output / "results" / "ds1" / "overlays"
 
     def test_measurements_by_feature_dir(self, output: Path) -> None:
-        assert measurements_by_feature_dir(output) == output / "measurements_by_feature"
+        assert measurements_by_feature_dir(output) == (
+            output / "deliverables" / "measurements_by_feature"
+        )
 
     def test_task_status_path(self, output: Path) -> None:
         assert task_status_path(output, 3) == (
@@ -312,12 +319,89 @@ class TestPathHelpers:
 
         assert logs_dir(output) == output / "logs"
         assert slurm_scripts_dir(output) == output / "slurm_scripts"
-        assert analysis_html_path(output) == output / "analysis.html"
-        assert processing_report_html_path(output) == output / "processing_report.html"
+        assert analysis_html_path(output) == output / "deliverables" / "analysis.html"
+        assert processing_report_html_path(output) == (
+            output / "deliverables" / "processing_report.html"
+        )
         assert failures_jsonl_path(output) == output / "progress" / "failures.jsonl"
         assert chunk_manifest_path(output) == output / "progress" / "chunk_manifest.json"
         assert chunk_state_path(output) == output / "progress" / "chunk_state.json"
         assert overlay_manifest_path(output) == output / "progress" / "overlay_manifest.json"
+
+
+# ---------------------------------------------------------------------------
+# Deliverables layout — the user-facing-output folder cutover
+# ---------------------------------------------------------------------------
+
+
+class TestDeliverablesLayout:
+    """All user-facing CLI outputs root under ``<output>/deliverables/``.
+
+    These tests pin the hard cutover: every moved artifact helper composes
+    from :func:`deliverables_dir`, while per-image (``results/``) and
+    run-state (``processing_state.json``) helpers stay at the output root.
+    """
+
+    @pytest.fixture
+    def output(self) -> Path:
+        return Path("/tmp/pht_run")
+
+    def test_deliverables_dir(self, output: Path) -> None:
+        assert deliverables_dir(output) == output / "deliverables"
+
+    def test_readme_md_path(self, output: Path) -> None:
+        assert readme_md_path(output) == output / "deliverables" / "README.md"
+
+    def test_all_moved_helpers_root_under_deliverables(self, output: Path) -> None:
+        """Every relocated artifact helper resolves under ``deliverables_dir``.
+
+        The day someone reintroduces a root-level write for one of these,
+        this loop fails and points at the offending helper by name.
+        """
+        deliv = deliverables_dir(output)
+        moved = {
+            "master_measurements_csv_path": master_measurements_csv_path,
+            "master_measurements_parquet_path": master_measurements_parquet_path,
+            "measurements_csv_path": measurements_csv_path,
+            "measurements_parquet_path": measurements_parquet_path,
+            "measurements_by_feature_dir": measurements_by_feature_dir,
+            "analysis_csv_path": analysis_csv_path,
+            "analysis_parquet_path": analysis_parquet_path,
+            "dashboard_html_path": dashboard_html_path,
+            "pipeline_json_path": pipeline_json_path,
+            "readme_md_path": readme_md_path,
+        }
+        # analysis_html / processing_report_html are imported function-locally
+        from phenotypic.tools_ import (
+            analysis_html_path,
+            processing_report_html_path,
+        )
+
+        moved["analysis_html_path"] = analysis_html_path
+        moved["processing_report_html_path"] = processing_report_html_path
+
+        for name, helper in moved.items():
+            resolved = helper(output)
+            assert resolved.parent == deliv or resolved == deliv, (
+                f"{name} -> {resolved} is not under {deliv}"
+            )
+            # Belt-and-suspenders: deliverables_dir is an ancestor.
+            assert deliv in resolved.parents or resolved.parent == deliv, (
+                f"{name} -> {resolved} does not nest under {deliv}"
+            )
+
+    def test_per_image_and_state_helpers_stay_at_root(self, output: Path) -> None:
+        """``results/`` and ``processing_state.json`` are NOT deliverables."""
+        assert results_dir(output) == output / "results"
+        assert dataset_measurements_dir(output, "ds1") == (
+            output / "results" / "ds1" / "measurements"
+        )
+        assert dataset_overlays_dir(output, "ds1") == output / "results" / "ds1" / "overlays"
+        assert processing_state_path(output) == output / "processing_state.json"
+        # None of these touch the deliverables folder.
+        deliv = deliverables_dir(output)
+        assert deliv not in results_dir(output).parents
+        assert deliv not in processing_state_path(output).parents
 
 
 # ---------------------------------------------------------------------------

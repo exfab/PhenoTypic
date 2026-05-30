@@ -27,6 +27,7 @@ from phenotypic import ImagePipeline
 from phenotypic.analysis import ExpectedVsDetectedCount, ReplicateAgreement
 from phenotypic.qc._recipe import QcRecipeEntry
 from phenotypic.qc._runner import run_qc
+from phenotypic.tools_ import measurements_parquet_path
 
 
 def _measurements() -> pd.DataFrame:
@@ -232,7 +233,7 @@ class TestPurity:
         self, tmp_path: Path, layout_csv: Path
     ) -> None:
         run_qc(_measurements(), _pipeline(layout_csv), tmp_path)
-        assert not (tmp_path / "measurements.parquet").exists()
+        assert not measurements_parquet_path(tmp_path).exists()
 
 
 class TestTolerance:

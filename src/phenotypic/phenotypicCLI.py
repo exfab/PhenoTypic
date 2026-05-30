@@ -186,12 +186,12 @@ from phenotypic.tools_ import (
     DIR_RECOMPILE,
     JOB_METADATA_JSON,
     PROCESSING_STATE_JSON,
-    MEASUREMENTS_PARQUET,
     RECOMPILE_TASK_MANIFEST_JSON,
     JobMetadataKey,
     dashboard_html_path,
     dataset_measurements_dir,
     load_image_from_hdf,
+    measurements_parquet_path,
     processing_report_html_path,
 )
 from phenotypic.tools_.typing_ import ImageTypeName
@@ -1763,7 +1763,7 @@ def _handle_recompile(
         # external metadata join) so dashboard sidecars match what the
         # GUI viewer and per-feature splits see. The master archive is
         # intentionally metadata-free.
-        mirror_path = output_dir / MEASUREMENTS_PARQUET
+        mirror_path = measurements_parquet_path(output_dir)
         merged_df: Optional[pl.DataFrame] = None
         if mirror_path.exists():
             try:

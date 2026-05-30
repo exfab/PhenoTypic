@@ -28,6 +28,7 @@ import polars as pl
 import pytest
 from playwright.sync_api import Page
 
+from tests._output_layout import write_master, write_measurements_mirror
 from tests.e2e.gui.conftest import _build_sandbox, _start_live_server
 
 
@@ -85,8 +86,8 @@ def _seed_master_df_in_output(sandbox: Path, df: pl.DataFrame) -> Path:
     Returns the absolute CLI output directory.
     """
     cli_out = sandbox / "results" / _OUTPUT_NAME
-    df.write_parquet(cli_out / "master_measurements.parquet")
-    df.write_parquet(cli_out / "measurements.parquet")
+    write_master(cli_out, df)
+    write_measurements_mirror(cli_out, df)
     dataset_dir = cli_out / "results" / "ds1"
     overlays = dataset_dir / "overlays"
     overlays.mkdir(parents=True, exist_ok=True)

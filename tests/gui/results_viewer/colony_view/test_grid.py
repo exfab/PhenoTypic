@@ -26,6 +26,8 @@ from phenotypic.gui.results_viewer.colony_view._grid import (
     selectable_axis_columns,
 )
 
+from tests._output_layout import write_master
+
 
 # -------------------------------------------------------------------------
 # selectable_axis_columns
@@ -209,7 +211,7 @@ def _make_output_root(tmp_path: Path) -> OutputRoot:
     # without crashing. Use the minimum: master parquet + an overlays dir
     # for the "plate1" dataset (we don't need actual PNGs here).
     (tmp_path / "results" / "plate1" / "overlays").mkdir(parents=True)
-    master.write_parquet(tmp_path / "master_measurements.parquet")
+    write_master(tmp_path, master)
     return OutputRoot.discover(tmp_path)
 
 
@@ -290,7 +292,7 @@ def _make_output_root_with_overlays(tmp_path: Path) -> OutputRoot:
     overlays.mkdir(parents=True)
     for stem in ("img-001", "img-002"):
         PILImage.new("RGB", (64, 64), (200, 0, 0)).save(overlays / f"{stem}.png")
-    master.write_parquet(tmp_path / "master_measurements.parquet")
+    write_master(tmp_path, master)
     return OutputRoot.discover(tmp_path)
 
 

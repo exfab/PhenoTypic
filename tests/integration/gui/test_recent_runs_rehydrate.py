@@ -17,6 +17,7 @@ from pathlib import Path
 
 import pytest
 
+from phenotypic.gui._config import DELIVERABLES_DIRNAME
 from phenotypic.gui.run_console._recent_runs import (
     RecentRunRow,
     scan_recent_runs,
@@ -40,7 +41,11 @@ def _make_run(
     """Build a fake CLI-output directory under ``root``."""
     out = root / name
     out.mkdir(parents=True, exist_ok=True)
-    (out / "master_measurements.parquet").write_bytes(b"")
+    # User-facing deliverables live under ``out/deliverables/``; ``results/``
+    # and ``progress/`` stay at the run root.
+    deliverables = out / DELIVERABLES_DIRNAME
+    deliverables.mkdir(exist_ok=True)
+    (deliverables / "master_measurements.parquet").write_bytes(b"")
     (out / "results").mkdir(exist_ok=True)
     progress = out / "progress"
     progress.mkdir(exist_ok=True)
@@ -53,7 +58,7 @@ def _make_run(
         "total_images": total,
     }))
     if has_dashboard:
-        (out / "dashboard.html").write_text("<html/>")
+        (deliverables / "dashboard.html").write_text("<html/>")
     if mtime_offset_seconds:
         new_mtime = time.time() + mtime_offset_seconds
         os.utime(out, (new_mtime, new_mtime))

@@ -19,10 +19,10 @@ The loop:
 
 ## Prerequisites
 
-- A finished CLI run with `master_measurements.parquet` + the post-
-  applied `measurements.parquet` mirror under
-  `<output>/measurements.parquet`. See [Run Locally](04_run_local.md)
-  to produce one.
+- A finished CLI run with `deliverables/master_measurements.parquet` +
+  the post-applied `deliverables/measurements.parquet` mirror under
+  `<output>/deliverables/measurements.parquet`. See
+  [Run Locally](04_run_local.md) to produce one.
 - A `metadata.csv` describing the expected plate layout if you plan to
   configure `ExpectedVsDetectedCount` (its `groupby` columns must
   resolve against the master measurements schema).

@@ -17,6 +17,10 @@ import pytest
 from click.testing import CliRunner
 
 from phenotypic._cli._cli_utils import resolve_local_worker_count
+from phenotypic.tools_ import (
+    master_measurements_csv_path,
+    measurements_parquet_path,
+)
 from phenotypic.phenotypicCLI import (
     _handle_recompile,
     _regenerate_missing_overlays,
@@ -137,10 +141,11 @@ class TestHandleRecompile:
             # and the post-applied mirror (via ``finalize_post_master_outputs``).
             # Analysis plugins consume the mirror so they see the post-applied
             # frame plus any joined external metadata.
-            master = output_dir / "master_measurements.csv"
+            master = master_measurements_csv_path(output_dir)
+            master.parent.mkdir(parents=True, exist_ok=True)
             master.write_text("col_a\n1\n", encoding="utf-8")
             pl.DataFrame({"col_a": [1], "Metadata_Strain": ["WT"]}).write_parquet(
-                output_dir / "measurements.parquet"
+                measurements_parquet_path(output_dir)
             )
             return master
 
@@ -289,7 +294,8 @@ class TestRegenerateMissingOverlays:
         output_dir = _make_fake_results(tmp_path)
 
         def _fake_aggregate(**_kwargs: object) -> Path:
-            master = output_dir / "master_measurements.csv"
+            master = master_measurements_csv_path(output_dir)
+            master.parent.mkdir(parents=True, exist_ok=True)
             master.write_text("col_a\n1\n", encoding="utf-8")
             return master
 

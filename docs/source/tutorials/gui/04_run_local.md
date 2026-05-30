@@ -53,10 +53,10 @@ While the subprocess is alive:
 
 - The log tail polls the ring buffer on a short interval. Lines arrive in
   order with stderr merged in.
-- Once the CLI writes `<output_dir>/dashboard.html`, the iframe panel
-  points at `/runs/<rel>/dashboard.html` and the live dashboard renders
-  inside the run console — same dashboard you'd open standalone, just
-  iframed.
+- Once the CLI writes `<output_dir>/deliverables/dashboard.html`, the
+  iframe panel points at `/runs/<rel>/deliverables/dashboard.html` and the
+  live dashboard renders inside the run console — same dashboard you'd open
+  standalone, just iframed.
 - Only one local run can be active at a time; the `Run` button stays
   disabled until the current run exits or you click `Cancel` (which
   sends SIGTERM, then SIGKILL after a 10-second grace period).
@@ -77,8 +77,8 @@ indicator. Clicking a row re-points the iframe at that run's dashboard
 so you can re-visit historical results without leaving the page.
 
 The status comes from `<output_dir>/progress/manifest.json`; the dashboard
-indicator is true when `dashboard.html` is present. The hub registers a
-`/runs/<rel>/<file>` route on the shell's Flask server so the iframe URLs
-work regardless of which tab is currently active.
+indicator is true when `deliverables/dashboard.html` is present. The hub
+registers a `/runs/<rel>/<file>` route on the shell's Flask server so the
+iframe URLs work regardless of which tab is currently active.
 
 For SLURM submissions, see [Run on SLURM](05_run_slurm.md).

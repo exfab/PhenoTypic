@@ -30,6 +30,9 @@ from phenotypic.gui.analysis._callbacks import _resolve_preview_node
 from phenotypic.gui.analysis._plot_controls import collect_plot_kwargs
 from phenotypic.gui.analysis._render import render_plot
 from phenotypic.gui.results_viewer._output_root import OutputRoot
+from phenotypic.tools_ import measurements_parquet_path
+
+from tests._output_layout import write_master, write_measurements_mirror, write_pipeline_json
 
 
 def _walk(component: Any) -> Iterator[Any]:
@@ -69,8 +72,8 @@ def _logistic_growth_frame() -> pl.DataFrame:
 def output_root(tmp_path: Path) -> OutputRoot:
     """CLI-shaped output root with a filter + model already configured."""
     df = _logistic_growth_frame()
-    df.write_parquet(tmp_path / "master_measurements.parquet")
-    df.write_parquet(tmp_path / "measurements.parquet")
+    write_master(tmp_path, df)
+    write_measurements_mirror(tmp_path, df)
     (tmp_path / "results" / "ds1").mkdir(parents=True)
 
     pipeline = ImagePipeline(name="t")
@@ -88,7 +91,7 @@ def output_root(tmp_path: Path) -> OutputRoot:
             time_label="Metadata_Time",
         )
     )
-    (tmp_path / "pipeline.json").write_text(pipeline.to_json() or "")
+    write_pipeline_json(tmp_path, pipeline)
     return OutputRoot.discover(tmp_path)
 
 
@@ -145,12 +148,10 @@ class TestPlotControlsInLayout:
     ) -> None:
         # A pipeline with only a post op -> no plot-param widgets at all.
         df = _logistic_growth_frame()
-        df.write_parquet(tmp_path / "master_measurements.parquet")
-        df.write_parquet(tmp_path / "measurements.parquet")
+        write_master(tmp_path, df)
+        write_measurements_mirror(tmp_path, df)
         (tmp_path / "results" / "ds1").mkdir(parents=True)
-        (tmp_path / "pipeline.json").write_text(
-            ImagePipeline(name="t").to_json() or ""
-        )
+        write_pipeline_json(tmp_path, ImagePipeline(name="t"))
         app = create_app(output_root=OutputRoot.discover(tmp_path))
         assert _ids_of_type(app.layout, "analysis-plot-param") == []
 
@@ -199,7 +200,7 @@ class TestPreviewFlow:
         node = _resolve_preview_node(recipe, "model", 0)
         assert node is not None
 
-        frame = pd.read_parquet(Path(output_root.root) / "measurements.parquet")
+        frame = pd.read_parquet(measurements_parquet_path(Path(output_root.root)))
         node.analyze(frame)
         kwargs = collect_plot_kwargs("model", 0, node, {"model-0-cmap": "viridis"})
         component = render_plot(node, **kwargs)
@@ -217,7 +218,7 @@ class TestPreviewFlow:
             groupby=["Metadata_Strain"],
             time_label="Metadata_Time",
         )
-        frame = pd.read_parquet(Path(output_root.root) / "measurements.parquet")
+        frame = pd.read_parquet(measurements_parquet_path(Path(output_root.root)))
         model.analyze(frame)
         kwargs = collect_plot_kwargs(
             "model", 0, model, {"model-0-cmap": "definitely-not-a-colormap"}

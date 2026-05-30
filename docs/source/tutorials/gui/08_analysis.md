@@ -3,7 +3,8 @@
 The `Analysis` tab composes the `phenotypic.analysis` chain — filters
 plus an endpoint model — over the curated measurements produced by a
 CLI run. Recipes are persisted as fields on the pipeline itself
-(`pipeline.json` next to `master_measurements.parquet`), so the same
+(`deliverables/pipeline.json`, next to
+`deliverables/master_measurements.parquet`), so the same
 chain re-runs deterministically from the CLI when you `--recompile`.
 
 
@@ -34,7 +35,7 @@ long-running fits where you don't need the rest of the hub:
   `ExpandMetadata`, `MergeMetadata`). The recompile banner reminds you
   that post edits change per-image measurement and require a CLI re-run
   (`python -m phenotypic --recompile <output>`) to reach
-  `master_measurements.parquet`.
+  `deliverables/master_measurements.parquet`.
 - **Author the filter chain**: pick a class from the "Add filter…"
   dropdown (`EdgeCorrector`, `TukeyOutlierRemover`). Filters reshape the
   aggregate measurements during analysis — they don't touch the master.
@@ -46,11 +47,12 @@ long-running fits where you don't need the rest of the hub:
   switches, numerics become number inputs, `Literal[...]` becomes a
   dropdown, and multi-type unions (e.g. `LinearSoftplus.s0_prior`)
   render as a small type-tag dropdown plus an adaptive value input.
-  Edits save to `<output>/pipeline.json` automatically.
+  Edits save to `<output>/deliverables/pipeline.json` automatically.
 - **Run analysis**: click `Run analysis`. The sub-app reads
-  `<output>/measurements.parquet` (the curated mirror), runs the chain
-  via `pipeline.analyze(...)`, and writes `<output>/analysis.csv` and
-  `<output>/analysis.parquet` next to the master.
+  `<output>/deliverables/measurements.parquet` (the curated mirror), runs
+  the chain via `pipeline.analyze(...)`, and writes
+  `<output>/deliverables/analysis.csv` and
+  `<output>/deliverables/analysis.parquet` next to the master.
 
 ## Loaded state
 
@@ -64,7 +66,8 @@ Each section card is a fully editable form generated from the
 analyzer's constructor signature. Bools become switches, numerics
 become number inputs, `Literal[...]` becomes a dropdown, and
 `list[T]` / `tuple[T, ...]` become comma-separated text inputs.
-Editing any value persists to `<output>/pipeline.json` automatically:
+Editing any value persists to `<output>/deliverables/pipeline.json`
+automatically:
 
 ![Filter section with editable parameter form.](../../_static/gui_images/analysis/03_filter_section_with_form.png)
 
@@ -81,15 +84,15 @@ kwargs when on:
 ## CLI parity
 
 Every section you author from the GUI is persisted to
-`<output>/pipeline.json`. A subsequent `python -m phenotypic --recompile
-<output>` run reads that file and emits the same `analysis.{csv,parquet}`
-without booting the GUI — so `pipeline.json` is the single
-reproducibility surface.
+`<output>/deliverables/pipeline.json`. A subsequent
+`python -m phenotypic --recompile <output>` run reads that file and emits
+the same `deliverables/analysis.{csv,parquet}` without booting the GUI —
+so `deliverables/pipeline.json` is the single reproducibility surface.
 
 ## Where to next
 
 - [GUI hub guide](../../how_to/pages/gui_hub.md) — the full reference for the hub.
 - [Run Locally](04_run_local.md) — produce a CLI output before opening
   the analysis sub-app.
-- [View Results](06_view_results.md) — curate `measurements.parquet`
-  before running analysis.
+- [View Results](06_view_results.md) — curate
+  `deliverables/measurements.parquet` before running analysis.

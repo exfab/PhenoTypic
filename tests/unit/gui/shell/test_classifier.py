@@ -21,11 +21,27 @@ from pathlib import Path
 
 import pytest
 
+from phenotypic.gui._config import DELIVERABLES_DIRNAME
 from phenotypic.gui.shell._classifier import (
     Capabilities,
     classify,
     invalidate_cache,
 )
+
+
+def _seed_deliverables_cli_output(root: Path, *, dashboard: bool = False) -> None:
+    """Write the NESTED CLI-output layout under ``root``.
+
+    ``master_measurements.parquet`` (and optionally ``dashboard.html``) go
+    INTO ``root/deliverables/``; ``results/`` stays at the root. This is the
+    only layout the classifier recognizes after the hard cutover.
+    """
+    deliverables = root / DELIVERABLES_DIRNAME
+    deliverables.mkdir(parents=True, exist_ok=True)
+    (deliverables / "master_measurements.parquet").write_bytes(b"")
+    if dashboard:
+        (deliverables / "dashboard.html").write_text("<html/>")
+    (root / "results").mkdir(exist_ok=True)
 
 
 @pytest.fixture(autouse=True)
@@ -71,36 +87,59 @@ def test_image_extension_case_insensitive(tmp_path: Path) -> None:
 
 
 def test_cli_output_directory(tmp_path: Path) -> None:
-    (tmp_path / "master_measurements.parquet").write_bytes(b"")
-    (tmp_path / "results").mkdir()
+    """NESTED layout: master parquet under deliverables/, results/ at root."""
+    _seed_deliverables_cli_output(tmp_path, dashboard=True)
     caps = classify(tmp_path)
     assert caps.is_cli_output is True
+    assert caps.has_dashboard is True
     assert caps.is_image_dir is False
-    assert caps.has_dashboard is False
 
 
 def test_cli_output_requires_both_markers(tmp_path: Path) -> None:
-    """Master without results/, or vice versa, is not a CLI output dir."""
-    (tmp_path / "master_measurements.parquet").write_bytes(b"")
+    """deliverables/master without results/, or vice versa, is not a CLI output."""
+    deliverables = tmp_path / DELIVERABLES_DIRNAME
+    deliverables.mkdir()
+    (deliverables / "master_measurements.parquet").write_bytes(b"")
     caps = classify(tmp_path)
     assert caps.is_cli_output is False
 
     invalidate_cache()
-    (tmp_path / "master_measurements.parquet").unlink()
+    (deliverables / "master_measurements.parquet").unlink()
     (tmp_path / "results").mkdir()
     caps = classify(tmp_path)
     assert caps.is_cli_output is False
 
 
-def test_dashboard_flagged(tmp_path: Path) -> None:
+def test_legacy_root_layout_not_recognized(tmp_path: Path) -> None:
+    """Hard cutover: master + dashboard at the ROOT (legacy) is NOT a CLI output.
+
+    After deliverables/ became the only recognized location, a directory
+    that still has ``master_measurements.parquet`` + ``dashboard.html`` at
+    the output root (plus ``results/``) must classify as neither a CLI
+    output nor as having a dashboard.
+    """
+    (tmp_path / "master_measurements.parquet").write_bytes(b"")
     (tmp_path / "dashboard.html").write_text("<html/>")
+    (tmp_path / "results").mkdir()
+    caps = classify(tmp_path)
+    assert caps.is_cli_output is False
+    assert caps.has_dashboard is False
+
+
+def test_dashboard_flagged(tmp_path: Path) -> None:
+    """``has_dashboard`` reads ``deliverables/dashboard.html``."""
+    deliverables = tmp_path / DELIVERABLES_DIRNAME
+    deliverables.mkdir()
+    (deliverables / "dashboard.html").write_text("<html/>")
     caps = classify(tmp_path)
     assert caps.has_dashboard is True
 
 
 def test_mixed_images_and_dashboard(tmp_path: Path) -> None:
     (tmp_path / "plate.tif").write_bytes(b"")
-    (tmp_path / "dashboard.html").write_text("<html/>")
+    deliverables = tmp_path / DELIVERABLES_DIRNAME
+    deliverables.mkdir()
+    (deliverables / "dashboard.html").write_text("<html/>")
     caps = classify(tmp_path)
     assert caps.is_image_dir is True
     assert caps.image_count == 1

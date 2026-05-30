@@ -18,16 +18,18 @@ from PIL import Image as PILImage
 from phenotypic.gui.results_viewer._app import create_app
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 
+from tests._output_layout import write_master
+
 
 @pytest.fixture()
 def app_client(tmp_path: Path):
     """Build a minimal output dir + Dash app and return the Flask test client.
 
     Lays out:
-      <tmp>/master_measurements.parquet           (1 colony in dataset 'd1')
-      <tmp>/results/d1/overlays/img-1.png         (uniform red 100×100 PNG)
+      <tmp>/deliverables/master_measurements.parquet  (1 colony in dataset 'd1')
+      <tmp>/results/d1/overlays/img-1.png             (uniform red 100×100 PNG)
     """
-    # 1. master_measurements.parquet
+    # 1. master_measurements.parquet (under deliverables/)
     master = pl.DataFrame(
         {
             "Metadata_Dataset": ["d1"],
@@ -41,7 +43,7 @@ def app_client(tmp_path: Path):
             "Bbox_MaxCC": [60],
         }
     )
-    master.write_parquet(tmp_path / "master_measurements.parquet")
+    write_master(tmp_path, master)
 
     # 2. overlay PNG
     overlay_dir = tmp_path / "results" / "d1" / "overlays"

@@ -37,8 +37,8 @@ from typing import Callable, Iterable
 
 import polars as pl
 
-from phenotypic.gui._config import MEASUREMENTS_CSV, MEASUREMENTS_PARQUET
 from phenotypic.schema import OBJECT
+from phenotypic.tools_ import measurements_csv_path, measurements_parquet_path
 
 logger = logging.getLogger(__name__)
 
@@ -226,8 +226,8 @@ class FilteredMeasurements:
                 friendly message rather than letting polars' own
                 ``ColumnNotFoundError`` bubble up at viewer-boot time.
         """
-        parquet_path = root / MEASUREMENTS_PARQUET
-        csv_path = root / MEASUREMENTS_CSV
+        parquet_path = measurements_parquet_path(root)
+        csv_path = measurements_csv_path(root)
 
         # Validate up front so a bad master surfaces at boot, not on the
         # first user click.

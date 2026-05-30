@@ -22,12 +22,19 @@ from phenotypic.analysis import ReplicateAgreement
 from phenotypic.detect import OtsuDetector
 from phenotypic.measure import MeasureShape
 from phenotypic.qc._recipe import QcRecipe, QcRecipeEntry
+from phenotypic.tools_ import pipeline_json_path
 
 
 def _seed_pipeline_json(output_dir: Path) -> Path:
-    """Write a pipeline.json with ops + meas (no qc) and return its path."""
+    """Write a pipeline.json with ops + meas (no qc) and return its path.
+
+    ``pipeline.json`` is a user-facing deliverable, so it lives under
+    ``<output_dir>/deliverables/`` (via :func:`pipeline_json_path`), which is
+    exactly where ``QcRecipe.load`` reads it from.
+    """
     pipe = ImagePipeline(ops=[OtsuDetector()], meas=[MeasureShape()])
-    path = output_dir / "pipeline.json"
+    path = pipeline_json_path(output_dir)
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(pipe.to_json() or "")
     return path
 
@@ -72,7 +79,7 @@ class TestScopedReadModifyWrite:
         recipe = QcRecipe.load(tmp_path)  # no pipeline.json yet
         iid = recipe.add(ReplicateAgreement, _se_params())
 
-        doc = json.loads((tmp_path / "pipeline.json").read_text())
+        doc = json.loads(pipeline_json_path(tmp_path).read_text())
         assert [e["instance_id"] for e in doc["qc"]] == [iid]
 
 
@@ -166,7 +173,7 @@ class TestSidecarMigration:
         migrated = QcRecipe.migrate_from_sidecar(tmp_path)
 
         assert migrated is True
-        doc = json.loads((tmp_path / "pipeline.json").read_text())
+        doc = json.loads(pipeline_json_path(tmp_path).read_text())
         assert [e["instance_id"] for e in doc["qc"]] == ["qc-SE-legacy01"]
         # Sidecar retired so it is not folded again.
         assert not sidecar.exists()
@@ -179,7 +186,7 @@ class TestSidecarMigration:
         assert QcRecipe.migrate_from_sidecar(tmp_path) is True
         # Second call: sidecar already retired -> no-op.
         assert QcRecipe.migrate_from_sidecar(tmp_path) is False
-        doc = json.loads((tmp_path / "pipeline.json").read_text())
+        doc = json.loads(pipeline_json_path(tmp_path).read_text())
         assert len(doc["qc"]) == 1
 
     def test_migration_never_overwrites_existing_qc(
@@ -195,11 +202,13 @@ class TestSidecarMigration:
                 enabled=True,
             )],
         )
-        (tmp_path / "pipeline.json").write_text(pipe.to_json() or "")
+        pj = pipeline_json_path(tmp_path)
+        pj.parent.mkdir(parents=True, exist_ok=True)
+        pj.write_text(pipe.to_json() or "")
         sidecar = self._write_sidecar(tmp_path, "qc-SE-legacy01")
 
         assert QcRecipe.migrate_from_sidecar(tmp_path) is False
-        doc = json.loads((tmp_path / "pipeline.json").read_text())
+        doc = json.loads(pipeline_json_path(tmp_path).read_text())
         # Pipeline's own qc entry wins; legacy entry is NOT merged in.
         assert [e["instance_id"] for e in doc["qc"]] == ["qc-SE-pipeline"]
         # The stale sidecar is retired so it stops being re-checked.

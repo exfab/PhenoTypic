@@ -70,7 +70,13 @@ def _build_analysis_subtabs(plugins: list) -> str:
 
 
 def generate_dashboard(output_dir: Path, *, execution_mode: ExecutionMode = "local") -> None:
-    """Write ``dashboard.html`` and ``analysis.html`` to the output directory root.
+    """Write ``dashboard.html`` and ``analysis.html`` into ``deliverables/``.
+
+    Both HTML artifacts are user-facing deliverables, so they land in
+    ``<output>/deliverables/`` (via :func:`dashboard_html_path` /
+    :func:`analysis_html_path`). The JS sidecars they lazy-load stay in
+    ``<output>/progress/`` and the HTML re-bases its relative fetches with
+    ``../`` accordingly.
 
     Args:
         output_dir: Root output directory.
@@ -78,6 +84,9 @@ def generate_dashboard(output_dir: Path, *, execution_mode: ExecutionMode = "loc
     """
     output_dir.mkdir(parents=True, exist_ok=True)
     dashboard_path = dashboard_html_path(output_dir)
+    # dashboard_path/analysis_path share the deliverables/ parent; these HTML
+    # writers don't go through the atomic writer, so create it explicitly.
+    dashboard_path.parent.mkdir(parents=True, exist_ok=True)
     dashboard_path.write_text(_build_html(execution_mode), encoding="utf-8")
     logger.info("Dashboard written to %s", dashboard_path)
 
@@ -1049,11 +1058,28 @@ def _build_body(execution_mode: str, logo_data_uri: str = "",
   </div>"""
 
 
-def _build_js(execution_mode: str, plugins: list | None = None) -> str:
-    """Return the inline JavaScript for the dashboard."""
+def _build_js(
+    execution_mode: str,
+    plugins: list | None = None,
+    root_prefix: str = "../",
+) -> str:
+    """Return the inline JavaScript for the dashboard.
+
+    Args:
+        execution_mode: ``"local"`` or ``"slurm"``.
+        plugins: Optional analysis plugins whose JS is appended.
+        root_prefix: Relative path from the generated HTML back to the
+            output root. The dashboard lives in ``deliverables/`` while
+            ``progress/`` and ``results/`` stay at the output root, so the
+            default ``"../"`` re-roots every ``progress/``/``results/`` URL.
+    """
     framework_js = f"""\
     // ── State ──────────────────────────────────────────────────
     const EXECUTION_MODE = "{execution_mode}";
+    // Path from this HTML (in deliverables/) back to the output root, where
+    // progress/ and results/ live. Sibling files (README.md, measurements.*)
+    // move with the HTML and stay bare.
+    const ROOT_PREFIX = "{root_prefix}";
     let refreshTimer = null;
     const REFRESH_MS = 10000;
     let fetchErrors = 0;
@@ -1134,17 +1160,27 @@ def _build_js(execution_mode: str, plugins: list | None = None) -> str:
     }}
 
     // ── Download URL Helpers ───────────────────────────────────
+    // `base` is the OUTPUT ROOT, even though this dashboard now lives in
+    // deliverables/. The HTML's own directory is <...>/deliverables/, but the
+    // wget commands target results/ (at the root) and the whole output tree,
+    // so we strip a trailing "deliverables/" segment to recover the root.
+    function stripDeliverables(dir) {{
+      // dir always ends with a trailing slash; drop a trailing
+      // "deliverables/" segment if present so base = output root.
+      return dir.replace(/deliverables\\/$/, '');
+    }}
+
     function getBaseUrl() {{
       if (window.location.protocol === 'file:') return '';
       const path = window.location.pathname;
       const dir = path.substring(0, path.lastIndexOf('/') + 1);
-      return window.location.origin + dir;
+      return window.location.origin + stripDeliverables(dir);
     }}
 
     function getCutDirs() {{
       if (window.location.protocol === 'file:') return 'N';
       const path = window.location.pathname;
-      const dir = path.substring(0, path.lastIndexOf('/') + 1);
+      const dir = stripDeliverables(path.substring(0, path.lastIndexOf('/') + 1));
       return String(dir.split('/').filter(Boolean).length);
     }}
 
@@ -1157,8 +1193,9 @@ def _build_js(execution_mode: str, plugins: list | None = None) -> str:
       let auth = '';
       if (user) auth = ' --user=' + user + (pass ? " --password='" + pass + "'" : '');
 
+      // base = output root; measurements.csv lives in deliverables/ now.
       document.getElementById('cmd-csv').textContent =
-        'wget' + auth + ' ' + base + 'measurements.csv';
+        'wget' + auth + ' ' + base + 'deliverables/measurements.csv';
       document.getElementById('cmd-png').textContent =
         'wget -r -np -nH -e robots=off --cut-dirs=' + cutDirs + ' -A "*.png"' + auth + ' ' + base + 'results/';
       document.getElementById('cmd-full').textContent =
@@ -1315,7 +1352,7 @@ def _build_js(execution_mode: str, plugins: list | None = None) -> str:
       const container = document.getElementById('failures-table-container');
       let records = [];
       try {{
-        const resp = await fetch('progress/failures.jsonl?' + Date.now());
+        const resp = await fetch(ROOT_PREFIX + 'progress/failures.jsonl?' + Date.now());
         if (resp.ok) {{
           const text = await resp.text();
           const lines = text.trim().split('\\n').filter(Boolean);
@@ -1385,7 +1422,7 @@ def _build_js(execution_mode: str, plugins: list | None = None) -> str:
         const container = document.querySelector('.tab-content.active');
         if (container) container.prepend(hint);
       }}
-      hint.innerHTML = 'Cannot load <code>progress/manifest.json</code> (' + esc(String(reason)) +
+      hint.innerHTML = 'Cannot load <code>' + ROOT_PREFIX + 'progress/manifest.json</code> (' + esc(String(reason)) +
         '). Verify the progress directory exists and is accessible via this web server.' +
         '<br><small style="opacity:0.7">Retrying every ' + (REFRESH_MS/1000) + 's...</small>';
     }}
@@ -1403,7 +1440,7 @@ def _build_js(execution_mode: str, plugins: list | None = None) -> str:
     // ── Main Refresh Loop ──────────────────────────────────────
     async function refresh() {{
       try {{
-        const resp = await fetch('progress/manifest.json?' + Date.now());
+        const resp = await fetch(ROOT_PREFIX + 'progress/manifest.json?' + Date.now());
         if (!resp.ok) {{
           fetchErrors++;
           console.warn('Dashboard: manifest fetch HTTP ' + resp.status);
@@ -1523,8 +1560,25 @@ def _build_analysis_body(logo_data_uri: str, plugins: list) -> str:
   </div>"""
 
 
-def _build_analysis_js(plugins: list) -> str:
-    """Return the inline JavaScript for the analysis page."""
+def _build_analysis_js(plugins: list, root_prefix: str = "../") -> str:
+    """Return the inline JavaScript for the analysis page.
+
+    Args:
+        plugins: Analysis plugins whose JS is appended.
+        root_prefix: Relative path from the generated HTML back to the
+            output root. The analysis page lives in ``deliverables/`` while
+            ``progress/`` stays at the output root, so the default ``"../"``
+            re-roots every ``progress/`` URL. Sibling files
+            (``measurements.parquet``) move with the HTML and stay bare.
+    """
+    # Declared once here and referenced everywhere below. The rest of this
+    # builder is a plain (non-f) string, so ROOT_PREFIX is interpolated only
+    # in this short preamble and used via string concatenation thereafter.
+    root_prefix_js = f"""\
+    // Path from this HTML (in deliverables/) back to the output root, where
+    // progress/ lives. Sibling files (measurements.parquet) stay bare.
+    const ROOT_PREFIX = "{root_prefix}";
+"""
     framework_js = """\
     // ── Helpers ────────────────────────────────────────────────
     function esc(s) {
@@ -1560,8 +1614,8 @@ def _build_analysis_js(plugins: list) -> str:
       });
       return _scriptCache[src];
     }
-    function loadPlotly() { return loadScript('progress/plotly.min.js', 'Plotly'); }
-    function loadHyparquet() { return loadScript('progress/hyparquet.min.js', 'hyparquet'); }
+    function loadPlotly() { return loadScript(ROOT_PREFIX + 'progress/plotly.min.js', 'Plotly'); }
+    function loadHyparquet() { return loadScript(ROOT_PREFIX + 'progress/hyparquet.min.js', 'hyparquet'); }
 
     function _appendParquetRows(rows) {
       if (rows.length === 0) return;
@@ -1631,7 +1685,7 @@ def _build_analysis_js(plugins: list) -> str:
           sharedParquetState.loading = null;
         })
         .catch(function() {
-          return _loadParquetFile('progress/analysis_full.parquet')
+          return _loadParquetFile(ROOT_PREFIX + 'progress/analysis_full.parquet')
             .then(function() {
               sharedParquetState.loaded = true;
               sharedParquetState.loading = null;
@@ -1670,7 +1724,7 @@ def _build_analysis_js(plugins: list) -> str:
       const keys = ['stats', 'overlay'];
       for (let i = 0; i < files.length; i++) {
         try {
-          const resp = await fetch('progress/' + files[i] + '?' + Date.now());
+          const resp = await fetch(ROOT_PREFIX + 'progress/' + files[i] + '?' + Date.now());
           if (resp.ok) analysisData[keys[i]] = await resp.json();
         } catch(e) { /* file not ready yet */ }
       }
@@ -1697,7 +1751,7 @@ def _build_analysis_js(plugins: list) -> str:
     let _refreshTimer = null;
     async function _pollManifest() {
       try {
-        const resp = await fetch('progress/manifest.json?' + Date.now());
+        const resp = await fetch(ROOT_PREFIX + 'progress/manifest.json?' + Date.now());
         if (!resp.ok) return;
         const data = await resp.json();
         const newVersion = data.analysis_data_version || 0;
@@ -2075,4 +2129,4 @@ def _build_analysis_js(plugins: list) -> str:
 """
     # Append plugin JS
     plugin_js = "\n".join(p.js() for p in (plugins or []))
-    return framework_js + "\n" + transform_js + "\n" + plugin_js
+    return root_prefix_js + "\n" + framework_js + "\n" + transform_js + "\n" + plugin_js

@@ -33,7 +33,7 @@ from typing import TYPE_CHECKING, List, Optional
 from phenotypic._core._pipeline_parts._serializable_pipeline import (
     PipelineLoadWarning,
 )
-from phenotypic.gui._config import PIPELINE_JSON
+from phenotypic.tools_ import pipeline_json_path
 
 if TYPE_CHECKING:
     from phenotypic._core._image_pipeline import ImagePipeline
@@ -98,7 +98,7 @@ class RecipeState:
         """
         from phenotypic._core._image_pipeline import ImagePipeline
 
-        pipeline_path = output_dir / PIPELINE_JSON
+        pipeline_path = pipeline_json_path(output_dir)
         load_warnings: List[PipelineLoadWarning] = []
 
         if pipeline_path.exists():

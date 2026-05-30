@@ -12,7 +12,11 @@ Output is consumed by:
 
 Caching: results are memoised on ``(absolute_path, mtime_ns)`` via an internal
 LRU. The "Refresh" button in the sidebar calls ``invalidate_cache()`` to flush;
-no filesystem watcher in v1.
+no filesystem watcher in v1. The cache keys on the *root* dir's mtime, so a CLI
+artifact that lands inside ``<root>/deliverables/`` (e.g. ``dashboard.html`` or
+``master_measurements.parquet``, both of which now live under that subdir) does
+not bump the root mtime and may need a sidebar Refresh to surface — matching the
+existing behaviour for files written under ``results/``.
 """
 from __future__ import annotations
 
@@ -23,6 +27,7 @@ from pathlib import Path
 
 from phenotypic.gui._config import (
     DASHBOARD_FILENAME,
+    DELIVERABLES_DIRNAME,
     MASTER_MEASUREMENTS_PARQUET,
     RESULTS_DIRNAME,
 )
@@ -35,6 +40,11 @@ __all__ = ["Capabilities", "classify", "invalidate_cache"]
 # centralised in ``gui/_config.py`` so the shell classifier and the results
 # viewer's ``_output_root`` stay in lockstep without either importing the
 # other (which would re-introduce the historical circular dependency).
+#
+# Layout note: ``master_measurements.parquet`` and ``dashboard.html`` now live
+# under ``<root>/deliverables/`` (not the output root itself), so the dir
+# classifier stats them inside that subdir. Only ``results/`` stays at the
+# output root.
 _MASTER_MEASUREMENTS_FILENAME = MASTER_MEASUREMENTS_PARQUET
 _RESULTS_DIRNAME = RESULTS_DIRNAME
 _DASHBOARD_FILENAME = DASHBOARD_FILENAME
@@ -65,11 +75,14 @@ class Capabilities:
         has_pipeline_json: Path is a JSON file whose first 4 KB contains the
             ``"operations"`` key. The marker is what
             :class:`phenotypic.ImagePipeline.to_json` writes; cheap heuristic.
-        is_cli_output: Directory contains both ``master_measurements.parquet``
-            and a ``results/`` subdirectory — the layout produced by
-            ``python -m phenotypic``.
-        has_dashboard: Directory contains ``dashboard.html``. Used by the Run
-            console's Recent Runs panel to enable the iframe link.
+        is_cli_output: Directory contains both
+            ``deliverables/master_measurements.parquet`` and a ``results/``
+            subdirectory — the layout produced by ``python -m phenotypic``.
+            The master marker lives under ``deliverables/``; ``results/``
+            stays at the output root.
+        has_dashboard: Directory contains ``deliverables/dashboard.html``.
+            Used by the Run console's Recent Runs panel to enable the
+            iframe link.
         image_count: Image-file count (capped at :data:`_IMAGE_COUNT_CAP`)
             when ``is_image_dir`` is true; ``None`` otherwise.
         bad_perms: ``True`` if listing the directory raised
@@ -203,22 +216,28 @@ def _classify_dir(path: Path) -> Capabilities:
     is_cli_output_master = False
     is_cli_output_results = False
     has_dashboard = False
+    has_deliverables_dir = False
 
     for child in children:
         name = child.name
-        if name == _MASTER_MEASUREMENTS_FILENAME:
-            is_cli_output_master = True
-            continue
         if name == _RESULTS_DIRNAME and child.is_dir():
             is_cli_output_results = True
             continue
-        if name == _DASHBOARD_FILENAME:
-            has_dashboard = True
+        if name == DELIVERABLES_DIRNAME and child.is_dir():
+            has_deliverables_dir = True
             continue
         if image_count < _IMAGE_COUNT_CAP:
             suffix = child.suffix.lower()
             if suffix in IMAGE_EXTS and child.is_file():
                 image_count += 1
+
+    # The master parquet and dashboard now live under ``<root>/deliverables/``.
+    # Only stat them when that subdir exists, so a non-output directory pays
+    # at most the cheap iterdir above (no extra stats per child).
+    if has_deliverables_dir:
+        deliverables = path / DELIVERABLES_DIRNAME
+        is_cli_output_master = (deliverables / _MASTER_MEASUREMENTS_FILENAME).is_file()
+        has_dashboard = (deliverables / _DASHBOARD_FILENAME).is_file()
 
     is_image_dir = image_count > 0
     return Capabilities(

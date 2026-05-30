@@ -27,23 +27,23 @@ if TYPE_CHECKING:
 from ._cli_types import Dataset
 from ._cli_duckdb_agg import duckdb_aggregate
 from phenotypic.tools_ import (
-    MASTER_MEASUREMENTS_CSV,
-    MASTER_MEASUREMENTS_PARQUET,
-    MEASUREMENTS_CSV,
-    MEASUREMENTS_PARQUET,
-    ANALYSIS_CSV,
-    ANALYSIS_PARQUET,
-    PIPELINE_JSON,
     PROCESSING_STATE_JSON,
     DIR_RESULTS,
     DIR_MEASUREMENTS,
-    DIR_MEASUREMENTS_BY_FEATURE,
     DIR_LOGS,
     DIR_HDF,
     DIR_INSPECT,
     DIR_OVERLAYS,
     DATASET_AGGREGATED_PARQUET,
     EnvVar,
+    analysis_csv_path,
+    analysis_parquet_path,
+    master_measurements_csv_path,
+    master_measurements_parquet_path,
+    measurements_by_feature_dir,
+    measurements_csv_path,
+    measurements_parquet_path,
+    pipeline_json_path,
 )
 
 logger = logging.getLogger(__name__)
@@ -288,7 +288,7 @@ def _load_pipeline_from_output_dir(
     """
     from phenotypic._core._image_pipeline import ImagePipeline
 
-    canonical = output_dir / PIPELINE_JSON
+    canonical = pipeline_json_path(output_dir)
     if canonical.exists():
         try:
             return ImagePipeline.from_json(canonical)
@@ -343,7 +343,7 @@ def _persist_pipeline_to_output_dir(
         failed. Failure is logged at WARNING; the caller does not need to
         handle the exception.
     """
-    target = output_dir / PIPELINE_JSON
+    target = pipeline_json_path(output_dir)
 
     def _write(p: str) -> None:
         Path(p).write_text(pipeline.to_json() or "")
@@ -406,8 +406,8 @@ def _emit_analysis_outputs(
         )
         return None
 
-    csv_path = output_dir / ANALYSIS_CSV
-    pq_path = output_dir / ANALYSIS_PARQUET
+    csv_path = analysis_csv_path(output_dir)
+    pq_path = analysis_parquet_path(output_dir)
 
     try:
         _atomic_write(csv_path, fit_pl.write_csv)
@@ -485,13 +485,13 @@ def _seed_measurements(output_dir: Path, master_df: "pl.DataFrame") -> None:
     — the master output is preserved as the authoritative source.
     """
     try:
-        _atomic_write(output_dir / MEASUREMENTS_CSV, master_df.write_csv)
+        _atomic_write(measurements_csv_path(output_dir), master_df.write_csv)
     except Exception:
         logger.warning("Failed to seed measurements.csv (master was saved)")
 
     try:
         _atomic_write(
-            output_dir / MEASUREMENTS_PARQUET,
+            measurements_parquet_path(output_dir),
             lambda p: master_df.write_parquet(
                 p, compression="zstd", compression_level=3
             ),
@@ -711,7 +711,7 @@ def split_master_by_feature(
 
     non_feature_cols = [c for c in master_df.columns if c not in all_feature_cols]
 
-    split_dir = output_dir / DIR_MEASUREMENTS_BY_FEATURE
+    split_dir = measurements_by_feature_dir(output_dir)
     split_dir.mkdir(parents=True, exist_ok=True)
 
     written: Dict[str, Path] = {}
@@ -869,8 +869,8 @@ def aggregate_measurements(
         master_df = master_df.drop("filename")
 
     # -- Write master CSV and Parquet ----------------------------------
-    master_csv_path = output_dir / MASTER_MEASUREMENTS_CSV
-    master_pq_path = output_dir / MASTER_MEASUREMENTS_PARQUET
+    master_csv_path = master_measurements_csv_path(output_dir)
+    master_pq_path = master_measurements_parquet_path(output_dir)
 
     try:
         _atomic_write(master_csv_path, master_df.write_csv)

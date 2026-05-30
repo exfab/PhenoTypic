@@ -20,9 +20,16 @@ from phenotypic.gui.shell._routes import register_sandbox_api
 from phenotypic.gui.shell._sandbox import SandboxRoot
 from phenotypic.gui.shell._session import ToolSession
 
+from tests._output_layout import seed_output_dir
+
 
 def _seed_cli_output(parent: Path) -> Path:
-    """Build a minimal CLI output dir that ``OutputRoot.discover`` accepts."""
+    """Build a minimal CLI output dir that ``OutputRoot.discover`` accepts.
+
+    User-facing deliverables (master, mirror, pipeline.json) land under
+    ``out/deliverables/``; the per-image ``results/`` tree stays at the
+    output root.
+    """
     out = parent / "results" / "demo"
     out.mkdir(parents=True)
     df = pl.DataFrame({
@@ -32,11 +39,9 @@ def _seed_cli_output(parent: Path) -> Path:
         "Object_Label": [1, 1],
         "Shape_Area": [100.0, 200.0],
     })
-    df.write_parquet(out / "master_measurements.parquet")
-    df.write_parquet(out / "measurements.parquet")
+    seed_output_dir(out, df, mirror=df, pipeline=ImagePipeline(name="t"))
     (out / "results" / "ds1" / "overlays").mkdir(parents=True)
     (out / "results" / "ds1" / "overlays" / "a.png").write_bytes(b"PNG")
-    (out / "pipeline.json").write_text(ImagePipeline(name="t").to_json() or "")
     return out
 
 

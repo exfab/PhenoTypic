@@ -22,6 +22,8 @@ import pandas as pd
 import polars as pl
 import pytest
 
+from phenotypic.tools_ import analysis_html_path, dashboard_html_path
+
 
 # ──────────────────────────────────────────────────────────────────────
 # Fixtures
@@ -129,7 +131,7 @@ class TestDashboardAnalysisTab:
         from phenotypic._cli._dashboard import generate_dashboard
 
         generate_dashboard(tmp_dir)
-        html = (tmp_dir / "analysis.html").read_text()
+        html = analysis_html_path(tmp_dir).read_text()
         assert "analysis-container" in html
         assert "switchSubTab" in html
 
@@ -138,7 +140,7 @@ class TestDashboardAnalysisTab:
         from phenotypic._cli._dashboard import generate_dashboard
 
         generate_dashboard(tmp_dir)
-        html = (tmp_dir / "analysis.html").read_text()
+        html = analysis_html_path(tmp_dir).read_text()
         assert "subtab-table" in html
         assert "subtab-scatter" in html
         assert "subtab-stats" in html
@@ -149,7 +151,7 @@ class TestDashboardAnalysisTab:
         from phenotypic._cli._dashboard import generate_dashboard
 
         generate_dashboard(tmp_dir)
-        html = (tmp_dir / "analysis.html").read_text()
+        html = analysis_html_path(tmp_dir).read_text()
         assert "Raw Table" in html
         assert "Scatter Plot" in html
         assert "Statistics" in html
@@ -160,7 +162,7 @@ class TestDashboardAnalysisTab:
         from phenotypic._cli._dashboard import generate_dashboard
 
         generate_dashboard(tmp_dir)
-        html = (tmp_dir / "analysis.html").read_text()
+        html = analysis_html_path(tmp_dir).read_text()
         # The first sub-tab button should be active
         assert 'sub-tab-btn active' in html
         # The first sub-tab content should be active
@@ -171,7 +173,7 @@ class TestDashboardAnalysisTab:
         from phenotypic._cli._dashboard import generate_dashboard
 
         generate_dashboard(tmp_dir)
-        html = (tmp_dir / "analysis.html").read_text()
+        html = analysis_html_path(tmp_dir).read_text()
         assert "window['initAnalysis_' + tabId]" in html
         # Old hardcoded dispatch should be gone
         assert "if (tabId === 'table') renderRawTable" not in html
@@ -181,7 +183,7 @@ class TestDashboardAnalysisTab:
         from phenotypic._cli._dashboard import generate_dashboard
 
         generate_dashboard(tmp_dir)
-        html = (tmp_dir / "analysis.html").read_text()
+        html = analysis_html_path(tmp_dir).read_text()
         # CSS from plugins
         assert "analysis-table" in html
         assert "scatter-controls" in html
@@ -193,7 +195,7 @@ class TestDashboardAnalysisTab:
         from phenotypic._cli._dashboard import generate_dashboard
 
         generate_dashboard(tmp_dir)
-        html = (tmp_dir / "analysis.html").read_text()
+        html = analysis_html_path(tmp_dir).read_text()
         assert "analysis-container" in html
         assert "analysis-banner" in html
         assert "sub-tab-btn" in html
@@ -205,7 +207,7 @@ class TestDashboardAnalysisTab:
         from phenotypic._cli._dashboard import generate_dashboard
 
         generate_dashboard(tmp_dir)
-        html = (tmp_dir / "analysis.html").read_text()
+        html = analysis_html_path(tmp_dir).read_text()
         assert "initAnalysis_table" in html
         assert "initAnalysis_scatter" in html
         assert "initAnalysis_stats" in html
@@ -225,7 +227,7 @@ class TestDashboardAnalysisTab:
         from phenotypic._cli._dashboard import generate_dashboard
 
         generate_dashboard(tmp_dir)
-        html = (tmp_dir / "dashboard.html").read_text()
+        html = dashboard_html_path(tmp_dir).read_text()
         assert "tab-progress" in html
         assert "tab-readme" in html
         assert "tab-download" in html
@@ -240,7 +242,7 @@ class TestDashboardAnalysisTab:
         from phenotypic._cli._dashboard import generate_dashboard
 
         generate_dashboard(tmp_dir)
-        html = (tmp_dir / "dashboard.html").read_text()
+        html = dashboard_html_path(tmp_dir).read_text()
         assert "initAnalysis_table" not in html
         assert "initAnalysis_scatter" not in html
         assert "initAnalysis_stats" not in html
@@ -253,7 +255,7 @@ class TestDashboardAnalysisTab:
         from phenotypic._cli._dashboard import generate_dashboard
 
         generate_dashboard(tmp_dir)
-        html = (tmp_dir / "analysis.html").read_text()
+        html = analysis_html_path(tmp_dir).read_text()
         assert "dashboard.html" in html
 
     def test_analysis_data_version_in_manifest(self, tmp_dir):

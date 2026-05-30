@@ -12,6 +12,13 @@ import polars as pl
 import pytest
 from click.testing import CliRunner
 
+from phenotypic.tools_ import (
+    master_measurements_csv_path,
+    master_measurements_parquet_path,
+    measurements_csv_path,
+    measurements_parquet_path,
+)
+
 pytestmark = pytest.mark.skipif(
     sys.platform == "win32",
     reason="Recompile SLURM worker tests require non-Windows paths",
@@ -552,19 +559,19 @@ def test_finalizer_writes_master_outputs_and_rebuilds_dashboard(
         )
 
     assert result.exit_code == 0, result.output
-    assert (output_dir / "master_measurements.csv").exists()
-    assert (output_dir / "master_measurements.parquet").exists()
+    assert master_measurements_csv_path(output_dir).exists()
+    assert master_measurements_parquet_path(output_dir).exists()
     # Recompile finalizer also seeds the GUI's editable measurements copy.
-    assert (output_dir / "measurements.csv").exists()
-    assert (output_dir / "measurements.parquet").exists()
-    assert pl.read_csv(output_dir / "master_measurements.csv")[
+    assert measurements_csv_path(output_dir).exists()
+    assert measurements_parquet_path(output_dir).exists()
+    assert pl.read_csv(master_measurements_csv_path(output_dir))[
         "Size_Area"
     ].to_list() == [
         1,
         2,
     ]
     assert (
-        pl.read_csv(output_dir / "measurements.csv")["Size_Area"].to_list()
+        pl.read_csv(measurements_csv_path(output_dir))["Size_Area"].to_list()
         == [1, 2]
     )
     mock_plugins.assert_called_once()

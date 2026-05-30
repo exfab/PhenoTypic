@@ -25,7 +25,7 @@ Wired effects (per ``GUI_SPEC_V1.md`` section 5):
     * Save preset — writes ``<root>/.phenotypic-gui/presets/<name>.json``.
     * Load preset — populates the form from a preset file.
     * Recent Runs row click — re-points the iframe ``src`` to the
-      clicked run's ``/runs/<rel>/dashboard.html``.
+      clicked run's ``/runs/<rel>/deliverables/dashboard.html``.
     * Log tail — :class:`LocalRunner.snapshot_log` poll on a
       :class:`dcc.Interval`.
 """
@@ -46,6 +46,7 @@ from dash import ALL, Input, Output, State, ctx, no_update
 
 from phenotypic.gui._config import (
     DASHBOARD_FILENAME,
+    DELIVERABLES_DIRNAME,
     RUNS_BLUEPRINT_PREFIX,
     SANDBOX_GUI_DIRNAME,
     SANDBOX_PRESETS_SUBDIR,
@@ -360,10 +361,11 @@ def _dashboard_url(rel_path: str) -> str:
     """Build the iframe ``src`` for ``rel_path``.
 
     The shell mounts ``/runs/<rel>/<file>`` regardless of the Dash sub-app's
-    ``url_prefix`` so we always use the absolute ``/runs/...`` path.
+    ``url_prefix`` so we always use the absolute ``/runs/...`` path. The
+    dashboard now lives under the run's ``deliverables/`` subdirectory.
     """
     safe_rel = rel_path.strip("/").replace("\\", "/")
-    return f"{RUNS_BLUEPRINT_PREFIX}/{safe_rel}/{DASHBOARD_FILENAME}"
+    return f"{RUNS_BLUEPRINT_PREFIX}/{safe_rel}/{DELIVERABLES_DIRNAME}/{DASHBOARD_FILENAME}"
 
 
 # ---------------------------------------------------------------------------
@@ -1031,7 +1033,9 @@ def register_callbacks(
         if not rel_path:
             return (no_update,) * 4
         try:
-            target = sandbox.resolve(Path(rel_path) / DASHBOARD_FILENAME)
+            target = sandbox.resolve(
+                Path(rel_path) / DELIVERABLES_DIRNAME / DASHBOARD_FILENAME
+            )
         except ValueError:
             return (no_update,) * 4
         if not target.is_file():
@@ -1213,7 +1217,9 @@ def register_callbacks(
         # Only point at a real dashboard.html — clicking a row whose run
         # never produced a dashboard does nothing visible.
         try:
-            target = sandbox.resolve(Path(rel_path) / DASHBOARD_FILENAME)
+            target = sandbox.resolve(
+                Path(rel_path) / DELIVERABLES_DIRNAME / DASHBOARD_FILENAME
+            )
         except ValueError:
             return (no_update,) * 4
         if not target.is_file():

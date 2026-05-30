@@ -21,7 +21,9 @@ from playwright.sync_api import Page, expect
 
 from phenotypic import ImagePipeline
 from phenotypic.analysis import LogGrowthModel, TukeyOutlierRemover
+from phenotypic.tools_ import measurements_parquet_path, pipeline_json_path
 
+from tests._output_layout import write_master, write_measurements_mirror, write_pipeline_json
 from tests.e2e.gui.conftest import _build_sandbox, _start_live_server
 
 
@@ -56,14 +58,14 @@ def _seed_analysis_output(sandbox: Path) -> Path:
                     "Shape_Area": float(n + (rep - 1) * 5),
                 })
     df = pl.DataFrame(rows)
-    df.write_parquet(cli_out / "master_measurements.parquet")
-    df.write_parquet(cli_out / "measurements.parquet")
+    write_master(cli_out, df)
+    write_measurements_mirror(cli_out, df)
 
     # A real pipeline.json so RecipeState boots with content. Empty model
     # so the run button starts disabled — adding the model is part of the
     # test surface.
     pipeline = ImagePipeline(name="analysis-e2e-fixture")
-    (cli_out / "pipeline.json").write_text(pipeline.to_json() or "")
+    write_pipeline_json(cli_out, pipeline)
 
     return cli_out
 
@@ -139,9 +141,9 @@ def test_pipeline_json_seeded_on_disk(
     in the CLI output dir so the analysis sub-app can bind cleanly.
     Confirms the fixture wiring is right (not the GUI itself)."""
     cli_out = analysis_sandbox / "results" / "CliOutputExample"
-    assert (cli_out / "pipeline.json").exists()
-    assert (cli_out / "measurements.parquet").exists()
-    config = json.loads((cli_out / "pipeline.json").read_text())
+    assert pipeline_json_path(cli_out).exists()
+    assert measurements_parquet_path(cli_out).exists()
+    config = json.loads(pipeline_json_path(cli_out).read_text())
     assert "filters" in config
     assert "model" in config
     assert config["model"] is None

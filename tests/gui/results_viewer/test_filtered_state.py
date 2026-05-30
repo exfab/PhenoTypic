@@ -19,14 +19,18 @@ import polars as pl
 import pytest
 
 from phenotypic.gui.results_viewer._filtered_state import FilteredMeasurements
+from phenotypic.tools_ import measurements_parquet_path
+
+from tests._output_layout import write_master
 
 
 def _make_master(tmp_root: Path) -> pl.DataFrame:
     """Build a tiny master frame and write it to disk under *tmp_root*.
 
-    The frame mimics the shape of the real master_measurements.parquet:
-    one row per object, keyed by ``(Metadata_ImageFile, Object_Label)``,
-    with a couple of measurement columns.
+    The frame mimics the shape of the real master_measurements.parquet
+    (under ``deliverables/``): one row per object, keyed by
+    ``(Metadata_ImageFile, Object_Label)``, with a couple of measurement
+    columns.
     """
     df = pl.DataFrame(
         {
@@ -36,8 +40,16 @@ def _make_master(tmp_root: Path) -> pl.DataFrame:
             "Bbox_CenterCC": [50, 60, 70, 80],
         }
     )
-    df.write_parquet(tmp_root / "master_measurements.parquet")
+    write_master(tmp_root, df, csv=False)
     return df
+
+
+def _write_mirror(tmp_root: Path, df: pl.DataFrame) -> Path:
+    """Write the post-applied ``measurements.parquet`` mirror (deliverables)."""
+    path = measurements_parquet_path(tmp_root)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    df.write_parquet(path)
+    return path
 
 
 def test_load_with_no_existing_file_is_empty_and_no_writes(tmp_path: Path) -> None:
@@ -66,7 +78,7 @@ def test_load_with_seed_equal_to_master_yields_empty_removals(tmp_path: Path) ->
     master = _make_master(tmp_path)
 
     # Simulate the CLI-seeded state: parquet present, identical to master.
-    master.write_parquet(tmp_path / "measurements.parquet")
+    _write_mirror(tmp_path, master)
 
     state = FilteredMeasurements.load(tmp_path, master)
 
@@ -90,7 +102,7 @@ def test_save_refuses_when_seed_was_externally_rewritten(tmp_path: Path) -> None
     import time
 
     master = _make_master(tmp_path)
-    master.write_parquet(tmp_path / "measurements.parquet")
+    _write_mirror(tmp_path, master)
 
     state = FilteredMeasurements.load(tmp_path, master)
 
@@ -100,16 +112,16 @@ def test_save_refuses_when_seed_was_externally_rewritten(tmp_path: Path) -> None
     # support.
     time.sleep(0.01)
     new_master = master.with_columns(pl.lit(99.0).alias("Bbox_CenterRR"))
-    new_master.write_parquet(tmp_path / "measurements.parquet")
+    _write_mirror(tmp_path, new_master)
 
-    on_disk_before = pl.read_parquet(tmp_path / "measurements.parquet")
+    on_disk_before = pl.read_parquet(measurements_parquet_path(tmp_path))
 
     # The viewer (still holding stale _master_df) tries to remove a colony.
     state.remove("img-001", 2)
 
     # Disk is unchanged — the guard refused to overwrite the freshly
     # seeded master with a stale-derived subset.
-    on_disk_after = pl.read_parquet(tmp_path / "measurements.parquet")
+    on_disk_after = pl.read_parquet(measurements_parquet_path(tmp_path))
     assert on_disk_after.equals(on_disk_before)
     # In-memory removal still recorded; reload will reconcile.
     assert ("img-001", 2) in state.removed_keys
@@ -223,7 +235,10 @@ def test_stale_tmp_file_does_not_pollute_state(tmp_path: Path) -> None:
 
     # Plant a stale .tmp file that claims something was removed; no
     # final parquet exists yet, so load must treat removed_keys as empty.
-    tmp_parquet = tmp_path / "measurements.parquet.tmp"
+    tmp_parquet = measurements_parquet_path(tmp_path).with_name(
+        measurements_parquet_path(tmp_path).name + ".tmp"
+    )
+    tmp_parquet.parent.mkdir(parents=True, exist_ok=True)
     master.head(2).write_parquet(tmp_parquet)
     assert tmp_parquet.exists()
 
@@ -248,7 +263,7 @@ def test_load_warns_on_unknown_keys_in_existing_file(
             }
         )
     )
-    bad.write_parquet(tmp_path / "measurements.parquet")
+    _write_mirror(tmp_path, bad)
 
     with caplog.at_level("WARNING"):
         state = FilteredMeasurements.load(tmp_path, master)
