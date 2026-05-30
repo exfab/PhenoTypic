@@ -63,3 +63,29 @@ def test_register_adds_toggle_and_badge_callbacks() -> None:
     assert any(
         ids.FILTER_TOGGLE_BADGE_ID in key and "children" in key for key in outputs
     )
+
+
+def _iter_components(component):
+    """Yield a component and all descendants (local helper)."""
+    yield component
+    children = getattr(component, "children", None)
+    if children is None:
+        return
+    if not isinstance(children, (list, tuple)):
+        children = [children]
+    for child in children:
+        if hasattr(child, "children") or hasattr(child, "id"):
+            yield from _iter_components(child)
+
+
+def test_bulk_paste_popover_opens_left() -> None:
+    """The per-row bulk-paste popover opens leftward so it stays on-screen
+    inside the right-docked offcanvas."""
+    from phenotypic.gui.results_viewer._filter_panel import _render_filter_row
+
+    row = _render_filter_row("idx1", "Metadata_Dataset", ["WT"], [])
+    popovers = [
+        n for n in _iter_components(row) if getattr(n, "_type", None) == "Popover"
+    ]
+    assert popovers, "expected a bulk-paste popover in the rendered row"
+    assert all(getattr(p, "placement", None) == "left" for p in popovers)
