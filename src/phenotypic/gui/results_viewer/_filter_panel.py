@@ -346,7 +346,9 @@ def _render_filter_row(
         id=ids.filter_row_paste_popover_id(idx),
         target=ids.filter_row_paste_btn_id(idx),
         is_open=False,
-        placement="bottom",
+        # Open leftward so the popover stays on-screen inside the
+        # right-docked filter offcanvas (placement="end").
+        placement="left",
         trigger=None,
         style={"minWidth": "20rem", "maxWidth": "28rem"},
     )

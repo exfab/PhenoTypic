@@ -1482,6 +1482,30 @@ def capture_standalone_viewer_screenshots(headed: bool = False) -> None:
 
                 _save(page, "view_results", "02_viewer_loaded.png")
 
+                # Open the right-docked filter offcanvas from the top-bar
+                # toggle and capture the slide-in filter panel, then close
+                # it again so the later full-page shots are unobstructed.
+                try:
+                    page.click("#btn-filters-toggle", timeout=4000)
+                    # Wait on the always-sized "+ Add filter row" button —
+                    # the rows container is empty (zero-height) until a row
+                    # is added, so it never reports "visible".
+                    page.wait_for_selector(
+                            "#btn-add-filter-row",
+                            state="visible",
+                            timeout=10_000,
+                    )
+                    page.wait_for_timeout(500)
+                    _save(page, "view_results", "04_filter_offcanvas.png")
+                    backdrop = page.locator(".offcanvas-backdrop")
+                    if backdrop.count() > 0:
+                        backdrop.first.click(timeout=2000)
+                    else:
+                        page.keyboard.press("Escape")
+                    page.wait_for_timeout(400)
+                except Exception as exc:  # pragma: no cover - best-effort
+                    print(f"[shot]   filter-offcanvas shot skipped: {exc!r}")
+
                 page.mouse.wheel(0, 800)
                 page.wait_for_timeout(500)
                 _save(page, "view_results", "03_measurement_table.png")
