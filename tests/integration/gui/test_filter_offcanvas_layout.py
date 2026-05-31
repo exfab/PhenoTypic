@@ -13,14 +13,15 @@ from phenotypic.gui.results_viewer import _ids as ids
 from phenotypic.gui.results_viewer._filtered_state import FilteredMeasurements
 from phenotypic.gui.results_viewer._layout import build_app_layout
 from phenotypic.gui.results_viewer._output_root import OutputRoot
+from tests._output_layout import write_master, write_measurements_mirror
 
 
 def _seed_output(tmp_path: Path) -> Path:
     """Write a minimal CLI output dir the OutputRoot can discover.
 
     ``OutputRoot.discover`` requires the
-    ``<root>/results/<dataset>/overlays/<stem>.png`` layout, so seed the
-    overlays alongside the master + mirror parquets.
+    ``<root>/deliverables/master_measurements.parquet`` layout plus a
+    ``<root>/results/<dataset>/overlays/`` tree.
     """
     out = tmp_path / "results" / "Example"
     out.mkdir(parents=True)
@@ -32,8 +33,8 @@ def _seed_output(tmp_path: Path) -> Path:
             "Size_Area": [100.0, 200.0],
         }
     )
-    master.write_parquet(out / "master_measurements.parquet")
-    master.write_parquet(out / "measurements.parquet")
+    write_master(out, master)
+    write_measurements_mirror(out, master)
 
     overlays = out / "results" / "ds1" / "overlays"
     overlays.mkdir(parents=True, exist_ok=True)
