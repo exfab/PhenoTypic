@@ -449,11 +449,17 @@ class _LegacyBuilderState:
             Empty list means "viewing ``root``".
         selected_node_id: ``node_id`` of the currently focused step in
             the visible scope, if any.
+        inspector_focus_aux: When set, overrides the inspector pane to
+            display the wired aux at this slot instead of the canvas-
+            selected consumer's params.  Shape:
+            ``{"target_node_id": str, "param": str, "slot": int}``.
+            ``None`` when the inspector follows the canvas selection.
     """
 
     root: _LegacyBuilderScope = field(default_factory=_LegacyBuilderScope)
     breadcrumb: List[Dict[str, Any]] = field(default_factory=list)
     selected_node_id: Optional[str] = None
+    inspector_focus_aux: Optional[Dict[str, Any]] = None
 
 
 # ---------------------------------------------------------------------------
@@ -1547,6 +1553,7 @@ def state_to_json(state: Any) -> Dict[str, Any]:
             "root": _scope_to_dict(state.root),
             "breadcrumb": list(state.breadcrumb),
             "selected_node_id": state.selected_node_id,
+            "inspector_focus_aux": getattr(state, "inspector_focus_aux", None),
         }
     raise TypeError(
         f"state_to_json expects a _LegacyBuilderState or _DagBuilderState; "
@@ -1663,4 +1670,5 @@ def _state_from_json_legacy(data: Dict[str, Any]) -> _LegacyBuilderState:
         root=root,
         breadcrumb=crumbs,
         selected_node_id=data.get("selected_node_id"),
+        inspector_focus_aux=data.get("inspector_focus_aux"),
     )
