@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../_static/documentation_options.js?v=db24b7f7"></script>
+    <script src="../../_static/documentation_options.js?v=ff8529b6"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -66,7 +66,7 @@
     <link rel="prev" title="Fix validation issues" href="14_fix_validation_issues.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.15.2" />
+  <meta name="docsearch:version" content="0.16.0" />
   </head>
   
   
@@ -619,7 +619,8 @@
 <li><p><strong>Configure</strong> — the per-check card editor (see
 <a class="reference internal" href="10_qc_curation_loop.html"><span class="std std-doc">QC curation loop</span></a>). Adding, editing, or
 deleting a check now writes the <code class="docutils literal notranslate"><span class="pre">qc</span></code> array of the output’s
-<code class="docutils literal notranslate"><span class="pre">pipeline.json</span></code> (a legacy <code class="docutils literal notranslate"><span class="pre">.viewer_cache/qc_recipe.json</span></code> sidecar is
+<code class="docutils literal notranslate"><span class="pre">deliverables/pipeline.json</span></code> (a legacy <code class="docutils literal notranslate"><span class="pre">.viewer_cache/qc_recipe.json</span></code>
+sidecar is
 folded in once on first open).</p></li>
 <li><p><strong>Review</strong> — a master–detail walkthrough that walks the
 worst-agreeing groups for one QC module, lets you curate the offending
@@ -640,15 +641,16 @@ place with a <code class="docutils literal notranslate"><span class="pre">before
 <section id="prerequisites">
 <h2>Prerequisites<a class="headerlink" href="#prerequisites" title="Link to this heading">#</a></h2>
 <ul class="simple">
-<li><p>A finished CLI run whose <code class="docutils literal notranslate"><span class="pre">pipeline.json</span></code> carries at least one QC
-check, so the CLI wrote the <code class="docutils literal notranslate"><span class="pre">qc/</span></code> artifact
+<li><p>A finished CLI run whose <code class="docutils literal notranslate"><span class="pre">deliverables/pipeline.json</span></code> carries at least
+one QC check, so the CLI wrote the <code class="docutils literal notranslate"><span class="pre">qc/</span></code> artifact
 (<code class="docutils literal notranslate"><span class="pre">qc/qc_summary.parquet</span></code>, <code class="docutils literal notranslate"><span class="pre">qc/qc_members.parquet</span></code>,
-<code class="docutils literal notranslate"><span class="pre">qc/qc_config.json</span></code>). Configure a check in the <strong>Configure</strong> sub-view,
-then re-run <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">phenotypic</span> <span class="pre">--recompile</span> <span class="pre">&lt;output&gt;</span></code> (or
-<code class="docutils literal notranslate"><span class="pre">--measure</span></code>) to compute it. See <a class="reference internal" href="04_run_local.html"><span class="std std-doc">Run Locally</span></a>.</p></li>
-<li><p>The post-applied <code class="docutils literal notranslate"><span class="pre">measurements.parquet</span></code> mirror under
-<code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/measurements.parquet</span></code> — the recompute reads this frame (it
-carries any <code class="docutils literal notranslate"><span class="pre">PostMeasurement</span></code> columns and joined metadata) and
+<code class="docutils literal notranslate"><span class="pre">qc/qc_config.json</span></code> — these stay at the output-dir root). Configure a
+check in the <strong>Configure</strong> sub-view, then re-run
+<code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">phenotypic</span> <span class="pre">--recompile</span> <span class="pre">&lt;output&gt;</span></code> (or <code class="docutils literal notranslate"><span class="pre">--measure</span></code>) to compute
+it. See <a class="reference internal" href="04_run_local.html"><span class="std std-doc">Run Locally</span></a>.</p></li>
+<li><p>The post-applied <code class="docutils literal notranslate"><span class="pre">deliverables/measurements.parquet</span></code> mirror under
+<code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/measurements.parquet</span></code> — the recompute reads this
+frame (it carries any <code class="docutils literal notranslate"><span class="pre">PostMeasurement</span></code> columns and joined metadata) and
 anti-joins your removals, so the in-session metric matches the CLI’s.</p></li>
 </ul>
 </section>
@@ -683,10 +685,11 @@ gains a <code class="docutils literal notranslate"><span class="pre">⤳</span><
 <section id="common-gotchas">
 <h2>Common gotchas<a class="headerlink" href="#common-gotchas" title="Link to this heading">#</a></h2>
 <ul class="simple">
-<li><p><strong>Recompute reads <code class="docutils literal notranslate"><span class="pre">measurements.parquet</span></code>, not the master.</strong> The
-in-session recompute uses the post-applied + metadata-joined mirror
-minus your removals, so it matches the artifact the CLI would write.
-The clean <code class="docutils literal notranslate"><span class="pre">master_measurements.parquet</span></code> is metadata-free and is not
+<li><p><strong>Recompute reads <code class="docutils literal notranslate"><span class="pre">deliverables/measurements.parquet</span></code>, not the
+master.</strong> The in-session recompute uses the post-applied +
+metadata-joined mirror minus your removals, so it matches the artifact
+the CLI would write. The clean
+<code class="docutils literal notranslate"><span class="pre">deliverables/master_measurements.parquet</span></code> is metadata-free and is not
 used for recompute.</p></li>
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">insufficient</span></code> is not <code class="docutils literal notranslate"><span class="pre">pass</span></code>.</strong> A check like <code class="docutils literal notranslate"><span class="pre">ICC</span></code> returns <code class="docutils literal notranslate"><span class="pre">NaN</span></code> on
 a sparse or under-powered group; the summary header counts those as
@@ -699,7 +702,7 @@ groups live in GUI-owned <code class="docutils literal notranslate"><span class=
 over.</p></li>
 <li><p><strong>Curation is shared.</strong> Removing a colony in Review removes it
 everywhere (the Plate / Colony tabs and the heatmap) — it writes the
-same <code class="docutils literal notranslate"><span class="pre">measurements.parquet</span></code> removal set.</p></li>
+same <code class="docutils literal notranslate"><span class="pre">deliverables/measurements.parquet</span></code> removal set.</p></li>
 </ul>
 </section>
 <section id="where-to-next">

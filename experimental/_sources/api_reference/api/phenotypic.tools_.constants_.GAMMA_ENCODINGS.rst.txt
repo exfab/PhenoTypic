@@ -81,5 +81,8 @@ phenotypic.tools\_.constants\_.GAMMA\_ENCODINGS
       ~GAMMA_ENCODINGS.CATEGORY
       ~GAMMA_ENCODINGS.SRGB
       ~GAMMA_ENCODINGS.LINEAR
+      ~GAMMA_ENCODINGS.label
+      ~GAMMA_ENCODINGS.desc
+      ~GAMMA_ENCODINGS.pair
    
    

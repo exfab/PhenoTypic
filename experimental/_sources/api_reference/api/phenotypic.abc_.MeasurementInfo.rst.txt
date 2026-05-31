@@ -79,5 +79,8 @@ phenotypic.abc\_.MeasurementInfo
    .. autosummary::
    
       ~MeasurementInfo.CATEGORY
+      ~MeasurementInfo.label
+      ~MeasurementInfo.desc
+      ~MeasurementInfo.pair
    
    

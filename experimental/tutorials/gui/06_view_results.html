@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../_static/documentation_options.js?v=db24b7f7"></script>
+    <script src="../../_static/documentation_options.js?v=ff8529b6"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -66,7 +66,7 @@
     <link rel="prev" title="Run on SLURM" href="05_run_slurm.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.15.2" />
+  <meta name="docsearch:version" content="0.16.0" />
   </head>
   
   
@@ -634,9 +634,9 @@ at the CLI output:</p>
 </pre></div>
 </div>
 </li>
-<li><p><strong>Open <code class="docutils literal notranslate"><span class="pre">dashboard.html</span></code></strong> in a browser. The dashboard is a
-self-contained HTML report in the output directory; you don’t need a
-server to view it.</p></li>
+<li><p><strong>Open <code class="docutils literal notranslate"><span class="pre">deliverables/dashboard.html</span></code></strong> in a browser. The dashboard is a
+self-contained HTML report under the output directory’s <code class="docutils literal notranslate"><span class="pre">deliverables/</span></code>
+subfolder; you don’t need a server to view it.</p></li>
 </ol>
 <p>The remaining screenshots come from the standalone launcher pointed at
 the output the <a class="reference internal" href="04_run_local.html"><span class="std std-doc">Run Locally</span></a> page produced.</p>
@@ -663,7 +663,7 @@ rebuild-on-select lands.</p>
 <td><p>The output’s pipeline name (here <code class="docutils literal notranslate"><span class="pre">gui_tutorial</span></code>) and an SSH-tunnel reminder. Use the cache-nuke command if you ever see stale tile thumbnails.</p></td>
 </tr>
 <tr class="row-odd"><td><p><strong>Filter pane</strong> (left)</p></td>
-<td><p>A query builder over <code class="docutils literal notranslate"><span class="pre">master_measurements.parquet</span></code>. The header shows how many images currently match. <code class="docutils literal notranslate"><span class="pre">+</span> <span class="pre">Add</span> <span class="pre">filter</span></code> adds a clause (column / operator / value); the dropdown is populated from the parquet’s columns.</p></td>
+<td><p>A query builder over <code class="docutils literal notranslate"><span class="pre">deliverables/measurements.parquet</span></code> (the post-applied mirror; falls back to <code class="docutils literal notranslate"><span class="pre">deliverables/master_measurements.parquet</span></code> on legacy outputs). The header shows how many images currently match. <code class="docutils literal notranslate"><span class="pre">+</span> <span class="pre">Add</span> <span class="pre">filter</span></code> adds a clause (column / operator / value); the dropdown is populated from the parquet’s columns.</p></td>
 </tr>
 <tr class="row-even"><td><p><strong>Plate / Colony tabs</strong> (right)</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">Plate</span></code> shows the full-plate overlay with OpenSeadragon. <code class="docutils literal notranslate"><span class="pre">Colony</span></code> shows per-colony crops aligned to the grid layout.</p></td>

@@ -37,6 +37,7 @@
       dataset_overlays_dir
       dataset_results_dir
       default_output_dir_name
+      deliverables_dir
       event_log_path
       failures_jsonl_path
       job_metadata_path
@@ -59,6 +60,7 @@
       qc_members_parquet_path
       qc_review_state_path
       qc_summary_parquet_path
+      readme_md_path
       read_run_manifest
       recompile_dir
       recompile_status_dir

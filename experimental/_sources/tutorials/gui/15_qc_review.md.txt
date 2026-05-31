@@ -6,7 +6,8 @@ The `QC` tab in the Results Viewer has two modes, switched by a
 - **Configure** — the per-check card editor (see
   [QC curation loop](10_qc_curation_loop.md)). Adding, editing, or
   deleting a check now writes the `qc` array of the output's
-  `pipeline.json` (a legacy `.viewer_cache/qc_recipe.json` sidecar is
+  `deliverables/pipeline.json` (a legacy `.viewer_cache/qc_recipe.json`
+  sidecar is
   folded in once on first open).
 - **Review** — a master–detail walkthrough that walks the
   worst-agreeing groups for one QC module, lets you curate the offending
@@ -26,15 +27,16 @@ The review loop:
 
 ## Prerequisites
 
-- A finished CLI run whose `pipeline.json` carries at least one QC
-  check, so the CLI wrote the `qc/` artifact
+- A finished CLI run whose `deliverables/pipeline.json` carries at least
+  one QC check, so the CLI wrote the `qc/` artifact
   (`qc/qc_summary.parquet`, `qc/qc_members.parquet`,
-  `qc/qc_config.json`). Configure a check in the **Configure** sub-view,
-  then re-run `python -m phenotypic --recompile <output>` (or
-  `--measure`) to compute it. See [Run Locally](04_run_local.md).
-- The post-applied `measurements.parquet` mirror under
-  `<output>/measurements.parquet` — the recompute reads this frame (it
-  carries any `PostMeasurement` columns and joined metadata) and
+  `qc/qc_config.json` — these stay at the output-dir root). Configure a
+  check in the **Configure** sub-view, then re-run
+  `python -m phenotypic --recompile <output>` (or `--measure`) to compute
+  it. See [Run Locally](04_run_local.md).
+- The post-applied `deliverables/measurements.parquet` mirror under
+  `<output>/deliverables/measurements.parquet` — the recompute reads this
+  frame (it carries any `PostMeasurement` columns and joined metadata) and
   anti-joins your removals, so the in-session metric matches the CLI's.
 
 ## Walkthrough
@@ -73,10 +75,11 @@ gains a `⤳` "moved/changed" hint. The queue only reorders when you click
 
 ## Common gotchas
 
-- **Recompute reads `measurements.parquet`, not the master.** The
-  in-session recompute uses the post-applied + metadata-joined mirror
-  minus your removals, so it matches the artifact the CLI would write.
-  The clean `master_measurements.parquet` is metadata-free and is not
+- **Recompute reads `deliverables/measurements.parquet`, not the
+  master.** The in-session recompute uses the post-applied +
+  metadata-joined mirror minus your removals, so it matches the artifact
+  the CLI would write. The clean
+  `deliverables/master_measurements.parquet` is metadata-free and is not
   used for recompute.
 - **`insufficient` is not `pass`.** A check like `ICC` returns `NaN` on
   a sparse or under-powered group; the summary header counts those as
@@ -89,7 +92,7 @@ gains a `⤳` "moved/changed" hint. The queue only reorders when you click
   over.
 - **Curation is shared.** Removing a colony in Review removes it
   everywhere (the Plate / Colony tabs and the heatmap) — it writes the
-  same `measurements.parquet` removal set.
+  same `deliverables/measurements.parquet` removal set.
 
 ## Where to next
 

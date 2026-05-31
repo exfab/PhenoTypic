@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../_static/documentation_options.js?v=db24b7f7"></script>
+    <script src="../../_static/documentation_options.js?v=ff8529b6"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -66,7 +66,7 @@
     <link rel="prev" title="Run Locally" href="04_run_local.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.15.2" />
+  <meta name="docsearch:version" content="0.16.0" />
   </head>
   
   
@@ -687,8 +687,9 @@ to <code class="docutils literal notranslate"><span class="pre">SLURM</span></co
 and per-chunk job ids. The hub reads this file to surface the
 <code class="docutils literal notranslate"><span class="pre">slurm-&lt;id&gt;</span></code> row in Recent Runs — it does <strong>not</strong> parse Rich-formatted
 stdout (locale and terminal-width fragile).</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">&lt;output_dir&gt;/dashboard.html</span></code> (written by the CLI submission flow), so
-the iframe panel can point at the dashboard before any chunk completes.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&lt;output_dir&gt;/deliverables/dashboard.html</span></code> (written by the CLI
+submission flow), so the iframe panel can point at the dashboard before
+any chunk completes.</p></li>
 </ul>
 <p>For deeper SLURM operational detail (chunk sizing, recompile-on-resume,
 per-chunk cgroups), see <a class="reference internal" href="../../how_to/pages/slurm_pipelines.html"><span class="std std-doc">SLURM Pipelines</span></a>.</p>

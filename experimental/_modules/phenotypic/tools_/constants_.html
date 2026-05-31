@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=db24b7f7"></script>
+    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.15.2" />
+  <meta name="docsearch:version" content="0.16.0" />
   </head>
   
   
@@ -568,7 +568,7 @@
 <span class="sd">Note: Class names are defined in ALL_CAPS to avoid namespace conflicts with actual classes</span>
 <span class="sd">    in the codebase (e.g., GRID_DEP vs an actual Grid class). When importing, use the format::</span>
 
-<span class="sd">        from phenotypic.tools_.constants_ import IMAGE_MODE, METADATA</span>
+<span class="sd">        from phenotypic.tools_.constants_ import IMAGE_MODE, IMAGE_TYPES</span>
 
 <span class="sd">See also</span>
 <span class="sd">--------</span>
@@ -741,41 +741,6 @@
 
     <span class="n">PROCESSED</span> <span class="o">=</span> <span class="s2">&quot;Processed&quot;</span><span class="p">,</span> <span class="s2">&quot;Whether the image has been processed successfully.&quot;</span>
     <span class="n">MEASURED</span> <span class="o">=</span> <span class="s2">&quot;Measured&quot;</span><span class="p">,</span> <span class="s2">&quot;Whether the image has been measured successfully.&quot;</span></div>
-
-
-
-<div class="viewcode-block" id="METADATA">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.constants_.html#phenotypic.tools_.constants_.METADATA">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">METADATA</span><span class="p">(</span><span class="n">MeasurementInfo</span><span class="p">):</span>
-<div class="viewcode-block" id="METADATA.category">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.constants_.html#phenotypic.tools_.constants_.METADATA.category">[docs]</a>
-    <span class="nd">@classmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">category</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-        <span class="k">return</span> <span class="s2">&quot;Metadata&quot;</span></div>
-
-
-    <span class="c1"># Metadata values are not prepended with the category</span>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__new__</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">desc</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
-        <span class="n">full</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2">&quot;</span>
-        <span class="n">obj</span> <span class="o">=</span> <span class="nb">str</span><span class="o">.</span><span class="fm">__new__</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">full</span><span class="p">)</span>
-        <span class="n">obj</span><span class="o">.</span><span class="n">_value_</span> <span class="o">=</span> <span class="n">label</span>
-        <span class="n">obj</span><span class="o">.</span><span class="n">label</span> <span class="o">=</span> <span class="n">label</span>
-        <span class="n">obj</span><span class="o">.</span><span class="n">desc</span> <span class="o">=</span> <span class="n">desc</span> <span class="ow">or</span> <span class="n">label</span>
-        <span class="n">obj</span><span class="o">.</span><span class="n">pair</span> <span class="o">=</span> <span class="p">(</span><span class="n">label</span><span class="p">,</span> <span class="n">obj</span><span class="o">.</span><span class="n">desc</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">obj</span>
-
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Constants for metadata labels.&quot;&quot;&quot;</span>
-    <span class="n">UUID</span> <span class="o">=</span> <span class="s2">&quot;UUID&quot;</span><span class="p">,</span> <span class="s2">&quot;The unique identifier of the image.&quot;</span>
-    <span class="n">IMAGE_NAME</span> <span class="o">=</span> <span class="s2">&quot;ImageName&quot;</span><span class="p">,</span> <span class="s2">&quot;The name of the image.&quot;</span>
-    <span class="n">PARENT_IMAGE_NAME</span> <span class="o">=</span> <span class="s2">&quot;ParentImageName&quot;</span><span class="p">,</span> <span class="s2">&quot;The name of the parent image.&quot;</span>
-    <span class="n">PARENT_UUID</span> <span class="o">=</span> <span class="s2">&quot;ParentUUID&quot;</span><span class="p">,</span> <span class="s2">&quot;The UUID of the parent image.&quot;</span>
-    <span class="n">IMFORMAT</span> <span class="o">=</span> <span class="s2">&quot;ImageFormat&quot;</span><span class="p">,</span> <span class="s2">&quot;The format of the image.&quot;</span>
-    <span class="n">IMAGE_TYPE</span> <span class="o">=</span> <span class="s2">&quot;ImageType&quot;</span><span class="p">,</span> <span class="s2">&quot;The type of the image.&quot;</span>
-    <span class="n">BIT_DEPTH</span> <span class="o">=</span> <span class="s2">&quot;BitDepth&quot;</span><span class="p">,</span> <span class="s2">&quot;The bit depth of the image.&quot;</span>
-    <span class="n">SUFFIX</span> <span class="o">=</span> <span class="p">(</span>
-        <span class="s2">&quot;FileSuffix&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;The file suffix of the original file the image was imported from&quot;</span><span class="p">,</span>
-    <span class="p">)</span></div>
 
 </pre></div>
 

@@ -79,5 +79,8 @@ phenotypic.tools\_.constants\_.ConstantLabels
    .. autosummary::
    
       ~ConstantLabels.CATEGORY
+      ~ConstantLabels.label
+      ~ConstantLabels.desc
+      ~ConstantLabels.pair
    
    

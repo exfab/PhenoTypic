@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../_static/documentation_options.js?v=db24b7f7"></script>
+    <script src="../../_static/documentation_options.js?v=ff8529b6"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -66,7 +66,7 @@
     <link rel="prev" title="Parameter Sweeps" href="parameter_sweeps.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.15.2" />
+  <meta name="docsearch:version" content="0.16.0" />
   </head>
   
   
@@ -708,7 +708,7 @@ carries zero or more capability badges:</p>
 <td><p>File is a PhenoTypic pipeline JSON</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">out</span></code></p></td>
-<td><p>Directory is a CLI output root (<code class="docutils literal notranslate"><span class="pre">master_measurements.parquet</span></code> + <code class="docutils literal notranslate"><span class="pre">results/</span></code>)</p></td>
+<td><p>Directory is a CLI output root (<code class="docutils literal notranslate"><span class="pre">deliverables/master_measurements.parquet</span></code> + <code class="docutils literal notranslate"><span class="pre">results/</span></code>)</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">?</span></code></p></td>
 <td><p>Directory could not be listed due to a permission error</p></td>
@@ -768,11 +768,13 @@ iframe at that run’s dashboard.</p>
 <p>Once a local run starts, stdout (and stderr, which is merged into stdout) is
 teed to <code class="docutils literal notranslate"><span class="pre">&lt;output_dir&gt;/.gui_log/stdout.log</span></code> and to a 5000-line in-memory ring
 buffer. The log-tail panel polls the ring buffer on a short interval.</p>
-<p>Once <code class="docutils literal notranslate"><span class="pre">dashboard.html</span></code> lands in the output directory, the iframe panel points
-at <code class="docutils literal notranslate"><span class="pre">/runs/&lt;rel&gt;/dashboard.html</span></code>. The <code class="docutils literal notranslate"><span class="pre">/runs/</span></code> route is registered on the hub’s
-Flask server directly — not under the dispatcher middleware — so the URL works
-regardless of which tab is active. The iframed dashboard polls its own progress
-files using relative URLs, which the <code class="docutils literal notranslate"><span class="pre">/runs/</span></code> route resolves inside the sandbox.</p>
+<p>Once <code class="docutils literal notranslate"><span class="pre">dashboard.html</span></code> lands in the output directory’s <code class="docutils literal notranslate"><span class="pre">deliverables/</span></code>
+subfolder, the iframe panel points at
+<code class="docutils literal notranslate"><span class="pre">/runs/&lt;rel&gt;/deliverables/dashboard.html</span></code>. The <code class="docutils literal notranslate"><span class="pre">/runs/</span></code> route is registered on
+the hub’s Flask server directly — not under the dispatcher middleware — so the
+URL works regardless of which tab is active. The iframed dashboard polls its own
+progress files using relative URLs, which the <code class="docutils literal notranslate"><span class="pre">/runs/</span></code> route resolves inside the
+sandbox.</p>
 <p><strong>Cancel</strong> sends SIGTERM to the subprocess and waits up to 10 seconds. If the
 subprocess does not exit within that window, SIGKILL is sent. The GUI also
 registers an <code class="docutils literal notranslate"><span class="pre">atexit</span></code> hook so closing the hub with Ctrl-C propagates a SIGTERM

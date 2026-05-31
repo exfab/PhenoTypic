@@ -58,7 +58,8 @@ for i, seed in enumerate((1, 2, 3), start=1):
 
 The metadata schema mirrors the `Metadata_*` prefix convention from real
 PhenoTypic projects so the CSV is a valid input to `phenotypic --metadata`
-(an inner-join on `master_measurements.csv` after the run finishes). Strain
+(an inner-join applied at finalize, landing in
+`<output>/deliverables/measurements.csv` after the run finishes). Strain
 IDs, mating types, and media values are synthetic placeholders — pick the
 columns that match your own experiment when adapting the snippet.
 

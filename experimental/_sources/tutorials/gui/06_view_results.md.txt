@@ -25,9 +25,9 @@ populated viewer:
        --output-root gui_tutorial_dataset/results --port 8051
    ```
 
-2. **Open `dashboard.html`** in a browser. The dashboard is a
-   self-contained HTML report in the output directory; you don't need a
-   server to view it.
+2. **Open `deliverables/dashboard.html`** in a browser. The dashboard is a
+   self-contained HTML report under the output directory's `deliverables/`
+   subfolder; you don't need a server to view it.
 
 The remaining screenshots come from the standalone launcher pointed at
 the output the [Run Locally](04_run_local.md) page produced.
@@ -48,7 +48,7 @@ The viewer is split into three regions:
 | Region | Contents |
 |--------|----------|
 | **Header** | The output's pipeline name (here `gui_tutorial`) and an SSH-tunnel reminder. Use the cache-nuke command if you ever see stale tile thumbnails. |
-| **Filter pane** (left) | A query builder over `master_measurements.parquet`. The header shows how many images currently match. `+ Add filter` adds a clause (column / operator / value); the dropdown is populated from the parquet's columns. |
+| **Filter pane** (left) | A query builder over `deliverables/measurements.parquet` (the post-applied mirror; falls back to `deliverables/master_measurements.parquet` on legacy outputs). The header shows how many images currently match. `+ Add filter` adds a clause (column / operator / value); the dropdown is populated from the parquet's columns. |
 | **Plate / Colony tabs** (right) | `Plate` shows the full-plate overlay with OpenSeadragon. `Colony` shows per-colony crops aligned to the grid layout. |
 
 To render a plate, pick a filename from the `Select image…` dropdown. The

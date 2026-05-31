@@ -27,7 +27,6 @@ phenotypic.tools\_.constants\_
       IMAGE_MODE
       IMAGE_TYPES
       IO
-      METADATA
       PIPE_STATUS
    
    

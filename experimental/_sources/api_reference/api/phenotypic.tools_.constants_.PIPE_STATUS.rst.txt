@@ -81,5 +81,8 @@ phenotypic.tools\_.constants\_.PIPE\_STATUS
       ~PIPE_STATUS.CATEGORY
       ~PIPE_STATUS.PROCESSED
       ~PIPE_STATUS.MEASURED
+      ~PIPE_STATUS.label
+      ~PIPE_STATUS.desc
+      ~PIPE_STATUS.pair
    
    
