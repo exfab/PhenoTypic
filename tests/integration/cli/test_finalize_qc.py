@@ -22,7 +22,10 @@ import pytest
 from phenotypic import ImagePipeline
 from phenotypic.analysis import ReplicateAgreement
 from phenotypic.qc._recipe import QcRecipeEntry
+from phenotypic.tools_ import measurements_parquet_path
 from phenotypic._cli._cli_output_manager import finalize_post_master_outputs
+
+from tests._output_layout import write_master
 
 
 def _master() -> pl.DataFrame:
@@ -51,9 +54,13 @@ def _qc_pipeline() -> ImagePipeline:
 
 
 def _write_master_files(output_dir: Path, master: pl.DataFrame) -> None:
-    """finalize assumes the master files already exist on disk."""
-    master.write_csv(output_dir / "master_measurements.csv")
-    master.write_parquet(output_dir / "master_measurements.parquet")
+    """finalize assumes the master files already exist on disk.
+
+    The master archive lives under ``<output>/deliverables/`` — route
+    through the production path-builders via the shared helper so this
+    fixture auto-tracks the layout.
+    """
+    write_master(output_dir, master)
 
 
 class TestFinalizeWritesQc:
@@ -89,7 +96,7 @@ class TestNoQcFlag:
         finalize_post_master_outputs(
             tmp_path, _master(), _qc_pipeline(), no_qc=True
         )
-        assert (tmp_path / "measurements.parquet").exists()
+        assert measurements_parquet_path(tmp_path).exists()
 
 
 class TestResetOnRerun:
@@ -136,4 +143,4 @@ class TestFailureIsolation:
         finalize_post_master_outputs(tmp_path, _master(), _qc_pipeline())
 
         # The authoritative mirror is still written.
-        assert (tmp_path / "measurements.parquet").exists()
+        assert measurements_parquet_path(tmp_path).exists()

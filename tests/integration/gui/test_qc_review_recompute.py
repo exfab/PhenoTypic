@@ -35,9 +35,13 @@ from phenotypic.gui.results_viewer._output_root import OutputRoot
 from phenotypic.qc import QcRecipeEntry
 from phenotypic.qc._runner import run_qc
 from phenotypic.tools_ import (
+    measurements_parquet_path,
+    pipeline_json_path,
     qc_review_state_path,
     qc_summary_parquet_path,
 )
+
+from tests._output_layout import write_master, write_measurements_mirror, write_pipeline_json
 
 _INSTANCE_ID = "qc-SE-aaaa1111"
 
@@ -80,8 +84,8 @@ def output_root(tmp_path: Path) -> OutputRoot:
             "Size_Area": [100.0, 101.0, 102.0, 100.0, 101.0, 900.0],
         }
     )
-    master.write_parquet(tmp_path / "master_measurements.parquet")
-    master.write_parquet(tmp_path / "measurements.parquet")
+    write_master(tmp_path, master)
+    write_measurements_mirror(tmp_path, master)
 
     overlays = tmp_path / "results" / "d1" / "overlays"
     overlays.mkdir(parents=True)
@@ -89,7 +93,7 @@ def output_root(tmp_path: Path) -> OutputRoot:
         PILImage.new("RGB", (120, 120), (200, 0, 0)).save(overlays / f"{stem}.png")
 
     pipeline = _build_pipeline()
-    (tmp_path / "pipeline.json").write_text(pipeline.to_json(), encoding="utf-8")
+    write_pipeline_json(tmp_path, pipeline)
 
     # Seed the qc/ artifact exactly as the CLI would.
     run_qc(master.to_pandas(), pipeline, tmp_path)
@@ -117,7 +121,7 @@ def test_configure_recipe_is_pipeline_backed(output_root, tmp_path: Path) -> Non
     app = create_app(output_root)
     recipe = app.server.config.get(CFG_QC_RECIPE)
     # The recipe's file is pipeline.json, and the entry round-trips.
-    assert recipe.path == tmp_path / "pipeline.json"
+    assert recipe.path == pipeline_json_path(tmp_path)
     assert recipe.entries[0].cls is ReplicateAgreement
 
 
@@ -138,7 +142,7 @@ def test_recompute_matches_cli_for_identical_removals(output_root, tmp_path: Pat
     gui_summary = pl.read_parquet(qc_summary_parquet_path(tmp_path))
 
     # CLI-equivalent path: post-applied mirror minus the same key.
-    mirror = pl.read_parquet(tmp_path / "measurements.parquet")
+    mirror = pl.read_parquet(measurements_parquet_path(tmp_path))
     cli_frame = mirror.filter(
         ~(
             (pl.col("Metadata_ImageFile") == "img-2")
@@ -171,7 +175,7 @@ def test_recompute_does_not_touch_review_state(output_root, tmp_path: Path) -> N
 
     # A recompute runs run_qc only.
     run_qc(
-        pl.read_parquet(tmp_path / "measurements.parquet").to_pandas(),
+        pl.read_parquet(measurements_parquet_path(tmp_path)).to_pandas(),
         _build_pipeline(),
         tmp_path,
     )
@@ -199,16 +203,13 @@ def test_legacy_sidecar_is_migrated_into_pipeline(tmp_path: Path) -> None:
             "Size_Area": [100.0, 101.0],
         }
     )
-    master.write_parquet(tmp_path / "master_measurements.parquet")
-    master.write_parquet(tmp_path / "measurements.parquet")
+    write_master(tmp_path, master)
+    write_measurements_mirror(tmp_path, master)
     (tmp_path / "results" / "d1" / "overlays").mkdir(parents=True)
     PILImage.new("RGB", (120, 120), (200, 0, 0)).save(
         tmp_path / "results" / "d1" / "overlays" / "img-1.png"
     )
-    ImagePipeline(name="no-qc").to_json()
-    (tmp_path / "pipeline.json").write_text(
-        ImagePipeline(name="no-qc").to_json(), encoding="utf-8"
-    )
+    write_pipeline_json(tmp_path, ImagePipeline(name="no-qc"))
     sidecar_dir = tmp_path / ".viewer_cache"
     sidecar_dir.mkdir()
     (sidecar_dir / "qc_recipe.json").write_text(
@@ -237,7 +238,7 @@ def test_legacy_sidecar_is_migrated_into_pipeline(tmp_path: Path) -> None:
     # The migrated entry now lives in the pipeline-backed recipe.
     assert any(e.instance_id == _INSTANCE_ID for e in recipe.entries)
     # And it landed in pipeline.json's qc array.
-    payload = json.loads((tmp_path / "pipeline.json").read_text(encoding="utf-8"))
+    payload = json.loads(pipeline_json_path(tmp_path).read_text(encoding="utf-8"))
     assert any(e["instance_id"] == _INSTANCE_ID for e in payload.get("qc", []))
 
 

@@ -18,10 +18,10 @@ from ._cli_file_locking import FileLockTimeout, file_lock
 from ._cli_utils import load_job_metadata
 from phenotypic.tools_ import (
     DIR_PROGRESS,
-    MEASUREMENTS_PARQUET,
     PROCESSING_EVENTS_LOG,
     JobMetadataKey,
     checkpoint_lock_filename,
+    measurements_parquet_path,
     resolve_execution_mode,
 )
 from phenotypic.tools_.typing_ import CheckpointType
@@ -161,7 +161,7 @@ def _run_finalize(output_dir: Path, progress_dir: Path) -> None:
     # external metadata join) so dashboard sidecars match what the GUI
     # viewer and per-feature splits see. The master archive is intentionally
     # metadata-free and would regress plugin grouping if used here.
-    mirror_path = output_dir / MEASUREMENTS_PARQUET
+    mirror_path = measurements_parquet_path(output_dir)
     merged_df: Optional[pl.DataFrame] = None
     if mirror_path.exists():
         try:

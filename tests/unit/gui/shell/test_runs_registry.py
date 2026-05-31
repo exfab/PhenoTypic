@@ -18,11 +18,23 @@ import threading
 from pathlib import Path
 from typing import List
 
+from phenotypic.gui._config import DELIVERABLES_DIRNAME
 from phenotypic.gui.shell._runs_registry import (
     RunRecord,
     RunRegistry,
 )
 from phenotypic.gui.shell._sandbox import SandboxRoot
+
+
+def _write_master_marker(out: Path) -> None:
+    """Drop an empty ``deliverables/master_measurements.parquet`` marker.
+
+    The shell classifier identifies a CLI output by this file (under
+    ``deliverables/``) plus a root-level ``results/`` dir.
+    """
+    deliverables = out / DELIVERABLES_DIRNAME
+    deliverables.mkdir(parents=True, exist_ok=True)
+    (deliverables / "master_measurements.parquet").write_bytes(b"")
 
 
 # ---------------------------------------------------------------------------
@@ -165,7 +177,7 @@ def _make_cli_output(
     """
     out = root / name
     out.mkdir(parents=True, exist_ok=True)
-    (out / "master_measurements.parquet").write_bytes(b"")
+    _write_master_marker(out)
     (out / "results").mkdir(exist_ok=True)
     progress = out / "progress"
     progress.mkdir(exist_ok=True)
@@ -228,7 +240,7 @@ def test_rehydrate_extracts_slurm_job_id(tmp_path: Path) -> None:
 def test_rehydrate_unknown_when_no_manifest(tmp_path: Path) -> None:
     out = tmp_path / "nm"
     out.mkdir()
-    (out / "master_measurements.parquet").write_bytes(b"")
+    _write_master_marker(out)
     (out / "results").mkdir()
     sandbox = SandboxRoot.from_path(tmp_path)
     reg = RunRegistry()
@@ -261,7 +273,7 @@ def test_rehydrate_preserves_existing_records(tmp_path: Path) -> None:
 def test_rehydrate_ignores_corrupt_manifest(tmp_path: Path) -> None:
     out = tmp_path / "broken"
     out.mkdir()
-    (out / "master_measurements.parquet").write_bytes(b"")
+    _write_master_marker(out)
     (out / "results").mkdir()
     progress = out / "progress"
     progress.mkdir()

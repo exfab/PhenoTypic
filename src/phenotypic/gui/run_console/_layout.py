@@ -5,8 +5,8 @@ Stitches together the four panes of the Run console:
     * Left column: :func:`._form.build_form` (pickers + mode + advanced
       + slurm + actions).
     * Right column top: dashboard ``<iframe>`` panel (placeholder before
-      a run starts; ``src`` rewritten to ``/runs/<rel>/dashboard.html``
-      once a run is live).
+      a run starts; ``src`` rewritten to
+      ``/runs/<rel>/deliverables/dashboard.html`` once a run is live).
     * Right column bottom: live log tail driven by
       :class:`~phenotypic.gui.run_console._runner.LocalRunner` snapshots.
     * Bottom: Recent Runs panel scanned via

@@ -33,11 +33,12 @@ class RecentRunRow:
     Attributes:
         rel_path: Path of the output dir relative to sandbox root. Used
             both as a display label and as the iframe-src component
-            (``/runs/<rel>/dashboard.html``).
+            (``/runs/<rel>/deliverables/dashboard.html``).
         status: ``"running"``, ``"complete"``, ``"failed"``, ``"cancelled"``,
             or ``"unknown"``. Matches :data:`RunStatus`.
-        has_dashboard: Whether ``<rel>/dashboard.html`` exists. The UI
-            disables the "Open dashboard" link when ``False``.
+        has_dashboard: Whether ``<rel>/deliverables/dashboard.html``
+            exists. The UI disables the "Open dashboard" link when
+            ``False``.
         last_modified_seconds: Unix epoch (seconds) of the directory's
             most recent modification. Lets the UI sort by recency.
         mode: ``"local"`` / ``"slurm"`` / ``"unknown"`` from the manifest.

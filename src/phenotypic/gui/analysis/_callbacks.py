@@ -30,13 +30,12 @@ from dash import (
     no_update,
 )
 
-from phenotypic.tools_ import ModulePath
+from phenotypic.tools_ import ModulePath, measurements_parquet_path
 
 from phenotypic.gui._config import (
     CFG_MEASUREMENT_SCHEMA,
     CFG_OUTPUT_ROOT,
     CFG_RECIPE_STATE,
-    MEASUREMENTS_PARQUET,
 )
 from phenotypic.gui.results_viewer._filtered_state import KEY_IMAGE_FILE
 from phenotypic.gui._design import COLOR_MUTED
@@ -413,7 +412,7 @@ def register_callbacks(app: "dash.Dash") -> None:
         if node is None:
             return _preview_error("Section no longer exists — reload the page.")
 
-        measurements = Path(output_root.root) / MEASUREMENTS_PARQUET
+        measurements = measurements_parquet_path(Path(output_root.root))
         if not measurements.exists():
             return _preview_error(
                 f"Curated measurements not found at {measurements}."
@@ -619,7 +618,7 @@ def _run_inline(recipe: Any, output_dir: Path) -> Any:
     """Read measurements.parquet, run analyze, atomic-write outputs."""
     from phenotypic._cli._cli_output_manager import _emit_analysis_outputs
 
-    measurements = output_dir / MEASUREMENTS_PARQUET
+    measurements = measurements_parquet_path(output_dir)
     if not measurements.exists():
         return html.Span(
             f"Curated measurements not found at {measurements}.",

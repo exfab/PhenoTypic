@@ -28,6 +28,7 @@ from phenotypic.gui._config import (
     MEASUREMENTS_CSV,
     MEASUREMENTS_PARQUET,
 )
+from phenotypic.tools_ import deliverables_dir
 
 if TYPE_CHECKING:
     from phenotypic.tools_ import ColumnSource
@@ -48,7 +49,8 @@ class MeasurementSchema:
     """Lazy cache of column-name lists keyed by source + mtime.
 
     Attributes:
-        output_root: Path to the CLI output directory containing
+        output_root: Path to the CLI output directory whose
+            ``deliverables/`` subdirectory holds
             ``measurements.{parquet,csv}`` and / or
             ``master_measurements.{parquet,csv}``.
     """
@@ -90,8 +92,9 @@ class MeasurementSchema:
             logger.warning("Unknown column source %r; returning []", source_str)
             return []
 
-        parquet_path = self.output_root / files[0]
-        csv_path = self.output_root / files[1]
+        deliverables = deliverables_dir(self.output_root)
+        parquet_path = deliverables / files[0]
+        csv_path = deliverables / files[1]
         sentinel = _max_mtime_ns(parquet_path, csv_path)
 
         with self._lock:

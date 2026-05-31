@@ -20,18 +20,20 @@ import polars as pl
 from phenotypic.gui._config import (
     DIR_MEASUREMENTS,
     DIR_OVERLAYS,
-    MASTER_MEASUREMENTS_PARQUET,
-    MEASUREMENTS_PARQUET,
-    PIPELINE_JSON,
     RESULTS_DIRNAME,
     VIEWER_CACHE_DIRNAME,
 )
 from phenotypic.gui.results_viewer._filtered_state import KEY_DATASET, KEY_IMAGE_FILE
+from phenotypic.tools_ import (
+    master_measurements_parquet_path,
+    measurements_parquet_path,
+    pipeline_json_path,
+)
 
 logger = logging.getLogger(__name__)
 
 #: The post-applied mirror seeded by ``_seed_measurements``. Preferred
-#: over the master archive (:data:`MASTER_MEASUREMENTS_PARQUET`) for the
+#: over the master archive (``master_measurements.parquet``) for the
 #: viewer's display frame because it reflects whatever ``PostMeasurement``
 #: ops the user configured.
 _CACHE_RELATIVE = Path(VIEWER_CACHE_DIRNAME) / "dzi"
@@ -59,8 +61,9 @@ class OutputRoot:
         cache_dir: Path to ``<root>/.viewer_cache/dzi``. Created on
             discovery if missing.
         pipeline_summary: One-line label parsed from
-            ``<root>/pipeline.json`` (typically the pipeline ``name``)
-            or ``None`` if the file is absent or unparseable.
+            ``<root>/deliverables/pipeline.json`` (typically the
+            pipeline ``name``) or ``None`` if the file is absent or
+            unparseable.
     """
 
     root: Path
@@ -80,9 +83,9 @@ class OutputRoot:
 
         The expected layout is:
 
-            <root>/master_measurements.parquet
+            <root>/deliverables/master_measurements.parquet
             <root>/results/<dataset>/overlays/<image_stem>.png
-            <root>/pipeline.json                  # optional
+            <root>/deliverables/pipeline.json     # optional
 
         Args:
             root: Path to a CLI output directory.
@@ -99,10 +102,11 @@ class OutputRoot:
         """
         root = Path(root).resolve()
 
-        master_path = root / MASTER_MEASUREMENTS_PARQUET
+        master_path = master_measurements_parquet_path(root)
         if not master_path.is_file():
             raise FileNotFoundError(
-                f"Master measurements parquet not found at {master_path!s}. "
+                f"Master measurements parquet not found at {master_path!s} "
+                "(now under the deliverables/ subdirectory). "
                 "Run `python -m phenotypic` to produce a CLI output directory "
                 "before launching the results viewer."
             )
@@ -116,7 +120,7 @@ class OutputRoot:
         # has produced master_measurements.parquet but finalize hasn't yet
         # seeded measurements.parquet) and on legacy outputs from before
         # the clean-master split.
-        mirror_path = root / MEASUREMENTS_PARQUET
+        mirror_path = measurements_parquet_path(root)
         if mirror_path.is_file():
             logger.info(
                 "Loading post-applied measurements mirror from %s", mirror_path
@@ -172,7 +176,7 @@ class OutputRoot:
         cache_dir = root / _CACHE_RELATIVE
         cache_dir.mkdir(parents=True, exist_ok=True)
 
-        pipeline_summary = _read_pipeline_summary(root / PIPELINE_JSON)
+        pipeline_summary = _read_pipeline_summary(pipeline_json_path(root))
         overlay_index = _scan_overlay_index(results_dir, datasets_with_overlays)
 
         return cls(

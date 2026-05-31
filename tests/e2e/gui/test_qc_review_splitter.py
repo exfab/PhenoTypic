@@ -27,6 +27,8 @@ from phenotypic import ImagePipeline
 from phenotypic.analysis import ReplicateAgreement
 from phenotypic.qc import QcRecipeEntry
 from phenotypic.qc._runner import run_qc
+
+from tests._output_layout import write_master, write_measurements_mirror, write_pipeline_json
 from tests.e2e.gui.conftest import _build_sandbox, _start_live_server
 
 # Single-threaded dev server + Dash callback chain stochastically exceeds
@@ -92,9 +94,10 @@ def _pipeline() -> ImagePipeline:
 def _seed_review_output(sandbox: Path) -> Path:
     """Seed a CLI output dir with the master + overlays + qc/ artifact."""
     out = sandbox / "results" / _OUTPUT_NAME
+    out.mkdir(parents=True, exist_ok=True)
     master = _build_master()
-    master.write_parquet(out / "master_measurements.parquet")
-    master.write_parquet(out / "measurements.parquet")
+    write_master(out, master)
+    write_measurements_mirror(out, master)
 
     overlays = out / "results" / "ds1" / "overlays"
     overlays.mkdir(parents=True, exist_ok=True)
@@ -103,7 +106,7 @@ def _seed_review_output(sandbox: Path) -> Path:
         PILImage.new("RGB", (120, 120), (200, 0, 0)).save(overlays / f"{stem}.png")
 
     pipeline = _pipeline()
-    (out / "pipeline.json").write_text(pipeline.to_json(), encoding="utf-8")
+    write_pipeline_json(out, pipeline)
     # Generate the qc/ artifact the Review tab reads.
     run_qc(master.to_pandas(), pipeline, out)
     return out

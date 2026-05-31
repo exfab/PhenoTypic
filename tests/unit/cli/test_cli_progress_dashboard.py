@@ -44,6 +44,7 @@ from phenotypic._cli._dashboard._manifest_builder import (
 )
 from phenotypic._cli._dashboard import generate_dashboard
 from phenotypic._cli._cli_sentinel_scripts import generate_sentinel_script
+from phenotypic.tools_ import analysis_html_path, dashboard_html_path
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -499,12 +500,12 @@ class TestDashboard:
 
     def test_generates_html(self, tmp_dir):
         generate_dashboard(tmp_dir)
-        assert (tmp_dir / "dashboard.html").exists()
-        assert (tmp_dir / "analysis.html").exists()
+        assert dashboard_html_path(tmp_dir).exists()
+        assert analysis_html_path(tmp_dir).exists()
 
     def test_html_contains_key_elements(self, tmp_dir):
         generate_dashboard(tmp_dir)
-        html = (tmp_dir / "dashboard.html").read_text()
+        html = dashboard_html_path(tmp_dir).read_text()
         assert "<!DOCTYPE html>" in html
         assert "PhenoTypic" in html
         assert "progress/manifest.json" in html
@@ -514,12 +515,12 @@ class TestDashboard:
     def test_creates_dir_if_missing(self, tmp_dir):
         new_dir = tmp_dir / "new_output"
         generate_dashboard(new_dir)
-        assert (new_dir / "dashboard.html").exists()
-        assert (new_dir / "analysis.html").exists()
+        assert dashboard_html_path(new_dir).exists()
+        assert analysis_html_path(new_dir).exists()
 
     def test_contains_tab_structure(self, tmp_dir):
         generate_dashboard(tmp_dir)
-        html = (tmp_dir / "dashboard.html").read_text()
+        html = dashboard_html_path(tmp_dir).read_text()
         assert "tab-progress" in html
         assert "tab-readme" in html
         assert "tab-download" in html
@@ -530,27 +531,27 @@ class TestDashboard:
 
     def test_contains_marked_js(self, tmp_dir):
         generate_dashboard(tmp_dir)
-        html = (tmp_dir / "dashboard.html").read_text()
+        html = dashboard_html_path(tmp_dir).read_text()
         assert "marked" in html
 
     def test_local_mode_hides_download_tab(self, tmp_dir):
         generate_dashboard(tmp_dir, execution_mode="local")
-        html = (tmp_dir / "dashboard.html").read_text()
+        html = dashboard_html_path(tmp_dir).read_text()
         assert 'EXECUTION_MODE = "local"' in html
 
     def test_slurm_mode_enables_download_tab(self, tmp_dir):
         generate_dashboard(tmp_dir, execution_mode="slurm")
-        html = (tmp_dir / "dashboard.html").read_text()
+        html = dashboard_html_path(tmp_dir).read_text()
         assert 'EXECUTION_MODE = "slurm"' in html
 
     def test_readme_fetch_path(self, tmp_dir):
         generate_dashboard(tmp_dir)
-        html = (tmp_dir / "dashboard.html").read_text()
+        html = dashboard_html_path(tmp_dir).read_text()
         assert "README.md" in html
 
     def test_download_tab_wget_content(self, tmp_dir):
         generate_dashboard(tmp_dir, execution_mode="slurm")
-        html = (tmp_dir / "dashboard.html").read_text()
+        html = dashboard_html_path(tmp_dir).read_text()
         assert "wget" in html
         assert "YOUR_SERVER_URL" in html
         assert "--cut-dirs" in html
@@ -559,13 +560,13 @@ class TestDashboard:
 
     def test_download_url_autodetect_js(self, tmp_dir):
         generate_dashboard(tmp_dir)
-        html = (tmp_dir / "dashboard.html").read_text()
+        html = dashboard_html_path(tmp_dir).read_text()
         assert "getBaseUrl" in html
         assert "window.location" in html
 
     def test_contains_fetch_error_handling(self, tmp_dir):
         generate_dashboard(tmp_dir)
-        html = (tmp_dir / "dashboard.html").read_text()
+        html = dashboard_html_path(tmp_dir).read_text()
         assert "status-error" in html
         assert "showFetchError" in html
         assert "clearFetchError" in html

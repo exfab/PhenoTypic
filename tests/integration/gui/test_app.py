@@ -18,6 +18,7 @@ from typing import Any, Iterator
 
 import pytest
 
+from phenotypic.gui._config import DELIVERABLES_DIRNAME
 from phenotypic.gui.shell import SandboxRoot, create_app
 
 
@@ -128,7 +129,9 @@ def test_home_capability_summary_renders(tmp_path: Path) -> None:
         (d / "img.tif").write_bytes(b"")
     out = sandbox_dir / "out"
     out.mkdir()
-    (out / "master_measurements.parquet").write_bytes(b"")
+    deliverables = out / DELIVERABLES_DIRNAME
+    deliverables.mkdir()
+    (deliverables / "master_measurements.parquet").write_bytes(b"")
     (out / "results").mkdir()
     (sandbox_dir / "pipeline.json").write_text('{"operations": []}')
 

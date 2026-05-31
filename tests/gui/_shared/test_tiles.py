@@ -46,6 +46,8 @@ from phenotypic.gui._shared.tiles import (
 from phenotypic.gui.results_viewer._app import create_app
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 
+from tests._output_layout import write_master
+
 
 # ---------------------------------------------------------------------------
 # Component-tree helpers
@@ -334,7 +336,7 @@ def output_root(tmp_path: Path) -> OutputRoot:
             "Bbox_MaxCC": [60],
         }
     )
-    master.write_parquet(tmp_path / "master_measurements.parquet")
+    write_master(tmp_path, master)
     overlay_dir = tmp_path / "results" / "d1" / "overlays"
     overlay_dir.mkdir(parents=True)
     PILImage.new("RGB", (100, 100), (255, 0, 0)).save(
@@ -464,7 +466,7 @@ def output_root_no_bbox(tmp_path: Path) -> OutputRoot:
             # No Bbox_MinRR/MaxRR/MinCC/MaxCC — graceful-degrade path.
         }
     )
-    master.write_parquet(tmp_path / "master_measurements.parquet")
+    write_master(tmp_path, master)
     overlay_dir = tmp_path / "results" / "d1" / "overlays"
     overlay_dir.mkdir(parents=True)
     PILImage.new("RGB", (100, 100), (255, 0, 0)).save(

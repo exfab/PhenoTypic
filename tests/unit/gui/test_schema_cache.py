@@ -8,11 +8,24 @@ import polars as pl
 import pytest
 
 from phenotypic.gui._schema_cache import MeasurementSchema
+from phenotypic.tools_ import deliverables_dir
 
 
 @pytest.fixture()
 def output_root(tmp_path: Path) -> Path:
     return tmp_path
+
+
+def _deliv(output_root: Path) -> Path:
+    """Return ``<output_root>/deliverables/``, creating it on first use.
+
+    ``MeasurementSchema`` reads ``measurements.{parquet,csv}`` and
+    ``master_measurements.parquet`` from the deliverables subdir, so tests
+    must seed those files there (not at the output root).
+    """
+    deliverables = deliverables_dir(output_root)
+    deliverables.mkdir(parents=True, exist_ok=True)
+    return deliverables
 
 
 class TestColumnsForParquet:
@@ -24,7 +37,7 @@ class TestColumnsForParquet:
                 "Metadata_Time": [0, 1],
             }
         )
-        df.write_parquet(output_root / "measurements.parquet")
+        df.write_parquet(_deliv(output_root) / "measurements.parquet")
 
         schema = MeasurementSchema(output_root=output_root)
         assert schema.columns_for("measurements") == [
@@ -35,7 +48,7 @@ class TestColumnsForParquet:
 
     def test_caches_repeated_calls(self, output_root):
         pl.DataFrame({"a": [1], "b": [2]}).write_parquet(
-            output_root / "measurements.parquet"
+            _deliv(output_root) / "measurements.parquet"
         )
         schema = MeasurementSchema(output_root=output_root)
         first = schema.columns_for("measurements")
@@ -47,7 +60,7 @@ class TestColumnsForParquet:
 class TestCsvFallback:
     def test_falls_back_to_csv_when_no_parquet(self, output_root):
         pl.DataFrame({"x": [1], "y": [2]}).write_csv(
-            output_root / "measurements.csv"
+            _deliv(output_root) / "measurements.csv"
         )
         schema = MeasurementSchema(output_root=output_root)
         assert schema.columns_for("measurements") == ["x", "y"]
@@ -62,7 +75,7 @@ class TestMissingFile:
 
 class TestMtimeInvalidation:
     def test_invalidates_when_mtime_advances(self, output_root):
-        path = output_root / "measurements.parquet"
+        path = _deliv(output_root) / "measurements.parquet"
         pl.DataFrame({"a": [1]}).write_parquet(path)
         schema = MeasurementSchema(output_root=output_root)
         assert schema.columns_for("measurements") == ["a"]
@@ -78,10 +91,10 @@ class TestMasterMeasurements:
     def test_master_measurements_uses_master_filename(self, output_root):
         # measurements.parquet must NOT shadow master.
         pl.DataFrame({"only_in_master": [1]}).write_parquet(
-            output_root / "master_measurements.parquet"
+            _deliv(output_root) / "master_measurements.parquet"
         )
         pl.DataFrame({"only_in_curated": [1]}).write_parquet(
-            output_root / "measurements.parquet"
+            _deliv(output_root) / "measurements.parquet"
         )
         schema = MeasurementSchema(output_root=output_root)
         assert schema.columns_for("master_measurements") == ["only_in_master"]
@@ -100,7 +113,7 @@ class TestRaceConditionRecovery:
     def test_parquet_deleted_after_mtime_probe(
         self, output_root, monkeypatch
     ):
-        path = output_root / "measurements.parquet"
+        path = _deliv(output_root) / "measurements.parquet"
         pl.DataFrame({"a": [1]}).write_parquet(path)
 
         schema = MeasurementSchema(output_root=output_root)
@@ -128,10 +141,10 @@ class TestRaceConditionRecovery:
     ):
         # parquet exists but raises on scan; CSV exists and succeeds.
         pl.DataFrame({"a": [1]}).write_parquet(
-            output_root / "measurements.parquet"
+            _deliv(output_root) / "measurements.parquet"
         )
         pl.DataFrame({"x": [1], "y": [2]}).write_csv(
-            output_root / "measurements.csv"
+            _deliv(output_root) / "measurements.csv"
         )
 
         original_scan = pl.scan_parquet

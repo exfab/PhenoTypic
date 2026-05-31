@@ -23,6 +23,7 @@ from phenotypic._cli._cli_types import (
     ImageFailure,
 )
 from phenotypic._cli._cli_update_state import aggregate_state_from_events
+from phenotypic.tools_ import processing_report_html_path
 
 
 @click.command()
@@ -140,7 +141,10 @@ def generate_cli_report(output_dir: Path):
     # Generate report
     click.echo("Generating HTML report...")
     generator = HTMLReportGenerator()
-    report_path = output_dir / "processing_report.html"
+    report_path = processing_report_html_path(output_dir)
+    # This writer does not go through the atomic writer, so the
+    # deliverables/ directory may not exist yet — create it explicitly.
+    report_path.parent.mkdir(parents=True, exist_ok=True)
     generator.generate_report(results, report_path)
 
     click.echo("\n✓ Report generated successfully!")

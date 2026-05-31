@@ -147,6 +147,7 @@ from phenotypic.gui._config import (
     PIPELINE_JSON,                # "pipeline.json"
     RESULTS_DIRNAME,              # "results"
     PROGRESS_DIRNAME,             # "progress"
+    DELIVERABLES_DIRNAME,         # "deliverables"
     DASHBOARD_FILENAME,           # "dashboard.html"
 )
 ```
@@ -156,6 +157,20 @@ These are re-exports of the canonical constants in
 yields the same string. Use `_config.py` for ergonomic GUI imports; reach
 for `phenotypic.tools_` directly when in non-GUI code that consumes these
 filenames (e.g. test fixtures, CLI integration tests).
+
+**Output layout — `deliverables/`.** These are *filenames*, not full
+paths. The user-facing run artifacts (`master_measurements.*`,
+`measurements.*`, `measurements_by_feature/`, `analysis.*`,
+`dashboard.html`, `analysis.html`, `processing_report.html`,
+`README.md`, `pipeline.json`) now live under `<output>/deliverables/`
+(`DELIVERABLES_DIRNAME` = `"deliverables"`, underlying
+`DIR_DELIVERABLES` in `phenotypic.tools_`). Join them via the
+`phenotypic.tools_` path helpers (`deliverables_dir(output)`,
+`master_measurements_parquet_path(output)`, …) so the subfolder stays
+single-sourced. The root-level directories `RESULTS_DIRNAME` (`results/`,
+per-image hdf/measurements/overlays), `PROGRESS_DIRNAME` (`progress/`),
+`QC_DIRNAME` (`qc/`), and `processing_state.json` are **not** deliverables
+and stay at the output-dir root.
 
 ---
 
@@ -261,7 +276,8 @@ badge contrast variants and prohibited combinations.
 
 ### Column-aware analyzer params
 
-Filter / model params that name a column in `measurements.parquet`
+Filter / model params that name a column in
+`deliverables/measurements.parquet`
 should be annotated with `ColumnRef` / `ColumnRefList` from
 `phenotypic.tools_` instead of bare `str` / `list[str]`. Analyzers are
 pydantic models, so these are declared as annotated **class-level

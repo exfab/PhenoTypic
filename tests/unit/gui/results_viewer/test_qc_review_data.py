@@ -32,6 +32,9 @@ from phenotypic.gui.results_viewer._qc_tab.review._review_state import (
     decode_group_key,
     encode_group_key,
 )
+from phenotypic.tools_ import measurements_parquet_path
+
+from tests._output_layout import write_master, write_measurements_mirror
 
 
 # ---------------------------------------------------------------------------
@@ -60,8 +63,8 @@ def _write_output_root(tmp_path: Path, *, with_time: bool = False) -> OutputRoot
     if with_time:
         cols["Metadata_Time"] = [0, 1, 0, 1]
     master = pl.DataFrame(cols)
-    master.write_parquet(tmp_path / "master_measurements.parquet")
-    master.write_parquet(tmp_path / "measurements.parquet")
+    write_master(tmp_path, master)
+    write_measurements_mirror(tmp_path, master)
 
     overlays = tmp_path / "results" / "d1" / "overlays"
     overlays.mkdir(parents=True)
@@ -220,9 +223,9 @@ def test_build_recompute_frame_reads_mirror_not_master(tmp_path: Path) -> None:
     """
     root = _write_output_root(tmp_path)
     # Rewrite the mirror with an extra metadata-only column.
-    mirror = pl.read_parquet(tmp_path / "measurements.parquet")
+    mirror = pl.read_parquet(measurements_parquet_path(tmp_path))
     mirror = mirror.with_columns(pl.lit("strainX").alias("Metadata_Strain"))
-    mirror.write_parquet(tmp_path / "measurements.parquet")
+    mirror.write_parquet(measurements_parquet_path(tmp_path))
 
     frame = _data.build_recompute_frame(root, set())
     assert "Metadata_Strain" in frame.columns

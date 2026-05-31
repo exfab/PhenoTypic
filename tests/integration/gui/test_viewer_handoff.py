@@ -16,23 +16,30 @@ import pytest
 from phenotypic.gui.shell import SandboxRoot
 from phenotypic.gui.shell._app import compose_hub
 
+from tests._output_layout import write_master
+
 
 def _make_minimal_output(root: Path, dataset: str = "d1") -> None:
     """Mirror ``tests/gui/results_viewer/test_output_root._make_minimal_output``.
 
-    Kept inline here to avoid a cross-package test import.
+    Kept inline here to avoid a cross-package test import. The master
+    archive lands under ``root/deliverables/``; the per-image ``results/``
+    tree stays at the output root.
     """
     (root / "results" / dataset / "overlays").mkdir(parents=True)
     (root / "results" / dataset / "measurements").mkdir(parents=True)
-    pl.DataFrame(
-        {
-            "Metadata_Dataset": [dataset, dataset],
-            "Metadata_ImageFile": ["a", "b"],
-            "Metadata_Strain": ["s1", "s2"],
-            "Object_Label": [1, 1],
-            "Size_Area": [100.0, 200.0],
-        }
-    ).write_parquet(root / "master_measurements.parquet")
+    write_master(
+        root,
+        pl.DataFrame(
+            {
+                "Metadata_Dataset": [dataset, dataset],
+                "Metadata_ImageFile": ["a", "b"],
+                "Metadata_Strain": ["s1", "s2"],
+                "Object_Label": [1, 1],
+                "Size_Area": [100.0, 200.0],
+            }
+        ),
+    )
     for stem in ("a", "b"):
         (root / "results" / dataset / "overlays" / f"{stem}.png").touch()
 

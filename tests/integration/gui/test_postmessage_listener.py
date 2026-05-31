@@ -18,12 +18,13 @@ import re
 from pathlib import Path
 
 from phenotypic._cli._dashboard._generator import generate_dashboard
+from phenotypic.tools_ import dashboard_html_path
 
 
 def _generate_html(tmp_path: Path) -> str:
-    """Generate dashboard.html under tmp_path; return its source."""
+    """Generate dashboard.html under tmp_path/deliverables; return its source."""
     generate_dashboard(tmp_path, execution_mode="local")
-    return (tmp_path / "dashboard.html").read_text(encoding="utf-8")
+    return dashboard_html_path(tmp_path).read_text(encoding="utf-8")
 
 
 def test_dashboard_includes_postshell_event_helper(tmp_path: Path) -> None:

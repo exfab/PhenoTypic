@@ -106,7 +106,9 @@ def test_recent_runs_row_click_sets_iframe_src(
         timeout=5_000,
     )
     src = page.locator("#rc-iframe").get_attribute("src") or ""
-    assert "/runs/results/CliOutputExample/dashboard.html" in src
+    # The dashboard now lives under ``deliverables/`` — the iframe src points
+    # at ``/runs/<rel>/deliverables/dashboard.html``.
+    assert "/runs/results/CliOutputExample/deliverables/dashboard.html" in src
     # Iframe display should be ``block`` after the row click toggles
     # placeholder/iframe visibility.
     iframe_display = page.evaluate(

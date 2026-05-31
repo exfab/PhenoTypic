@@ -20,18 +20,25 @@ from pathlib import Path
 import polars as pl
 import pytest
 
-pytestmark = pytest.mark.skipif(
-    sys.platform == "win32",
-    reason="CLI output manager uses POSIX atomic writes",
-)
-
 from phenotypic import ImagePipeline
 from phenotypic.measure import MeasureColor, MeasureShape, MeasureSize
+from phenotypic.tools_ import (
+    master_measurements_csv_path,
+    master_measurements_parquet_path,
+    measurements_by_feature_dir,
+    measurements_csv_path,
+    measurements_parquet_path,
+)
 from phenotypic._cli._cli_output_manager import (
     _collect_feature_headers,
     _load_pipeline_from_output_dir,
     aggregate_measurements,
     split_master_by_feature,
+)
+
+pytestmark = pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="CLI output manager uses POSIX atomic writes",
 )
 
 
@@ -146,8 +153,8 @@ class TestSplitMasterByFeature:
 
         assert set(written) == {"MeasureSize", "MeasureShape"}
         for key in written:
-            assert (tmp_path / "measurements_by_feature" / f"{key}.csv").exists()
-            assert (tmp_path / "measurements_by_feature" / f"{key}.parquet").exists()
+            assert (measurements_by_feature_dir(tmp_path) / f"{key}.csv").exists()
+            assert (measurements_by_feature_dir(tmp_path) / f"{key}.parquet").exists()
 
     def test_metadata_columns_preserved_in_every_split(self, tmp_path: Path) -> None:
         pipeline = ImagePipeline(meas=[MeasureSize(), MeasureShape()])
@@ -155,7 +162,7 @@ class TestSplitMasterByFeature:
         split_master_by_feature(master, tmp_path, pipeline)
 
         for key in ("MeasureSize", "MeasureShape"):
-            df = pl.read_csv(tmp_path / "measurements_by_feature" / f"{key}.csv")
+            df = pl.read_csv(measurements_by_feature_dir(tmp_path) / f"{key}.csv")
             for meta_col in ("Metadata_Dataset", "Metadata_ImageFile",
                              "Object_Label", "RowNum", "ColNum"):
                 assert meta_col in df.columns, (
@@ -170,10 +177,10 @@ class TestSplitMasterByFeature:
 
         headers = _collect_feature_headers(pipeline)
         size_df = pl.read_csv(
-            tmp_path / "measurements_by_feature" / "MeasureSize.csv"
+            measurements_by_feature_dir(tmp_path) / "MeasureSize.csv"
         )
         shape_df = pl.read_csv(
-            tmp_path / "measurements_by_feature" / "MeasureShape.csv"
+            measurements_by_feature_dir(tmp_path) / "MeasureShape.csv"
         )
 
         for hdr in headers["MeasureSize"]:
@@ -192,14 +199,16 @@ class TestSplitMasterByFeature:
         master = master.drop(shape_cols)
 
         written = split_master_by_feature(master, tmp_path, pipeline)
-        assert written == {"MeasureSize": tmp_path / "measurements_by_feature" / "MeasureSize.csv"}
-        assert not (tmp_path / "measurements_by_feature" / "MeasureShape.csv").exists()
+        assert written == {
+            "MeasureSize": measurements_by_feature_dir(tmp_path) / "MeasureSize.csv"
+        }
+        assert not (measurements_by_feature_dir(tmp_path) / "MeasureShape.csv").exists()
 
     def test_empty_meas_returns_empty(self, tmp_path: Path) -> None:
         pipeline = ImagePipeline()  # no measurers
         master = pl.DataFrame({"Metadata_Dataset": ["ds"], "Object_Label": [1]})
         assert split_master_by_feature(master, tmp_path, pipeline) == {}
-        assert not (tmp_path / "measurements_by_feature").exists()
+        assert not measurements_by_feature_dir(tmp_path).exists()
 
 
 class TestAggregateMeasurementsAutoResolve:
@@ -253,18 +262,18 @@ class TestAggregateMeasurementsAutoResolve:
             include_dataset_column=True,
         )
 
-        assert master_path == output_dir / "master_measurements.csv"
+        assert master_path == master_measurements_csv_path(output_dir)
         assert master_path.exists()
 
         # The CLI also seeds an editable measurements.{csv,parquet}
         # copy that the GUI results viewer mutates in place.
-        seed_csv = output_dir / "measurements.csv"
-        seed_parquet = output_dir / "measurements.parquet"
+        seed_csv = measurements_csv_path(output_dir)
+        seed_parquet = measurements_parquet_path(output_dir)
         assert seed_csv.exists()
         assert seed_parquet.exists()
 
         master_df = pl.read_csv(master_path)
-        master_pq = pl.read_parquet(output_dir / "master_measurements.parquet")
+        master_pq = pl.read_parquet(master_measurements_parquet_path(output_dir))
         seed_df = pl.read_csv(seed_csv)
         seed_pq_df = pl.read_parquet(seed_parquet)
         # CSV round-trip: shapes + columns match (CSV always re-encodes
@@ -274,7 +283,7 @@ class TestAggregateMeasurementsAutoResolve:
         # Parquet round-trip: full row-by-row equality with the master.
         assert seed_pq_df.equals(master_pq)
 
-        split_dir = output_dir / "measurements_by_feature"
+        split_dir = measurements_by_feature_dir(output_dir)
         assert split_dir.is_dir()
         size_csv = split_dir / "MeasureSize.csv"
         shape_csv = split_dir / "MeasureShape.csv"
@@ -309,4 +318,4 @@ class TestAggregateMeasurementsAutoResolve:
 
         assert master_path is not None
         assert master_path.exists()
-        assert not (output_dir / "measurements_by_feature").exists()
+        assert not measurements_by_feature_dir(output_dir).exists()

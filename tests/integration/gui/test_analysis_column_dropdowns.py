@@ -18,6 +18,8 @@ from phenotypic.analysis import EdgeCorrector, LogGrowthModel
 from phenotypic.gui.analysis._app import create_app
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 
+from tests._output_layout import write_master, write_measurements_mirror, write_pipeline_json
+
 
 def _walk(component: Any) -> Iterator[Any]:
     """Yield every Dash component in a layout tree."""
@@ -48,14 +50,10 @@ def output_root(tmp_path: Path) -> OutputRoot:
             "Intensity_MeanIntensity": [10.0, 20.0, 15.0, 25.0],
         }
     )
-    df.write_parquet(tmp_path / "master_measurements.parquet")
-    df.write_parquet(tmp_path / "measurements.parquet")
-    df.write_csv(tmp_path / "master_measurements.csv")
-    df.write_csv(tmp_path / "measurements.csv")
+    write_master(tmp_path, df)
+    write_measurements_mirror(tmp_path, df)
     (tmp_path / "results" / "d").mkdir(parents=True)
-    (tmp_path / "pipeline.json").write_text(
-        ImagePipeline(name="t").to_json() or ""
-    )
+    write_pipeline_json(tmp_path, ImagePipeline(name="t"))
     return OutputRoot.discover(tmp_path)
 
 
@@ -72,8 +70,8 @@ def output_root_with_filter(tmp_path: Path) -> OutputRoot:
             "Shape_Area": [100.0, 200.0, 150.0, 250.0],
         }
     )
-    df.write_parquet(tmp_path / "master_measurements.parquet")
-    df.write_parquet(tmp_path / "measurements.parquet")
+    write_master(tmp_path, df)
+    write_measurements_mirror(tmp_path, df)
     (tmp_path / "results" / "d").mkdir(parents=True)
 
     pipeline = ImagePipeline(name="t")
@@ -91,7 +89,7 @@ def output_root_with_filter(tmp_path: Path) -> OutputRoot:
             time_label="Metadata_Time",
         )
     )
-    (tmp_path / "pipeline.json").write_text(pipeline.to_json() or "")
+    write_pipeline_json(tmp_path, pipeline)
     return OutputRoot.discover(tmp_path)
 
 

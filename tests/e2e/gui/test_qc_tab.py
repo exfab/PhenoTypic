@@ -33,6 +33,7 @@ import polars as pl
 import pytest
 from playwright.sync_api import Page, expect
 
+from tests._output_layout import write_master, write_measurements_mirror
 from tests.e2e.gui.conftest import _build_sandbox, _start_live_server
 
 
@@ -98,8 +99,8 @@ def _seed_real_output(sandbox: Path) -> Path:
     """
     cli_out = sandbox / "results" / _OUTPUT_NAME
     df = _build_real_master_df()
-    df.write_parquet(cli_out / "master_measurements.parquet")
-    df.write_parquet(cli_out / "measurements.parquet")
+    write_master(cli_out, df)
+    write_measurements_mirror(cli_out, df)
 
     # Ensure a real ``results/<dataset>/overlays/`` subdir per OutputRoot.
     dataset_dir = cli_out / "results" / "ds1"

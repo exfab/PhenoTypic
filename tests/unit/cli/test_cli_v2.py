@@ -57,6 +57,14 @@ from phenotypic._cli._cli_update_state import (
 from phenotypic.data import load_synth_yeast_plate
 from phenotypic.phenotypicCLI import _copy_pipeline_to_output, phenotypic_cli
 from phenotypic.prefab import RoundPeaksPipeline
+from phenotypic.tools_ import (
+    analysis_parquet_path,
+    master_measurements_csv_path,
+    master_measurements_parquet_path,
+    measurements_csv_path,
+    measurements_parquet_path,
+    pipeline_json_path,
+)
 
 
 @pytest.fixture
@@ -1581,7 +1589,7 @@ class TestAggregateMeasurements:
         assert list(master["Metadata_Dataset"].unique()) == ["ds1"]
 
         # Verify master Parquet is also written
-        master_parquet = temp_output_dir / "master_measurements.parquet"
+        master_parquet = master_measurements_parquet_path(temp_output_dir)
         assert master_parquet.exists(), "master_measurements.parquet should be written"
 
     def test_aggregate_measurements_multi_dataset(self, temp_output_dir):
@@ -1694,7 +1702,7 @@ class TestAggregateMeasurements:
         assert "treatment" not in master.columns
         assert len(master) == 3
         # Mirror carries the joined external metadata.
-        mirror = pd.read_csv(temp_output_dir / "measurements.csv")
+        mirror = pd.read_csv(measurements_csv_path(temp_output_dir))
         assert "treatment" in mirror.columns
         assert len(mirror) == 3
         assert list(mirror.loc[mirror["plate"] == "A", "treatment"].unique()) == ["control"]
@@ -1760,7 +1768,7 @@ class TestAggregateMeasurements:
         assert "treatment" not in master.columns
         assert set(master["plate"].tolist()) == {"A", "B", "C"}
         # Mirror reflects the inner join: plate C dropped, treatment present.
-        mirror = pd.read_csv(temp_output_dir / "measurements.csv")
+        mirror = pd.read_csv(measurements_csv_path(temp_output_dir))
         assert len(mirror) == 2
         assert "treatment" in mirror.columns
         assert set(mirror["plate"].tolist()) == {"A", "B"}
@@ -1797,7 +1805,7 @@ class TestAggregateMeasurements:
         assert len(master) == 1
         assert "treatment" not in master.columns
         # Mirror reflects the duplicate-key inflation.
-        mirror = pd.read_csv(temp_output_dir / "measurements.csv")
+        mirror = pd.read_csv(measurements_csv_path(temp_output_dir))
         assert len(mirror) == 2
         assert "duplicate keys" in caplog.text
 
@@ -1832,7 +1840,7 @@ class TestAggregateMeasurements:
         assert len(master) == 2
         assert "treatment" not in master.columns
         # Mirror carries the join even across int/str dtype mismatch on the key.
-        mirror = pd.read_csv(temp_output_dir / "measurements.csv")
+        mirror = pd.read_csv(measurements_csv_path(temp_output_dir))
         assert len(mirror) == 2
         assert "treatment" in mirror.columns
         assert mirror["treatment"].notna().all()
@@ -1902,8 +1910,8 @@ class TestAggregateMeasurements:
 
         assert result is not None
 
-        master = pd.read_csv(temp_output_dir / "master_measurements.csv")
-        mirror = pd.read_csv(temp_output_dir / "measurements.csv")
+        master = pd.read_csv(master_measurements_csv_path(temp_output_dir))
+        mirror = pd.read_csv(measurements_csv_path(temp_output_dir))
 
         # Master is clean — post column is absent.
         assert "post_marker" not in master.columns
@@ -1938,11 +1946,14 @@ class TestAggregateMeasurements:
 
         # Pre-write the master files so the helper's invariants match
         # what the real callers produce.
-        (temp_output_dir / "master_measurements.csv").write_text(
+        master_measurements_csv_path(temp_output_dir).parent.mkdir(
+            parents=True, exist_ok=True
+        )
+        master_measurements_csv_path(temp_output_dir).write_text(
             master_df.write_csv()
         )
         master_df.write_parquet(
-            temp_output_dir / "master_measurements.parquet",
+            master_measurements_parquet_path(temp_output_dir),
             compression="zstd",
             compression_level=3,
         )
@@ -1951,7 +1962,7 @@ class TestAggregateMeasurements:
             temp_output_dir, master_df, ImagePipeline(post=[TagPost()])
         )
 
-        mirror = pl.read_parquet(temp_output_dir / "measurements.parquet")
+        mirror = pl.read_parquet(measurements_parquet_path(temp_output_dir))
         assert "post_tag" in mirror.columns
         assert mirror["post_tag"].to_list() == ["tagged", "tagged", "tagged"]
 
@@ -1965,12 +1976,12 @@ class TestAggregateMeasurements:
 
         finalize_post_master_outputs(temp_output_dir, master_df, None)
 
-        mirror = pl.read_parquet(temp_output_dir / "measurements.parquet")
+        mirror = pl.read_parquet(measurements_parquet_path(temp_output_dir))
         # Mirror equals master when there's no pipeline to apply post.
         assert mirror.equals(master_df)
         # Pipeline-conditional artifacts are absent.
-        assert not (temp_output_dir / "analysis.parquet").exists()
-        assert not (temp_output_dir / "pipeline.json").exists()
+        assert not analysis_parquet_path(temp_output_dir).exists()
+        assert not pipeline_json_path(temp_output_dir).exists()
 
     def test_finalize_post_master_outputs_post_failure_falls_back_to_clean(
         self, temp_output_dir, caplog
@@ -2009,7 +2020,7 @@ class TestAggregateMeasurements:
 
         # Mirror on disk is seeded with the clean master, not a partial
         # post-applied frame.
-        mirror = pl.read_parquet(temp_output_dir / "measurements.parquet")
+        mirror = pl.read_parquet(measurements_parquet_path(temp_output_dir))
         assert mirror.equals(master_df)
 
     def test_aggregate_measurements_no_post_master_and_mirror_identical(
@@ -2034,6 +2045,6 @@ class TestAggregateMeasurements:
         )
 
         assert result is not None
-        master = pd.read_csv(temp_output_dir / "master_measurements.csv")
-        mirror = pd.read_csv(temp_output_dir / "measurements.csv")
+        master = pd.read_csv(master_measurements_csv_path(temp_output_dir))
+        mirror = pd.read_csv(measurements_csv_path(temp_output_dir))
         pd.testing.assert_frame_equal(master, mirror)

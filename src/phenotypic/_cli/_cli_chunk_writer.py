@@ -33,8 +33,6 @@ from phenotypic.tools_ import (
     DIR_CHUNKS,
     CHUNK_STATE_JSON,
     CHUNK_MANIFEST_JSON,
-    MASTER_MEASUREMENTS_CSV,
-    MASTER_MEASUREMENTS_PARQUET,
     OVERLAY_MANIFEST_JSON,
     DATASET_AGGREGATED_PARQUET,
     DIR_RESULTS,
@@ -45,6 +43,8 @@ from phenotypic.tools_ import (
     chunk_parquet_filename,
     chunk_lock_path,
     analysis_full_parquet_path,
+    master_measurements_csv_path,
+    master_measurements_parquet_path,
 )
 
 logger = logging.getLogger(__name__)
@@ -154,11 +154,11 @@ def _aggregate_chunks_locked(output_dir: Path, progress_dir: Path) -> None:
                 combined_with_metadata = combined
 
         _atomic_write(
-            output_dir / MASTER_MEASUREMENTS_CSV,
+            master_measurements_csv_path(output_dir),
             lambda p: combined.write_csv(p),
         )
         _atomic_write(
-            output_dir / MASTER_MEASUREMENTS_PARQUET,
+            master_measurements_parquet_path(output_dir),
             lambda p: combined.write_parquet(
                 p, compression="zstd", compression_level=3
             ),

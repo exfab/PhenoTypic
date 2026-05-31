@@ -15,6 +15,19 @@ import polars as pl
 import pytest
 
 from phenotypic.gui.results_viewer._output_root import OutputRoot
+from phenotypic.tools_ import (
+    master_measurements_parquet_path,
+    measurements_parquet_path,
+)
+
+from tests._output_layout import write_pipeline_json
+
+
+def _write_master_parquet(root: Path, df: pl.DataFrame) -> None:
+    """Write ``master_measurements.parquet`` under ``root/deliverables/``."""
+    target = master_measurements_parquet_path(root)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    df.write_parquet(target)
 
 
 def _make_minimal_output(
@@ -51,7 +64,7 @@ def _make_minimal_output(
         }
     )
     if write_master:
-        df.write_parquet(root / "master_measurements.parquet")
+        _write_master_parquet(root, df)
     if with_overlays:
         for stem in ("a", "b"):
             (root / "results" / dataset / "overlays" / f"{stem}.png").touch()
@@ -85,7 +98,9 @@ def test_discover_prefers_post_applied_mirror_over_master(tmp_path: Path) -> Non
             "post_tag": ["tagged", "tagged"],
         }
     )
-    mirror_df.write_parquet(tmp_path / "measurements.parquet")
+    mirror_path = measurements_parquet_path(tmp_path)
+    mirror_path.parent.mkdir(parents=True, exist_ok=True)
+    mirror_df.write_parquet(mirror_path)
 
     out = OutputRoot.discover(tmp_path)
     assert "post_tag" in out.master_df.columns
@@ -96,7 +111,7 @@ def test_discover_falls_back_to_master_when_mirror_absent(tmp_path: Path) -> Non
     """Mid-run / legacy outputs without ``measurements.parquet`` use master."""
     df = _make_minimal_output(tmp_path)
     # No measurements.parquet — only master.
-    assert not (tmp_path / "measurements.parquet").exists()
+    assert not measurements_parquet_path(tmp_path).exists()
 
     out = OutputRoot.discover(tmp_path)
     # Display frame falls back to the clean master.
@@ -121,7 +136,7 @@ def test_discover_missing_results_dir_raises(tmp_path: Path) -> None:
     df = pl.DataFrame(
         {"Metadata_Dataset": ["d1"], "Metadata_ImageFile": ["a"]}
     )
-    df.write_parquet(tmp_path / "master_measurements.parquet")
+    _write_master_parquet(tmp_path, df)
 
     with pytest.raises(FileNotFoundError) as excinfo:
         OutputRoot.discover(tmp_path)
@@ -137,7 +152,7 @@ def test_discover_results_with_no_datasets_raises(tmp_path: Path) -> None:
     df = pl.DataFrame(
         {"Metadata_Dataset": ["d1"], "Metadata_ImageFile": ["a"]}
     )
-    df.write_parquet(tmp_path / "master_measurements.parquet")
+    _write_master_parquet(tmp_path, df)
 
     with pytest.raises(FileNotFoundError) as excinfo:
         OutputRoot.discover(tmp_path)
@@ -153,7 +168,7 @@ def test_discover_results_with_no_overlays_succeeds(
     df = pl.DataFrame(
         {"Metadata_Dataset": ["d1"], "Metadata_ImageFile": ["a"]}
     )
-    df.write_parquet(tmp_path / "master_measurements.parquet")
+    _write_master_parquet(tmp_path, df)
 
     with caplog.at_level("WARNING"):
         out = OutputRoot.discover(tmp_path)
@@ -166,8 +181,8 @@ def test_discover_missing_imagefile_column_raises(tmp_path: Path) -> None:
     """Missing both ``Metadata_ImageFile`` and ``Metadata_ImageName`` raises."""
 
     (tmp_path / "results" / "d1" / "overlays").mkdir(parents=True)
-    pl.DataFrame({"Metadata_Dataset": ["d1"], "Other": ["x"]}).write_parquet(
-        tmp_path / "master_measurements.parquet"
+    _write_master_parquet(
+        tmp_path, pl.DataFrame({"Metadata_Dataset": ["d1"], "Other": ["x"]})
     )
     with pytest.raises(ValueError) as excinfo:
         OutputRoot.discover(tmp_path)
@@ -180,9 +195,10 @@ def test_discover_aliases_imagename_when_imagefile_absent(tmp_path: Path) -> Non
     (tmp_path / "results" / "d1" / "overlays").mkdir(parents=True)
     (tmp_path / "results" / "d1" / "measurements").mkdir(parents=True)
     (tmp_path / "results" / "d1" / "measurements" / "a.parquet").touch()
-    pl.DataFrame(
-        {"Metadata_Dataset": ["d1"], "Metadata_ImageName": ["a"]}
-    ).write_parquet(tmp_path / "master_measurements.parquet")
+    _write_master_parquet(
+        tmp_path,
+        pl.DataFrame({"Metadata_Dataset": ["d1"], "Metadata_ImageName": ["a"]}),
+    )
 
     out = OutputRoot.discover(tmp_path)
     assert "Metadata_ImageFile" in out.master_df.columns
@@ -198,9 +214,10 @@ def test_discover_backfills_dataset_from_filesystem(tmp_path: Path) -> None:
     (tmp_path / "results" / "d2" / "measurements").mkdir(parents=True)
     (tmp_path / "results" / "d2" / "overlays").mkdir(parents=True)
     (tmp_path / "results" / "d2" / "measurements" / "b.parquet").touch()
-    pl.DataFrame(
-        {"Metadata_ImageFile": ["a", "b"], "Size_Area": [100.0, 200.0]}
-    ).write_parquet(tmp_path / "master_measurements.parquet")
+    _write_master_parquet(
+        tmp_path,
+        pl.DataFrame({"Metadata_ImageFile": ["a", "b"], "Size_Area": [100.0, 200.0]}),
+    )
 
     out = OutputRoot.discover(tmp_path)
     assert "Metadata_Dataset" in out.master_df.columns
@@ -280,9 +297,7 @@ def test_pipeline_summary_reads_name_from_pipeline_json(tmp_path: Path) -> None:
     """A valid ``pipeline.json`` with a ``name`` populates ``pipeline_summary``."""
 
     _make_minimal_output(tmp_path)
-    (tmp_path / "pipeline.json").write_text(
-        json.dumps({"name": "test_pipeline"}), encoding="utf-8"
-    )
+    write_pipeline_json(tmp_path, json.dumps({"name": "test_pipeline"}))
     out = OutputRoot.discover(tmp_path)
     assert out.pipeline_summary == "test_pipeline"
 
@@ -297,9 +312,7 @@ def test_pipeline_summary_is_none_when_missing_or_malformed(
     assert OutputRoot.discover(tmp_path).pipeline_summary is None
 
     # Case 2: malformed JSON → None (does not raise).
-    (tmp_path / "pipeline.json").write_text(
-        "{not valid json", encoding="utf-8"
-    )
+    write_pipeline_json(tmp_path, "{not valid json")
     assert OutputRoot.discover(tmp_path).pipeline_summary is None
 
     # Case 3: parsed JSON dict with no ``name`` or ``class_name`` field → None.
@@ -307,9 +320,7 @@ def test_pipeline_summary_is_none_when_missing_or_malformed(
     # via the new PIPELINE_JSON constant during the io_constants extraction
     # refactor (the agent substituted the constant where the original code
     # likely had ``return None``). Caught by opus review of PR #78.
-    (tmp_path / "pipeline.json").write_text(
-        json.dumps({"version": "1.0"}), encoding="utf-8"
-    )
+    write_pipeline_json(tmp_path, json.dumps({"version": "1.0"}))
     assert OutputRoot.discover(tmp_path).pipeline_summary is None
 
 

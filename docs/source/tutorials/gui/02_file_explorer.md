@@ -31,7 +31,7 @@ that emits one or more capability tags:
 |-------|---------|
 | `img` | Directory contains image files. The number in parens is a count, capped at `1000` so very large directories don't pay for a full scan. |
 | `cfg` | File is a PhenoTypic pipeline JSON (detected by the `"pipe_cfgs"` or legacy `"operations"` marker in the first 4 KB). |
-| `out` | Directory is a CLI output root: contains both `master_measurements.parquet` and a `results/` subdirectory. |
+| `out` | Directory is a CLI output root: contains both `deliverables/master_measurements.parquet` and a `results/` subdirectory. |
 | `?` | Directory could not be listed due to a permission error. |
 
 ![Sidebar after expanding plates/.](../../_static/gui_images/file_explorer/02_sidebar_expanded.png)
