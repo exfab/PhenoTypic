@@ -32,10 +32,11 @@ Location: `mixin/_clip_control_mixin.py`.
 
 - [`branch_pathfinding/`](branch_pathfinding/CLAUDE.md) — multi-source Dijkstra, cost-surface composition, fragment prescreening, path quality filtering, Voronoi partition. Used by `FilamentousFungiDetector` and `MeasureRadialExpansion`; cost surfaces are the caller's responsibility.
 - `constants_.py` — framework constants for image data (image modes, image
-  types, gamma encodings, metadata labels). `ConstantLabels` and framework-config
-  enums (`GAMMA_ENCODINGS`, `PIPE_STATUS`, `METADATA`) live here; they subclass
-  `MeasurementInfo`, which now lives in the public `phenotypic.schema` package
-  (measurement-column enums live there too).
+  types, gamma encodings). `ConstantLabels` and framework-config enums
+  (`GAMMA_ENCODINGS`, `PIPE_STATUS`) live here; they subclass `MeasurementInfo`,
+  which lives in the public `phenotypic.schema` package. The `METADATA` enum and
+  the experimental-tag vocabulary (`SAMPLE_METADATA`, `CONDITION_METADATA`, …)
+  now live in `phenotypic.schema` too, since they name `Metadata_*` columns/keys.
 - `_io_constants.py` — CLI artifact filenames + directory names + JSON
   contract keys + environment variable names + path-builder helpers.
   Shared between the CLI and GUI; both should import from here rather than

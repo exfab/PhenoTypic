@@ -5,7 +5,7 @@ import pandas as pd
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
-from phenotypic.tools_.constants_ import METADATA
+from phenotypic.schema import METADATA
 from collections import ChainMap
 
 

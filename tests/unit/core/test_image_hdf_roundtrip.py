@@ -17,6 +17,7 @@ import pytest
 
 from phenotypic import Image, GridImage
 from phenotypic.grid import AutoGridFinder
+from phenotypic.schema import METADATA
 from phenotypic.tools_.constants_ import GAMMA_ENCODINGS
 
 # Module-level slow marker: full HDF5 schema and back-compat matrix. The
@@ -271,7 +272,11 @@ def test_back_compat_legacy_flat_hdf_loads(tmp_path):
 
     assert loaded.rgb[:].shape == (12, 16, 3)
     assert loaded._data.detect_mode == "gray"
-    assert loaded._metadata.protected.get("ImageName") == "legacy_plate"
+    # The legacy bare framework key ("ImageName") is remapped on load to the
+    # current Metadata_-prefixed key; the stale bare key does not survive.
+    assert loaded._metadata.protected.get(METADATA.IMAGE_NAME) == "legacy_plate"
+    assert "ImageName" not in loaded._metadata.protected
+    # Arbitrary, non-framework public keys are passed through untouched.
     assert loaded._metadata.public.get("experiment") == "legacy_exp"
     # Legacy files never persisted imported metadata.
     assert loaded._metadata.imported == {}

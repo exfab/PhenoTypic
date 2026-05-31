@@ -24,7 +24,8 @@ from phenotypic._core._image_parts.accessors import (
     MetadataAccessor,
 )
 
-from phenotypic.tools_.constants_ import METADATA, IMAGE_TYPES
+from phenotypic.schema import METADATA
+from phenotypic.tools_.constants_ import IMAGE_TYPES
 from phenotypic.tools_.exceptions_ import EmptyImageError, IllegalAssignmentError
 
 

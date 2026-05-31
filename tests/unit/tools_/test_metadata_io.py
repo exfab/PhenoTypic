@@ -11,12 +11,14 @@ import tempfile
 import warnings
 from pathlib import Path
 
+import h5py
 import numpy as np
 import pytest
 from PIL import Image as PIL_Image
 
 import phenotypic
-from phenotypic.tools_.constants_ import IO, METADATA
+from phenotypic.schema import METADATA
+from phenotypic.tools_.constants_ import IO
 
 HAS_EXIFTOOL = shutil.which("exiftool") is not None
 
@@ -669,3 +671,201 @@ class TestAccessorLoad:
         assert isinstance(arr, np.ndarray)
         assert arr.dtype == np.float32
         assert arr.shape[2] == 3  # HSV has 3 channels
+
+
+# -----------------------------------------------------------------------------
+# Legacy metadata-key shim (loading HDF5 written before the Metadata_ prefix)
+# -----------------------------------------------------------------------------
+
+
+def _write_legacy_flat_hdf5(path, *, protected: dict, public: dict) -> None:
+    """Write a minimal schema_version=1 flat-layout HDF5 with *bare* metadata keys.
+
+    Mirrors how PhenoTypic persisted images before the ``METADATA`` enum gained
+    its ``Metadata_`` category prefix: framework keys stored bare (``ImageName``,
+    ``BitDepth``, …) in the ``protected_metadata`` / ``public_metadata`` attribute
+    subgroups, and no ``schema_version`` root attr (so the loader dispatches to the
+    legacy flat path).
+    """
+    with h5py.File(path, "w") as f:
+        f.create_dataset("rgb", data=np.zeros((8, 8, 3), dtype=np.uint8))
+        f.create_dataset("gray", data=np.zeros((8, 8), dtype=np.uint8))
+        f.create_dataset("detect_mat", data=np.zeros((8, 8), dtype=np.uint8))
+        f.create_dataset("objmap", data=np.zeros((8, 8), dtype=np.int32))
+        prot = f.require_group("protected_metadata")
+        for key, val in protected.items():
+            prot.attrs[key] = val
+        pub = f.require_group("public_metadata")
+        for key, val in public.items():
+            pub.attrs[key] = val
+
+
+class TestLegacyMetadataKeyShim:
+    """Old HDF5 files with bare metadata keys load under the new Metadata_* keys."""
+
+    def test_remap_helper_maps_bare_to_prefixed(self):
+        """The helper maps bare framework labels to their prefixed value."""
+        from phenotypic._core._image_parts._image_io_handler import (
+            _remap_legacy_metadata_key,
+        )
+
+        assert _remap_legacy_metadata_key("ImageName") == METADATA.IMAGE_NAME.value
+        assert _remap_legacy_metadata_key("BitDepth") == METADATA.BIT_DEPTH.value
+        assert _remap_legacy_metadata_key("FileSuffix") == METADATA.SUFFIX.value
+
+    def test_remap_helper_is_idempotent_and_passes_through_user_keys(self):
+        """Already-prefixed keys and arbitrary user keys pass through unchanged."""
+        from phenotypic._core._image_parts._image_io_handler import (
+            _remap_legacy_metadata_key,
+        )
+
+        # Already prefixed (a new file's key) -> unchanged.
+        assert _remap_legacy_metadata_key("Metadata_ImageName") == "Metadata_ImageName"
+        # Arbitrary biological tag a user supplied -> unchanged.
+        assert _remap_legacy_metadata_key("Strain") == "Strain"
+
+    def test_legacy_flat_hdf5_bare_keys_remapped_on_load(self, temp_image_dir):
+        """Legacy flat HDF5 with bare keys loads under prefixed METADATA keys.
+
+        Framework keys are remapped (with the legacy digit-string -> int
+        coercion preserved), no stale bare keys survive, and arbitrary
+        user-supplied public keys pass through untouched.
+        """
+        path = temp_image_dir / "legacy_meta.h5"
+        _write_legacy_flat_hdf5(
+            path,
+            protected={
+                "ImageName": "legacy_name",
+                "ImageType": "Image",
+                "BitDepth": "8",            # legacy digit-string -> int coercion
+                "ParentUUID": "parent-123",  # field with no constructor default
+            },
+            public={
+                "FileSuffix": ".png",
+                "Strain": "BY4741",          # arbitrary user key -> untouched
+            },
+        )
+
+        loaded = phenotypic.Image.load_hdf5(path)
+        prot = loaded._metadata.protected
+        pub = loaded._metadata.public
+
+        # Framework keys remapped to the prefixed METADATA members ...
+        assert prot[METADATA.IMAGE_NAME] == "legacy_name"
+        assert prot[METADATA.BIT_DEPTH] == 8            # int-coerced
+        assert prot[METADATA.PARENT_UUID] == "parent-123"
+        assert pub[METADATA.SUFFIX] == ".png"
+        # ... with no stale bare keys left behind.
+        for bare in ("ImageName", "ImageType", "BitDepth", "ParentUUID", "FileSuffix"):
+            assert bare not in prot
+            assert bare not in pub
+        # Arbitrary, non-framework keys pass through unchanged.
+        assert pub["Strain"] == "BY4741"
+
+    def test_legacy_v2_hdf5_has_no_duplicate_bare_keys(self, temp_image_dir):
+        """A v2 file whose protected keys were stored bare loads without duplicates.
+
+        Simulates an old schema_version=2 file by rewriting the on-disk protected
+        metadata attribute names back to their bare labels, then asserts the shim
+        folds them onto the prefixed keys instead of adding stale bare duplicates.
+        """
+        img = phenotypic.Image(
+            arr=np.zeros((16, 24, 3), dtype=np.uint8), name="v2_legacy", bit_depth=8
+        )
+        path = temp_image_dir / "v2_legacy.h5"
+        img.save2hdf5(path)
+
+        # Rewrite prefixed protected attr names -> bare labels, in place.
+        with h5py.File(path, "r+") as f:
+            prot_attrs = f["metadata"]["protected"].attrs
+            for member in METADATA:
+                if member.value in prot_attrs:
+                    val = prot_attrs[member.value]
+                    del prot_attrs[member.value]
+                    prot_attrs[member.label] = val
+
+        loaded = phenotypic.Image.load_hdf5(path)
+        prot = loaded._metadata.protected
+
+        # No bare framework keys survive; every protected key is Metadata_*-prefixed.
+        assert all(str(k).startswith("Metadata_") for k in prot)
+        assert "ImageName" not in prot and "BitDepth" not in prot
+        assert loaded.bit_depth == 8
+
+    def test_legacy_png_bare_metadata_keys_remapped_on_imread(self, temp_image_dir):
+        """Old PNG/JPEG ``_phenotypic_data`` with bare keys remaps on imread.
+
+        PNG embeds the round-trip payload as JSON in a tEXt chunk and JPEG in an
+        EXIF UserComment; both feed the *same* restore block, so this PNG case
+        also covers JPEG. Bare framework keys are remapped, the critical-field
+        skip (UUID / ImageName) still fires for old files, and arbitrary user
+        keys pass through untouched.
+        """
+        from PIL.PngImagePlugin import PngInfo
+
+        path = temp_image_dir / "legacy.png"
+        payload = {
+            "phenotypic_version": "0.14.0",
+            "phenotypic_image_property": "Image.rgb",
+            "protected": {
+                "ImageName": "saved_name",   # critical -> remapped then skipped
+                "UUID": "saved-uuid",        # critical -> remapped then skipped
+                "ParentUUID": "parent-9",    # non-critical -> remapped + restored
+            },
+            "public": {
+                "FileSuffix": ".png",
+                "Strain": "BY4741",          # arbitrary user key -> untouched
+            },
+        }
+        info = PngInfo()
+        info.add_text(IO.PHENOTYPIC_METADATA_KEY, json.dumps(payload))
+        PIL_Image.fromarray(np.zeros((8, 8, 3), dtype=np.uint8)).save(
+            path, pnginfo=info
+        )
+
+        loaded = phenotypic.Image.imread(path)
+        prot = loaded._metadata.protected
+        pub = loaded._metadata.public
+
+        # Critical fields come from the import flow, not the saved payload; the
+        # saved bare "UUID"/"ImageName" must not leak in under any spelling.
+        assert "UUID" not in prot and "ImageName" not in prot
+        assert loaded.name == "legacy"               # from filename, not payload
+        # Non-critical framework key remapped + restored under its prefixed key.
+        assert prot[METADATA.PARENT_UUID] == "parent-9"
+        # Public framework key remapped; arbitrary user key untouched.
+        assert pub[METADATA.SUFFIX] == ".png"
+        assert "FileSuffix" not in pub
+        assert pub["Strain"] == "BY4741"
+
+    def test_backcompat_unpickler_remaps_moved_metadata_class(self):
+        """The back-compat unpickler maps the old METADATA import path to schema."""
+        import io as _io
+
+        from phenotypic._core._image_parts._image_io_handler import (
+            _BackCompatUnpickler,
+        )
+
+        unpickler = _BackCompatUnpickler(_io.BytesIO(b""))
+        # The moved symbol resolves to the current schema.METADATA ...
+        assert (
+            unpickler.find_class("phenotypic.tools_.constants_", "METADATA")
+            is METADATA
+        )
+        # ... and unmoved classes pass through unchanged.
+        assert unpickler.find_class("numpy", "ndarray") is np.ndarray
+
+    def test_current_pickle_roundtrip_unaffected(self, temp_image_dir):
+        """A current pickle still round-trips cleanly through the back-compat path."""
+        img = phenotypic.Image(
+            arr=np.zeros((12, 16, 3), dtype=np.uint8), name="pk", bit_depth=8
+        )
+        img.metadata["Strain"] = "BY4741"
+        path = temp_image_dir / "cur.pkl"
+        img.save2pickle(path)
+
+        loaded = phenotypic.Image.load_pickle(path)
+        assert loaded.bit_depth == 8
+        assert loaded._metadata.public["Strain"] == "BY4741"
+        # Protected keys are the prefixed METADATA members; no bare keys.
+        assert all(str(k).startswith("Metadata_") for k in loaded._metadata.protected)

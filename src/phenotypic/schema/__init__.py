@@ -7,9 +7,25 @@ enum lives in its own module (``_<name>.py``) and is re-exported here, so the
 public import surface stays stable:
 
     from phenotypic.schema import MeasurementInfo, BBOX, GRID, SHAPE
+
+It also hosts the metadata vocabulary: ``METADATA`` (framework-populated image
+bookkeeping) and the seven experimental-tag enums (``GENETIC_METADATA``,
+``SAMPLE_METADATA``, ``PLATE_METADATA``, ``CONDITION_METADATA``,
+``INCUBATION_METADATA``, ``ACQUISITION_METADATA``, ``EXPERIMENT_METADATA``) that
+standardize ``Metadata_*`` columns for the ``--metadata`` join and ``post/`` ops.
 """
 
 from ._measurement_info import MeasurementInfo
+from ._metadata import METADATA
+from ._experimental_tags import (
+    ACQUISITION_METADATA,
+    CONDITION_METADATA,
+    EXPERIMENT_METADATA,
+    GENETIC_METADATA,
+    INCUBATION_METADATA,
+    PLATE_METADATA,
+    SAMPLE_METADATA,
+)
 from ._bbox import BBOX
 from ._color_composition import ColorComposition
 from ._color_hsv import ColorHSV
@@ -42,6 +58,14 @@ from ._texture import TEXTURE
 
 __all__ = [
     "MeasurementInfo",
+    "METADATA",
+    "ACQUISITION_METADATA",
+    "CONDITION_METADATA",
+    "EXPERIMENT_METADATA",
+    "GENETIC_METADATA",
+    "INCUBATION_METADATA",
+    "PLATE_METADATA",
+    "SAMPLE_METADATA",
     "BBOX",
     "ColorComposition",
     "ColorHSV",

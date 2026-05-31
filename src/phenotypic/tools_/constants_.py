@@ -6,7 +6,7 @@ Constants are organized by module and functionality.
 Note: Class names are defined in ALL_CAPS to avoid namespace conflicts with actual classes
     in the codebase (e.g., GRID_DEP vs an actual Grid class). When importing, use the format::
 
-        from phenotypic.tools_.constants_ import IMAGE_MODE, METADATA
+        from phenotypic.tools_.constants_ import IMAGE_MODE, IMAGE_TYPES
 
 See also
 --------
@@ -141,32 +141,3 @@ class PIPE_STATUS(MeasurementInfo):
 
     PROCESSED = "Processed", "Whether the image has been processed successfully."
     MEASURED = "Measured", "Whether the image has been measured successfully."
-
-
-class METADATA(MeasurementInfo):
-    @classmethod
-    def category(cls) -> str:
-        return "Metadata"
-
-    # Metadata values are not prepended with the category
-    def __new__(cls, label: str, desc: str | None = None):
-        full = f"{label}"
-        obj = str.__new__(cls, full)
-        obj._value_ = label
-        obj.label = label
-        obj.desc = desc or label
-        obj.pair = (label, obj.desc)
-        return obj
-
-    """Constants for metadata labels."""
-    UUID = "UUID", "The unique identifier of the image."
-    IMAGE_NAME = "ImageName", "The name of the image."
-    PARENT_IMAGE_NAME = "ParentImageName", "The name of the parent image."
-    PARENT_UUID = "ParentUUID", "The UUID of the parent image."
-    IMFORMAT = "ImageFormat", "The format of the image."
-    IMAGE_TYPE = "ImageType", "The type of the image."
-    BIT_DEPTH = "BitDepth", "The bit depth of the image."
-    SUFFIX = (
-        "FileSuffix",
-        "The file suffix of the original file the image was imported from",
-    )

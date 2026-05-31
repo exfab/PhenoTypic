@@ -12,7 +12,8 @@ import pandas as pd
 from skimage.color import label2rgb
 
 import phenotypic
-from phenotypic.tools_.constants_ import METADATA, IMAGE_TYPES
+from phenotypic.schema import METADATA
+from phenotypic.tools_.constants_ import IMAGE_TYPES
 from phenotypic.schema import OBJECT
 from phenotypic.schema import BBOX, GRID
 from phenotypic.tools_.exceptions_ import NoObjectsError
