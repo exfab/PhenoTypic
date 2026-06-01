@@ -9,6 +9,9 @@ phasing. Each **companion doc** goes deep on one aspect that the master only
 summarises — so the master stays readable while the details live where they can
 grow.
 
+> **Resuming this work?** Start with [RESUME.md](RESUME.md) — status, the remaining
+> stub docs to write, the review-team recipe, and global carry-forward caveats.
+
 ## Master design
 
 - [2026-06-01 — Parameter tuning engine design](2026-06-01-parameter-tuning-engine-design.md)
