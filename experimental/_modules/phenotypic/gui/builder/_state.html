@@ -1032,11 +1032,17 @@
 <span class="sd">            Empty list means &quot;viewing ``root``&quot;.</span>
 <span class="sd">        selected_node_id: ``node_id`` of the currently focused step in</span>
 <span class="sd">            the visible scope, if any.</span>
+<span class="sd">        inspector_focus_aux: When set, overrides the inspector pane to</span>
+<span class="sd">            display the wired aux at this slot instead of the canvas-</span>
+<span class="sd">            selected consumer&#39;s params.  Shape:</span>
+<span class="sd">            ``{&quot;target_node_id&quot;: str, &quot;param&quot;: str, &quot;slot&quot;: int}``.</span>
+<span class="sd">            ``None`` when the inspector follows the canvas selection.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">root</span><span class="p">:</span> <span class="n">_LegacyBuilderScope</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">_LegacyBuilderScope</span><span class="p">)</span>
     <span class="n">breadcrumb</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
     <span class="n">selected_node_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">inspector_focus_aux</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>
 
 
 <span class="c1"># ---------------------------------------------------------------------------</span>
@@ -2130,6 +2136,7 @@
             <span class="s2">&quot;root&quot;</span><span class="p">:</span> <span class="n">_scope_to_dict</span><span class="p">(</span><span class="n">state</span><span class="o">.</span><span class="n">root</span><span class="p">),</span>
             <span class="s2">&quot;breadcrumb&quot;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">state</span><span class="o">.</span><span class="n">breadcrumb</span><span class="p">),</span>
             <span class="s2">&quot;selected_node_id&quot;</span><span class="p">:</span> <span class="n">state</span><span class="o">.</span><span class="n">selected_node_id</span><span class="p">,</span>
+            <span class="s2">&quot;inspector_focus_aux&quot;</span><span class="p">:</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">state</span><span class="p">,</span> <span class="s2">&quot;inspector_focus_aux&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
         <span class="p">}</span>
     <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
         <span class="sa">f</span><span class="s2">&quot;state_to_json expects a _LegacyBuilderState or _DagBuilderState; &quot;</span>
@@ -2246,6 +2253,7 @@
         <span class="n">root</span><span class="o">=</span><span class="n">root</span><span class="p">,</span>
         <span class="n">breadcrumb</span><span class="o">=</span><span class="n">crumbs</span><span class="p">,</span>
         <span class="n">selected_node_id</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;selected_node_id&quot;</span><span class="p">),</span>
+        <span class="n">inspector_focus_aux</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;inspector_focus_aux&quot;</span><span class="p">),</span>
     <span class="p">)</span>
 </pre></div>
 
