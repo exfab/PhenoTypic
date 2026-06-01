@@ -34,8 +34,8 @@ from phenotypic.gui._operation_registry import OperationRegistry
 from phenotypic.gui.builder._app import create_app
 from phenotypic.gui.builder._callbacks import _dispatch_state_update
 from phenotypic.gui.builder._state import (
-    BuilderScope,
-    BuilderState,
+    _LegacyBuilderScope as BuilderScope,
+    _LegacyBuilderState as BuilderState,
     StepNode,
     state_to_json,
 )

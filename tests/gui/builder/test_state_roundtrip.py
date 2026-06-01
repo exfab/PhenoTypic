@@ -18,8 +18,8 @@ import pytest
 from phenotypic import ImagePipeline
 from phenotypic.gui._operation_registry import get_registry
 from phenotypic.gui.builder._state import (
-    BuilderScope,
-    BuilderState,
+    _LegacyBuilderScope as BuilderScope,
+    _LegacyBuilderState as BuilderState,
     StepNode,
     current_scope,
     from_pipeline,

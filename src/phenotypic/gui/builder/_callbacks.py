@@ -939,6 +939,11 @@ DispatchKind: TypeAlias = Literal[
     "edit_label",
     "port_slot_add",
     "port_slot_remove",
+    # Legacy aux-port mutation kinds.
+    "wire_create",
+    "wire_delete",
+    "drill_in_aux",
+    "set_inspector_focus",
     # Palette drag-and-drop.
     "block_create",
     # Wire drawing + list-aux fan-in.
@@ -1277,6 +1282,134 @@ def _dispatch_state_update(
         param_info = info.parameters.get(param) if info else None
         if param_info is not None and not param_info.is_list and not slots:
             slots.append(None)
+        return out
+
+    if kind == "wire_create":
+        # Embed a fresh aux StepNode at consumer.aux_ports[param][slot].
+        # Payload: {target_node_id, param, slot, class_name}
+        target_node_id = payload.get("target_node_id")
+        param = payload.get("param", "")
+        slot = int(payload.get("slot") or 0)
+        class_name = payload.get("class_name", "")
+
+        node = _find_in_scope(scope, target_node_id)
+        if node is None:
+            return out
+
+        registry = _registry()
+        if registry is None:
+            return out
+
+        class_info = registry.get(class_name)
+        if class_info is None:
+            return out  # Unknown class: no-op
+
+        # Type-compatibility check: reject non-ImageOperation sources
+        # wired to an is_operation param.
+        consumer_info = registry.get(node.get("class_name", ""))
+        if consumer_info is not None:
+            p_info = consumer_info.parameters.get(param)
+            if p_info is not None and p_info.is_operation:
+                from phenotypic.abc_ import ImageOperation
+
+                if not issubclass(class_info.cls, ImageOperation):
+                    return out
+
+        aux_node = {
+            "node_id": _new_node_id(),
+            "class_name": class_name,
+            "params": _default_params_for(class_name),
+            "label": class_name,
+            "nested": None,
+            "aux_ports": {},
+        }
+
+        aux_ports = node.setdefault("aux_ports", {})
+        slots = aux_ports.setdefault(param, [])
+        while len(slots) <= slot:
+            slots.append(None)
+        slots[slot] = aux_node
+
+        out["inspector_focus_aux"] = {
+            "target_node_id": target_node_id,
+            "param": param,
+            "slot": slot,
+        }
+        return out
+
+    if kind == "wire_delete":
+        # Clear an aux slot and reset inspector_focus_aux if it pointed there.
+        # Payload: {target_node_id, param, slot}
+        target_node_id = payload.get("target_node_id")
+        param = payload.get("param", "")
+        slot = int(payload.get("slot") or 0)
+
+        node = _find_in_scope(scope, target_node_id)
+        if node is None:
+            return out
+
+        aux_ports = node.get("aux_ports") or {}
+        wired_slots = aux_ports.get(param)
+        if not isinstance(wired_slots, list) or slot >= len(wired_slots):
+            return out
+
+        wired_slots[slot] = None
+
+        focus = out.get("inspector_focus_aux")
+        if isinstance(focus, dict):
+            if (
+                focus.get("target_node_id") == target_node_id
+                and focus.get("param") == param
+                and focus.get("slot") == slot
+            ):
+                out["inspector_focus_aux"] = None
+        return out
+
+    if kind == "drill_in_aux":
+        # Push an aux-slot breadcrumb segment and clear inspector_focus_aux.
+        # Payload: {target_node_id, param, slot}
+        target_node_id = payload.get("target_node_id")
+        param = payload.get("param", "")
+        slot = int(payload.get("slot") or 0)
+
+        node = _find_in_scope(scope, target_node_id)
+        if node is None:
+            return out
+
+        wired_slots = (node.get("aux_ports") or {}).get(param) or []
+        if slot >= len(wired_slots) or wired_slots[slot] is None:
+            return out  # Empty slot: reject drill
+
+        breadcrumb.append(
+            {"target_node_id": target_node_id, "param": param, "slot": slot}
+        )
+        out["breadcrumb"] = breadcrumb
+        out["inspector_focus_aux"] = None
+        return out
+
+    if kind == "set_inspector_focus":
+        # Set or clear inspector_focus_aux.
+        # Payload: {focus: "aux"|"consumer", target_node_id, param, slot}
+        if payload.get("focus") == "aux":
+            target_node_id = payload.get("target_node_id")
+            param = payload.get("param", "")
+            slot = int(payload.get("slot") or 0)
+
+            node = _find_in_scope(scope, target_node_id)
+            if node is None:
+                return out
+
+            wired_slots = (node.get("aux_ports") or {}).get(param) or []
+            if slot >= len(wired_slots) or wired_slots[slot] is None:
+                return out  # Empty slot: reject
+
+            out["inspector_focus_aux"] = {
+                "target_node_id": target_node_id,
+                "param": param,
+                "slot": slot,
+            }
+        else:
+            out["inspector_focus_aux"] = None
         return out
 
     if kind == "block_create":
