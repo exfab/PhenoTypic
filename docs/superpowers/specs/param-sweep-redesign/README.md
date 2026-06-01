@@ -24,7 +24,7 @@ design; the master links out to these rather than inlining the detail.
 
 | Doc | Covers | Maps to | Status |
 |-----|--------|---------|--------|
-| `reference-free-segmentation-metrics.md` | Non-ground-truth ("unsupervised") segmentation-quality metrics for the `ReferenceFreeScorer` — catalogue, math, validity for arrayed-colony phenotyping, which to combine and how, **plus the mandatory meta-validation gate** (correlate the proxy against a small GT set; abstain if weak) | master §4 (`Scorer`), §2 | **planned (next)** |
+| [`reference-free-segmentation-metrics.md`](reference-free-segmentation-metrics.md) | Non-ground-truth ("unsupervised") segmentation-quality metrics for the `ReferenceFreeScorer` — catalogue (~36 metrics, 5 families), math, validity for arrayed-colony phenotyping, which to combine and how, **plus the mandatory meta-validation gate** (correlate the proxy against a small GT set; abstain if weak). 68 peer-reviewed/preprint sources, citation-audited. | master §4 (`Scorer`), §2 | **✅ written** |
 | `supervised-scorers.md` | Ground-truth scoring — count error, IoU/Dice, F1, adjusted Rand index; annotation format + tolerance handling | master §4 (`Scorer`) | planned |
 | `qc-objective-mapping.md` | Reusing the existing `analysis/` QC checks (expected-vs-detected count, ICC, MAD/Tukey, edge effects) as a tuning objective | master §4 (`Scorer`) | planned |
 | `search-space-inference.md` | `infer_search_space` — the `TuneSpec` field marker, pydantic type/constraint heuristics, `Presence` auto-wrapping | master §5 | planned |

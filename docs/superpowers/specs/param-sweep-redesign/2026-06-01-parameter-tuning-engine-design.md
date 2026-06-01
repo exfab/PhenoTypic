@@ -84,12 +84,12 @@ The design follows established practice for tuning image-analysis pipelines.
   Pareto front.
 - **Scoring without ground truth is possible but a *proxy of unproven
   reliability*.** Zhang et al. (2008, 1100+ citations) survey unsupervised
-  metrics ("enable self-tuning of algorithm parameters") and Chen et al. (2021)
+  metrics ("enable self-tuning of algorithm parameters") and Chen & Murphy (2023)
   rank cell-seg methods reference-free. But no-reference metrics can correlate
   **poorly** with true downstream quality (Deo et al., 2025), and even
   *supervised* metrics can miss the visual optimum (Jozdani et al., 2020). The
   methods that *worked* validated the proxy against ground truth first (Galdran
-  et al., 2018; Chen et al., 2021). → A reference-free objective must be
+  et al., 2018; Chen & Murphy, 2023). → A reference-free objective must be
   **meta-validated** against a small ground-truth set before it is trusted to
   drive optimization (see §4).
 - **Mature tooling.** Optuna provides TPE Bayesian optimization, a define-by-run
@@ -158,7 +158,7 @@ product, so **today's behaviour is a preserved special case**, not discarded.
      Rand. (Metric choice matters: F-measure / QR / SEI track the visual optimum
      best for combined over/under-segmentation — Jozdani 2020.)
    - `ReferenceFreeScorer` — intra-colony homogeneity vs. background contrast,
-     boundary gradient, shape regularity (Zhang 2008 / Chen 2021 style).
+     boundary gradient, shape regularity (Zhang 2008 / Chen & Murphy 2023 style).
      **Requires meta-validation:** before it may *drive* optimization, the engine
      correlates it against a small ground-truth set (≥3–5 annotated plates),
      records the correlation in the report, and **warns/abstains if the
@@ -472,9 +472,10 @@ Each phase lands behind the review → simplifier → regression cadence.
 - Zhang, H., Fritts, J. E., & Goldman, S. A. (2008). Image segmentation evaluation:
   A survey of unsupervised methods. *Computer Vision and Image Understanding*,
   110(2), 260–280. https://doi.org/10.1016/j.cviu.2007.08.003
-- Chen, H., & Murphy, R. F. (2021). Evaluation of cell segmentation methods without
-  reference segmentations. *Molecular Biology of the Cell*, 32(15).
-  https://doi.org/10.1091/mbc.E22-08-0364
+- Chen, H., & Murphy, R. F. (2023). Evaluation of cell segmentation methods without
+  reference segmentations. *Molecular Biology of the Cell*, 34(6), ar50.
+  https://doi.org/10.1091/mbc.e22-08-0364 (2021 is the bioRxiv preprint
+  https://doi.org/10.1101/2021.09.17.460800)
 - Akiba, T., Sano, S., Yanase, T., et al. (2019). Optuna: A next-generation
   hyperparameter optimization framework. *KDD '19*.
   https://doi.org/10.1145/3292500.3330701
