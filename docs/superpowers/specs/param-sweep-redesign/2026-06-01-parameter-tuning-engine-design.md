@@ -1,10 +1,16 @@
 # Parameter Tuning Engine — Design Spec
 
 - **Date:** 2026-06-01
-- **Status:** Approved design (pre-implementation)
+- **Status:** Approved design, revised after literature self-review (pre-implementation)
 - **Branch:** `redesign/param-sweep`
 - **Supersedes / refactors:** `src/phenotypic/sweep/` (the parameter sweep CLI feature)
 - **Author:** brainstormed with Claude (Opus 4.8)
+- **Revisions:** 2026-06-01 — literature self-review pass: screening switched to
+  fANOVA (captures interactions; reuses optimizer trials); reference-free scoring
+  gated behind meta-validation; `Scorer` gains an optimization-direction contract;
+  pruning fidelity defined as calibration-set size; k-fold / metadata-stratified
+  calibration; grid-over-conditional regression test mandated; the "1.42× / ~100
+  points" figure softened to illustrative.
 
 ---
 
@@ -41,31 +47,55 @@ wrong tool. We want a **robust, sample-efficient tuning engine** that:
 
 ## 2. Literature basis
 
-The design follows established practice for tuning image-analysis pipelines:
+The design follows established practice for tuning image-analysis pipelines.
 
 - **Screen first, then optimize.** Teodoro et al. (2016) tune a tissue/nucleus
-  segmentation pipeline as a **black box**: a cheap sensitivity-analysis pass
-  (Morris One-At-A-Time, then Sobol variance decomposition) prunes
-  non-influential parameters *before* optimization. Searching **~100 points** of
-  a space with billions–trillions of combinations improved Dice/Jaccard by **up
-  to 1.42×** over defaults — the quantitative argument against full grid.
+  segmentation pipeline as a **black box**, pruning non-influential parameters
+  *before* optimization. (Their screening used Morris One-At-A-Time + Sobol; we
+  adopt **functional ANOVA** instead — next bullet — because our space is
+  categorical/conditional, where Morris is a poor fit.) On their tissue-WSI
+  workflows, searching ~100 points of a billions-to-trillions-point space
+  improved Dice/Jaccard by up to 1.42× over defaults; we cite this as
+  **illustrative motivation** for abandoning full grid, *not* a transferable
+  promise for colony detection.
+- **Measure which knobs matter with fANOVA.** Functional ANOVA (Hutter et al.,
+  2014) fits a random-forest surrogate on trials *already gathered by the
+  optimizer* and shows "most performance variation is attributable to just a few
+  hyperparameters" — while also quantifying **interactions**, which
+  one-at-a-time screening cannot. Interactions can dominate (Shehata et al.,
+  2025: >90% of variation from interactions in RL tuning), so main-effect-only
+  screening is risky. PED-ANOVA (Watanabe et al., 2023) extends fANOVA to
+  top-performance subspaces. Optuna ships fANOVA importance natively.
 - **Sample-efficient optimizers for expensive evaluations.** Teodoro compared
   Nelder–Mead, Parallel Rank Order, Genetic Algorithm, and **Bayesian
   optimization** (Snoek et al. / Spearmint), favouring model-based search "for
   objective functions whose evaluations are costly."
-- **Tuning is naturally multi-objective.** Taveira et al. (2018) extend the same
-  platform to maximise segmentation quality **while minimising execution time**
-  via scalarization (a-priori weights), because the fitness function is too
-  expensive to sample a full Pareto front a posteriori.
-- **Scoring without ground truth is a solved-enough problem.** Zhang et al.
-  (2008, 1100+ citations) survey unsupervised segmentation-evaluation metrics
-  and note they "enable self-tuning of algorithm parameters." Chen et al. (2021)
-  build **reference-free quality metrics for cell segmentation**, combining many
-  metrics via PCA into a single quality score.
+- **Multi-fidelity pruning needs a fidelity axis.** Hyperband/ASHA early-stopping
+  presupposes cheap→expensive approximations; the natural axis here is the
+  **number of calibration images** evaluated (Kandasamy et al., 2017 use "less
+  data N" as exactly this). But unreliable low-fidelity subsets can make
+  multi-fidelity BO *worse* than plain BO (Mikkola et al., 2022), so pruning is
+  opt-in over a stratified, representative subset.
+- **Tuning is naturally multi-objective.** Taveira et al. (2018) maximise
+  segmentation quality **while minimising execution time** via a-priori
+  scalarization, because sampling a full Pareto front is too expensive;
+  importance analysis composes with scalarization (Theodorakopoulos et al.,
+  2024). Caveat: fixed-weight scalarization cannot reach non-convex regions of a
+  Pareto front.
+- **Scoring without ground truth is possible but a *proxy of unproven
+  reliability*.** Zhang et al. (2008, 1100+ citations) survey unsupervised
+  metrics ("enable self-tuning of algorithm parameters") and Chen et al. (2021)
+  rank cell-seg methods reference-free. But no-reference metrics can correlate
+  **poorly** with true downstream quality (Deo et al., 2025), and even
+  *supervised* metrics can miss the visual optimum (Jozdani et al., 2020). The
+  methods that *worked* validated the proxy against ground truth first (Galdran
+  et al., 2018; Chen et al., 2021). → A reference-free objective must be
+  **meta-validated** against a small ground-truth set before it is trusted to
+  drive optimization (see §4).
 - **Mature tooling.** Optuna provides TPE Bayesian optimization, a define-by-run
-  search space, pruning (ASHA/Hyperband), native multi-objective, an
-  **ask-and-tell API**, and study persistence — the exact shape an MCP/agent
-  loop needs.
+  search space, **fANOVA importance**, pruning (ASHA/Hyperband), native
+  multi-objective, an **ask-and-tell API**, and study persistence — the exact
+  shape an MCP/agent loop needs.
 
 Full references in §13.
 
@@ -75,13 +105,14 @@ Full references in §13.
 
 | # | Decision | Choice |
 |---|----------|--------|
-| D1 | Objective function | **Pluggable** — supervised / reference-free / domain-QC / human-surfacing are interchangeable `Scorer` implementations. The optimizer never cares how a score was produced. |
+| D1 | Objective function | **Pluggable** — supervised / reference-free / domain-QC / human-surfacing are interchangeable `Scorer` implementations; the optimizer never cares how a score was produced. **`QCScorer` (domain consistency) is the primary default** for colony arrays; **`ReferenceFreeScorer` is gated behind meta-validation** against a small ground-truth set (§4), since no-reference proxies can mislead. |
 | D2 | Scope | **One shared tuning engine.** Grid search is demoted to one `SearchStrategy`. CLI and MCP both wrap the same ask-and-tell core. Reuse the existing manifest / joblib / SLURM execution. |
-| D3 | Optimizer backend | **Optuna** is the default behind a thin `SearchStrategy` Protocol. We own random-search and the screening pass directly (no lock-in). The seam stays open for an `AxStrategy` later. |
-| D4 | Robust evaluation | **Calibration set + aggregate + stability penalty + held-out validation.** Each trial scores over a representative calibration subset; the score is `median(per-image) ± λ·dispersion(per-image)` so flat optima beat sharp ones; the winner is validated on held-out images. |
+| D3 | Optimizer backend | **Optuna** is the default behind a thin `SearchStrategy` Protocol. We own random-search and a zero-dependency importance fallback directly (no lock-in). The seam stays open for an `AxStrategy` later. |
+| D4 | Robust evaluation | **Calibration set + direction-normalized aggregate + stability penalty + held-out validation.** Each trial scores over a representative, **metadata-stratified** calibration subset; for small image counts use **k-fold / leave-one-plate-out** CV. The aggregate is `level(per-image) − λ·dispersion(per-image)` on a normalized higher-is-better scale (so flat optima beat sharp ones); the winner is validated on held-out images. |
 | D5 | Co-pilot UI | **Dash only** (a new GUI-hub mount), not napari. |
 | D6 | Drivers | The engine is usable interchangeably by **a human (CLI + Dash) and an agent (MCP)**, collaborating on **one shared study**. |
 | D7 | Search space | An **automated `infer_search_space`** derives tunable domains from the pydantic operation fields; humans/agents review and edit before tuning. |
+| D8 | Screening / importance | **functional ANOVA** over the optimizer's own trials (Optuna's `get_param_importances`), capturing main effects *and* interactions; low-importance params may be frozen for a focused second round. A zero-dependency correlation/variance importance covers the no-Optuna path. |
 
 ---
 
@@ -118,32 +149,55 @@ product, so **today's behaviour is a preserved special case**, not discarded.
    (homegrown, zero deps, exact migration path), `OptunaStrategy`
    (TPE / CMA-ES / GP / NSGA-II + pruning + SQLite persistence), future `AxStrategy`.
 
-3. **`Scorer` (Protocol)** — `score(image, result) -> float | dict[str, float]`.
+3. **`Scorer` (Protocol)** — `score(image, result) -> float | dict[str, float]`,
+   plus a declared **optimization direction** (`higher_is_better: bool`) and a
+   **value range / normalizer** per metric, so heterogeneous metrics can be
+   combined and a stability term applied on a common higher-is-better scale.
    Implementations:
-   - `SupervisedScorer` — ground truth → count error / IoU / Dice / F1 / adjusted Rand.
+   - `SupervisedScorer` — ground truth → count error / IoU / Dice / F1 / adjusted
+     Rand. (Metric choice matters: F-measure / QR / SEI track the visual optimum
+     best for combined over/under-segmentation — Jozdani 2020.)
    - `ReferenceFreeScorer` — intra-colony homogeneity vs. background contrast,
      boundary gradient, shape regularity (Zhang 2008 / Chen 2021 style).
+     **Requires meta-validation:** before it may *drive* optimization, the engine
+     correlates it against a small ground-truth set (≥3–5 annotated plates),
+     records the correlation in the report, and **warns/abstains if the
+     correlation is weak** (Deo 2025). The primary failure mode is a proxy the
+     optimizer can exploit but that doesn't track real quality.
    - `QCScorer` — reuse the existing `analysis/` QC checks: expected-vs-detected
      grid count, ICC replicate reliability, MAD/Tukey outlier rates, edge effects.
+     The most trustworthy objective for colony arrays and the **Phase-1 default**.
    - `CompositeScorer` — weighted scalarization (one number) *or* return a dict
      (true multi-objective Pareto).
 
 4. **`Evaluator`** — the robustness layer (D4). Builds the pipeline from params,
-   runs it across the **calibration subset** via the existing joblib/SLURM
-   machinery, applies the `Scorer` per image, then aggregates
-   `score = median(per-image) ± λ·dispersion(per-image)`. Returns the aggregate
-   plus the per-image breakdown, and validates the winner on a **held-out subset**.
+   runs it across the **metadata-stratified calibration subset** via the existing
+   joblib/SLURM machinery, applies the `Scorer` per image, **normalizes each
+   metric to a common higher-is-better scale**, then aggregates
+   `score = level(per-image) − λ·dispersion(per-image)` (default `level` = median,
+   `dispersion` = IQR). For small image counts it runs **k-fold /
+   leave-one-plate-out** CV instead of a single split. With pruning enabled it
+   evaluates calibration images **progressively** and reports intermediate scores
+   via `trial.report()`, so a hopeless candidate is early-stopped after a few
+   images — **fidelity = number of calibration images** (§2), over a stratified
+   subset to avoid unreliable low-fidelity. Returns the aggregate plus the
+   per-image breakdown, and validates the winner on a **held-out subset**.
 
 5. **`TuningEngine`** — orchestrates the loop; owns the budget (n-trials /
    wall-clock / convergence), persistence, and reporting. **This single object is
    what the CLI and the MCP wrap.**
 
-**Plus an optional `ScreeningPhase`** (on by default above ~6 params): a Morris
-One-At-A-Time pass (`r·(k+1)` cheap runs, r≈5–10) ranks parameters by influence
-(`μ*` mean elementary effect; `σ` flags non-linearity) and **freezes
-non-influential params at their defaults** before optimization. Optional Sobol
-variance decomposition when budget allows. Independently valuable as a
-plain-English *"which knobs matter for your plates"* answer.
+**Plus a `ScreeningPhase` / importance pass** (on by default above ~6 params):
+**functional ANOVA** over the trials the optimizer has already run (Optuna's
+`get_param_importances`) ranks parameters by influence **and interaction**, after
+which low-importance params may be **frozen at their defaults for a focused
+second round**. fANOVA is preferred over Morris One-At-A-Time because our space is
+categorical/conditional and because interactions can dominate (§2); it also
+reuses optimizer trials rather than spending a separate screening budget. A cheap
+one-at-a-time pre-screen remains available as an option for purely continuous
+knobs, and when Optuna is absent a zero-dependency correlation/variance importance
+gives a coarse fallback. Independently valuable as a plain-English *"which knobs
+matter for your plates"* answer.
 
 ### Data flow
 
@@ -258,6 +312,13 @@ Two paths from the same `Scorer`:
   runs NSGA-II / multi-objective TPE → a Pareto front; the report draws the
   trade-off curve and the user/agent picks a knee point.
 
+**Stability is itself an objective.** The robustness penalty in §4 collapses
+*level* and *dispersion* across images into one number; when that trade-off
+matters, expose it on the Pareto view (level vs. dispersion) instead of
+hard-scalarizing. And because fixed-weight scalarization cannot reach non-convex
+regions of a Pareto front, prefer `--multi-objective` when the conflict between
+objectives is important rather than relying on weights alone.
+
 ---
 
 ## 8. Output layout
@@ -295,7 +356,11 @@ This is a CI-gated, GUI-coupled feature; back-compat is a hard requirement.
   **extracted** so both `sweep` (grid) and `tune` (optimize) import them rather
   than duplicate. `sweep` becomes the grid-only facade over the engine.
 - `--strategy grid` reproduces today's exhaustive output **byte-compatibly** with
-  the per-image layout the GUI reads — the regression lock.
+  the per-image layout the GUI reads — the regression lock. This claim is
+  load-bearing, so it gets an explicit test: **grid enumeration over a
+  *conditional* space (`Presence` + nested params) must equal the current
+  `generate_sweep_manifest` Cartesian product**, asserted against a saved fixture
+  manifest.
 - Old manifest JSON stays loadable; `tuning_spec.json` is a new artifact.
 
 ---
@@ -308,9 +373,11 @@ platform-specific deps. Grid + random + screening + robust evaluation are
 **fully dependency-free** (homegrown), so Phase 1 ships with zero new deps.
 Requesting `--strategy tpe` without the extra → a clear, actionable error.
 `optuna` is pure-Python / cross-platform (no Windows exclusion). Promoting it to
-core later (so TPE is the out-of-box default) is a one-line change. Morris-OAT
-screening is implemented in-house (tiny); optional Sobol uses `SALib` only if the
-extra is present.
+core later (so TPE is the out-of-box default) is a one-line change.
+Screening/importance uses Optuna's built-in **fANOVA** when the extra is present;
+a zero-dependency correlation/variance importance is the fallback. No Morris /
+Sobol or `SALib` dependency is required (an optional one-at-a-time continuous
+pre-screen is also dependency-free).
 
 ---
 
@@ -323,7 +390,7 @@ src/phenotypic/tune/
   _strategies/             # _protocol.py, _grid.py, _random.py, _optuna.py (lazy import)
   _scorers/                # _protocol.py, _supervised.py, _reference_free.py, _qc.py, _composite.py
   _evaluator.py            # calibration set, aggregate + stability, held-out validation
-  _screening.py            # Morris OAT (+ optional SALib Sobol)
+  _screening.py            # fANOVA importance (Optuna) + zero-dep correlation fallback; optional 1-at-a-time pre-screen
   _engine.py               # TuningEngine: ask/tell loop, budget, convergence, reporting
   _study_store.py          # persistence (Optuna SQLite | homegrown journal fallback)
   _report.py               # tuning_report.html (extends sweep dashboard)
@@ -359,9 +426,13 @@ rather than duplicating it.
 
 ### Testing
 
-- **Unit**: domain sampling; `infer_search_space` on synthetic pydantic ops; each
-  `Scorer` on `load_synth_yeast_plate()`; Evaluator aggregate+stability math;
-  **`GridStrategy` enumeration == current manifest** (regression lock); seeded
+- **Unit**: domain sampling (incl. conditional/`Presence` nesting);
+  `infer_search_space` on synthetic pydantic ops; each `Scorer` on
+  `load_synth_yeast_plate()` incl. the `higher_is_better` direction contract;
+  `ReferenceFreeScorer` **meta-validation correlation** against a GT fixture;
+  Evaluator aggregate + stability + k-fold math with metric normalization;
+  **`GridStrategy` enumeration over a conditional space == current
+  `generate_sweep_manifest`** (regression lock, fixture-based); seeded
   `RandomStrategy` determinism.
 - **Integration**: end-to-end `tune()` on the synth plate with a tiny budget,
   asserting improvement over defaults and an identical study on resume.
@@ -374,13 +445,16 @@ rather than duplicating it.
 
 Each phase lands behind the review → simplifier → regression cadence.
 
-1. **Engine core, zero deps** — `SearchSpace`, Protocol, `GridStrategy`
-   (regression-lock) + `RandomStrategy`, `Evaluator` (robust eval),
-   `TuningEngine`, `QCScorer` + `ReferenceFreeScorer`, CLI. *Already beats grid*
-   (random + screening + robust aggregation). Shippable alone.
+1. **Engine core, zero deps** — `SearchSpace` (incl. conditional nesting),
+   Protocol, `GridStrategy` (regression-lock) + `RandomStrategy`, `Evaluator`
+   (direction-normalized robust eval + k-fold), `TuningEngine`, **`QCScorer`
+   (primary)** + a zero-dep importance fallback, CLI. *Already beats grid*
+   (random + importance + robust aggregation). Shippable alone.
 2. **Optuna backend (extra)** — `OptunaStrategy` (TPE/CMA-ES), SQLite
-   persistence/resume, param importance.
-3. **Auto-space + screening** — `infer_search_space`, `TuneSpec`, Morris OAT.
+   persistence/resume, **fANOVA importance**, ASHA pruning (fidelity =
+   calibration images, opt-in).
+3. **Auto-space + `ReferenceFreeScorer`** — `infer_search_space`, `TuneSpec`, and
+   the reference-free objective **with its mandatory meta-validation gate**.
 4. **Supervised scorers + multi-objective / Pareto reporting.**
 5. **MCP server.**
 6. **Dash co-pilot view** (FEATURES/WORKFLOWS gates + screenshots).
@@ -406,15 +480,47 @@ Each phase lands behind the review → simplifier → regression cadence.
   https://doi.org/10.1145/3292500.3330701
 - Bergstra, J., & Bengio, Y. (2012). Random search for hyper-parameter
   optimization. *Journal of Machine Learning Research*, 13, 281–305.
+- Hutter, F., Hoos, H., & Leyton-Brown, K. (2014). An efficient approach for
+  assessing hyperparameter importance. *ICML*, 754–762.
+- Watanabe, S., Bansal, A., & Hutter, F. (2023). PED-ANOVA: Efficiently
+  quantifying hyperparameter importance in arbitrary subspaces. *IJCAI*.
+  arXiv:2304.10255
+- Theodorakopoulos, D., et al. (2024). Hyperparameter importance analysis for
+  multi-objective AutoML. arXiv:2405.07640
+- Shehata, M., et al. (2025). Hyperparameter sensitivity analysis of
+  reinforcement learning in autonomous driving environments.
+- Deo, Y., et al. (2025). Metrics that matter: Evaluating image quality metrics
+  for medical image generation. arXiv.
+- Galdran, A., Costa, P., Anjos, A., et al. (2018). A no-reference quality metric
+  for retinal vessel tree segmentation. *MICCAI*, 82–90.
+- Jozdani, S. E., & Chen, D. (2020). On the versatility of popular and recently
+  proposed supervised evaluation metrics for segmentation quality of remotely
+  sensed images. *ISPRS Journal of Photogrammetry and Remote Sensing*, 160, 275–290.
+- Kandasamy, K., Dasarathy, G., Schneider, J., & Póczos, B. (2017). Multi-fidelity
+  Bayesian optimisation with continuous approximations. *ICML*.
+- Mikkola, P., Martinelli, J., Filstroff, L., & Kaski, S. (2022). Multi-fidelity
+  Bayesian optimization with unreliable information sources. *AISTATS 2023*.
+  arXiv:2210.13937
+- Muthusivarajan, R., et al. (2024). Evaluating the relationship between magnetic
+  resonance image quality metrics and deep learning–based segmentation accuracy
+  of brain tumors. *Medical Physics*.
+- Li, L., Jamieson, K., DeSalvo, G., Rostamizadeh, A., & Talwalkar, A. (2018).
+  Hyperband: A novel bandit-based approach to hyperparameter optimization.
+  *Journal of Machine Learning Research*, 18, 1–52.
 
 ---
 
 ## 14. Open questions (defer to planning)
 
-- Exact stability term: dispersion as IQR vs. std vs. worst-case across images, and
-  the default `λ`. (Pick a default, expose the knob.)
-- Calibration-set selection: random subset vs. stratified by a metadata axis
-  (e.g. plate / replicate) vs. user-specified. Default to stratified-if-metadata.
+- Default `λ` for the stability penalty (resolved: `level` = median, `dispersion`
+  = IQR, on a normalized higher-is-better scale; `λ` still needs a conservative
+  default + empirical calibration on real plates).
+- fANOVA freezing threshold, and how many warm-up trials before the first
+  importance estimate is trustworthy enough to freeze a parameter.
+- Pruning low-fidelity representativeness: how many calibration images at the
+  first rung before early-stopping is safe (guard against unreliable low-fidelity).
+- `ReferenceFreeScorer` meta-validation: minimum ground-truth set size and the
+  correlation threshold below which the engine refuses to optimize on the proxy.
 - Whether `Sweep` gains the range types in-place or `SearchSpace` accepts a richer
   declaration alongside the legacy `Sweep` list.
 - MCP transport / packaging location (`src/phenotypic/mcp/` vs. a standalone entry).
