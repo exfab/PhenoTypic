@@ -108,7 +108,7 @@ Full references in §13.
 | D1 | Objective function | **Pluggable** — supervised / reference-free / domain-QC / human-surfacing are interchangeable `Scorer` implementations; the optimizer never cares how a score was produced. **`QCScorer` (domain consistency) is the primary default** for colony arrays; **`ReferenceFreeScorer` is gated behind meta-validation** against a small ground-truth set (§4), since no-reference proxies can mislead. |
 | D2 | Scope | **One shared tuning engine.** Grid search is demoted to one `SearchStrategy`. CLI and MCP both wrap the same ask-and-tell core. Reuse the existing manifest / joblib / SLURM execution. |
 | D3 | Optimizer backend | **Optuna** is the default behind a thin `SearchStrategy` Protocol. We own random-search and a zero-dependency importance fallback directly (no lock-in). The seam stays open for an `AxStrategy` later. |
-| D4 | Robust evaluation | **Calibration set + direction-normalized aggregate + stability penalty + held-out validation.** Each trial scores over a representative, **metadata-stratified** calibration subset; for small image counts use **k-fold / leave-one-plate-out** CV. The aggregate is `level(per-image) − λ·dispersion(per-image)` on a normalized higher-is-better scale (so flat optima beat sharp ones); the winner is validated on held-out images. |
+| D4 | Robust evaluation | **Calibration set + direction-normalized aggregate + stability penalty + held-out validation.** Each trial scores over a representative, **metadata-stratified** calibration subset; for small image counts use **k-fold / leave-one-plate-out** CV. The aggregate applies `level − λ·dispersion` **per per-image term** on a normalized higher-is-better scale (so flat optima beat sharp ones; batch-only objectives carry their own reducer); the winner is validated on held-out images. |
 | D5 | Co-pilot UI | **Dash only** (a new GUI-hub mount), not napari. |
 | D6 | Drivers | The engine is usable interchangeably by **a human (CLI + Dash) and an agent (MCP)**, collaborating on **one shared study**. |
 | D7 | Search space | An **automated `infer_search_space`** derives tunable domains from the pydantic operation fields; humans/agents review and edit before tuning. |
@@ -172,10 +172,11 @@ product, so **today's behaviour is a preserved special case**, not discarded.
 
 4. **`Evaluator`** — the robustness layer (D4). Builds the pipeline from params,
    runs it across the **metadata-stratified calibration subset** via the existing
-   joblib/SLURM machinery, applies the `Scorer` per image, **normalizes each
-   metric to a common higher-is-better scale**, then aggregates
-   `score = level(per-image) − λ·dispersion(per-image)` (default `level` = median,
-   `dispersion` = IQR). For small image counts it runs **k-fold /
+   joblib/SLURM machinery, applies the `Scorer` per image (the **`Scorer` owns
+   normalization** — it emits terms on a common higher-is-better scale; the Evaluator
+   validates the declared range), then aggregates `score = level − λ·dispersion`
+   **per per-image term** (default `level` = median, `dispersion` = IQR; batch-only
+   Scorer terms carry their own robust reducer — see robust-evaluation.md §4, §9). For small image counts it runs **k-fold /
    leave-one-plate-out** CV instead of a single split. With pruning enabled it
    evaluates calibration images **progressively** and reports intermediate scores
    via `trial.report()`, so a hopeless candidate is early-stopped after a few

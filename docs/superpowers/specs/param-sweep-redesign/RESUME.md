@@ -14,12 +14,13 @@ cold, then the [README](README.md) index and the
   - `ef10d269` — reference-free segmentation-metrics companion doc (+ Chen & Murphy 2023 fix)
   - `51742e13` — supervised-scorers companion doc
   - `ac4c8c9b` — qc-objective-mapping companion doc
-  - *(this commit)* — search-space-inference + operation-tuning-annotations companion docs
+  - `cc189216` — search-space-inference + operation-tuning-annotations companion docs
+  - *(this commit)* — robust-evaluation companion doc (+ reciprocal qc §3 / master §4·D4 edits)
 - **Done:** master design spec; bundle README index; the **reference-free metrics**,
-  **supervised-scorers**, **qc-objective-mapping**, **search-space-inference**, and
-  **operation-tuning-annotations** companions.
-- **Not started:** 5 stub companion docs (screening-importance, robust-evaluation,
-  optuna-integration, mcp-server-design, dash-copilot-design) + the implementation plan.
+  **supervised-scorers**, **qc-objective-mapping**, **search-space-inference**,
+  **operation-tuning-annotations**, and **robust-evaluation** companions.
+- **Not started:** 4 stub companion docs (screening-importance, optuna-integration,
+  mcp-server-design, dash-copilot-design) + the implementation plan.
 
 ## Remaining stub companion docs to go over
 
@@ -72,11 +73,15 @@ captured upstream are noted so the doc starts from context, not zero.
   scores fANOVA consumes must be grid-independent** or importances inherit the
   instability (reference-free doc §B, Recommendation 2).
 
-- [ ] **`robust-evaluation.md`** — master §4 (`Evaluator`), D4.
-  Calibration/held-out split, k-fold / leave-one-plate-out, metadata stratification,
-  `level − λ·dispersion` aggregation, the metric-normalization + `higher_is_better`
-  contract, overfitting guard, pruning fidelity = progressive calibration-set size.
-  *Carry-forward:* default `λ` is an open question (master §14).
+- [x] **`robust-evaluation.md`** — master §4 (`Evaluator`), D4. **✅ written** (uniform
+  3-step Eval↔Scorer loop; per-term `median − λ·IQR` stability penalty, λ=0.5, clamp;
+  Scorer-owned normalization; group-aware CV with `--cv-group` auto-infer + label
+  overloading; multi-fidelity pruning + incremental per-image-frame caching; adaptive
+  held-out guard / CV-only MVP; failure taxonomy, deterministic seeding, availability
+  matrix). Agent-reviewed (composition vs qc/master verified; all API claims real).
+  **Carried reciprocal edits** to qc §3 (`finalize` signature + `Count_agg` source) and
+  master §4/D4 (normalization ownership + per-term penalty scope). *Open:* default `λ`,
+  first-rung policy, held-out gap margin, `min_stability_n` (master §14).
 
 - [ ] **`optuna-integration.md`** — master §4 (`SearchStrategy`), §6.
   `OptunaStrategy`: sampler choice (TPE/CMA-ES/GP/NSGA-II), pruning (ASHA/Hyperband),

@@ -93,7 +93,7 @@ pure per-image `score(image)`. The `Scorer`/`Evaluator` protocol gains a
 ```
 score_image(image, result)  -> { "Count": t_count, ... }   # per-plate terms
         carried by the Evaluator, robust-aggregated across plates ⇒ Count_agg
-finalize(per_image_results, full_measurements) -> float     # the QCScore
+finalize(aggregated_terms, per_image_results, full_measurements) -> float   # the QCScore
         runs the batch panel once over all plates, reduces + fuses
 ```
 
@@ -103,7 +103,8 @@ finalize(per_image_results, full_measurements) -> float     # the QCScore
   master §4 D4).
 - `finalize` runs the **batch panel** once across all calibration plates, reduces
   each check across strains (§4.3), builds the reliability composite, and fuses
-  it with `Count_agg` (§4.4). Pruning early-stops on the per-image Count terms;
+  it with `Count_agg` — supplied by the Evaluator as `aggregated_terms["Count"]`
+  (§4.4; robust-evaluation.md §3). Pruning early-stops on the per-image Count terms;
   the batch panel is computed only for survivors, at full fidelity.
 
 ---
