@@ -8,8 +8,9 @@ import pytest
 
 import phenotypic
 from phenotypic import ImagePipeline
+from phenotypic.abc_ import BaseOperation, ImageOperation
 from phenotypic.correction import ImagePadder
-from phenotypic.detect import OtsuDetector
+from phenotypic.detect import CompositeDetector, OtsuDetector, TriangleDetector
 from phenotypic.enhance import GaussianBlur
 from phenotypic.measure import MeasureShape
 from phenotypic.prefab import HeavyOtsuPipeline
@@ -263,3 +264,104 @@ def test_file_roundtrip():
         assert loaded.name == "file_test"
         assert len(loaded._ops) == 2
         assert len(loaded._meas) == 1
+
+
+# ---------------------------------------------------------------------------
+# Operation-level to_json/from_json (BaseOperation)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.smoke
+@timeit
+def test_operation_to_json_returns_string():
+    """``to_json()`` with no filepath returns a ``{"class", "params"}`` envelope."""
+    json_str = OtsuDetector(ignore_zeros=True).to_json()
+
+    assert isinstance(json_str, str)
+    envelope = json.loads(json_str)
+    assert envelope["class"] == "OtsuDetector"
+    assert isinstance(envelope["params"], dict)
+    assert envelope["params"]["ignore_zeros"] is True
+
+
+@pytest.mark.smoke
+@timeit
+def test_operation_to_json_from_json_file_roundtrip():
+    """An operation written to file is recovered with its params intact."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        filepath = Path(tmpdir) / "op.json"
+        OtsuDetector(ignore_zeros=True).to_json(filepath)
+
+        assert filepath.exists()
+        loaded = OtsuDetector.from_json(filepath)
+        assert isinstance(loaded, OtsuDetector)
+        assert loaded.ignore_zeros is True
+
+
+@pytest.mark.smoke
+@timeit
+def test_operation_from_json_accepts_string():
+    """``from_json`` accepts a JSON string, not only a file path."""
+    json_str = OtsuDetector(ignore_zeros=True).to_json()
+
+    loaded = OtsuDetector.from_json(json_str)
+    assert isinstance(loaded, OtsuDetector)
+    assert loaded.ignore_zeros is True
+
+
+@pytest.mark.smoke
+@timeit
+def test_operation_polymorphic_from_json_via_base():
+    """``ImageOperation.from_json`` resolves the concrete subclass in the file."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        filepath = Path(tmpdir) / "op.json"
+        OtsuDetector().to_json(filepath)
+
+        loaded = ImageOperation.from_json(filepath)
+        assert type(loaded).__name__ == "OtsuDetector"
+        assert isinstance(loaded, ImageOperation)
+
+
+@pytest.mark.smoke
+@timeit
+def test_operation_from_json_subclass_mismatch_raises():
+    """Loading via a sibling subclass rejects a non-matching class."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        filepath = Path(tmpdir) / "op.json"
+        OtsuDetector().to_json(filepath)
+
+        with pytest.raises(TypeError):
+            TriangleDetector.from_json(filepath)
+
+
+@pytest.mark.smoke
+@timeit
+def test_operation_from_json_measurement_via_image_op_raises():
+    """A measurement file cannot be loaded through ``ImageOperation.from_json``."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        filepath = Path(tmpdir) / "meas.json"
+        MeasureShape().to_json(filepath)
+
+        # MeasureFeatures is a sibling of ImageOperation under BaseOperation.
+        with pytest.raises(TypeError):
+            ImageOperation.from_json(filepath)
+        # ...but BaseOperation.from_json resolves it fine.
+        assert type(BaseOperation.from_json(filepath)).__name__ == "MeasureShape"
+
+
+@pytest.mark.smoke
+@timeit
+def test_nested_op_to_json_from_json_roundtrip():
+    """A nested ``OperationField`` (CompositeDetector.detectors) round-trips."""
+    composite = CompositeDetector(
+            detectors=[OtsuDetector(ignore_zeros=True), TriangleDetector()],
+    )
+    with tempfile.TemporaryDirectory() as tmpdir:
+        filepath = Path(tmpdir) / "composite.json"
+        composite.to_json(filepath)
+
+        loaded = CompositeDetector.from_json(filepath)
+        assert isinstance(loaded, CompositeDetector)
+        assert len(loaded.detectors) == 2
+        assert isinstance(loaded.detectors[0], OtsuDetector)
+        assert loaded.detectors[0].ignore_zeros is True
+        assert isinstance(loaded.detectors[1], TriangleDetector)
