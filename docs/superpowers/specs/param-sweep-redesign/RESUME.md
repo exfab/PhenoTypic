@@ -12,8 +12,14 @@ cold, then the [README](README.md) index and the
   - `6515b827` — organize specs into the bundle folder
   - `e8bcc7f1` — revise spec after literature self-review (fANOVA, meta-validation gate, etc.)
   - `ef10d269` — reference-free segmentation-metrics companion doc (+ Chen & Murphy 2023 fix)
-- **Done:** master design spec; bundle README index; the **reference-free metrics** companion (~1,460 lines, 68 audited sources).
-- **Not started:** the 8 stub companion docs below + the implementation plan.
+  - `51742e13` — supervised-scorers companion doc
+  - `ac4c8c9b` — qc-objective-mapping companion doc
+  - *(this commit)* — search-space-inference + operation-tuning-annotations companion docs
+- **Done:** master design spec; bundle README index; the **reference-free metrics**,
+  **supervised-scorers**, **qc-objective-mapping**, **search-space-inference**, and
+  **operation-tuning-annotations** companions.
+- **Not started:** 5 stub companion docs (screening-importance, robust-evaluation,
+  optuna-integration, mcp-server-design, dash-copilot-design) + the implementation plan.
 
 ## Remaining stub companion docs to go over
 
@@ -41,11 +47,22 @@ captured upstream are noted so the doc starts from context, not zero.
   maps them onto PhenoTypic's existing QC module and clarifies QC-vs-reference-free
   overlap (reuse, don't duplicate).
 
-- [ ] **`search-space-inference.md`** — master §5.
-  `infer_search_space`: the `TuneSpec` field marker (ColumnRef-style metadata),
-  pydantic type/constraint heuristics, `Presence` auto-wrapping. *Carry-forward:*
-  the heuristic-window `[d/4, d·4]` choice is an open question (master §14); show how
-  screening prunes an over-generous inferred space.
+- [x] **`search-space-inference.md`** — master §5, D7. **✅ written** (two-tier resolution:
+  `TuneSpec` marker hint-only + the `⊆` invariant → type/constraint heuristics;
+  unbounded-window `[d/unbounded_factor, d·unbounded_factor]` with `d≤0` surfaced;
+  `_tune_optional` flat `__enabled__` presence wrapping; one-level nested-op recursion with
+  path keys + apply-time class-validation; the `InferredSearchSpace` proposal + autonomy
+  gate). Agent-reviewed — the load-bearing `⊆`-retrieval path and `Presence` Cartesian
+  semantics were verified against source. *Open-question resolutions:* factor-4 as an
+  `unbounded_factor` kwarg; recurse one level on by default; never parse docstring ranges;
+  `__enabled__` dunder. *Spun off:* the "bounded is rare today" finding →
+  `operation-tuning-annotations.md`.
+
+- [x] **`operation-tuning-annotations.md`** (new — not in the original stub list).
+  **✅ written.** Field-migration workstream: `Field(ge=,le=)` (validity) + `TuneSpec`
+  (search) so inference reads real envelopes; back-compat-safe `TuneSpec`-first /
+  `Field`-second staging; coverage + `⊆` guardrail tests. Decoupled from tune Phase 1;
+  the dial toward D6 autonomy.
 
 - [ ] **`screening-importance.md`** — master §4 (`ScreeningPhase`), D8.
   fANOVA importance over the optimizer's own trials (Optuna `get_param_importances`),
