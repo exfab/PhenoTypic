@@ -21,7 +21,9 @@ Each maps to a master-spec section. Tackle in roughly this order (objectives →
 engine internals → surfaces). For each, the relevant literature/decisions already
 captured upstream are noted so the doc starts from context, not zero.
 
-- [ ] **`supervised-scorers.md`** — master §4 (`Scorer`).
+- [x] **`supervised-scorers.md`** — master §4 (`Scorer`). **✅ written** (~1,585 lines,
+  81 citation-audited sources; 5 families, modality-tiered composite, ARI/VI guard for
+  touching colonies, gate-reference role).
   GT-based scoring: count error, IoU/Dice, F1, adjusted Rand; annotation formats
   (colony positions vs. masks), tolerance handling. *Carry-forward:* Jozdani 2020
   (F-measure/QR/SEI track the visual optimum best for over/under-seg); this is the
