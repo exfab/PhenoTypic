@@ -30,7 +30,10 @@ captured upstream are noted so the doc starts from context, not zero.
   trusted reference the meta-validation gate correlates against. See reference-free
   doc §E.
 
-- [ ] **`qc-objective-mapping.md`** — master §4, D1 (`QCScorer` is the Phase-1 default).
+- [x] **`qc-objective-mapping.md`** — master §4, D1 (`QCScorer` is the Phase-1 default).
+  **✅ written** (two-phase Scorer, threshold-anchored normalizer + special-value
+  policy, coverage-weighted trimmed-mean reduction, hybrid geometric fusion,
+  anti-gaming guard; Phase-1 ships Count-only, batch panel follows).
   Reuse the existing `analysis/` QC checks (expected-vs-detected count, ICC,
   MAD/Tukey, edge effects) as the tuning objective. *Carry-forward:* the
   reference-free doc §C.6 already catalogs the directly-portable colony QC
