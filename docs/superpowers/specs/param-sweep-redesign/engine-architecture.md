@@ -193,16 +193,31 @@ The whole spec is one pydantic model:
 
 ```python
 class TuningSpec(BaseModel):
+    pipeline: ImagePipeline         # the base pipeline being tuned (EMBEDDED — see note)
     search_space: SearchSpace
-    scorer: Scorer                  # PolymorphicField — any subclass
+    scorer: Scorer                  # polymorphic_field(base=Scorer)
     evaluator: Evaluator
-    strategy: StrategyConfig        # PolymorphicField — any subclass
+    strategy: StrategyConfig        # Phase-1 discriminated union (grid/random); widened later
     budget: Budget
 ```
 
 `TuningSpec.model_validate_json()` / `.model_dump_json()` round-trips everything through one
 mechanism; `TuningSpec.model_json_schema()` is the MCP contract (deferred MCP doc) and the
 CLI/Dash form schema.
+
+**Why the base pipeline is embedded (resolved).** The `Evaluator`'s params→pipeline builder
+needs a *base* to overlay each tuned combo onto (clone base → overlay tuned params → drop
+`__enabled__=False` ops). Rather than ship the base alongside the spec as a second artifact,
+it is **embedded as `TuningSpec.pipeline`** — the spec is self-contained and reproducible.
+Caveat: `ImagePipeline` does **not** round-trip through plain pydantic
+`model_dump_json`/`model_validate_json` (its `ops` dict holds polymorphic operations that
+pydantic re-instantiates against the abstract `ImageOperation` base and fails). So the
+`pipeline` field uses a **custom (de)serializer** delegating to the pipeline's own
+`to_json`/`from_json`: a `field_validator(mode="before")` (accepts a live `ImagePipeline`, a
+JSON string, or the embedded dict → `ImagePipeline.from_json`) and a `field_serializer`
+(`json.loads(pipeline.to_json())`). Verified round-tripping. The `scorer` field similarly
+reconstructs polymorphically (`polymorphic_field(base=Scorer)` + the registry `+= tune`),
+including a `QCScorer` holding a path-configured `QualityCheck` (§3.1 caveat).
 
 ---
 

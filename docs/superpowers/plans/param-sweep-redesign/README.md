@@ -14,7 +14,11 @@ Phased implementation of the parameter-tuning engine (`src/phenotypic/tune/`). T
 | Phase | Scope | Plan | Status |
 |-------|-------|------|--------|
 | **0 · Prerequisites** | `polymorphic_field` factory · registry `+= tune` · `LocalExecutor` · capture the grid golden fixture | [`phase-0-prerequisites.md`](phase-0-prerequisites.md) | ✅ written |
-| **1 · Engine core** *(no new deps)* | SearchSpace types · `Grid`/`Random` strategies · `Evaluator` (CV-only MVP) · Count-only `QCScorer` · RF-permutation importance · `TuningEngine` · `TuningSpec` · CLI (`-i/-o`); **deletes `sweep`** at the end | _planned_ | ⬜ |
+| **1 · Engine core** *(no new deps)* | split into 1a–1d below; **deletes `sweep`** at the end of 1d | all sub-plans written | ✅ |
+| &nbsp;&nbsp;↳ **1a · Search space** | domains (`Categorical`/`IntRange`/`FloatRange`/`Fixed`) · `Knob` · `SearchSpace` | [`phase-1a-search-space.md`](phase-1a-search-space.md) | ✅ written |
+| &nbsp;&nbsp;↳ **1b · Strategies** | `PruningChannel` · grid enumeration · `Grid`/`Random` `SearchStrategy` · `StrategyConfig` | [`phase-1b-strategies.md`](phase-1b-strategies.md) | ✅ written |
+| &nbsp;&nbsp;↳ **1c · Scoring + evaluation** | `Scorer` ABC · Count-only `QCScorer` · params→pipeline builder · `Evaluator` (CV-only MVP, `median−λ·IQR`) | [`phase-1c-scoring-evaluation.md`](phase-1c-scoring-evaluation.md) | ✅ written |
+| &nbsp;&nbsp;↳ **1d · Engine + CLI** | `TuningEngine` · `TuningSpec` (embeds `pipeline`) · StudyStore · RF-permutation importance · CLI (`-i/-o`) · **golden byte-compat lock** · **deletes `sweep`** | [`phase-1d-engine-cli.md`](phase-1d-engine-cli.md) | ✅ written |
 | **2 · Optuna backend** *(`tune` extra)* | `OptunaStrategy` (TPE/CMA-ES/NSGA-II) · ASHA pruning · SQLite persist/resume · fANOVA · two-round freeze · distributed · `SlurmExecutor` | _planned_ | ⬜ |
 | **3 · Auto-space + reference-free** | `infer_search_space` · `TuneSpec` markers · `--auto-space` · `ReferenceFreeScorer` + meta-validation gate | _planned_ | ⬜ |
 | **4 · Supervised + multi-objective** | `SupervisedScorer` · `CompositeScorer` · Pareto reporting / `--multi-objective` | _planned_ | ⬜ |

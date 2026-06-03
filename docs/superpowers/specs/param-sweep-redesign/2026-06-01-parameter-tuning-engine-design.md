@@ -243,6 +243,102 @@ over-inclusion. Surfaces: CLI `--auto-space` (from a `pipeline.json`) and MCP
 `tune_infer_space(pipeline_json)` (returns a typed, bounded space *with each
 knob's docstring description* as context).
 
+### Hand-authoring a `SearchSpace` (Python-first) — the canonical object
+
+`infer_search_space` is the *convenience*; the object it produces (and that the
+Dash space-form edits) is a hand-authorable `SearchSpace`. **Phase 1 ships
+hand-authoring; inference is Phase 3.** This is the source-of-truth reference for
+the authoring grammar — other docs point here rather than re-explaining it.
+
+A space tunes the parameters of an existing `ImagePipeline`, which is **embedded in
+the `TuningSpec`** (the base every trial overlays onto). Start from a base:
+
+```python
+from phenotypic import ImagePipeline
+from phenotypic.enhance import GaussianBlur
+from phenotypic.detect import OtsuDetector
+from phenotypic.refine import AreaFilter          # illustrative op names
+
+base = ImagePipeline(operations=[
+    GaussianBlur(sigma=2.0, mode="reflect"),       # position 0
+    OtsuDetector(ignore_zeros=False),              # position 1
+    AreaFilter(min_area=20, max_area=4000),        # position 2
+])
+```
+
+**Key grammar.** A knob `key` is a **root-relative path** into that pipeline
+(search-space-inference §"Canonical knob keys"):
+
+| Key form | Addresses |
+|----------|-----------|
+| `1.ignore_zeros` | field `ignore_zeros` on the op at **position 1** |
+| `0.sigma` | field `sigma` on the op at position 0 |
+| `1.detectors[0].block_size` | a **one-level nested** op (list member); class-validated on apply |
+| `0.GaussianBlur.__enabled__` | the **presence toggle** for an optional top-level op |
+
+The leading segment is the pipeline **position index** (stable against same-class
+duplication — two `GaussianBlur`s never collide on a bare `GaussianBlur.sigma`).
+`__enabled__` is the reserved presence sentinel.
+
+**The space.** A frozen tuple of `Knob`s, each pairing a path-key with one of the
+four domains (`Categorical` / `IntRange` / `FloatRange` / `Fixed`):
+
+```python
+from phenotypic.tune import SearchSpace, Knob, Categorical, IntRange, FloatRange
+
+space = SearchSpace(knobs=(
+    # presence: should the blur even run? (legacy "Presence" sweep, modernized)
+    Knob(key="0.GaussianBlur.__enabled__",
+         domain=Categorical(choices=(True, False))),
+
+    # continuous, log-scaled — only meaningful WHEN the blur is enabled, so gate it:
+    Knob(key="0.sigma",
+         domain=FloatRange(low=0.5, high=8.0, log=True),
+         conditional_on=(("0.GaussianBlur.__enabled__", True),),
+         description="GaussianBlur kernel sigma (px)"),
+    Knob(key="0.mode",
+         domain=Categorical(choices=("reflect", "nearest")),
+         conditional_on=(("0.GaussianBlur.__enabled__", True),)),
+
+    # boolean = a 2-choice categorical:
+    Knob(key="1.ignore_zeros", domain=Categorical(choices=(True, False))),
+
+    # integer range with a grid-friendly step (20, 60, 100, …):
+    Knob(key="2.min_area", domain=IntRange(low=20, high=400, step=40)),
+))
+```
+
+- **`conditional_on`** is a tuple of `(parent_key, required_value)` pairs; the knob
+  is active in a trial only when the parent holds that value (define-by-run
+  skipping). When `__enabled__=False` the candidate **drops that op** and its
+  now-inactive child knobs collapse to one combo — exactly legacy `Presence`,
+  conditional-aware.
+- **Depth is capped at 1**: presence is top-level only, so every `conditional_on`
+  chain is a single `<Op>.__enabled__` — grid enumeration never faces a two-level
+  conditional.
+
+**Serializes losslessly** (frozen pydantic value-models; the domains are a
+`Field(discriminator="kind")` union) — this is what lands in `tuning_spec.json`:
+
+```json
+{"search_space": {"knobs": [
+  {"key": "0.GaussianBlur.__enabled__",
+   "domain": {"kind": "categorical", "choices": [true, false]},
+   "conditional_on": null, "source": "manual", "needs_review": false, "description": ""},
+  {"key": "0.sigma",
+   "domain": {"kind": "float_range", "low": 0.5, "high": 8.0, "log": true},
+   "conditional_on": [["0.GaussianBlur.__enabled__", true]], "source": "manual", "...": "..."}
+]}}
+```
+
+**A trial turns a combo back into a pipeline** (the `Evaluator` builder, §4): a
+strategy `suggest()`s a flat combo `{"0.GaussianBlur.__enabled__": True, "0.sigma":
+3.2, "0.mode": "reflect", "1.ignore_zeros": True}`; the builder **clones `base`** →
+**overlays** each key's value onto the addressed op (reconstructing
+keyword-only/immutable ops) → **drops** any op whose `__enabled__=False` →
+runs/measures. The space is the grammar, the combo is one sentence, the embedded
+base is what it applies against.
+
 ---
 
 ## 6. Surfaces — one engine, three drivers, one shared study

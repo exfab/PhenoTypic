@@ -47,7 +47,8 @@ The headless / batch / SLURM / reproducible / agent-facing path.
    (bool/enum/bounded), `⚠ needs_review` guesses (the unbounded `[d/4, d·4]` windows,
    anchored on your current values), and the *"couldn't infer — add a `TuneSpec`"* excluded
    list. Edit it (narrow ranges, drop knobs, add presence) → a **`tuning_spec.json`**. (Or
-   author the spec Python-first and serialise it.)
+   author the spec Python-first and serialise it — see master §5 "Hand-authoring a
+   `SearchSpace`" for the key grammar + a worked example.)
 3. **Launch.**
    ```
    python -m phenotypic.tune tuning_spec.json -i INPUT_DIR -o OUTPUT_DIR \
