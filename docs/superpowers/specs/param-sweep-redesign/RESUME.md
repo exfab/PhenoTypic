@@ -16,14 +16,17 @@ cold, then the [README](README.md) index and the
   - `ac4c8c9b` — qc-objective-mapping companion doc
   - `cc189216` — search-space-inference + operation-tuning-annotations companion docs
   - `3e68aa35` — robust-evaluation companion doc (+ reciprocal qc §3 / master §4·D4 edits)
-  - *(this commit)* — screening-importance + optuna-integration companion docs (+ robust-eval pruning-channel reconciliation)
-- **Done:** master design spec; bundle README index; the **reference-free metrics**,
-  **supervised-scorers**, **qc-objective-mapping**, **search-space-inference**,
-  **operation-tuning-annotations**, **robust-evaluation**, **screening-importance**, and
-  **optuna-integration** companions.
-- **Not started:** **dash-copilot-design** (the one remaining in-scope stub) + the
-  implementation plan. **`mcp-server-design` is deferred / out-of-scope** (per user — keep
-  the redesign focused on the param-sweep core).
+  - `991a8b8b` — screening-importance + optuna-integration companion docs (+ robust-eval pruning-channel reconciliation)
+  - *(this commit)* — dash-copilot-design companion doc → **design bundle complete**
+- **Done — DESIGN BUNDLE COMPLETE:** master design spec; bundle README index; and all
+  in-scope companions — **reference-free metrics**, **supervised-scorers**,
+  **qc-objective-mapping**, **search-space-inference**, **operation-tuning-annotations**,
+  **robust-evaluation**, **screening-importance**, **optuna-integration**, and
+  **dash-copilot-design**.
+- **Not started:** the **implementation plans** (Phase-1 Foundation draft exists untracked
+  at `docs/superpowers/plans/2026-06-03-tune-phase1-foundation.md`; Plans 2–4 + the ABC/
+  Protocol reusability pass remain). **`mcp-server-design` is deferred / out-of-scope**
+  (per user — keep the redesign focused on the param-sweep core).
 
 ## Remaining stub companion docs to go over
 
@@ -101,11 +104,14 @@ captured upstream are noted so the doc starts from context, not zero.
   session semantics, transport/packaging. *Carry-forward:* packaging location is an open
   question (master §14, `src/phenotypic/mcp/` vs. standalone).
 
-- [ ] **`dash-copilot-design.md`** — master §6, D5.
-  The `/tune/` Dash view: candidate-review UI, write-back to the study, the Pareto /
-  objective-curve / importance visuals. *Carry-forward:* trips the `FEATURES.md` /
-  `WORKFLOWS.md` CI gates + tutorial-screenshot round-trip (see root CLAUDE.md);
-  reuse `_design.py` tokens.
+- [x] **`dash-copilot-design.md`** — master §6, D5/D6. **✅ written** (attach +
+  delegate-launch to `run_console`; curation/winner-selection write-back via `user_attrs`,
+  last-write-wins + attribution, winner → `best_pipeline.json`, optional meta-validation
+  feed; on-demand overlays reusing builder `render_node_preview`; top-N/Pareto + flagged
+  shortlist; objective-curve / Pareto / importance visuals; optional space-edit reusing
+  `_param_forms` → `tuning_spec.json`; `dcc.Interval` polling + WAL; sub-phased 6a→6b→6c;
+  FEATURES/WORKFLOWS/screenshot gates). *Open:* polling cadence, diversity-aware shortlist,
+  `Tune` tab slot.
 
 ## Reusable review-team recipe (worked well for the reference-free doc)
 
