@@ -17,16 +17,20 @@ cold, then the [README](README.md) index and the
   - `cc189216` — search-space-inference + operation-tuning-annotations companion docs
   - `3e68aa35` — robust-evaluation companion doc (+ reciprocal qc §3 / master §4·D4 edits)
   - `991a8b8b` — screening-importance + optuna-integration companion docs (+ robust-eval pruning-channel reconciliation)
-  - *(this commit)* — dash-copilot-design companion doc → **design bundle complete**
-- **Done — DESIGN BUNDLE COMPLETE:** master design spec; bundle README index; and all
-  in-scope companions — **reference-free metrics**, **supervised-scorers**,
-  **qc-objective-mapping**, **search-space-inference**, **operation-tuning-annotations**,
-  **robust-evaluation**, **screening-importance**, **optuna-integration**, and
-  **dash-copilot-design**.
-- **Not started:** the **implementation plans** (Phase-1 Foundation draft exists untracked
-  at `docs/superpowers/plans/2026-06-03-tune-phase1-foundation.md`; Plans 2–4 + the ABC/
-  Protocol reusability pass remain). **`mcp-server-design` is deferred / out-of-scope**
-  (per user — keep the redesign focused on the param-sweep core).
+  - `c10cdfdd` — dash-copilot-design companion doc → **design bundle complete**
+  - *(this commit)* — engine-architecture (ABC/interface layer); removed the stale Phase-1 plan draft (to be rewritten from scratch against the architecture)
+- **Done — DESIGN BUNDLE COMPLETE:** master design spec; bundle README index; all in-scope
+  companions — **reference-free metrics**, **supervised-scorers**, **qc-objective-mapping**,
+  **search-space-inference**, **operation-tuning-annotations**, **robust-evaluation**,
+  **screening-importance**, **optuna-integration**, **dash-copilot-design** — and the
+  **engine-architecture** (ABC/interface layer).
+- **Not started:** the **implementation plans**. The earlier Phase-1 Foundation draft was
+  **removed** (it predated `engine-architecture.md`, e.g. domains were dataclasses, now
+  pydantic) — **rewrite Phase 1 from scratch against `engine-architecture.md`**, then
+  Plans 2–4. *Pending first:* a **plan-review of `engine-architecture.md`** (esp. the
+  `OperationField`→`PolymorphicField` generalization vs existing round-trips, and
+  `QualityCheck` nesting via `PolymorphicField`). **`mcp-server-design` is deferred /
+  out-of-scope** (per user — keep the redesign focused on the param-sweep core).
 
 ## Remaining stub companion docs to go over
 
