@@ -126,5 +126,5 @@ viewer.
 
    ``phenotypic gui`` (no hyphen, as a subcommand) is **not supported**.
    Use ``phenotypic-gui`` or ``python -m phenotypic.gui``. The existing
-   ``phenotypic`` CLI uses positional arguments that conflict with any
-   subcommand named ``gui``.
+   ``phenotypic`` CLI is reserved for batch pipeline execution with explicit
+   path options, not subcommands.

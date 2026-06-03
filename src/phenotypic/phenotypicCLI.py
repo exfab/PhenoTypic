@@ -18,48 +18,48 @@ Features:
     - Progress monitoring tools
 
 Usage:
-    python -m phenotypic PIPELINE_JSON INPUT_PATH [OPTIONS]
+    python -m phenotypic --pipeline pipeline.json --input ./images [OPTIONS]
 
 Examples:
     # Basic usage with auto-generated output directory
-    uv run python -m phenotypic pipeline.json ./images
+    uv run python -m phenotypic --pipeline pipeline.json --input ./images
 
     # Specify output directory
-    uv run python -m phenotypic pipeline.json ./images -o ./results
+    uv run python -m phenotypic --pipeline pipeline.json --input ./images -o ./results
 
     # Dry-run to preview processing plan
-    uv run python -m phenotypic pipeline.json ./images --dry-run
+    uv run python -m phenotypic --pipeline pipeline.json --input ./images --dry-run
 
     # Sample 5 images per dataset for testing
-    uv run python -m phenotypic pipeline.json ./images --sample 5
+    uv run python -m phenotypic --pipeline pipeline.json --input ./images --sample 5
 
     # Resume interrupted processing
-    uv run python -m phenotypic pipeline.json ./images -o ./results --resume
+    uv run python -m phenotypic --pipeline pipeline.json --input ./images -o ./results --resume
 
     # Restart processing from beginning (clears previous state)
-    uv run python -m phenotypic pipeline.json ./images -o ./results --restart
+    uv run python -m phenotypic --pipeline pipeline.json --input ./images -o ./results --restart
 
     # SLURM execution (autonomous)
-    uv run python -m phenotypic pipeline.json ./images \
+    uv run python -m phenotypic --pipeline pipeline.json --input ./images \
         --slurm slurm_partition=compute \
         --slurm slurm_account=proj \
         --slurm mem_gb=16
 
     # SLURM with progress monitoring
-    uv run python -m phenotypic pipeline.json ./images \
+    uv run python -m phenotypic --pipeline pipeline.json --input ./images \
         --slurm slurm_partition=compute \
         --slurm slurm_account=proj \
         --wait
 
     # GridImage with custom dimensions
-    uv run python -m phenotypic pipeline.json ./plates \
+    uv run python -m phenotypic --pipeline pipeline.json --input ./plates \
         --image-type GridImage --nrows 16 --ncols 24
 
     # Rerun measurements on a previous forward run without re-detecting
     # (reads HDFs from <previous-output-dir>/results/*/hdf/, rewrites
     # parquet measurements + master CSV, skips detection, does NOT
     # regenerate overlays, does NOT touch processing state):
-    uv run python -m phenotypic pipeline.json --measure \
+    uv run python -m phenotypic --pipeline pipeline.json --measure \
         -o <previous-output-dir>
 
     # Recompile a previous output directory: re-aggregate the master
@@ -111,7 +111,7 @@ SLURM Execution (Autonomous HPC Cluster Processing):
         - Valid range: 1-10080 minutes (1 minute to 7 days)
 
     Example: Submit with account, partition, memory, and time limits
-        uv run python -m phenotypic pipeline.json ./images \\
+        uv run python -m phenotypic --pipeline pipeline.json --input ./images \\
             --slurm slurm_partition=compute \\
             --slurm slurm_account=lab_proj \\
             --slurm mem_gb=32 \\
@@ -121,7 +121,7 @@ SLURM Execution (Autonomous HPC Cluster Processing):
             --wait
 
     Example: Dry-run to preview SLURM submission plan
-        uv run python -m phenotypic pipeline.json ./images \\
+        uv run python -m phenotypic --pipeline pipeline.json --input ./images \\
             --slurm slurm_partition=compute \\
             --slurm slurm_account=lab_proj \\
             --dry-run
@@ -471,18 +471,53 @@ def _display_execution_config(config: ExecutionConfig, datasets: list) -> None:
     console.print()
 
 
-@click.command()
-@click.argument(
+def _format_explicit_cli_usage_hint() -> str:
+    """Return the canonical explicit-path CLI usage hint."""
+    return (
+        "Use explicit path options instead:\n"
+        "  python -m phenotypic --pipeline pipeline.json --input ./images "
+        "-o ./results\n"
+        "Short form:\n"
+        "  python -m phenotypic -p pipeline.json -i ./images -o ./results"
+    )
+
+
+def _reject_unexpected_positional_args(extra_args: Sequence[str]) -> None:
+    """Reject legacy positional CLI arguments with a migration hint.
+
+    Args:
+        extra_args: Unparsed tokens captured by Click after option parsing.
+
+    Raises:
+        click.UsageError: If any extra positional tokens were supplied.
+    """
+    if not extra_args:
+        return
+    preview = " ".join(extra_args)
+    raise click.UsageError(
+        "Unexpected positional argument(s): "
+        f"{preview}\n"
+        "Positional pipeline and input path arguments are no longer supported.\n"
+        f"{_format_explicit_cli_usage_hint()}"
+    )
+
+
+@click.command(context_settings={"allow_extra_args": True})
+@click.option(
+    "-p",
+    "--pipeline",
     "pipeline_json",
     type=click.Path(exists=True, dir_okay=False, path_type=Path),
     default=None,
-    required=False,
+    help="Pipeline JSON configuration file created with pipeline.to_json().",
 )
-@click.argument(
+@click.option(
+    "-i",
+    "--input",
     "input_path",
     type=click.Path(exists=True, dir_okay=True, file_okay=True, path_type=Path),
     default=None,
-    required=False,
+    help="Input image file or directory to process.",
 )
 @click.option(
     "-o",
@@ -655,7 +690,9 @@ def _display_execution_config(config: ExecutionConfig, datasets: list) -> None:
          "whenever the pipeline has a non-empty 'qc' section (writing the "
          "qc/ artifact and resetting GUI review progress).",
 )
+@click.pass_context
 def phenotypic_cli(
+    ctx: click.Context,
     pipeline_json: Optional[Path],
     input_path: Optional[Path],
     output_dir: Optional[Path],
@@ -688,11 +725,13 @@ def phenotypic_cli(
     """
     Execute a PhenoTypic pipeline on images.
 
-    PIPELINE_JSON: Path to pipeline configuration file
+    --pipeline: Path to pipeline configuration file
 
-    INPUT_PATH: Image file or directory to process
+    --input: Image file or directory to process
     """
     try:
+        _reject_unexpected_positional_args(ctx.args)
+
         include_dataset_column = not no_dataset_column
 
         # Parse SLURM args before the recompile branch so --recompile can
@@ -773,12 +812,12 @@ def phenotypic_cli(
         # --measure is a one-shot re-measurement run over HDFs already
         # written by a previous forward run.  It is incompatible with any
         # flag that implies a fresh detection pass or state mutation, and
-        # it uses <output-dir>/results/*/hdf/ as its image source, so the
-        # positional INPUT_PATH becomes optional.
+        # it uses <output-dir>/results/*/hdf/ as its image source, so
+        # --input is optional.
         if measure_only:
             # Reject incompatible flags first so the user gets a pointed
             # rejection ("--measure cannot be combined with --X") regardless
-            # of whether --output-dir / PIPELINE_JSON are also wrong.
+            # of whether --output-dir / --pipeline are also wrong.
             if resume:
                 raise click.UsageError(
                     "--measure cannot be combined with --resume; "
@@ -811,7 +850,7 @@ def phenotypic_cli(
 
             if pipeline_json is None:
                 raise click.UsageError(
-                    "--measure requires PIPELINE_JSON to be specified."
+                    "--measure requires --pipeline to be specified."
                 )
             if output_dir is None:
                 raise click.UsageError(
@@ -827,15 +866,21 @@ def phenotypic_cli(
                 )
             if input_path is not None:
                 click.echo(
-                    f"Warning: INPUT_PATH ({input_path}) is ignored in "
+                    f"Warning: --input ({input_path}) is ignored in "
                     "--measure mode; images are discovered under "
                     f"{output_dir}/results/*/hdf/.",
                     err=True,
                 )
 
         if not measure_only and (pipeline_json is None or input_path is None):
+            missing = []
+            if pipeline_json is None:
+                missing.append("--pipeline")
+            if input_path is None:
+                missing.append("--input")
             raise click.UsageError(
-                "PIPELINE_JSON and INPUT_PATH are required unless --recompile is set."
+                f"{' and '.join(missing)} required unless --recompile is set.\n"
+                f"{_format_explicit_cli_usage_hint()}"
             )
 
         resume_state = None
@@ -873,7 +918,7 @@ def phenotypic_cli(
             )
             click.echo(
                 "\nExample:\n"
-                "  python -m phenotypic pipeline.json ./images \\\n"
+                "  python -m phenotypic --pipeline pipeline.json --input ./images \\\n"
                 "    --output-dir ./results_2024-01-12_10-30-45 \\\n"
                 "    --restart",
                 err=True,
@@ -945,7 +990,7 @@ def phenotypic_cli(
                 )
                 click.echo(
                     "\nExample:\n"
-                    "  python -m phenotypic pipeline.json ./images \\\n"
+                    "  python -m phenotypic --pipeline pipeline.json --input ./images \\\n"
                     "    --output-dir ./results_2024-01-12_10-30-45 \\\n"
                     "    --resume",
                     err=True,
@@ -989,6 +1034,7 @@ def phenotypic_cli(
 
         # Handle restart mode - clear previous state
         if restart:
+            assert output_dir is not None  # narrowed by the --restart guard above
             state_file = output_dir / PROCESSING_STATE_JSON
             if output_dir.exists():
                 if state_file.exists():
@@ -1171,6 +1217,7 @@ def phenotypic_cli(
         # --measure mode, which never mutates processing state.
         if not measure_only:
             if config.resume:
+                assert resume_state is not None
                 state = update_state_from_events(resume_state, output_dir)
                 state.execution_mode = "slurm" if config.is_slurm_mode() else "local"
                 state.pipeline_path = config.pipeline_json

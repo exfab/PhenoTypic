@@ -83,13 +83,20 @@ def test_empty_string_path_coerced_to_none() -> None:
 # to_argv
 # ---------------------------------------------------------------------------
 
-def test_to_argv_emits_required_positional_args() -> None:
+def test_to_argv_emits_required_explicit_path_options() -> None:
     state = RunConsoleState(
         pipeline_path="/p.json",
         input_dir="/in",
         output_dir="/out",
     )
-    assert to_argv(state) == ["/p.json", "/in", "-o", "/out"]
+    assert to_argv(state) == [
+        "--pipeline",
+        "/p.json",
+        "--input",
+        "/in",
+        "-o",
+        "/out",
+    ]
 
 
 def test_to_argv_includes_dry_run_flag() -> None:
@@ -140,9 +147,9 @@ def test_to_argv_threads_advanced_args() -> None:
         },
     )
     argv = to_argv(state)
-    # Skip the first 4 (positional + -o + output_dir); the rest is
+    # Skip the first 6 (path options + -o + output_dir); the rest is
     # ``--flag value`` pairs in unspecified order.
-    tail = argv[4:]
+    tail = argv[6:]
     pair_dict: dict[str, str] = {}
     for i in range(0, len(tail), 2):
         pair_dict[tail[i]] = tail[i + 1]

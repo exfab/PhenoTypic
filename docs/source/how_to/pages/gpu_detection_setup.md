@@ -57,7 +57,7 @@ Then:
 
 ```bash
 pixi install
-pixi run python -m phenotypic pipeline.json /plates/ /output/
+pixi run python -m phenotypic --pipeline pipeline.json --input /plates/ -o /output/
 ```
 
 Because conda's `micro_sam` pulls in CPU-only conda PyTorch, combining it
@@ -135,7 +135,7 @@ python -m phenotypic.nn download --model-type microsam --model-name vit_b_lm
 python -m phenotypic.nn list
 
 # Now submit SLURM jobs -- compute nodes will use the cached checkpoints
-python -m phenotypic pipeline.json /plates/ /output/
+python -m phenotypic --pipeline pipeline.json --input /plates/ -o /output/
 ```
 
 ## Using Sam2Detector
@@ -268,12 +268,12 @@ job if GPU resources were not explicitly requested.
 
 ```bash
 # GPU resources are auto-requested when the pipeline contains a GpuDetector
-python -m phenotypic sam2_pipeline.json /plates/ /output/
+python -m phenotypic --pipeline sam2_pipeline.json --input /plates/ -o /output/
 
 # Override with explicit SLURM GPU arguments
-python -m phenotypic sam2_pipeline.json /plates/ /output/ \
-    --slurm-args slurm_gpus_per_node=2 \
-    --slurm-args slurm_partition=gpu
+python -m phenotypic --pipeline sam2_pipeline.json --input /plates/ -o /output/ \
+    --slurm slurm_gpus_per_node=2 \
+    --slurm slurm_partition=gpu
 ```
 
 Pre-cache checkpoints on the login node before submitting (see

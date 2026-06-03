@@ -245,7 +245,8 @@ def to_argv(state: RunConsoleState) -> list[str]:
 
     Returns:
         List of argv tokens, e.g.
-        ``["pipeline.json", "/in", "-o", "/out", "--dry-run"]``.
+        ``["--pipeline", "pipeline.json", "--input", "/in", "-o", "/out",
+        "--dry-run"]``.
 
     Raises:
         ValueError: If any of ``pipeline_path``, ``input_dir``, or
@@ -272,7 +273,14 @@ def to_argv(state: RunConsoleState) -> list[str]:
     input_dir = str(state.input_dir)
     output_dir = str(state.output_dir)
 
-    argv: list[str] = [pipeline_path, input_dir, "-o", output_dir]
+    argv: list[str] = [
+        "--pipeline",
+        pipeline_path,
+        "--input",
+        input_dir,
+        "-o",
+        output_dir,
+    ]
 
     if state.dry_run:
         argv.append("--dry-run")

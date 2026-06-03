@@ -83,7 +83,14 @@ def test_submit_slurm_returns_array_job_id(tmp_path: Path) -> None:
     argv = run_mock.call_args.args[0]
     assert argv[0].endswith("python") or argv[0].endswith("python3") or "python" in argv[0]
     assert argv[1:3] == ["-m", "phenotypic"]
-    assert "/p/pipeline.json" in argv
+    assert argv[3:9] == [
+        "--pipeline",
+        "/p/pipeline.json",
+        "--input",
+        "/p/in",
+        "-o",
+        str(output_dir),
+    ]
     assert "--slurm" in argv
     # SLURM kwargs forwarded as ``--slurm key=value`` repeats.
     pairs = [argv[i + 1] for i, t in enumerate(argv) if t == "--slurm"]
