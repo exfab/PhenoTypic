@@ -259,13 +259,27 @@ curates the surfaced candidates the next morning, in the same session.
 
 ### CLI
 
-`python -m phenotypic.tune TUNING_SPEC.json INPUT_DIR [OPTIONS]`, reusing the
-existing execution/SLURM/dashboard machinery. New options:
-`--strategy {grid,random,tpe,cmaes}` · `--n-trials N` · `--objective {supervised,reference-free,qc,composite}` (or config path) ·
+`python -m phenotypic.tune TUNING_SPEC.json -i/--input INPUT_DIR -o/--output OUTPUT_DIR [OPTIONS]`,
+reusing the existing execution/SLURM/dashboard machinery.
+
+**Core I/O flags:**
+
+- **`-i`, `--input INPUT_DIR`** — the image directory (the plates to tune on); the
+  metadata-stratified calibration/held-out split is drawn from here (robust-eval §6).
+  Accepts a directory or a glob. Back-compatible with a bare positional `INPUT_DIR`.
+- **`-o`, `--output OUTPUT_DIR`** — where the run writes (`study.db`, `deliverables/`, …;
+  see §8). Defaults to `./<input-name>_tune/`. **Pointing `-o` at an existing run's
+  `OUTPUT_DIR` resumes it** (the persisted `study.db` + the recorded calibration split are
+  reused — robust-eval §11, optuna §8).
+
+**Run options:** `--strategy {grid,random,tpe,cmaes}` · `--n-trials N` ·
+`--objective {supervised,reference-free,qc,composite}` (or config path) ·
 `--calibration-n/-frac` · `--stability-weight λ` · `--screen/--no-screen` ·
-`--multi-objective` · `--auto-space` · plus all current
+`--multi-objective` · `--auto-space` · `--keep-all-trial-outputs` · plus all current
 `--n-jobs/--slurm/--image-type/...` flags. **`--strategy grid` (no budget)
 reproduces today's exhaustive sweep byte-compatibly** — the migration safety valve.
+(`--auto-space` takes a `pipeline.json` as the positional and only needs `-i` for
+context — it prints/writes a proposed `tuning_spec.json`, no run.)
 
 The input flips from a pre-enumerated manifest to a **tuning spec**
 (`SearchSpace` + `Scorer` + `Strategy` + budget), authored Python-first and
@@ -324,22 +338,51 @@ objectives is important rather than relying on weights alone.
 
 ## 8. Output layout
 
-Under a `deliverables/`-style directory:
+`-o/--output OUTPUT_DIR` (§6) holds the whole run. The split mirrors the forward CLI's
+convention (root `CLAUDE.md`): **user-facing artifacts go in `deliverables/`**, while the
+**machinery** (the study, the trial record, splits, screening, progress, resume state) stays
+at the `OUTPUT_DIR` root. Resolve every path via the `phenotypic.tools_` helpers
+(`deliverables_dir(output)`, …), never by hand-joining names.
 
-- `study.db` — SQLite, resumable
-- `tuning_spec.json` — search space + objective + strategy (reproducibility)
-- `trials.parquet` — per-trial params + scores + per-image breakdown
-- **`best_pipeline.json`** — ready-to-run `ImagePipeline` (drops straight into
-  `python -m phenotypic`)
-- `pareto/` — Pareto-front pipelines (multi-objective)
-- `param_importance.json` — screening / importance
-- `tuning_report.html` — objective-vs-trial, importance bars, calibration-vs-held-out,
-  per-image stability (extends the sweep progress dashboard)
+```
+OUTPUT_DIR/
+├── deliverables/                 # user-facing — what you act on
+│   ├── best_pipeline.json        #   the winner → drops into `python -m phenotypic`
+│   ├── tuning_report.html        #   objective curve · importance bars · calib-vs-held-out · stability
+│   ├── param_importance.json     #   "which knobs matter" (conditional tiers + fANOVA/RF method badge)
+│   ├── tuning_spec.json          #   the resolved spec actually run (reproducibility)
+│   ├── README.md                 #   plain-English summary: winner, score, gap flag, how to run it
+│   └── pareto/                   #   multi-objective only
+│       ├── best_pipeline_00.json #     one per knee-point / front member
+│       ├── …
+│       └── pareto.parquet        #     the front: params + objectives per member
+├── study.db                      # Optuna SQLite — resumable, WAL (the shared study, D6)
+├── trials.parquet                # every trial: params + scores + per-image breakdown + curation user_attrs
+├── trials/                       # full per-image outputs — kept ONLY for best+Pareto+flagged (disk policy)
+│   └── <trial_id>/
+│       ├── measurements/<image>.parquet
+│       └── overlays/<image>.png  #     rendered on demand (Dash review) / for the winner
+├── splits/                       # reproducibility of the data partition (robust-eval §11)
+│   ├── calibration.json          #     calibration image/group ids + seed
+│   └── folds.json                #     CV fold / held-out-group assignment
+├── screening/                    # the explore → fANOVA → freeze record (screening §3)
+│   ├── importance.json
+│   └── frozen_params.json        #     what was frozen + at what values
+├── progress/                     # mirrors the sweep CLI
+│   ├── events.jsonl              #     per-trial lifecycle events
+│   └── failures.jsonl            #     failed trials, with per-trial detail
+└── tune_state.json               # resume state: budget consumed, round, rng (analog of processing_state.json)
+```
 
-**Disk policy:** scores for *all* trials are always kept; full per-image
-measurements/HDF5 are kept only for **best + Pareto + flagged** trials by default
-(`--keep-all-trial-outputs` to override). A naive optimizer saving every trial's
-full output would blow up disk worse than today's grid.
+**Disk policy:** scores for *all* trials are always kept (`trials.parquet`); full per-image
+outputs under `trials/<id>/` are kept only for **best + Pareto + flagged** trials by default
+(`--keep-all-trial-outputs` to override). A naive optimizer saving every trial's full output
+would blow up disk worse than today's grid.
+
+**Handoff & resume.** `deliverables/best_pipeline.json` is the product — run it on the
+*full* image set via `python -m phenotypic` (calibration tuned on a subset). Re-invoking with
+the same `-o OUTPUT_DIR` **resumes**: `study.db` continues from the last trial and
+`splits/calibration.json` is reused so the calibration/held-out partition is identical.
 
 ---
 
