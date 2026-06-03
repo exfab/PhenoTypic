@@ -8,6 +8,7 @@ providing serializable diagnostics for quality assessment.
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any, NamedTuple
 
 import colour
@@ -22,6 +23,7 @@ from pydantic import (
     model_validator,
 )
 
+from phenotypic.tools_._json_io import read_json_source
 from phenotypic.tools_.typing_ import NdArrayField
 
 from ._capture_metadata import CaptureMetadata
@@ -350,6 +352,57 @@ class ColorCheckerProfile(BaseModel):
         if outlier_sigma <= 0:
             raise ValueError(f"outlier_sigma must be > 0, got {outlier_sigma}")
         return outlier_sigma
+
+    # -- serialisation ------------------------------------------------------
+
+    def to_json(self, filepath: str | Path | None = None) -> str | None:
+        """Serialize this profile to JSON.
+
+        Serializes via :meth:`~pydantic.BaseModel.model_dump_json`: the fitted
+        ``correction_matrix`` is emitted as a nested list, ``capture_metadata``
+        as a nested object, and the transient ``rois`` / ``_image`` fields are
+        excluded. Mirrors :meth:`ImagePipeline.to_json`.
+
+        Args:
+            filepath: Optional path to write the JSON to. When None, the JSON
+                string is returned instead. Accepts a ``str`` or ``Path``.
+
+        Returns:
+            The JSON string when ``filepath`` is None, otherwise None.
+
+        Example:
+            >>> import tempfile
+            >>> from pathlib import Path
+            >>> from phenotypic.correction import ColorCheckerProfile
+            >>> with tempfile.TemporaryDirectory() as d:
+            ...     p = Path(d) / "profile.json"
+            ...     ColorCheckerProfile(degree=3).to_json(p)
+            ...     loaded = ColorCheckerProfile.from_json(p)
+            >>> loaded.degree
+            3
+        """
+        json_str = self.model_dump_json(indent=2)
+        if filepath is not None:
+            Path(filepath).write_text(json_str)
+            return None
+        return json_str
+
+    @classmethod
+    def from_json(cls, json_data: str | Path | dict) -> ColorCheckerProfile:
+        """Reconstruct a profile from JSON written by :meth:`to_json`.
+
+        Accepts a JSON string, a path to a JSON file, or a pre-parsed dict (same
+        input handling as :meth:`ImagePipeline.from_json`). Validation runs the
+        :meth:`_drop_legacy_fields` hook, so profiles saved before a field was
+        removed still load.
+
+        Args:
+            json_data: A JSON string, path to a JSON file, or a parsed dict.
+
+        Returns:
+            The reconstructed profile instance.
+        """
+        return cls.model_validate(read_json_source(json_data))
 
     # -- high-level fitting -------------------------------------------------
 

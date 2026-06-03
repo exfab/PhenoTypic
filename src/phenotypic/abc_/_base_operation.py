@@ -3,13 +3,16 @@ from __future__ import annotations
 from typing import Any
 
 import importlib.util
+import json
 import logging
 import tracemalloc
 from abc import ABC
+from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, PrivateAttr
 
 from phenotypic.tools_._docstring_params import apply_docstring_descriptions
+from phenotypic.tools_._json_io import read_json_source
 
 # Check for optional dependencies
 PYMPLER_AVAILABLE = importlib.util.find_spec("pympler") is not None
@@ -211,6 +214,102 @@ class BaseOperation(BaseModel, ABC):
             tracemalloc.start()
             self._tracemalloc_started = True
             self._logger.debug("Tracemalloc started for memory logging")
+
+    def to_json(self, filepath: str | Path | None = None) -> str | None:
+        """Serialize this operation to JSON.
+
+        Captures the operation as a ``{"class", "params"}`` envelope: ``params``
+        is ``model_dump(mode="json")`` (every declared field, including nested
+        operations and raw arrays; ``PrivateAttr`` state such as loggers and
+        timing is excluded automatically), and ``class`` records the concrete
+        class name so :meth:`from_json` can rebuild the right subclass. This
+        mirrors :meth:`ImagePipeline.to_json`.
+
+        Args:
+            filepath: Optional path to write the JSON to. When None, the JSON
+                string is returned instead. Accepts a ``str`` or ``Path``.
+
+        Returns:
+            The JSON string when ``filepath`` is None, otherwise None.
+
+        Example:
+            >>> import tempfile
+            >>> from pathlib import Path
+            >>> from phenotypic.detect import OtsuDetector
+            >>> with tempfile.TemporaryDirectory() as d:
+            ...     p = Path(d) / "op.json"
+            ...     OtsuDetector(ignore_zeros=True).to_json(p)
+            ...     loaded = OtsuDetector.from_json(p)
+            >>> loaded.ignore_zeros
+            True
+        """
+        envelope = {
+            "class": type(self).__name__,
+            "params": self.model_dump(mode="json"),
+        }
+        json_str = json.dumps(envelope, indent=2)
+        if filepath is not None:
+            Path(filepath).write_text(json_str)
+            return None
+        return json_str
+
+    @classmethod
+    def from_json(cls, json_data: str | Path | dict) -> "BaseOperation":
+        """Reconstruct an operation from JSON written by :meth:`to_json`.
+
+        Accepts a JSON string, a path to a JSON file, or a pre-parsed envelope
+        dict (same input handling as :meth:`ImagePipeline.from_json`).
+        Polymorphic: ``ImageOperation.from_json(path)`` returns whatever concrete
+        operation the file holds. When called on a narrower subclass, the
+        resolved class must be a subclass of it, else a :class:`TypeError` is
+        raised.
+
+        Args:
+            json_data: A JSON string, path to a JSON file, or envelope dict.
+
+        Returns:
+            The reconstructed operation instance.
+
+        Raises:
+            AttributeError: If the recorded class cannot be resolved in the
+                ``phenotypic`` namespace.
+            TypeError: If called on a concrete subclass and the file holds a
+                class that is not a subclass of it.
+
+        Example:
+            >>> import tempfile
+            >>> from pathlib import Path
+            >>> from phenotypic.abc_ import ImageOperation
+            >>> from phenotypic.detect import OtsuDetector
+            >>> with tempfile.TemporaryDirectory() as d:
+            ...     p = Path(d) / "op.json"
+            ...     OtsuDetector().to_json(p)
+            ...     loaded = ImageOperation.from_json(p)  # polymorphic
+            >>> type(loaded).__name__
+            'OtsuDetector'
+        """
+        # Lazy import: ``_serializable_pipeline`` imports ``phenotypic.abc_`` at
+        # module top (see _serializable_pipeline.py), so a top-level import here
+        # would create a cycle.
+        from phenotypic._core._pipeline_parts._serializable_pipeline import (
+            SerializablePipeline,
+        )
+
+        envelope = read_json_source(json_data)
+        class_name = envelope["class"]
+        op_class = SerializablePipeline._find_class_in_phenotypic(class_name)
+        if op_class is None:
+            raise AttributeError(
+                f"Class '{class_name}' not found in the phenotypic namespace. "
+                f"Ensure it is exported from its submodule's __init__.py."
+            )
+        if cls is not BaseOperation and not issubclass(op_class, cls):
+            raise TypeError(
+                f"{cls.__name__}.from_json() got a '{class_name}', which is not "
+                f"a subclass of {cls.__name__}. Use BaseOperation.from_json() "
+                f"or a compatible class."
+            )
+        return op_class.model_validate(envelope.get("params", {}) or {})
 
     def _log_memory_usage(
             self,

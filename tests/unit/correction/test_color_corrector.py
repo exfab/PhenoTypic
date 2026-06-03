@@ -717,6 +717,55 @@ class TestColorCorrectorSerialization:
         assert restored.capture_metadata is None
         assert restored.is_fitted is True
 
+    def test_profile_to_json_returns_string(self):
+        """``to_json()`` with no filepath returns JSON; transient ``rois`` excluded."""
+        json_str = ColorCheckerProfile(degree=3, outlier_sigma=1.5).to_json()
+        assert isinstance(json_str, str)
+        data = json.loads(json_str)
+        assert data["degree"] == 3
+        assert data["outlier_sigma"] == 1.5
+        assert "rois" not in data  # field-level exclude=True
+
+    def test_profile_to_json_from_json_file_roundtrip(self, tmp_path):
+        """An unfitted profile written to file is recovered with params intact."""
+        filepath = tmp_path / "profile.json"
+        ColorCheckerProfile(degree=3, outlier_sigma=1.5).to_json(filepath)
+
+        assert filepath.exists()
+        loaded = ColorCheckerProfile.from_json(filepath)
+        assert loaded.degree == 3
+        assert loaded.outlier_sigma == 1.5
+        assert loaded.is_fitted is False
+
+    def test_fitted_profile_to_json_from_json_roundtrip(self, fitted_profile, tmp_path):
+        """A fitted profile round-trips its correction matrix exactly via file."""
+        filepath = tmp_path / "fitted_profile.json"
+        fitted_profile.to_json(filepath)
+
+        loaded = ColorCheckerProfile.from_json(filepath)
+        np.testing.assert_array_almost_equal(
+            loaded.correction_matrix,
+            fitted_profile.correction_matrix,
+        )
+        assert loaded.is_fitted is True
+        assert loaded.degree == fitted_profile.degree
+
+    def test_profile_from_json_with_exif(self, fitted_profile_with_exif, tmp_path):
+        """capture_metadata survives the file round-trip."""
+        filepath = tmp_path / "exif_profile.json"
+        fitted_profile_with_exif.to_json(filepath)
+
+        loaded = ColorCheckerProfile.from_json(filepath)
+        assert loaded.capture_metadata == fitted_profile_with_exif.capture_metadata
+        assert loaded.capture_metadata.camera_model == "EOS R100"
+        assert loaded.capture_metadata.iso == 800
+
+    def test_profile_from_json_accepts_string(self):
+        """``from_json`` accepts a JSON string, not only a file path."""
+        json_str = ColorCheckerProfile(degree=4).to_json()
+        loaded = ColorCheckerProfile.from_json(json_str)
+        assert loaded.degree == 4
+
 
 # ===========================================================================
 # TestCaptureMetadata
