@@ -158,9 +158,12 @@ use a single stratified calibration split. Two degeneracies:
 
 **Fidelity = the number of calibration plates scored on the per-image term.** The
 Evaluator scores that term on a growing, **metadata-stratified** subset (so even the
-first rung spans the strata) and calls `trial.report(value=running_agg, step=n_plates)`
-(Optuna's positional order is `report(value, step)`) after each rung, so a candidate
-with bad early Count is pruned before the full set is spent.
+first rung spans the strata) and calls `channel.report(running_agg, n_plates)` on a
+**generic pruning channel** after each rung, then checks `channel.should_prune()` — so a
+candidate with bad early Count is stopped before the full set is spent. The channel keeps
+the Evaluator **Optuna-free**: `OptunaStrategy` backs it with the live trial (Optuna's
+`trial.report(value, step)` / `trial.should_prune()`); `Grid`/`Random` supply a no-op
+(`should_prune` always `False`). See optuna-integration.md §6.
 
 - **Rung ladder (conservative, stratified).** First rung = `max(~6-plate floor,
   ~⅓ of calibration)`; geometric ×3 growth; self-disables when the set is too small
@@ -170,10 +173,10 @@ with bad early Count is pruned before the full set is spent.
 - **The batch panel is never pruned.** It needs the whole replicate structure, so it
   runs once, at full fidelity, in `finalize`, only for **survivors** (qc §3). A
   panel-only Scorer (no per-image term) is unprunable — pruning disables cleanly.
-- **Ownership split.** The Evaluator owns the fidelity axis and the `trial.report()`
-  calls; the **pruner** itself (ASHA / Hyperband) is Optuna's and is specced in
-  [`optuna-integration.md`](optuna-integration.md) (planned). Pruning is **opt-in**
-  and absent in Phase 1.
+- **Ownership split.** The Evaluator owns the fidelity axis and the `channel.report()` /
+  `channel.should_prune()` calls; the **pruner** itself (ASHA) is Optuna's and is specced
+  in [`optuna-integration.md`](optuna-integration.md) §6. Pruning is **opt-in** and absent
+  in Phase 1 (the no-op channel ships then).
 
 ### Pruning and CV compose independently
 
@@ -341,9 +344,9 @@ The `(level, dispersion)` pair is recorded per trial for the optional Pareto vie
 - **Group-aware CV** — replicate plates of a strain stay in one fold (panel
   computable); single-group degrades to a plate split; `--cv-group` auto-infers from
   the QC grouping; label overloading works.
-- **Pruning** — rung reporting via `trial.report()`; the panel runs only for
-  survivors; incremental cache hit means rung N runs only the new plates; cache key
-  changes with any param field (no stale reuse).
+- **Pruning** — rung reporting via `channel.report()` + `channel.should_prune()` (no-op
+  channel never prunes); the panel runs only for survivors; incremental cache hit means
+  rung N runs only the new plates; cache key changes with any param field (no stale reuse).
 - **Failure taxonomy** — invalid-params → FAIL; all-errored → FAIL; per-image
   exception → 0-term with the aggregate continuing; degenerate-but-ran → low score, not
   FAIL.

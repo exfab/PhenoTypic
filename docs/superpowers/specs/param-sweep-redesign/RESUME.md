@@ -15,12 +15,15 @@ cold, then the [README](README.md) index and the
   - `51742e13` — supervised-scorers companion doc
   - `ac4c8c9b` — qc-objective-mapping companion doc
   - `cc189216` — search-space-inference + operation-tuning-annotations companion docs
-  - *(this commit)* — robust-evaluation companion doc (+ reciprocal qc §3 / master §4·D4 edits)
+  - `3e68aa35` — robust-evaluation companion doc (+ reciprocal qc §3 / master §4·D4 edits)
+  - *(this commit)* — screening-importance + optuna-integration companion docs (+ robust-eval pruning-channel reconciliation)
 - **Done:** master design spec; bundle README index; the **reference-free metrics**,
   **supervised-scorers**, **qc-objective-mapping**, **search-space-inference**,
-  **operation-tuning-annotations**, and **robust-evaluation** companions.
-- **Not started:** 4 stub companion docs (screening-importance, optuna-integration,
-  mcp-server-design, dash-copilot-design) + the implementation plan.
+  **operation-tuning-annotations**, **robust-evaluation**, **screening-importance**, and
+  **optuna-integration** companions.
+- **Not started:** **dash-copilot-design** (the one remaining in-scope stub) + the
+  implementation plan. **`mcp-server-design` is deferred / out-of-scope** (per user — keep
+  the redesign focused on the param-sweep core).
 
 ## Remaining stub companion docs to go over
 
@@ -65,13 +68,13 @@ captured upstream are noted so the doc starts from context, not zero.
   `Field`-second staging; coverage + `⊆` guardrail tests. Decoupled from tune Phase 1;
   the dial toward D6 autonomy.
 
-- [ ] **`screening-importance.md`** — master §4 (`ScreeningPhase`), D8.
-  fANOVA importance over the optimizer's own trials (Optuna `get_param_importances`),
-  PED-ANOVA for top-performance subspaces, freezing thresholds, zero-dep fallback,
-  the importance report. *Carry-forward:* the self-review already settled fANOVA >
-  Morris (interactions, reuses trials); **the Böck normalization trap means the
-  scores fANOVA consumes must be grid-independent** or importances inherit the
-  instability (reference-free doc §B, Recommendation 2).
+- [x] **`screening-importance.md`** — master §4 (`ScreeningPhase`), D8. **✅ written**
+  (analysis-first + opt-in 2-round freeze; hierarchical per-activation importance over the
+  conditional space; cumulative-tail freezing over *total* importance at top-k central
+  tendency; RF+permutation fallback; explore-round unpruned → survivorship-bias-free;
+  multi-objective per-objective; warm-start round transition; wrong-freeze recovery;
+  `param_importance.json`). *Open:* warm-up floor, cumulative ε, screening trigger,
+  bootstrap-CI confidence (master §14).
 
 - [x] **`robust-evaluation.md`** — master §4 (`Evaluator`), D4. **✅ written** (uniform
   3-step Eval↔Scorer loop; per-term `median − λ·IQR` stability penalty, λ=0.5, clamp;
@@ -83,15 +86,19 @@ captured upstream are noted so the doc starts from context, not zero.
   master §4/D4 (normalization ownership + per-term penalty scope). *Open:* default `λ`,
   first-rung policy, held-out gap margin, `min_stability_n` (master §14).
 
-- [ ] **`optuna-integration.md`** — master §4 (`SearchStrategy`), §6.
-  `OptunaStrategy`: sampler choice (TPE/CMA-ES/GP/NSGA-II), pruning (ASHA/Hyperband),
-  multi-objective, SQLite study persistence + concurrency (WAL → RDB), ask-and-tell.
-  *Carry-forward:* dependency lives in a `tune` extra (master §10); keep the Protocol
-  seam open for a future `AxStrategy`.
+- [x] **`optuna-integration.md`** — master §4 (`SearchStrategy`), D3, §6. **✅ written**
+  (ask-and-tell control model + conditional materialization; TPE default / CMA-ES
+  native-fallback+warning / NSGA-II auto; ASHA pruning via the generic Optuna-free channel;
+  distributed ask-and-tell over a shared `study.db`, SQLite WAL→RDB; budget=completed+pruned
+  + max-failures cap; dead-worker→retry; reproducibility bit-identical only under
+  `--deterministic`; lazy import behind the `tune` extra; `AxStrategy` seam). *Carried
+  reciprocal edits* to robust-eval §7/§14 (pruning channel). *Open:* max-failures cap, RDB
+  graduation threshold, promote-optuna-to-core (master §14).
 
-- [ ] **`mcp-server-design.md`** — master §6.
-  The `tune_*` tool surface, autonomous vs. steering modes, shared-study session
-  semantics, transport/packaging. *Carry-forward:* packaging location is an open
+- [ ] **`mcp-server-design.md`** — master §6. **DEFERRED / out-of-scope** (per user — keep
+  the redesign focused on the param-sweep core; revisit if/when the agentic surface is
+  prioritized). The `tune_*` tool surface, autonomous vs. steering modes, shared-study
+  session semantics, transport/packaging. *Carry-forward:* packaging location is an open
   question (master §14, `src/phenotypic/mcp/` vs. standalone).
 
 - [ ] **`dash-copilot-design.md`** — master §6, D5.
