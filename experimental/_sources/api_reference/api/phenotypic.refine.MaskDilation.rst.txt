@@ -21,6 +21,7 @@ phenotypic.refine.MaskDilation
       ~MaskDilation.construct
       ~MaskDilation.copy
       ~MaskDilation.dict
+      ~MaskDilation.from_json
       ~MaskDilation.from_orm
       ~MaskDilation.json
       ~MaskDilation.model_construct
@@ -39,6 +40,7 @@ phenotypic.refine.MaskDilation
       ~MaskDilation.parse_raw
       ~MaskDilation.schema
       ~MaskDilation.schema_json
+      ~MaskDilation.to_json
       ~MaskDilation.update_forward_refs
       ~MaskDilation.validate
       ~MaskDilation.widget

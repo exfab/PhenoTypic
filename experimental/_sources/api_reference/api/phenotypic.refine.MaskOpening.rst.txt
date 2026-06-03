@@ -21,6 +21,7 @@ phenotypic.refine.MaskOpening
       ~MaskOpening.construct
       ~MaskOpening.copy
       ~MaskOpening.dict
+      ~MaskOpening.from_json
       ~MaskOpening.from_orm
       ~MaskOpening.json
       ~MaskOpening.model_construct
@@ -39,6 +40,7 @@ phenotypic.refine.MaskOpening
       ~MaskOpening.parse_raw
       ~MaskOpening.schema
       ~MaskOpening.schema_json
+      ~MaskOpening.to_json
       ~MaskOpening.update_forward_refs
       ~MaskOpening.validate
       ~MaskOpening.widget

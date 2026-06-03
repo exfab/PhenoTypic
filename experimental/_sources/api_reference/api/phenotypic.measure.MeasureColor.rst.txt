@@ -20,6 +20,7 @@ phenotypic.measure.MeasureColor
       ~MeasureColor.construct
       ~MeasureColor.copy
       ~MeasureColor.dict
+      ~MeasureColor.from_json
       ~MeasureColor.from_orm
       ~MeasureColor.json
       ~MeasureColor.measure
@@ -39,6 +40,7 @@ phenotypic.measure.MeasureColor
       ~MeasureColor.parse_raw
       ~MeasureColor.schema
       ~MeasureColor.schema_json
+      ~MeasureColor.to_json
       ~MeasureColor.update_forward_refs
       ~MeasureColor.validate
    

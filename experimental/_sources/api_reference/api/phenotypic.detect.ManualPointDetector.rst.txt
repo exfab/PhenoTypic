@@ -21,6 +21,7 @@ phenotypic.detect.ManualPointDetector
       ~ManualPointDetector.construct
       ~ManualPointDetector.copy
       ~ManualPointDetector.dict
+      ~ManualPointDetector.from_json
       ~ManualPointDetector.from_orm
       ~ManualPointDetector.json
       ~ManualPointDetector.model_construct
@@ -40,6 +41,7 @@ phenotypic.detect.ManualPointDetector
       ~ManualPointDetector.parse_raw
       ~ManualPointDetector.schema
       ~ManualPointDetector.schema_json
+      ~ManualPointDetector.to_json
       ~ManualPointDetector.update_forward_refs
       ~ManualPointDetector.validate
       ~ManualPointDetector.widget

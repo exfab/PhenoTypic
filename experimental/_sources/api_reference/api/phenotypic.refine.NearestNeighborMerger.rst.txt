@@ -21,6 +21,7 @@ phenotypic.refine.NearestNeighborMerger
       ~NearestNeighborMerger.construct
       ~NearestNeighborMerger.copy
       ~NearestNeighborMerger.dict
+      ~NearestNeighborMerger.from_json
       ~NearestNeighborMerger.from_orm
       ~NearestNeighborMerger.json
       ~NearestNeighborMerger.model_construct
@@ -39,6 +40,7 @@ phenotypic.refine.NearestNeighborMerger
       ~NearestNeighborMerger.parse_raw
       ~NearestNeighborMerger.schema
       ~NearestNeighborMerger.schema_json
+      ~NearestNeighborMerger.to_json
       ~NearestNeighborMerger.update_forward_refs
       ~NearestNeighborMerger.validate
       ~NearestNeighborMerger.widget

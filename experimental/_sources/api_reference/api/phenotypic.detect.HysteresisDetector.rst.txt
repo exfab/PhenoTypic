@@ -21,6 +21,7 @@ phenotypic.detect.HysteresisDetector
       ~HysteresisDetector.construct
       ~HysteresisDetector.copy
       ~HysteresisDetector.dict
+      ~HysteresisDetector.from_json
       ~HysteresisDetector.from_orm
       ~HysteresisDetector.json
       ~HysteresisDetector.model_construct
@@ -39,6 +40,7 @@ phenotypic.detect.HysteresisDetector
       ~HysteresisDetector.parse_raw
       ~HysteresisDetector.schema
       ~HysteresisDetector.schema_json
+      ~HysteresisDetector.to_json
       ~HysteresisDetector.update_forward_refs
       ~HysteresisDetector.validate
       ~HysteresisDetector.widget

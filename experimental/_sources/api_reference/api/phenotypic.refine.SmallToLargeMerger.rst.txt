@@ -21,6 +21,7 @@ phenotypic.refine.SmallToLargeMerger
       ~SmallToLargeMerger.construct
       ~SmallToLargeMerger.copy
       ~SmallToLargeMerger.dict
+      ~SmallToLargeMerger.from_json
       ~SmallToLargeMerger.from_orm
       ~SmallToLargeMerger.json
       ~SmallToLargeMerger.model_construct
@@ -39,6 +40,7 @@ phenotypic.refine.SmallToLargeMerger
       ~SmallToLargeMerger.parse_raw
       ~SmallToLargeMerger.schema
       ~SmallToLargeMerger.schema_json
+      ~SmallToLargeMerger.to_json
       ~SmallToLargeMerger.update_forward_refs
       ~SmallToLargeMerger.validate
       ~SmallToLargeMerger.widget

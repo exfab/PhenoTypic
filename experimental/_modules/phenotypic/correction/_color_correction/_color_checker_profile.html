@@ -570,6 +570,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Annotated</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">NamedTuple</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">colour</span>
@@ -584,6 +585,7 @@
     <span class="n">model_validator</span><span class="p">,</span>
 <span class="p">)</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_._json_io</span><span class="w"> </span><span class="kn">import</span> <span class="n">read_json_source</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">NdArrayField</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">._capture_metadata</span><span class="w"> </span><span class="kn">import</span> <span class="n">CaptureMetadata</span>
@@ -914,6 +916,63 @@
         <span class="k">if</span> <span class="n">outlier_sigma</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;outlier_sigma must be &gt; 0, got </span><span class="si">{</span><span class="n">outlier_sigma</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">outlier_sigma</span>
+
+    <span class="c1"># -- serialisation ------------------------------------------------------</span>
+
+<div class="viewcode-block" id="ColorCheckerProfile.to_json">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.correction.html#phenotypic.correction.ColorCheckerProfile.to_json">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">to_json</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filepath</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Serialize this profile to JSON.</span>
+
+<span class="sd">        Serializes via :meth:`~pydantic.BaseModel.model_dump_json`: the fitted</span>
+<span class="sd">        ``correction_matrix`` is emitted as a nested list, ``capture_metadata``</span>
+<span class="sd">        as a nested object, and the transient ``rois`` / ``_image`` fields are</span>
+<span class="sd">        excluded. Mirrors :meth:`ImagePipeline.to_json`.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            filepath: Optional path to write the JSON to. When None, the JSON</span>
+<span class="sd">                string is returned instead. Accepts a ``str`` or ``Path``.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The JSON string when ``filepath`` is None, otherwise None.</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; import tempfile</span>
+<span class="sd">            &gt;&gt;&gt; from pathlib import Path</span>
+<span class="sd">            &gt;&gt;&gt; from phenotypic.correction import ColorCheckerProfile</span>
+<span class="sd">            &gt;&gt;&gt; with tempfile.TemporaryDirectory() as d:</span>
+<span class="sd">            ...     p = Path(d) / &quot;profile.json&quot;</span>
+<span class="sd">            ...     ColorCheckerProfile(degree=3).to_json(p)</span>
+<span class="sd">            ...     loaded = ColorCheckerProfile.from_json(p)</span>
+<span class="sd">            &gt;&gt;&gt; loaded.degree</span>
+<span class="sd">            3</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">json_str</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_dump_json</span><span class="p">(</span><span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">filepath</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">Path</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">json_str</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="n">json_str</span></div>
+
+
+<div class="viewcode-block" id="ColorCheckerProfile.from_json">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.correction.html#phenotypic.correction.ColorCheckerProfile.from_json">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">from_json</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">json_data</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ColorCheckerProfile</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Reconstruct a profile from JSON written by :meth:`to_json`.</span>
+
+<span class="sd">        Accepts a JSON string, a path to a JSON file, or a pre-parsed dict (same</span>
+<span class="sd">        input handling as :meth:`ImagePipeline.from_json`). Validation runs the</span>
+<span class="sd">        :meth:`_drop_legacy_fields` hook, so profiles saved before a field was</span>
+<span class="sd">        removed still load.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            json_data: A JSON string, path to a JSON file, or a parsed dict.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The reconstructed profile instance.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">model_validate</span><span class="p">(</span><span class="n">read_json_source</span><span class="p">(</span><span class="n">json_data</span><span class="p">))</span></div>
+
 
     <span class="c1"># -- high-level fitting -------------------------------------------------</span>
 

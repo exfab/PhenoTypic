@@ -21,6 +21,7 @@ phenotypic.enhance.StructureSmoothing
       ~StructureSmoothing.construct
       ~StructureSmoothing.copy
       ~StructureSmoothing.dict
+      ~StructureSmoothing.from_json
       ~StructureSmoothing.from_orm
       ~StructureSmoothing.json
       ~StructureSmoothing.model_construct
@@ -39,6 +40,7 @@ phenotypic.enhance.StructureSmoothing
       ~StructureSmoothing.parse_raw
       ~StructureSmoothing.schema
       ~StructureSmoothing.schema_json
+      ~StructureSmoothing.to_json
       ~StructureSmoothing.update_forward_refs
       ~StructureSmoothing.validate
       ~StructureSmoothing.widget

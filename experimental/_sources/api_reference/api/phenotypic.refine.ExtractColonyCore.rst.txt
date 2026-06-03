@@ -21,6 +21,7 @@ phenotypic.refine.ExtractColonyCore
       ~ExtractColonyCore.construct
       ~ExtractColonyCore.copy
       ~ExtractColonyCore.dict
+      ~ExtractColonyCore.from_json
       ~ExtractColonyCore.from_orm
       ~ExtractColonyCore.json
       ~ExtractColonyCore.model_construct
@@ -39,6 +40,7 @@ phenotypic.refine.ExtractColonyCore
       ~ExtractColonyCore.parse_raw
       ~ExtractColonyCore.schema
       ~ExtractColonyCore.schema_json
+      ~ExtractColonyCore.to_json
       ~ExtractColonyCore.update_forward_refs
       ~ExtractColonyCore.validate
       ~ExtractColonyCore.widget

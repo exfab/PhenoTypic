@@ -20,6 +20,7 @@ phenotypic.abc\_.GridMeasureFeatures
       ~GridMeasureFeatures.construct
       ~GridMeasureFeatures.copy
       ~GridMeasureFeatures.dict
+      ~GridMeasureFeatures.from_json
       ~GridMeasureFeatures.from_orm
       ~GridMeasureFeatures.json
       ~GridMeasureFeatures.measure
@@ -39,6 +40,7 @@ phenotypic.abc\_.GridMeasureFeatures
       ~GridMeasureFeatures.parse_raw
       ~GridMeasureFeatures.schema
       ~GridMeasureFeatures.schema_json
+      ~GridMeasureFeatures.to_json
       ~GridMeasureFeatures.update_forward_refs
       ~GridMeasureFeatures.validate
    

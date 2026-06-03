@@ -21,6 +21,7 @@ phenotypic.refine.TrimAsymmetry
       ~TrimAsymmetry.construct
       ~TrimAsymmetry.copy
       ~TrimAsymmetry.dict
+      ~TrimAsymmetry.from_json
       ~TrimAsymmetry.from_orm
       ~TrimAsymmetry.json
       ~TrimAsymmetry.model_construct
@@ -39,6 +40,7 @@ phenotypic.refine.TrimAsymmetry
       ~TrimAsymmetry.parse_raw
       ~TrimAsymmetry.schema
       ~TrimAsymmetry.schema_json
+      ~TrimAsymmetry.to_json
       ~TrimAsymmetry.update_forward_refs
       ~TrimAsymmetry.validate
       ~TrimAsymmetry.widget

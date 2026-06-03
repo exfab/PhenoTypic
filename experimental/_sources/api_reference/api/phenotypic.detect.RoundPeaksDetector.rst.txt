@@ -21,6 +21,7 @@ phenotypic.detect.RoundPeaksDetector
       ~RoundPeaksDetector.construct
       ~RoundPeaksDetector.copy
       ~RoundPeaksDetector.dict
+      ~RoundPeaksDetector.from_json
       ~RoundPeaksDetector.from_orm
       ~RoundPeaksDetector.json
       ~RoundPeaksDetector.model_construct
@@ -39,6 +40,7 @@ phenotypic.detect.RoundPeaksDetector
       ~RoundPeaksDetector.parse_raw
       ~RoundPeaksDetector.schema
       ~RoundPeaksDetector.schema_json
+      ~RoundPeaksDetector.to_json
       ~RoundPeaksDetector.update_forward_refs
       ~RoundPeaksDetector.validate
       ~RoundPeaksDetector.widget

@@ -20,6 +20,7 @@ phenotypic.measure.MeasureGridSpatial
       ~MeasureGridSpatial.construct
       ~MeasureGridSpatial.copy
       ~MeasureGridSpatial.dict
+      ~MeasureGridSpatial.from_json
       ~MeasureGridSpatial.from_orm
       ~MeasureGridSpatial.json
       ~MeasureGridSpatial.measure
@@ -39,6 +40,7 @@ phenotypic.measure.MeasureGridSpatial
       ~MeasureGridSpatial.parse_raw
       ~MeasureGridSpatial.schema
       ~MeasureGridSpatial.schema_json
+      ~MeasureGridSpatial.to_json
       ~MeasureGridSpatial.update_forward_refs
       ~MeasureGridSpatial.validate
    

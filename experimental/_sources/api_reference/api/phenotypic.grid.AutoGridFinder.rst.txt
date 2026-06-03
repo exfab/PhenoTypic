@@ -21,6 +21,7 @@ phenotypic.grid.AutoGridFinder
       ~AutoGridFinder.copy
       ~AutoGridFinder.dashboard
       ~AutoGridFinder.dict
+      ~AutoGridFinder.from_json
       ~AutoGridFinder.from_orm
       ~AutoGridFinder.get_col_edges
       ~AutoGridFinder.get_row_edges
@@ -42,6 +43,7 @@ phenotypic.grid.AutoGridFinder
       ~AutoGridFinder.parse_raw
       ~AutoGridFinder.schema
       ~AutoGridFinder.schema_json
+      ~AutoGridFinder.to_json
       ~AutoGridFinder.update_forward_refs
       ~AutoGridFinder.validate
    

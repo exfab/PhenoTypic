@@ -21,6 +21,7 @@ phenotypic.enhance.ContrastStretching
       ~ContrastStretching.construct
       ~ContrastStretching.copy
       ~ContrastStretching.dict
+      ~ContrastStretching.from_json
       ~ContrastStretching.from_orm
       ~ContrastStretching.json
       ~ContrastStretching.model_construct
@@ -39,6 +40,7 @@ phenotypic.enhance.ContrastStretching
       ~ContrastStretching.parse_raw
       ~ContrastStretching.schema
       ~ContrastStretching.schema_json
+      ~ContrastStretching.to_json
       ~ContrastStretching.update_forward_refs
       ~ContrastStretching.validate
       ~ContrastStretching.widget

@@ -21,6 +21,7 @@ phenotypic.detect.YenDetector
       ~YenDetector.construct
       ~YenDetector.copy
       ~YenDetector.dict
+      ~YenDetector.from_json
       ~YenDetector.from_orm
       ~YenDetector.json
       ~YenDetector.model_construct
@@ -39,6 +40,7 @@ phenotypic.detect.YenDetector
       ~YenDetector.parse_raw
       ~YenDetector.schema
       ~YenDetector.schema_json
+      ~YenDetector.to_json
       ~YenDetector.update_forward_refs
       ~YenDetector.validate
       ~YenDetector.widget

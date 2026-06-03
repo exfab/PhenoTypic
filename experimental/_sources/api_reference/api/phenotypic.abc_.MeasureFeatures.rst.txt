@@ -20,6 +20,7 @@ phenotypic.abc\_.MeasureFeatures
       ~MeasureFeatures.construct
       ~MeasureFeatures.copy
       ~MeasureFeatures.dict
+      ~MeasureFeatures.from_json
       ~MeasureFeatures.from_orm
       ~MeasureFeatures.json
       ~MeasureFeatures.measure
@@ -39,6 +40,7 @@ phenotypic.abc\_.MeasureFeatures
       ~MeasureFeatures.parse_raw
       ~MeasureFeatures.schema
       ~MeasureFeatures.schema_json
+      ~MeasureFeatures.to_json
       ~MeasureFeatures.update_forward_refs
       ~MeasureFeatures.validate
    

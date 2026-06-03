@@ -21,6 +21,7 @@ phenotypic.abc\_.ObjectRefiner
       ~ObjectRefiner.construct
       ~ObjectRefiner.copy
       ~ObjectRefiner.dict
+      ~ObjectRefiner.from_json
       ~ObjectRefiner.from_orm
       ~ObjectRefiner.json
       ~ObjectRefiner.model_construct
@@ -39,6 +40,7 @@ phenotypic.abc\_.ObjectRefiner
       ~ObjectRefiner.parse_raw
       ~ObjectRefiner.schema
       ~ObjectRefiner.schema_json
+      ~ObjectRefiner.to_json
       ~ObjectRefiner.update_forward_refs
       ~ObjectRefiner.validate
       ~ObjectRefiner.widget

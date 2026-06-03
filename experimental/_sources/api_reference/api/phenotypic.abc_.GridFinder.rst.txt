@@ -20,6 +20,7 @@ phenotypic.abc\_.GridFinder
       ~GridFinder.construct
       ~GridFinder.copy
       ~GridFinder.dict
+      ~GridFinder.from_json
       ~GridFinder.from_orm
       ~GridFinder.get_col_edges
       ~GridFinder.get_row_edges
@@ -41,6 +42,7 @@ phenotypic.abc\_.GridFinder
       ~GridFinder.parse_raw
       ~GridFinder.schema
       ~GridFinder.schema_json
+      ~GridFinder.to_json
       ~GridFinder.update_forward_refs
       ~GridFinder.validate
    

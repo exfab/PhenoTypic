@@ -20,6 +20,7 @@ phenotypic.measure.MeasureSymmetricZones
       ~MeasureSymmetricZones.construct
       ~MeasureSymmetricZones.copy
       ~MeasureSymmetricZones.dict
+      ~MeasureSymmetricZones.from_json
       ~MeasureSymmetricZones.from_orm
       ~MeasureSymmetricZones.inspect
       ~MeasureSymmetricZones.json
@@ -40,6 +41,7 @@ phenotypic.measure.MeasureSymmetricZones
       ~MeasureSymmetricZones.parse_raw
       ~MeasureSymmetricZones.schema
       ~MeasureSymmetricZones.schema_json
+      ~MeasureSymmetricZones.to_json
       ~MeasureSymmetricZones.update_forward_refs
       ~MeasureSymmetricZones.validate
    

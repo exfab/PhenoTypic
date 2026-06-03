@@ -21,6 +21,7 @@ phenotypic.refine.Skeletonize
       ~Skeletonize.construct
       ~Skeletonize.copy
       ~Skeletonize.dict
+      ~Skeletonize.from_json
       ~Skeletonize.from_orm
       ~Skeletonize.json
       ~Skeletonize.model_construct
@@ -39,6 +40,7 @@ phenotypic.refine.Skeletonize
       ~Skeletonize.parse_raw
       ~Skeletonize.schema
       ~Skeletonize.schema_json
+      ~Skeletonize.to_json
       ~Skeletonize.update_forward_refs
       ~Skeletonize.validate
       ~Skeletonize.widget

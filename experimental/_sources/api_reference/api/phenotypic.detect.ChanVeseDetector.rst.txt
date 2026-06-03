@@ -21,6 +21,7 @@ phenotypic.detect.ChanVeseDetector
       ~ChanVeseDetector.construct
       ~ChanVeseDetector.copy
       ~ChanVeseDetector.dict
+      ~ChanVeseDetector.from_json
       ~ChanVeseDetector.from_orm
       ~ChanVeseDetector.json
       ~ChanVeseDetector.model_construct
@@ -39,6 +40,7 @@ phenotypic.detect.ChanVeseDetector
       ~ChanVeseDetector.parse_raw
       ~ChanVeseDetector.schema
       ~ChanVeseDetector.schema_json
+      ~ChanVeseDetector.to_json
       ~ChanVeseDetector.update_forward_refs
       ~ChanVeseDetector.validate
       ~ChanVeseDetector.widget

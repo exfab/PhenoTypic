@@ -21,6 +21,7 @@ phenotypic.detect.TriangleDetector
       ~TriangleDetector.construct
       ~TriangleDetector.copy
       ~TriangleDetector.dict
+      ~TriangleDetector.from_json
       ~TriangleDetector.from_orm
       ~TriangleDetector.json
       ~TriangleDetector.model_construct
@@ -39,6 +40,7 @@ phenotypic.detect.TriangleDetector
       ~TriangleDetector.parse_raw
       ~TriangleDetector.schema
       ~TriangleDetector.schema_json
+      ~TriangleDetector.to_json
       ~TriangleDetector.update_forward_refs
       ~TriangleDetector.validate
       ~TriangleDetector.widget

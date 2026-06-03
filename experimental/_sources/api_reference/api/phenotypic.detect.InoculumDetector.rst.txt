@@ -21,6 +21,7 @@ phenotypic.detect.InoculumDetector
       ~InoculumDetector.construct
       ~InoculumDetector.copy
       ~InoculumDetector.dict
+      ~InoculumDetector.from_json
       ~InoculumDetector.from_orm
       ~InoculumDetector.json
       ~InoculumDetector.model_construct
@@ -39,6 +40,7 @@ phenotypic.detect.InoculumDetector
       ~InoculumDetector.parse_raw
       ~InoculumDetector.schema
       ~InoculumDetector.schema_json
+      ~InoculumDetector.to_json
       ~InoculumDetector.update_forward_refs
       ~InoculumDetector.validate
       ~InoculumDetector.widget

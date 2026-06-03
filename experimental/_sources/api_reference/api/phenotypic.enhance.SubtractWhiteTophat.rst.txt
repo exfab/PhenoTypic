@@ -21,6 +21,7 @@ phenotypic.enhance.SubtractWhiteTophat
       ~SubtractWhiteTophat.construct
       ~SubtractWhiteTophat.copy
       ~SubtractWhiteTophat.dict
+      ~SubtractWhiteTophat.from_json
       ~SubtractWhiteTophat.from_orm
       ~SubtractWhiteTophat.json
       ~SubtractWhiteTophat.model_construct
@@ -39,6 +40,7 @@ phenotypic.enhance.SubtractWhiteTophat
       ~SubtractWhiteTophat.parse_raw
       ~SubtractWhiteTophat.schema
       ~SubtractWhiteTophat.schema_json
+      ~SubtractWhiteTophat.to_json
       ~SubtractWhiteTophat.update_forward_refs
       ~SubtractWhiteTophat.validate
       ~SubtractWhiteTophat.widget

@@ -21,6 +21,7 @@ phenotypic.detect.FilamentousFungiDetector
       ~FilamentousFungiDetector.construct
       ~FilamentousFungiDetector.copy
       ~FilamentousFungiDetector.dict
+      ~FilamentousFungiDetector.from_json
       ~FilamentousFungiDetector.from_orm
       ~FilamentousFungiDetector.json
       ~FilamentousFungiDetector.model_construct
@@ -39,6 +40,7 @@ phenotypic.detect.FilamentousFungiDetector
       ~FilamentousFungiDetector.parse_raw
       ~FilamentousFungiDetector.schema
       ~FilamentousFungiDetector.schema_json
+      ~FilamentousFungiDetector.to_json
       ~FilamentousFungiDetector.update_forward_refs
       ~FilamentousFungiDetector.validate
       ~FilamentousFungiDetector.widget

@@ -21,6 +21,7 @@ phenotypic.refine.MaskWhiteTophat
       ~MaskWhiteTophat.construct
       ~MaskWhiteTophat.copy
       ~MaskWhiteTophat.dict
+      ~MaskWhiteTophat.from_json
       ~MaskWhiteTophat.from_orm
       ~MaskWhiteTophat.json
       ~MaskWhiteTophat.model_construct
@@ -39,6 +40,7 @@ phenotypic.refine.MaskWhiteTophat
       ~MaskWhiteTophat.parse_raw
       ~MaskWhiteTophat.schema
       ~MaskWhiteTophat.schema_json
+      ~MaskWhiteTophat.to_json
       ~MaskWhiteTophat.update_forward_refs
       ~MaskWhiteTophat.validate
       ~MaskWhiteTophat.widget

@@ -20,6 +20,7 @@ phenotypic.measure.MeasureTexture
       ~MeasureTexture.construct
       ~MeasureTexture.copy
       ~MeasureTexture.dict
+      ~MeasureTexture.from_json
       ~MeasureTexture.from_orm
       ~MeasureTexture.json
       ~MeasureTexture.measure
@@ -39,6 +40,7 @@ phenotypic.measure.MeasureTexture
       ~MeasureTexture.parse_raw
       ~MeasureTexture.schema
       ~MeasureTexture.schema_json
+      ~MeasureTexture.to_json
       ~MeasureTexture.update_forward_refs
       ~MeasureTexture.validate
    

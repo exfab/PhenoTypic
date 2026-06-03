@@ -21,6 +21,7 @@ phenotypic.enhance.GaussianBlur
       ~GaussianBlur.construct
       ~GaussianBlur.copy
       ~GaussianBlur.dict
+      ~GaussianBlur.from_json
       ~GaussianBlur.from_orm
       ~GaussianBlur.json
       ~GaussianBlur.model_construct
@@ -39,6 +40,7 @@ phenotypic.enhance.GaussianBlur
       ~GaussianBlur.parse_raw
       ~GaussianBlur.schema
       ~GaussianBlur.schema_json
+      ~GaussianBlur.to_json
       ~GaussianBlur.update_forward_refs
       ~GaussianBlur.validate
       ~GaussianBlur.widget

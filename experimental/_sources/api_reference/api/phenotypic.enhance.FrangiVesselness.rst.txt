@@ -21,6 +21,7 @@ phenotypic.enhance.FrangiVesselness
       ~FrangiVesselness.construct
       ~FrangiVesselness.copy
       ~FrangiVesselness.dict
+      ~FrangiVesselness.from_json
       ~FrangiVesselness.from_orm
       ~FrangiVesselness.json
       ~FrangiVesselness.model_construct
@@ -39,6 +40,7 @@ phenotypic.enhance.FrangiVesselness
       ~FrangiVesselness.parse_raw
       ~FrangiVesselness.schema
       ~FrangiVesselness.schema_json
+      ~FrangiVesselness.to_json
       ~FrangiVesselness.update_forward_refs
       ~FrangiVesselness.validate
       ~FrangiVesselness.widget

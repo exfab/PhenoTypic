@@ -21,6 +21,7 @@ phenotypic.enhance.WhiteTophatEnhance
       ~WhiteTophatEnhance.construct
       ~WhiteTophatEnhance.copy
       ~WhiteTophatEnhance.dict
+      ~WhiteTophatEnhance.from_json
       ~WhiteTophatEnhance.from_orm
       ~WhiteTophatEnhance.json
       ~WhiteTophatEnhance.model_construct
@@ -39,6 +40,7 @@ phenotypic.enhance.WhiteTophatEnhance
       ~WhiteTophatEnhance.parse_raw
       ~WhiteTophatEnhance.schema
       ~WhiteTophatEnhance.schema_json
+      ~WhiteTophatEnhance.to_json
       ~WhiteTophatEnhance.update_forward_refs
       ~WhiteTophatEnhance.validate
       ~WhiteTophatEnhance.widget

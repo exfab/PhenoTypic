@@ -21,6 +21,7 @@ phenotypic.refine.MaskClosing
       ~MaskClosing.construct
       ~MaskClosing.copy
       ~MaskClosing.dict
+      ~MaskClosing.from_json
       ~MaskClosing.from_orm
       ~MaskClosing.json
       ~MaskClosing.model_construct
@@ -39,6 +40,7 @@ phenotypic.refine.MaskClosing
       ~MaskClosing.parse_raw
       ~MaskClosing.schema
       ~MaskClosing.schema_json
+      ~MaskClosing.to_json
       ~MaskClosing.update_forward_refs
       ~MaskClosing.validate
       ~MaskClosing.widget

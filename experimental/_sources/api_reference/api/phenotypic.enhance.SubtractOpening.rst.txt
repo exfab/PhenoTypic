@@ -21,6 +21,7 @@ phenotypic.enhance.SubtractOpening
       ~SubtractOpening.construct
       ~SubtractOpening.copy
       ~SubtractOpening.dict
+      ~SubtractOpening.from_json
       ~SubtractOpening.from_orm
       ~SubtractOpening.json
       ~SubtractOpening.model_construct
@@ -39,6 +40,7 @@ phenotypic.enhance.SubtractOpening
       ~SubtractOpening.parse_raw
       ~SubtractOpening.schema
       ~SubtractOpening.schema_json
+      ~SubtractOpening.to_json
       ~SubtractOpening.update_forward_refs
       ~SubtractOpening.validate
       ~SubtractOpening.widget

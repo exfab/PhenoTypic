@@ -20,6 +20,7 @@ phenotypic.abc\_.BaseOperation
       ~BaseOperation.construct
       ~BaseOperation.copy
       ~BaseOperation.dict
+      ~BaseOperation.from_json
       ~BaseOperation.from_orm
       ~BaseOperation.json
       ~BaseOperation.model_construct
@@ -38,6 +39,7 @@ phenotypic.abc\_.BaseOperation
       ~BaseOperation.parse_raw
       ~BaseOperation.schema
       ~BaseOperation.schema_json
+      ~BaseOperation.to_json
       ~BaseOperation.update_forward_refs
       ~BaseOperation.validate
    

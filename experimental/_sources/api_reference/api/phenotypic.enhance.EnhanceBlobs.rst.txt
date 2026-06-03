@@ -21,6 +21,7 @@ phenotypic.enhance.EnhanceBlobs
       ~EnhanceBlobs.construct
       ~EnhanceBlobs.copy
       ~EnhanceBlobs.dict
+      ~EnhanceBlobs.from_json
       ~EnhanceBlobs.from_orm
       ~EnhanceBlobs.json
       ~EnhanceBlobs.model_construct
@@ -39,6 +40,7 @@ phenotypic.enhance.EnhanceBlobs
       ~EnhanceBlobs.parse_raw
       ~EnhanceBlobs.schema
       ~EnhanceBlobs.schema_json
+      ~EnhanceBlobs.to_json
       ~EnhanceBlobs.update_forward_refs
       ~EnhanceBlobs.validate
       ~EnhanceBlobs.widget

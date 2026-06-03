@@ -21,6 +21,7 @@ phenotypic.refine.RefineBySineFit
       ~RefineBySineFit.construct
       ~RefineBySineFit.copy
       ~RefineBySineFit.dict
+      ~RefineBySineFit.from_json
       ~RefineBySineFit.from_orm
       ~RefineBySineFit.json
       ~RefineBySineFit.model_construct
@@ -39,6 +40,7 @@ phenotypic.refine.RefineBySineFit
       ~RefineBySineFit.parse_raw
       ~RefineBySineFit.schema
       ~RefineBySineFit.schema_json
+      ~RefineBySineFit.to_json
       ~RefineBySineFit.update_forward_refs
       ~RefineBySineFit.validate
       ~RefineBySineFit.widget

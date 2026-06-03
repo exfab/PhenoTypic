@@ -21,6 +21,7 @@ phenotypic.refine.Thinning
       ~Thinning.construct
       ~Thinning.copy
       ~Thinning.dict
+      ~Thinning.from_json
       ~Thinning.from_orm
       ~Thinning.json
       ~Thinning.model_construct
@@ -39,6 +40,7 @@ phenotypic.refine.Thinning
       ~Thinning.parse_raw
       ~Thinning.schema
       ~Thinning.schema_json
+      ~Thinning.to_json
       ~Thinning.update_forward_refs
       ~Thinning.validate
       ~Thinning.widget

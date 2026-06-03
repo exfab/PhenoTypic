@@ -731,6 +731,52 @@ In that case, it will be called later, when the model is rebuilt automatically o
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.correction.BayesShrinkCorrector.from_json">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">json_data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.BaseOperation" title="phenotypic.abc_._base_operation.BaseOperation"><span class="pre">BaseOperation</span></a></span></span><a class="headerlink" href="#phenotypic.correction.BayesShrinkCorrector.from_json" title="Link to this definition">#</a></dt>
+<dd><p>Reconstruct an operation from JSON written by <a class="reference internal" href="#phenotypic.correction.BayesShrinkCorrector.to_json" title="phenotypic.correction.BayesShrinkCorrector.to_json"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_json()</span></code></a>.</p>
+<p>Accepts a JSON string, a path to a JSON file, or a pre-parsed envelope
+dict (same input handling as <code class="xref py py-meth docutils literal notranslate"><span class="pre">ImagePipeline.from_json()</span></code>).
+Polymorphic: <code class="docutils literal notranslate"><span class="pre">ImageOperation.from_json(path)</span></code> returns whatever concrete
+operation the file holds. When called on a narrower subclass, the
+resolved class must be a subclass of it, else a <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#TypeError" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">TypeError</span></code></a> is
+raised.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>json_data</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a>) – A JSON string, path to a JSON file, or envelope dict.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The reconstructed operation instance.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#AttributeError" title="(in Python v3.14)"><strong>AttributeError</strong></a> – If the recorded class cannot be resolved in the
+    <code class="docutils literal notranslate"><span class="pre">phenotypic</span></code> namespace.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#TypeError" title="(in Python v3.14)"><strong>TypeError</strong></a> – If called on a concrete subclass and the file holds a
+    class that is not a subclass of it.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.BaseOperation" title="phenotypic.abc_._base_operation.BaseOperation"><em>BaseOperation</em></a></p>
+</dd>
+</dl>
+<div class="admonition-example admonition">
+<p class="admonition-title">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageOperation</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect</span><span class="w"> </span><span class="kn">import</span> <span class="n">OtsuDetector</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">TemporaryDirectory</span><span class="p">()</span> <span class="k">as</span> <span class="n">d</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="n">p</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;op.json&quot;</span>
+<span class="gp">... </span>    <span class="n">OtsuDetector</span><span class="p">()</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="n">loaded</span> <span class="o">=</span> <span class="n">ImageOperation</span><span class="o">.</span><span class="n">from_json</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>  <span class="c1"># polymorphic</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">type</span><span class="p">(</span><span class="n">loaded</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span>
+<span class="go">&#39;OtsuDetector&#39;</span>
+</pre></div>
+</div>
+</div>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.correction.BayesShrinkCorrector.from_orm">
 <em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_orm</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obj</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Self" title="(in Python v3.14)"><span class="pre">Self</span></a></span></span><a class="headerlink" href="#phenotypic.correction.BayesShrinkCorrector.from_orm" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
@@ -1392,6 +1438,44 @@ logged.</p>
 <dd class="field-even"><p>None</p>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.correction.BayesShrinkCorrector.to_json">
+<span class="sig-name descname"><span class="pre">to_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.correction.BayesShrinkCorrector.to_json" title="Link to this definition">#</a></dt>
+<dd><p>Serialize this operation to JSON.</p>
+<p>Captures the operation as a <code class="docutils literal notranslate"><span class="pre">{&quot;class&quot;,</span> <span class="pre">&quot;params&quot;}</span></code> envelope: <code class="docutils literal notranslate"><span class="pre">params</span></code>
+is <code class="docutils literal notranslate"><span class="pre">model_dump(mode=&quot;json&quot;)</span></code> (every declared field, including nested
+operations and raw arrays; <code class="docutils literal notranslate"><span class="pre">PrivateAttr</span></code> state such as loggers and
+timing is excluded automatically), and <code class="docutils literal notranslate"><span class="pre">class</span></code> records the concrete
+class name so <a class="reference internal" href="#phenotypic.correction.BayesShrinkCorrector.from_json" title="phenotypic.correction.BayesShrinkCorrector.from_json"><code class="xref py py-meth docutils literal notranslate"><span class="pre">from_json()</span></code></a> can rebuild the right subclass. This
+mirrors <code class="xref py py-meth docutils literal notranslate"><span class="pre">ImagePipeline.to_json()</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>filepath</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a><em> | </em><em>None</em>) – Optional path to write the JSON to. When None, the JSON
+string is returned instead. Accepts a <code class="docutils literal notranslate"><span class="pre">str</span></code> or <code class="docutils literal notranslate"><span class="pre">Path</span></code>.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The JSON string when <code class="docutils literal notranslate"><span class="pre">filepath</span></code> is None, otherwise None.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a> | None</p>
+</dd>
+</dl>
+<div class="admonition-example admonition">
+<p class="admonition-title">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect</span><span class="w"> </span><span class="kn">import</span> <span class="n">OtsuDetector</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">TemporaryDirectory</span><span class="p">()</span> <span class="k">as</span> <span class="n">d</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="n">p</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;op.json&quot;</span>
+<span class="gp">... </span>    <span class="n">OtsuDetector</span><span class="p">(</span><span class="n">ignore_zeros</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="n">loaded</span> <span class="o">=</span> <span class="n">OtsuDetector</span><span class="o">.</span><span class="n">from_json</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">loaded</span><span class="o">.</span><span class="n">ignore_zeros</span>
+<span class="go">True</span>
+</pre></div>
+</div>
+</div>
 </dd></dl>
 
 <dl class="py method">
@@ -2678,6 +2762,27 @@ In that case, it will be called later, when the model is rebuilt automatically o
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.correction.ColorCheckerProfile.from_json">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">json_data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#phenotypic.correction.ColorCheckerProfile" title="phenotypic.correction._color_correction._color_checker_profile.ColorCheckerProfile"><span class="pre">ColorCheckerProfile</span></a></span></span><a class="reference internal" href="../_modules/phenotypic/correction/_color_correction/_color_checker_profile.html#ColorCheckerProfile.from_json"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.correction.ColorCheckerProfile.from_json" title="Link to this definition">#</a></dt>
+<dd><p>Reconstruct a profile from JSON written by <a class="reference internal" href="#phenotypic.correction.ColorCheckerProfile.to_json" title="phenotypic.correction.ColorCheckerProfile.to_json"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_json()</span></code></a>.</p>
+<p>Accepts a JSON string, a path to a JSON file, or a pre-parsed dict (same
+input handling as <code class="xref py py-meth docutils literal notranslate"><span class="pre">ImagePipeline.from_json()</span></code>). Validation runs the
+<code class="xref py py-meth docutils literal notranslate"><span class="pre">_drop_legacy_fields()</span></code> hook, so profiles saved before a field was
+removed still load.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>json_data</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a>) – A JSON string, path to a JSON file, or a parsed dict.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The reconstructed profile instance.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#phenotypic.correction.ColorCheckerProfile" title="phenotypic.correction._color_correction._color_checker_profile.ColorCheckerProfile"><em>ColorCheckerProfile</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.correction.ColorCheckerProfile.from_orm">
 <em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_orm</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obj</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Self" title="(in Python v3.14)"><span class="pre">Self</span></a></span></span><a class="headerlink" href="#phenotypic.correction.ColorCheckerProfile.from_orm" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
@@ -3359,6 +3464,42 @@ a [<cite>PydanticSerializationError</cite>][pydantic_core.PydanticSerializationE
 </dl>
 </dd></dl>
 
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.correction.ColorCheckerProfile.to_json">
+<span class="sig-name descname"><span class="pre">to_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/phenotypic/correction/_color_correction/_color_checker_profile.html#ColorCheckerProfile.to_json"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.correction.ColorCheckerProfile.to_json" title="Link to this definition">#</a></dt>
+<dd><p>Serialize this profile to JSON.</p>
+<p>Serializes via <code class="xref py py-meth docutils literal notranslate"><span class="pre">model_dump_json()</span></code>: the fitted
+<code class="docutils literal notranslate"><span class="pre">correction_matrix</span></code> is emitted as a nested list, <code class="docutils literal notranslate"><span class="pre">capture_metadata</span></code>
+as a nested object, and the transient <code class="docutils literal notranslate"><span class="pre">rois</span></code> / <code class="docutils literal notranslate"><span class="pre">_image</span></code> fields are
+excluded. Mirrors <code class="xref py py-meth docutils literal notranslate"><span class="pre">ImagePipeline.to_json()</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>filepath</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a><em> | </em><em>None</em>) – Optional path to write the JSON to. When None, the JSON
+string is returned instead. Accepts a <code class="docutils literal notranslate"><span class="pre">str</span></code> or <code class="docutils literal notranslate"><span class="pre">Path</span></code>.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The JSON string when <code class="docutils literal notranslate"><span class="pre">filepath</span></code> is None, otherwise None.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a> | None</p>
+</dd>
+</dl>
+<div class="admonition-example admonition">
+<p class="admonition-title">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.correction</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColorCheckerProfile</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">TemporaryDirectory</span><span class="p">()</span> <span class="k">as</span> <span class="n">d</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="n">p</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;profile.json&quot;</span>
+<span class="gp">... </span>    <span class="n">ColorCheckerProfile</span><span class="p">(</span><span class="n">degree</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="n">loaded</span> <span class="o">=</span> <span class="n">ColorCheckerProfile</span><span class="o">.</span><span class="n">from_json</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">loaded</span><span class="o">.</span><span class="n">degree</span>
+<span class="go">3</span>
+</pre></div>
+</div>
+</div>
+</dd></dl>
+
 <dl class="py attribute">
 <dt class="sig sig-object py" id="id7">
 <span class="sig-name descname"><span class="pre">capture_metadata</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#phenotypic.correction.CaptureMetadata" title="phenotypic.correction.CaptureMetadata"><span class="pre">CaptureMetadata</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></em><a class="headerlink" href="#id7" title="Link to this definition">#</a></dt>
@@ -3645,6 +3786,52 @@ In that case, it will be called later, when the model is rebuilt automatically o
 <dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Self" title="(in Python v3.14)"><em>Self</em></a></p>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.correction.ColorCorrector.from_json">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">json_data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.BaseOperation" title="phenotypic.abc_._base_operation.BaseOperation"><span class="pre">BaseOperation</span></a></span></span><a class="headerlink" href="#phenotypic.correction.ColorCorrector.from_json" title="Link to this definition">#</a></dt>
+<dd><p>Reconstruct an operation from JSON written by <a class="reference internal" href="#phenotypic.correction.ColorCorrector.to_json" title="phenotypic.correction.ColorCorrector.to_json"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_json()</span></code></a>.</p>
+<p>Accepts a JSON string, a path to a JSON file, or a pre-parsed envelope
+dict (same input handling as <code class="xref py py-meth docutils literal notranslate"><span class="pre">ImagePipeline.from_json()</span></code>).
+Polymorphic: <code class="docutils literal notranslate"><span class="pre">ImageOperation.from_json(path)</span></code> returns whatever concrete
+operation the file holds. When called on a narrower subclass, the
+resolved class must be a subclass of it, else a <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#TypeError" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">TypeError</span></code></a> is
+raised.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>json_data</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a>) – A JSON string, path to a JSON file, or envelope dict.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The reconstructed operation instance.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#AttributeError" title="(in Python v3.14)"><strong>AttributeError</strong></a> – If the recorded class cannot be resolved in the
+    <code class="docutils literal notranslate"><span class="pre">phenotypic</span></code> namespace.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#TypeError" title="(in Python v3.14)"><strong>TypeError</strong></a> – If called on a concrete subclass and the file holds a
+    class that is not a subclass of it.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.BaseOperation" title="phenotypic.abc_._base_operation.BaseOperation"><em>BaseOperation</em></a></p>
+</dd>
+</dl>
+<div class="admonition-example admonition">
+<p class="admonition-title">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageOperation</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect</span><span class="w"> </span><span class="kn">import</span> <span class="n">OtsuDetector</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">TemporaryDirectory</span><span class="p">()</span> <span class="k">as</span> <span class="n">d</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="n">p</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;op.json&quot;</span>
+<span class="gp">... </span>    <span class="n">OtsuDetector</span><span class="p">()</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="n">loaded</span> <span class="o">=</span> <span class="n">ImageOperation</span><span class="o">.</span><span class="n">from_json</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>  <span class="c1"># polymorphic</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">type</span><span class="p">(</span><span class="n">loaded</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span>
+<span class="go">&#39;OtsuDetector&#39;</span>
+</pre></div>
+</div>
+</div>
 </dd></dl>
 
 <dl class="py method">
@@ -4331,6 +4518,44 @@ correction matrix so <code class="xref py py-meth docutils literal notranslate">
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.correction.ColorCorrector.to_json">
+<span class="sig-name descname"><span class="pre">to_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.correction.ColorCorrector.to_json" title="Link to this definition">#</a></dt>
+<dd><p>Serialize this operation to JSON.</p>
+<p>Captures the operation as a <code class="docutils literal notranslate"><span class="pre">{&quot;class&quot;,</span> <span class="pre">&quot;params&quot;}</span></code> envelope: <code class="docutils literal notranslate"><span class="pre">params</span></code>
+is <code class="docutils literal notranslate"><span class="pre">model_dump(mode=&quot;json&quot;)</span></code> (every declared field, including nested
+operations and raw arrays; <code class="docutils literal notranslate"><span class="pre">PrivateAttr</span></code> state such as loggers and
+timing is excluded automatically), and <code class="docutils literal notranslate"><span class="pre">class</span></code> records the concrete
+class name so <a class="reference internal" href="#phenotypic.correction.ColorCorrector.from_json" title="phenotypic.correction.ColorCorrector.from_json"><code class="xref py py-meth docutils literal notranslate"><span class="pre">from_json()</span></code></a> can rebuild the right subclass. This
+mirrors <code class="xref py py-meth docutils literal notranslate"><span class="pre">ImagePipeline.to_json()</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>filepath</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a><em> | </em><em>None</em>) – Optional path to write the JSON to. When None, the JSON
+string is returned instead. Accepts a <code class="docutils literal notranslate"><span class="pre">str</span></code> or <code class="docutils literal notranslate"><span class="pre">Path</span></code>.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The JSON string when <code class="docutils literal notranslate"><span class="pre">filepath</span></code> is None, otherwise None.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a> | None</p>
+</dd>
+</dl>
+<div class="admonition-example admonition">
+<p class="admonition-title">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect</span><span class="w"> </span><span class="kn">import</span> <span class="n">OtsuDetector</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">TemporaryDirectory</span><span class="p">()</span> <span class="k">as</span> <span class="n">d</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="n">p</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;op.json&quot;</span>
+<span class="gp">... </span>    <span class="n">OtsuDetector</span><span class="p">(</span><span class="n">ignore_zeros</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="n">loaded</span> <span class="o">=</span> <span class="n">OtsuDetector</span><span class="o">.</span><span class="n">from_json</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">loaded</span><span class="o">.</span><span class="n">ignore_zeros</span>
+<span class="go">True</span>
+</pre></div>
+</div>
+</div>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.correction.ColorCorrector.widget">
 <span class="sig-name descname"><span class="pre">widget</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Image</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Widget</span></span></span><a class="headerlink" href="#phenotypic.correction.ColorCorrector.widget" title="Link to this definition">#</a></dt>
 <dd><p>Return (and optionally display) the root widget.</p>
@@ -4632,6 +4857,52 @@ In that case, it will be called later, when the model is rebuilt automatically o
 <dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Self" title="(in Python v3.14)"><em>Self</em></a></p>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.correction.ColorDenoise.from_json">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">json_data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.BaseOperation" title="phenotypic.abc_._base_operation.BaseOperation"><span class="pre">BaseOperation</span></a></span></span><a class="headerlink" href="#phenotypic.correction.ColorDenoise.from_json" title="Link to this definition">#</a></dt>
+<dd><p>Reconstruct an operation from JSON written by <a class="reference internal" href="#phenotypic.correction.ColorDenoise.to_json" title="phenotypic.correction.ColorDenoise.to_json"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_json()</span></code></a>.</p>
+<p>Accepts a JSON string, a path to a JSON file, or a pre-parsed envelope
+dict (same input handling as <code class="xref py py-meth docutils literal notranslate"><span class="pre">ImagePipeline.from_json()</span></code>).
+Polymorphic: <code class="docutils literal notranslate"><span class="pre">ImageOperation.from_json(path)</span></code> returns whatever concrete
+operation the file holds. When called on a narrower subclass, the
+resolved class must be a subclass of it, else a <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#TypeError" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">TypeError</span></code></a> is
+raised.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>json_data</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a>) – A JSON string, path to a JSON file, or envelope dict.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The reconstructed operation instance.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#AttributeError" title="(in Python v3.14)"><strong>AttributeError</strong></a> – If the recorded class cannot be resolved in the
+    <code class="docutils literal notranslate"><span class="pre">phenotypic</span></code> namespace.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#TypeError" title="(in Python v3.14)"><strong>TypeError</strong></a> – If called on a concrete subclass and the file holds a
+    class that is not a subclass of it.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.BaseOperation" title="phenotypic.abc_._base_operation.BaseOperation"><em>BaseOperation</em></a></p>
+</dd>
+</dl>
+<div class="admonition-example admonition">
+<p class="admonition-title">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageOperation</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect</span><span class="w"> </span><span class="kn">import</span> <span class="n">OtsuDetector</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">TemporaryDirectory</span><span class="p">()</span> <span class="k">as</span> <span class="n">d</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="n">p</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;op.json&quot;</span>
+<span class="gp">... </span>    <span class="n">OtsuDetector</span><span class="p">()</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="n">loaded</span> <span class="o">=</span> <span class="n">ImageOperation</span><span class="o">.</span><span class="n">from_json</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>  <span class="c1"># polymorphic</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">type</span><span class="p">(</span><span class="n">loaded</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span>
+<span class="go">&#39;OtsuDetector&#39;</span>
+</pre></div>
+</div>
+</div>
 </dd></dl>
 
 <dl class="py method">
@@ -5299,6 +5570,44 @@ logged.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.correction.ColorDenoise.to_json">
+<span class="sig-name descname"><span class="pre">to_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.correction.ColorDenoise.to_json" title="Link to this definition">#</a></dt>
+<dd><p>Serialize this operation to JSON.</p>
+<p>Captures the operation as a <code class="docutils literal notranslate"><span class="pre">{&quot;class&quot;,</span> <span class="pre">&quot;params&quot;}</span></code> envelope: <code class="docutils literal notranslate"><span class="pre">params</span></code>
+is <code class="docutils literal notranslate"><span class="pre">model_dump(mode=&quot;json&quot;)</span></code> (every declared field, including nested
+operations and raw arrays; <code class="docutils literal notranslate"><span class="pre">PrivateAttr</span></code> state such as loggers and
+timing is excluded automatically), and <code class="docutils literal notranslate"><span class="pre">class</span></code> records the concrete
+class name so <a class="reference internal" href="#phenotypic.correction.ColorDenoise.from_json" title="phenotypic.correction.ColorDenoise.from_json"><code class="xref py py-meth docutils literal notranslate"><span class="pre">from_json()</span></code></a> can rebuild the right subclass. This
+mirrors <code class="xref py py-meth docutils literal notranslate"><span class="pre">ImagePipeline.to_json()</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>filepath</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a><em> | </em><em>None</em>) – Optional path to write the JSON to. When None, the JSON
+string is returned instead. Accepts a <code class="docutils literal notranslate"><span class="pre">str</span></code> or <code class="docutils literal notranslate"><span class="pre">Path</span></code>.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The JSON string when <code class="docutils literal notranslate"><span class="pre">filepath</span></code> is None, otherwise None.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a> | None</p>
+</dd>
+</dl>
+<div class="admonition-example admonition">
+<p class="admonition-title">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect</span><span class="w"> </span><span class="kn">import</span> <span class="n">OtsuDetector</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">TemporaryDirectory</span><span class="p">()</span> <span class="k">as</span> <span class="n">d</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="n">p</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;op.json&quot;</span>
+<span class="gp">... </span>    <span class="n">OtsuDetector</span><span class="p">(</span><span class="n">ignore_zeros</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="n">loaded</span> <span class="o">=</span> <span class="n">OtsuDetector</span><span class="o">.</span><span class="n">from_json</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">loaded</span><span class="o">.</span><span class="n">ignore_zeros</span>
+<span class="go">True</span>
+</pre></div>
+</div>
+</div>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.correction.ColorDenoise.widget">
 <span class="sig-name descname"><span class="pre">widget</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Image</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Widget</span></span></span><a class="headerlink" href="#phenotypic.correction.ColorDenoise.widget" title="Link to this definition">#</a></dt>
 <dd><p>Return (and optionally display) the root widget.</p>
@@ -5537,6 +5846,52 @@ In that case, it will be called later, when the model is rebuilt automatically o
 <dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Self" title="(in Python v3.14)"><em>Self</em></a></p>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.correction.GridAligner.from_json">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">json_data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.BaseOperation" title="phenotypic.abc_._base_operation.BaseOperation"><span class="pre">BaseOperation</span></a></span></span><a class="headerlink" href="#phenotypic.correction.GridAligner.from_json" title="Link to this definition">#</a></dt>
+<dd><p>Reconstruct an operation from JSON written by <a class="reference internal" href="#phenotypic.correction.GridAligner.to_json" title="phenotypic.correction.GridAligner.to_json"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_json()</span></code></a>.</p>
+<p>Accepts a JSON string, a path to a JSON file, or a pre-parsed envelope
+dict (same input handling as <code class="xref py py-meth docutils literal notranslate"><span class="pre">ImagePipeline.from_json()</span></code>).
+Polymorphic: <code class="docutils literal notranslate"><span class="pre">ImageOperation.from_json(path)</span></code> returns whatever concrete
+operation the file holds. When called on a narrower subclass, the
+resolved class must be a subclass of it, else a <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#TypeError" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">TypeError</span></code></a> is
+raised.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>json_data</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a>) – A JSON string, path to a JSON file, or envelope dict.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The reconstructed operation instance.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#AttributeError" title="(in Python v3.14)"><strong>AttributeError</strong></a> – If the recorded class cannot be resolved in the
+    <code class="docutils literal notranslate"><span class="pre">phenotypic</span></code> namespace.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#TypeError" title="(in Python v3.14)"><strong>TypeError</strong></a> – If called on a concrete subclass and the file holds a
+    class that is not a subclass of it.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.BaseOperation" title="phenotypic.abc_._base_operation.BaseOperation"><em>BaseOperation</em></a></p>
+</dd>
+</dl>
+<div class="admonition-example admonition">
+<p class="admonition-title">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageOperation</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect</span><span class="w"> </span><span class="kn">import</span> <span class="n">OtsuDetector</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">TemporaryDirectory</span><span class="p">()</span> <span class="k">as</span> <span class="n">d</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="n">p</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;op.json&quot;</span>
+<span class="gp">... </span>    <span class="n">OtsuDetector</span><span class="p">()</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="n">loaded</span> <span class="o">=</span> <span class="n">ImageOperation</span><span class="o">.</span><span class="n">from_json</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>  <span class="c1"># polymorphic</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">type</span><span class="p">(</span><span class="n">loaded</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span>
+<span class="go">&#39;OtsuDetector&#39;</span>
+</pre></div>
+</div>
+</div>
 </dd></dl>
 
 <dl class="py method">
@@ -6207,6 +6562,44 @@ logged.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.correction.GridAligner.to_json">
+<span class="sig-name descname"><span class="pre">to_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.correction.GridAligner.to_json" title="Link to this definition">#</a></dt>
+<dd><p>Serialize this operation to JSON.</p>
+<p>Captures the operation as a <code class="docutils literal notranslate"><span class="pre">{&quot;class&quot;,</span> <span class="pre">&quot;params&quot;}</span></code> envelope: <code class="docutils literal notranslate"><span class="pre">params</span></code>
+is <code class="docutils literal notranslate"><span class="pre">model_dump(mode=&quot;json&quot;)</span></code> (every declared field, including nested
+operations and raw arrays; <code class="docutils literal notranslate"><span class="pre">PrivateAttr</span></code> state such as loggers and
+timing is excluded automatically), and <code class="docutils literal notranslate"><span class="pre">class</span></code> records the concrete
+class name so <a class="reference internal" href="#phenotypic.correction.GridAligner.from_json" title="phenotypic.correction.GridAligner.from_json"><code class="xref py py-meth docutils literal notranslate"><span class="pre">from_json()</span></code></a> can rebuild the right subclass. This
+mirrors <code class="xref py py-meth docutils literal notranslate"><span class="pre">ImagePipeline.to_json()</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>filepath</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a><em> | </em><em>None</em>) – Optional path to write the JSON to. When None, the JSON
+string is returned instead. Accepts a <code class="docutils literal notranslate"><span class="pre">str</span></code> or <code class="docutils literal notranslate"><span class="pre">Path</span></code>.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The JSON string when <code class="docutils literal notranslate"><span class="pre">filepath</span></code> is None, otherwise None.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a> | None</p>
+</dd>
+</dl>
+<div class="admonition-example admonition">
+<p class="admonition-title">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect</span><span class="w"> </span><span class="kn">import</span> <span class="n">OtsuDetector</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">TemporaryDirectory</span><span class="p">()</span> <span class="k">as</span> <span class="n">d</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="n">p</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;op.json&quot;</span>
+<span class="gp">... </span>    <span class="n">OtsuDetector</span><span class="p">(</span><span class="n">ignore_zeros</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="n">loaded</span> <span class="o">=</span> <span class="n">OtsuDetector</span><span class="o">.</span><span class="n">from_json</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">loaded</span><span class="o">.</span><span class="n">ignore_zeros</span>
+<span class="go">True</span>
+</pre></div>
+</div>
+</div>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.correction.GridAligner.widget">
 <span class="sig-name descname"><span class="pre">widget</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Image</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Widget</span></span></span><a class="headerlink" href="#phenotypic.correction.GridAligner.widget" title="Link to this definition">#</a></dt>
 <dd><p>Return (and optionally display) the root widget.</p>
@@ -6406,6 +6799,52 @@ In that case, it will be called later, when the model is rebuilt automatically o
 <dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Self" title="(in Python v3.14)"><em>Self</em></a></p>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.correction.ImageCropper.from_json">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">json_data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.BaseOperation" title="phenotypic.abc_._base_operation.BaseOperation"><span class="pre">BaseOperation</span></a></span></span><a class="headerlink" href="#phenotypic.correction.ImageCropper.from_json" title="Link to this definition">#</a></dt>
+<dd><p>Reconstruct an operation from JSON written by <a class="reference internal" href="#phenotypic.correction.ImageCropper.to_json" title="phenotypic.correction.ImageCropper.to_json"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_json()</span></code></a>.</p>
+<p>Accepts a JSON string, a path to a JSON file, or a pre-parsed envelope
+dict (same input handling as <code class="xref py py-meth docutils literal notranslate"><span class="pre">ImagePipeline.from_json()</span></code>).
+Polymorphic: <code class="docutils literal notranslate"><span class="pre">ImageOperation.from_json(path)</span></code> returns whatever concrete
+operation the file holds. When called on a narrower subclass, the
+resolved class must be a subclass of it, else a <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#TypeError" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">TypeError</span></code></a> is
+raised.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>json_data</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a>) – A JSON string, path to a JSON file, or envelope dict.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The reconstructed operation instance.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#AttributeError" title="(in Python v3.14)"><strong>AttributeError</strong></a> – If the recorded class cannot be resolved in the
+    <code class="docutils literal notranslate"><span class="pre">phenotypic</span></code> namespace.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#TypeError" title="(in Python v3.14)"><strong>TypeError</strong></a> – If called on a concrete subclass and the file holds a
+    class that is not a subclass of it.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.BaseOperation" title="phenotypic.abc_._base_operation.BaseOperation"><em>BaseOperation</em></a></p>
+</dd>
+</dl>
+<div class="admonition-example admonition">
+<p class="admonition-title">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageOperation</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect</span><span class="w"> </span><span class="kn">import</span> <span class="n">OtsuDetector</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">TemporaryDirectory</span><span class="p">()</span> <span class="k">as</span> <span class="n">d</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="n">p</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;op.json&quot;</span>
+<span class="gp">... </span>    <span class="n">OtsuDetector</span><span class="p">()</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="n">loaded</span> <span class="o">=</span> <span class="n">ImageOperation</span><span class="o">.</span><span class="n">from_json</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>  <span class="c1"># polymorphic</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">type</span><span class="p">(</span><span class="n">loaded</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span>
+<span class="go">&#39;OtsuDetector&#39;</span>
+</pre></div>
+</div>
+</div>
 </dd></dl>
 
 <dl class="py method">
@@ -7073,6 +7512,44 @@ logged.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.correction.ImageCropper.to_json">
+<span class="sig-name descname"><span class="pre">to_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.correction.ImageCropper.to_json" title="Link to this definition">#</a></dt>
+<dd><p>Serialize this operation to JSON.</p>
+<p>Captures the operation as a <code class="docutils literal notranslate"><span class="pre">{&quot;class&quot;,</span> <span class="pre">&quot;params&quot;}</span></code> envelope: <code class="docutils literal notranslate"><span class="pre">params</span></code>
+is <code class="docutils literal notranslate"><span class="pre">model_dump(mode=&quot;json&quot;)</span></code> (every declared field, including nested
+operations and raw arrays; <code class="docutils literal notranslate"><span class="pre">PrivateAttr</span></code> state such as loggers and
+timing is excluded automatically), and <code class="docutils literal notranslate"><span class="pre">class</span></code> records the concrete
+class name so <a class="reference internal" href="#phenotypic.correction.ImageCropper.from_json" title="phenotypic.correction.ImageCropper.from_json"><code class="xref py py-meth docutils literal notranslate"><span class="pre">from_json()</span></code></a> can rebuild the right subclass. This
+mirrors <code class="xref py py-meth docutils literal notranslate"><span class="pre">ImagePipeline.to_json()</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>filepath</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a><em> | </em><em>None</em>) – Optional path to write the JSON to. When None, the JSON
+string is returned instead. Accepts a <code class="docutils literal notranslate"><span class="pre">str</span></code> or <code class="docutils literal notranslate"><span class="pre">Path</span></code>.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The JSON string when <code class="docutils literal notranslate"><span class="pre">filepath</span></code> is None, otherwise None.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a> | None</p>
+</dd>
+</dl>
+<div class="admonition-example admonition">
+<p class="admonition-title">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect</span><span class="w"> </span><span class="kn">import</span> <span class="n">OtsuDetector</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">TemporaryDirectory</span><span class="p">()</span> <span class="k">as</span> <span class="n">d</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="n">p</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;op.json&quot;</span>
+<span class="gp">... </span>    <span class="n">OtsuDetector</span><span class="p">(</span><span class="n">ignore_zeros</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="n">loaded</span> <span class="o">=</span> <span class="n">OtsuDetector</span><span class="o">.</span><span class="n">from_json</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">loaded</span><span class="o">.</span><span class="n">ignore_zeros</span>
+<span class="go">True</span>
+</pre></div>
+</div>
+</div>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.correction.ImageCropper.widget">
 <span class="sig-name descname"><span class="pre">widget</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Image</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Widget</span></span></span><a class="headerlink" href="#phenotypic.correction.ImageCropper.widget" title="Link to this definition">#</a></dt>
 <dd><p>Return (and optionally display) the root widget.</p>
@@ -7308,6 +7785,52 @@ In that case, it will be called later, when the model is rebuilt automatically o
 <dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Self" title="(in Python v3.14)"><em>Self</em></a></p>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.correction.ImagePadder.from_json">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">json_data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.BaseOperation" title="phenotypic.abc_._base_operation.BaseOperation"><span class="pre">BaseOperation</span></a></span></span><a class="headerlink" href="#phenotypic.correction.ImagePadder.from_json" title="Link to this definition">#</a></dt>
+<dd><p>Reconstruct an operation from JSON written by <a class="reference internal" href="#phenotypic.correction.ImagePadder.to_json" title="phenotypic.correction.ImagePadder.to_json"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_json()</span></code></a>.</p>
+<p>Accepts a JSON string, a path to a JSON file, or a pre-parsed envelope
+dict (same input handling as <code class="xref py py-meth docutils literal notranslate"><span class="pre">ImagePipeline.from_json()</span></code>).
+Polymorphic: <code class="docutils literal notranslate"><span class="pre">ImageOperation.from_json(path)</span></code> returns whatever concrete
+operation the file holds. When called on a narrower subclass, the
+resolved class must be a subclass of it, else a <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#TypeError" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">TypeError</span></code></a> is
+raised.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>json_data</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a>) – A JSON string, path to a JSON file, or envelope dict.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The reconstructed operation instance.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#AttributeError" title="(in Python v3.14)"><strong>AttributeError</strong></a> – If the recorded class cannot be resolved in the
+    <code class="docutils literal notranslate"><span class="pre">phenotypic</span></code> namespace.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#TypeError" title="(in Python v3.14)"><strong>TypeError</strong></a> – If called on a concrete subclass and the file holds a
+    class that is not a subclass of it.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.BaseOperation" title="phenotypic.abc_._base_operation.BaseOperation"><em>BaseOperation</em></a></p>
+</dd>
+</dl>
+<div class="admonition-example admonition">
+<p class="admonition-title">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageOperation</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect</span><span class="w"> </span><span class="kn">import</span> <span class="n">OtsuDetector</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">TemporaryDirectory</span><span class="p">()</span> <span class="k">as</span> <span class="n">d</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="n">p</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;op.json&quot;</span>
+<span class="gp">... </span>    <span class="n">OtsuDetector</span><span class="p">()</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="n">loaded</span> <span class="o">=</span> <span class="n">ImageOperation</span><span class="o">.</span><span class="n">from_json</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>  <span class="c1"># polymorphic</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">type</span><span class="p">(</span><span class="n">loaded</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span>
+<span class="go">&#39;OtsuDetector&#39;</span>
+</pre></div>
+</div>
+</div>
 </dd></dl>
 
 <dl class="py method">
@@ -7975,6 +8498,44 @@ logged.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.correction.ImagePadder.to_json">
+<span class="sig-name descname"><span class="pre">to_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.correction.ImagePadder.to_json" title="Link to this definition">#</a></dt>
+<dd><p>Serialize this operation to JSON.</p>
+<p>Captures the operation as a <code class="docutils literal notranslate"><span class="pre">{&quot;class&quot;,</span> <span class="pre">&quot;params&quot;}</span></code> envelope: <code class="docutils literal notranslate"><span class="pre">params</span></code>
+is <code class="docutils literal notranslate"><span class="pre">model_dump(mode=&quot;json&quot;)</span></code> (every declared field, including nested
+operations and raw arrays; <code class="docutils literal notranslate"><span class="pre">PrivateAttr</span></code> state such as loggers and
+timing is excluded automatically), and <code class="docutils literal notranslate"><span class="pre">class</span></code> records the concrete
+class name so <a class="reference internal" href="#phenotypic.correction.ImagePadder.from_json" title="phenotypic.correction.ImagePadder.from_json"><code class="xref py py-meth docutils literal notranslate"><span class="pre">from_json()</span></code></a> can rebuild the right subclass. This
+mirrors <code class="xref py py-meth docutils literal notranslate"><span class="pre">ImagePipeline.to_json()</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>filepath</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a><em> | </em><em>None</em>) – Optional path to write the JSON to. When None, the JSON
+string is returned instead. Accepts a <code class="docutils literal notranslate"><span class="pre">str</span></code> or <code class="docutils literal notranslate"><span class="pre">Path</span></code>.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The JSON string when <code class="docutils literal notranslate"><span class="pre">filepath</span></code> is None, otherwise None.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a> | None</p>
+</dd>
+</dl>
+<div class="admonition-example admonition">
+<p class="admonition-title">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect</span><span class="w"> </span><span class="kn">import</span> <span class="n">OtsuDetector</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">TemporaryDirectory</span><span class="p">()</span> <span class="k">as</span> <span class="n">d</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="n">p</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;op.json&quot;</span>
+<span class="gp">... </span>    <span class="n">OtsuDetector</span><span class="p">(</span><span class="n">ignore_zeros</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="n">loaded</span> <span class="o">=</span> <span class="n">OtsuDetector</span><span class="o">.</span><span class="n">from_json</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">loaded</span><span class="o">.</span><span class="n">ignore_zeros</span>
+<span class="go">True</span>
+</pre></div>
+</div>
+</div>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.correction.ImagePadder.widget">
 <span class="sig-name descname"><span class="pre">widget</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Image</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Widget</span></span></span><a class="headerlink" href="#phenotypic.correction.ImagePadder.widget" title="Link to this definition">#</a></dt>
 <dd><p>Return (and optionally display) the root widget.</p>
@@ -8233,6 +8794,52 @@ In that case, it will be called later, when the model is rebuilt automatically o
 <dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Self" title="(in Python v3.14)"><em>Self</em></a></p>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.correction.StableDenoise.from_json">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">json_data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.BaseOperation" title="phenotypic.abc_._base_operation.BaseOperation"><span class="pre">BaseOperation</span></a></span></span><a class="headerlink" href="#phenotypic.correction.StableDenoise.from_json" title="Link to this definition">#</a></dt>
+<dd><p>Reconstruct an operation from JSON written by <a class="reference internal" href="#phenotypic.correction.StableDenoise.to_json" title="phenotypic.correction.StableDenoise.to_json"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_json()</span></code></a>.</p>
+<p>Accepts a JSON string, a path to a JSON file, or a pre-parsed envelope
+dict (same input handling as <code class="xref py py-meth docutils literal notranslate"><span class="pre">ImagePipeline.from_json()</span></code>).
+Polymorphic: <code class="docutils literal notranslate"><span class="pre">ImageOperation.from_json(path)</span></code> returns whatever concrete
+operation the file holds. When called on a narrower subclass, the
+resolved class must be a subclass of it, else a <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#TypeError" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">TypeError</span></code></a> is
+raised.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>json_data</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a>) – A JSON string, path to a JSON file, or envelope dict.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The reconstructed operation instance.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#AttributeError" title="(in Python v3.14)"><strong>AttributeError</strong></a> – If the recorded class cannot be resolved in the
+    <code class="docutils literal notranslate"><span class="pre">phenotypic</span></code> namespace.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#TypeError" title="(in Python v3.14)"><strong>TypeError</strong></a> – If called on a concrete subclass and the file holds a
+    class that is not a subclass of it.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.BaseOperation" title="phenotypic.abc_._base_operation.BaseOperation"><em>BaseOperation</em></a></p>
+</dd>
+</dl>
+<div class="admonition-example admonition">
+<p class="admonition-title">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageOperation</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect</span><span class="w"> </span><span class="kn">import</span> <span class="n">OtsuDetector</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">TemporaryDirectory</span><span class="p">()</span> <span class="k">as</span> <span class="n">d</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="n">p</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;op.json&quot;</span>
+<span class="gp">... </span>    <span class="n">OtsuDetector</span><span class="p">()</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="n">loaded</span> <span class="o">=</span> <span class="n">ImageOperation</span><span class="o">.</span><span class="n">from_json</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>  <span class="c1"># polymorphic</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">type</span><span class="p">(</span><span class="n">loaded</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span>
+<span class="go">&#39;OtsuDetector&#39;</span>
+</pre></div>
+</div>
+</div>
 </dd></dl>
 
 <dl class="py method">
@@ -8900,6 +9507,44 @@ logged.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.correction.StableDenoise.to_json">
+<span class="sig-name descname"><span class="pre">to_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.correction.StableDenoise.to_json" title="Link to this definition">#</a></dt>
+<dd><p>Serialize this operation to JSON.</p>
+<p>Captures the operation as a <code class="docutils literal notranslate"><span class="pre">{&quot;class&quot;,</span> <span class="pre">&quot;params&quot;}</span></code> envelope: <code class="docutils literal notranslate"><span class="pre">params</span></code>
+is <code class="docutils literal notranslate"><span class="pre">model_dump(mode=&quot;json&quot;)</span></code> (every declared field, including nested
+operations and raw arrays; <code class="docutils literal notranslate"><span class="pre">PrivateAttr</span></code> state such as loggers and
+timing is excluded automatically), and <code class="docutils literal notranslate"><span class="pre">class</span></code> records the concrete
+class name so <a class="reference internal" href="#phenotypic.correction.StableDenoise.from_json" title="phenotypic.correction.StableDenoise.from_json"><code class="xref py py-meth docutils literal notranslate"><span class="pre">from_json()</span></code></a> can rebuild the right subclass. This
+mirrors <code class="xref py py-meth docutils literal notranslate"><span class="pre">ImagePipeline.to_json()</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>filepath</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a><em> | </em><em>None</em>) – Optional path to write the JSON to. When None, the JSON
+string is returned instead. Accepts a <code class="docutils literal notranslate"><span class="pre">str</span></code> or <code class="docutils literal notranslate"><span class="pre">Path</span></code>.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The JSON string when <code class="docutils literal notranslate"><span class="pre">filepath</span></code> is None, otherwise None.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a> | None</p>
+</dd>
+</dl>
+<div class="admonition-example admonition">
+<p class="admonition-title">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect</span><span class="w"> </span><span class="kn">import</span> <span class="n">OtsuDetector</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">TemporaryDirectory</span><span class="p">()</span> <span class="k">as</span> <span class="n">d</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="n">p</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;op.json&quot;</span>
+<span class="gp">... </span>    <span class="n">OtsuDetector</span><span class="p">(</span><span class="n">ignore_zeros</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="n">loaded</span> <span class="o">=</span> <span class="n">OtsuDetector</span><span class="o">.</span><span class="n">from_json</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">loaded</span><span class="o">.</span><span class="n">ignore_zeros</span>
+<span class="go">True</span>
+</pre></div>
+</div>
+</div>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.correction.StableDenoise.widget">
 <span class="sig-name descname"><span class="pre">widget</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Image</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Widget</span></span></span><a class="headerlink" href="#phenotypic.correction.StableDenoise.widget" title="Link to this definition">#</a></dt>
 <dd><p>Return (and optionally display) the root widget.</p>
@@ -9145,6 +9790,52 @@ In that case, it will be called later, when the model is rebuilt automatically o
 <dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Self" title="(in Python v3.14)"><em>Self</em></a></p>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.correction.VisuShrinkCorrector.from_json">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">json_data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.BaseOperation" title="phenotypic.abc_._base_operation.BaseOperation"><span class="pre">BaseOperation</span></a></span></span><a class="headerlink" href="#phenotypic.correction.VisuShrinkCorrector.from_json" title="Link to this definition">#</a></dt>
+<dd><p>Reconstruct an operation from JSON written by <a class="reference internal" href="#phenotypic.correction.VisuShrinkCorrector.to_json" title="phenotypic.correction.VisuShrinkCorrector.to_json"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_json()</span></code></a>.</p>
+<p>Accepts a JSON string, a path to a JSON file, or a pre-parsed envelope
+dict (same input handling as <code class="xref py py-meth docutils literal notranslate"><span class="pre">ImagePipeline.from_json()</span></code>).
+Polymorphic: <code class="docutils literal notranslate"><span class="pre">ImageOperation.from_json(path)</span></code> returns whatever concrete
+operation the file holds. When called on a narrower subclass, the
+resolved class must be a subclass of it, else a <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#TypeError" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">TypeError</span></code></a> is
+raised.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>json_data</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a>) – A JSON string, path to a JSON file, or envelope dict.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The reconstructed operation instance.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#AttributeError" title="(in Python v3.14)"><strong>AttributeError</strong></a> – If the recorded class cannot be resolved in the
+    <code class="docutils literal notranslate"><span class="pre">phenotypic</span></code> namespace.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#TypeError" title="(in Python v3.14)"><strong>TypeError</strong></a> – If called on a concrete subclass and the file holds a
+    class that is not a subclass of it.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.BaseOperation" title="phenotypic.abc_._base_operation.BaseOperation"><em>BaseOperation</em></a></p>
+</dd>
+</dl>
+<div class="admonition-example admonition">
+<p class="admonition-title">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageOperation</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect</span><span class="w"> </span><span class="kn">import</span> <span class="n">OtsuDetector</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">TemporaryDirectory</span><span class="p">()</span> <span class="k">as</span> <span class="n">d</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="n">p</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;op.json&quot;</span>
+<span class="gp">... </span>    <span class="n">OtsuDetector</span><span class="p">()</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="n">loaded</span> <span class="o">=</span> <span class="n">ImageOperation</span><span class="o">.</span><span class="n">from_json</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>  <span class="c1"># polymorphic</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">type</span><span class="p">(</span><span class="n">loaded</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span>
+<span class="go">&#39;OtsuDetector&#39;</span>
+</pre></div>
+</div>
+</div>
 </dd></dl>
 
 <dl class="py method">
@@ -9812,6 +10503,44 @@ logged.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.correction.VisuShrinkCorrector.to_json">
+<span class="sig-name descname"><span class="pre">to_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.correction.VisuShrinkCorrector.to_json" title="Link to this definition">#</a></dt>
+<dd><p>Serialize this operation to JSON.</p>
+<p>Captures the operation as a <code class="docutils literal notranslate"><span class="pre">{&quot;class&quot;,</span> <span class="pre">&quot;params&quot;}</span></code> envelope: <code class="docutils literal notranslate"><span class="pre">params</span></code>
+is <code class="docutils literal notranslate"><span class="pre">model_dump(mode=&quot;json&quot;)</span></code> (every declared field, including nested
+operations and raw arrays; <code class="docutils literal notranslate"><span class="pre">PrivateAttr</span></code> state such as loggers and
+timing is excluded automatically), and <code class="docutils literal notranslate"><span class="pre">class</span></code> records the concrete
+class name so <a class="reference internal" href="#phenotypic.correction.VisuShrinkCorrector.from_json" title="phenotypic.correction.VisuShrinkCorrector.from_json"><code class="xref py py-meth docutils literal notranslate"><span class="pre">from_json()</span></code></a> can rebuild the right subclass. This
+mirrors <code class="xref py py-meth docutils literal notranslate"><span class="pre">ImagePipeline.to_json()</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>filepath</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a><em> | </em><em>None</em>) – Optional path to write the JSON to. When None, the JSON
+string is returned instead. Accepts a <code class="docutils literal notranslate"><span class="pre">str</span></code> or <code class="docutils literal notranslate"><span class="pre">Path</span></code>.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The JSON string when <code class="docutils literal notranslate"><span class="pre">filepath</span></code> is None, otherwise None.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a> | None</p>
+</dd>
+</dl>
+<div class="admonition-example admonition">
+<p class="admonition-title">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect</span><span class="w"> </span><span class="kn">import</span> <span class="n">OtsuDetector</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">TemporaryDirectory</span><span class="p">()</span> <span class="k">as</span> <span class="n">d</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="n">p</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;op.json&quot;</span>
+<span class="gp">... </span>    <span class="n">OtsuDetector</span><span class="p">(</span><span class="n">ignore_zeros</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="n">loaded</span> <span class="o">=</span> <span class="n">OtsuDetector</span><span class="o">.</span><span class="n">from_json</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">loaded</span><span class="o">.</span><span class="n">ignore_zeros</span>
+<span class="go">True</span>
+</pre></div>
+</div>
+</div>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.correction.VisuShrinkCorrector.widget">
 <span class="sig-name descname"><span class="pre">widget</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Image</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Widget</span></span></span><a class="headerlink" href="#phenotypic.correction.VisuShrinkCorrector.widget" title="Link to this definition">#</a></dt>
 <dd><p>Return (and optionally display) the root widget.</p>
@@ -9969,6 +10698,7 @@ visualization controls will be added to the widget.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.BayesShrinkCorrector.__pydantic_init_subclass__"><code class="docutils literal notranslate"><span class="pre">BayesShrinkCorrector.__pydantic_init_subclass__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.BayesShrinkCorrector.__pydantic_on_complete__"><code class="docutils literal notranslate"><span class="pre">BayesShrinkCorrector.__pydantic_on_complete__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.BayesShrinkCorrector.construct"><code class="docutils literal notranslate"><span class="pre">BayesShrinkCorrector.construct()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.BayesShrinkCorrector.from_json"><code class="docutils literal notranslate"><span class="pre">BayesShrinkCorrector.from_json()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.BayesShrinkCorrector.from_orm"><code class="docutils literal notranslate"><span class="pre">BayesShrinkCorrector.from_orm()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.BayesShrinkCorrector.model_construct"><code class="docutils literal notranslate"><span class="pre">BayesShrinkCorrector.model_construct()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.BayesShrinkCorrector.model_json_schema"><code class="docutils literal notranslate"><span class="pre">BayesShrinkCorrector.model_json_schema()</span></code></a></li>
@@ -10001,6 +10731,7 @@ visualization controls will be added to the widget.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.BayesShrinkCorrector.model_dump"><code class="docutils literal notranslate"><span class="pre">BayesShrinkCorrector.model_dump()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.BayesShrinkCorrector.model_dump_json"><code class="docutils literal notranslate"><span class="pre">BayesShrinkCorrector.model_dump_json()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.BayesShrinkCorrector.model_post_init"><code class="docutils literal notranslate"><span class="pre">BayesShrinkCorrector.model_post_init()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.BayesShrinkCorrector.to_json"><code class="docutils literal notranslate"><span class="pre">BayesShrinkCorrector.to_json()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.BayesShrinkCorrector.widget"><code class="docutils literal notranslate"><span class="pre">BayesShrinkCorrector.widget()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.BayesShrinkCorrector.clip"><code class="docutils literal notranslate"><span class="pre">BayesShrinkCorrector.clip</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.BayesShrinkCorrector.convert2ycbcr"><code class="docutils literal notranslate"><span class="pre">BayesShrinkCorrector.convert2ycbcr</span></code></a></li>
@@ -10088,6 +10819,7 @@ visualization controls will be added to the widget.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ColorCheckerProfile.__pydantic_init_subclass__"><code class="docutils literal notranslate"><span class="pre">ColorCheckerProfile.__pydantic_init_subclass__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ColorCheckerProfile.__pydantic_on_complete__"><code class="docutils literal notranslate"><span class="pre">ColorCheckerProfile.__pydantic_on_complete__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ColorCheckerProfile.construct"><code class="docutils literal notranslate"><span class="pre">ColorCheckerProfile.construct()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ColorCheckerProfile.from_json"><code class="docutils literal notranslate"><span class="pre">ColorCheckerProfile.from_json()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ColorCheckerProfile.from_orm"><code class="docutils literal notranslate"><span class="pre">ColorCheckerProfile.from_orm()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ColorCheckerProfile.model_construct"><code class="docutils literal notranslate"><span class="pre">ColorCheckerProfile.model_construct()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ColorCheckerProfile.model_json_schema"><code class="docutils literal notranslate"><span class="pre">ColorCheckerProfile.model_json_schema()</span></code></a></li>
@@ -10120,6 +10852,7 @@ visualization controls will be added to the widget.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ColorCheckerProfile.model_dump"><code class="docutils literal notranslate"><span class="pre">ColorCheckerProfile.model_dump()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ColorCheckerProfile.model_dump_json"><code class="docutils literal notranslate"><span class="pre">ColorCheckerProfile.model_dump_json()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ColorCheckerProfile.model_post_init"><code class="docutils literal notranslate"><span class="pre">ColorCheckerProfile.model_post_init()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ColorCheckerProfile.to_json"><code class="docutils literal notranslate"><span class="pre">ColorCheckerProfile.to_json()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id7"><code class="docutils literal notranslate"><span class="pre">ColorCheckerProfile.capture_metadata</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ColorCheckerProfile.checker_type"><code class="docutils literal notranslate"><span class="pre">ColorCheckerProfile.checker_type</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ColorCheckerProfile.core_fraction"><code class="docutils literal notranslate"><span class="pre">ColorCheckerProfile.core_fraction</span></code></a></li>
@@ -10151,6 +10884,7 @@ visualization controls will be added to the widget.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ColorCorrector.__pydantic_init_subclass__"><code class="docutils literal notranslate"><span class="pre">ColorCorrector.__pydantic_init_subclass__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ColorCorrector.__pydantic_on_complete__"><code class="docutils literal notranslate"><span class="pre">ColorCorrector.__pydantic_on_complete__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ColorCorrector.construct"><code class="docutils literal notranslate"><span class="pre">ColorCorrector.construct()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ColorCorrector.from_json"><code class="docutils literal notranslate"><span class="pre">ColorCorrector.from_json()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ColorCorrector.from_orm"><code class="docutils literal notranslate"><span class="pre">ColorCorrector.from_orm()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ColorCorrector.model_construct"><code class="docutils literal notranslate"><span class="pre">ColorCorrector.model_construct()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ColorCorrector.model_json_schema"><code class="docutils literal notranslate"><span class="pre">ColorCorrector.model_json_schema()</span></code></a></li>
@@ -10184,6 +10918,7 @@ visualization controls will be added to the widget.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ColorCorrector.model_dump"><code class="docutils literal notranslate"><span class="pre">ColorCorrector.model_dump()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ColorCorrector.model_dump_json"><code class="docutils literal notranslate"><span class="pre">ColorCorrector.model_dump_json()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ColorCorrector.model_post_init"><code class="docutils literal notranslate"><span class="pre">ColorCorrector.model_post_init()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ColorCorrector.to_json"><code class="docutils literal notranslate"><span class="pre">ColorCorrector.to_json()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ColorCorrector.widget"><code class="docutils literal notranslate"><span class="pre">ColorCorrector.widget()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id11"><code class="docutils literal notranslate"><span class="pre">ColorCorrector.correction_matrix</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id12"><code class="docutils literal notranslate"><span class="pre">ColorCorrector.degree</span></code></a></li>
@@ -10201,6 +10936,7 @@ visualization controls will be added to the widget.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ColorDenoise.__pydantic_init_subclass__"><code class="docutils literal notranslate"><span class="pre">ColorDenoise.__pydantic_init_subclass__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ColorDenoise.__pydantic_on_complete__"><code class="docutils literal notranslate"><span class="pre">ColorDenoise.__pydantic_on_complete__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ColorDenoise.construct"><code class="docutils literal notranslate"><span class="pre">ColorDenoise.construct()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ColorDenoise.from_json"><code class="docutils literal notranslate"><span class="pre">ColorDenoise.from_json()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ColorDenoise.from_orm"><code class="docutils literal notranslate"><span class="pre">ColorDenoise.from_orm()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ColorDenoise.model_construct"><code class="docutils literal notranslate"><span class="pre">ColorDenoise.model_construct()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ColorDenoise.model_json_schema"><code class="docutils literal notranslate"><span class="pre">ColorDenoise.model_json_schema()</span></code></a></li>
@@ -10233,6 +10969,7 @@ visualization controls will be added to the widget.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ColorDenoise.model_dump"><code class="docutils literal notranslate"><span class="pre">ColorDenoise.model_dump()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ColorDenoise.model_dump_json"><code class="docutils literal notranslate"><span class="pre">ColorDenoise.model_dump_json()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ColorDenoise.model_post_init"><code class="docutils literal notranslate"><span class="pre">ColorDenoise.model_post_init()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ColorDenoise.to_json"><code class="docutils literal notranslate"><span class="pre">ColorDenoise.to_json()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ColorDenoise.widget"><code class="docutils literal notranslate"><span class="pre">ColorDenoise.widget()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ColorDenoise.block_size"><code class="docutils literal notranslate"><span class="pre">ColorDenoise.block_size</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ColorDenoise.clip"><code class="docutils literal notranslate"><span class="pre">ColorDenoise.clip</span></code></a></li>
@@ -10254,6 +10991,7 @@ visualization controls will be added to the widget.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.GridAligner.__pydantic_init_subclass__"><code class="docutils literal notranslate"><span class="pre">GridAligner.__pydantic_init_subclass__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.GridAligner.__pydantic_on_complete__"><code class="docutils literal notranslate"><span class="pre">GridAligner.__pydantic_on_complete__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.GridAligner.construct"><code class="docutils literal notranslate"><span class="pre">GridAligner.construct()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.GridAligner.from_json"><code class="docutils literal notranslate"><span class="pre">GridAligner.from_json()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.GridAligner.from_orm"><code class="docutils literal notranslate"><span class="pre">GridAligner.from_orm()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.GridAligner.model_construct"><code class="docutils literal notranslate"><span class="pre">GridAligner.model_construct()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.GridAligner.model_json_schema"><code class="docutils literal notranslate"><span class="pre">GridAligner.model_json_schema()</span></code></a></li>
@@ -10286,6 +11024,7 @@ visualization controls will be added to the widget.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.GridAligner.model_dump"><code class="docutils literal notranslate"><span class="pre">GridAligner.model_dump()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.GridAligner.model_dump_json"><code class="docutils literal notranslate"><span class="pre">GridAligner.model_dump_json()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.GridAligner.model_post_init"><code class="docutils literal notranslate"><span class="pre">GridAligner.model_post_init()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.GridAligner.to_json"><code class="docutils literal notranslate"><span class="pre">GridAligner.to_json()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.GridAligner.widget"><code class="docutils literal notranslate"><span class="pre">GridAligner.widget()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.GridAligner.axis"><code class="docutils literal notranslate"><span class="pre">GridAligner.axis</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.GridAligner.mode"><code class="docutils literal notranslate"><span class="pre">GridAligner.mode</span></code></a></li>
@@ -10301,6 +11040,7 @@ visualization controls will be added to the widget.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ImageCropper.__pydantic_init_subclass__"><code class="docutils literal notranslate"><span class="pre">ImageCropper.__pydantic_init_subclass__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ImageCropper.__pydantic_on_complete__"><code class="docutils literal notranslate"><span class="pre">ImageCropper.__pydantic_on_complete__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ImageCropper.construct"><code class="docutils literal notranslate"><span class="pre">ImageCropper.construct()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ImageCropper.from_json"><code class="docutils literal notranslate"><span class="pre">ImageCropper.from_json()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ImageCropper.from_orm"><code class="docutils literal notranslate"><span class="pre">ImageCropper.from_orm()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ImageCropper.model_construct"><code class="docutils literal notranslate"><span class="pre">ImageCropper.model_construct()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ImageCropper.model_json_schema"><code class="docutils literal notranslate"><span class="pre">ImageCropper.model_json_schema()</span></code></a></li>
@@ -10333,6 +11073,7 @@ visualization controls will be added to the widget.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ImageCropper.model_dump"><code class="docutils literal notranslate"><span class="pre">ImageCropper.model_dump()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ImageCropper.model_dump_json"><code class="docutils literal notranslate"><span class="pre">ImageCropper.model_dump_json()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ImageCropper.model_post_init"><code class="docutils literal notranslate"><span class="pre">ImageCropper.model_post_init()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ImageCropper.to_json"><code class="docutils literal notranslate"><span class="pre">ImageCropper.to_json()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ImageCropper.widget"><code class="docutils literal notranslate"><span class="pre">ImageCropper.widget()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ImageCropper.bottom"><code class="docutils literal notranslate"><span class="pre">ImageCropper.bottom</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ImageCropper.left"><code class="docutils literal notranslate"><span class="pre">ImageCropper.left</span></code></a></li>
@@ -10350,6 +11091,7 @@ visualization controls will be added to the widget.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ImagePadder.__pydantic_init_subclass__"><code class="docutils literal notranslate"><span class="pre">ImagePadder.__pydantic_init_subclass__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ImagePadder.__pydantic_on_complete__"><code class="docutils literal notranslate"><span class="pre">ImagePadder.__pydantic_on_complete__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ImagePadder.construct"><code class="docutils literal notranslate"><span class="pre">ImagePadder.construct()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ImagePadder.from_json"><code class="docutils literal notranslate"><span class="pre">ImagePadder.from_json()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ImagePadder.from_orm"><code class="docutils literal notranslate"><span class="pre">ImagePadder.from_orm()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ImagePadder.model_construct"><code class="docutils literal notranslate"><span class="pre">ImagePadder.model_construct()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ImagePadder.model_json_schema"><code class="docutils literal notranslate"><span class="pre">ImagePadder.model_json_schema()</span></code></a></li>
@@ -10382,6 +11124,7 @@ visualization controls will be added to the widget.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ImagePadder.model_dump"><code class="docutils literal notranslate"><span class="pre">ImagePadder.model_dump()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ImagePadder.model_dump_json"><code class="docutils literal notranslate"><span class="pre">ImagePadder.model_dump_json()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ImagePadder.model_post_init"><code class="docutils literal notranslate"><span class="pre">ImagePadder.model_post_init()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ImagePadder.to_json"><code class="docutils literal notranslate"><span class="pre">ImagePadder.to_json()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ImagePadder.widget"><code class="docutils literal notranslate"><span class="pre">ImagePadder.widget()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ImagePadder.bottom"><code class="docutils literal notranslate"><span class="pre">ImagePadder.bottom</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ImagePadder.constant_value"><code class="docutils literal notranslate"><span class="pre">ImagePadder.constant_value</span></code></a></li>
@@ -10401,6 +11144,7 @@ visualization controls will be added to the widget.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.StableDenoise.__pydantic_init_subclass__"><code class="docutils literal notranslate"><span class="pre">StableDenoise.__pydantic_init_subclass__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.StableDenoise.__pydantic_on_complete__"><code class="docutils literal notranslate"><span class="pre">StableDenoise.__pydantic_on_complete__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.StableDenoise.construct"><code class="docutils literal notranslate"><span class="pre">StableDenoise.construct()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.StableDenoise.from_json"><code class="docutils literal notranslate"><span class="pre">StableDenoise.from_json()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.StableDenoise.from_orm"><code class="docutils literal notranslate"><span class="pre">StableDenoise.from_orm()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.StableDenoise.model_construct"><code class="docutils literal notranslate"><span class="pre">StableDenoise.model_construct()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.StableDenoise.model_json_schema"><code class="docutils literal notranslate"><span class="pre">StableDenoise.model_json_schema()</span></code></a></li>
@@ -10433,6 +11177,7 @@ visualization controls will be added to the widget.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.StableDenoise.model_dump"><code class="docutils literal notranslate"><span class="pre">StableDenoise.model_dump()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.StableDenoise.model_dump_json"><code class="docutils literal notranslate"><span class="pre">StableDenoise.model_dump_json()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.StableDenoise.model_post_init"><code class="docutils literal notranslate"><span class="pre">StableDenoise.model_post_init()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.StableDenoise.to_json"><code class="docutils literal notranslate"><span class="pre">StableDenoise.to_json()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.StableDenoise.widget"><code class="docutils literal notranslate"><span class="pre">StableDenoise.widget()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.StableDenoise.block_size"><code class="docutils literal notranslate"><span class="pre">StableDenoise.block_size</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.StableDenoise.gain"><code class="docutils literal notranslate"><span class="pre">StableDenoise.gain</span></code></a></li>
@@ -10452,6 +11197,7 @@ visualization controls will be added to the widget.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.VisuShrinkCorrector.__pydantic_init_subclass__"><code class="docutils literal notranslate"><span class="pre">VisuShrinkCorrector.__pydantic_init_subclass__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.VisuShrinkCorrector.__pydantic_on_complete__"><code class="docutils literal notranslate"><span class="pre">VisuShrinkCorrector.__pydantic_on_complete__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.VisuShrinkCorrector.construct"><code class="docutils literal notranslate"><span class="pre">VisuShrinkCorrector.construct()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.VisuShrinkCorrector.from_json"><code class="docutils literal notranslate"><span class="pre">VisuShrinkCorrector.from_json()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.VisuShrinkCorrector.from_orm"><code class="docutils literal notranslate"><span class="pre">VisuShrinkCorrector.from_orm()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.VisuShrinkCorrector.model_construct"><code class="docutils literal notranslate"><span class="pre">VisuShrinkCorrector.model_construct()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.VisuShrinkCorrector.model_json_schema"><code class="docutils literal notranslate"><span class="pre">VisuShrinkCorrector.model_json_schema()</span></code></a></li>
@@ -10484,6 +11230,7 @@ visualization controls will be added to the widget.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.VisuShrinkCorrector.model_dump"><code class="docutils literal notranslate"><span class="pre">VisuShrinkCorrector.model_dump()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.VisuShrinkCorrector.model_dump_json"><code class="docutils literal notranslate"><span class="pre">VisuShrinkCorrector.model_dump_json()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.VisuShrinkCorrector.model_post_init"><code class="docutils literal notranslate"><span class="pre">VisuShrinkCorrector.model_post_init()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.VisuShrinkCorrector.to_json"><code class="docutils literal notranslate"><span class="pre">VisuShrinkCorrector.to_json()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.VisuShrinkCorrector.widget"><code class="docutils literal notranslate"><span class="pre">VisuShrinkCorrector.widget()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.VisuShrinkCorrector.clip"><code class="docutils literal notranslate"><span class="pre">VisuShrinkCorrector.clip</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.VisuShrinkCorrector.convert2ycbcr"><code class="docutils literal notranslate"><span class="pre">VisuShrinkCorrector.convert2ycbcr</span></code></a></li>

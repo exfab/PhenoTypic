@@ -21,6 +21,7 @@ phenotypic.enhance.VisuShrinkEnhancer
       ~VisuShrinkEnhancer.construct
       ~VisuShrinkEnhancer.copy
       ~VisuShrinkEnhancer.dict
+      ~VisuShrinkEnhancer.from_json
       ~VisuShrinkEnhancer.from_orm
       ~VisuShrinkEnhancer.json
       ~VisuShrinkEnhancer.model_construct
@@ -39,6 +40,7 @@ phenotypic.enhance.VisuShrinkEnhancer
       ~VisuShrinkEnhancer.parse_raw
       ~VisuShrinkEnhancer.schema
       ~VisuShrinkEnhancer.schema_json
+      ~VisuShrinkEnhancer.to_json
       ~VisuShrinkEnhancer.update_forward_refs
       ~VisuShrinkEnhancer.validate
       ~VisuShrinkEnhancer.widget

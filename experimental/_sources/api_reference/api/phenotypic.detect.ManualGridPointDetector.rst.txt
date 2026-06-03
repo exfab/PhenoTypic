@@ -21,6 +21,7 @@ phenotypic.detect.ManualGridPointDetector
       ~ManualGridPointDetector.construct
       ~ManualGridPointDetector.copy
       ~ManualGridPointDetector.dict
+      ~ManualGridPointDetector.from_json
       ~ManualGridPointDetector.from_orm
       ~ManualGridPointDetector.json
       ~ManualGridPointDetector.model_construct
@@ -40,6 +41,7 @@ phenotypic.detect.ManualGridPointDetector
       ~ManualGridPointDetector.parse_raw
       ~ManualGridPointDetector.schema
       ~ManualGridPointDetector.schema_json
+      ~ManualGridPointDetector.to_json
       ~ManualGridPointDetector.update_forward_refs
       ~ManualGridPointDetector.validate
       ~ManualGridPointDetector.widget

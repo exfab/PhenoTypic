@@ -21,6 +21,7 @@ phenotypic.detect.MinimumDetector
       ~MinimumDetector.construct
       ~MinimumDetector.copy
       ~MinimumDetector.dict
+      ~MinimumDetector.from_json
       ~MinimumDetector.from_orm
       ~MinimumDetector.json
       ~MinimumDetector.model_construct
@@ -39,6 +40,7 @@ phenotypic.detect.MinimumDetector
       ~MinimumDetector.parse_raw
       ~MinimumDetector.schema
       ~MinimumDetector.schema_json
+      ~MinimumDetector.to_json
       ~MinimumDetector.update_forward_refs
       ~MinimumDetector.validate
       ~MinimumDetector.widget

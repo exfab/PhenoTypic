@@ -21,6 +21,7 @@ phenotypic.detect.OtsuDetector
       ~OtsuDetector.construct
       ~OtsuDetector.copy
       ~OtsuDetector.dict
+      ~OtsuDetector.from_json
       ~OtsuDetector.from_orm
       ~OtsuDetector.json
       ~OtsuDetector.model_construct
@@ -39,6 +40,7 @@ phenotypic.detect.OtsuDetector
       ~OtsuDetector.parse_raw
       ~OtsuDetector.schema
       ~OtsuDetector.schema_json
+      ~OtsuDetector.to_json
       ~OtsuDetector.update_forward_refs
       ~OtsuDetector.validate
       ~OtsuDetector.widget

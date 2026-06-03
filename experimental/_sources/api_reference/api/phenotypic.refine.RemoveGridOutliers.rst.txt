@@ -21,6 +21,7 @@ phenotypic.refine.RemoveGridOutliers
       ~RemoveGridOutliers.construct
       ~RemoveGridOutliers.copy
       ~RemoveGridOutliers.dict
+      ~RemoveGridOutliers.from_json
       ~RemoveGridOutliers.from_orm
       ~RemoveGridOutliers.json
       ~RemoveGridOutliers.model_construct
@@ -39,6 +40,7 @@ phenotypic.refine.RemoveGridOutliers
       ~RemoveGridOutliers.parse_raw
       ~RemoveGridOutliers.schema
       ~RemoveGridOutliers.schema_json
+      ~RemoveGridOutliers.to_json
       ~RemoveGridOutliers.update_forward_refs
       ~RemoveGridOutliers.validate
       ~RemoveGridOutliers.widget

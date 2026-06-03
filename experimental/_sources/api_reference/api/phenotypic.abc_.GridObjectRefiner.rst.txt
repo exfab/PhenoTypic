@@ -21,6 +21,7 @@ phenotypic.abc\_.GridObjectRefiner
       ~GridObjectRefiner.construct
       ~GridObjectRefiner.copy
       ~GridObjectRefiner.dict
+      ~GridObjectRefiner.from_json
       ~GridObjectRefiner.from_orm
       ~GridObjectRefiner.json
       ~GridObjectRefiner.model_construct
@@ -39,6 +40,7 @@ phenotypic.abc\_.GridObjectRefiner
       ~GridObjectRefiner.parse_raw
       ~GridObjectRefiner.schema
       ~GridObjectRefiner.schema_json
+      ~GridObjectRefiner.to_json
       ~GridObjectRefiner.update_forward_refs
       ~GridObjectRefiner.validate
       ~GridObjectRefiner.widget

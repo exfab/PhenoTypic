@@ -21,6 +21,7 @@ phenotypic.refine.RemoveBorderObjects
       ~RemoveBorderObjects.construct
       ~RemoveBorderObjects.copy
       ~RemoveBorderObjects.dict
+      ~RemoveBorderObjects.from_json
       ~RemoveBorderObjects.from_orm
       ~RemoveBorderObjects.json
       ~RemoveBorderObjects.model_construct
@@ -39,6 +40,7 @@ phenotypic.refine.RemoveBorderObjects
       ~RemoveBorderObjects.parse_raw
       ~RemoveBorderObjects.schema
       ~RemoveBorderObjects.schema_json
+      ~RemoveBorderObjects.to_json
       ~RemoveBorderObjects.update_forward_refs
       ~RemoveBorderObjects.validate
       ~RemoveBorderObjects.widget

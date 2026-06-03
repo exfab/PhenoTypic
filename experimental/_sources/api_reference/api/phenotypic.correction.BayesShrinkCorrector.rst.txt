@@ -21,6 +21,7 @@ phenotypic.correction.BayesShrinkCorrector
       ~BayesShrinkCorrector.construct
       ~BayesShrinkCorrector.copy
       ~BayesShrinkCorrector.dict
+      ~BayesShrinkCorrector.from_json
       ~BayesShrinkCorrector.from_orm
       ~BayesShrinkCorrector.json
       ~BayesShrinkCorrector.model_construct
@@ -39,6 +40,7 @@ phenotypic.correction.BayesShrinkCorrector
       ~BayesShrinkCorrector.parse_raw
       ~BayesShrinkCorrector.schema
       ~BayesShrinkCorrector.schema_json
+      ~BayesShrinkCorrector.to_json
       ~BayesShrinkCorrector.update_forward_refs
       ~BayesShrinkCorrector.validate
       ~BayesShrinkCorrector.widget

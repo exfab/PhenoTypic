@@ -21,6 +21,7 @@ phenotypic.grid.GridApply
       ~GridApply.construct
       ~GridApply.copy
       ~GridApply.dict
+      ~GridApply.from_json
       ~GridApply.from_orm
       ~GridApply.json
       ~GridApply.model_construct
@@ -39,6 +40,7 @@ phenotypic.grid.GridApply
       ~GridApply.parse_raw
       ~GridApply.schema
       ~GridApply.schema_json
+      ~GridApply.to_json
       ~GridApply.update_forward_refs
       ~GridApply.validate
       ~GridApply.widget

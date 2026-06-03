@@ -21,6 +21,7 @@ phenotypic.detect.MeanDetector
       ~MeanDetector.construct
       ~MeanDetector.copy
       ~MeanDetector.dict
+      ~MeanDetector.from_json
       ~MeanDetector.from_orm
       ~MeanDetector.json
       ~MeanDetector.model_construct
@@ -39,6 +40,7 @@ phenotypic.detect.MeanDetector
       ~MeanDetector.parse_raw
       ~MeanDetector.schema
       ~MeanDetector.schema_json
+      ~MeanDetector.to_json
       ~MeanDetector.update_forward_refs
       ~MeanDetector.validate
       ~MeanDetector.widget

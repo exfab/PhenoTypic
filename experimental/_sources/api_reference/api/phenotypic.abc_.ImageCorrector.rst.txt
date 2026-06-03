@@ -21,6 +21,7 @@ phenotypic.abc\_.ImageCorrector
       ~ImageCorrector.construct
       ~ImageCorrector.copy
       ~ImageCorrector.dict
+      ~ImageCorrector.from_json
       ~ImageCorrector.from_orm
       ~ImageCorrector.json
       ~ImageCorrector.model_construct
@@ -39,6 +40,7 @@ phenotypic.abc\_.ImageCorrector
       ~ImageCorrector.parse_raw
       ~ImageCorrector.schema
       ~ImageCorrector.schema_json
+      ~ImageCorrector.to_json
       ~ImageCorrector.update_forward_refs
       ~ImageCorrector.validate
       ~ImageCorrector.widget

@@ -21,6 +21,7 @@ phenotypic.refine.ReduceSectionsByLine
       ~ReduceSectionsByLine.construct
       ~ReduceSectionsByLine.copy
       ~ReduceSectionsByLine.dict
+      ~ReduceSectionsByLine.from_json
       ~ReduceSectionsByLine.from_orm
       ~ReduceSectionsByLine.json
       ~ReduceSectionsByLine.model_construct
@@ -39,6 +40,7 @@ phenotypic.refine.ReduceSectionsByLine
       ~ReduceSectionsByLine.parse_raw
       ~ReduceSectionsByLine.schema
       ~ReduceSectionsByLine.schema_json
+      ~ReduceSectionsByLine.to_json
       ~ReduceSectionsByLine.update_forward_refs
       ~ReduceSectionsByLine.validate
       ~ReduceSectionsByLine.widget

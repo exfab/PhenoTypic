@@ -21,6 +21,7 @@ phenotypic.enhance.ImageInverter
       ~ImageInverter.construct
       ~ImageInverter.copy
       ~ImageInverter.dict
+      ~ImageInverter.from_json
       ~ImageInverter.from_orm
       ~ImageInverter.json
       ~ImageInverter.model_construct
@@ -39,6 +40,7 @@ phenotypic.enhance.ImageInverter
       ~ImageInverter.parse_raw
       ~ImageInverter.schema
       ~ImageInverter.schema_json
+      ~ImageInverter.to_json
       ~ImageInverter.update_forward_refs
       ~ImageInverter.validate
       ~ImageInverter.widget

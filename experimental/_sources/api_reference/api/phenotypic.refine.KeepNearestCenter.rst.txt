@@ -21,6 +21,7 @@ phenotypic.refine.KeepNearestCenter
       ~KeepNearestCenter.construct
       ~KeepNearestCenter.copy
       ~KeepNearestCenter.dict
+      ~KeepNearestCenter.from_json
       ~KeepNearestCenter.from_orm
       ~KeepNearestCenter.json
       ~KeepNearestCenter.model_construct
@@ -39,6 +40,7 @@ phenotypic.refine.KeepNearestCenter
       ~KeepNearestCenter.parse_raw
       ~KeepNearestCenter.schema
       ~KeepNearestCenter.schema_json
+      ~KeepNearestCenter.to_json
       ~KeepNearestCenter.update_forward_refs
       ~KeepNearestCenter.validate
       ~KeepNearestCenter.widget

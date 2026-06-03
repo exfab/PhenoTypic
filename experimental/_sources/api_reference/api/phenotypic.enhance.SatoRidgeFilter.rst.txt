@@ -21,6 +21,7 @@ phenotypic.enhance.SatoRidgeFilter
       ~SatoRidgeFilter.construct
       ~SatoRidgeFilter.copy
       ~SatoRidgeFilter.dict
+      ~SatoRidgeFilter.from_json
       ~SatoRidgeFilter.from_orm
       ~SatoRidgeFilter.json
       ~SatoRidgeFilter.model_construct
@@ -39,6 +40,7 @@ phenotypic.enhance.SatoRidgeFilter
       ~SatoRidgeFilter.parse_raw
       ~SatoRidgeFilter.schema
       ~SatoRidgeFilter.schema_json
+      ~SatoRidgeFilter.to_json
       ~SatoRidgeFilter.update_forward_refs
       ~SatoRidgeFilter.validate
       ~SatoRidgeFilter.widget

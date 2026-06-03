@@ -21,6 +21,7 @@ phenotypic.refine.GridOversizedObjectRemover
       ~GridOversizedObjectRemover.construct
       ~GridOversizedObjectRemover.copy
       ~GridOversizedObjectRemover.dict
+      ~GridOversizedObjectRemover.from_json
       ~GridOversizedObjectRemover.from_orm
       ~GridOversizedObjectRemover.json
       ~GridOversizedObjectRemover.model_construct
@@ -39,6 +40,7 @@ phenotypic.refine.GridOversizedObjectRemover
       ~GridOversizedObjectRemover.parse_raw
       ~GridOversizedObjectRemover.schema
       ~GridOversizedObjectRemover.schema_json
+      ~GridOversizedObjectRemover.to_json
       ~GridOversizedObjectRemover.update_forward_refs
       ~GridOversizedObjectRemover.validate
       ~GridOversizedObjectRemover.widget

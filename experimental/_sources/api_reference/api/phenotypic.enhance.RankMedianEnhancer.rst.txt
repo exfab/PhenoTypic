@@ -21,6 +21,7 @@ phenotypic.enhance.RankMedianEnhancer
       ~RankMedianEnhancer.construct
       ~RankMedianEnhancer.copy
       ~RankMedianEnhancer.dict
+      ~RankMedianEnhancer.from_json
       ~RankMedianEnhancer.from_orm
       ~RankMedianEnhancer.json
       ~RankMedianEnhancer.model_construct
@@ -39,6 +40,7 @@ phenotypic.enhance.RankMedianEnhancer
       ~RankMedianEnhancer.parse_raw
       ~RankMedianEnhancer.schema
       ~RankMedianEnhancer.schema_json
+      ~RankMedianEnhancer.to_json
       ~RankMedianEnhancer.update_forward_refs
       ~RankMedianEnhancer.validate
       ~RankMedianEnhancer.widget

@@ -21,6 +21,7 @@ phenotypic.refine.GridAlignmentRefiner
       ~GridAlignmentRefiner.construct
       ~GridAlignmentRefiner.copy
       ~GridAlignmentRefiner.dict
+      ~GridAlignmentRefiner.from_json
       ~GridAlignmentRefiner.from_orm
       ~GridAlignmentRefiner.json
       ~GridAlignmentRefiner.model_construct
@@ -39,6 +40,7 @@ phenotypic.refine.GridAlignmentRefiner
       ~GridAlignmentRefiner.parse_raw
       ~GridAlignmentRefiner.schema
       ~GridAlignmentRefiner.schema_json
+      ~GridAlignmentRefiner.to_json
       ~GridAlignmentRefiner.update_forward_refs
       ~GridAlignmentRefiner.validate
       ~GridAlignmentRefiner.widget

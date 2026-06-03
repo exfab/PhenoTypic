@@ -21,6 +21,7 @@ phenotypic.abc\_.ImageEnhancer
       ~ImageEnhancer.construct
       ~ImageEnhancer.copy
       ~ImageEnhancer.dict
+      ~ImageEnhancer.from_json
       ~ImageEnhancer.from_orm
       ~ImageEnhancer.json
       ~ImageEnhancer.model_construct
@@ -39,6 +40,7 @@ phenotypic.abc\_.ImageEnhancer
       ~ImageEnhancer.parse_raw
       ~ImageEnhancer.schema
       ~ImageEnhancer.schema_json
+      ~ImageEnhancer.to_json
       ~ImageEnhancer.update_forward_refs
       ~ImageEnhancer.validate
       ~ImageEnhancer.widget

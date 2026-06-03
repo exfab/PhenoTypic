@@ -21,6 +21,7 @@ phenotypic.enhance.FlattenIllumination
       ~FlattenIllumination.construct
       ~FlattenIllumination.copy
       ~FlattenIllumination.dict
+      ~FlattenIllumination.from_json
       ~FlattenIllumination.from_orm
       ~FlattenIllumination.json
       ~FlattenIllumination.model_construct
@@ -39,6 +40,7 @@ phenotypic.enhance.FlattenIllumination
       ~FlattenIllumination.parse_raw
       ~FlattenIllumination.schema
       ~FlattenIllumination.schema_json
+      ~FlattenIllumination.to_json
       ~FlattenIllumination.update_forward_refs
       ~FlattenIllumination.validate
       ~FlattenIllumination.widget

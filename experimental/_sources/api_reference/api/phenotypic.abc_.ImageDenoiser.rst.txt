@@ -21,6 +21,7 @@ phenotypic.abc\_.ImageDenoiser
       ~ImageDenoiser.construct
       ~ImageDenoiser.copy
       ~ImageDenoiser.dict
+      ~ImageDenoiser.from_json
       ~ImageDenoiser.from_orm
       ~ImageDenoiser.json
       ~ImageDenoiser.model_construct
@@ -39,6 +40,7 @@ phenotypic.abc\_.ImageDenoiser
       ~ImageDenoiser.parse_raw
       ~ImageDenoiser.schema
       ~ImageDenoiser.schema_json
+      ~ImageDenoiser.to_json
       ~ImageDenoiser.update_forward_refs
       ~ImageDenoiser.validate
       ~ImageDenoiser.widget

@@ -21,6 +21,7 @@ phenotypic.enhance.MedianFilter
       ~MedianFilter.construct
       ~MedianFilter.copy
       ~MedianFilter.dict
+      ~MedianFilter.from_json
       ~MedianFilter.from_orm
       ~MedianFilter.json
       ~MedianFilter.model_construct
@@ -39,6 +40,7 @@ phenotypic.enhance.MedianFilter
       ~MedianFilter.parse_raw
       ~MedianFilter.schema
       ~MedianFilter.schema_json
+      ~MedianFilter.to_json
       ~MedianFilter.update_forward_refs
       ~MedianFilter.validate
       ~MedianFilter.widget

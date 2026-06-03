@@ -21,6 +21,7 @@ phenotypic.detect.CompositeDetector
       ~CompositeDetector.construct
       ~CompositeDetector.copy
       ~CompositeDetector.dict
+      ~CompositeDetector.from_json
       ~CompositeDetector.from_orm
       ~CompositeDetector.json
       ~CompositeDetector.model_construct
@@ -39,6 +40,7 @@ phenotypic.detect.CompositeDetector
       ~CompositeDetector.parse_raw
       ~CompositeDetector.schema
       ~CompositeDetector.schema_json
+      ~CompositeDetector.to_json
       ~CompositeDetector.update_forward_refs
       ~CompositeDetector.validate
       ~CompositeDetector.widget

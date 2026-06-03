@@ -21,6 +21,7 @@ phenotypic.abc\_.PostMeasurement
       ~PostMeasurement.construct
       ~PostMeasurement.copy
       ~PostMeasurement.dict
+      ~PostMeasurement.from_json
       ~PostMeasurement.from_orm
       ~PostMeasurement.json
       ~PostMeasurement.model_construct
@@ -39,6 +40,7 @@ phenotypic.abc\_.PostMeasurement
       ~PostMeasurement.parse_raw
       ~PostMeasurement.schema
       ~PostMeasurement.schema_json
+      ~PostMeasurement.to_json
       ~PostMeasurement.update_forward_refs
       ~PostMeasurement.validate
    

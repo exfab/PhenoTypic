@@ -22,6 +22,7 @@ phenotypic.correction.ColorCheckerProfile
       ~ColorCheckerProfile.dashboard
       ~ColorCheckerProfile.dict
       ~ColorCheckerProfile.fit
+      ~ColorCheckerProfile.from_json
       ~ColorCheckerProfile.from_orm
       ~ColorCheckerProfile.json
       ~ColorCheckerProfile.model_construct
@@ -40,6 +41,7 @@ phenotypic.correction.ColorCheckerProfile
       ~ColorCheckerProfile.parse_raw
       ~ColorCheckerProfile.schema
       ~ColorCheckerProfile.schema_json
+      ~ColorCheckerProfile.to_json
       ~ColorCheckerProfile.update_forward_refs
       ~ColorCheckerProfile.validate
    

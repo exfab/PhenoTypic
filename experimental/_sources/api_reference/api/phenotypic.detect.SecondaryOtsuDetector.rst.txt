@@ -21,6 +21,7 @@ phenotypic.detect.SecondaryOtsuDetector
       ~SecondaryOtsuDetector.construct
       ~SecondaryOtsuDetector.copy
       ~SecondaryOtsuDetector.dict
+      ~SecondaryOtsuDetector.from_json
       ~SecondaryOtsuDetector.from_orm
       ~SecondaryOtsuDetector.json
       ~SecondaryOtsuDetector.model_construct
@@ -39,6 +40,7 @@ phenotypic.detect.SecondaryOtsuDetector
       ~SecondaryOtsuDetector.parse_raw
       ~SecondaryOtsuDetector.schema
       ~SecondaryOtsuDetector.schema_json
+      ~SecondaryOtsuDetector.to_json
       ~SecondaryOtsuDetector.update_forward_refs
       ~SecondaryOtsuDetector.validate
       ~SecondaryOtsuDetector.widget

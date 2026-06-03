@@ -21,6 +21,7 @@ phenotypic.detect.RankOtsuDetector
       ~RankOtsuDetector.construct
       ~RankOtsuDetector.copy
       ~RankOtsuDetector.dict
+      ~RankOtsuDetector.from_json
       ~RankOtsuDetector.from_orm
       ~RankOtsuDetector.json
       ~RankOtsuDetector.model_construct
@@ -39,6 +40,7 @@ phenotypic.detect.RankOtsuDetector
       ~RankOtsuDetector.parse_raw
       ~RankOtsuDetector.schema
       ~RankOtsuDetector.schema_json
+      ~RankOtsuDetector.to_json
       ~RankOtsuDetector.update_forward_refs
       ~RankOtsuDetector.validate
       ~RankOtsuDetector.widget

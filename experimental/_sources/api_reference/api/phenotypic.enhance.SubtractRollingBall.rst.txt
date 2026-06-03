@@ -21,6 +21,7 @@ phenotypic.enhance.SubtractRollingBall
       ~SubtractRollingBall.construct
       ~SubtractRollingBall.copy
       ~SubtractRollingBall.dict
+      ~SubtractRollingBall.from_json
       ~SubtractRollingBall.from_orm
       ~SubtractRollingBall.json
       ~SubtractRollingBall.model_construct
@@ -39,6 +40,7 @@ phenotypic.enhance.SubtractRollingBall
       ~SubtractRollingBall.parse_raw
       ~SubtractRollingBall.schema
       ~SubtractRollingBall.schema_json
+      ~SubtractRollingBall.to_json
       ~SubtractRollingBall.update_forward_refs
       ~SubtractRollingBall.validate
       ~SubtractRollingBall.widget

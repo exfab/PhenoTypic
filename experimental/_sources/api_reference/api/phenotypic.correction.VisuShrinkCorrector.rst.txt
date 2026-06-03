@@ -21,6 +21,7 @@ phenotypic.correction.VisuShrinkCorrector
       ~VisuShrinkCorrector.construct
       ~VisuShrinkCorrector.copy
       ~VisuShrinkCorrector.dict
+      ~VisuShrinkCorrector.from_json
       ~VisuShrinkCorrector.from_orm
       ~VisuShrinkCorrector.json
       ~VisuShrinkCorrector.model_construct
@@ -39,6 +40,7 @@ phenotypic.correction.VisuShrinkCorrector
       ~VisuShrinkCorrector.parse_raw
       ~VisuShrinkCorrector.schema
       ~VisuShrinkCorrector.schema_json
+      ~VisuShrinkCorrector.to_json
       ~VisuShrinkCorrector.update_forward_refs
       ~VisuShrinkCorrector.validate
       ~VisuShrinkCorrector.widget

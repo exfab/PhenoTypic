@@ -21,6 +21,7 @@ phenotypic.enhance.EnhanceLocalContrast
       ~EnhanceLocalContrast.construct
       ~EnhanceLocalContrast.copy
       ~EnhanceLocalContrast.dict
+      ~EnhanceLocalContrast.from_json
       ~EnhanceLocalContrast.from_orm
       ~EnhanceLocalContrast.json
       ~EnhanceLocalContrast.model_construct
@@ -39,6 +40,7 @@ phenotypic.enhance.EnhanceLocalContrast
       ~EnhanceLocalContrast.parse_raw
       ~EnhanceLocalContrast.schema
       ~EnhanceLocalContrast.schema_json
+      ~EnhanceLocalContrast.to_json
       ~EnhanceLocalContrast.update_forward_refs
       ~EnhanceLocalContrast.validate
       ~EnhanceLocalContrast.widget

@@ -21,6 +21,7 @@ phenotypic.enhance.SubtractGaussian
       ~SubtractGaussian.construct
       ~SubtractGaussian.copy
       ~SubtractGaussian.dict
+      ~SubtractGaussian.from_json
       ~SubtractGaussian.from_orm
       ~SubtractGaussian.json
       ~SubtractGaussian.model_construct
@@ -39,6 +40,7 @@ phenotypic.enhance.SubtractGaussian
       ~SubtractGaussian.parse_raw
       ~SubtractGaussian.schema
       ~SubtractGaussian.schema_json
+      ~SubtractGaussian.to_json
       ~SubtractGaussian.update_forward_refs
       ~SubtractGaussian.validate
       ~SubtractGaussian.widget

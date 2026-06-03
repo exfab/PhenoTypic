@@ -21,6 +21,7 @@ phenotypic.abc\_.ThresholdDetector
       ~ThresholdDetector.construct
       ~ThresholdDetector.copy
       ~ThresholdDetector.dict
+      ~ThresholdDetector.from_json
       ~ThresholdDetector.from_orm
       ~ThresholdDetector.json
       ~ThresholdDetector.model_construct
@@ -39,6 +40,7 @@ phenotypic.abc\_.ThresholdDetector
       ~ThresholdDetector.parse_raw
       ~ThresholdDetector.schema
       ~ThresholdDetector.schema_json
+      ~ThresholdDetector.to_json
       ~ThresholdDetector.update_forward_refs
       ~ThresholdDetector.validate
       ~ThresholdDetector.widget

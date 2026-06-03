@@ -21,6 +21,7 @@ phenotypic.refine.ManualRefine
       ~ManualRefine.construct
       ~ManualRefine.copy
       ~ManualRefine.dict
+      ~ManualRefine.from_json
       ~ManualRefine.from_orm
       ~ManualRefine.json
       ~ManualRefine.model_construct
@@ -40,6 +41,7 @@ phenotypic.refine.ManualRefine
       ~ManualRefine.parse_raw
       ~ManualRefine.schema
       ~ManualRefine.schema_json
+      ~ManualRefine.to_json
       ~ManualRefine.update_forward_refs
       ~ManualRefine.validate
       ~ManualRefine.widget

@@ -22,6 +22,7 @@ phenotypic.correction.ColorCorrector
       ~ColorCorrector.copy
       ~ColorCorrector.dashboard
       ~ColorCorrector.dict
+      ~ColorCorrector.from_json
       ~ColorCorrector.from_orm
       ~ColorCorrector.json
       ~ColorCorrector.model_construct
@@ -40,6 +41,7 @@ phenotypic.correction.ColorCorrector
       ~ColorCorrector.parse_raw
       ~ColorCorrector.schema
       ~ColorCorrector.schema_json
+      ~ColorCorrector.to_json
       ~ColorCorrector.update_forward_refs
       ~ColorCorrector.validate
       ~ColorCorrector.widget

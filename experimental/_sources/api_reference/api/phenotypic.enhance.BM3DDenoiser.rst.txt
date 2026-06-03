@@ -21,6 +21,7 @@ phenotypic.enhance.BM3DDenoiser
       ~BM3DDenoiser.construct
       ~BM3DDenoiser.copy
       ~BM3DDenoiser.dict
+      ~BM3DDenoiser.from_json
       ~BM3DDenoiser.from_orm
       ~BM3DDenoiser.json
       ~BM3DDenoiser.model_construct
@@ -39,6 +40,7 @@ phenotypic.enhance.BM3DDenoiser
       ~BM3DDenoiser.parse_raw
       ~BM3DDenoiser.schema
       ~BM3DDenoiser.schema_json
+      ~BM3DDenoiser.to_json
       ~BM3DDenoiser.update_forward_refs
       ~BM3DDenoiser.validate
       ~BM3DDenoiser.widget

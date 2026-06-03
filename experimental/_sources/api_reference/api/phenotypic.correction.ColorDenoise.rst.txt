@@ -21,6 +21,7 @@ phenotypic.correction.ColorDenoise
       ~ColorDenoise.construct
       ~ColorDenoise.copy
       ~ColorDenoise.dict
+      ~ColorDenoise.from_json
       ~ColorDenoise.from_orm
       ~ColorDenoise.json
       ~ColorDenoise.model_construct
@@ -39,6 +40,7 @@ phenotypic.correction.ColorDenoise
       ~ColorDenoise.parse_raw
       ~ColorDenoise.schema
       ~ColorDenoise.schema_json
+      ~ColorDenoise.to_json
       ~ColorDenoise.update_forward_refs
       ~ColorDenoise.validate
       ~ColorDenoise.widget

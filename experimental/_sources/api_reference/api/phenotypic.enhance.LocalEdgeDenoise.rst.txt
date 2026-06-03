@@ -21,6 +21,7 @@ phenotypic.enhance.LocalEdgeDenoise
       ~LocalEdgeDenoise.construct
       ~LocalEdgeDenoise.copy
       ~LocalEdgeDenoise.dict
+      ~LocalEdgeDenoise.from_json
       ~LocalEdgeDenoise.from_orm
       ~LocalEdgeDenoise.json
       ~LocalEdgeDenoise.model_construct
@@ -39,6 +40,7 @@ phenotypic.enhance.LocalEdgeDenoise
       ~LocalEdgeDenoise.parse_raw
       ~LocalEdgeDenoise.schema
       ~LocalEdgeDenoise.schema_json
+      ~LocalEdgeDenoise.to_json
       ~LocalEdgeDenoise.update_forward_refs
       ~LocalEdgeDenoise.validate
       ~LocalEdgeDenoise.widget

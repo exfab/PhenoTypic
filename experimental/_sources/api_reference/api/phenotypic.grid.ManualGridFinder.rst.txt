@@ -20,6 +20,7 @@ phenotypic.grid.ManualGridFinder
       ~ManualGridFinder.construct
       ~ManualGridFinder.copy
       ~ManualGridFinder.dict
+      ~ManualGridFinder.from_json
       ~ManualGridFinder.from_orm
       ~ManualGridFinder.get_col_edges
       ~ManualGridFinder.get_row_edges
@@ -41,6 +42,7 @@ phenotypic.grid.ManualGridFinder
       ~ManualGridFinder.parse_raw
       ~ManualGridFinder.schema
       ~ManualGridFinder.schema_json
+      ~ManualGridFinder.to_json
       ~ManualGridFinder.update_forward_refs
       ~ManualGridFinder.validate
    

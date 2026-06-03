@@ -21,6 +21,7 @@ phenotypic.abc\_.GridOperation
       ~GridOperation.construct
       ~GridOperation.copy
       ~GridOperation.dict
+      ~GridOperation.from_json
       ~GridOperation.from_orm
       ~GridOperation.json
       ~GridOperation.model_construct
@@ -39,6 +40,7 @@ phenotypic.abc\_.GridOperation
       ~GridOperation.parse_raw
       ~GridOperation.schema
       ~GridOperation.schema_json
+      ~GridOperation.to_json
       ~GridOperation.update_forward_refs
       ~GridOperation.validate
       ~GridOperation.widget

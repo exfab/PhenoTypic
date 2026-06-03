@@ -21,6 +21,7 @@ phenotypic.refine.KeepSectionLargest
       ~KeepSectionLargest.construct
       ~KeepSectionLargest.copy
       ~KeepSectionLargest.dict
+      ~KeepSectionLargest.from_json
       ~KeepSectionLargest.from_orm
       ~KeepSectionLargest.json
       ~KeepSectionLargest.model_construct
@@ -39,6 +40,7 @@ phenotypic.refine.KeepSectionLargest
       ~KeepSectionLargest.parse_raw
       ~KeepSectionLargest.schema
       ~KeepSectionLargest.schema_json
+      ~KeepSectionLargest.to_json
       ~KeepSectionLargest.update_forward_refs
       ~KeepSectionLargest.validate
       ~KeepSectionLargest.widget

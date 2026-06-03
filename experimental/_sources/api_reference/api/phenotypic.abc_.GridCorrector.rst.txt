@@ -21,6 +21,7 @@ phenotypic.abc\_.GridCorrector
       ~GridCorrector.construct
       ~GridCorrector.copy
       ~GridCorrector.dict
+      ~GridCorrector.from_json
       ~GridCorrector.from_orm
       ~GridCorrector.json
       ~GridCorrector.model_construct
@@ -39,6 +40,7 @@ phenotypic.abc\_.GridCorrector
       ~GridCorrector.parse_raw
       ~GridCorrector.schema
       ~GridCorrector.schema_json
+      ~GridCorrector.to_json
       ~GridCorrector.update_forward_refs
       ~GridCorrector.validate
       ~GridCorrector.widget

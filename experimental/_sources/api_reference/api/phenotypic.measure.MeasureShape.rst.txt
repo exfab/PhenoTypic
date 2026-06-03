@@ -20,6 +20,7 @@ phenotypic.measure.MeasureShape
       ~MeasureShape.construct
       ~MeasureShape.copy
       ~MeasureShape.dict
+      ~MeasureShape.from_json
       ~MeasureShape.from_orm
       ~MeasureShape.json
       ~MeasureShape.measure
@@ -39,6 +40,7 @@ phenotypic.measure.MeasureShape
       ~MeasureShape.parse_raw
       ~MeasureShape.schema
       ~MeasureShape.schema_json
+      ~MeasureShape.to_json
       ~MeasureShape.update_forward_refs
       ~MeasureShape.validate
    

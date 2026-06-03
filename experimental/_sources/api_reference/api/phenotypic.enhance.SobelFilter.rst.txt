@@ -21,6 +21,7 @@ phenotypic.enhance.SobelFilter
       ~SobelFilter.construct
       ~SobelFilter.copy
       ~SobelFilter.dict
+      ~SobelFilter.from_json
       ~SobelFilter.from_orm
       ~SobelFilter.json
       ~SobelFilter.model_construct
@@ -39,6 +40,7 @@ phenotypic.enhance.SobelFilter
       ~SobelFilter.parse_raw
       ~SobelFilter.schema
       ~SobelFilter.schema_json
+      ~SobelFilter.to_json
       ~SobelFilter.update_forward_refs
       ~SobelFilter.validate
       ~SobelFilter.widget

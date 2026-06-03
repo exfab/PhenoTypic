@@ -21,6 +21,7 @@ phenotypic.enhance.EnhanceFeatures
       ~EnhanceFeatures.construct
       ~EnhanceFeatures.copy
       ~EnhanceFeatures.dict
+      ~EnhanceFeatures.from_json
       ~EnhanceFeatures.from_orm
       ~EnhanceFeatures.json
       ~EnhanceFeatures.model_construct
@@ -39,6 +40,7 @@ phenotypic.enhance.EnhanceFeatures
       ~EnhanceFeatures.parse_raw
       ~EnhanceFeatures.schema
       ~EnhanceFeatures.schema_json
+      ~EnhanceFeatures.to_json
       ~EnhanceFeatures.update_forward_refs
       ~EnhanceFeatures.validate
       ~EnhanceFeatures.widget

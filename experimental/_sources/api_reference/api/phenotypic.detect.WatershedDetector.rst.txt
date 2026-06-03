@@ -21,6 +21,7 @@ phenotypic.detect.WatershedDetector
       ~WatershedDetector.construct
       ~WatershedDetector.copy
       ~WatershedDetector.dict
+      ~WatershedDetector.from_json
       ~WatershedDetector.from_orm
       ~WatershedDetector.json
       ~WatershedDetector.model_construct
@@ -39,6 +40,7 @@ phenotypic.detect.WatershedDetector
       ~WatershedDetector.parse_raw
       ~WatershedDetector.schema
       ~WatershedDetector.schema_json
+      ~WatershedDetector.to_json
       ~WatershedDetector.update_forward_refs
       ~WatershedDetector.validate
       ~WatershedDetector.widget

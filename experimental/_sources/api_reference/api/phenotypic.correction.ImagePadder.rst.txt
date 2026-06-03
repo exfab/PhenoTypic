@@ -21,6 +21,7 @@ phenotypic.correction.ImagePadder
       ~ImagePadder.construct
       ~ImagePadder.copy
       ~ImagePadder.dict
+      ~ImagePadder.from_json
       ~ImagePadder.from_orm
       ~ImagePadder.json
       ~ImagePadder.model_construct
@@ -39,6 +40,7 @@ phenotypic.correction.ImagePadder
       ~ImagePadder.parse_raw
       ~ImagePadder.schema
       ~ImagePadder.schema_json
+      ~ImagePadder.to_json
       ~ImagePadder.update_forward_refs
       ~ImagePadder.validate
       ~ImagePadder.widget

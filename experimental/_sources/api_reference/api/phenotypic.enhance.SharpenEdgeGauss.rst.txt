@@ -21,6 +21,7 @@ phenotypic.enhance.SharpenEdgeGauss
       ~SharpenEdgeGauss.construct
       ~SharpenEdgeGauss.copy
       ~SharpenEdgeGauss.dict
+      ~SharpenEdgeGauss.from_json
       ~SharpenEdgeGauss.from_orm
       ~SharpenEdgeGauss.json
       ~SharpenEdgeGauss.model_construct
@@ -39,6 +40,7 @@ phenotypic.enhance.SharpenEdgeGauss
       ~SharpenEdgeGauss.parse_raw
       ~SharpenEdgeGauss.schema
       ~SharpenEdgeGauss.schema_json
+      ~SharpenEdgeGauss.to_json
       ~SharpenEdgeGauss.update_forward_refs
       ~SharpenEdgeGauss.validate
       ~SharpenEdgeGauss.widget

@@ -21,6 +21,7 @@ phenotypic.enhance.GrayOpening
       ~GrayOpening.construct
       ~GrayOpening.copy
       ~GrayOpening.dict
+      ~GrayOpening.from_json
       ~GrayOpening.from_orm
       ~GrayOpening.json
       ~GrayOpening.model_construct
@@ -39,6 +40,7 @@ phenotypic.enhance.GrayOpening
       ~GrayOpening.parse_raw
       ~GrayOpening.schema
       ~GrayOpening.schema_json
+      ~GrayOpening.to_json
       ~GrayOpening.update_forward_refs
       ~GrayOpening.validate
       ~GrayOpening.widget

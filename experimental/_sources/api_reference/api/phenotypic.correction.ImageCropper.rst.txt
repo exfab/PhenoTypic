@@ -21,6 +21,7 @@ phenotypic.correction.ImageCropper
       ~ImageCropper.construct
       ~ImageCropper.copy
       ~ImageCropper.dict
+      ~ImageCropper.from_json
       ~ImageCropper.from_orm
       ~ImageCropper.json
       ~ImageCropper.model_construct
@@ -39,6 +40,7 @@ phenotypic.correction.ImageCropper
       ~ImageCropper.parse_raw
       ~ImageCropper.schema
       ~ImageCropper.schema_json
+      ~ImageCropper.to_json
       ~ImageCropper.update_forward_refs
       ~ImageCropper.validate
       ~ImageCropper.widget

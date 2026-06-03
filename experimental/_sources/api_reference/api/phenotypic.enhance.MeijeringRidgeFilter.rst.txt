@@ -21,6 +21,7 @@ phenotypic.enhance.MeijeringRidgeFilter
       ~MeijeringRidgeFilter.construct
       ~MeijeringRidgeFilter.copy
       ~MeijeringRidgeFilter.dict
+      ~MeijeringRidgeFilter.from_json
       ~MeijeringRidgeFilter.from_orm
       ~MeijeringRidgeFilter.json
       ~MeijeringRidgeFilter.model_construct
@@ -39,6 +40,7 @@ phenotypic.enhance.MeijeringRidgeFilter
       ~MeijeringRidgeFilter.parse_raw
       ~MeijeringRidgeFilter.schema
       ~MeijeringRidgeFilter.schema_json
+      ~MeijeringRidgeFilter.to_json
       ~MeijeringRidgeFilter.update_forward_refs
       ~MeijeringRidgeFilter.validate
       ~MeijeringRidgeFilter.widget

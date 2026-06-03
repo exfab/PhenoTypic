@@ -21,6 +21,7 @@ phenotypic.detect.SinePeakDetector
       ~SinePeakDetector.construct
       ~SinePeakDetector.copy
       ~SinePeakDetector.dict
+      ~SinePeakDetector.from_json
       ~SinePeakDetector.from_orm
       ~SinePeakDetector.json
       ~SinePeakDetector.model_construct
@@ -39,6 +40,7 @@ phenotypic.detect.SinePeakDetector
       ~SinePeakDetector.parse_raw
       ~SinePeakDetector.schema
       ~SinePeakDetector.schema_json
+      ~SinePeakDetector.to_json
       ~SinePeakDetector.update_forward_refs
       ~SinePeakDetector.validate
       ~SinePeakDetector.widget

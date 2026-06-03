@@ -21,6 +21,7 @@ phenotypic.refine.MaskFill
       ~MaskFill.construct
       ~MaskFill.copy
       ~MaskFill.dict
+      ~MaskFill.from_json
       ~MaskFill.from_orm
       ~MaskFill.json
       ~MaskFill.model_construct
@@ -39,6 +40,7 @@ phenotypic.refine.MaskFill
       ~MaskFill.parse_raw
       ~MaskFill.schema
       ~MaskFill.schema_json
+      ~MaskFill.to_json
       ~MaskFill.update_forward_refs
       ~MaskFill.validate
       ~MaskFill.widget

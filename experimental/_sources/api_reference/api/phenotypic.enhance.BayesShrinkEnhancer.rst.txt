@@ -21,6 +21,7 @@ phenotypic.enhance.BayesShrinkEnhancer
       ~BayesShrinkEnhancer.construct
       ~BayesShrinkEnhancer.copy
       ~BayesShrinkEnhancer.dict
+      ~BayesShrinkEnhancer.from_json
       ~BayesShrinkEnhancer.from_orm
       ~BayesShrinkEnhancer.json
       ~BayesShrinkEnhancer.model_construct
@@ -39,6 +40,7 @@ phenotypic.enhance.BayesShrinkEnhancer
       ~BayesShrinkEnhancer.parse_raw
       ~BayesShrinkEnhancer.schema
       ~BayesShrinkEnhancer.schema_json
+      ~BayesShrinkEnhancer.to_json
       ~BayesShrinkEnhancer.update_forward_refs
       ~BayesShrinkEnhancer.validate
       ~BayesShrinkEnhancer.widget

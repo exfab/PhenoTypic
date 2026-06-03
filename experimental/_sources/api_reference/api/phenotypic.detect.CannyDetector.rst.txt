@@ -21,6 +21,7 @@ phenotypic.detect.CannyDetector
       ~CannyDetector.construct
       ~CannyDetector.copy
       ~CannyDetector.dict
+      ~CannyDetector.from_json
       ~CannyDetector.from_orm
       ~CannyDetector.json
       ~CannyDetector.model_construct
@@ -39,6 +40,7 @@ phenotypic.detect.CannyDetector
       ~CannyDetector.parse_raw
       ~CannyDetector.schema
       ~CannyDetector.schema_json
+      ~CannyDetector.to_json
       ~CannyDetector.update_forward_refs
       ~CannyDetector.validate
       ~CannyDetector.widget

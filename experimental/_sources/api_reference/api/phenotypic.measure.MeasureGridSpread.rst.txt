@@ -20,6 +20,7 @@ phenotypic.measure.MeasureGridSpread
       ~MeasureGridSpread.construct
       ~MeasureGridSpread.copy
       ~MeasureGridSpread.dict
+      ~MeasureGridSpread.from_json
       ~MeasureGridSpread.from_orm
       ~MeasureGridSpread.json
       ~MeasureGridSpread.measure
@@ -39,6 +40,7 @@ phenotypic.measure.MeasureGridSpread
       ~MeasureGridSpread.parse_raw
       ~MeasureGridSpread.schema
       ~MeasureGridSpread.schema_json
+      ~MeasureGridSpread.to_json
       ~MeasureGridSpread.update_forward_refs
       ~MeasureGridSpread.validate
    

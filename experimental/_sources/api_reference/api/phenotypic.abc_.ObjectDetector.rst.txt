@@ -21,6 +21,7 @@ phenotypic.abc\_.ObjectDetector
       ~ObjectDetector.construct
       ~ObjectDetector.copy
       ~ObjectDetector.dict
+      ~ObjectDetector.from_json
       ~ObjectDetector.from_orm
       ~ObjectDetector.json
       ~ObjectDetector.model_construct
@@ -39,6 +40,7 @@ phenotypic.abc\_.ObjectDetector
       ~ObjectDetector.parse_raw
       ~ObjectDetector.schema
       ~ObjectDetector.schema_json
+      ~ObjectDetector.to_json
       ~ObjectDetector.update_forward_refs
       ~ObjectDetector.validate
       ~ObjectDetector.widget

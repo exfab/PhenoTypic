@@ -21,6 +21,7 @@ phenotypic.enhance.HessianFilter
       ~HessianFilter.construct
       ~HessianFilter.copy
       ~HessianFilter.dict
+      ~HessianFilter.from_json
       ~HessianFilter.from_orm
       ~HessianFilter.json
       ~HessianFilter.model_construct
@@ -39,6 +40,7 @@ phenotypic.enhance.HessianFilter
       ~HessianFilter.parse_raw
       ~HessianFilter.schema
       ~HessianFilter.schema_json
+      ~HessianFilter.to_json
       ~HessianFilter.update_forward_refs
       ~HessianFilter.validate
       ~HessianFilter.widget

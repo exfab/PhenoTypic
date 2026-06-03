@@ -21,6 +21,7 @@ phenotypic.enhance.SetDetectMode
       ~SetDetectMode.construct
       ~SetDetectMode.copy
       ~SetDetectMode.dict
+      ~SetDetectMode.from_json
       ~SetDetectMode.from_orm
       ~SetDetectMode.json
       ~SetDetectMode.model_construct
@@ -39,6 +40,7 @@ phenotypic.enhance.SetDetectMode
       ~SetDetectMode.parse_raw
       ~SetDetectMode.schema
       ~SetDetectMode.schema_json
+      ~SetDetectMode.to_json
       ~SetDetectMode.update_forward_refs
       ~SetDetectMode.validate
       ~SetDetectMode.widget

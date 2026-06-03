@@ -21,6 +21,7 @@ phenotypic.detect.UserThreshold
       ~UserThreshold.construct
       ~UserThreshold.copy
       ~UserThreshold.dict
+      ~UserThreshold.from_json
       ~UserThreshold.from_orm
       ~UserThreshold.json
       ~UserThreshold.model_construct
@@ -39,6 +40,7 @@ phenotypic.detect.UserThreshold
       ~UserThreshold.parse_raw
       ~UserThreshold.schema
       ~UserThreshold.schema_json
+      ~UserThreshold.to_json
       ~UserThreshold.update_forward_refs
       ~UserThreshold.validate
       ~UserThreshold.widget

@@ -21,6 +21,7 @@ phenotypic.abc\_.ImageOperation
       ~ImageOperation.construct
       ~ImageOperation.copy
       ~ImageOperation.dict
+      ~ImageOperation.from_json
       ~ImageOperation.from_orm
       ~ImageOperation.json
       ~ImageOperation.model_construct
@@ -39,6 +40,7 @@ phenotypic.abc\_.ImageOperation
       ~ImageOperation.parse_raw
       ~ImageOperation.schema
       ~ImageOperation.schema_json
+      ~ImageOperation.to_json
       ~ImageOperation.update_forward_refs
       ~ImageOperation.validate
       ~ImageOperation.widget

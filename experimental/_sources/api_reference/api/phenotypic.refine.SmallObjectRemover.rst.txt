@@ -21,6 +21,7 @@ phenotypic.refine.SmallObjectRemover
       ~SmallObjectRemover.construct
       ~SmallObjectRemover.copy
       ~SmallObjectRemover.dict
+      ~SmallObjectRemover.from_json
       ~SmallObjectRemover.from_orm
       ~SmallObjectRemover.json
       ~SmallObjectRemover.model_construct
@@ -39,6 +40,7 @@ phenotypic.refine.SmallObjectRemover
       ~SmallObjectRemover.parse_raw
       ~SmallObjectRemover.schema
       ~SmallObjectRemover.schema_json
+      ~SmallObjectRemover.to_json
       ~SmallObjectRemover.update_forward_refs
       ~SmallObjectRemover.validate
       ~SmallObjectRemover.widget

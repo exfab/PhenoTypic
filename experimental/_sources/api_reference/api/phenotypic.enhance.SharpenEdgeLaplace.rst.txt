@@ -21,6 +21,7 @@ phenotypic.enhance.SharpenEdgeLaplace
       ~SharpenEdgeLaplace.construct
       ~SharpenEdgeLaplace.copy
       ~SharpenEdgeLaplace.dict
+      ~SharpenEdgeLaplace.from_json
       ~SharpenEdgeLaplace.from_orm
       ~SharpenEdgeLaplace.json
       ~SharpenEdgeLaplace.model_construct
@@ -39,6 +40,7 @@ phenotypic.enhance.SharpenEdgeLaplace
       ~SharpenEdgeLaplace.parse_raw
       ~SharpenEdgeLaplace.schema
       ~SharpenEdgeLaplace.schema_json
+      ~SharpenEdgeLaplace.to_json
       ~SharpenEdgeLaplace.update_forward_refs
       ~SharpenEdgeLaplace.validate
       ~SharpenEdgeLaplace.widget

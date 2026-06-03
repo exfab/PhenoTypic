@@ -21,6 +21,7 @@ phenotypic.detect.LiDetector
       ~LiDetector.construct
       ~LiDetector.copy
       ~LiDetector.dict
+      ~LiDetector.from_json
       ~LiDetector.from_orm
       ~LiDetector.json
       ~LiDetector.model_construct
@@ -39,6 +40,7 @@ phenotypic.detect.LiDetector
       ~LiDetector.parse_raw
       ~LiDetector.schema
       ~LiDetector.schema_json
+      ~LiDetector.to_json
       ~LiDetector.update_forward_refs
       ~LiDetector.validate
       ~LiDetector.widget

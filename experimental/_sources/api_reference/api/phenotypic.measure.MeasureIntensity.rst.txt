@@ -20,6 +20,7 @@ phenotypic.measure.MeasureIntensity
       ~MeasureIntensity.construct
       ~MeasureIntensity.copy
       ~MeasureIntensity.dict
+      ~MeasureIntensity.from_json
       ~MeasureIntensity.from_orm
       ~MeasureIntensity.json
       ~MeasureIntensity.measure
@@ -39,6 +40,7 @@ phenotypic.measure.MeasureIntensity
       ~MeasureIntensity.parse_raw
       ~MeasureIntensity.schema
       ~MeasureIntensity.schema_json
+      ~MeasureIntensity.to_json
       ~MeasureIntensity.update_forward_refs
       ~MeasureIntensity.validate
    

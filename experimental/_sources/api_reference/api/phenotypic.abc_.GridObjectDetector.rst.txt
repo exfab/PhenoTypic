@@ -21,6 +21,7 @@ phenotypic.abc\_.GridObjectDetector
       ~GridObjectDetector.construct
       ~GridObjectDetector.copy
       ~GridObjectDetector.dict
+      ~GridObjectDetector.from_json
       ~GridObjectDetector.from_orm
       ~GridObjectDetector.json
       ~GridObjectDetector.model_construct
@@ -39,6 +40,7 @@ phenotypic.abc\_.GridObjectDetector
       ~GridObjectDetector.parse_raw
       ~GridObjectDetector.schema
       ~GridObjectDetector.schema_json
+      ~GridObjectDetector.to_json
       ~GridObjectDetector.update_forward_refs
       ~GridObjectDetector.validate
       ~GridObjectDetector.widget
