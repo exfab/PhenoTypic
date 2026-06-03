@@ -76,8 +76,12 @@ class Scorer(BaseModel, ABC):
   Evaluator/engine degrade predictably.
 - **Subclasses** `QCScorer`, `SupervisedScorer`, `ReferenceFreeScorer`, `CompositeScorer`,
   polymorphic-deserialized via the registry (§6). **Reuse:** `QCScorer` holds
-  `QualityCheck` analyzers as `PolymorphicField` fields (it *calls* them, qc §1);
+  `QualityCheck` analyzers via `polymorphic_field(base=...)` (it *calls* them, qc §1);
   `CompositeScorer` holds `list[Scorer]` + weights, recursively.
+- **Path caveat (round-trip).** A `QualityCheck` built from an *in-memory* frame fails to
+  reload (`metadata_source=None` → `ValidationError`), so a serializable `QCScorer` must
+  construct its checks from a metadata **path** (qc §4.1). The §13a round-trip fixture uses a
+  path. (The older "Count can't `model_dump`" issue is already resolved upstream.)
 
 ### 3.2 `Evaluator`
 
@@ -166,12 +170,24 @@ Optuna-backed channel (live trial) in Phase 2. Keeps the Evaluator **Optuna-free
 
 ## 6. Polymorphic serialization
 
-`OperationField` is **generalized into a type-agnostic `PolymorphicField`** (in
-`tools_/typing_.py`): it serializes any pydantic model to `{"class": <name>, "params":
-<model_dump>}` and reconstructs via the existing
-`SerializablePipeline._find_class_in_phenotypic` registry. `OperationField` becomes a thin
-alias; `Scorer`/`CompositeScorer` nesting and `StrategyConfig` reuse the same field. A
-scorer/strategy extends **exactly like an operation**: export a subclass → it round-trips.
+`OperationField` is **generalized into a `polymorphic_field(base=...)` factory** (in
+`tools_/typing_.py`). Its serialize/deserialize halves are *already* type-agnostic
+(`{"class": <name>, "params": <model_dump>}` + `_find_class_in_phenotypic`); the **one**
+`BaseOperation`-specific piece is the `AfterValidator` type guard, so the factory
+**parameterizes the accepted base**:
+`OperationField = polymorphic_field(base=BaseOperation)`,
+`ScorerField = polymorphic_field(base=Scorer)`,
+`StrategyConfigField = polymorphic_field(base=StrategyConfig)`. `QCScorer`/`CompositeScorer`
+nesting reuses it (the pipeline-tagged `{"__type__":"pipeline"}` branch is unaffected —
+non-pipeline values skip it).
+
+**Two prerequisites for round-trip** (the registry is the catch — see §13a):
+`_find_class_in_phenotypic` searches top-level `phenotypic` + a *hardcoded submodule list*
+that **does not include `tune`**, so (a) add `"phenotypic.tune"` to that list and (b)
+re-export every polymorphic tune class from `tune/__init__.py`. With those, a scorer/strategy
+extends **exactly like an operation**: export a subclass → it round-trips. *(Review-verified:
+a `QCScorer` holding a path-configured `QualityCheck` reconstructs through this field; see the
+§3.1 path caveat.)*
 
 The whole spec is one pydantic model:
 
@@ -197,13 +213,23 @@ class Executor(Protocol):
     def run(self, work: Callable[[Item], R], items: Sequence[Item]) -> list[R]: ...
 ```
 
-`LocalExecutor` (joblib) + `SlurmExecutor` (array) are **extracted from `_sweep_cli` into a
-shared `_execution` module** both `_sweep_cli` and `_tune_cli` import. `sweep` injects a
-work-fn that saves each measurement + manifest; the tune `Evaluator` injects one that scores
-+ aggregates (with the per-image cache + the pruning channel). **Two parallelism levels:**
-the `Executor` parallelizes *images within a call*; tune's **distributed ask-and-tell**
-(optuna §7) parallelizes *trials across workers* — so in distributed mode the Evaluator runs
-images serially within its worker (a config flag) to avoid double-parallelizing.
+`LocalExecutor` (joblib) + `SlurmExecutor` (array) live in a shared **top-level
+`src/phenotypic/_execution/`** module both `_sweep_cli` and `_tune_cli` import (so `tune`
+never depends on `sweep`). `sweep` injects a work-fn that saves each measurement + manifest;
+the tune `Evaluator` injects one that scores + aggregates (with the per-image cache + the
+pruning channel). **Two parallelism levels:** the `Executor` parallelizes *images within a
+call*; tune's **distributed ask-and-tell** (optuna §7) parallelizes *trials across workers* —
+so in distributed mode the Evaluator runs images serially within its worker (a config flag)
+to avoid double-parallelizing.
+
+> **Extraction is a dependency-inversion, not a thin lift (review finding).** Today's sweep
+> runner (`_sweep_execution.py`'s `SweepExecutionStrategy` + `_sweep_process_image.py`) bakes
+> the manifest, image-type, and output side-effects *into* the work — so extraction means
+> pulling the generic `Parallel(delayed(...))` core (and the SLURM array submission) out and
+> re-expressing sweep's save-behavior as an injected work-fn, under a **regression lock on the
+> existing sweep CLI output**. Scope **`LocalExecutor` in Phase 1** (the CV-only MVP needs only
+> local parallelism); **defer `SlurmExecutor` to Phase 2** (the harder half — array scripts,
+> drip-feed, event-log monitoring).
 
 ---
 
@@ -276,12 +302,15 @@ domain types.
 
 ## 12. Mapping to the phasing
 
-- **Phase 1 (zero-dep):** `Scorer` ABC + **Count-only `QCScorer`**; `SearchStrategy`
-  Protocol + `GridStrategy`/`RandomStrategy` + `GridConfig`/`RandomConfig`;
-  `PruningChannel` + `NoOpChannel`; `Evaluator` (CV-only MVP); `TuningEngine`;
-  `PolymorphicField`; domains/proposal/`TuningSpec`; the extracted `Executor`.
+- **Phase 1 (no new *third-party* deps — but cross-module work):** `Scorer` ABC +
+  **Count-only `QCScorer`**; `SearchStrategy` Protocol + `GridStrategy`/`RandomStrategy` +
+  `GridConfig`/`RandomConfig`; `PruningChannel` + `NoOpChannel`; `Evaluator` (CV-only MVP);
+  `TuningEngine`; domains/proposal/`TuningSpec`; the **`LocalExecutor`** only. *Phase 1 is
+  not module-isolated* — it touches **`tools_`** (the `polymorphic_field` factory + guard),
+  the **registry** (`_find_class_in_phenotypic` += `"phenotypic.tune"`), and **`sweep`** (the
+  `LocalExecutor` extraction + regression lock). These are the Prerequisites (§14a).
 - **Phase 2:** `OptunaStrategy`/`OptunaConfig` (tune extra); Optuna-backed `PruningChannel`;
-  ASHA; `_study_store` SQLite; fANOVA in `_screening`.
+  ASHA; `_study_store` SQLite; fANOVA in `_screening`; the **`SlurmExecutor`**.
 - **Later:** `SupervisedScorer`/`ReferenceFreeScorer`/`CompositeScorer`; MCP (deferred);
   Dash co-pilot.
 
@@ -290,10 +319,15 @@ domain types.
 ## 13. Testing the interface layer
 
 - **Protocol conformance** — `GridStrategy`/`RandomStrategy` (and a fake) satisfy
-  `SearchStrategy`; `NoOpChannel` satisfies `PruningChannel` (runtime-checkable Protocols).
-- **Registry round-trip** — `TuningSpec.model_validate_json(spec.model_dump_json())` is
-  identity for a spec with a `QCScorer` + `CompositeScorer` nesting + a `GridConfig`;
-  `PolymorphicField` reconstructs the concrete subclass.
+  `SearchStrategy`; `NoOpChannel` satisfies `PruningChannel`. **`runtime_checkable` checks
+  method *names*, not signatures** (review finding), so conformance tests must **call** the
+  methods with realistic args — not just `isinstance` (cf. the GUI wrong-arity lesson).
+- **(§13a) Registry round-trip** — first ensure `"phenotypic.tune"` is in the registry +
+  the classes are re-exported (§6 prereq); then
+  `TuningSpec.model_validate_json(spec.model_dump_json())` is identity for a spec with a
+  **path-configured** `QCScorer` + `CompositeScorer` nesting + a `GridConfig`;
+  `polymorphic_field` reconstructs the concrete subclass. A **frame-configured** `QCScorer`
+  is asserted to raise on reload (the path caveat, §3.1).
 - **Schema** — `TuningSpec.model_json_schema()` is well-formed (the MCP/CLI/Dash contract).
 - **Swap tests** — the engine drives a fake strategy + a fake scorer unchanged; the
   Evaluator scores with a stub scorer.
@@ -310,12 +344,33 @@ pydantic domains/proposal/`TuningSpec` (§5); `PolymorphicField` generalizing `O
 (§6); extracted shared `Executor` (§7); the two extension seams (§9); the package layout
 (§10).
 
-**Open / for the plans:**
+**Resolved post-review:** `_execution` is **top-level** `src/phenotypic/_execution/` (master
+§11 reconciled); domains/proposal are **pydantic** value-models, and **this doc owns the
+type layer** (`search-space-inference.md` §7 reconciled to reference it); `polymorphic_field`
+is a **base-parameterized factory** (not a relaxed `BaseModel` guard); the registry gains
+`"phenotypic.tune"`; `LocalExecutor` is Phase 1, `SlurmExecutor` Phase 2.
 
-- The `_execution` module's exact home (a new top-level `_execution` vs under `_cli`).
-- `StudyStore`'s homegrown (no-Optuna) journal fallback shape (Phase 1 persistence without
-  Optuna).
-- Whether `Evaluator` ever needs to be an ABC (only if a non-robustness evaluation variant
-  appears — none planned).
-- Plan-1 update: switch domains/proposal from `dataclasses` to pydantic value-models to
-  match §5.
+### §14a — Prerequisite tasks (precede / accompany Phase 1)
+
+Surfaced by the plan-review; **Phase 1 is not module-isolated**:
+
+1. **Registry learns `tune`** — add `"phenotypic.tune"` to `_find_class_in_phenotypic`'s
+   submodule list (`_serializable_pipeline.py`) **and** re-export every polymorphic tune class
+   from `tune/__init__.py`. Without this, `TuningSpec` cannot reconstruct any `Scorer`/
+   `StrategyConfig`.
+2. **`polymorphic_field(base=...)` factory** — generalize the `OperationField` `AfterValidator`
+   guard to accept a parameterized base; `OperationField` becomes
+   `polymorphic_field(base=BaseOperation)`. Add a back-compat test that existing operation
+   round-trips stay green.
+3. **`QCScorer` path contract** — checks built from a metadata path (not an in-memory frame),
+   or the spec won't round-trip (§3.1).
+4. **`LocalExecutor` extraction** — dependency-invert sweep's runner into
+   `src/phenotypic/_execution/`, under a sweep-output regression lock (§7); `SlurmExecutor`
+   deferred to Phase 2.
+
+**Still open:**
+
+- `StudyStore`'s homegrown (no-Optuna) journal fallback shape — on the Phase-1 critical path
+  (the incremental cache + `create_study` depend on it), more than the phasing implies.
+- Whether `Evaluator` ever needs to be an ABC (only if a non-robustness variant appears —
+  none planned).

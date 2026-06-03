@@ -327,6 +327,11 @@ tradeoff the `SearchSpace` doc finalizes.
 
 `infer_search_space` returns a reviewable proposal, **not** the optimizer-facing object.
 
+> **Type layer:** these are **frozen pydantic value-models** (and the domains a pydantic
+> discriminated union), per [`engine-architecture.md`](engine-architecture.md) §5, which
+> **owns the canonical type definitions** — so `SearchSpace`/`InferredSearchSpace` round-trip
+> through `TuningSpec`. The `@dataclass` sketch below illustrates the *shape* only.
+
 ```python
 @dataclass(frozen=True)
 class Knob:

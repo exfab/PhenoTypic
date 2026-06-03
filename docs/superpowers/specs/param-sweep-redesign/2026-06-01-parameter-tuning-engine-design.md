@@ -395,14 +395,18 @@ src/phenotypic/tune/
   _engine.py               # TuningEngine: ask/tell loop, budget, convergence, reporting
   _study_store.py          # persistence (Optuna SQLite | homegrown journal fallback)
   _report.py               # tuning_report.html (extends sweep dashboard)
-  _tune_cli/               # mirrors _sweep_cli/, SHARES the extracted execution/SLURM helpers
+  _tune_cli/               # mirrors _sweep_cli/, imports the shared _execution module
   __main__.py
+src/phenotypic/_execution/ # SHARED Executor (Local/SLURM) — extracted, imported by sweep+tune
 src/phenotypic/sweep/      # preserved; grid facade sharing tune internals
 src/phenotypic/gui/tune/   # Dash co-pilot view             (later GUI phase)
 src/phenotypic/mcp/        # MCP server wrapping TuningEngine (later phase)
 ```
 
-`_tune_cli` shares the extracted joblib/SLURM batch runner with `_sweep_cli`
+The extracted joblib/SLURM batch runner lives in the **shared top-level
+`src/phenotypic/_execution/`** module (an `Executor` Protocol + `Local`/`Slurm` impls), so
+neither `tune` nor `sweep` depends on the other — both import it. See
+`engine-architecture.md` §7. `_tune_cli` and `_sweep_cli` both use it
 rather than duplicating it.
 
 ---
