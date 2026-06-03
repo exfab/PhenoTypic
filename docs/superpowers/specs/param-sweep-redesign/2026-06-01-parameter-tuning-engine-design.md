@@ -3,7 +3,8 @@
 - **Date:** 2026-06-01
 - **Status:** Approved design, revised after literature self-review (pre-implementation)
 - **Branch:** `redesign/param-sweep`
-- **Supersedes / refactors:** `src/phenotypic/sweep/` (the parameter sweep CLI feature)
+- **Supersedes & removes:** `src/phenotypic/sweep/` (the parameter sweep CLI feature) —
+  **hard cutover**; `tune` replaces it, grid becomes `--strategy grid` (§9)
 - **Author:** brainstormed with Claude (Opus 4.8)
 - **Revisions:** 2026-06-01 — literature self-review pass: screening switched to
   fANOVA (captures interactions; reuses optimizer trials); reference-free scoring
@@ -260,7 +261,8 @@ curates the surfaced candidates the next morning, in the same session.
 ### CLI
 
 `python -m phenotypic.tune TUNING_SPEC.json -i/--input INPUT_DIR -o/--output OUTPUT_DIR [OPTIONS]`,
-reusing the existing execution/SLURM/dashboard machinery.
+using the shared `_execution` runner and the forward CLI's SLURM machinery (sweep's own
+runner/dashboard are deleted, §9).
 
 **Core I/O flags:**
 
@@ -277,7 +279,8 @@ reusing the existing execution/SLURM/dashboard machinery.
 `--calibration-n/-frac` · `--stability-weight λ` · `--screen/--no-screen` ·
 `--multi-objective` · `--auto-space` · `--keep-all-trial-outputs` · plus all current
 `--n-jobs/--slurm/--image-type/...` flags. **`--strategy grid` (no budget)
-reproduces today's exhaustive sweep byte-compatibly** — the migration safety valve.
+reproduces the (now-removed) sweep's exhaustive grid output byte-compatibly** — validated
+against the frozen golden fixture (§9); the grid path that replaces sweep.
 (`--auto-space` takes a `pipeline.json` as the positional and only needs `-i` for
 context — it prints/writes a proposed `tuning_spec.json`, no run.)
 
@@ -386,26 +389,34 @@ the same `-o OUTPUT_DIR` **resumes**: `study.db` continues from the last trial a
 
 ---
 
-## 9. Migration / back-compat
+## 9. Migration — hard cutover (`tune` replaces `sweep`)
 
-This is a CI-gated, GUI-coupled feature; back-compat is a hard requirement.
+**`tune` deprecates and replaces `phenotypic.sweep` via a hard cutover.** Grid search
+is one `SearchStrategy` (`--strategy grid`), so `tune` is a strict superset and the
+`sweep` module is **deleted wholesale** once `tune`'s grid path lands (end of Phase 1).
+Crucially, the new design **does not import** `Sweep`/`Presence`/`Fixed` — it has its own
+`SearchSpace` + domains — so nothing in `tune` depends on `sweep`. The two only ever
+share the extracted `_execution` module; **neither imports the other**, which is what
+makes a clean deletion possible.
 
-- **`phenotypic.sweep` public API is preserved unchanged**: `Sweep`, `Presence`,
-  `Fixed`, `generate_sweep_manifest`, `load_sweep_manifest`, and the loader
-  helpers. Existing user configs, the napari viewer, and the GUI keep working.
-- `Sweep` / `Presence` / `Fixed` **gain** the new domain types as accepted values
-  (`sigma=FloatRange(...)` alongside `sigma=(1.0, 2.0)`); a bare tuple still means
-  `Categorical`. A `list[Sweep]` *is* constructible into a `SearchSpace`.
-- Shared internals (`params → ImagePipeline`, the joblib/SLURM batch runner) get
-  **extracted** so both `sweep` (grid) and `tune` (optimize) import them rather
-  than duplicate. `sweep` becomes the grid-only facade over the engine.
-- `--strategy grid` reproduces today's exhaustive output **byte-compatibly** with
-  the per-image layout the GUI reads — the regression lock. This claim is
-  load-bearing, so it gets an explicit test: **grid enumeration over a
-  *conditional* space (`Presence` + nested params) must equal the current
-  `generate_sweep_manifest` Cartesian product**, asserted against a saved fixture
-  manifest.
-- Old manifest JSON stays loadable; `tuning_spec.json` is a new artifact.
+- **`sweep` is removed, not preserved.** `Sweep`/`Presence`/`Fixed`/
+  `generate_sweep_manifest`/`load_sweep_manifest`, the `python -m phenotypic.sweep` CLI,
+  and the napari `gui/sweep/` viewer all go. **No runtime shim.**
+- **Byte-compat regression lock — against a frozen golden.** `--strategy grid` (no
+  budget) reproduces sweep's exhaustive enumeration. Because `sweep` is deleted, the lock
+  is a **saved golden fixture** captured from `generate_sweep_manifest` *before* removal
+  (a Phase-0 task, while `sweep` still exists): `GridStrategy` enumeration over a
+  conditional space (`__enabled__` + nested params) must equal that golden Cartesian
+  product.
+- **Migration for existing users** (external configs only — the design carries nothing
+  forward): a **migration doc** maps an old `Sweep(...)` config → a `tuning_spec.json`
+  run with `--strategy grid`, plus a one-shot **`manifest.json → tuning_spec.json`
+  converter script** (reads the file; needs none of the deleted classes). Old `Sweep(...)`
+  *scripts* break on import **by design** — users rewrite per the doc.
+- **Sequencing.** Phase 0 captures the golden fixture and builds the shared
+  `LocalExecutor` *for `tune`* (sweep's own joblib loop is left untouched — it is deleted
+  with the module, not refactored). Sweep deletion lands at the **end of Phase 1**, once
+  `GridStrategy` is validated against the golden.
 
 ---
 
@@ -437,11 +448,12 @@ src/phenotypic/tune/
   _screening.py            # fANOVA importance (Optuna) + zero-dep correlation fallback; optional 1-at-a-time pre-screen
   _engine.py               # TuningEngine: ask/tell loop, budget, convergence, reporting
   _study_store.py          # persistence (Optuna SQLite | homegrown journal fallback)
-  _report.py               # tuning_report.html (extends sweep dashboard)
+  _report.py               # tuning_report.html (standalone; sweep dashboard is deleted)
   _tune_cli/               # mirrors _sweep_cli/, imports the shared _execution module
   __main__.py
 src/phenotypic/_execution/ # SHARED Executor (Local/SLURM) — extracted, imported by sweep+tune
-src/phenotypic/sweep/      # preserved; grid facade sharing tune internals
+src/phenotypic/sweep/      # DELETED (hard cutover, end of Phase 1) — grid is `--strategy grid`
+scripts/migrate_sweep_manifest.py  # one-shot manifest.json → tuning_spec.json converter
 src/phenotypic/gui/tune/   # Dash co-pilot view             (later GUI phase)
 src/phenotypic/mcp/        # MCP server wrapping TuningEngine (later phase)
 ```

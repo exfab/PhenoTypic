@@ -31,9 +31,19 @@ cold, then the [README](README.md) index and the
   **removed** (predated `engine-architecture.md`; domains are now pydantic). The
   **plan-review is DONE** (`cf2f2930`) — it surfaced 4 prerequisites now in
   engine-architecture §14a (registry += `phenotypic.tune`; `polymorphic_field(base=...)`
-  factory; `QCScorer` path-configured checks; `LocalExecutor` extraction). **Next: rewrite
-  Phase 1 from scratch against `engine-architecture.md` (lead with the prerequisites)**, then
-  Plans 2–4. **`mcp-server-design` is deferred / out-of-scope** (per user).
+  factory; `QCScorer` path-configured checks; `LocalExecutor`).
+- **Phase 0 walked + sweep deprecation decided (master §9 rewritten):** `tune`
+  **deprecates `sweep` via a HARD CUTOVER** — `sweep` is **deleted wholesale** at the end of
+  Phase 1 (the new design never imports `Sweep`/`Presence`/`Fixed`; the two only share
+  `_execution`). Consequences applied across the bundle: `LocalExecutor` is **created fresh
+  for `tune`** (sweep's loop is *not* refactored — it's deleted); the grid byte-compat lock
+  is a **frozen golden `generate_sweep_manifest` fixture** captured in Phase 0; migration is
+  **docs + a one-shot `manifest.json → tuning_spec.json` script** (no runtime shim). Phase-0
+  prereqs (engine-arch §14a): polymorphic_field factory · registry += tune · LocalExecutor ·
+  capture golden fixture · (end of Phase 1) delete sweep.
+- **Next: write the Phase-0 plan** (TDD: the 3 enablers + the golden-fixture capture), then
+  rewrite Phase 1 against `engine-architecture.md`, then Plans 2–4. **`mcp-server-design` is
+  deferred / out-of-scope** (per user).
 
 ## Remaining stub companion docs to go over
 

@@ -74,8 +74,9 @@ The headless / batch / SLURM / reproducible / agent-facing path.
    `python -m phenotypic INPUT_DIR` for the production run.
 7. **Resume / migrate:** re-invoking continues from `study.db` (reproducible bit-for-bit
    under `--deterministic`; reproducible-in-distribution when parallel — optuna §8).
-   **`--strategy grid` with no budget reproduces today's exhaustive sweep byte-for-byte** —
-   the migration safety valve (master §9).
+   **`--strategy grid` with no budget reproduces the (now-removed) sweep's exhaustive grid
+   output byte-for-byte** — validated against a frozen golden fixture (`sweep` is deleted in
+   the hard cutover; master §9).
 
 ### Minimal happy path
 

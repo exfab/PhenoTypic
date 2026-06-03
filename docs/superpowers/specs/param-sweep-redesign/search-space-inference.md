@@ -236,8 +236,10 @@ impossible and visually flags the knob as synthetic.
 
 This reproduces the **legacy `Presence` Cartesian semantics exactly** — absent collapses
 to a *single* combination, present multiplies by the children — which is precisely what
-the master §9 regression lock requires (`Presence` + nested params must equal today's
-`generate_sweep_manifest`). It also maps 1:1 onto Optuna's define-by-run
+the master §9 regression lock requires (`Presence` + nested params must equal the **frozen
+golden `generate_sweep_manifest` fixture** — `sweep` is deleted in the hard cutover, master
+§9, so the lock is against the golden, not live code). It also maps 1:1 onto Optuna's
+define-by-run
 (`suggest_categorical` then conditional `suggest_*`) and is trivial for the homegrown
 `GridStrategy`/`RandomStrategy` to flatten.
 

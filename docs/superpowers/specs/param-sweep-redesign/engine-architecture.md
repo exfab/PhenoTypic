@@ -206,30 +206,30 @@ CLI/Dash form schema.
 
 ---
 
-## 7. The shared `Executor` seam (master §9/§11)
+## 7. The `Executor` seam (master §9/§11)
 
 ```python
 class Executor(Protocol):
     def run(self, work: Callable[[Item], R], items: Sequence[Item]) -> list[R]: ...
 ```
 
-`LocalExecutor` (joblib) + `SlurmExecutor` (array) live in a shared **top-level
-`src/phenotypic/_execution/`** module both `_sweep_cli` and `_tune_cli` import (so `tune`
-never depends on `sweep`). `sweep` injects a work-fn that saves each measurement + manifest;
-the tune `Evaluator` injects one that scores + aggregates (with the per-image cache + the
-pruning channel). **Two parallelism levels:** the `Executor` parallelizes *images within a
-call*; tune's **distributed ask-and-tell** (optuna §7) parallelizes *trials across workers* —
-so in distributed mode the Evaluator runs images serially within its worker (a config flag)
-to avoid double-parallelizing.
+`LocalExecutor` (joblib) lives in a new top-level **`src/phenotypic/_execution/`** module
+that `_tune_cli` imports. It is a **small parallel-map primitive** — a wrapper over the
+`Parallel(n_jobs)(delayed(work)(item) for item in items)` loop. The tune `Evaluator` injects
+a work-fn that scores + aggregates one image (with the per-image cache + the pruning channel).
+**Two parallelism levels:** the `Executor` parallelizes *images within a call*; tune's
+**distributed ask-and-tell** (optuna §7) parallelizes *trials across workers* — so in
+distributed mode the Evaluator runs images serially within its worker (a config flag) to
+avoid double-parallelizing.
 
-> **Extraction is a dependency-inversion, not a thin lift (review finding).** Today's sweep
-> runner (`_sweep_execution.py`'s `SweepExecutionStrategy` + `_sweep_process_image.py`) bakes
-> the manifest, image-type, and output side-effects *into* the work — so extraction means
-> pulling the generic `Parallel(delayed(...))` core (and the SLURM array submission) out and
-> re-expressing sweep's save-behavior as an injected work-fn, under a **regression lock on the
-> existing sweep CLI output**. Scope **`LocalExecutor` in Phase 1** (the CV-only MVP needs only
-> local parallelism); **defer `SlurmExecutor` to Phase 2** (the harder half — array scripts,
-> drip-feed, event-log monitoring).
+> **Create-only — sweep is deleted, not refactored (hard cutover, master §9).** Because
+> `sweep` is removed wholesale at the end of Phase 1, `LocalExecutor` is **built fresh for
+> `tune`**; sweep's own `Parallel(delayed(...))` loop is left untouched and deleted with the
+> module — there is no "extraction from sweep" and no sweep-refactor regression lock. The
+> grid regression lock is instead a **frozen golden `generate_sweep_manifest` fixture**
+> (captured in Phase 0, before deletion). `SlurmExecutor` is **Phase 2** (the CV-only MVP
+> needs only local parallelism; the SLURM half — array scripts, drip-feed, event-log
+> monitoring — comes with distributed tuning).
 
 ---
 
@@ -283,9 +283,10 @@ src/phenotypic/tune/
   _study_store.py        # StudyStore (Optuna SQLite | homegrown journal fallback)
   _spec.py               # TuningSpec, Budget
   _screening.py          # importance (fANOVA | RF-permutation fallback) + freezing
-  _tune_cli/             # mirrors _sweep_cli; shares _execution
-src/phenotypic/_execution/   # Executor Protocol + Local/Slurm (shared with sweep)
-src/phenotypic/tools_/typing_.py   # PolymorphicField (OperationField becomes an alias)
+  _tune_cli/             # the `python -m phenotypic.tune` CLI; uses _execution
+src/phenotypic/_execution/   # Executor Protocol + LocalExecutor (Phase 1) / SlurmExecutor (Phase 2)
+src/phenotypic/tools_/typing_.py   # polymorphic_field(base=...); OperationField becomes an alias
+# src/phenotypic/sweep/      # DELETED at end of Phase 1 (hard cutover — grid is `--strategy grid`)
 ```
 
 ---
@@ -306,9 +307,10 @@ domain types.
   **Count-only `QCScorer`**; `SearchStrategy` Protocol + `GridStrategy`/`RandomStrategy` +
   `GridConfig`/`RandomConfig`; `PruningChannel` + `NoOpChannel`; `Evaluator` (CV-only MVP);
   `TuningEngine`; domains/proposal/`TuningSpec`; the **`LocalExecutor`** only. *Phase 1 is
-  not module-isolated* — it touches **`tools_`** (the `polymorphic_field` factory + guard),
-  the **registry** (`_find_class_in_phenotypic` += `"phenotypic.tune"`), and **`sweep`** (the
-  `LocalExecutor` extraction + regression lock). These are the Prerequisites (§14a).
+  not module-isolated* — it touches **`tools_`** (the `polymorphic_field` factory + guard)
+  and the **registry** (`_find_class_in_phenotypic` += `"phenotypic.tune"`). At its **end,
+  `sweep` is deleted** (hard cutover, master §9) and the migration doc + `manifest→spec`
+  script land. These are the Prerequisites (§14a).
 - **Phase 2:** `OptunaStrategy`/`OptunaConfig` (tune extra); Optuna-backed `PruningChannel`;
   ASHA; `_study_store` SQLite; fANOVA in `_screening`; the **`SlurmExecutor`**.
 - **Later:** `SupervisedScorer`/`ReferenceFreeScorer`/`CompositeScorer`; MCP (deferred);
@@ -350,6 +352,14 @@ type layer** (`search-space-inference.md` §7 reconciled to reference it); `poly
 is a **base-parameterized factory** (not a relaxed `BaseModel` guard); the registry gains
 `"phenotypic.tune"`; `LocalExecutor` is Phase 1, `SlurmExecutor` Phase 2.
 
+**Resolved post-walkthrough (Phase-0 deprecation):** `tune` **deprecates `sweep` via a hard
+cutover** (master §9). `sweep` is **deleted wholesale** at the end of Phase 1, not preserved
+as a facade — the design never imports `Sweep`/`Presence`/`Fixed`. So `LocalExecutor` is
+**created fresh for `tune`** (sweep's joblib loop is *not* refactored — it's deleted), and
+the grid regression lock is a **frozen golden `generate_sweep_manifest` fixture** captured in
+Phase 0 before removal. Migration for external users is docs + a one-shot `manifest→spec`
+script (no runtime shim).
+
 ### §14a — Prerequisite tasks (precede / accompany Phase 1)
 
 Surfaced by the plan-review; **Phase 1 is not module-isolated**:
@@ -364,9 +374,15 @@ Surfaced by the plan-review; **Phase 1 is not module-isolated**:
    round-trips stay green.
 3. **`QCScorer` path contract** — checks built from a metadata path (not an in-memory frame),
    or the spec won't round-trip (§3.1).
-4. **`LocalExecutor` extraction** — dependency-invert sweep's runner into
-   `src/phenotypic/_execution/`, under a sweep-output regression lock (§7); `SlurmExecutor`
-   deferred to Phase 2.
+4. **`LocalExecutor`** — create the small joblib parallel-map primitive in
+   `src/phenotypic/_execution/` **for `tune`** (sweep is *not* refactored — it's deleted, §5).
+   `SlurmExecutor` deferred to Phase 2.
+5. **Capture the grid golden fixture** — freeze `generate_sweep_manifest`'s output (over a
+   conditional `Presence` config) as a test fixture *while `sweep` still exists*, so the
+   Phase-1 `GridStrategy` byte-compat lock runs against the golden, not live `sweep` (master
+   §9).
+6. **(End of Phase 1) Delete `sweep`** — remove the module, CLI, and napari viewer; ship the
+   migration doc + the `manifest.json → tuning_spec.json` converter script.
 
 **Still open:**
 
