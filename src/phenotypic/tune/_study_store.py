@@ -26,6 +26,9 @@ class Trial(BaseModel):
         terms: The robust-aggregated per-term scores backing ``score``.
         n_images: Number of calibration images evaluated.
         failed: ``True`` when the candidate raised and scored the failure floor.
+        pruned: ``True`` when the rung ladder early-stopped this candidate.
+            Distinct from ``failed``: pruned trials ran cleanly on a partial set
+            and still count against the budget (failed trials do not).
     """
 
     model_config = ConfigDict(frozen=True)
@@ -36,6 +39,7 @@ class Trial(BaseModel):
     terms: dict[str, float]
     n_images: int
     failed: bool = False
+    pruned: bool = False
 
 
 class StudyStore:
@@ -70,7 +74,10 @@ class StudyStore:
 
     #: Stable column order for the trials frame (explicit so an empty store
     #: still writes a valid parquet schema rather than a zero-column frame).
-    _COLUMNS = ["number", "score", "n_images", "failed", "params_json", "terms_json"]
+    _COLUMNS = [
+        "number", "score", "n_images", "failed", "pruned",
+        "params_json", "terms_json",
+    ]
 
     def to_dataframe(self) -> pd.DataFrame:
         """One row per trial; ``params``/``terms`` serialized as JSON strings."""
@@ -80,6 +87,7 @@ class StudyStore:
                 "score": t.score,
                 "n_images": t.n_images,
                 "failed": t.failed,
+                "pruned": t.pruned,
                 "params_json": json.dumps(t.params, sort_keys=True),
                 "terms_json": json.dumps(t.terms, sort_keys=True),
             }
@@ -104,6 +112,8 @@ class StudyStore:
                 terms=json.loads(str(row["terms_json"])),
                 n_images=int(row["n_images"]),
                 failed=bool(row["failed"]),
+                # Tolerate pre-pruned-column journals (default to not-pruned).
+                pruned=bool(row.get("pruned", False)),
             )
             for row in df.to_dict(orient="records")
         ]

@@ -3,10 +3,12 @@ from __future__ import annotations
 from phenotypic.tune._study_store import StudyStore, Trial
 
 
-def _trial(n: int, score: float, *, failed: bool = False, **params) -> Trial:
+def _trial(
+    n: int, score: float, *, failed: bool = False, pruned: bool = False, **params
+) -> Trial:
     return Trial(
         number=n, params=params, score=score,
-        terms={"Count": score}, n_images=2, failed=failed,
+        terms={"Count": score}, n_images=2, failed=failed, pruned=pruned,
     )
 
 
@@ -53,6 +55,19 @@ def test_parquet_round_trip_empty_store(tmp_path):
     back = StudyStore.from_parquet(path)
     assert len(back) == 0
     assert back.best() is None
+
+
+def test_parquet_round_trip_preserves_pruned(tmp_path):
+    # Trial.pruned must survive the parquet round-trip (resume-symmetric).
+    store = StudyStore()
+    store.append(_trial(0, 0.5, a=1, pruned=True))
+    store.append(_trial(1, 0.9, a=2))  # default pruned=False
+    path = tmp_path / "trials.parquet"
+    store.to_parquet(path)
+    back = StudyStore.from_parquet(path)
+    by_number = {t.number: t for t in back.trials}
+    assert by_number[0].pruned is True
+    assert by_number[1].pruned is False
 
 
 def test_parquet_round_trip_all_failed(tmp_path):

@@ -113,6 +113,81 @@ def test_engine_resumes_random_config_continues_sequence():
     assert [t.params for t in resumed.store.trials] == reference
 
 
+class _SpyChannel:
+    """A no-op channel tagged so the engine-threading test can identify it."""
+
+    def __init__(self) -> None:
+        self.reported = False
+
+    def report(self, value: float, step: int) -> None:
+        self.reported = True
+
+    def should_prune(self) -> bool:
+        return False
+
+
+def test_engine_passes_channel_from_suggest_to_evaluate(monkeypatch):
+    # The engine must hand the channel returned by suggest() to evaluate(),
+    # not discard it (the channel reports during evaluation).
+    from phenotypic.tune._strategies._config import GridConfig as _GridConfig
+
+    spy = _SpyChannel()
+
+    class _OneShotGrid:
+        def __init__(self) -> None:
+            self._done = False
+
+        def suggest(self):
+            self._done = True
+            return {"1.ignore_zeros": True}, spy
+
+        def register_result(self, params, result, *, pruned=False) -> None:
+            return None
+
+        def is_exhausted(self) -> bool:
+            return self._done
+
+    monkeypatch.setattr(_GridConfig, "build", lambda self, space, store: _OneShotGrid())
+    engine = TuningEngine(_spec(Budget(n_trials=1), _base()))
+    engine.optimize([load_synth_yeast_plate()])
+    assert spy.reported, "the channel from suggest() must reach evaluate()"
+
+
+def test_engine_registers_pruned_flag(monkeypatch):
+    # A pruned EvaluationResult must persist Trial.pruned=True and flow
+    # pruned=True into register_result; pruned counts toward budget, not failures.
+    from phenotypic.tune._evaluation._evaluator import EvaluationResult
+    from phenotypic.tune._strategies._config import GridConfig as _GridConfig
+
+    seen_pruned: list[bool] = []
+
+    class _PruneOnceGrid:
+        def __init__(self) -> None:
+            self._n = 0
+
+        def suggest(self):
+            self._n += 1
+            return {"1.ignore_zeros": True}, _SpyChannel()
+
+        def register_result(self, params, result, *, pruned=False) -> None:
+            seen_pruned.append(pruned)
+
+        def is_exhausted(self) -> bool:
+            return self._n >= 1
+
+    def _fake_eval(self, base, scorer, params, images, *, channel=None):
+        return EvaluationResult(score=0.1, terms={"X": 0.1}, n_images=1, pruned=True)
+
+    monkeypatch.setattr(_GridConfig, "build", lambda self, space, store: _PruneOnceGrid())
+    monkeypatch.setattr(Evaluator, "evaluate", _fake_eval)
+    engine = TuningEngine(_spec(Budget(n_trials=1), _base()))
+    engine.optimize([load_synth_yeast_plate()])
+    assert seen_pruned == [True]
+    trial = engine.store.trials[0]
+    assert trial.pruned is True
+    assert trial.failed is False
+
+
 def test_max_failures_counts_recorded_failures_on_resume():
     # The failure safety-valve must survive resume: failures already journaled
     # count toward max_failures (else a resumed run resets the cap to 0).

@@ -74,10 +74,10 @@ class TuningEngine:
             # resumed at/over the failure cap stops immediately.
             if budget.max_failures is not None and failures >= budget.max_failures:
                 break
-            params, _channel = strategy.suggest()
+            params, channel = strategy.suggest()
             params = dict(params)
             result = spec.evaluator.evaluate(
-                spec.pipeline, spec.scorer, params, images
+                spec.pipeline, spec.scorer, params, images, channel=channel
             )
             self._store.append(
                 Trial(
@@ -87,9 +87,14 @@ class TuningEngine:
                     terms=result.terms,
                     n_images=result.n_images,
                     failed=result.failed,  # explicit flag from the Evaluator
+                    pruned=result.pruned,  # early-stopped via the pruning channel
                 )
             )
-            strategy.register_result(params, result)
+            # Tell the strategy how the trial ended; a pruned trial flows back as
+            # pruned=True (Optuna marks it TrialState.PRUNED).
+            strategy.register_result(params, result, pruned=result.pruned)
+            # Budget counts completed + pruned (a pruned trial is a real, if
+            # partial, evaluation). Only true failures feed the failure cap.
             number += 1
             if result.failed:
                 failures += 1
