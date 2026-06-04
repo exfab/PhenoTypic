@@ -49,7 +49,7 @@ from ._engine import TuningEngine
 from ._evaluation import EvaluationResult, Evaluator, build_pipeline
 
 # --- Phase 1a: search space (domains + Knob/SearchSpace) ----------------------
-from ._scoring import QCScorer, Scorer
+from ._scoring import QCScorer, ReferenceFreeScorer, Scorer
 from ._screening import compute_param_importance
 from ._search_space import (
     Categorical,
@@ -102,6 +102,8 @@ __all__ = [
     # Phase 1c: scoring
     "Scorer",
     "QCScorer",
+    # Phase 3 (chunk 3): reference-free objective + meta-validation gate
+    "ReferenceFreeScorer",
     # Phase 1c: evaluation
     "Evaluator",
     "EvaluationResult",
