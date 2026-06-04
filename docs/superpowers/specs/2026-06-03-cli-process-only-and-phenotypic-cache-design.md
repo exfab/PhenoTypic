@@ -66,6 +66,10 @@ Both build on the existing single-source-of-truth layout module
 | D8 | Output filename | `<stem>_<layer>.<ext>` (self-documenting) |
 | D9 | objmap without a detector | Warn per image + write the (empty) map; do not fail |
 | D10 | TIFF bit depth (added in self-review) | **Output follows `image.bit_depth`** (8→8, 16→16; no forced upcast). Worker-side quantization of float layers via `skimage.img_as_ubyte`/`img_as_uint`; do **not** modify shared accessor IO. `objmap` stays 16-bit labels. (See §5.6.) |
+| D11 | `phenotypic.sweep` in the migration | **Out of scope for v1.** Migrate the forward CLI + process-only only; sweep's root-level `processing_events.log` stays put (follow-up). |
+| D12 | Process-only input discovery / mirror depth | **Reuse the existing 1-level `scan_directory_structure`** (flat dir or one level of dataset subdirs; mixed root+subdir inputs rejected). "Mirror input tree" = mirror that ≤1-level structure; deeper nesting is not discovered. |
+| D13 | Process-only GUI visibility | **Progress only, no deliverables.** Write the progress manifest + state under `.phenotypic/` (run console shows progress; `--resume` works) but emit no `deliverables/` / dashboard / results. |
+| D14 | Event-log placement (resolved) | **Sibling of `progress/` inside `.phenotypic/`** (`<output>/.phenotypic/processing_events.log`). Forced by `_cli_checkpoint_handler.py:200`, which derives the log as `progress_dir.parent / PROCESSING_EVENTS_LOG`. |
 
 ## 4. Background (current state)
 
@@ -169,19 +173,36 @@ the legacy location**:
 This is a soft cutover: no migration of old files, no symlinks. Old runs remain
 readable/resumable; new runs use the hidden dir.
 
-> Implementation note (self-review — partially confirmed): re-rooting the
-> helpers is **not** sufficient on its own, because some writers hand-join the
-> path instead of calling the helper. **Confirmed:** `_cli_state_management.py`
-> does `state_file = output_dir / PROCESSING_STATE_JSON` for both
-> `save_processing_state` (L37) and `load_processing_state` (L79) and imports
-> the bare `PROCESSING_STATE_JSON` constant — so it must be changed to route
-> through `processing_state_path()` (save) and `resolve_processing_state_path()`
-> (load) rather than re-spelling. Audit the rest for the same anti-pattern and
-> convert each to the helpers: `_cli_update_state.py`, `_cli_failure_tracker.py`,
-> `_cli_checkpoint_handler.py`, `_cli_sentinel.py`, `_cli_chunk_writer.py`,
-> `_cli_recompile_worker.py`. A grep for `output_dir / PROCESSING_*`,
-> `/ DIR_PROGRESS`, `/ "progress"`, and `/ PROCESSING_STATE_JSON` is the audit
-> checklist; the migration is done when none remain outside `_io_constants`.
+> **Implementation note (self-review — blast radius is large).** Re-rooting the
+> helpers is **not** sufficient on its own: ~40 call sites **hand-join** the
+> machine-state path instead of calling a helper, so each must be converted to
+> the helper (write path) or its `resolve_*` variant (read path). Audit grep
+> (run it first in the implementing session):
+> ```
+> grep -rn --include='*.py' -E '/ ?"progress"|/ ?PROCESSING_STATE_JSON|/ ?"processing_state\.json"|/ ?PROCESSING_EVENTS_LOG|/ ?"processing_events\.log"|/ ?DIR_PROGRESS' src/phenotypic | grep -v _io_constants.py
+> ```
+> Inventory captured 2026-06-03 (line numbers will drift — re-grep):
+> - **`phenotypicCLI.py`** — L1013, L1038 (state), L1514, L1581, L1708, L1776 (progress/recompile)
+> - **`_cli_state_management.py`** — L37, L79 (state), L92, L190 (event log)
+> - **`_cli_execution_strategies.py`** — L121, L735 (event log), L290, L402, L633, L781 (progress)
+> - **`_cli_recompile_worker.py`** — L122, L174, L263, L329
+> - **`_cli_process_single.py`** — L465; **`_cli_output_manager.py`** — L303;
+>   **`_cli_chunk_writer.py`** — L67; **`_cli_checkpoint_handler.py`** — L48,
+>   L200 (`progress_dir.parent / PROCESSING_EVENTS_LOG` — see D14)
+> - **SLURM script gens** — `_cli_slurm_scripts.py` L187,
+>   `_cli_slurm_array_scripts.py` L213, `_cli_recompile_slurm_scripts.py` L117
+> - **`_dashboard/`** — `_manifest_builder.py` L311, L469; `_analysis_data.py`
+>   L52; `_generator.py` L121, L145
+> - **`tools_/generate_report.py`** L50, L118 and **`tools_/monitor_slurm_jobs.py`**
+>   L55, L56 — read-only consumers; route through the `resolve_*` helpers so they
+>   see both new and legacy runs. *(Both were missing from the earlier draft list.)*
+> - **`phenotypic.sweep`** (`_sweep_slurm_scripts.py` L54, `_sweep_cli.py` L432,
+>   `_sweep_execution.py` L338) — **intentionally NOT migrated** in v1 (D11).
+>
+> The migration is "done" when the audit grep returns only `_io_constants.py`
+> and the sweep sites; enforce with a test/grep gate. Some readers also need new
+> `resolve_*` variants beyond `resolve_processing_state_path` /
+> `resolve_progress_dir` — see §5.2.
 
 ### 5.2 GUI integration
 
@@ -189,14 +210,27 @@ readable/resumable; new runs use the hidden dir.
   `PHENOTYPIC_CACHE_DIRNAME = DIR_PHENOTYPIC`. Update the doc comments noting
   machine-state now lives under `.phenotypic/`.
 - Run discovery (`shell/_runs_registry.py`, `shell/_classifier.py`,
-  `run_console/_recent_runs.py`): resolve state via `resolve_progress_dir` /
-  `manifest` through the new helper so both new and legacy runs are found.
+  `run_console/_recent_runs.py`): resolve state through `resolve_*` helpers so
+  both new and legacy runs are found. **Note:** the registry reads status via
+  `manifest_json_path(output_dir)` (`_runs_registry.py:297`), which composes
+  from `progress_dir` and therefore re-roots to `.phenotypic/` automatically —
+  so for a **legacy** run (manifest at `<output>/progress/manifest.json`) the
+  helper would miss it. Add a `resolve_manifest_json_path()` (and, as needed,
+  `resolve_*` for `failures`/`job_metadata`) with the same first-existing
+  semantics as `resolve_progress_dir`, and have the GUI readers call those.
 - Keep the existing "skip hidden dirs" behavior for *dataset/run candidate*
-  scanning, but ensure `.phenotypic/` is still **read** for state. (It is never
-  itself a run root, so skipping it as a candidate is correct; the fix is only
-  that state lookups for a real run root descend into its `.phenotypic/`.)
-- `gui/FEATURES.md` (CI-gated): add/adjust the row describing where run state
-  is read from, with a test ref.
+  scanning (add `.phenotypic` to the skip set alongside `.phenotypic-gui`,
+  `.gui_log`), but ensure `.phenotypic/` of a real run root is still **read**
+  for state.
+- **Process-only runs (D13)** write a progress manifest + state but **no
+  `deliverables/`**. The classifier's `out`/`has_dashboard` badges already key
+  on `deliverables/`, so a process-only run correctly shows progress without a
+  dashboard/results affordance — no extra classifier work expected; add a test
+  asserting it.
+- `gui/FEATURES.md` (CI-gated): the `features-md-gate` job rejects any PR
+  touching `src/phenotypic/gui/` without editing `FEATURES.md`, and pre-commit
+  validates the `Test ref` on `✅ shipping` rows — so Phase 1 **must** add/adjust
+  a row (where run state is read from) with a real test ref.
 
 ### 5.3 `--process-only` CLI surface
 
@@ -229,13 +263,25 @@ Validation lives alongside the existing `--measure`/`--recompile` guard blocks.
 
 ### 5.4 Process-only execution flow
 
-- **`ExecutionConfig`** gains an optional `process_only_layer: ProcessOnlyLayer
-  | None` field (a `Literal["rgb","gray","detect_mat","objmap"]` alias in
-  `tools_/typing_.py` per the CLAUDE.md closed-set rule — type-only, no Enum).
-- **Strategy dispatch**: `LocalParallelStrategy` and `AutonomousSLURMStrategy`
-  select the per-image callable based on `config.process_only_layer`:
-  - unset → existing `process_single_image_core` (or measure path).
-  - set → new `process_single_apply_only_core`.
+- **`ExecutionConfig`** (a dataclass in `_cli_types.py:82`) gains an optional
+  `process_only_layer: ProcessOnlyLayer | None` field (a
+  `Literal["rgb","gray","detect_mat","objmap"]` alias in `tools_/typing_.py`
+  per the CLAUDE.md closed-set rule — type-only, no Enum).
+- **Input discovery (D12)**: reuse `scan_directory_structure` (1-level; mixed
+  root+subdir inputs rejected — process-only inherits that rejection). The
+  `input_root` for mirroring is the CLI `--input` path (its parent for a single
+  file).
+- **Strategy dispatch — worker *and* finalize**: `LocalParallelStrategy` and
+  `AutonomousSLURMStrategy` branch on `config.process_only_layer`. This is **not
+  just a worker swap** (self-review finding):
+  - **Per-image callable**: unset → `process_single_image_core` (or measure
+    path); set → new `process_single_apply_only_core`.
+  - **Finalize**: process-only must **skip** the post-loop finalize. Locally
+    that means *not* calling `regenerate_dashboard_artifacts()`
+    (`_cli_execution_strategies.py:211`); on SLURM it means submitting the
+    image array **without** the aggregation/sentinel/checkpoint finalize chain
+    (there is nothing to aggregate). Replace the SLURM tail with a lightweight
+    completion marker (enough for the run console to read "complete"). See §8/§11.
 - **New worker** `process_single_apply_only_core(pipeline_path, image_path,
   input_root, output_dir, image_type, layer, read_kwargs, ...)`:
   1. Load pipeline + image (same read-kwargs / grid-shape resolution as the
@@ -243,16 +289,18 @@ Validation lives alongside the existing `--measure`/`--recompile` guard blocks.
   2. `image = pipeline.apply(image, inplace=True)`.
   3. Compute the **mirrored output path** (see 5.5) and write the layer (5.6).
   4. Append the same `started`/`completed`/`failed` events to the event log so
-     resume + progress tracking work unchanged.
-- **SLURM**: the `_cli_process_single.main` worker CLI gains `--process-only
-  LAYER`; the array-script generator (`_cli_slurm_array_scripts.py`) threads it
-  through. When set, the script also needs the input root to compute relative
-  paths (pass `--input-root`, or derive from the existing per-image args —
-  decided in the plan).
-- **No finalize**: process-only skips `aggregate_measurements`,
-  dashboard/manifest analysis regeneration, QC, overlays, and `deliverables/`.
-  It still writes the `.phenotypic/` tracking (state, events, failures) and a
-  `.phenotypic/pipeline.json` copy for reproducibility.
+     resume + progress tracking work unchanged (event-log keying; see §6).
+- **`input_root` plumbing**: local worker closure captures it from
+  `self.config.input_path`; the SLURM worker CLI (`_cli_process_single.main`)
+  gains `--process-only LAYER` **and** `--input-root PATH`, threaded by
+  `_cli_slurm_array_scripts.py`. (Default chosen over deriving from per-image
+  args — explicit and unambiguous.)
+- **Outputs**: process-only writes the mirrored layer files + a progress
+  manifest/state/event log + a `.phenotypic/pipeline.json` copy
+  (reproducibility). It writes **no** `deliverables/`, `results/`, QC, overlays,
+  aggregation, or analysis HTML. Per D13 the progress manifest makes the run
+  visible in the run console; the absence of `deliverables/` keeps it out of the
+  results viewer's dashboard affordance.
 
 ### 5.5 Output path (mirror input tree, D2 + D8)
 
@@ -372,9 +420,11 @@ sample of mirrored output paths, execution mode (local/SLURM), and the
   process-only worker appends the same `started`/`completed`/`failed` events,
   resume skips already-written images with **no change to the resume
   predicate**.
-- Input is a single file vs flat dir vs nested dirs: all handled by
-  `relative_to(input_root)`; for a single-file input, `input_root` is the
-  file's parent.
+- Input shapes (bounded by the 1-level scanner, D12): single file → `<output>/
+  <stem>_<layer>.<ext>`; flat dir → files mirror at the output root; one level
+  of subdirs → `<output>/<subdir>/<stem>_<layer>.<ext>`. Mixed root+subdir
+  inputs are rejected by the scanner (process-only inherits this). Deeper
+  nesting is **not discovered** — documented limitation, not a bug.
 
 ## 7. Testing strategy
 
@@ -404,37 +454,53 @@ sample of mirrored output paths, execution mode (local/SLURM), and the
   `ExecutionConfig.process_only_layer`.
 
 **Integration**
-- `--process-only detect_mat` over a nested-input fixture, local executor,
-  asserts mirrored TIFFs exist at the fixture's bit depth (uint8 for an 8-bit
-  fixture), no `deliverables/`/`results/`, and
-  `.phenotypic/` tracking is present.
-- `--dry-run` output contains the plan and `.phenotypic/` path.
-- SLURM script generation asserts `--process-only` (+ input root) is threaded
-  into the array script (no cluster needed).
-- A regression test confirming the existing forward run still works with state
-  under `.phenotypic/` and that a legacy-layout run still resumes / is GUI-discovered.
+- `--process-only detect_mat` over a one-level-subdir fixture, local executor:
+  asserts mirrored TIFFs at the fixture's bit depth (uint8 for an 8-bit
+  fixture) land at `<output>/<subdir>/<stem>_detect_mat.tiff`, **no**
+  `deliverables/`/`results/`, and `.phenotypic/` tracking (state + progress
+  manifest) is present.
+- `--dry-run` output contains the plan and the `.phenotypic/` path.
+- SLURM script generation asserts `--process-only` **and** `--input-root` are
+  threaded into the array script, and that the **finalize/aggregation chain is
+  omitted** (only the image array + completion marker) (no cluster needed).
+- Regression: the existing forward run still works with state under
+  `.phenotypic/`; a **legacy-layout** run (state at the old root) still
+  resumes and is GUI-discovered (exercises the `resolve_*` fallbacks).
+- A "no hand-joined state paths" grep gate test (audit grep returns only
+  `_io_constants.py` + the intentionally-excluded sweep sites).
 
 ## 8. Implementation phasing
 
-1. **Phase 1 — `.phenotypic` migration**: `_io_constants` re-root + cache-dir
-   helper + back-compat resolvers; audit/update all machine-state writers to go
-   through helpers; update GUI readers + `FEATURES.md`; tests. Forward CLI
-   behavior identical except state location.
-2. **Phase 2 — process-only mode**: `ProcessOnlyLayer` alias; `ExecutionConfig`
-   field; `process_single_apply_only_core`; strategy dispatch; worker-CLI flag
-   + SLURM threading; CLI option + validation; mirrored output writer;
-   `--dry-run`; tests + docs (CLI docstring, `CLAUDE.md` CLI section).
+Two phases, each its own plan + PR + green CI. Phase 1 stands alone; Phase 2
+depends on it. **Recommended as two separate fresh sessions** given Phase 1's
+~40-site blast radius.
 
-Phase 1 lands and is verifiable on its own; Phase 2 depends on it.
+1. **Phase 1 — `.phenotypic` migration** (no behavior change except state
+   location): add `DIR_PHENOTYPIC` + `phenotypic_cache_dir` + re-root
+   `progress_dir`/`processing_state_path`/`event_log_path`; add `resolve_*`
+   back-compat readers (incl. `resolve_manifest_json_path`); **convert all ~40
+   hand-joined sites** (§5.1 inventory) to helpers; update GUI readers + add
+   `.phenotypic` to the hidden-skip set + `FEATURES.md` row; tests incl. the
+   grep gate + legacy-resume + legacy-discovery. Sweep (D11) intentionally
+   excluded.
+2. **Phase 2 — process-only mode**: `ProcessOnlyLayer` alias; `ExecutionConfig`
+   field; `process_single_apply_only_core` + worker-side bit-depth quantization;
+   **strategy dispatch for worker *and* finalize** (skip dashboard locally; skip
+   aggregation chain on SLURM, emit completion marker); worker-CLI
+   `--process-only`/`--input-root` + array-script threading; top-level CLI option
+   + validation; mirrored output writer; `.phenotypic/pipeline.json` copy;
+   `--dry-run`; tests + docs (CLI docstring, `CLAUDE.md` CLI section, README).
 
 ## 9. Risks
 
-- **Migration blast radius**: many writers/readers touch `progress/`, and at
-  least one (`_cli_state_management.py`) **hand-joins** the path rather than
-  using the helper (confirmed in §5.1). Mitigated by converting every site to
-  the `_io_constants` helpers + the grep-based audit checklist in §5.1. A
-  missed hand-joined path is the main failure mode → the `_io_constants` layout
-  test plus a "no hand-joined state paths outside `_io_constants`" grep gate.
+- **Migration blast radius (large)**: **~40 hand-joined sites** across the CLI,
+  dashboard builders, SLURM script generators, and two `tools_/` reporters
+  (full inventory in §5.1) — not the handful first assumed. A missed site is the
+  main failure mode → mitigated by converting every site to the `_io_constants`
+  helpers/`resolve_*` readers + a "no hand-joined state paths outside
+  `_io_constants` (sweep excepted)" grep-gate test + the `_io_constants` layout
+  test. `phenotypic.sweep` is deliberately left on the legacy layout (D11), so
+  the gate must allowlist its sites.
 - **GUI run discovery regressions**: covered by back-compat resolvers + a
   legacy-layout discovery test + `FEATURES.md` gate. Note status reads already
   go through `manifest_json_path()` (`_runs_registry.py:297`), so they follow
@@ -450,8 +516,51 @@ Phase 1 lands and is verifiable on its own; Phase 2 depends on it.
 
 ## 10. Open questions for implementation (non-blocking)
 
-- Exact mechanism to pass `input_root` to the SLURM worker (new `--input-root`
-  flag vs deriving from existing args).
-- Whether `event_log_path` should remain a sibling of `progress/` inside
-  `.phenotypic/` or move *into* `.phenotypic/progress/` (cosmetic; default:
-  sibling, preserving current relative layout).
+Resolved since the first draft: event-log placement → **sibling inside
+`.phenotypic/`** (D14, forced by `_cli_checkpoint_handler.py:200`); SLURM
+`input_root` → **new `--input-root` flag** (§5.4); sweep scope (D11), mirror
+depth (D12), GUI visibility (D13). Remaining:
+
+- **SLURM completion-marker shape for process-only.** With no aggregation chain
+  (§5.4), what minimal artifact tells the run console "complete"? Options: write
+  a terminal `manifest.json` with `is_complete=true` from the last array task vs
+  a tiny sentinel finalize task. Lean: a one-shot finalize task that writes the
+  manifest (reuses existing manifest-builder, no aggregation). Settle in the
+  Phase-2 plan.
+- **Process-only dataset/state keying under the 1-level scanner.** Confirm the
+  `(dataset, image)` event keys the worker emits are unique across the mirrored
+  layout and that resume's `ds_state.completed` lookup matches them (it should,
+  since keying is unchanged from the forward path — add an explicit resume test).
+- **`.phenotypic/pipeline.json` helper.** Needs a new path helper distinct from
+  `pipeline_json_path` (which roots under `deliverables/`). Trivial; name it in
+  the plan (e.g. `phenotypic_cache_pipeline_json_path`).
+
+## 11. Fresh-session implementation handoff
+
+A cold-start session should, in order:
+
+1. **Read this spec** end-to-end, then **re-run the §5.1 audit grep** (line
+   numbers will have drifted) to regenerate the live hand-joined-path list.
+2. **Use the code-review-graph MCP tools first** (per project CLAUDE.md) —
+   `query_graph`/`get_impact_radius` on `progress_dir`, `processing_state_path`,
+   `manifest_json_path` — before Grep/Read, to catch any site the grep misses
+   (e.g. f-strings or aliased imports).
+3. **Do Phase 1 and Phase 2 as separate plans/PRs** (§8); land Phase 1 green
+   before starting Phase 2.
+4. **Watch the CI gates**: the `gui-checks` `features-md-gate` rejects any
+   `src/phenotypic/gui/` change without a `FEATURES.md` edit (+ pre-commit
+   `Test ref` validation on `✅ shipping` rows); `WORKFLOWS.md` is **not**
+   triggered (no new end-to-end GUI flow). Run `uv run mypy src/phenotypic` and
+   `uv run ruff check --fix` at completion boundaries; tests via `uv run pytest`.
+5. **Don't confuse the two hidden dirs**: `.phenotypic/` is **run-root
+   machine-state** (this work); `.phenotypic-gui/` is the **GUI sandbox** dir
+   for presets/state (`gui/_config.py:SANDBOX_GUI_DIRNAME`) — unrelated, do not
+   merge them.
+6. **Tests that will need updating** (expect, don't be surprised): anything
+   asserting `<output>/processing_state.json` or `<output>/progress/...` at the
+   root — search `tests/` for those literals and the `TestDeliverablesLayout`
+   neighbors in `tests/unit/tools_/test_io_constants.py`.
+7. **Reproducibility while iterating**: this is a worktree on branch
+   `worktree-cli-processing-mode`; commit each completed phase to lock progress
+   (shared-worktree git index — be the sole committer, scope commits with
+   `git commit -- <paths>`).
