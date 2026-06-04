@@ -13,7 +13,8 @@ Two related changes to the PhenoTypic CLI:
    that executes `pipeline.apply()` only (preprocessing/detection, **no
    measurement, no analysis output suite**) and writes a **single chosen image
    layer** per input image into the output folder, **mirroring the input
-   directory tree**. `rgb`/`gray`/`detect_mat` are saved as TIFFs **at the
+   directory tree** (bounded by the 1-level dataset scanner — D12).
+   `rgb`/`gray`/`detect_mat` are saved as TIFFs **at the
    image's bit depth** (8-bit source → 8-bit TIFF, 16-bit source → 16-bit
    TIFF); `objmap` is saved as a 16-bit raw-label PNG (matching prior CLI
    iterations). This
@@ -187,8 +188,11 @@ readable/resumable; new runs use the hidden dir.
 > - **`_cli_execution_strategies.py`** — L121, L735 (event log), L290, L402, L633, L781 (progress)
 > - **`_cli_recompile_worker.py`** — L122, L174, L263, L329
 > - **`_cli_process_single.py`** — L465; **`_cli_output_manager.py`** — L303;
->   **`_cli_chunk_writer.py`** — L67; **`_cli_checkpoint_handler.py`** — L48,
->   L200 (`progress_dir.parent / PROCESSING_EVENTS_LOG` — see D14)
+>   **`_cli_chunk_writer.py`** — L67; **`_cli_checkpoint_handler.py`** — L48
+>   (hand-join `output_dir / DIR_PROGRESS` → convert). *Note:* L200
+>   (`progress_dir.parent / PROCESSING_EVENTS_LOG`) is **already correct** once
+>   `progress_dir` is the re-rooted value — leave it; it's precisely why D14
+>   places the event log as a sibling of `progress/`.
 > - **SLURM script gens** — `_cli_slurm_scripts.py` L187,
 >   `_cli_slurm_array_scripts.py` L213, `_cli_recompile_slurm_scripts.py` L117
 > - **`_dashboard/`** — `_manifest_builder.py` L311, L469; `_analysis_data.py`
@@ -276,12 +280,16 @@ Validation lives alongside the existing `--measure`/`--recompile` guard blocks.
   just a worker swap** (self-review finding):
   - **Per-image callable**: unset → `process_single_image_core` (or measure
     path); set → new `process_single_apply_only_core`.
-  - **Finalize**: process-only must **skip** the post-loop finalize. Locally
-    that means *not* calling `regenerate_dashboard_artifacts()`
-    (`_cli_execution_strategies.py:211`); on SLURM it means submitting the
-    image array **without** the aggregation/sentinel/checkpoint finalize chain
-    (there is nothing to aggregate). Replace the SLURM tail with a lightweight
-    completion marker (enough for the run console to read "complete"). See §8/§11.
+  - **Finalize**: process-only writes a **progress manifest but no dashboard
+    HTML**. ⚠️ `regenerate_dashboard_artifacts()`
+    (`_cli_execution_strategies.py:211`, `_generator.py:107`) does **both**
+    `build_manifest` *and* `generate_dashboard` (HTML) — so do **not** call it
+    wholesale (no manifest → the run console can't show the run, breaking D13)
+    **and** do not call it as-is (we don't want the dashboard HTML). Instead
+    call **`build_manifest` only** (the manifest half) locally; on SLURM,
+    submit the image array **without** the aggregation/sentinel/checkpoint
+    chain and add a one-shot finalize task that calls `build_manifest`. The
+    manifest's `is_complete` is the completion signal the run console reads.
 - **New worker** `process_single_apply_only_core(pipeline_path, image_path,
   input_root, output_dir, image_type, layer, read_kwargs, ...)`:
   1. Load pipeline + image (same read-kwargs / grid-shape resolution as the
@@ -435,8 +443,10 @@ sample of mirrored output paths, execution mode (local/SLURM), and the
 - Back-compat resolvers: legacy-root state file is found when `.phenotypic/`
   is absent; new path wins when both exist; fresh write targets `.phenotypic/`.
 - `ProcessOnlyLayer` Literal alias presence (type-only set).
-- Output-path mapping: nested / flat / single-file inputs → expected mirrored
-  paths and `_layer` suffix; objmap → `.png`, others → `.tiff`.
+- Output-path mapping: one-level-subdir / flat-dir / single-file inputs →
+  expected mirrored paths and `_layer` suffix; objmap → `.png`, others →
+  `.tiff`. (Deeper nesting is out of scope per D12 — assert the scanner's
+  mixed-input rejection too.)
 - Worker: each layer writes a file of the right format/bit-depth (small synth
   image). **Explicit dtype assertions** (the bug this caught): load the written
   file and assert output depth follows `image.bit_depth`:
@@ -521,12 +531,11 @@ Resolved since the first draft: event-log placement → **sibling inside
 `input_root` → **new `--input-root` flag** (§5.4); sweep scope (D11), mirror
 depth (D12), GUI visibility (D13). Remaining:
 
-- **SLURM completion-marker shape for process-only.** With no aggregation chain
-  (§5.4), what minimal artifact tells the run console "complete"? Options: write
-  a terminal `manifest.json` with `is_complete=true` from the last array task vs
-  a tiny sentinel finalize task. Lean: a one-shot finalize task that writes the
-  manifest (reuses existing manifest-builder, no aggregation). Settle in the
-  Phase-2 plan.
+- **SLURM completion-marker shape for process-only.** Resolved in direction
+  (§5.4): a one-shot finalize task calls `build_manifest` (no aggregation, no
+  dashboard HTML); `manifest.json::is_complete` is the signal. Remaining detail
+  for the plan: whether that finalize task is a trivial sbatch dependent on the
+  array, or the last array task self-elects — pick in Phase 2.
 - **Process-only dataset/state keying under the 1-level scanner.** Confirm the
   `(dataset, image)` event keys the worker emits are unique across the mirrored
   layout and that resume's `ds_state.completed` lookup matches them (it should,
