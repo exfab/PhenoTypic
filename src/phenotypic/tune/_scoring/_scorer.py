@@ -55,18 +55,26 @@ class Scorer(BaseModel, ABC):
         """
         return True
 
-    def finalize(self, terms: Mapping[str, float]) -> float:
-        """Combine robust-aggregated per-term scores into one scalar objective.
+    def finalize(self, terms: Mapping[str, float]) -> float | dict[str, float]:
+        """Combine robust-aggregated per-term scores into the optimizer objective.
 
-        The default is the arithmetic mean of the term values (a single term
-        passes through unchanged); composite scorers override to weight terms.
+        The default is the arithmetic mean of the term values — a single scalar
+        (a single term passes through unchanged); composite single-objective
+        scorers override to weight terms. A **multi-objective** scorer (plan §0a)
+        may instead return a ``dict[str, float]`` of *named objectives*: the
+        ``Evaluator`` then stashes that dict on ``EvaluationResult.objectives``
+        and projects it to the scalar ``score`` as ``mean(objectives.values())``.
+        The single-objective scalar path is byte-identical — the dict branch only
+        fires when an override returns a dict.
 
         Args:
             terms: Term name → robust-aggregated score (already reduced across
                 the calibration set by the ``Evaluator``).
 
         Returns:
-            The scalar objective (higher = better). ``0.0`` for no terms.
+            The scalar objective (higher = better; ``0.0`` for no terms) for
+            single-objective scorers, or a ``dict[str, float]`` of named
+            objectives for a multi-objective scorer.
         """
         values = list(terms.values())
         if not values:
