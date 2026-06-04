@@ -42,6 +42,9 @@ class EvaluationResult(BaseModel):
         n_images: Number of calibration images evaluated.
         failed: ``True`` when the candidate raised and was floored to
             ``failure_score``.
+        pruned: ``True`` when the rung ladder early-stopped this candidate via
+            the pruning channel. Distinct from ``failed``: a pruned trial ran
+            cleanly on a partial set and carries its partial aggregate.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -50,6 +53,7 @@ class EvaluationResult(BaseModel):
     terms: dict[str, float]
     n_images: int
     failed: bool = False
+    pruned: bool = False
 
 
 class Evaluator(BaseModel):

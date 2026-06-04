@@ -69,3 +69,13 @@ def test_evaluate_failure_assigns_failure_score():
     assert result.terms == {}
     assert result.n_images == 1
     assert result.failed is True
+
+
+def test_result_carries_pruned_flag():
+    # The frozen result exposes a pruned flag (default False), distinct from
+    # failed: a pruned trial early-stopped but did not error.
+    default = EvaluationResult(score=1.0, terms={"X": 1.0}, n_images=3)
+    assert default.pruned is False
+    pruned = EvaluationResult(score=0.2, terms={"X": 0.2}, n_images=1, pruned=True)
+    assert pruned.pruned is True
+    assert pruned.failed is False
