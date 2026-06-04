@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Annotated, Literal
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
 from skimage.filters import gaussian
 
 from ..abc_ import ImageEnhancer
+from ..tune._search_space._tune_spec import TuneSpec
 
 
 class GaussianBlur(ImageEnhancer):
@@ -57,10 +58,10 @@ class GaussianBlur(ImageEnhancer):
         denoising methods.
     """
 
-    sigma: float = 2.0
+    sigma: Annotated[float, TuneSpec(0.5, 5.0, log=True)] = 2.0
     mode: Literal["reflect", "constant", "nearest"] = "reflect"
-    cval: float = 0.0
-    truncate: float = 4.0
+    cval: Annotated[float, TuneSpec(tunable=False)] = 0.0
+    truncate: Annotated[float, TuneSpec(tunable=False)] = 4.0
 
     def _operate(self, image: Image) -> Image:
         image.detect_mat[:] = gaussian(
