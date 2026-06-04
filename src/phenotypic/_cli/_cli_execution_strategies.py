@@ -215,11 +215,10 @@ class LocalParallelStrategy(ExecutionStrategy):
             if self.config.process_only_layer:
                 # Manifest only — no dashboard HTML, no aggregation (D13).
                 from ._dashboard._manifest_builder import build_manifest
-                from phenotypic.tools_ import progress_dir as _progress_dir
 
                 build_manifest(
                     output_dir=output_dir,
-                    progress_dir=_progress_dir(output_dir),
+                    progress_dir=progress_dir(output_dir),
                     datasets=datasets_totals,
                     execution_mode="local",
                     start_time=start_iso,

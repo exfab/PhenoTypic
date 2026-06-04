@@ -180,7 +180,7 @@ def generate_array_job_script(
     # drip-feed for ANY number of chunks (the chunk sizing already reserves
     # headroom for forward sentinels, which process-only otherwise leaves unused).
     if config.process_only_layer:
-        entries = [str(img.absolute()) for img in chunk_images]
+        entries = [str(img_path.absolute()) for img_path in chunk_images]
         if is_last_chunk:
             entries.append(_MANIFEST_SENTINEL)
     else:
