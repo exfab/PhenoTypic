@@ -8,18 +8,18 @@ When SLURM is available, the CLI automatically submits jobs to the scheduler.
 To force local execution instead:
 
 ```bash
-python -m phenotypic pipeline.json /plates/ /output/ --force-local
+python -m phenotypic --pipeline pipeline.json --input /plates/ -o /output/ --force-local
 ```
 
 ## SLURM Arguments
 
-Pass SLURM parameters with `--slurm-args`:
+Pass SLURM parameters with repeated `--slurm` flags:
 
 ```bash
-python -m phenotypic pipeline.json /plates/ /output/ \
-    --slurm-args time=04:00:00 \
-    --slurm-args partition=gpu \
-    --slurm-args mem=16G
+python -m phenotypic --pipeline pipeline.json --input /plates/ -o /output/ \
+    --slurm time=240 \
+    --slurm slurm_partition=gpu \
+    --slurm mem_gb=16
 ```
 
 ## Wait for Completion
@@ -27,7 +27,7 @@ python -m phenotypic pipeline.json /plates/ /output/ \
 By default, the CLI returns immediately after submitting SLURM jobs. To wait:
 
 ```bash
-python -m phenotypic pipeline.json /plates/ /output/ --wait
+python -m phenotypic --pipeline pipeline.json --input /plates/ -o /output/ --wait
 ```
 
 ## Resume on SLURM
@@ -35,5 +35,5 @@ python -m phenotypic pipeline.json /plates/ /output/ --wait
 Resume works the same way as local execution:
 
 ```bash
-python -m phenotypic pipeline.json /plates/ /output/ --resume
+python -m phenotypic --pipeline pipeline.json --input /plates/ -o /output/ --resume
 ```

@@ -3,8 +3,8 @@
 The same Run console form submits to SLURM when you toggle `Mode` from
 `Local` to `SLURM`. The hub shells out to the existing
 `phenotypic._cli._cli_slurm_submission` pathway — the same code path used
-by `phenotypic pipeline.json input/ -o output/ --slurm partition=general
---slurm time=04:00:00`.
+by `phenotypic --pipeline pipeline.json --input input/ -o output/
+--slurm partition=general --slurm time=240`.
 
 ## Switch to SLURM mode
 
