@@ -8,7 +8,6 @@ Sub-packages
 ------------
 - ``gui.builder``        — Dash node-graph pipeline builder
 - ``gui.results_viewer`` — Dash CLI-output results viewer
-- ``gui.sweep``          — napari parameter-sweep viewer
 
 Utilities
 ---------
@@ -36,16 +35,6 @@ def __getattr__(name: str):
         from ._operation_registry import OperationRegistry
 
         return OperationRegistry
-
-    # Napari sweep viewer (requires napari, no Panel needed)
-    if name == "NapariSweepViewer":
-        from .sweep import NapariSweepViewer
-
-        return NapariSweepViewer
-    if name == "launch_sweep_viewer":
-        from .sweep import launch_sweep_viewer
-
-        return launch_sweep_viewer
 
     # Dash node-graph builder (requires dash + dash-cytoscape, lazy)
     if name == "create_builder_app":
@@ -87,9 +76,6 @@ def __getattr__(name: str):
 __all__ = [
     "OperationRegistry",
     "GUI_AVAILABLE",
-    # Napari sweep viewer
-    "NapariSweepViewer",
-    "launch_sweep_viewer",
     # Dash node-graph builder
     "create_builder_app",
     "BuilderState",

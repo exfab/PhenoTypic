@@ -1,33 +1,21 @@
-# Parameter Sweeps
+# Parameter Tuning
 
-Systematically vary pipeline parameters to find optimal settings using
-the `phenotypic.sweep` module.
+Systematically search pipeline parameters to find good settings using the
+`phenotypic.tune` engine. (`phenotypic.tune` replaced the legacy
+`phenotypic.sweep` module in a hard cutover.)
 
 ## Basic Usage
 
 ```bash
-python -m phenotypic.sweep sweep_config.yaml /path/to/plates/ /path/to/output/
+python -m phenotypic.tune tuning_spec.json -i /path/to/plates/ -o /path/to/output/
 ```
 
-## Sweep Configuration
+The engine loads the images under `-i`, runs the strategy in the
+`tuning_spec.json` (grid or random), and writes the best pipeline and a
+parameter-importance report under `<output>/deliverables/`
+(`best_pipeline.json`, `tuning_spec.json`, `param_importance.json`) plus the
+`trials.parquet` journal at the output-dir root. Re-running against an output
+dir that already has a `trials.parquet` resumes rather than restarts.
 
-Define parameter ranges in a YAML file:
-
-```yaml
-pipeline: pipeline.json
-sweep:
-  GaussianBlur.sigma: [1.0, 2.0, 3.0, 5.0]
-  EnhanceLocalContrast.clip_limit: [0.005, 0.01, 0.02, 0.05]
-```
-
-Each combination is tested, and results are saved with the parameter values
-in the output path.
-
-## Analyzing Results
-
-Sweep outputs include measurement CSVs for each parameter combination.
-Compare detection counts, colony sizes, or other metrics to identify
-the best settings for your imaging conditions.
-
-For full sweep configuration options, see the
-[sweep module documentation](../../api_reference/index.rst).
+A full tuning how-to (authoring a `tuning_spec.json`, scorers, search spaces,
+and importance screening) is documented separately.
