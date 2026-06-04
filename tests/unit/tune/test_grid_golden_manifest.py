@@ -10,7 +10,10 @@ GOLDEN = (
 
 
 def test_golden_exists_and_is_stable():
-    assert GOLDEN.exists(), "run scripts/capture_grid_golden_manifest.py"
+    assert GOLDEN.exists(), (
+        "frozen golden fixture missing from tests/fixtures/tune/ "
+        "(it is committed; restore from git history)"
+    )
     manifest = json.loads(GOLDEN.read_text(encoding="utf-8"))
     # The Phase-1 GridStrategy regression lock compares against this exact file.
     assert manifest["total_pipelines"] == 6
