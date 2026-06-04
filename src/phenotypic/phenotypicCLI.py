@@ -791,6 +791,18 @@ def phenotypic_cli(
     --pipeline: Path to pipeline configuration file
 
     --input: Image file or directory to process
+
+    --process-only {rgb|gray|detect_mat|objmap}: apply-only export mode. Runs
+    pipeline.apply() and writes a single image layer per input via the layer
+    accessor's imsave (rgb integer TIFF at the source bit depth; gray/detect_mat
+    float TIFF preserving full precision; objmap 16-bit raw-label PNG; PhenoTypic
+    metadata embedded), mirroring the input tree under --output-dir. Skips
+    measurement, deliverables, QC, and the dashboard; machine-state (progress
+    manifest, event log, pipeline copy) lives under <output>/.phenotypic/. Full
+    local + SLURM + resume reuse. Example::
+
+        uv run python -m phenotypic --pipeline pipe.json --input ./plates \\
+            --output-dir ./out --process-only detect_mat --force-local
     """
     try:
         _reject_unexpected_positional_args(ctx.args)
@@ -1347,11 +1359,27 @@ def phenotypic_cli(
             overlay_alpha=config.overlay_alpha,
             save_overlays=config.save_overlays,
         )
-        output_manager.create_structure(datasets)
+        # Process-only runs export image layers mirroring the input tree and
+        # write no results/ or deliverables/ structure; the worker creates its
+        # own output dirs and the strategy writes the .phenotypic/ manifest.
+        if not config.process_only_layer:
+            output_manager.create_structure(datasets)
 
-        # Copy pipeline JSON to output directory for reproducibility
-        # (skip in --measure mode — the forward run already copied it).
-        if not measure_only:
+        # Copy pipeline JSON for reproducibility (skip in --measure mode — the
+        # forward run already copied it). Process-only writes its copy under
+        # the hidden cache (.phenotypic/pipeline.json), not deliverables/.
+        if config.process_only_layer:
+            try:
+                from phenotypic.tools_ import phenotypic_cache_pipeline_json_path
+
+                cache_copy = phenotypic_cache_pipeline_json_path(output_dir)
+                cache_copy.parent.mkdir(parents=True, exist_ok=True)
+                cache_copy.write_bytes(Path(config.pipeline_json).read_bytes())
+                click.echo(f"  Pipeline: {cache_copy}")
+            except OSError as e:
+                logger.warning(f"Failed to copy pipeline JSON: {e}")
+                click.echo(f"⚠ Warning: Could not copy pipeline JSON ({e})", err=True)
+        elif not measure_only:
             try:
                 copied = _copy_pipeline_to_output(config.pipeline_json, output_dir)
                 if copied:
@@ -1368,6 +1396,23 @@ def phenotypic_cli(
         click.echo(f"\nStarting {execution_mode} processing...")
 
         results = strategy.execute(datasets, output_dir)
+
+        # Process-only (apply-only) runs export image layers + a progress
+        # manifest only — no measurement aggregation, HTML report, README,
+        # or deliverables. The strategy already wrote the mirrored layers and
+        # the manifest; print a focused summary and exit.
+        if config.process_only_layer:
+            click.echo("\n" + "=" * 60)
+            click.echo("PROCESS-ONLY COMPLETE")
+            click.echo("=" * 60)
+            click.echo(f"Layer exported: {config.process_only_layer}")
+            click.echo(
+                f"Completed: {results.total_completed}/{results.total_images}"
+            )
+            click.echo(f"Failed:    {results.total_failed}")
+            click.echo(f"Duration: {_format_duration(results.duration)}")
+            click.echo(f"\nMirrored layer files saved under: {output_dir}")
+            sys.exit(0 if results.total_failed == 0 else 1)
 
         # Load pipeline once for the finalizer — reused by both the
         # per-feature split in aggregate_master_csv and the README generator.

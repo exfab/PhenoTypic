@@ -37,6 +37,20 @@ def synth_plate_dir(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
+def synth_one_level_input(tmp_path: Path) -> Path:
+    """One-level input tree: ``<tmp>/in/day1/plateA.tif`` (one synth plate).
+
+    Returns the input root (``<tmp>/in``) so callers can pass it as
+    ``--input`` and assert on the mirrored ``--process-only`` output tree.
+    """
+    root = tmp_path / "in"
+    day = root / "day1"
+    day.mkdir(parents=True)
+    _write_synth_image(day / "plateA.tif")
+    return root
+
+
+@pytest.fixture
 def simple_pipeline_json():
     """Write a minimal RoundPeaksPipeline JSON to a temp file."""
     pipeline = RoundPeaksPipeline(
