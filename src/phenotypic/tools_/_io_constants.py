@@ -157,6 +157,11 @@ PARAM_IMPORTANCE_JSON: Final[str] = "param_importance.json"
 #: (powers CLI resume), not under :data:`DIR_DELIVERABLES`.
 TRIALS_PARQUET: Final[str] = "trials.parquet"
 
+#: The canonical Optuna study database ``study.db`` (SQLite WAL) written at the
+#: output-dir root, a sibling to :data:`TRIALS_PARQUET`. Holds the Optuna-backed
+#: store's persistent, resumable sampler state when the ``tune`` extra is used.
+STUDY_DB: Final[str] = "study.db"
+
 # ---------------------------------------------------------------------------
 # QC artifact filenames (live inside DIR_QC)
 # ---------------------------------------------------------------------------
@@ -504,6 +509,16 @@ def param_importance_path(output_dir: Path) -> Path:
 def trials_parquet_path(output_dir: Path) -> Path:
     """Return ``<output>/trials.parquet`` (the trial journal; output-dir root)."""
     return Path(output_dir) / TRIALS_PARQUET
+
+
+def study_db_path(output_dir: Path) -> Path:
+    """Return ``<output>/study.db`` (the Optuna study DB; output-dir root).
+
+    A sibling to :func:`trials_parquet_path`; the canonical SQLite-WAL storage
+    for the Optuna-backed :class:`OptunaStudyStore` when the ``tune`` extra is
+    installed.
+    """
+    return Path(output_dir) / STUDY_DB
 
 
 def analysis_csv_path(output_dir: Path) -> Path:
