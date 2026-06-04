@@ -1,0 +1,408 @@
+"""``infer_search_space`` — mine a pipeline's pydantic fields into a proposal.
+
+This chunk implements the **flat, single-op** Tier-2 dispatch (the §4 heuristic
+table of ``search-space-inference.md``) plus the Tier-1 ``TuneSpec`` override
+(§3). Nested-op recursion (``recurse_nested``) is accepted but a no-op stub in
+this chunk — full one-level recursion lands with the next chunk.
+
+The inference core, :func:`_infer_field`, maps one operation field to either a
+:class:`~phenotypic.tune.Knob` (a tunable domain) or an
+:class:`~phenotypic.tune.Excluded` record (a field that could not / should not be
+tuned). :func:`infer_search_space` walks a live ``ImagePipeline``'s ops in
+position order, builds the flat ``"<pos>.<field>"`` keys, and assembles the
+:class:`~phenotypic.tune.InferredSearchSpace` proposal.
+
+Example:
+    >>> from phenotypic import ImagePipeline
+    >>> from phenotypic.enhance import GaussianBlur
+    >>> from phenotypic.detect import OtsuDetector
+    >>> from phenotypic.tune import infer_search_space
+    >>> pipe = ImagePipeline(ops=[GaussianBlur(sigma=2.0), OtsuDetector()])
+    >>> space = infer_search_space(pipe)
+    >>> sigma = next(k for k in space.knobs if k.key == "0.sigma")
+    >>> (sigma.source, sigma.domain.low, sigma.domain.high)
+    ('unbounded_heuristic', 0.5, 8.0)
+    >>> space.needs_review
+    True
+"""
+from __future__ import annotations
+
+import enum
+import math
+import types
+import typing
+from pathlib import Path
+from typing import Any, Final, Literal, Union, get_args, get_origin
+
+import annotated_types as at
+import numpy as np
+
+from ._domains import Categorical, FloatRange, IntRange
+from ._inferred import Excluded, ExcludeReason, InferredSearchSpace
+from ._space import Knob
+
+#: Multiplicative half-window for the unbounded heuristic: ``[d/f, d·f]``.
+_DEFAULT_UNBOUNDED_FACTOR: Final[float] = 4.0
+#: Span ratio (high/low) above which a range auto-trips ``log=True`` — "spans
+#: more than one order of magnitude" for the unbounded heuristic.
+_LOG_SPAN_THRESHOLD: Final[float] = 10.0
+#: Span ratio above which a *bounded* range auto-trips ``log=True`` (~100×).
+_BOUNDED_LOG_SPAN_THRESHOLD: Final[float] = 100.0
+
+
+def _is_union_origin(origin: Any) -> bool:
+    """Return ``True`` for both ``typing.Union`` and PEP 604 unions."""
+    return origin is Union or origin is types.UnionType
+
+
+def _walk_metadata(annotation: Any) -> list[Any]:
+    """Collect ``Annotated`` extras from anywhere in the annotation tree.
+
+    pydantic surfaces only the *outermost* ``Annotated`` extras in
+    ``model_fields[name].metadata``; a marker nested under ``Optional`` (the
+    natural ``Optional[Annotated[float, TuneSpec(...)]]``) would be missed. This
+    walks the tree — every ``__metadata__`` chain and ``get_args`` branch.
+
+    Args:
+        annotation: A (possibly wrapped / nested) type annotation.
+
+    Returns:
+        All ``Annotated`` extra objects found at any depth.
+    """
+    found: list[Any] = []
+    found.extend(getattr(annotation, "__metadata__", ()))
+    for arg in get_args(annotation):
+        found.extend(_walk_metadata(arg))
+    return found
+
+
+def _has_marker(annotation: Any, name: str) -> bool:
+    """Return ``True`` if any ``Annotated`` extra has class ``name``."""
+    return any(type(m).__name__ == name for m in _walk_metadata(annotation))
+
+
+def _strip_optional(annotation: Any) -> tuple[Any, bool]:
+    """Return ``(inner, is_multi_union)`` for a ``T | None`` annotation.
+
+    For ``T | None`` (a union whose only non-``None`` member is ``T``) returns
+    ``(T, False)``. For a multi-type union with no ``None`` collapse target
+    returns ``(annotation, True)`` flagging it unsupported. Non-unions pass
+    through as ``(annotation, False)``.
+    """
+    origin = get_origin(annotation)
+    if not _is_union_origin(origin):
+        return annotation, False
+    args = get_args(annotation)
+    non_none = [a for a in args if a is not type(None)]
+    if len(non_none) == 1:
+        return non_none[0], False
+    # A multi-type union (A | B, neither resolving to a single non-None T).
+    return annotation, True
+
+
+def _core_type(annotation: Any) -> Any:
+    """Strip an outer ``Annotated`` wrapper, returning the bare type."""
+    if get_origin(annotation) is typing.Annotated:
+        return get_args(annotation)[0]
+    return annotation
+
+
+def _to_float(value: Any) -> float:
+    """Coerce an ``annotated_types`` bound (a ``SupportsX`` value) to ``float``."""
+    return float(value)
+
+
+def _numeric_bounds(metadata: list[Any]) -> tuple[float | None, float | None]:
+    """Extract ``(low, high)`` from ``annotated_types`` constraints.
+
+    Reads ``Ge``/``Gt`` for the lower bound and ``Le``/``Lt`` for the upper,
+    and unwraps an ``Interval``. Strictness is recorded only implicitly — the
+    bound value itself is used as the (inclusive) search edge.
+
+    Args:
+        metadata: The field's ``annotated_types`` constraint objects.
+
+    Returns:
+        ``(low, high)`` where each is ``None`` when that side is unbounded.
+    """
+    low: float | None = None
+    high: float | None = None
+    for m in metadata:
+        if isinstance(m, at.Interval):
+            if m.ge is not None:
+                low = _to_float(m.ge)
+            if m.gt is not None:
+                low = _to_float(m.gt)
+            if m.le is not None:
+                high = _to_float(m.le)
+            if m.lt is not None:
+                high = _to_float(m.lt)
+        elif isinstance(m, at.Ge):
+            low = _to_float(m.ge)
+        elif isinstance(m, at.Gt):
+            low = _to_float(m.gt)
+        elif isinstance(m, at.Le):
+            high = _to_float(m.le)
+        elif isinstance(m, at.Lt):
+            high = _to_float(m.lt)
+    return low, high
+
+
+def _schema_description(op: Any, field_name: str) -> str:
+    """Return the field's docstring-derived description (``""`` if absent)."""
+    try:
+        props = type(op).model_json_schema().get("properties", {})
+    except Exception:  # pragma: no cover - schema generation is robust here
+        return ""
+    return props.get(field_name, {}).get("description", "") or ""
+
+
+def _bounded_knob(
+    key: str,
+    core: Any,
+    low: float,
+    high: float,
+    *,
+    description: str,
+) -> Knob:
+    """Build a ``bounded`` knob from explicit Field bounds."""
+    is_int = core is int
+    log = low > 0 and (high / low) >= _BOUNDED_LOG_SPAN_THRESHOLD
+    if is_int:
+        domain: Any = IntRange(low=int(low), high=int(high), log=log)
+    else:
+        domain = FloatRange(low=low, high=high, log=log)
+    return Knob(
+        key=key,
+        domain=domain,
+        source="bounded",
+        needs_review=False,
+        description=description,
+    )
+
+
+def _unbounded_knob_or_excluded(
+    key: str,
+    core: Any,
+    value: Any,
+    *,
+    factor: float,
+    description: str,
+    field_type: str,
+) -> Knob | Excluded:
+    """Apply the ``[d/f, d·f]`` heuristic, or exclude a non-positive anchor."""
+    if not isinstance(value, (int, float)) or isinstance(value, bool):
+        return Excluded(key=key, reason="non_numeric", field_type=field_type)
+    d = float(value)
+    if d <= 0:
+        return Excluded(key=key, reason="non_numeric", field_type=field_type)
+
+    low = d / factor
+    high = d * factor
+    is_int = core is int
+    if is_int:
+        ilow = math.floor(low)
+        ihigh = math.ceil(high)
+        if ilow == ihigh:  # widen a collapsed range so low < high
+            ilow -= 1
+            ihigh += 1
+        log = ilow > 0 and (ihigh / ilow) > _LOG_SPAN_THRESHOLD
+        domain: Any = IntRange(low=ilow, high=ihigh, log=log)
+    else:
+        log = low > 0 and (high / low) > _LOG_SPAN_THRESHOLD
+        domain = FloatRange(low=low, high=high, log=log)
+    return Knob(
+        key=key,
+        domain=domain,
+        source="unbounded_heuristic",
+        needs_review=True,
+        description=description,
+    )
+
+
+def _infer_field(
+    op: Any,
+    position: int,
+    field_name: str,
+    field_info: Any,
+    *,
+    factor: float = _DEFAULT_UNBOUNDED_FACTOR,
+) -> Knob | Excluded:
+    """Map one operation field to a ``Knob`` or an ``Excluded`` record.
+
+    A Tier-1 ``TuneSpec`` (when present) wins over the heuristics (added in
+    P3-4); this is the Tier-2 type/constraint dispatch. The flat key is
+    ``"<position>.<field_name>"``.
+
+    Args:
+        op: The operation instance (for the current value + schema description).
+        position: The op's position in the pipeline (key prefix).
+        field_name: The pydantic field name.
+        field_info: ``type(op).model_fields[field_name]``.
+        factor: Multiplicative half-window for the unbounded heuristic.
+
+    Returns:
+        A ``Knob`` (tunable) or an ``Excluded`` record.
+    """
+    key = f"{position}.{field_name}"
+    annotation = field_info.annotation
+    description = _schema_description(op, field_name)
+    field_type = _annotation_str(annotation)
+    value = getattr(op, field_name, field_info.default)
+
+    # pydantic lifts Field/annotated_types constraints onto ``field_info.metadata``
+    # and unwraps the outer ``Annotated``; markers nested deeper in the tree
+    # (TuneSpec/ColumnRef under Optional) are found by walking the annotation.
+    metadata = list(field_info.metadata) + _walk_metadata(annotation)
+
+    # Name-ref marker (ColumnRef) — an open set, excluded.
+    if _has_marker(annotation, "_ColumnRefMarker") or any(
+        type(m).__name__ == "_ColumnRefMarker" for m in metadata
+    ):
+        return Excluded(key=key, reason="name_ref", field_type=field_type)
+    # Operation-valued field — handled by nested recursion (next chunk), not a
+    # scalar knob here.
+    if _has_marker(annotation, "_OperationFieldMarker") or any(
+        type(m).__name__ == "_OperationFieldMarker" for m in metadata
+    ):
+        return Excluded(key=key, reason="unsupported_type", field_type=field_type)
+
+    # T | None -> infer over T; multi-type union -> unsupported.
+    inner, is_multi_union = _strip_optional(annotation)
+    if is_multi_union:
+        return Excluded(key=key, reason="unsupported_type", field_type=field_type)
+
+    core_inner = _core_type(_strip_optional(_core_type(inner))[0])
+
+    return _dispatch_core(
+        key,
+        core_inner,
+        value,
+        metadata,
+        factor=factor,
+        description=description,
+        field_type=field_type,
+    )
+
+
+def _dispatch_core(
+    key: str,
+    core: Any,
+    value: Any,
+    metadata: list[Any],
+    *,
+    factor: float,
+    description: str,
+    field_type: str,
+) -> Knob | Excluded:
+    """Tier-2 type dispatch over the bare (Optional/Annotated-stripped) type."""
+    # ndarray (raw or NdArrayField) — not scalar-tunable.
+    if core is np.ndarray:
+        return Excluded(key=key, reason="ndarray", field_type=field_type)
+    # Paths — open set.
+    if isinstance(core, type) and issubclass(core, Path):
+        return Excluded(key=key, reason="path", field_type=field_type)
+
+    # bool (check before int — bool is an int subclass).
+    if core is bool:
+        return Knob(
+            key=key,
+            domain=Categorical(choices=(True, False)),
+            source="bool",
+            needs_review=False,
+            description=description,
+        )
+
+    # Literal[...] -> Categorical(literal members).
+    if get_origin(core) is Literal:
+        return Knob(
+            key=key,
+            domain=Categorical(choices=tuple(get_args(core))),
+            source="literal",
+            needs_review=False,
+            description=description,
+        )
+
+    # Enum -> Categorical(members).
+    if isinstance(core, type) and issubclass(core, enum.Enum):
+        return Knob(
+            key=key,
+            domain=Categorical(choices=tuple(core)),
+            source="enum",
+            needs_review=False,
+            description=description,
+        )
+
+    # Numeric (int / float).
+    if core in (int, float):
+        low, high = _numeric_bounds(metadata)
+        if low is not None and high is not None:
+            return _bounded_knob(
+                key, core, low, high, description=description
+            )
+        return _unbounded_knob_or_excluded(
+            key,
+            core,
+            value,
+            factor=factor,
+            description=description,
+            field_type=field_type,
+        )
+
+    # Free-form str (and anything else non-numeric / unrecognised).
+    if core is str:
+        # Open set — excluded. ``non_numeric`` is the only fitting closed-set
+        # reason; it conservatively raises the proposal review flag.
+        return Excluded(key=key, reason="non_numeric", field_type=field_type)
+
+    return Excluded(key=key, reason="unsupported_type", field_type=field_type)
+
+
+def _annotation_str(annotation: Any) -> str:
+    """Render an annotation for the ``Excluded.field_type`` display field."""
+    name = getattr(annotation, "__name__", None)
+    if isinstance(name, str):
+        return name
+    return str(annotation)
+
+
+def infer_search_space(
+    pipeline: Any,
+    *,
+    unbounded_factor: float = _DEFAULT_UNBOUNDED_FACTOR,
+    recurse_nested: bool = True,
+) -> InferredSearchSpace:
+    """Mine a pipeline into a generous, reviewable ``InferredSearchSpace``.
+
+    Walks the pipeline's ops in position order and infers each scalar field via
+    the Tier-2 type heuristics (Tier-1 ``TuneSpec`` override added in P3-4).
+    Knob keys are flat ``"<position>.<field>"`` paths.
+
+    Args:
+        pipeline: A live ``ImagePipeline`` whose ``get_ops()`` yields the ops in
+            insertion order.
+        unbounded_factor: Multiplicative half-window ``[d/f, d·f]`` for the
+            unbounded numeric heuristic (default ``4.0`` → 16× span).
+        recurse_nested: Reserved for one-level nested-op recursion (next chunk);
+            accepted but a no-op in this chunk.
+
+    Returns:
+        The ``InferredSearchSpace`` proposal.
+    """
+    _ = recurse_nested  # nested recursion lands in the next chunk
+    ops = list(pipeline.get_ops().values())
+    knobs: list[Knob] = []
+    excluded: list[Excluded] = []
+    for position, op in enumerate(ops):
+        for field_name, field_info in type(op).model_fields.items():
+            result = _infer_field(
+                op, position, field_name, field_info, factor=unbounded_factor
+            )
+            if isinstance(result, Knob):
+                knobs.append(result)
+            else:
+                excluded.append(result)
+    return InferredSearchSpace(knobs=tuple(knobs), excluded=tuple(excluded))
+
+
+__all__ = ["infer_search_space", "_infer_field", "ExcludeReason"]

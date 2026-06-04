@@ -10,6 +10,10 @@ Phase 1d closes the MVP with the runnable **engine**: ``Budget`` / ``Trial`` /
 ``StudyStore`` (the journal), ``TuningSpec`` (the embedded-pipeline recipe),
 ``TuningEngine`` (the ask-and-tell loop + resume), ``compute_param_importance``,
 and ``run_tuning`` (the ``python -m phenotypic.tune`` orchestration).
+Phase 3 adds **search-space inference**: the ``TuneSpec`` per-field marker, the
+reviewable ``InferredSearchSpace`` / ``Excluded`` proposal, and
+``infer_search_space`` — which mines a pipeline's pydantic fields into a
+generous, flagged-for-review candidate space.
 
 Hand-author a search space and inspect it:
 
@@ -22,6 +26,19 @@ Hand-author a search space and inspect it:
     ['0.sigma', '1.ignore_zeros']
     >>> space.domain("0.sigma").high
     8.0
+
+Infer a candidate space from a configured pipeline:
+
+    >>> from phenotypic import ImagePipeline
+    >>> from phenotypic.enhance import GaussianBlur
+    >>> from phenotypic.detect import OtsuDetector
+    >>> from phenotypic.tune import infer_search_space
+    >>> pipe = ImagePipeline(ops=[GaussianBlur(sigma=2.0), OtsuDetector()])
+    >>> proposal = infer_search_space(pipe)
+    >>> next(k.domain.high for k in proposal.knobs if k.key == "0.sigma")
+    8.0
+    >>> proposal.needs_review
+    True
 """
 from __future__ import annotations
 
@@ -45,6 +62,7 @@ from ._search_space import (
     Knob,
     SearchSpace,
     TuneSpec,
+    infer_search_space,
 )
 from ._spec import Budget, TuningSpec
 
@@ -85,4 +103,5 @@ __all__ = [
     "TuneSpec",
     "InferredSearchSpace",
     "Excluded",
+    "infer_search_space",
 ]
