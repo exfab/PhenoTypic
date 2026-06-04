@@ -81,7 +81,7 @@ from ._strategies import (
 # ``JournalStudyStore``); the Protocol of the same name lives in
 # ``_study/_protocol.py`` and types the engine's store.
 from ._study_store import JournalStudyStore, StudyStore, Trial
-from ._tune_cli import run_tuning
+from ._tune_cli import run_auto_space, run_tuning
 
 __all__ = [
     # Phase 1a: search space
@@ -120,4 +120,5 @@ __all__ = [
     "InferredSearchSpace",
     "Excluded",
     "infer_search_space",
+    "run_auto_space",
 ]
