@@ -17,6 +17,7 @@ from phenotypic.tools_ import (
     master_measurements_parquet_path,
     measurements_csv_path,
     measurements_parquet_path,
+    progress_dir,
 )
 
 pytestmark = pytest.mark.skipif(
@@ -58,7 +59,7 @@ def test_recompile_slurm_dispatcher_submits_and_writes_metadata(
         generated_tasks.extend(tasks)
         assert slurm_args == {"slurm_partition": "compute"}
         assert array_limit == 77
-        manifest_path = output_dir / "progress" / "recompile" / "task_manifest.json"
+        manifest_path = progress_dir(output_dir) / "recompile" / "task_manifest.json"
         manifest_path.parent.mkdir(parents=True)
         manifest_path.write_text(json.dumps({"tasks": tasks}), encoding="utf-8")
         return scripts
@@ -108,7 +109,7 @@ def test_recompile_slurm_dispatcher_submits_and_writes_metadata(
     assert generated_tasks[-1]["metadata_csv"] == str(metadata_csv)
 
     metadata = json.loads(
-        (output_dir / "progress" / "job_metadata.json").read_text(
+        (progress_dir(output_dir) / "job_metadata.json").read_text(
             encoding="utf-8"
         )
     )
@@ -120,7 +121,7 @@ def test_recompile_slurm_dispatcher_submits_and_writes_metadata(
     assert metadata["metadata_csv"] == str(metadata_csv)
     assert metadata["input_path"] == str(output_dir)
     assert metadata["recompile"]["task_manifest"] == str(
-        output_dir / "progress" / "recompile" / "task_manifest.json"
+        progress_dir(output_dir) / "recompile" / "task_manifest.json"
     )
     assert metadata["recompile"]["finalizer_task_index"] == len(generated_tasks) - 1
 
@@ -147,7 +148,7 @@ def test_recompile_slurm_dispatcher_waits_for_finalizer(
         assert slurm_args == {"slurm_partition": "compute"}
         assert array_limit == 100
         finalizer_indices.append(len(tasks) - 1)
-        manifest_path = output_dir / "progress" / "recompile" / "task_manifest.json"
+        manifest_path = progress_dir(output_dir) / "recompile" / "task_manifest.json"
         manifest_path.parent.mkdir(parents=True)
         manifest_path.write_text(json.dumps({"tasks": tasks}), encoding="utf-8")
         return [script]
@@ -224,7 +225,7 @@ def test_wait_for_recompile_finalizer_status_completed_and_failed(
     from phenotypic.phenotypicCLI import _wait_for_recompile_finalizer_status
 
     output_dir = tmp_path / "out"
-    status_dir = output_dir / "progress" / "recompile" / "status"
+    status_dir = progress_dir(output_dir) / "recompile" / "status"
     status_dir.mkdir(parents=True)
     (status_dir / "task_3.json").write_text(
         json.dumps({"status": "completed"}),
@@ -334,7 +335,7 @@ def test_generate_recompile_scripts_write_manifest_and_worker_arrays(
     )
 
     manifest_path = (
-        output_dir / "progress" / "recompile" / "task_manifest.json"
+        progress_dir(output_dir) / "recompile" / "task_manifest.json"
     )
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     assert manifest["tasks"] == tasks
@@ -360,7 +361,7 @@ def test_measurement_worker_writes_shard_with_dataset_and_image_file(
     _write_parquet(img2, [20])
     _write_parquet(img1, [10])
     manifest_path = (
-        output_dir / "progress" / "recompile" / "task_manifest.json"
+        progress_dir(output_dir) / "recompile" / "task_manifest.json"
     )
     manifest_path.parent.mkdir(parents=True)
     manifest_path.write_text(
@@ -393,8 +394,7 @@ def test_measurement_worker_writes_shard_with_dataset_and_image_file(
 
     assert result.exit_code == 0, result.output
     shard = pl.read_parquet(
-        output_dir
-        / "progress"
+        progress_dir(output_dir)
         / "recompile"
         / "measurement_shards"
         / "shard_7.parquet"
@@ -415,7 +415,7 @@ def test_measurement_worker_writes_shard_with_dataset_and_image_file(
     ]
     status = json.loads(
         (
-            output_dir / "progress" / "recompile" / "status" / "task_0.json"
+            progress_dir(output_dir) / "recompile" / "status" / "task_0.json"
         ).read_text(encoding="utf-8")
     )
     assert status["status"] == "completed"
@@ -431,7 +431,7 @@ def test_overlay_worker_records_save_failure_as_completed_nonfatal(
     hdf_path.parent.mkdir(parents=True)
     hdf_path.write_text("stub", encoding="utf-8")
     manifest_path = (
-        output_dir / "progress" / "recompile" / "task_manifest.json"
+        progress_dir(output_dir) / "recompile" / "task_manifest.json"
     )
     manifest_path.parent.mkdir(parents=True)
     manifest_path.write_text(
@@ -487,7 +487,7 @@ def test_overlay_worker_records_save_failure_as_completed_nonfatal(
     assert result.exit_code == 0, result.output
     status = json.loads(
         (
-            output_dir / "progress" / "recompile" / "status" / "task_0.json"
+            progress_dir(output_dir) / "recompile" / "status" / "task_0.json"
         ).read_text(encoding="utf-8")
     )
     assert status["status"] == "completed"
@@ -501,17 +501,17 @@ def test_finalizer_writes_master_outputs_and_rebuilds_dashboard(
     from phenotypic._cli._cli_recompile_worker import main
 
     output_dir = tmp_path / "out"
-    shard_dir = output_dir / "progress" / "recompile" / "measurement_shards"
+    shard_dir = progress_dir(output_dir) / "recompile" / "measurement_shards"
     _write_parquet(shard_dir / "shard_1.parquet", [2])
     _write_parquet(shard_dir / "shard_0.parquet", [1])
-    status_dir = output_dir / "progress" / "recompile" / "status"
+    status_dir = progress_dir(output_dir) / "recompile" / "status"
     status_dir.mkdir(parents=True)
     (status_dir / "task_0.json").write_text(
         json.dumps({"status": "completed", "task_type": "measurements"}),
         encoding="utf-8",
     )
     manifest_path = (
-        output_dir / "progress" / "recompile" / "task_manifest.json"
+        progress_dir(output_dir) / "recompile" / "task_manifest.json"
     )
     manifest_path.write_text(
         json.dumps(
@@ -579,7 +579,7 @@ def test_finalizer_writes_master_outputs_and_rebuilds_dashboard(
     mock_dashboard.assert_called_once_with(output_dir, execution_mode="local")
     status = json.loads(
         (
-            output_dir / "progress" / "recompile" / "status" / "task_1.json"
+            progress_dir(output_dir) / "recompile" / "status" / "task_1.json"
         ).read_text(encoding="utf-8")
     )
     assert status["status"] == "completed"

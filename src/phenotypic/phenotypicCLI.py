@@ -190,10 +190,8 @@ from phenotypic.tools_ import (
     load_image_from_hdf,
     measurements_parquet_path,
     processing_report_html_path,
-    processing_state_path,
     progress_dir,
     recompile_dir,
-    recompile_status_dir,
     resolve_processing_state_path,
 )
 from phenotypic.tools_.typing_ import ImageTypeName
@@ -1600,7 +1598,7 @@ def _handle_recompile_slurm(
             "finalizer_task_index": finalizer_task_index,
         },
     }
-    metadata_path = progress_dir / JOB_METADATA_JSON
+    metadata_path = prog_dir / JOB_METADATA_JSON
     metadata_path.write_text(
         json.dumps(job_metadata, indent=2, ensure_ascii=False) + "\n",
         encoding="utf-8",
@@ -1816,14 +1814,14 @@ def _handle_recompile(
                     "Failed to read measurements mirror for analysis plugins",
                     exc_info=True,
                 )
-        _run_analysis_plugins(output_dir, progress_dir, merged_df)
+        _run_analysis_plugins(output_dir, prog_dir, merged_df)
         console.print("[green]Analysis plugins complete")
     except Exception:
         logger.warning("Analysis plugin dispatch failed", exc_info=True)
         console.print("[yellow]Analysis plugin dispatch failed (see logs)")
 
     console.print("[cyan]Rebuilding manifest...")
-    progress_dir.mkdir(parents=True, exist_ok=True)
+    prog_dir.mkdir(parents=True, exist_ok=True)
 
     datasets_totals: dict[str, int] = {}
     for name in dataset_names:

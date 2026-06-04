@@ -14,7 +14,7 @@ from importlib.resources import files
 from pathlib import Path
 
 from phenotypic.tools_.register import AnalysisPluginRegistry
-from phenotypic.tools_ import DIR_PROGRESS, dashboard_html_path, analysis_html_path
+from phenotypic.tools_ import dashboard_html_path, analysis_html_path
 from phenotypic.tools_.typing_ import ExecutionMode
 
 from ._vendor_js import MARKED_MIN_JS

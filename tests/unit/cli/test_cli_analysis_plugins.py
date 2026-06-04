@@ -22,7 +22,7 @@ import pandas as pd
 import polars as pl
 import pytest
 
-from phenotypic.tools_ import analysis_html_path, dashboard_html_path
+from phenotypic.tools_ import analysis_html_path, dashboard_html_path, progress_dir
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -218,7 +218,7 @@ class TestDashboardAnalysisTab:
         from phenotypic._cli._dashboard import generate_dashboard
 
         generate_dashboard(tmp_dir)
-        plotly_path = tmp_dir / "progress" / "plotly.min.js"
+        plotly_path = progress_dir(tmp_dir) / "plotly.min.js"
         assert plotly_path.exists()
         assert plotly_path.stat().st_size > 1000  # Should be >3MB
 
@@ -297,7 +297,7 @@ class TestAnalysisData:
 
         write_analysis_sidecar(tmp_dir)
         # No measurement data => no scatter/table/stats files
-        assert not (tmp_dir / "progress" / "analysis_scatter.json").exists()
+        assert not (progress_dir(tmp_dir) / "analysis_scatter.json").exists()
 
     def test_write_sidecar_with_data(self, tmp_dir):
         """write_analysis_sidecar should produce JSON files from measurement Parquets."""
@@ -322,7 +322,7 @@ class TestAnalysisData:
         write_analysis_sidecar(tmp_dir)
 
         stats = json.loads(
-            (tmp_dir / "progress" / "analysis_stats.json").read_text()
+            (progress_dir(tmp_dir) / "analysis_stats.json").read_text()
         )
         assert "datasets" in stats
         assert "plate1" in stats["datasets"]
@@ -361,7 +361,7 @@ class TestAnalysisData:
         write_analysis_sidecar(tmp_dir, metadata_csv=metadata_csv)
 
         stats = json.loads(
-            (tmp_dir / "progress" / "analysis_stats.json").read_text()
+            (progress_dir(tmp_dir) / "analysis_stats.json").read_text()
         )
         assert "datasets" in stats
         assert "plate1" in stats["datasets"]

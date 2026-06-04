@@ -226,16 +226,16 @@ class TestPathHelpers:
         return Path("/tmp/pht_run")
 
     def test_progress_dir(self, output: Path) -> None:
-        assert progress_dir(output) == output / "progress"
+        assert progress_dir(output) == output / ".phenotypic" / "progress"
 
     def test_results_dir(self, output: Path) -> None:
         assert results_dir(output) == output / "results"
 
     def test_event_log_path(self, output: Path) -> None:
-        assert event_log_path(output) == output / "processing_events.log"
+        assert event_log_path(output) == output / ".phenotypic" / "processing_events.log"
 
     def test_processing_state_path(self, output: Path) -> None:
-        assert processing_state_path(output) == output / "processing_state.json"
+        assert processing_state_path(output) == output / ".phenotypic" / "processing_state.json"
 
     def test_master_measurements_paths(self, output: Path) -> None:
         deliv = output / "deliverables"
@@ -259,8 +259,9 @@ class TestPathHelpers:
         assert dashboard_html_path(output) == output / "deliverables" / "dashboard.html"
 
     def test_progress_sidecar_paths(self, output: Path) -> None:
-        assert job_metadata_path(output) == output / "progress" / "job_metadata.json"
-        assert manifest_json_path(output) == output / "progress" / "manifest.json"
+        prog = output / ".phenotypic" / "progress"
+        assert job_metadata_path(output) == prog / "job_metadata.json"
+        assert manifest_json_path(output) == prog / "manifest.json"
 
     def test_dataset_subdirs(self, output: Path) -> None:
         assert dataset_results_dir(output, "ds1") == output / "results" / "ds1"
@@ -275,7 +276,7 @@ class TestPathHelpers:
 
     def test_task_status_path(self, output: Path) -> None:
         assert task_status_path(output, 3) == (
-            output / "progress" / "recompile" / "status" / "task_3.json"
+            output / ".phenotypic" / "progress" / "recompile" / "status" / "task_3.json"
         )
 
     def test_progress_rooted_helpers(self) -> None:
@@ -317,16 +318,17 @@ class TestPathHelpers:
             slurm_scripts_dir,
         )
 
+        prog = output / ".phenotypic" / "progress"
         assert logs_dir(output) == output / "logs"
         assert slurm_scripts_dir(output) == output / "slurm_scripts"
         assert analysis_html_path(output) == output / "deliverables" / "analysis.html"
         assert processing_report_html_path(output) == (
             output / "deliverables" / "processing_report.html"
         )
-        assert failures_jsonl_path(output) == output / "progress" / "failures.jsonl"
-        assert chunk_manifest_path(output) == output / "progress" / "chunk_manifest.json"
-        assert chunk_state_path(output) == output / "progress" / "chunk_state.json"
-        assert overlay_manifest_path(output) == output / "progress" / "overlay_manifest.json"
+        assert failures_jsonl_path(output) == prog / "failures.jsonl"
+        assert chunk_manifest_path(output) == prog / "chunk_manifest.json"
+        assert chunk_state_path(output) == prog / "chunk_state.json"
+        assert overlay_manifest_path(output) == prog / "overlay_manifest.json"
 
 
 # ---------------------------------------------------------------------------
@@ -391,13 +393,19 @@ class TestDeliverablesLayout:
             )
 
     def test_per_image_and_state_helpers_stay_at_root(self, output: Path) -> None:
-        """``results/`` and ``processing_state.json`` are NOT deliverables."""
+        """``results/`` stays at root; machine-state lives under ``.phenotypic/``.
+
+        Neither is a deliverable: ``results/`` is per-image output at the
+        output root, and ``processing_state.json`` now lives in the hidden
+        machine-state cache ``<output>/.phenotypic/`` — but never under
+        ``deliverables/``.
+        """
         assert results_dir(output) == output / "results"
         assert dataset_measurements_dir(output, "ds1") == (
             output / "results" / "ds1" / "measurements"
         )
         assert dataset_overlays_dir(output, "ds1") == output / "results" / "ds1" / "overlays"
-        assert processing_state_path(output) == output / "processing_state.json"
+        assert processing_state_path(output) == output / ".phenotypic" / "processing_state.json"
         # None of these touch the deliverables folder.
         deliv = deliverables_dir(output)
         assert deliv not in results_dir(output).parents
@@ -538,22 +546,22 @@ class TestReadRunManifest:
     def test_valid_manifest_returns_dict(self, tmp_path: Path) -> None:
         import json
 
-        from phenotypic.tools_ import read_run_manifest
+        from phenotypic.tools_ import manifest_json_path, read_run_manifest
 
-        progress = tmp_path / "progress"
-        progress.mkdir()
+        manifest_path = manifest_json_path(tmp_path)
+        manifest_path.parent.mkdir(parents=True)
         payload = {"failed": 3, "execution_mode": "slurm"}
-        (progress / "manifest.json").write_text(json.dumps(payload))
+        manifest_path.write_text(json.dumps(payload))
 
         manifest = read_run_manifest(tmp_path)
         assert manifest == payload
 
     def test_malformed_manifest_returns_none(self, tmp_path: Path) -> None:
-        from phenotypic.tools_ import read_run_manifest
+        from phenotypic.tools_ import manifest_json_path, read_run_manifest
 
-        progress = tmp_path / "progress"
-        progress.mkdir()
-        (progress / "manifest.json").write_text("{not valid json")
+        manifest_path = manifest_json_path(tmp_path)
+        manifest_path.parent.mkdir(parents=True)
+        manifest_path.write_text("{not valid json")
 
         # Should not raise; should warn and return None
         assert read_run_manifest(tmp_path) is None

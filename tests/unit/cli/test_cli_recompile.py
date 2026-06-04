@@ -20,6 +20,7 @@ from phenotypic._cli._cli_utils import resolve_local_worker_count
 from phenotypic.tools_ import (
     master_measurements_csv_path,
     measurements_parquet_path,
+    progress_dir,
 )
 from phenotypic.phenotypicCLI import (
     _handle_recompile,
@@ -180,7 +181,7 @@ class TestHandleRecompile:
         mock_plugins.assert_called_once()
         args = mock_plugins.call_args.args
         assert args[0] == output_dir
-        assert args[1] == output_dir / "progress"
+        assert args[1] == progress_dir(output_dir)
         merged_df = args[2]
         assert merged_df is not None
         assert merged_df.height == 1
