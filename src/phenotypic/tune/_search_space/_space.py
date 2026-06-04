@@ -1,11 +1,26 @@
 """The optimizer-facing search space: knobs + their domains."""
 from __future__ import annotations
 
-from typing import Any, Iterator, Optional
+from typing import Any, Iterator, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict
 
 from ._domains import Domain
+
+#: Provenance of a knob's domain — a closed set (never a bare ``str``).
+#: ``"manual"`` is the hand-authored default; the remaining tags are assigned by
+#: ``infer_search_space`` (Phase 3) to record how each domain was derived. Phase 3
+#: owns widening this alias if inference introduces further origins.
+KnobSource = Literal[
+    "manual",
+    "tune_spec",
+    "bool",
+    "enum",
+    "literal",
+    "bounded",
+    "unbounded_heuristic",
+    "presence_optin",
+]
 
 
 class Knob(BaseModel):
@@ -21,9 +36,9 @@ class Knob(BaseModel):
             is active only when each ``(key, value)`` pair holds, e.g.
             ``(("0.GaussianBlur.__enabled__", True),)`` — define-by-run
             conditional nesting. ``None`` means unconditional.
-        source: Provenance of the knob. Defaults to ``"manual"`` for
-            hand-authored spaces; ``infer_search_space`` (Phase 3) populates it
-            with the inference origin.
+        source: Provenance of the knob (a closed ``KnobSource`` set). Defaults to
+            ``"manual"`` for hand-authored spaces; ``infer_search_space`` (Phase 3)
+            populates it with the inference origin.
         needs_review: Whether a human should confirm this knob before tuning
             (set by inference for shaky guesses); defaults to ``False``.
         description: Human-readable description, auto-sourced from the owning
@@ -35,7 +50,7 @@ class Knob(BaseModel):
     key: str
     domain: Domain
     conditional_on: Optional[tuple[tuple[str, Any], ...]] = None
-    source: str = "manual"
+    source: KnobSource = "manual"
     needs_review: bool = False
     description: str = ""
 

@@ -31,6 +31,18 @@ def test_knob_defaults():
     assert k.conditional_on is None
 
 
+def test_knob_source_is_a_closed_set():
+    # source is a KnobSource Literal, not a bare str: a known origin is accepted,
+    # an arbitrary string is rejected at construction.
+    from pydantic import ValidationError
+
+    assert Knob(key="x", domain=IntRange(low=1, high=9), source="tune_spec").source == (
+        "tune_spec"
+    )
+    with pytest.raises(ValidationError):
+        Knob(key="x", domain=IntRange(low=1, high=9), source="not-a-real-origin")
+
+
 def test_searchspace_keys_and_domain_lookup():
     s = _space()
     assert s.keys() == ["0.sigma", "1.size", "0.GaussianBlur.mode"]
