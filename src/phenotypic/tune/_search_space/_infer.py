@@ -77,9 +77,14 @@ def _walk_metadata(annotation: Any) -> list[Any]:
     return found
 
 
-def _has_marker(annotation: Any, name: str) -> bool:
-    """Return ``True`` if any ``Annotated`` extra has class ``name``."""
-    return any(type(m).__name__ == name for m in _walk_metadata(annotation))
+def _has_marker(metadata: list[Any], name: str) -> bool:
+    """Return ``True`` if any metadata object has class ``name``.
+
+    Markers (``TuneSpec`` / ``_ColumnRefMarker`` / ``_OperationFieldMarker``)
+    are matched by class *name* rather than ``isinstance`` so this module never
+    has to import the GUI / tools markers — it reads only their presence.
+    """
+    return any(type(m).__name__ == name for m in metadata)
 
 
 def _strip_optional(annotation: Any) -> tuple[Any, bool]:
@@ -402,15 +407,11 @@ def _infer_field(
     metadata = list(field_info.metadata) + _walk_metadata(annotation)
 
     # Name-ref marker (ColumnRef) — an open set, excluded.
-    if _has_marker(annotation, "_ColumnRefMarker") or any(
-        type(m).__name__ == "_ColumnRefMarker" for m in metadata
-    ):
+    if _has_marker(metadata, "_ColumnRefMarker"):
         return Excluded(key=key, reason="name_ref", field_type=field_type)
     # Operation-valued field — handled by nested recursion (next chunk), not a
     # scalar knob here.
-    if _has_marker(annotation, "_OperationFieldMarker") or any(
-        type(m).__name__ == "_OperationFieldMarker" for m in metadata
-    ):
+    if _has_marker(metadata, "_OperationFieldMarker"):
         return Excluded(key=key, reason="unsupported_type", field_type=field_type)
 
     # T | None -> infer over T; multi-type union -> unsupported.
