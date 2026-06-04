@@ -81,8 +81,6 @@
     "MadHysteresisDetector.min_size",
     "ManualGridPointDetector.width",
     "ManualPointDetector.width",
-    "MedianFilter.cval",
-    "MedianFilter.width",
     "MeijeringRidgeFilter.alpha",
     "MeijeringRidgeFilter.cval",
     "NonLocalMeansDenoiser.gat_mu",

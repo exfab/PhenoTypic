@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from typing import Literal, TYPE_CHECKING
+from typing import Annotated, Literal, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
 from phenotypic.abc_ import ImageEnhancer
+from phenotypic.tune._search_space._tune_spec import TuneSpec
 
 from skimage.filters import median
 
@@ -53,8 +54,8 @@ class MedianFilter(ImageEnhancer):
 
     mode: Literal["nearest", "reflect", "constant", "mirror", "wrap"] = "nearest"
     shape: Literal["disk", "square", "diamond"] | None = None
-    width: int = 5
-    cval: float = 0.0
+    width: Annotated[int, TuneSpec(3, 9, step=2)] = 5
+    cval: Annotated[float, TuneSpec(tunable=False)] = 0.0
 
     def _operate(self, image: Image) -> Image:
         image.detect_mat[:] = median(
