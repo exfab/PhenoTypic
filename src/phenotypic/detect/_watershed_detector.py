@@ -5,17 +5,17 @@ if TYPE_CHECKING:
     from phenotypic._core._grid_image import GridImage
     from phenotypic._core._image import Image
 
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 import gc
 
 import numpy as np
 import numpy.ma as ma
-from pydantic import field_validator
+from pydantic import Field, field_validator
 from scipy.ndimage import distance_transform_edt
 from skimage import feature, filters, morphology, segmentation
 
 from phenotypic.abc_ import ThresholdDetector
-from phenotypic.tools_.typing_ import NdArrayField
+from phenotypic.tools_.typing_ import NdArrayField, TuneSpec
 
 
 class WatershedDetector(ThresholdDetector):
@@ -102,9 +102,9 @@ class WatershedDetector(ThresholdDetector):
     """
 
     footprint: Literal["auto"] | NdArrayField | int | None = None
-    min_size: int = 50
-    compactness: float = 0.001
-    connectivity: int = 1
+    min_size: Annotated[int, TuneSpec(20, 200)] = Field(50, ge=1)
+    compactness: Annotated[float, TuneSpec(0.0001, 0.1, log=True)] = Field(0.001, ge=0.0)
+    connectivity: Annotated[int, TuneSpec(categories=[1, 2])] = Field(1, ge=1, le=2)
     relabel: bool = True
     ignore_zeros: bool = False
 

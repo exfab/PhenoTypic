@@ -90,9 +90,6 @@
     "UserThreshold.threshold",
     "VisuShrinkEnhancer.sigma",
     "VisuShrinkEnhancer.wavelet_levels",
-    "WatershedDetector.compactness",
-    "WatershedDetector.connectivity",
-    "WatershedDetector.min_size",
     "WhiteTophatEnhance.width"
   ]
 }
