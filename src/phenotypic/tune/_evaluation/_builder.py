@@ -8,7 +8,10 @@ pipeline, overlays each key onto the op it addresses by **fresh reconstruction**
 """
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
+
+from pydantic import ValidationError
+from pydantic_core import InitErrorDetails
 
 from phenotypic import ImagePipeline
 
@@ -79,6 +82,56 @@ def _rebuild_op(op: Any, overrides: dict[str, Any]) -> Any:
     return type(op)(**fields)
 
 
+def _rebuild_op_or_raise_with_keys(
+    op: Any, overrides: dict[str, Any], keys: list[str]
+) -> Any:
+    """Reconstruct ``op`` with ``overrides``; on failure, name the knob keys.
+
+    The leaf op's own ``field_validator`` / ``Field`` bounds fire here during
+    fresh reconstruction. This is the **apply-time ⊆ backstop**: the ``⊆``
+    inference check is blind to *validator*-enforced bounds (they live in
+    imperative code, not ``model_fields[name].metadata``), so an out-of-bound
+    sampled value is only caught at this reconstruction site.
+
+    A failing reconstruction re-raises the op's ``pydantic.ValidationError``
+    **wrapped** so the message names the offending knob key(s) and the op class
+    — no new exception type, the result is still a ``ValidationError`` (a
+    ``ValueError`` subclass) carrying the original per-field errors.
+
+    Args:
+        op: The base operation instance being overlaid.
+        overrides: Field name → sampled value for this position.
+        keys: The root-relative knob keys (``"<pos>.<field>"``) for ``overrides``.
+
+    Returns:
+        A freshly reconstructed operation instance.
+
+    Raises:
+        ValidationError: Wrapped to prepend the knob key + op class.
+    """
+    try:
+        return _rebuild_op(op, overrides)
+    except ValidationError as exc:
+        cls_name = type(op).__name__
+        prefix = f"{', '.join(keys)} [{cls_name}]"
+        augmented: list[dict[str, Any]] = []
+        for err in exc.errors(include_url=False):
+            ctx = dict(err.get("ctx") or {})
+            ctx["error"] = f"{prefix}: {err['msg']}"
+            augmented.append(
+                {
+                    "type": "value_error",
+                    "loc": err["loc"],
+                    "input": err.get("input"),
+                    "ctx": ctx,
+                }
+            )
+        raise ValidationError.from_exception_data(
+            f"{prefix} (tuning overlay)",
+            cast("list[InitErrorDetails]", augmented),
+        ) from exc
+
+
 def build_pipeline(base: ImagePipeline, params: dict[str, Any]) -> ImagePipeline:
     """Clone ``base``, overlay ``params``, and drop ``__enabled__=False`` ops.
 
@@ -92,6 +145,9 @@ def build_pipeline(base: ImagePipeline, params: dict[str, Any]) -> ImagePipeline
 
     Raises:
         IndexError / ValueError / NotImplementedError: Propagated from key parsing.
+        ValidationError: When a sampled value violates the leaf op's own bounds
+            (the apply-time ``⊆`` backstop), wrapped to name the knob key + op
+            class.
     """
     candidate = base.model_copy(deep=True)  # preserves meas/post/qc; isolates ops from base
     ordered_ops = list(candidate.get_ops().values())
@@ -110,8 +166,12 @@ def build_pipeline(base: ImagePipeline, params: dict[str, Any]) -> ImagePipeline
         if not enabled.get(position, True):
             continue  # presence toggled off → drop the op
         op_overrides = overrides.get(position)
-        # un-overridden ops come from `candidate` (the deep copy), never `base`
-        new_ops.append(_rebuild_op(op, op_overrides) if op_overrides else op)
+        if not op_overrides:
+            # un-overridden ops come from `candidate` (the deep copy), never `base`
+            new_ops.append(op)
+            continue
+        keys = [f"{position}.{field}" for field in op_overrides]
+        new_ops.append(_rebuild_op_or_raise_with_keys(op, op_overrides, keys))
 
     candidate.set_ops(new_ops)
     return candidate
