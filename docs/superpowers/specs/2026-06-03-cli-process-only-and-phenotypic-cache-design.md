@@ -20,8 +20,9 @@ Two related changes to the PhenoTypic CLI:
    machinery.
 
 2. **`.phenotypic` hidden machine-state cache** — relocate the run's
-   machine-state sidecars (`progress/` and `processing_state.json`) into a
-   single hidden `<output>/.phenotypic/` directory, for **both** the existing
+   machine-state sidecars (`progress/`, `processing_state.json`, and
+   `processing_events.log`) into a single hidden `<output>/.phenotypic/`
+   directory, for **both** the existing
    forward CLI and the new process-only mode. This gives the CLI and GUI one
    canonical, de-duplicated reference point for run state, and keeps the
    user-facing output folder clean.
@@ -62,6 +63,7 @@ Both build on the existing single-source-of-truth layout module
 | D7 | Migration set | machine-state sidecars only: `progress/`, `processing_state.json`, `processing_events.log` (**not** `logs/`, `slurm_scripts/`, `results/`, `qc/`, `deliverables/`) |
 | D8 | Output filename | `<stem>_<layer>.<ext>` (self-documenting) |
 | D9 | objmap without a detector | Warn per image + write the (empty) map; do not fail |
+| D10 | 16-bit TIFF coercion (added in self-review) | **Worker-side coercion** via `skimage.img_as_uint`; do **not** modify shared accessor IO. (See §5.6.) |
 
 ## 4. Background (current state)
 
@@ -70,13 +72,17 @@ Both build on the existing single-source-of-truth layout module
   queue (enhancers → detectors → refiners) and returns the processed image. No
   measurement. This is the exact core needed.
 - **Layer accessors** all expose `imsave(filepath, bit_depth=None)`:
-  - Color/gray/detect_mat go through
-    `_accessor_io_handler.imsave` → `_save_image`: for a `.tiff` path it writes
-    true 16-bit via `tifffile` when the array is `uint16` (or `bit_depth=16`
-    forces conversion); otherwise PIL.
+  - Color/gray/detect_mat go through `_accessor_io_handler.imsave` →
+    `_save_image`. For a `.tiff` path it writes true 16-bit via `tifffile`
+    **only when the array is already `uint16`**; otherwise PIL (→ 8-bit for
+    `uint8`, float TIFF for float). ⚠️ The `bit_depth` argument is **ignored in
+    the TIFF branch** — it does *not* force conversion. See §5.6; this drives
+    decision D10.
   - `objmap.imsave(path, use_label2rgb=False)`
     (`accessors/_objmap_accessor.py:531`) writes the **raw labeled map**
-    (integer labels). For `.png` this is the prior CLI behavior.
+    (integer labels). `objmap` is `uint16`, and `_save_image`'s PNG branch
+    routes `uint16` to `_write_png_cv2`, so `.png` yields a 16-bit raw-label
+    image — the prior CLI behavior, and correct as-is.
 - **Per-image worker** `process_single_image_core`
   (`_cli/_cli_process_single.py:34`) currently does
   `apply_and_measure` + save HDF + overlay + measurements parquet.
@@ -159,11 +165,19 @@ the legacy location**:
 This is a soft cutover: no migration of old files, no symlinks. Old runs remain
 readable/resumable; new runs use the hidden dir.
 
-> Implementation note: confirm whether `ProcessingState.save`/`load` and the
-> dashboard/manifest writers call the helpers (good) or join paths by hand
-> (must be updated). Audit `_cli_state_management.py`, `_cli_update_state.py`,
-> `_cli_failure_tracker.py`, `_cli_checkpoint_handler.py`, `_cli_sentinel.py`,
-> `_cli_chunk_writer.py`, `_cli_recompile_worker.py`.
+> Implementation note (self-review — partially confirmed): re-rooting the
+> helpers is **not** sufficient on its own, because some writers hand-join the
+> path instead of calling the helper. **Confirmed:** `_cli_state_management.py`
+> does `state_file = output_dir / PROCESSING_STATE_JSON` for both
+> `save_processing_state` (L37) and `load_processing_state` (L79) and imports
+> the bare `PROCESSING_STATE_JSON` constant — so it must be changed to route
+> through `processing_state_path()` (save) and `resolve_processing_state_path()`
+> (load) rather than re-spelling. Audit the rest for the same anti-pattern and
+> convert each to the helpers: `_cli_update_state.py`, `_cli_failure_tracker.py`,
+> `_cli_checkpoint_handler.py`, `_cli_sentinel.py`, `_cli_chunk_writer.py`,
+> `_cli_recompile_worker.py`. A grep for `output_dir / PROCESSING_*`,
+> `/ DIR_PROGRESS`, `/ "progress"`, and `/ PROCESSING_STATE_JSON` is the audit
+> checklist; the migration is done when none remain outside `_io_constants`.
 
 ### 5.2 GUI integration
 
@@ -253,18 +267,67 @@ out   = output_dir / rel.parent / f"{rel.stem}_{layer}{ext}"
 - `_layer` suffix prevents overwrite if the same output dir is reused for a
   different layer.
 
-### 5.6 Layer write semantics (D3, D9)
+### 5.6 Layer write semantics (D3, D9, D10)
 
-| Layer | Format | Call | Notes |
-|-------|--------|------|-------|
-| `rgb` | 16-bit TIFF | `image.rgb.imsave(out, bit_depth=16)` | uint8 upcast to 16-bit |
-| `gray` | 16-bit TIFF | `image.gray.imsave(out, bit_depth=16)` | |
-| `detect_mat` | 16-bit TIFF | `image.detect_mat.imsave(out, bit_depth=16)` | float [0,1] scaled to 16-bit by the accessor's bit-depth handling |
-| `objmap` | PNG (raw labels) | `image.objmap.imsave(out)` | `use_label2rgb=False`; 16-bit-capable integer labels |
+> **Self-review correction.** The earlier draft claimed
+> `accessor.imsave(out, bit_depth=16)` would produce 16-bit TIFFs. **It does
+> not.** `_accessor_io_handler._save_image`'s TIFF branch keys solely on
+> `arr.dtype` and **ignores the `bit_depth` argument entirely** (only the PNG
+> branch honors it, and even then only to quantize *float* arrays). Verified
+> runtime layer dtypes on `load_synth_yeast_plate()` (an 8-bit image):
+>
+> | Layer | dtype | `imsave(".tiff", bit_depth=16)` today | Wanted |
+> |-------|-------|----------------------------------------|--------|
+> | `rgb` | `uint8` | **8-bit** TIFF (PIL) | 16-bit |
+> | `gray` | `float64` | **float** TIFF (PIL) | 16-bit |
+> | `detect_mat` | `float64` | **float** TIFF (PIL) | 16-bit |
+> | `objmap` | `uint16` | n/a (PNG) | 16-bit PNG ✓ |
+>
+> So 3 of the 4 layers come out wrong. The fix must coerce the array to
+> `uint16` **before** writing.
+
+**Coercion (D10 — worker-side).** The process-only writer coerces each
+TIFF-bound layer to `uint16` itself, then writes, leaving the shared accessor
+IO (which is covered by `test_image.py` / `test_metadata_io.py` and is
+golden-sensitive) untouched:
+
+```python
+import numpy as np, skimage as ski
+arr = accessor[:]
+if arr.dtype != np.uint16:
+    arr = ski.util.img_as_uint(np.clip(arr, 0.0, 1.0) if np.issubdtype(arr.dtype, np.floating) else arr)
+# arr is now uint16; write 16-bit TIFF (tifffile), optionally embedding metadata
+```
+
+`img_as_uint` gives the correct mapping (verified): `uint8` 0..255 → 0..65535
+(×257); `float` [0,1] → 0..65535; `uint16` passthrough. Floats are clipped to
+[0,1] first so an enhancer that pushes `detect_mat` slightly out of range can't
+trip skimage's range error / wraparound.
+
+| Layer | Format | How |
+|-------|--------|-----|
+| `rgb` | 16-bit TIFF | coerce→uint16, write via `tifffile.imwrite` |
+| `gray` | 16-bit TIFF | clip→`img_as_uint`→write |
+| `detect_mat` | 16-bit TIFF | clip→`img_as_uint`→write |
+| `objmap` | 16-bit PNG (raw labels) | `image.objmap.imsave(out)` — already correct: `objmap` is `uint16`, `_save_image`'s PNG branch routes uint16 to `_write_png_cv2`. `use_label2rgb=False`. |
+
+The process-only writer lives in the new worker module (or a small helper in
+`_cli_output_manager`), reusing `tifffile`/`cv2` the same way the accessor IO
+does. Embedding the phenotypic-metadata JSON in the TIFF (as `imsave` does) is
+**optional** for v1 — decide in the plan; the layer pixels are the deliverable.
+
+> **Alternative considered (not chosen):** fix `_save_image` to honor
+> `bit_depth` for TIFF (the param is *documented* to do this, so this is
+> arguably a latent bug). Rejected for v1 because it changes shared,
+> golden-covered accessor IO — notably it would turn today's float-TIFF output
+> (default `bit_depth`) into integer TIFF, risking `test_metadata_io.py` /
+> golden churn. Worth doing as a separate, well-tested cleanup later; tracked
+> as a follow-up, not part of this feature.
 
 - **objmap with no detector in the pipeline** → `image.objmap.isempty()` is
   true: log a per-image warning ("pipeline produced no objects; writing empty
-  object map for <image>") and write the empty map. The run does not fail.
+  object map for <image>") and write the empty (all-zero) map. The run does not
+  fail.
 
 ### 5.7 `--dry-run`
 
@@ -274,15 +337,19 @@ sample of mirrored output paths, execution mode (local/SLURM), and the
 
 ## 6. Error handling & edge cases
 
-- Forcing 16-bit goes through the accessor's existing `_check_bit_depth` /
-  `_save_image`; no new conversion math here.
+- 16-bit coercion is **worker-side** (`img_as_uint` after clipping floats to
+  [0,1]); see §5.6. Do not rely on `imsave(bit_depth=16)` — it is a no-op for
+  TIFF.
 - Per-image failures use the **same** failure-tracking path as the forward run
   (`append_failure` into `.phenotypic/progress/failures.jsonl`), so one bad
   image doesn't abort the batch.
-- `--process-only` + `--resume`: resume uses the shared event log / processing
-  state, so already-written images are skipped. (Confirm the completion check
-  keys on image identity, not on measurement-parquet presence — adjust the
-  resume predicate for process-only if it currently checks for an HDF/parquet.)
+- `--process-only` + `--resume`: **resolved during self-review** — completion is
+  tracked by the append-only event log / `ProcessingState.completed` set
+  (`_cli_state_management.get_datasets_with_remaining_images` keys on
+  `ds_state.completed`, *not* on any measurement artifact). So as long as the
+  process-only worker appends the same `started`/`completed`/`failed` events,
+  resume skips already-written images with **no change to the resume
+  predicate**.
 - Input is a single file vs flat dir vs nested dirs: all handled by
   `relative_to(input_root)`; for a single-file input, `input_root` is the
   file's parent.
@@ -299,7 +366,13 @@ sample of mirrored output paths, execution mode (local/SLURM), and the
 - Output-path mapping: nested / flat / single-file inputs → expected mirrored
   paths and `_layer` suffix; objmap → `.png`, others → `.tiff`.
 - Worker: each layer writes a file of the right format/bit-depth (small synth
-  image); objmap-without-detector warns and writes an empty map.
+  image). **Explicit dtype assertions** (the bug this caught): load the written
+  file and assert `rgb`/`gray`/`detect_mat` TIFFs are `uint16` from an 8-bit
+  source (uint8 rgb + float64 gray/detect_mat), and `objmap` PNG is `uint16`
+  raw labels. Assert a float `detect_mat` value of `1.0`→`65535` and `0.0`→`0`
+  (correct `img_as_uint` mapping, not a min-max rescale). Out-of-range float
+  (e.g. an enhancer emitting `1.2`) is clipped, not wrapped.
+- objmap-without-detector warns and writes an all-zero map.
 - CLI validation matrix: every rejected-flag combination raises `UsageError`;
   required-flag enforcement; happy-path parsing populates
   `ExecutionConfig.process_only_layer`.
@@ -329,14 +402,23 @@ Phase 1 lands and is verifiable on its own; Phase 2 depends on it.
 
 ## 9. Risks
 
-- **Migration blast radius**: many writers/readers touch `progress/`. Mitigated
-  by routing everything through `_io_constants` helpers and a focused audit
-  list (§5.1 note). Any hand-joined path is the main failure mode.
+- **Migration blast radius**: many writers/readers touch `progress/`, and at
+  least one (`_cli_state_management.py`) **hand-joins** the path rather than
+  using the helper (confirmed in §5.1). Mitigated by converting every site to
+  the `_io_constants` helpers + the grep-based audit checklist in §5.1. A
+  missed hand-joined path is the main failure mode → the `_io_constants` layout
+  test plus a "no hand-joined state paths outside `_io_constants`" grep gate.
 - **GUI run discovery regressions**: covered by back-compat resolvers + a
-  legacy-layout discovery test + `FEATURES.md` gate.
-- **Resume predicate**: if completion is inferred from measurement artifacts,
-  process-only needs an artifact-agnostic predicate (event-log based). Flagged
-  in §6 for the plan to resolve.
+  legacy-layout discovery test + `FEATURES.md` gate. Note status reads already
+  go through `manifest_json_path()` (`_runs_registry.py:297`), so they follow
+  the re-root automatically; the resolver fallback is what keeps **legacy**
+  runs visible.
+- **Resume predicate**: ✅ resolved (event-log based — see §6). No predicate
+  change needed.
+- **16-bit coercion vs. shared IO**: the documented-but-unimplemented
+  `bit_depth`-for-TIFF behavior is left untouched to avoid golden/test churn
+  (§5.6). Risk shifts to the worker-side coercion being correct → covered by
+  the explicit dtype/value assertions in §7.
 
 ## 10. Open questions for implementation (non-blocking)
 
