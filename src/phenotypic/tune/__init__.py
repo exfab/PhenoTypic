@@ -56,6 +56,16 @@ from ._screening import (
     compute_param_importance,
     compute_param_importance_report,
 )
+from ._screening_freeze import (
+    ScreeningConfig,
+    ScreeningController,
+    ScreeningResult,
+    build_reduced_space,
+    count_free_params,
+    freeze_value,
+    screening_warmup_floor,
+    select_params_to_freeze,
+)
 from ._search_space import (
     Categorical,
     Domain,
@@ -124,6 +134,15 @@ __all__ = [
     "compute_param_importance_report",
     "ImportanceReport",
     "ImportanceMethod",
+    # Phase 2 (chunk 3): two-round screening freeze
+    "ScreeningController",
+    "ScreeningConfig",
+    "ScreeningResult",
+    "count_free_params",
+    "screening_warmup_floor",
+    "select_params_to_freeze",
+    "freeze_value",
+    "build_reduced_space",
     "run_tuning",
     # Phase 3: search-space inference
     "TuneSpec",
