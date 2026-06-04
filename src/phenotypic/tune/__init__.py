@@ -37,8 +37,10 @@ from ._screening import compute_param_importance
 from ._search_space import (
     Categorical,
     Domain,
+    Excluded,
     Fixed,
     FloatRange,
+    InferredSearchSpace,
     IntRange,
     Knob,
     SearchSpace,
@@ -81,4 +83,6 @@ __all__ = [
     "run_tuning",
     # Phase 3: search-space inference
     "TuneSpec",
+    "InferredSearchSpace",
+    "Excluded",
 ]
