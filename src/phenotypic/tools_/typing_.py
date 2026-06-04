@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Annotated, Any, Dict, List, Literal, Tuple
+from typing import TYPE_CHECKING, Annotated, Any, Callable, Dict, List, Literal, Tuple
 
 import numpy as np
 from pydantic import (
@@ -231,35 +231,66 @@ def _deserialize_operation_value(value: Any) -> Any:
     return value
 
 
-def _require_operation_value(value: Any) -> Any:
-    """Assert a reconstructed value is an operation or a pipeline.
+def _make_require_value(base: "type | Callable[[], type]"):
+    """Build an ``AfterValidator`` guard asserting a value is a ``base`` instance.
 
-    Runs after :func:`_deserialize_operation_value`. Because
-    :data:`OperationField` carries an ``Any`` core (it cannot name the
-    operation base classes without an import cycle through ``tools_``),
-    this validator restores the type guard a plain
-    ``ObjectDetector | ImagePipeline`` annotation would otherwise provide.
+    ``base`` may be a concrete type or a zero-arg callable that returns the
+    type (resolved lazily, so ``OperationField`` can name ``BaseOperation``
+    without importing it at ``tools_`` load time — avoiding the import cycle).
 
     Args:
-        value: The (already reconstructed) field value.
+        base: The class the value must be an instance of, or a zero-arg
+            callable returning that class (resolved on first validation).
 
     Returns:
-        ``value`` unchanged when it is a ``BaseOperation`` instance
-        (``ImagePipeline`` is itself a ``BaseOperation``).
-
-    Raises:
-        ValueError: If ``value`` is not an operation/pipeline instance.
-            Raised as ``ValueError`` (not ``TypeError``) so pydantic wraps
-            it into a :class:`pydantic.ValidationError`.
+        A validator ``_require(value)`` that returns ``value`` unchanged when
+        it is a ``base`` instance, and raises ``ValueError`` otherwise. The
+        error is a ``ValueError`` (not ``TypeError``) so pydantic wraps it
+        into a :class:`pydantic.ValidationError`.
     """
-    from phenotypic.abc_ import BaseOperation
 
-    if not isinstance(value, BaseOperation):
-        raise ValueError(
-            f"expected an operation or pipeline instance, got "
-            f"{type(value).__name__}"
-        )
-    return value
+    def _require(value: Any) -> Any:
+        resolved = base if isinstance(base, type) else base()
+        if not isinstance(value, resolved):
+            raise ValueError(
+                f"expected an instance of {resolved.__name__}, got "
+                f"{type(value).__name__}"
+            )
+        return value
+
+    return _require
+
+
+def polymorphic_field(base: "type | Callable[[], type]", *, marker: Any = None):
+    """A pydantic field for a polymorphic model subtree.
+
+    The concrete subclass survives a JSON round-trip via the ``phenotypic``
+    class registry: the field serializes to ``{"class": <name>, "params":
+    {...}}`` (or the pipeline-tagged form for an ``ImagePipeline``) and
+    reconstructs the concrete subclass on load.
+
+    Args:
+        base: Constrains the accepted/validated type — a class or a zero-arg
+            callable returning the class (the lazy form avoids import cycles,
+            e.g. ``OperationField`` naming ``BaseOperation``).
+        marker: Optional sentinel attached to the ``Annotated`` chain (e.g.
+            the GUI's :class:`_OperationFieldMarker`) so introspecting tools
+            can recognise the field despite the ``Any`` core erasure.
+
+    Returns:
+        An ``Annotated`` type usable as a pydantic field annotation. Host
+        models must set ``model_config`` with ``arbitrary_types_allowed=True``.
+    """
+    core = Annotated[
+        Any,
+        BeforeValidator(_deserialize_operation_value),
+        AfterValidator(_make_require_value(base)),
+        PlainSerializer(_serialize_operation_value),
+    ]
+    if marker is None:
+        return core
+    # Annotated flattens a nested Annotated (PEP 593): the marker joins the chain.
+    return Annotated[core, marker]
 
 
 class _OperationFieldMarker:
@@ -292,24 +323,28 @@ class _OperationFieldMarker:
         return hash("_OperationFieldMarker")
 
 
+def _lazy_base_operation() -> type:
+    from phenotypic.abc_ import BaseOperation
+
+    return BaseOperation
+
+
 #: Annotated operation type usable as a pydantic field annotation for a
 #: parameter that holds another operation or a nested pipeline.
 #:
-#: Serializes to a class-tagged dict so the concrete subclass survives a
-#: JSON round-trip; deserializes by resolving the class through the
-#: ``phenotypic`` registry. Use it directly (``OperationField``) or inside
-#: a container — e.g. ``list[OperationField]`` — when the field must
-#: accept several operation types and round-trip each losslessly.
+#: Back-compat alias — an operation/pipeline-valued field built by
+#: :func:`polymorphic_field`. Serializes to a class-tagged dict so the
+#: concrete subclass survives a JSON round-trip; deserializes by resolving
+#: the class through the ``phenotypic`` registry. Use it directly
+#: (``OperationField``) or inside a container — e.g. ``list[OperationField]``
+#: — when the field must accept several operation types and round-trip each
+#: losslessly.
 #:
 #: The core type is ``Any`` (naming the operation base classes here would
 #: create an import cycle through ``tools_``); an ``AfterValidator``
 #: restores the operation/pipeline type guard. The trailing
 #: :class:`_OperationFieldMarker` lets the GUI ``OperationRegistry``
 #: recognise the field despite the ``Any`` erasure.
-OperationField = Annotated[
-    Any,
-    BeforeValidator(_deserialize_operation_value),
-    AfterValidator(_require_operation_value),
-    PlainSerializer(_serialize_operation_value),
-    _OperationFieldMarker(),
-]
+OperationField = polymorphic_field(
+    base=_lazy_base_operation, marker=_OperationFieldMarker()
+)
