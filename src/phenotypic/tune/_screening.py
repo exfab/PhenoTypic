@@ -22,7 +22,7 @@ from pydantic import BaseModel, ConfigDict
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.inspection import permutation_importance
 
-from ._study_store import StudyStore
+from ._study._protocol import StudyStore
 
 #: The importance estimators, a closed set (never a bare ``str``). ``"fanova"``
 #: is the native Optuna variance decomposition (main + interaction); the

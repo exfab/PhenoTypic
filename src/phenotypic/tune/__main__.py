@@ -15,12 +15,14 @@ so ``python -m phenotypic.tune spec.json -i … -o …`` keeps working.
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
 from typing import Optional, Sequence
 
 from phenotypic import ImagePipeline
 
 from ._spec import TuningSpec
+from ._strategies._config import PHENOTYPIC_TUNE_STORAGE_URL_ENV
 from ._tune_cli._auto_space import _render_review_table, run_auto_space
 from ._tune_cli._run import _load_images, run_tuning
 
@@ -46,6 +48,45 @@ def _build_parser() -> argparse.ArgumentParser:
     run_p.add_argument("spec", help="path to a tuning_spec.json")
     run_p.add_argument("-i", "--input", required=True, help="image directory")
     run_p.add_argument("-o", "--output", default=None, help="output directory")
+    run_p.add_argument(
+        "--strategy",
+        choices=("grid", "random", "tpe", "cmaes", "gp", "nsga2"),
+        default=None,
+        help=(
+            "override the spec's strategy: grid/random use the built-in configs; "
+            "tpe/cmaes/gp/nsga2 build an OptunaConfig (needs the 'tune' extra)"
+        ),
+    )
+    run_p.add_argument(
+        "--n-trials", type=int, default=None, help="trial-budget override"
+    )
+    run_p.add_argument(
+        "--screen",
+        dest="screen",
+        action="store_true",
+        default=False,
+        help="enable the two-round screening freeze",
+    )
+    run_p.add_argument(
+        "--no-screen",
+        dest="screen",
+        action="store_false",
+        help="disable the two-round screening freeze (the default)",
+    )
+    run_p.add_argument(
+        "--storage-url",
+        default=None,
+        help=(
+            "Optuna storage URL (sqlite:///… or postgresql+psycopg://…); falls "
+            f"back to ${PHENOTYPIC_TUNE_STORAGE_URL_ENV}"
+        ),
+    )
+    run_p.add_argument(
+        "--slurm",
+        action="store_true",
+        default=False,
+        help="submit a distributed worker fleet over SLURM instead of running locally",
+    )
 
     auto_p = sub.add_parser(
         "auto-space",
@@ -80,7 +121,21 @@ def _run_command(args: argparse.Namespace) -> None:
     images = _load_images(Path(args.input))
     if not images:
         raise SystemExit(f"no images found under {args.input!r}")
-    run_tuning(spec, images, output_dir)
+    # --storage-url falls back to the env var so a SLURM array can export one
+    # shared URL to every worker (psycopg3 / sqlite scheme).
+    storage_url = args.storage_url or os.environ.get(PHENOTYPIC_TUNE_STORAGE_URL_ENV)
+    run_tuning(
+        spec,
+        images,
+        output_dir,
+        strategy=args.strategy,
+        n_trials=args.n_trials,
+        screen=args.screen,
+        storage_url=storage_url,
+        slurm=args.slurm,
+        spec_path=Path(args.spec),
+        images_dir=Path(args.input),
+    )
 
 
 def _auto_space_command(args: argparse.Namespace) -> None:

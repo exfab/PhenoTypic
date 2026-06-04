@@ -70,3 +70,146 @@ def test_cli_main_invokes_run(tmp_path, monkeypatch):
     cli.main([str(spec_path), "-i", str(tmp_path), "-o", str(out)])
 
     assert io.best_pipeline_path(out).exists()
+
+
+# --- H2: run-subparser flags + journal export ---------------------------------
+
+import importlib.util  # noqa: E402
+
+import pytest  # noqa: E402
+
+from phenotypic.tune import OptunaConfig, RandomConfig  # noqa: E402
+from phenotypic.tune._tune_cli._run import resolve_strategy  # noqa: E402
+
+_OPTUNA = importlib.util.find_spec("optuna") is not None
+
+
+def test_resolve_strategy_grid_and_random():
+    assert isinstance(resolve_strategy("grid", n_trials=None, storage_url=None), GridConfig)
+    rnd = resolve_strategy("random", n_trials=7, storage_url=None)
+    assert isinstance(rnd, RandomConfig)
+    assert rnd.n_trials == 7
+
+
+def test_resolve_strategy_tpe_builds_optuna_config():
+    cfg = resolve_strategy("tpe", n_trials=12, storage_url="sqlite:///x.db")
+    assert isinstance(cfg, OptunaConfig)
+    assert cfg.sampler == "tpe"
+    assert cfg.n_trials == 12
+    assert cfg.storage_url == "sqlite:///x.db"
+
+
+def test_resolve_strategy_optuna_without_extra_raises_actionable(monkeypatch):
+    # Without the tune extra, requesting an Optuna sampler raises an actionable
+    # error pointing at `uv sync --extras tune` — never a bare KeyError.
+    import phenotypic.tune._strategies._optuna_support as support
+
+    def _boom():
+        raise ImportError("Optuna is required ... uv sync --extras tune")
+
+    monkeypatch.setattr(support, "_require_optuna", _boom)
+    with pytest.raises(ImportError, match="tune"):
+        resolve_strategy("nsga2", n_trials=5, storage_url=None)
+
+
+@pytest.mark.skipif(not _OPTUNA, reason="optuna extra not installed")
+def test_optuna_strategy_run_writes_trials_parquet(tmp_path):
+    # An Optuna-strategy run selects the OptunaStudyStore (study.db) AND exports
+    # trials.parquet at finalize, so deliverables/ stay backend-agnostic.
+    import optuna
+
+    optuna.logging.set_verbosity(optuna.logging.WARNING)
+    out = tmp_path / "optuna_run"
+    best = run_tuning(
+        _spec(tmp_path),
+        [load_synth_yeast_plate()],
+        out,
+        strategy="tpe",
+        n_trials=4,
+    )
+    assert io.study_db_path(out).exists()  # the Optuna study DB
+    assert io.trials_parquet_path(out).exists()  # exported beside study.db
+    assert io.best_pipeline_path(out).exists()
+    assert best is not None
+
+
+def test_cli_storage_url_env_fallback(tmp_path, monkeypatch):
+    # --storage-url is omitted but $PHENOTYPIC_TUNE_STORAGE_URL is set: the run
+    # routes the env URL into the resolved Optuna strategy.
+    from phenotypic.tune import __main__ as cli
+    from phenotypic.tune._strategies._config import PHENOTYPIC_TUNE_STORAGE_URL_ENV
+
+    captured = {}
+
+    def _fake_run_tuning(spec, images, output_dir, **kwargs):
+        captured.update(kwargs)
+        return None
+
+    monkeypatch.setattr(cli, "run_tuning", _fake_run_tuning)
+    monkeypatch.setattr(cli, "_load_images", lambda _p: [load_synth_yeast_plate()])
+    monkeypatch.setenv(PHENOTYPIC_TUNE_STORAGE_URL_ENV, "sqlite:///env.db")
+
+    spec_path = tmp_path / "spec.json"
+    spec_path.write_text(_spec(tmp_path).model_dump_json())
+    cli.main([str(spec_path), "-i", str(tmp_path), "-o", str(tmp_path / "o"),
+              "--strategy", "tpe", "--n-trials", "3"])
+
+    assert captured["strategy"] == "tpe"
+    assert captured["storage_url"] == "sqlite:///env.db"
+
+
+def test_cli_screen_flag_toggles_screening(tmp_path, monkeypatch):
+    from phenotypic.tune import __main__ as cli
+
+    captured = {}
+
+    def _fake_run_tuning(spec, images, output_dir, **kwargs):
+        captured.update(kwargs)
+        return None
+
+    monkeypatch.setattr(cli, "run_tuning", _fake_run_tuning)
+    monkeypatch.setattr(cli, "_load_images", lambda _p: [load_synth_yeast_plate()])
+
+    spec_path = tmp_path / "spec.json"
+    spec_path.write_text(_spec(tmp_path).model_dump_json())
+    cli.main([str(spec_path), "-i", str(tmp_path), "-o", str(tmp_path / "o"),
+              "--screen"])
+    assert captured["screen"] is True
+
+    cli.main([str(spec_path), "-i", str(tmp_path), "-o", str(tmp_path / "o2"),
+              "--no-screen"])
+    assert captured["screen"] is False
+
+
+def test_cli_slurm_flag_uses_slurm_executor(tmp_path, monkeypatch):
+    # --slurm routes through the SlurmExecutor worker-fleet submission instead of
+    # the local in-process engine run.
+    from phenotypic.tune._tune_cli import _run as run_mod
+
+    submitted = {}
+
+    class _FakeSlurmExecutor:
+        def __init__(self, **kwargs):
+            submitted["kwargs"] = kwargs
+
+        def run(self, work, items):
+            submitted["ran"] = True
+            return ["9001"]
+
+    monkeypatch.setattr(run_mod, "SlurmExecutor", _FakeSlurmExecutor)
+
+    spec_path = tmp_path / "spec.json"
+    spec_path.write_text(_spec(tmp_path).model_dump_json())
+    out = tmp_path / "slurm_out"
+    run_tuning(
+        _spec(tmp_path),
+        [load_synth_yeast_plate()],
+        out,
+        strategy="tpe",
+        n_trials=4,
+        storage_url=f"sqlite:///{out / 'study.db'}",
+        slurm=True,
+        spec_path=spec_path,
+        images_dir=tmp_path,
+    )
+    assert submitted.get("ran") is True
