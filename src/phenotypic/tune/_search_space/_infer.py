@@ -40,6 +40,7 @@ import numpy as np
 from ._domains import Categorical, FloatRange, IntRange
 from ._inferred import Excluded, ExcludeReason, InferredSearchSpace
 from ._space import Knob
+from ._tune_spec import TuneSpec
 
 #: Multiplicative half-window for the unbounded heuristic: ``[d/f, d·f]``.
 _DEFAULT_UNBOUNDED_FACTOR: Final[float] = 4.0
@@ -220,6 +221,151 @@ def _unbounded_knob_or_excluded(
     )
 
 
+def _find_tune_spec(metadata: list[Any]) -> TuneSpec | None:
+    """Return the first ``TuneSpec`` in ``metadata`` (or ``None``)."""
+    for m in metadata:
+        if isinstance(m, TuneSpec):
+            return m
+    return None
+
+
+def _assert_subset(
+    key: str, spec: TuneSpec, metadata: list[Any]
+) -> None:
+    """Enforce ``TuneSpec[low, high] ⊆ [ge/gt, le/lt]`` at inference time.
+
+    Reads the four ``annotated_types`` bounds pydantic emits into the field
+    metadata (``Ge``/``Gt``/``Le``/``Lt``) and respects strictness: ``low > gt``
+    / ``low >= ge`` on the lower edge, ``high < lt`` / ``high <= le`` on the
+    upper. A ``TuneSpec`` that escapes a co-located ``Field`` constraint raises
+    a clear ``ValueError`` here (you cannot search where the value is invalid).
+
+    Caveat — **validator-enforced bounds are invisible.** This project usually
+    enforces numeric bounds in a ``field_validator``, not ``Field(ge=, le=)``;
+    those bounds live in imperative code, never in ``model_fields[name]
+    .metadata``, so this check cannot see them. A ``TuneSpec`` exceeding a
+    *validator*-enforced bound passes inference and only fails later at apply /
+    trial time — that apply-time backstop is the real guard.
+
+    Args:
+        key: The field's root-relative key (for the error message).
+        spec: The ``TuneSpec`` carrying ``low``/``high``.
+        metadata: The combined field + annotation-tree metadata.
+
+    Raises:
+        ValueError: If the ``TuneSpec`` range escapes the Field bounds.
+    """
+    if spec.low is None and spec.high is None:
+        return
+    # Expand any Interval into its component bounds so a single loop handles all.
+    bounds: list[Any] = []
+    for m in metadata:
+        if isinstance(m, at.Interval):
+            bounds.extend(_interval_to_bounds(m))
+        else:
+            bounds.append(m)
+
+    for m in bounds:
+        if isinstance(m, at.Ge) and spec.low is not None and spec.low < _to_float(m.ge):
+            raise ValueError(
+                f"TuneSpec on {key!r} is not ⊆ its Field bound: low "
+                f"{spec.low} < ge {_to_float(m.ge)}"
+            )
+        if isinstance(m, at.Gt) and spec.low is not None and spec.low <= _to_float(m.gt):
+            raise ValueError(
+                f"TuneSpec on {key!r} is not ⊆ its Field bound: low "
+                f"{spec.low} <= gt {_to_float(m.gt)} (strict)"
+            )
+        if isinstance(m, at.Le) and spec.high is not None and spec.high > _to_float(m.le):
+            raise ValueError(
+                f"TuneSpec on {key!r} is not ⊆ its Field bound: high "
+                f"{spec.high} > le {_to_float(m.le)}"
+            )
+        if isinstance(m, at.Lt) and spec.high is not None and spec.high >= _to_float(m.lt):
+            raise ValueError(
+                f"TuneSpec on {key!r} is not ⊆ its Field bound: high "
+                f"{spec.high} >= lt {_to_float(m.lt)} (strict)"
+            )
+
+
+def _interval_to_bounds(interval: at.Interval) -> list[Any]:
+    """Expand an ``Interval`` into the equivalent ``Ge``/``Gt``/``Le``/``Lt`` set."""
+    out: list[Any] = []
+    if interval.ge is not None:
+        out.append(at.Ge(interval.ge))
+    if interval.gt is not None:
+        out.append(at.Gt(interval.gt))
+    if interval.le is not None:
+        out.append(at.Le(interval.le))
+    if interval.lt is not None:
+        out.append(at.Lt(interval.lt))
+    return out
+
+
+def _resolve_tune_spec(
+    key: str,
+    spec: TuneSpec,
+    core: Any,
+    metadata: list[Any],
+    *,
+    description: str,
+) -> Knob | Excluded:
+    """Build a Tier-1 ``Knob`` (or ``Excluded``) from an explicit ``TuneSpec``.
+
+    Args:
+        key: The field's root-relative key.
+        spec: The ``TuneSpec`` marker.
+        core: The bare (Optional/Annotated-stripped) field type.
+        metadata: The combined field + annotation-tree metadata (for the ⊆ check).
+        description: The field's docstring-derived description.
+
+    Returns:
+        A ``Knob`` (``source="tune_spec"``, ``needs_review=False``), or an
+        ``Excluded(reason="tune_spec_off")`` when ``tunable=False``.
+
+    Raises:
+        ValueError: If the ``TuneSpec`` range escapes a co-located Field bound.
+    """
+    if not spec.tunable:
+        return Excluded(
+            key=key, reason="tune_spec_off", field_type=_annotation_str(core)
+        )
+
+    # categories override -> Categorical (no numeric ⊆ check applies).
+    if spec.categories is not None:
+        return Knob(
+            key=key,
+            domain=Categorical(choices=tuple(spec.categories)),
+            source="tune_spec",
+            needs_review=False,
+            description=description,
+        )
+
+    _assert_subset(key, spec, metadata)
+
+    if spec.low is None or spec.high is None:
+        # An incomplete numeric TuneSpec (no full range, no categories) can't
+        # form a domain — surface it rather than fabricate one.
+        return Excluded(
+            key=key, reason="non_numeric", field_type=_annotation_str(core)
+        )
+
+    if core is int:
+        step = int(spec.step) if spec.step is not None else 1
+        domain: Any = IntRange(
+            low=int(spec.low), high=int(spec.high), step=step, log=spec.log
+        )
+    else:
+        domain = FloatRange(low=spec.low, high=spec.high, log=spec.log)
+    return Knob(
+        key=key,
+        domain=domain,
+        source="tune_spec",
+        needs_review=False,
+        description=description,
+    )
+
+
 def _infer_field(
     op: Any,
     position: int,
@@ -273,6 +419,13 @@ def _infer_field(
         return Excluded(key=key, reason="unsupported_type", field_type=field_type)
 
     core_inner = _core_type(_strip_optional(_core_type(inner))[0])
+
+    # Tier 1: an explicit ``TuneSpec`` wins over the Tier-2 heuristics.
+    spec = _find_tune_spec(metadata)
+    if spec is not None:
+        return _resolve_tune_spec(
+            key, spec, core_inner, metadata, description=description
+        )
 
     return _dispatch_core(
         key,
