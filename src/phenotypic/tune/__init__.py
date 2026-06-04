@@ -42,6 +42,7 @@ from ._search_space import (
     IntRange,
     Knob,
     SearchSpace,
+    TuneSpec,
 )
 from ._spec import Budget, TuningSpec
 
@@ -78,4 +79,6 @@ __all__ = [
     "Trial",
     "compute_param_importance",
     "run_tuning",
+    # Phase 3: search-space inference
+    "TuneSpec",
 ]
