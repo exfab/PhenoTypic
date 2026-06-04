@@ -15,12 +15,11 @@ from datetime import datetime
 from ._cli_types import ProcessingState, DatasetState, Dataset, ExecutionConfig
 from ._cli_update_state import aggregate_state_from_events
 from phenotypic.tools_ import (
-    PROCESSING_EVENTS_LOG,
     ProcessingStateKey,
     migrate_legacy_machine_state,
     processing_state_path,
+    resolve_event_log_path,
     resolve_processing_state_path,
-    resolve_progress_dir,
 )
 
 
@@ -98,7 +97,7 @@ def load_processing_state(output_dir: Path) -> Optional[ProcessingState]:
     last_updated = datetime.fromisoformat(state_dict[ProcessingStateKey.LAST_UPDATED])
 
     # Aggregate latest events from log (sibling of progress/, per D14)
-    event_log = resolve_progress_dir(output_dir).parent / PROCESSING_EVENTS_LOG
+    event_log = resolve_event_log_path(output_dir)
     if event_log.exists():
         latest_states = aggregate_state_from_events(event_log)
     else:
@@ -196,7 +195,7 @@ def update_state_from_events(state: ProcessingState, output_dir: Path) -> Proces
     Returns:
         Updated ProcessingState object
     """
-    event_log = resolve_progress_dir(output_dir).parent / PROCESSING_EVENTS_LOG
+    event_log = resolve_event_log_path(output_dir)
     
     if event_log.exists():
         # Aggregate events

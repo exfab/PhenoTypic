@@ -503,6 +503,16 @@ def resolve_manifest_json_path(output_dir: Path) -> Path:
     return resolve_progress_dir(output_dir) / MANIFEST_JSON
 
 
+def resolve_event_log_path(output_dir: Path) -> Path:
+    """Return the event log sibling of the resolved progress dir.
+
+    The event log lives beside ``progress/`` (D14): in ``.phenotypic/`` for a
+    migrated/new run, at the output root for a not-yet-migrated legacy read.
+    Read-only helper for resume/discovery; never mutates the run dir.
+    """
+    return resolve_progress_dir(output_dir).parent / PROCESSING_EVENTS_LOG
+
+
 def migrate_legacy_machine_state(output_dir: Path) -> bool:
     """Move a pre-migration run's machine-state into ``.phenotypic/`` once.
 

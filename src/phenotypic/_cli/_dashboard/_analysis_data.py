@@ -14,7 +14,12 @@ import polars as pl
 
 from .._cli_output_manager import join_metadata
 from .._cli_duckdb_agg import duckdb_aggregate
-from phenotypic.tools_ import DIR_RESULTS, DIR_PROGRESS, DIR_MEASUREMENTS, DATASET_AGGREGATED_PARQUET
+from phenotypic.tools_ import (
+    DIR_RESULTS,
+    DIR_MEASUREMENTS,
+    DATASET_AGGREGATED_PARQUET,
+    progress_dir,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -49,14 +54,14 @@ def write_analysis_sidecar(
     # Trigger registration of all plugins.
     from ._analysis import _image_viewer, _raw_table, _scatter_plot, _summary_stats  # noqa: F401
 
-    progress_dir = output_dir / DIR_PROGRESS
-    progress_dir.mkdir(parents=True, exist_ok=True)
+    prog_dir = progress_dir(output_dir)
+    prog_dir.mkdir(parents=True, exist_ok=True)
 
     merged_df = _load_and_merge(output_dir, metadata_csv)
 
     ctx = AnalysisPrepareContext(
         output_dir=output_dir,
-        progress_dir=progress_dir,
+        progress_dir=prog_dir,
         merged_df=merged_df,
     )
 

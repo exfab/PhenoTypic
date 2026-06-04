@@ -714,3 +714,55 @@ class TestMigrateLegacyMachineState:
         from phenotypic.tools_ import migrate_legacy_machine_state
 
         assert migrate_legacy_machine_state(tmp_path) is False
+
+
+# ---------------------------------------------------------------------------
+# Grep gate: no hand-joined machine-state paths outside _io_constants
+# ---------------------------------------------------------------------------
+
+
+class TestNoHandJoinedStatePaths:
+    def test_machine_state_paths_only_in_io_constants(self) -> None:
+        """No module outside _io_constants (sweep excepted) hand-joins
+        machine-state paths; everything must go through the helpers."""
+        import subprocess
+
+        pattern = (
+            r'/ ?"progress"|/ ?PROCESSING_STATE_JSON|/ ?"processing_state\.json"'
+            r'|/ ?PROCESSING_EVENTS_LOG|/ ?"processing_events\.log"|/ ?DIR_PROGRESS'
+        )
+        proc = subprocess.run(
+            ["grep", "-rn", "--include=*.py", "-E", pattern, "src/phenotypic"],
+            capture_output=True,
+            text=True,
+        )
+        offenders = [
+            ln
+            for ln in proc.stdout.splitlines()
+            if "_io_constants.py" not in ln
+            and "/sweep/" not in ln  # D11: sweep intentionally excluded
+            and "checkpoint_handler" not in ln  # progress_dir.parent / EVENTS — correct by design (D14)
+        ]
+        assert offenders == [], "Hand-joined machine-state paths remain:\n" + "\n".join(
+            offenders
+        )
+
+
+# ---------------------------------------------------------------------------
+# tools_ reporters resolve run state via the .phenotypic resolvers
+# ---------------------------------------------------------------------------
+
+
+class TestReporterReadsResolve:
+    def test_generate_report_finds_state_in_phenotypic(self, tmp_path: Path) -> None:
+        from phenotypic.tools_ import event_log_path, processing_state_path
+
+        processing_state_path(tmp_path).parent.mkdir(parents=True, exist_ok=True)
+        processing_state_path(tmp_path).write_text(
+            '{"version":"2","datasets":{}}', encoding="utf-8"
+        )
+        event_log_path(tmp_path).write_text("", encoding="utf-8")
+        from phenotypic.tools_.generate_report import _load_state_for_report
+
+        state = _load_state_for_report(tmp_path)
+        assert state is not None

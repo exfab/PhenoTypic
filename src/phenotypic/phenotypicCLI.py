@@ -180,12 +180,9 @@ from phenotypic._cli._cli_constants import (
     MAX_SLURM_TIME_MINUTES,
 )
 from phenotypic.tools_ import (
-    DIR_PROGRESS,
     DIR_RESULTS,
     DIR_OVERLAYS,
-    DIR_RECOMPILE,
     JOB_METADATA_JSON,
-    PROCESSING_STATE_JSON,
     RECOMPILE_TASK_MANIFEST_JSON,
     JobMetadataKey,
     dashboard_html_path,
@@ -193,6 +190,11 @@ from phenotypic.tools_ import (
     load_image_from_hdf,
     measurements_parquet_path,
     processing_report_html_path,
+    processing_state_path,
+    progress_dir,
+    recompile_dir,
+    recompile_status_dir,
+    resolve_processing_state_path,
 )
 from phenotypic.tools_.typing_ import ImageTypeName
 
@@ -1009,8 +1011,8 @@ def phenotypic_cli(
                 )
                 sys.exit(1)
 
-            # Check for processing state file
-            state_file = output_dir / PROCESSING_STATE_JSON
+            # Check for processing state file (tolerate a legacy-root run)
+            state_file = resolve_processing_state_path(output_dir)
             if not state_file.exists():
                 click.echo(f"Error: No processing state found in {output_dir}", err=True)
                 click.echo(f"\nLooking for: {state_file}", err=True)
@@ -1035,7 +1037,7 @@ def phenotypic_cli(
         # Handle restart mode - clear previous state
         if restart:
             assert output_dir is not None  # narrowed by the --restart guard above
-            state_file = output_dir / PROCESSING_STATE_JSON
+            state_file = resolve_processing_state_path(output_dir)
             if output_dir.exists():
                 if state_file.exists():
                     state_file.unlink()
@@ -1511,11 +1513,11 @@ def _handle_recompile_slurm(
     from phenotypic._cli._dashboard import generate_dashboard
 
     output_dir = Path(output_dir)
-    progress_dir = output_dir / DIR_PROGRESS
-    progress_dir.mkdir(parents=True, exist_ok=True)
+    prog_dir = progress_dir(output_dir)
+    prog_dir.mkdir(parents=True, exist_ok=True)
     console = Console()
 
-    job_meta = load_job_metadata(progress_dir)
+    job_meta = load_job_metadata(prog_dir)
     dataset_names = _discover_recompile_dataset_names(output_dir, job_meta)
     if not dataset_names:
         error_exit("No datasets found in output directory", str(output_dir))
@@ -1578,7 +1580,7 @@ def _handle_recompile_slurm(
     job_ids = submission.job_ids
 
     recompile_manifest_path = (
-        output_dir / DIR_PROGRESS / DIR_RECOMPILE / RECOMPILE_TASK_MANIFEST_JSON
+        recompile_dir(progress_dir(output_dir)) / RECOMPILE_TASK_MANIFEST_JSON
     )
     job_metadata = {
         JobMetadataKey.START_TIME: datetime.now().isoformat(timespec="milliseconds"),
@@ -1702,14 +1704,8 @@ def _wait_for_recompile_finalizer_status(
     import json
     import time
 
-    from phenotypic.tools_ import DIR_RECOMPILE_STATUS, task_status_filename
-    status_path = (
-        output_dir
-        / DIR_PROGRESS
-        / DIR_RECOMPILE
-        / DIR_RECOMPILE_STATUS
-        / task_status_filename(finalizer_task_index)
-    )
+    from phenotypic.tools_ import task_status_path
+    status_path = task_status_path(output_dir, finalizer_task_index)
     deadline = time.monotonic() + timeout if timeout is not None else None
     while True:
         if status_path.exists():
@@ -1773,8 +1769,8 @@ def _handle_recompile(
     )
 
     console = Console()
-    progress_dir = output_dir / DIR_PROGRESS
-    job_meta = load_job_metadata(progress_dir)
+    prog_dir = progress_dir(output_dir)
+    job_meta = load_job_metadata(prog_dir)
 
     dataset_names = _discover_recompile_dataset_names(output_dir, job_meta)
 

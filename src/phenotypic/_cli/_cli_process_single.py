@@ -25,7 +25,7 @@ from ._cli_output_manager import OutputManager
 from ._cli_update_state import append_event, append_completion_event
 from ._cli_failure_tracker import append_failure
 from ._cli_utils import normalize_extension
-from phenotypic.tools_ import DIR_PROGRESS, EnvVar, HdfAttr
+from phenotypic.tools_ import EnvVar, HdfAttr, progress_dir
 from phenotypic.tools_.typing_ import ImageTypeName
 
 logger = logging.getLogger(__name__)
@@ -462,7 +462,7 @@ def main(
 
         # Write structured failure record
         try:
-            progress_dir = output_dir / DIR_PROGRESS
+            prog_dir = progress_dir(output_dir)
             slurm_job_id = os.environ.get(EnvVar.SLURM_JOB_ID, "")
             slurm_task_id = os.environ.get(EnvVar.SLURM_ARRAY_TASK_ID, "")
             full_slurm_id = (
@@ -471,7 +471,7 @@ def main(
                 else slurm_job_id
             )
             append_failure(
-                progress_dir,
+                prog_dir,
                 dataset=dataset_name,
                 image=image.name,
                 error_type=type(e).__name__,

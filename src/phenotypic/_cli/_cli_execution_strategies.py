@@ -41,7 +41,13 @@ from ._cli_failure_tracker import append_failure, read_failures
 from ._dashboard import generate_dashboard, regenerate_dashboard_artifacts
 
 from ._cli_constants import MAX_TRACEBACK_LINES
-from phenotypic.tools_ import DIR_PROGRESS, JOB_METADATA_JSON, PROCESSING_EVENTS_LOG, JobMetadataKey, HdfAttr
+from phenotypic.tools_ import (
+    JOB_METADATA_JSON,
+    JobMetadataKey,
+    HdfAttr,
+    event_log_path,
+    progress_dir,
+)
 from phenotypic.tools_.typing_ import ImageTypeName
 
 logger = logging.getLogger(__name__)
@@ -118,7 +124,7 @@ class LocalParallelStrategy(ExecutionStrategy):
             Execution results with success/failure statistics
         """
         start_time = datetime.now()
-        event_log = output_dir / PROCESSING_EVENTS_LOG
+        event_log = event_log_path(output_dir)
         measure_only = bool(self.config.measure_only)
 
         # Flatten all images across datasets
@@ -287,9 +293,9 @@ class LocalParallelStrategy(ExecutionStrategy):
 
             # Write structured failure record
             try:
-                progress_dir = output_dir / DIR_PROGRESS
+                prog_dir = progress_dir(output_dir)
                 append_failure(
-                    progress_dir,
+                    prog_dir,
                     dataset=dataset.name,
                     image=image_path.name,
                     error_type=type(e).__name__,
@@ -399,9 +405,9 @@ class LocalParallelStrategy(ExecutionStrategy):
             )
 
             try:
-                progress_dir = output_dir / DIR_PROGRESS
+                prog_dir = progress_dir(output_dir)
                 append_failure(
-                    progress_dir,
+                    prog_dir,
                     dataset=dataset.name,
                     image=image_path.name,
                     error_type=type(e).__name__,
@@ -630,8 +636,8 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
         flat_scripts = submission.flat_scripts
 
         # ── Progress dashboard setup ──────────────────────────────────
-        progress_dir = output_dir / DIR_PROGRESS
-        progress_dir.mkdir(parents=True, exist_ok=True)
+        prog_dir = progress_dir(output_dir)
+        prog_dir.mkdir(parents=True, exist_ok=True)
 
         # Build image-task mapping: {job_id}_{array_idx} -> [dataset, image]
         # NOTE: Only chunk 0's job ID is known at submission time. Subsequent
@@ -665,7 +671,7 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
             JobMetadataKey.METADATA_CSV: str(self.config.metadata_csv) if self.config.metadata_csv else None,
             JobMetadataKey.INPUT_PATH: self.config.input_path.stem,
         }
-        metadata_path = progress_dir / JOB_METADATA_JSON
+        metadata_path = prog_dir / JOB_METADATA_JSON
         metadata_path.write_text(
             json.dumps(job_metadata, indent=2, ensure_ascii=False) + "\n",
             encoding="utf-8",
@@ -698,7 +704,7 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
             click.echo(f"  Open: {output_dir / 'dashboard.html'}")
             click.echo(f"  Analysis: {output_dir / 'analysis.html'}")
             click.echo("  squeue -u $USER --array")
-            click.echo(f"  tail -f {output_dir}/processing_events.log")
+            click.echo(f"  tail -f {event_log_path(output_dir)}")
             final_results = None
 
         end_time = datetime.now()
@@ -732,7 +738,7 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
         Returns:
             Final execution results after all jobs complete
         """
-        event_log = output_dir / PROCESSING_EVENTS_LOG
+        event_log = event_log_path(output_dir)
         start_time = datetime.now()
 
         total_images = sum(len(d.images) for d in datasets)
@@ -778,8 +784,8 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
         datasets_state = aggregate_state_from_events(event_log)
 
         # Enrich with structured failure data from failures.jsonl
-        progress_dir = output_dir / DIR_PROGRESS
-        failure_records = read_failures(progress_dir)
+        prog_dir = progress_dir(output_dir)
+        failure_records = read_failures(prog_dir)
         failure_lookup: dict[tuple[str, str], dict] = {}
         for rec in failure_records:
             key = (rec.get("dataset", ""), rec.get("image", ""))

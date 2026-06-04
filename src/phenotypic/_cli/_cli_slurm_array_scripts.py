@@ -15,7 +15,7 @@ from typing import Dict, List, Optional, Tuple
 from ._cli_slurm_scripts import generate_slurm_directives
 from ._cli_types import Dataset, ExecutionConfig
 from ._cli_utils import SLURM_THREAD_PIN_BASH, get_python_command
-from phenotypic.tools_ import DIR_LOGS, DIR_SLURM_SCRIPTS, PROCESSING_EVENTS_LOG
+from phenotypic.tools_ import DIR_LOGS, DIR_SLURM_SCRIPTS, event_log_path
 
 # Sentinel value inserted into the image list to trigger checkpoint aggregation
 _CHECKPOINT_SENTINEL = "__PHENOTYPIC_CHECKPOINT__"
@@ -210,7 +210,7 @@ def generate_array_job_script(
     )
 
     # Build command arguments for single-image processor
-    event_log = output_dir / PROCESSING_EVENTS_LOG
+    event_log = event_log_path(output_dir)
 
     # Get Python command (uses uv run python if available)
     python_cmd, _ = get_python_command(for_slurm=True)
