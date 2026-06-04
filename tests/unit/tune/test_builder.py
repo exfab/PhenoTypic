@@ -58,7 +58,13 @@ def test_position_out_of_range_raises():
         build_pipeline(base, {"5.sigma": 1.0})
 
 
-def test_nested_key_not_supported_in_phase_1():
+def test_nested_key_on_non_list_field_raises():
+    """A nested key whose parent field is not an operation list is a clear error.
+
+    Phase 3 enables nested-op overlay (see ``test_build_pipeline_nested.py``);
+    here position 1 is an ``OtsuDetector`` with no ``detectors`` list field, so
+    the apply step rejects the key loudly rather than silently no-op'ing.
+    """
     base = _base()
-    with pytest.raises(NotImplementedError):
-        build_pipeline(base, {"1.detectors[0].block_size": 7})
+    with pytest.raises(ValueError, match="detectors"):
+        build_pipeline(base, {"1.detectors[0].ignore_zeros": True})
