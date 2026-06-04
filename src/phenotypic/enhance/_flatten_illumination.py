@@ -64,8 +64,11 @@ class FlattenIllumination(ImageEnhancer):
         contrast and illumination correction methods.
     """
 
+    # TODO: review bound (unverified vs literature)
     sigma: Annotated[float, TuneSpec(40.0, 300.0, log=True)] = Field(200.0, gt=0.0)
+    # TODO: review bound (unverified vs literature)
     gamma_low: Annotated[float, TuneSpec(0.3, 0.8)] = 0.5
+    # TODO: review bound (unverified vs literature)
     gamma_high: Annotated[float, TuneSpec(1.0, 2.5)] = 1.5
     eps: Annotated[float, TuneSpec(tunable=False)] = 1e-6
 

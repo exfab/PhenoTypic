@@ -127,6 +127,7 @@ class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
     ] = "otsu"
     subtract_background: bool = True
     remove_noise: bool = True
+    # TODO: review bound (unverified vs literature)
     footprint_width: Annotated[int, TuneSpec(4, 20)] = Field(6, ge=1)
     noise_radius: Annotated[int, TuneSpec(1, 3)] = Field(1, ge=1)
     smoothing_sigma: Annotated[float, TuneSpec(0.0, 5.0)] = 2.0

@@ -56,6 +56,7 @@ class GrayOpening(ImageEnhancer, FootprintMixin):
     """
 
     shape: Literal["square", "diamond", "disk"] = "square"
+    # TODO: review bound (unverified vs literature)
     width: Annotated[int, TuneSpec(3, 15, step=2)] = 5
     n_iter: Annotated[int, TuneSpec(1, 3)] = 1
 

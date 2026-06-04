@@ -110,13 +110,16 @@ class InoculumDetector(ObjectDetector):
             In-depth comparison of all detection strategies.
     """
 
+    # TODO: review bound (unverified vs literature)
     min_diameter: Annotated[float, TuneSpec(5.0, 80.0, log=True)] = Field(30.0, gt=0.0)
+    # TODO: review bound (unverified vs literature)
     max_diameter: Annotated[float, TuneSpec(50.0, 300.0, log=True)] = Field(100.0, gt=0.0)
     thresh_method: Literal[
         "otsu", "mean", "local", "triangle", "minimum", "isodata", "li"
     ] = "otsu"
     enable_gmm: bool = True
     gmm_n_components: Annotated[int, TuneSpec(2, 4)] = 2
+    # TODO: review bound (unverified vs literature)
     gmm_separation_threshold: Annotated[float, TuneSpec(0.8, 1.2)] = 0.9
     validate_obj_count: bool = True
 
@@ -125,8 +128,9 @@ class InoculumDetector(ObjectDetector):
         """Require ``min_diameter`` to be strictly less than ``max_diameter``.
 
         Reproduces the cross-field guard from the pre-migration
-        ``__init__``; the per-field positivity checks live in the
-        ``min_diameter`` / ``max_diameter`` field validators above.
+        ``__init__``; the per-field positivity checks are enforced by the
+        ``Field(gt=0.0)`` constraints on ``min_diameter`` / ``max_diameter``
+        above.
         """
         if self.min_diameter >= self.max_diameter:
             raise ValueError(

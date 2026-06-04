@@ -126,12 +126,14 @@ class SinePeakDetector(GridInferenceMixin, ObjectDetector):
     ] = "otsu"
     subtract_background: bool = True
     remove_noise: bool = True
+    # TODO: review bound (unverified vs literature)
     footprint_width: Annotated[int, TuneSpec(4, 20)] = Field(6, ge=1)
     noise_radius: Annotated[int, TuneSpec(1, 3)] = Field(1, ge=1)
     smoothing_sigma: Annotated[float, TuneSpec(0.0, 5.0)] = 2.0
     min_peak_distance: Annotated[Optional[int], TuneSpec(tunable=False)] = None
     peak_prominence: Annotated[Optional[float], TuneSpec(tunable=False)] = None
     edge_refinement: bool = True
+    # TODO: review bound (unverified vs literature)
     correlation_threshold: Annotated[float, TuneSpec(0.1, 0.5)] = 0.3
     selection_mode: Literal["dominant", "centered", "regularized"] = "dominant"
     split_merged: bool = True

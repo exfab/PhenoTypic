@@ -57,6 +57,7 @@ class SubtractRollingBall(ImageEnhancer):
         rolling-ball and other illumination correction strategies.
     """
 
+    # TODO: review bound (unverified vs literature)
     radius: Annotated[int, TuneSpec(50, 200, log=True)] = 100
     kernel: NdArrayField | None = None
     nansafe: bool = False

@@ -62,6 +62,7 @@ class SubtractOpening(ImageEnhancer, FootprintMixin):
     """
 
     shape: Literal["square", "diamond", "disk"] = "disk"
+    # TODO: review bound (unverified vs literature)
     width: Annotated[int, TuneSpec(31, 101, step=2)] = 51
     n_iter: Annotated[int, TuneSpec(1, 3)] = 1
 

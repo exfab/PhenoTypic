@@ -62,6 +62,7 @@ class SubtractGaussian(ImageEnhancer):
         illumination correction strategies.
     """
 
+    # TODO: review bound (unverified vs literature)
     sigma: Annotated[float, TuneSpec(20.0, 100.0)] = 50.0
     mode: str = "reflect"
     cval: Annotated[float, TuneSpec(tunable=False)] = 0.0

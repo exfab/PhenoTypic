@@ -209,7 +209,9 @@ class FilamentousFungiDetector(GridObjectDetector):
     inoculum_detector: Union[OperationField, None] = None
 
     # ── Scene parameters ──
+    # TODO: review bound (unverified vs literature)
     max_colony_radius_px: Annotated[float, TuneSpec(50.0, 500.0, log=True)] = 250.0
+    # TODO: review bound (unverified vs literature)
     min_branch_width_px: Annotated[int, TuneSpec(2, 10)] = 3
 
     # ── Explicit user knobs ──
@@ -217,11 +219,17 @@ class FilamentousFungiDetector(GridObjectDetector):
     # explicit range; the windows below are derived from the default + domain
     # knowledge (search hints only, never validity bounds).
     ignore_borders: bool = True
+    # TODO: review bound (unverified vs literature)
     edge_noise_threshold: Annotated[float, TuneSpec(2.0, 12.0)] = 6.0
+    # TODO: review bound (unverified vs literature)
     reconnection_tolerance: Annotated[float, TuneSpec(1.0, 5.0)] = 2.5
+    # TODO: review bound (unverified vs literature)
     max_gap_length: Annotated[int, TuneSpec(10, 60)] = 30
+    # TODO: review bound (unverified vs literature)
     border_margin_px: Annotated[int, TuneSpec(20, 100)] = 50
+    # TODO: review bound (unverified vs literature)
     frag_reach_px: Annotated[int, TuneSpec(5, 30)] = 10
+    # TODO: review bound (unverified vs literature)
     gap_crossing_penalty: Annotated[float, TuneSpec(1.0, 10.0)] = 4.0
 
     # ── Scene-derivation overrides (None → auto-derived by the validator) ──

@@ -106,6 +106,7 @@ class CannyDetector(ThresholdDetector):
     low_threshold: Annotated[float, TuneSpec(0.05, 0.2)] = 0.1
     high_threshold: Annotated[float, TuneSpec(0.1, 0.4)] = 0.2
     use_quantiles: bool = True
+    # TODO: review bound (unverified vs literature)
     min_size: Annotated[int, TuneSpec(20, 500)] = Field(50, ge=1)
     invert_edges: bool = True
     connectivity: Annotated[int, TuneSpec(categories=[1, 2])] = Field(2, ge=1, le=2)

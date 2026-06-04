@@ -102,6 +102,7 @@ class WatershedDetector(ThresholdDetector):
     """
 
     footprint: Literal["auto"] | NdArrayField | int | None = None
+    # TODO: review bound (unverified vs literature)
     min_size: Annotated[int, TuneSpec(20, 200)] = Field(50, ge=1)
     compactness: Annotated[float, TuneSpec(0.0001, 0.1, log=True)] = Field(0.001, ge=0.0)
     connectivity: Annotated[int, TuneSpec(categories=[1, 2])] = Field(1, ge=1, le=2)

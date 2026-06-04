@@ -72,7 +72,9 @@ class EnhanceBlobs(ImageEnhancer):
         scale-space blob detection and LoG theory.
     """
 
+    # TODO: review bound (unverified vs literature)
     min_radius: Annotated[float, TuneSpec(1.0, 5.0)] = 3.0
+    # TODO: review bound (unverified vs literature)
     max_radius: Annotated[float, TuneSpec(8.0, 50.0)] = 12.0
     num_scales: Annotated[int, TuneSpec(4, 20)] = 12
 
