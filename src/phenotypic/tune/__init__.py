@@ -47,7 +47,12 @@ from ._spec import Budget, TuningSpec
 
 # --- Phase 1b: strategy configs (serializable; build live SearchStrategy) ------
 from ._strategies import GridConfig, RandomConfig, StrategyConfig
-from ._study_store import StudyStore, Trial
+
+# --- Phase 2 (chunk 1): StudyStore Protocol + concrete journal -----------------
+# ``StudyStore`` remains the public name (back-compat alias for the concrete
+# ``JournalStudyStore``); the Protocol of the same name lives in
+# ``_study/_protocol.py`` and types the engine's store.
+from ._study_store import JournalStudyStore, StudyStore, Trial
 from ._tune_cli import run_tuning
 
 __all__ = [
@@ -75,6 +80,7 @@ __all__ = [
     "TuningSpec",
     "Budget",
     "StudyStore",
+    "JournalStudyStore",
     "Trial",
     "compute_param_importance",
     "run_tuning",

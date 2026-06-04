@@ -12,7 +12,8 @@ from phenotypic import ImagePipeline
 
 from ._evaluation import build_pipeline
 from ._spec import TuningSpec
-from ._study_store import StudyStore, Trial
+from ._study._protocol import StudyStore
+from ._study_store import JournalStudyStore, Trial
 
 
 class TuningEngine:
@@ -24,15 +25,16 @@ class TuningEngine:
         Args:
             spec: The tuning recipe (base pipeline + space + scorer + strategy +
                 budget).
-            store: An optional pre-populated journal (resume); a fresh
-                :class:`StudyStore` is created when omitted.
+            store: An optional pre-populated store (resume); any backend
+                satisfying the :class:`StudyStore` Protocol. A fresh
+                :class:`JournalStudyStore` is created when omitted.
         """
         self._spec = spec
-        self._store = store if store is not None else StudyStore()
+        self._store: StudyStore = store if store is not None else JournalStudyStore()
 
     @property
     def store(self) -> StudyStore:
-        """The trial journal this engine appends to."""
+        """The trial store this engine appends to."""
         return self._store
 
     def best_pipeline(self) -> Optional[ImagePipeline]:
@@ -54,12 +56,15 @@ class TuningEngine:
         spec = self._spec
         strategy = spec.strategy.build(spec.search_space, self._store)
 
-        # Resume: replay the deterministic strategy past recorded trials.
+        # Resume: a deterministic journal is fast-forwarded by replaying the
+        # strategy past the recorded trials; an in-place-resumable backend (e.g.
+        # an Optuna RDB) already restores the sampler state, so it skips replay.
         completed = len(self._store)
-        for _ in range(completed):
-            if strategy.is_exhausted():
-                break
-            strategy.suggest()
+        if not self._store.is_resumable_in_place():
+            for _ in range(completed):
+                if strategy.is_exhausted():
+                    break
+                strategy.suggest()
 
         # Seed both budget counters from the store so resume is symmetric:
         # n_trials counts all recorded trials, max_failures counts recorded

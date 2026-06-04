@@ -1,10 +1,13 @@
 """The trial journal — Phase-1 homegrown persistence (Optuna SQLite is Phase 2).
 
-A ``StudyStore`` accumulates ``Trial`` records, reports the ``best`` (max score
-among non-failed trials), and round-trips through ``trials.parquet`` (params and
-terms persisted as JSON columns — lossless across heterogeneous/conditional
-param sets). Reloading a store powers CLI resume (``_engine`` fast-forwards a
-deterministic strategy past the recorded trials).
+A ``JournalStudyStore`` accumulates ``Trial`` records, reports the ``best`` (max
+score among non-failed trials), and round-trips through ``trials.parquet``
+(params and terms persisted as JSON columns — lossless across heterogeneous/
+conditional param sets). Reloading a store powers CLI resume (``_engine``
+fast-forwards a deterministic strategy past the recorded trials). It is the
+concrete Phase-1 implementation of the ``StudyStore`` Protocol
+(``_study/_protocol.py``); ``StudyStore`` remains an exported back-compat alias
+for the concrete journal.
 """
 from __future__ import annotations
 
@@ -42,8 +45,15 @@ class Trial(BaseModel):
     pruned: bool = False
 
 
-class StudyStore:
-    """An append-only journal of trials with best-tracking + parquet I/O."""
+class JournalStudyStore:
+    """An append-only journal of trials with best-tracking + parquet I/O.
+
+    The Phase-1 concrete :class:`~phenotypic.tune._study._protocol.StudyStore`
+    backend. It resumes by **replay** (the engine fast-forwards the deterministic
+    strategy past the recorded trials), so :meth:`is_resumable_in_place` is
+    ``False`` — distinguishing it from a future Optuna ``RDBStorage`` backend
+    whose own storage reconstructs the sampler state.
+    """
 
     def __init__(self, trials: Optional[list[Trial]] = None) -> None:
         """Initialize the journal.
@@ -71,6 +81,14 @@ class StudyStore:
         if not valid:
             return None
         return max(valid, key=lambda t: t.score)
+
+    def is_resumable_in_place(self) -> bool:
+        """Always ``False``: the journal resumes by deterministic replay."""
+        return False
+
+    def completed_count(self) -> int:
+        """The number of completed (non-failed) trials; pruned counts as done."""
+        return sum(1 for t in self._trials if not t.failed)
 
     #: Stable column order for the trials frame (explicit so an empty store
     #: still writes a valid parquet schema rather than a zero-column frame).
@@ -101,7 +119,7 @@ class StudyStore:
         self.to_dataframe().to_parquet(path, index=False)
 
     @classmethod
-    def from_parquet(cls, path: Path) -> "StudyStore":
+    def from_parquet(cls, path: Path) -> "JournalStudyStore":
         """Reload a journal previously written by :meth:`to_parquet`."""
         df = pd.read_parquet(path)
         trials = [
@@ -118,3 +136,10 @@ class StudyStore:
             for row in df.to_dict(orient="records")
         ]
         return cls(trials)
+
+
+#: Back-compat alias: ``StudyStore`` historically named the concrete journal.
+#: The name now also denotes the Protocol in ``_study/_protocol.py``; the public
+#: ``phenotypic.tune.StudyStore`` export resolves to this concrete journal so all
+#: Phase-1 imports/constructions (``StudyStore()``) keep working.
+StudyStore = JournalStudyStore
