@@ -783,7 +783,11 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.measurements_by_feature_dir.html">phenotypic.tools_.measurements_by_feature_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.measurements_csv_path.html">phenotypic.tools_.measurements_csv_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.measurements_parquet_path.html">phenotypic.tools_.measurements_parquet_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.migrate_legacy_machine_state.html">phenotypic.tools_.migrate_legacy_machine_state</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.clear_machine_state.html">phenotypic.tools_.clear_machine_state</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.overlay_manifest_path.html">phenotypic.tools_.overlay_manifest_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.phenotypic_cache_dir.html">phenotypic.tools_.phenotypic_cache_dir</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.phenotypic_cache_pipeline_json_path.html">phenotypic.tools_.phenotypic_cache_pipeline_json_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.pipeline_json_path.html">phenotypic.tools_.pipeline_json_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.processing_report_html_path.html">phenotypic.tools_.processing_report_html_path</a></li>
 <li class="toctree-l2 current active"><a class="current reference internal" href="#">phenotypic.tools_.processing_state_path</a></li>
@@ -797,7 +801,11 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.read_run_manifest.html">phenotypic.tools_.read_run_manifest</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.recompile_dir.html">phenotypic.tools_.recompile_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.recompile_status_dir.html">phenotypic.tools_.recompile_status_dir</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.resolve_event_log_path.html">phenotypic.tools_.resolve_event_log_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.resolve_execution_mode.html">phenotypic.tools_.resolve_execution_mode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.resolve_manifest_json_path.html">phenotypic.tools_.resolve_manifest_json_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.resolve_processing_state_path.html">phenotypic.tools_.resolve_processing_state_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.resolve_progress_dir.html">phenotypic.tools_.resolve_progress_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.results_dir.html">phenotypic.tools_.results_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.sentinel_resubmitted_path.html">phenotypic.tools_.sentinel_resubmitted_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.shard_parquet_filename.html">phenotypic.tools_.shard_parquet_filename</a></li>
@@ -997,7 +1005,7 @@
 <dl class="py function">
 <dt class="sig sig-object py" id="phenotypic.tools_.processing_state_path">
 <span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.</span></span><span class="sig-name descname"><span class="pre">processing_state_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/tools_/_io_constants.html#processing_state_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.processing_state_path" title="Link to this definition">#</a></dt>
-<dd><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/processing_state.json</span></code>.</p>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/.phenotypic/processing_state.json</span></code>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>output_dir</strong> (<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a>)</p>

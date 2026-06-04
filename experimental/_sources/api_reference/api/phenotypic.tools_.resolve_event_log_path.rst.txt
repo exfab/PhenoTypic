@@ -1,0 +1,6 @@
+phenotypic.tools\_.resolve\_event\_log\_path
+============================================
+
+.. currentmodule:: phenotypic.tools_
+
+.. autofunction:: resolve_event_log_path

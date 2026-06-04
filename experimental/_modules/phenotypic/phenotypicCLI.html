@@ -693,7 +693,7 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">shutil</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Sequence</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Sequence</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">click</span>
 
@@ -720,7 +720,7 @@
     <span class="n">update_state_from_events</span><span class="p">,</span>
     <span class="n">validate_resume_compatibility</span><span class="p">,</span>
 <span class="p">)</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._cli._cli_types</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExecutionConfig</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._cli._cli_types</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dataset</span><span class="p">,</span> <span class="n">ExecutionConfig</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._cli._cli_utils</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">normalize_extension</span><span class="p">,</span>
     <span class="n">parse_slurm_args</span><span class="p">,</span>
@@ -742,19 +742,20 @@
     <span class="n">MAX_SLURM_TIME_MINUTES</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-    <span class="n">DIR_PROGRESS</span><span class="p">,</span>
     <span class="n">DIR_RESULTS</span><span class="p">,</span>
     <span class="n">DIR_OVERLAYS</span><span class="p">,</span>
-    <span class="n">DIR_RECOMPILE</span><span class="p">,</span>
     <span class="n">JOB_METADATA_JSON</span><span class="p">,</span>
-    <span class="n">PROCESSING_STATE_JSON</span><span class="p">,</span>
     <span class="n">RECOMPILE_TASK_MANIFEST_JSON</span><span class="p">,</span>
     <span class="n">JobMetadataKey</span><span class="p">,</span>
     <span class="n">dashboard_html_path</span><span class="p">,</span>
     <span class="n">dataset_measurements_dir</span><span class="p">,</span>
     <span class="n">load_image_from_hdf</span><span class="p">,</span>
+    <span class="n">clear_machine_state</span><span class="p">,</span>
     <span class="n">measurements_parquet_path</span><span class="p">,</span>
     <span class="n">processing_report_html_path</span><span class="p">,</span>
+    <span class="n">progress_dir</span><span class="p">,</span>
+    <span class="n">recompile_dir</span><span class="p">,</span>
+    <span class="n">resolve_processing_state_path</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageTypeName</span>
 
@@ -1070,6 +1071,59 @@
     <span class="p">)</span>
 
 
+<span class="k">def</span><span class="w"> </span><span class="nf">_print_process_only_dry_run_plan</span><span class="p">(</span>
+    <span class="n">config</span><span class="p">:</span> <span class="n">ExecutionConfig</span><span class="p">,</span> <span class="n">datasets</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dataset</span><span class="p">],</span> <span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Print the resolved plan for a ``--process-only`` dry run (no processing).</span>
+
+<span class="sd">    Shows the mode + layer, per-dataset image counts, a sample of mirrored</span>
+<span class="sd">    output paths, the execution backend, and the ``.phenotypic`` machine-state</span>
+<span class="sd">    location. See spec §5.7.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._cli._cli_process_only</span><span class="w"> </span><span class="kn">import</span> <span class="n">process_only_output_path</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_</span><span class="w"> </span><span class="kn">import</span> <span class="n">phenotypic_cache_dir</span>
+
+    <span class="n">layer</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">process_only_layer</span>
+    <span class="n">backend</span> <span class="o">=</span> <span class="s2">&quot;slurm&quot;</span> <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">is_slurm_mode</span><span class="p">()</span> <span class="k">else</span> <span class="s2">&quot;local&quot;</span>
+
+    <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">80</span><span class="p">)</span>
+    <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="s2">&quot;DRY-RUN MODE: process-only (No Jobs Will Be Executed)&quot;</span><span class="p">)</span>
+    <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">80</span><span class="p">)</span>
+    <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">  Mode:        process-only (</span><span class="si">{</span><span class="n">layer</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+    <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Pipeline:    </span><span class="si">{</span><span class="n">config</span><span class="o">.</span><span class="n">pipeline_json</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Input root:  </span><span class="si">{</span><span class="n">config</span><span class="o">.</span><span class="n">input_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Output dir:  </span><span class="si">{</span><span class="n">output_dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Execution:   </span><span class="si">{</span><span class="n">backend</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Cache dir:   </span><span class="si">{</span><span class="n">phenotypic_cache_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="n">total_images</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Datasets:&quot;</span><span class="p">)</span>
+    <span class="n">sample_paths</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">dataset</span> <span class="ow">in</span> <span class="n">datasets</span><span class="p">:</span>
+        <span class="n">count</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">images</span><span class="p">)</span>
+        <span class="n">total_images</span> <span class="o">+=</span> <span class="n">count</span>
+        <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">dataset</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">count</span><span class="si">}</span><span class="s2"> image(s)&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">img</span> <span class="ow">in</span> <span class="n">dataset</span><span class="o">.</span><span class="n">images</span><span class="p">[:</span><span class="mi">2</span><span class="p">]:</span>
+            <span class="n">sample_paths</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">process_only_output_path</span><span class="p">(</span>
+                    <span class="n">output_dir</span><span class="p">,</span> <span class="n">img</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">input_path</span><span class="p">,</span> <span class="n">layer</span>  <span class="c1"># type: ignore[arg-type]</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+
+    <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Sample mirrored output paths:&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">sample_paths</span><span class="p">[:</span><span class="mi">5</span><span class="p">]:</span>
+        <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">p</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Processing Summary:&quot;</span><span class="p">)</span>
+    <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Total images to process: </span><span class="si">{</span><span class="n">total_images</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Total datasets: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">datasets</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Layer exported per image: </span><span class="si">{</span><span class="n">layer</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span>
+        <span class="s2">&quot;  No deliverables/, results/, QC, overlays, or dashboard &quot;</span>
+        <span class="s2">&quot;(apply-only export).</span><span class="se">\n</span><span class="s2">&quot;</span>
+    <span class="p">)</span>
+
+
 <span class="nd">@click</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="n">context_settings</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;allow_extra_args&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">})</span>
 <span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span>
     <span class="s2">&quot;-p&quot;</span><span class="p">,</span>
@@ -1258,6 +1312,15 @@
          <span class="s2">&quot;whenever the pipeline has a non-empty &#39;qc&#39; section (writing the &quot;</span>
          <span class="s2">&quot;qc/ artifact and resetting GUI review progress).&quot;</span><span class="p">,</span>
 <span class="p">)</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span>
+    <span class="s2">&quot;--process-only&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;process_only_layer&quot;</span><span class="p">,</span>
+    <span class="nb">type</span><span class="o">=</span><span class="n">click</span><span class="o">.</span><span class="n">Choice</span><span class="p">([</span><span class="s2">&quot;rgb&quot;</span><span class="p">,</span> <span class="s2">&quot;gray&quot;</span><span class="p">,</span> <span class="s2">&quot;detect_mat&quot;</span><span class="p">,</span> <span class="s2">&quot;objmap&quot;</span><span class="p">]),</span>
+    <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Apply-only mode: run pipeline.apply() and export this single layer &quot;</span>
+         <span class="s2">&quot;(TIFF for rgb/gray/detect_mat, 16-bit raw-label PNG for objmap), &quot;</span>
+         <span class="s2">&quot;mirroring the input tree. Skips measurement, deliverables, QC, dashboard.&quot;</span><span class="p">,</span>
+<span class="p">)</span>
 <span class="nd">@click</span><span class="o">.</span><span class="n">pass_context</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">phenotypic_cli</span><span class="p">(</span>
     <span class="n">ctx</span><span class="p">:</span> <span class="n">click</span><span class="o">.</span><span class="n">Context</span><span class="p">,</span>
@@ -1289,6 +1352,7 @@
     <span class="n">skip_validation</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
     <span class="n">recompile</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">],</span>
     <span class="n">no_qc</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+    <span class="n">process_only_layer</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Execute a PhenoTypic pipeline on images.</span>
@@ -1296,11 +1360,54 @@
 <span class="sd">    --pipeline: Path to pipeline configuration file</span>
 
 <span class="sd">    --input: Image file or directory to process</span>
+
+<span class="sd">    --process-only {rgb|gray|detect_mat|objmap}: apply-only export mode. Runs</span>
+<span class="sd">    pipeline.apply() and writes a single image layer per input via the layer</span>
+<span class="sd">    accessor&#39;s imsave (rgb integer TIFF at the source bit depth; gray/detect_mat</span>
+<span class="sd">    float TIFF preserving full precision; objmap 16-bit raw-label PNG; PhenoTypic</span>
+<span class="sd">    metadata embedded), mirroring the input tree under --output-dir. Skips</span>
+<span class="sd">    measurement, deliverables, QC, and the dashboard; machine-state (progress</span>
+<span class="sd">    manifest, event log, pipeline copy) lives under &lt;output&gt;/.phenotypic/. Full</span>
+<span class="sd">    local + SLURM + resume reuse. Example::</span>
+
+<span class="sd">        uv run python -m phenotypic --pipeline pipe.json --input ./plates \\</span>
+<span class="sd">            --output-dir ./out --process-only detect_mat --force-local</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="n">_reject_unexpected_positional_args</span><span class="p">(</span><span class="n">ctx</span><span class="o">.</span><span class="n">args</span><span class="p">)</span>
 
         <span class="n">include_dataset_column</span> <span class="o">=</span> <span class="ow">not</span> <span class="n">no_dataset_column</span>
+
+        <span class="c1"># ---- Early validation for --process-only -----------------------</span>
+        <span class="c1"># Process-only is an apply-only export run (one image layer per</span>
+        <span class="c1"># input, mirrored input tree, no measurement / deliverables / QC /</span>
+        <span class="c1"># dashboard). Validate it before the --measure / --recompile branches</span>
+        <span class="c1"># so conflicting run modes are rejected with a clear message.</span>
+        <span class="k">if</span> <span class="n">process_only_layer</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">bad</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="p">(</span>
+                <span class="p">(</span><span class="n">measure_only</span><span class="p">,</span> <span class="s2">&quot;--measure&quot;</span><span class="p">),</span>
+                <span class="p">(</span><span class="n">recompile</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;--recompile&quot;</span><span class="p">),</span>
+            <span class="p">):</span>
+                <span class="k">if</span> <span class="n">bad</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="n">click</span><span class="o">.</span><span class="n">UsageError</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;--process-only cannot be combined with </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> &quot;</span>
+                        <span class="s2">&quot;(conflicting run modes).&quot;</span>
+                    <span class="p">)</span>
+            <span class="k">if</span> <span class="n">pipeline_json</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">input_path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">click</span><span class="o">.</span><span class="n">UsageError</span><span class="p">(</span>
+                    <span class="s2">&quot;--process-only requires --pipeline and --input.&quot;</span>
+                <span class="p">)</span>
+            <span class="k">for</span> <span class="n">val</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="p">(</span>
+                <span class="p">(</span><span class="n">metadata_csv</span><span class="p">,</span> <span class="s2">&quot;--metadata&quot;</span><span class="p">),</span>
+                <span class="p">(</span><span class="n">no_qc</span><span class="p">,</span> <span class="s2">&quot;--no-qc&quot;</span><span class="p">),</span>
+                <span class="p">(</span><span class="n">no_dataset_column</span><span class="p">,</span> <span class="s2">&quot;--no-dataset-column&quot;</span><span class="p">),</span>
+            <span class="p">):</span>
+                <span class="k">if</span> <span class="n">val</span><span class="p">:</span>
+                    <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Warning: </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> is ignored in --process-only mode &quot;</span>
+                        <span class="s2">&quot;(no measurement/aggregation output).&quot;</span><span class="p">,</span>
+                        <span class="n">err</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                    <span class="p">)</span>
 
         <span class="c1"># Parse SLURM args before the recompile branch so --recompile can</span>
         <span class="c1"># explicitly choose between local and SLURM recompile dispatch.</span>
@@ -1542,6 +1649,7 @@
             <span class="n">metadata_csv</span><span class="o">=</span><span class="n">metadata_csv</span><span class="p">,</span>
             <span class="n">checkpoint_interval</span><span class="o">=</span><span class="n">checkpoint_interval</span><span class="p">,</span>
             <span class="n">measure_only</span><span class="o">=</span><span class="n">measure_only</span><span class="p">,</span>
+            <span class="n">process_only_layer</span><span class="o">=</span><span class="n">process_only_layer</span><span class="p">,</span>  <span class="c1"># type: ignore[arg-type]</span>
         <span class="p">)</span>
 
         <span class="c1"># Handle resume mode BEFORE creating output directory</span>
@@ -1577,8 +1685,8 @@
                 <span class="p">)</span>
                 <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
 
-            <span class="c1"># Check for processing state file</span>
-            <span class="n">state_file</span> <span class="o">=</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="n">PROCESSING_STATE_JSON</span>
+            <span class="c1"># Check for processing state file (tolerate a legacy-root run)</span>
+            <span class="n">state_file</span> <span class="o">=</span> <span class="n">resolve_processing_state_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">state_file</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
                 <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error: No processing state found in </span><span class="si">{</span><span class="n">output_dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">err</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
                 <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Looking for: </span><span class="si">{</span><span class="n">state_file</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">err</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -1600,14 +1708,20 @@
 
             <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✓ Resuming from </span><span class="si">{</span><span class="n">output_dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
-        <span class="c1"># Handle restart mode - clear previous state</span>
+        <span class="c1"># Handle restart mode - clear ALL previous machine-state so the</span>
+        <span class="c1"># orchestration re-runs cleanly (fresh state + event log + progress),</span>
+        <span class="c1"># while preserving any output artifacts (results/, deliverables/, qc/)</span>
+        <span class="c1"># that --restart intentionally keeps — unlike --overwrite, which wipes</span>
+        <span class="c1"># the whole dir. Clearing the event log here prevents the restart from</span>
+        <span class="c1"># appending to, and rebuilding its manifest/failure records from, the</span>
+        <span class="c1"># prior run&#39;s events.</span>
         <span class="k">if</span> <span class="n">restart</span><span class="p">:</span>
             <span class="k">assert</span> <span class="n">output_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>  <span class="c1"># narrowed by the --restart guard above</span>
-            <span class="n">state_file</span> <span class="o">=</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="n">PROCESSING_STATE_JSON</span>
             <span class="k">if</span> <span class="n">output_dir</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
-                <span class="k">if</span> <span class="n">state_file</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
-                    <span class="n">state_file</span><span class="o">.</span><span class="n">unlink</span><span class="p">()</span>
-                    <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✓ Cleared previous processing state from </span><span class="si">{</span><span class="n">output_dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">clear_machine_state</span><span class="p">(</span><span class="n">output_dir</span><span class="p">):</span>
+                    <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;✓ Cleared previous machine-state (.phenotypic/) from </span><span class="si">{</span><span class="n">output_dir</span><span class="si">}</span><span class="s2">&quot;</span>
+                    <span class="p">)</span>
                 <span class="k">else</span><span class="p">:</span>
                     <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span>
                         <span class="sa">f</span><span class="s2">&quot;Note: No previous state found in </span><span class="si">{</span><span class="n">output_dir</span><span class="si">}</span><span class="s2"> (starting fresh)&quot;</span>
@@ -1719,7 +1833,10 @@
 
         <span class="c1"># Handle dry-run mode</span>
         <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">dry_run</span><span class="p">:</span>
-            <span class="n">execute_dry_run</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">datasets</span><span class="p">,</span> <span class="n">output_dir</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">process_only_layer</span><span class="p">:</span>
+                <span class="n">_print_process_only_dry_run_plan</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">datasets</span><span class="p">,</span> <span class="n">output_dir</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">execute_dry_run</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">datasets</span><span class="p">,</span> <span class="n">output_dir</span><span class="p">)</span>
             <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
 
         <span class="c1"># Handle sample mode</span>
@@ -1817,11 +1934,27 @@
             <span class="n">overlay_alpha</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">overlay_alpha</span><span class="p">,</span>
             <span class="n">save_overlays</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">save_overlays</span><span class="p">,</span>
         <span class="p">)</span>
-        <span class="n">output_manager</span><span class="o">.</span><span class="n">create_structure</span><span class="p">(</span><span class="n">datasets</span><span class="p">)</span>
+        <span class="c1"># Process-only runs export image layers mirroring the input tree and</span>
+        <span class="c1"># write no results/ or deliverables/ structure; the worker creates its</span>
+        <span class="c1"># own output dirs and the strategy writes the .phenotypic/ manifest.</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">config</span><span class="o">.</span><span class="n">process_only_layer</span><span class="p">:</span>
+            <span class="n">output_manager</span><span class="o">.</span><span class="n">create_structure</span><span class="p">(</span><span class="n">datasets</span><span class="p">)</span>
 
-        <span class="c1"># Copy pipeline JSON to output directory for reproducibility</span>
-        <span class="c1"># (skip in --measure mode — the forward run already copied it).</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">measure_only</span><span class="p">:</span>
+        <span class="c1"># Copy pipeline JSON for reproducibility (skip in --measure mode — the</span>
+        <span class="c1"># forward run already copied it). Process-only writes its copy under</span>
+        <span class="c1"># the hidden cache (.phenotypic/pipeline.json), not deliverables/.</span>
+        <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">process_only_layer</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_</span><span class="w"> </span><span class="kn">import</span> <span class="n">phenotypic_cache_pipeline_json_path</span>
+
+                <span class="n">cache_copy</span> <span class="o">=</span> <span class="n">phenotypic_cache_pipeline_json_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
+                <span class="n">cache_copy</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="n">cache_copy</span><span class="o">.</span><span class="n">write_bytes</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">pipeline_json</span><span class="p">)</span><span class="o">.</span><span class="n">read_bytes</span><span class="p">())</span>
+                <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Pipeline: </span><span class="si">{</span><span class="n">cache_copy</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to copy pipeline JSON: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;⚠ Warning: Could not copy pipeline JSON (</span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">,</span> <span class="n">err</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="ow">not</span> <span class="n">measure_only</span><span class="p">:</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="n">copied</span> <span class="o">=</span> <span class="n">_copy_pipeline_to_output</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">pipeline_json</span><span class="p">,</span> <span class="n">output_dir</span><span class="p">)</span>
                 <span class="k">if</span> <span class="n">copied</span><span class="p">:</span>
@@ -1838,6 +1971,23 @@
         <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Starting </span><span class="si">{</span><span class="n">execution_mode</span><span class="si">}</span><span class="s2"> processing...&quot;</span><span class="p">)</span>
 
         <span class="n">results</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">datasets</span><span class="p">,</span> <span class="n">output_dir</span><span class="p">)</span>
+
+        <span class="c1"># Process-only (apply-only) runs export image layers + a progress</span>
+        <span class="c1"># manifest only — no measurement aggregation, HTML report, README,</span>
+        <span class="c1"># or deliverables. The strategy already wrote the mirrored layers and</span>
+        <span class="c1"># the manifest; print a focused summary and exit.</span>
+        <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">process_only_layer</span><span class="p">:</span>
+            <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+            <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="s2">&quot;PROCESS-ONLY COMPLETE&quot;</span><span class="p">)</span>
+            <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+            <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Layer exported: </span><span class="si">{</span><span class="n">config</span><span class="o">.</span><span class="n">process_only_layer</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Completed: </span><span class="si">{</span><span class="n">results</span><span class="o">.</span><span class="n">total_completed</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">results</span><span class="o">.</span><span class="n">total_images</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+            <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed:    </span><span class="si">{</span><span class="n">results</span><span class="o">.</span><span class="n">total_failed</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Duration: </span><span class="si">{</span><span class="n">_format_duration</span><span class="p">(</span><span class="n">results</span><span class="o">.</span><span class="n">duration</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Mirrored layer files saved under: </span><span class="si">{</span><span class="n">output_dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">0</span> <span class="k">if</span> <span class="n">results</span><span class="o">.</span><span class="n">total_failed</span> <span class="o">==</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">1</span><span class="p">)</span>
 
         <span class="c1"># Load pipeline once for the finalizer — reused by both the</span>
         <span class="c1"># per-feature split in aggregate_master_csv and the README generator.</span>
@@ -2079,11 +2229,11 @@
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._cli._dashboard</span><span class="w"> </span><span class="kn">import</span> <span class="n">generate_dashboard</span>
 
     <span class="n">output_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
-    <span class="n">progress_dir</span> <span class="o">=</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="n">DIR_PROGRESS</span>
-    <span class="n">progress_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">prog_dir</span> <span class="o">=</span> <span class="n">progress_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
+    <span class="n">prog_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="n">console</span> <span class="o">=</span> <span class="n">Console</span><span class="p">()</span>
 
-    <span class="n">job_meta</span> <span class="o">=</span> <span class="n">load_job_metadata</span><span class="p">(</span><span class="n">progress_dir</span><span class="p">)</span>
+    <span class="n">job_meta</span> <span class="o">=</span> <span class="n">load_job_metadata</span><span class="p">(</span><span class="n">prog_dir</span><span class="p">)</span>
     <span class="n">dataset_names</span> <span class="o">=</span> <span class="n">_discover_recompile_dataset_names</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">job_meta</span><span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">dataset_names</span><span class="p">:</span>
         <span class="n">error_exit</span><span class="p">(</span><span class="s2">&quot;No datasets found in output directory&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">output_dir</span><span class="p">))</span>
@@ -2146,7 +2296,7 @@
     <span class="n">job_ids</span> <span class="o">=</span> <span class="n">submission</span><span class="o">.</span><span class="n">job_ids</span>
 
     <span class="n">recompile_manifest_path</span> <span class="o">=</span> <span class="p">(</span>
-        <span class="n">output_dir</span> <span class="o">/</span> <span class="n">DIR_PROGRESS</span> <span class="o">/</span> <span class="n">DIR_RECOMPILE</span> <span class="o">/</span> <span class="n">RECOMPILE_TASK_MANIFEST_JSON</span>
+        <span class="n">recompile_dir</span><span class="p">(</span><span class="n">progress_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">))</span> <span class="o">/</span> <span class="n">RECOMPILE_TASK_MANIFEST_JSON</span>
     <span class="p">)</span>
     <span class="n">job_metadata</span> <span class="o">=</span> <span class="p">{</span>
         <span class="n">JobMetadataKey</span><span class="o">.</span><span class="n">START_TIME</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(</span><span class="n">timespec</span><span class="o">=</span><span class="s2">&quot;milliseconds&quot;</span><span class="p">),</span>
@@ -2166,7 +2316,7 @@
             <span class="s2">&quot;finalizer_task_index&quot;</span><span class="p">:</span> <span class="n">finalizer_task_index</span><span class="p">,</span>
         <span class="p">},</span>
     <span class="p">}</span>
-    <span class="n">metadata_path</span> <span class="o">=</span> <span class="n">progress_dir</span> <span class="o">/</span> <span class="n">JOB_METADATA_JSON</span>
+    <span class="n">metadata_path</span> <span class="o">=</span> <span class="n">prog_dir</span> <span class="o">/</span> <span class="n">JOB_METADATA_JSON</span>
     <span class="n">metadata_path</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span>
         <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">job_metadata</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span>
         <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">,</span>
@@ -2270,14 +2420,8 @@
     <span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
     <span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
 
-    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_</span><span class="w"> </span><span class="kn">import</span> <span class="n">DIR_RECOMPILE_STATUS</span><span class="p">,</span> <span class="n">task_status_filename</span>
-    <span class="n">status_path</span> <span class="o">=</span> <span class="p">(</span>
-        <span class="n">output_dir</span>
-        <span class="o">/</span> <span class="n">DIR_PROGRESS</span>
-        <span class="o">/</span> <span class="n">DIR_RECOMPILE</span>
-        <span class="o">/</span> <span class="n">DIR_RECOMPILE_STATUS</span>
-        <span class="o">/</span> <span class="n">task_status_filename</span><span class="p">(</span><span class="n">finalizer_task_index</span><span class="p">)</span>
-    <span class="p">)</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_</span><span class="w"> </span><span class="kn">import</span> <span class="n">task_status_path</span>
+    <span class="n">status_path</span> <span class="o">=</span> <span class="n">task_status_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">finalizer_task_index</span><span class="p">)</span>
     <span class="n">deadline</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">monotonic</span><span class="p">()</span> <span class="o">+</span> <span class="n">timeout</span> <span class="k">if</span> <span class="n">timeout</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
     <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">status_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
@@ -2341,8 +2485,8 @@
     <span class="p">)</span>
 
     <span class="n">console</span> <span class="o">=</span> <span class="n">Console</span><span class="p">()</span>
-    <span class="n">progress_dir</span> <span class="o">=</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="n">DIR_PROGRESS</span>
-    <span class="n">job_meta</span> <span class="o">=</span> <span class="n">load_job_metadata</span><span class="p">(</span><span class="n">progress_dir</span><span class="p">)</span>
+    <span class="n">prog_dir</span> <span class="o">=</span> <span class="n">progress_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
+    <span class="n">job_meta</span> <span class="o">=</span> <span class="n">load_job_metadata</span><span class="p">(</span><span class="n">prog_dir</span><span class="p">)</span>
 
     <span class="n">dataset_names</span> <span class="o">=</span> <span class="n">_discover_recompile_dataset_names</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">job_meta</span><span class="p">)</span>
 
@@ -2388,14 +2532,14 @@
                     <span class="s2">&quot;Failed to read measurements mirror for analysis plugins&quot;</span><span class="p">,</span>
                     <span class="n">exc_info</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
                 <span class="p">)</span>
-        <span class="n">_run_analysis_plugins</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">progress_dir</span><span class="p">,</span> <span class="n">merged_df</span><span class="p">)</span>
+        <span class="n">_run_analysis_plugins</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">prog_dir</span><span class="p">,</span> <span class="n">merged_df</span><span class="p">)</span>
         <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span><span class="s2">&quot;[green]Analysis plugins complete&quot;</span><span class="p">)</span>
     <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Analysis plugin dispatch failed&quot;</span><span class="p">,</span> <span class="n">exc_info</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span><span class="s2">&quot;[yellow]Analysis plugin dispatch failed (see logs)&quot;</span><span class="p">)</span>
 
     <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span><span class="s2">&quot;[cyan]Rebuilding manifest...&quot;</span><span class="p">)</span>
-    <span class="n">progress_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">prog_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
     <span class="n">datasets_totals</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
     <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">dataset_names</span><span class="p">:</span>

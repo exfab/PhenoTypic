@@ -50,7 +50,11 @@
       measurements_by_feature_dir
       measurements_csv_path
       measurements_parquet_path
+      migrate_legacy_machine_state
+      clear_machine_state
       overlay_manifest_path
+      phenotypic_cache_dir
+      phenotypic_cache_pipeline_json_path
       pipeline_json_path
       processing_report_html_path
       processing_state_path
@@ -64,7 +68,11 @@
       read_run_manifest
       recompile_dir
       recompile_status_dir
+      resolve_event_log_path
       resolve_execution_mode
+      resolve_manifest_json_path
+      resolve_processing_state_path
+      resolve_progress_dir
       results_dir
       sentinel_resubmitted_path
       shard_parquet_filename

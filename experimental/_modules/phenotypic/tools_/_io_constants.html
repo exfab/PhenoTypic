@@ -866,6 +866,14 @@
 <span class="c1">#: roots at :func:`deliverables_dir`.</span>
 <span class="n">DIR_DELIVERABLES</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;deliverables&quot;</span>
 
+<span class="c1">#: ``&lt;output&gt;/.phenotypic/`` — hidden machine-state cache root. Holds the</span>
+<span class="c1">#: run&#39;s progress/, processing_state.json, and processing_events.log. Hidden</span>
+<span class="c1">#: so it does not clutter the user-facing output folder and is skipped by the</span>
+<span class="c1">#: GUI&#39;s run/dataset candidate scan. NOTE: distinct from the GUI&#39;s</span>
+<span class="c1">#: ``.phenotypic-gui`` sandbox dir (presets/state) — different root, different</span>
+<span class="c1">#: purpose.</span>
+<span class="n">DIR_PHENOTYPIC</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;.phenotypic&quot;</span>
+
 
 <span class="c1"># ---------------------------------------------------------------------------</span>
 <span class="c1"># Templated filenames — Final[str] template + typed render function</span>
@@ -981,15 +989,26 @@
 <span class="c1"># ---------------------------------------------------------------------------</span>
 
 
+<div class="viewcode-block" id="phenotypic_cache_dir">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.phenotypic_cache_dir">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">phenotypic_cache_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/.phenotypic/`` — the hidden machine-state root.</span>
+
+<span class="sd">    Pure path expression; callers ``mkdir`` when they intend to write.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="n">DIR_PHENOTYPIC</span></div>
+
+
+
 <div class="viewcode-block" id="progress_dir">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.progress_dir">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">progress_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/progress/``.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/.phenotypic/progress/``.</span>
 
 <span class="sd">    Pure path expression; callers are responsible for ``mkdir`` when they</span>
 <span class="sd">    intend to write into it.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="n">DIR_PROGRESS</span></div>
+    <span class="k">return</span> <span class="n">phenotypic_cache_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">DIR_PROGRESS</span></div>
 
 
 
@@ -1024,16 +1043,169 @@
 <div class="viewcode-block" id="event_log_path">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.event_log_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">event_log_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/processing_events.log``.&quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="n">PROCESSING_EVENTS_LOG</span></div>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/.phenotypic/processing_events.log``.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">phenotypic_cache_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">PROCESSING_EVENTS_LOG</span></div>
 
 
 
 <div class="viewcode-block" id="processing_state_path">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.processing_state_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">processing_state_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/processing_state.json``.&quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="n">PROCESSING_STATE_JSON</span></div>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/.phenotypic/processing_state.json``.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">phenotypic_cache_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">PROCESSING_STATE_JSON</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_legacy_progress_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Pre-migration location: ``&lt;output&gt;/progress/``.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="n">DIR_PROGRESS</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_legacy_processing_state_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Pre-migration location: ``&lt;output&gt;/processing_state.json``.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="n">PROCESSING_STATE_JSON</span>
+
+
+<div class="viewcode-block" id="resolve_progress_dir">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.resolve_progress_dir">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">resolve_progress_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the progress dir that exists, preferring ``.phenotypic/``.</span>
+
+<span class="sd">    Read-only helper for resume/discovery so a pre-migration run (progress</span>
+<span class="sd">    at the output root) is still found. Falls back to the new location when</span>
+<span class="sd">    neither exists (the default for fresh writes).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">new</span> <span class="o">=</span> <span class="n">progress_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">new</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="k">return</span> <span class="n">new</span>
+    <span class="n">legacy</span> <span class="o">=</span> <span class="n">_legacy_progress_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">legacy</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="k">return</span> <span class="n">legacy</span>
+    <span class="k">return</span> <span class="n">new</span></div>
+
+
+
+<div class="viewcode-block" id="resolve_processing_state_path">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.resolve_processing_state_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">resolve_processing_state_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the processing-state file that exists, preferring ``.phenotypic/``.&quot;&quot;&quot;</span>
+    <span class="n">new</span> <span class="o">=</span> <span class="n">processing_state_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">new</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="k">return</span> <span class="n">new</span>
+    <span class="n">legacy</span> <span class="o">=</span> <span class="n">_legacy_processing_state_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">legacy</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="k">return</span> <span class="n">legacy</span>
+    <span class="k">return</span> <span class="n">new</span></div>
+
+
+
+<div class="viewcode-block" id="resolve_manifest_json_path">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.resolve_manifest_json_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">resolve_manifest_json_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;progress&gt;/manifest.json`` resolving the progress dir for legacy runs.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">resolve_progress_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">MANIFEST_JSON</span></div>
+
+
+
+<div class="viewcode-block" id="resolve_event_log_path">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.resolve_event_log_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">resolve_event_log_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the event log sibling of the resolved progress dir.</span>
+
+<span class="sd">    The event log lives beside ``progress/`` (D14): in ``.phenotypic/`` for a</span>
+<span class="sd">    migrated/new run, at the output root for a not-yet-migrated legacy read.</span>
+<span class="sd">    Read-only helper for resume/discovery; never mutates the run dir.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">resolve_progress_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="n">PROCESSING_EVENTS_LOG</span></div>
+
+
+
+<div class="viewcode-block" id="migrate_legacy_machine_state">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.migrate_legacy_machine_state">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">migrate_legacy_machine_state</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Move a pre-migration run&#39;s machine-state into ``.phenotypic/``.</span>
+
+<span class="sd">    If legacy machine-state (``progress/``, ``processing_state.json``,</span>
+<span class="sd">    ``processing_events.log``) is present at the output root, move each artifact</span>
+<span class="sd">    into the ``.phenotypic/`` cache so the run proceeds coherently against a</span>
+<span class="sd">    single location. A no-op when no legacy state is present or everything is</span>
+<span class="sd">    already migrated.</span>
+
+<span class="sd">    Robust to interruption and concurrency (the SLURM array case): each artifact</span>
+<span class="sd">    is moved only when its source still exists and its destination does not, so a</span>
+<span class="sd">    migration interrupted mid-move *completes* on the next call rather than</span>
+<span class="sd">    leaving split state; and a lost move race (a concurrent worker moved the</span>
+<span class="sd">    artifact first) is ignored rather than crashing. Keying per-artifact instead</span>
+<span class="sd">    of on ``cache.exists()`` is what makes both safe.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        ``True`` if this call moved anything, else ``False``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">shutil</span>
+
+    <span class="n">cache</span> <span class="o">=</span> <span class="n">phenotypic_cache_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
+    <span class="n">legacy_progress</span> <span class="o">=</span> <span class="n">_legacy_progress_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
+    <span class="n">legacy_state</span> <span class="o">=</span> <span class="n">_legacy_processing_state_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
+    <span class="n">legacy_events</span> <span class="o">=</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="n">PROCESSING_EVENTS_LOG</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">legacy_progress</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span> <span class="ow">or</span> <span class="n">legacy_state</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span> <span class="ow">or</span> <span class="n">legacy_events</span><span class="o">.</span><span class="n">exists</span><span class="p">()):</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="n">cache</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">moved</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="k">for</span> <span class="n">src</span><span class="p">,</span> <span class="n">dst</span> <span class="ow">in</span> <span class="p">(</span>
+        <span class="p">(</span><span class="n">legacy_progress</span><span class="p">,</span> <span class="n">cache</span> <span class="o">/</span> <span class="n">DIR_PROGRESS</span><span class="p">),</span>
+        <span class="p">(</span><span class="n">legacy_state</span><span class="p">,</span> <span class="n">cache</span> <span class="o">/</span> <span class="n">PROCESSING_STATE_JSON</span><span class="p">),</span>
+        <span class="p">(</span><span class="n">legacy_events</span><span class="p">,</span> <span class="n">cache</span> <span class="o">/</span> <span class="n">PROCESSING_EVENTS_LOG</span><span class="p">),</span>
+    <span class="p">):</span>
+        <span class="k">if</span> <span class="n">src</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">dst</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">shutil</span><span class="o">.</span><span class="n">move</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">src</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">dst</span><span class="p">))</span>
+                <span class="n">moved</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">except</span> <span class="p">(</span><span class="ne">FileNotFoundError</span><span class="p">,</span> <span class="n">shutil</span><span class="o">.</span><span class="n">Error</span><span class="p">):</span>
+                <span class="c1"># Lost a migration race with a concurrent worker; the winner is</span>
+                <span class="c1"># moving (or has moved) this artifact — safe to skip.</span>
+                <span class="k">pass</span>
+    <span class="k">return</span> <span class="n">moved</span></div>
+
+
+
+<div class="viewcode-block" id="clear_machine_state">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.clear_machine_state">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">clear_machine_state</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Remove **all** of a run&#39;s machine-state for a clean ``--restart``.</span>
+
+<span class="sd">    Deletes the ``.phenotypic/`` cache (``progress/``, ``processing_state.json``,</span>
+<span class="sd">    ``processing_events.log``) and any pre-migration root-level machine-state,</span>
+<span class="sd">    while leaving user-facing output artifacts (``deliverables/``, ``results/``,</span>
+<span class="sd">    ``qc/``, ``logs/``, …) untouched. This is the difference between ``--restart``</span>
+<span class="sd">    (re-run the orchestration against clean state, keep outputs) and</span>
+<span class="sd">    ``--overwrite`` (delete the whole output dir). Clearing the event log here is</span>
+<span class="sd">    what stops a restart from appending to — and rebuilding its manifest/failure</span>
+<span class="sd">    records from — the prior run&#39;s events.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        ``True`` if any machine-state was removed, else ``False``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">shutil</span>
+
+    <span class="n">removed</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="c1"># Current layout: the hidden cache holds state + event log + progress/.</span>
+    <span class="n">cache</span> <span class="o">=</span> <span class="n">phenotypic_cache_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">cache</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">cache</span><span class="p">)</span>
+        <span class="n">removed</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="c1"># Pre-migration (legacy) root-level machine-state, if a legacy run is restarted.</span>
+    <span class="n">legacy_progress</span> <span class="o">=</span> <span class="n">_legacy_progress_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">legacy_progress</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">legacy_progress</span><span class="p">)</span>
+        <span class="n">removed</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="k">for</span> <span class="n">legacy_file</span> <span class="ow">in</span> <span class="p">(</span>
+        <span class="n">_legacy_processing_state_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">),</span>
+        <span class="n">output_dir</span> <span class="o">/</span> <span class="n">PROCESSING_EVENTS_LOG</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="k">if</span> <span class="n">legacy_file</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="n">legacy_file</span><span class="o">.</span><span class="n">unlink</span><span class="p">()</span>
+            <span class="n">removed</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="k">return</span> <span class="n">removed</span></div>
 
 
 
@@ -1074,6 +1246,16 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">pipeline_json_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/pipeline.json``.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">PIPELINE_JSON</span></div>
+
+
+
+<div class="viewcode-block" id="phenotypic_cache_pipeline_json_path">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.phenotypic_cache_pipeline_json_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">phenotypic_cache_pipeline_json_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/.phenotypic/pipeline.json`` — the process-only run&#39;s</span>
+<span class="sd">    reproducibility copy. Distinct from :func:`pipeline_json_path`, which roots</span>
+<span class="sd">    under ``deliverables/`` (process-only writes no deliverables).&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">phenotypic_cache_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">PIPELINE_JSON</span></div>
 
 
 
@@ -1366,9 +1548,12 @@
 <div class="viewcode-block" id="read_run_manifest">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.read_run_manifest">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">read_run_manifest</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Read ``&lt;output&gt;/progress/manifest.json`` if present.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Read the run manifest if present, resolving legacy layouts.</span>
 
-<span class="sd">    Replaces 4 inline ``json.loads(manifest_path.read_text())`` blocks.</span>
+<span class="sd">    Reads ``&lt;output&gt;/.phenotypic/progress/manifest.json``, falling back to the</span>
+<span class="sd">    pre-migration ``&lt;output&gt;/progress/manifest.json`` for legacy runs (via</span>
+<span class="sd">    :func:`resolve_manifest_json_path`). Replaces 4 inline</span>
+<span class="sd">    ``json.loads(manifest_path.read_text())`` blocks.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        output_dir: Run output directory containing ``progress/``.</span>
@@ -1377,7 +1562,7 @@
 <span class="sd">        Parsed manifest dict, or :data:`None` when the file is missing</span>
 <span class="sd">        or unparseable (callers can decide whether absence is fatal).</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">path</span> <span class="o">=</span> <span class="n">manifest_json_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
+    <span class="n">path</span> <span class="o">=</span> <span class="n">resolve_manifest_json_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
         <span class="k">return</span> <span class="kc">None</span>
     <span class="k">try</span><span class="p">:</span>

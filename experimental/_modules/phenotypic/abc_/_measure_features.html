@@ -1045,6 +1045,31 @@
             <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
 
     <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_as_accumulation_dtype</span><span class="p">(</span><span class="n">array</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Upcast floating arrays to float64 for numerically-stable reductions.</span>
+
+<span class="sd">        Intensity layers (``gray``/``detect_mat``) are stored as ``float32``;</span>
+<span class="sd">        ``scipy.ndimage`` reductions and ``np.quantile`` accumulate in the input</span>
+<span class="sd">        dtype, so summing/averaging/interpolating over large objects in float32</span>
+<span class="sd">        loses precision relative to the historical float64 layers. Casting the</span>
+<span class="sd">        input up to float64 here keeps measurements bit-for-bit comparable with</span>
+<span class="sd">        the pre-float32 behaviour. Non-float arrays (e.g. the binary</span>
+<span class="sd">        ``objmask``, integer label maps) pass through unchanged — their</span>
+<span class="sd">        reductions are already exact.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            array: Input array fed to a reduction/comprehension helper.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: ``array`` upcast to float64 when it is a lower-precision</span>
+<span class="sd">                floating dtype; otherwise the array unchanged (no copy).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">array</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">issubdtype</span><span class="p">(</span><span class="n">array</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">floating</span><span class="p">)</span> <span class="ow">and</span> <span class="n">array</span><span class="o">.</span><span class="n">dtype</span> <span class="o">!=</span> <span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">array</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">array</span>
+
+    <span class="nd">@staticmethod</span>
     <span class="nd">@catch_warnings_decorator</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_center_of_mass</span><span class="p">(</span><span class="n">array</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">objmap</span><span class="p">:</span> <span class="n">ArrayLike</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculate the weighted center of mass for each labeled object.</span>
@@ -1187,6 +1212,7 @@
 <span class="sd">            # Returns: [128.5, 142.3, 135.8, ...] avg brightness per colony</span>
 <span class="sd">            # High values = dense/pigmented growth</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">array</span> <span class="o">=</span> <span class="n">MeasureFeatures</span><span class="o">.</span><span class="n">_as_accumulation_dtype</span><span class="p">(</span><span class="n">array</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">objmap</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">indexes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">objmap</span><span class="p">)</span>
             <span class="n">indexes</span> <span class="o">=</span> <span class="n">indexes</span><span class="p">[</span><span class="n">indexes</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">]</span>
@@ -1230,6 +1256,7 @@
 <span class="sd">            &gt;&gt;&gt; median_int = MeasureFeatures._calculate_median(gray, objmap)</span>
 <span class="sd">            # More stable than mean for noisy images</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">array</span> <span class="o">=</span> <span class="n">MeasureFeatures</span><span class="o">.</span><span class="n">_as_accumulation_dtype</span><span class="p">(</span><span class="n">array</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">objmap</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">indexes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">objmap</span><span class="p">)</span>
             <span class="n">indexes</span> <span class="o">=</span> <span class="n">indexes</span><span class="p">[</span><span class="n">indexes</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">]</span>
@@ -1317,6 +1344,7 @@
 <span class="sd">            # Low stddev = smooth/uniform growth</span>
 <span class="sd">            &gt;&gt;&gt; rough_colonies = np.where(stddev &gt; 20)[0]</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">array</span> <span class="o">=</span> <span class="n">MeasureFeatures</span><span class="o">.</span><span class="n">_as_accumulation_dtype</span><span class="p">(</span><span class="n">array</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">objmap</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">indexes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">objmap</span><span class="p">)</span>
             <span class="n">indexes</span> <span class="o">=</span> <span class="n">indexes</span><span class="p">[</span><span class="n">indexes</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">]</span>
@@ -1365,6 +1393,7 @@
 <span class="sd">            ...                                           image.objmap[:])</span>
 <span class="sd">            # Returns total brightness per colony</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">array</span> <span class="o">=</span> <span class="n">MeasureFeatures</span><span class="o">.</span><span class="n">_as_accumulation_dtype</span><span class="p">(</span><span class="n">array</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">objmap</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">indexes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">objmap</span><span class="p">)</span>
             <span class="n">indexes</span> <span class="o">=</span> <span class="n">indexes</span><span class="p">[</span><span class="n">indexes</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">]</span>
@@ -1408,6 +1437,7 @@
 <span class="sd">            &gt;&gt;&gt; variance = MeasureFeatures._calculate_variance(gray, objmap)</span>
 <span class="sd">            &gt;&gt;&gt; stddev = np.sqrt(variance)  # Convert back to original units</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">array</span> <span class="o">=</span> <span class="n">MeasureFeatures</span><span class="o">.</span><span class="n">_as_accumulation_dtype</span><span class="p">(</span><span class="n">array</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">objmap</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">indexes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">objmap</span><span class="p">)</span>
             <span class="n">indexes</span> <span class="o">=</span> <span class="n">indexes</span><span class="p">[</span><span class="n">indexes</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">]</span>
@@ -1737,6 +1767,7 @@
 <span class="sd">            - Low Q1 suggests colonies with sparse pixel coverage</span>
 <span class="sd">            - Used to compute IQR (Q3 - Q1)</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">array</span> <span class="o">=</span> <span class="n">MeasureFeatures</span><span class="o">.</span><span class="n">_as_accumulation_dtype</span><span class="p">(</span><span class="n">array</span><span class="p">)</span>
         <span class="n">find_q1</span> <span class="o">=</span> <span class="n">partial</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">quantile</span><span class="p">,</span> <span class="n">q</span><span class="o">=</span><span class="mf">0.25</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">)</span>
         <span class="n">q1</span> <span class="o">=</span> <span class="n">MeasureFeatures</span><span class="o">.</span><span class="n">_funcmap2objects</span><span class="p">(</span>
                 <span class="n">func</span><span class="o">=</span><span class="n">find_q1</span><span class="p">,</span>
@@ -1771,6 +1802,7 @@
 <span class="sd">            - IQR = Q3 - Q1 (robust measure of spread)</span>
 <span class="sd">            - Used with Q1 to identify outlier intensities</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">array</span> <span class="o">=</span> <span class="n">MeasureFeatures</span><span class="o">.</span><span class="n">_as_accumulation_dtype</span><span class="p">(</span><span class="n">array</span><span class="p">)</span>
         <span class="n">find_q3</span> <span class="o">=</span> <span class="n">partial</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">quantile</span><span class="p">,</span> <span class="n">q</span><span class="o">=</span><span class="mf">0.75</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">)</span>
         <span class="n">q3</span> <span class="o">=</span> <span class="n">MeasureFeatures</span><span class="o">.</span><span class="n">_funcmap2objects</span><span class="p">(</span>
                 <span class="n">func</span><span class="o">=</span><span class="n">find_q3</span><span class="p">,</span>
@@ -1820,6 +1852,7 @@
 <span class="sd">            # IQR &lt; 30: smooth, uniform colonies</span>
 <span class="sd">            # IQR &gt; 100: rough, textured growth</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">array</span> <span class="o">=</span> <span class="n">MeasureFeatures</span><span class="o">.</span><span class="n">_as_accumulation_dtype</span><span class="p">(</span><span class="n">array</span><span class="p">)</span>
         <span class="n">find_iqr</span> <span class="o">=</span> <span class="n">partial</span><span class="p">(</span>
                 <span class="n">scipy</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">iqr</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">nan_policy</span><span class="o">=</span><span class="n">nan_policy</span><span class="p">,</span> <span class="n">interpolation</span><span class="o">=</span><span class="n">method</span>
         <span class="p">)</span>
