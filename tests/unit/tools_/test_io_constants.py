@@ -613,3 +613,104 @@ class TestResolveExecutionMode:
         assert resolve_execution_mode({"execution_mode": "alien"}) == "local"
         assert resolve_execution_mode({"execution_mode": ""}) == "local"
         assert resolve_execution_mode({"execution_mode": None}) == "local"  # type: ignore[dict-item]
+
+
+# ---------------------------------------------------------------------------
+# .phenotypic machine-state cache layout, resolvers, migrator
+# ---------------------------------------------------------------------------
+
+
+class TestPhenotypicCacheLayout:
+    def test_machine_state_roots_under_phenotypic(self) -> None:
+        from phenotypic.tools_ import (
+            DIR_PHENOTYPIC,
+            event_log_path,
+            manifest_json_path,
+            phenotypic_cache_dir,
+            processing_state_path,
+            progress_dir,
+        )
+
+        out = Path("/tmp/run")
+        assert DIR_PHENOTYPIC == ".phenotypic"
+        assert phenotypic_cache_dir(out) == out / ".phenotypic"
+        assert progress_dir(out) == out / ".phenotypic" / "progress"
+        assert processing_state_path(out) == out / ".phenotypic" / "processing_state.json"
+        assert event_log_path(out) == out / ".phenotypic" / "processing_events.log"
+        # manifest composes from progress_dir, so it follows the re-root
+        assert manifest_json_path(out) == out / ".phenotypic" / "progress" / "manifest.json"
+
+    def test_user_facing_dirs_unchanged(self) -> None:
+        from phenotypic.tools_ import (
+            deliverables_dir,
+            logs_dir,
+            qc_dir,
+            results_dir,
+            slurm_scripts_dir,
+        )
+
+        out = Path("/tmp/run")
+        assert deliverables_dir(out) == out / "deliverables"
+        assert results_dir(out) == out / "results"
+        assert qc_dir(out) == out / "qc"
+        assert logs_dir(out) == out / "logs"
+        assert slurm_scripts_dir(out) == out / "slurm_scripts"
+
+
+class TestBackCompatResolvers:
+    def test_resolver_prefers_new_then_legacy_then_new_default(self, tmp_path: Path) -> None:
+        from phenotypic.tools_ import (
+            processing_state_path,
+            progress_dir,
+            resolve_manifest_json_path,
+            resolve_processing_state_path,
+            resolve_progress_dir,
+        )
+
+        out = tmp_path
+        # Neither exists -> default to new location
+        assert resolve_processing_state_path(out) == processing_state_path(out)
+        assert resolve_progress_dir(out) == progress_dir(out)
+        # Legacy exists, new does not -> resolver returns legacy
+        legacy_state = out / "processing_state.json"
+        legacy_state.write_text("{}", encoding="utf-8")
+        (out / "progress").mkdir()
+        assert resolve_processing_state_path(out) == legacy_state
+        assert resolve_progress_dir(out) == out / "progress"
+        assert resolve_manifest_json_path(out) == out / "progress" / "manifest.json"
+        # New exists -> new wins over legacy
+        processing_state_path(out).parent.mkdir(parents=True, exist_ok=True)
+        processing_state_path(out).write_text("{}", encoding="utf-8")
+        progress_dir(out).mkdir(parents=True, exist_ok=True)
+        assert resolve_processing_state_path(out) == processing_state_path(out)
+        assert resolve_progress_dir(out) == progress_dir(out)
+
+
+class TestMigrateLegacyMachineState:
+    def test_moves_legacy_into_cache_dir(self, tmp_path: Path) -> None:
+        from phenotypic.tools_ import migrate_legacy_machine_state
+
+        out = tmp_path
+        (out / "progress").mkdir()
+        (out / "progress" / "manifest.json").write_text("{}", encoding="utf-8")
+        (out / "processing_state.json").write_text("{}", encoding="utf-8")
+        (out / "processing_events.log").write_text("x\n", encoding="utf-8")
+        moved = migrate_legacy_machine_state(out)
+        assert moved is True
+        assert (out / ".phenotypic" / "progress" / "manifest.json").is_file()
+        assert (out / ".phenotypic" / "processing_state.json").is_file()
+        assert (out / ".phenotypic" / "processing_events.log").is_file()
+        assert not (out / "progress").exists()
+        assert not (out / "processing_state.json").exists()
+
+    def test_noop_when_already_migrated(self, tmp_path: Path) -> None:
+        from phenotypic.tools_ import migrate_legacy_machine_state, progress_dir
+
+        out = tmp_path
+        progress_dir(out).mkdir(parents=True)
+        assert migrate_legacy_machine_state(out) is False
+
+    def test_noop_when_nothing_present(self, tmp_path: Path) -> None:
+        from phenotypic.tools_ import migrate_legacy_machine_state
+
+        assert migrate_legacy_machine_state(tmp_path) is False
