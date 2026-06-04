@@ -172,11 +172,17 @@ def generate_array_job_script(
         )
 
     # Build task entries, interleaving checkpoint sentinels at regular intervals.
-    # Process-only runs carry no aggregation chain (manifest-only finalize is a
-    # separate dependent task submitted by the strategy), so suppress all
-    # checkpoint / manifest / finalizer sentinels here.
+    # Process-only runs carry no aggregation chain (D13): no checkpoint sentinels
+    # and no full finalizer. But the LAST chunk appends a single manifest-only
+    # sentinel so the final array task rebuilds progress/manifest.json after every
+    # image — this reuses the forward path's embedded-finalizer mechanism (minus
+    # aggregation/dashboard), so the completion signal is correct across the
+    # drip-feed for ANY number of chunks (the chunk sizing already reserves
+    # headroom for forward sentinels, which process-only otherwise leaves unused).
     if config.process_only_layer:
-        entries = _build_entry_list(chunk_images, None, False)
+        entries = [str(img.absolute()) for img in chunk_images]
+        if is_last_chunk:
+            entries.append(_MANIFEST_SENTINEL)
     else:
         entries = _build_entry_list(chunk_images, checkpoint_interval, is_last_chunk)
 
@@ -319,18 +325,29 @@ def generate_array_job_script(
         f"--checkpoint-type finalize"
     )
 
-    # Dispatch block: process-only runs carry no aggregation/manifest/finalizer
-    # sentinels (manifest-only finalize is a separate dependent task), so emit a
-    # plain per-image command with no sentinel branches. Forward / measure runs
-    # keep the checkpoint→manifest→finalizer sentinel dispatch.
+    # Dispatch block: process-only runs carry no aggregation sentinels, but the
+    # last chunk's final task is a manifest-only sentinel (rebuild
+    # progress/manifest.json — no aggregation, no dashboard). Forward / measure
+    # runs keep the full checkpoint→manifest→finalizer sentinel dispatch.
     if config.process_only_layer:
-        dispatch_block = f"""# Process image (apply-only mode; no aggregation sentinels)
-echo "Processing image $((SLURM_ARRAY_TASK_ID + 1))/${{#IMAGE_LIST[@]}}: $CURRENT_IMAGE"
-echo ""
+        dispatch_block = f"""if [ "$CURRENT_IMAGE" = "{_MANIFEST_SENTINEL}" ]; then
+    # Manifest-only finalize (process-only, D13): rebuild progress/manifest.json
+    # after every image in the last chunk. No aggregation, no dashboard HTML.
+    echo "Running manifest rebuild (task $SLURM_ARRAY_TASK_ID)"
+    echo ""
 
-{cmd}
+    {manifest_cmd}
 
-EXIT_CODE=$?"""
+    EXIT_CODE=$?
+else
+    # Normal image processing (apply-only mode)
+    echo "Processing image $((SLURM_ARRAY_TASK_ID + 1))/${{#IMAGE_LIST[@]}}: $CURRENT_IMAGE"
+    echo ""
+
+    {cmd}
+
+    EXIT_CODE=$?
+fi"""
     else:
         dispatch_block = f"""if [ "$CURRENT_IMAGE" = "{_CHECKPOINT_SENTINEL}" ]; then
     # Checkpoint task: aggregate per-image Parquets into a dashboard chunk
@@ -503,74 +520,3 @@ def generate_all_array_job_scripts(
         all_scripts[dataset.name] = scripts
 
     return all_scripts
-
-
-def generate_process_only_finalize_script(
-    config: ExecutionConfig,
-    output_dir: Path,
-) -> Path:
-    """Generate the manifest-only finalize script for a process-only SLURM run.
-
-    A process-only run has no aggregation / dashboard chain (D13). Its single
-    dependent finalize task only rebuilds ``progress/manifest.json`` (whose
-    ``is_complete`` flag is the run-console completion signal) by invoking the
-    checkpoint handler's manifest path — no ``aggregate_measurements``, no
-    dashboard HTML.
-
-    The strategy submits the returned script with
-    ``sbatch --dependency=afterany:<job>`` so it runs once the depended-on image
-    job finishes. **Limitation:** under the drip-feed dispatcher only chunk 0's
-    job ID is known at submission time, so for a process-only run that spans
-    multiple array chunks (more images than ``array_limit``) the finalize
-    depends on chunk 0 only and may rebuild the manifest before later chunks
-    complete. Single-chunk runs (the common 1-level case) are exact; the
-    strategy emits a runtime warning for the multi-chunk case.
-
-    Args:
-        config: Execution configuration (used for SBATCH directives).
-        output_dir: Base output directory.
-
-    Returns:
-        Path to the generated finalize script.
-    """
-    script_dir = output_dir / DIR_SLURM_SCRIPTS
-    script_dir.mkdir(parents=True, exist_ok=True)
-    log_dir = output_dir / DIR_LOGS / "slurm"
-    log_dir.mkdir(parents=True, exist_ok=True)
-    log_path = log_dir / "process_only_finalize_%A.log"
-
-    directives = generate_slurm_directives(
-        job_name="pht-process-only-finalize",
-        slurm_args=config.slurm_args,
-        output_log=log_path,
-        error_log=log_path,
-    )
-
-    python_str = " ".join(get_python_command(for_slurm=True)[0])
-    q_output_dir = shlex.quote(str(output_dir.absolute()))
-    manifest_cmd = (
-        f"{python_str} -m phenotypic._cli._cli_checkpoint_handler "
-        f"--output-dir {q_output_dir} "
-        f"--checkpoint-type manifest"
-    )
-
-    script_content = f"""#!/bin/bash
-{directives}
-
-# Auto-generated by PhenoTypic CLI (process-only manifest-only finalize)
-# Rebuilds progress/manifest.json once the image array completes. No
-# aggregation, no dashboard HTML (D13).
-
-set -e
-set -u
-
-{SLURM_THREAD_PIN_BASH}
-
-echo "Running process-only manifest finalize"
-{manifest_cmd}
-"""
-
-    script_path = script_dir / "process_only_finalize.sh"
-    script_path.write_text(script_content, encoding="utf-8")
-    script_path.chmod(0o755)
-    return script_path

@@ -768,46 +768,16 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
         console.print(f"[green]✓[/green] Job metadata: [dim]{metadata_path}[/dim]")
 
         if self.config.process_only_layer:
-            # Process-only (D13): no aggregation/sentinel/checkpoint chain and
-            # no dashboard HTML. Submit a single dependent manifest-only
-            # finalize task (afterany on the image array) whose manifest.json
-            # is_complete flag is the run-console completion signal.
-            from ._cli_slurm_array_scripts import (
-                generate_process_only_finalize_script,
+            # Process-only (D13): no aggregation/checkpoint chain and no dashboard
+            # HTML. The manifest-only finalizer is embedded as a sentinel in the
+            # LAST chunk (reusing the forward path's last-chunk finalizer
+            # mechanism), so it rebuilds progress/manifest.json after every image
+            # across all chunks — no separate dependent job, correct under the
+            # drip-feed for any number of chunks.
+            console.print(
+                "[green]✓[/green] Manifest finalizer embedded in last chunk "
+                "(process-only: no aggregation/dashboard)\n"
             )
-            from phenotypic.tools_.slurm._sbatch import submit_script
-
-            finalize_script = generate_process_only_finalize_script(
-                self.config, output_dir
-            )
-            if len(flat_scripts) > 1:
-                # Drip-feed: only chunk 0's job ID is known here, so the
-                # dependent finalize can only gate on chunk 0. For a multi-chunk
-                # run the manifest may be rebuilt before later chunks finish —
-                # layer files are still written for every image, but the
-                # run-console "complete" signal can appear early. Surface it.
-                console.print(
-                    f"[yellow]Note: this process-only run spans "
-                    f"{len(flat_scripts)} array chunks; the manifest finalize "
-                    f"depends on chunk 0 only, so the run-console 'complete' "
-                    f"signal may appear before later chunks finish (all layer "
-                    f"files are still written). Single-chunk runs are exact."
-                    f"[/yellow]"
-                )
-            try:
-                finalize_job_id = submit_script(
-                    finalize_script, dependency_job_id=str(job_ids[0])
-                )
-                console.print(
-                    f"[green]✓[/green] Manifest finalize: "
-                    f"[green]Job {finalize_job_id}[/green] "
-                    f"(depends on {job_ids[0]})\n"
-                )
-            except RuntimeError as exc:
-                console.print(
-                    f"[yellow]Warning: manifest finalize submission failed: "
-                    f"{exc}[/yellow]\n"
-                )
         else:
             # Checkpoint, manifest, and finalizer tasks are embedded in the
             # array job scripts — no separate sentinel job needed.
