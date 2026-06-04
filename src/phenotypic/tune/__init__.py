@@ -49,8 +49,9 @@ from ._engine import TuningEngine
 from ._evaluation import EvaluationResult, Evaluator, build_pipeline
 
 # --- Phase 1a: search space (domains + Knob/SearchSpace) ----------------------
-# --- Phase 4 chunk B: supervised (ground-truth) scorer + GT loader ------------
+# --- Phase 4 chunk B: supervised + composite scorers + GT loader --------------
 from ._scoring import (
+    CompositeScorer,
     GroundTruthMasks,
     QCScorer,
     ReferenceFreeScorer,
@@ -126,9 +127,10 @@ __all__ = [
     "QCScorer",
     # Phase 3 (chunk 3): reference-free objective + meta-validation gate
     "ReferenceFreeScorer",
-    # Phase 4 chunk B: supervised (ground-truth) scorer + GT loader
+    # Phase 4 chunk B: supervised + composite scorers + GT loader
     "GroundTruthMasks",
     "SupervisedScorer",
+    "CompositeScorer",
     # Phase 1c: evaluation
     "Evaluator",
     "EvaluationResult",
