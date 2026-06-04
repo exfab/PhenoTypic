@@ -55,7 +55,7 @@ class ImportanceReport(BaseModel):
 
 
 def compute_param_importance(
-    store: StudyStore, *, random_state: int = 0
+    store: StudyStore, *, random_state: int = 0, objective: str | None = None
 ) -> dict[str, float]:
     """Rank tuned parameters by importance against the objective (the dict view).
 
@@ -68,18 +68,22 @@ def compute_param_importance(
         store: The study store of completed trials.
         random_state: Seed for the forest + permutation (reproducibility); only
             used on the RandomForest fallback path.
+        objective: The named multi-objective to rank against (plan §0a sidecar).
+            ``None`` (default) ranks against ``Trial.score`` — the unchanged
+            single-objective path. A name ranks against
+            ``Trial.objectives[name]``, skipping trials that lack the objective.
 
     Returns:
         ``{param_key: importance}`` sorted descending. Empty when fewer than two
-        non-failed trials (nothing to fit).
+        usable trials (nothing to fit).
     """
     return compute_param_importance_report(
-        store, random_state=random_state
+        store, random_state=random_state, objective=objective
     ).importances
 
 
 def compute_param_importance_report(
-    store: StudyStore, *, random_state: int = 0
+    store: StudyStore, *, random_state: int = 0, objective: str | None = None
 ) -> ImportanceReport:
     """Rank parameters and record the method + interaction honesty flag.
 
@@ -87,59 +91,86 @@ def compute_param_importance_report(
     ``store.param_importances()`` (capability dispatch — never an ``isinstance``
     check). A non-empty result is the fANOVA path
     (``interactions_estimated=True``); ``None`` falls back to the homegrown
-    RandomForest + permutation estimate (``interactions_estimated=False``).
+    RandomForest + permutation estimate (``interactions_estimated=False``). A
+    **per-objective** request (``objective`` given) always takes the RF path: the
+    native importance models rank against the optimizer's scalar, not a named
+    objective from the multi-objective sidecar.
 
     Args:
         store: The study store of completed trials. Any object exposing
             ``param_importances()`` and ``trials`` satisfies the contract.
         random_state: Seed for the forest + permutation (RandomForest path).
+        objective: The named multi-objective to rank against (plan §0a sidecar).
+            ``None`` ranks against ``Trial.score`` and may use the native fANOVA
+            model; a name forces the RF path against ``Trial.objectives[name]``.
 
     Returns:
         An :class:`ImportanceReport` carrying the ranked importances, the
         ``method``, and the ``interactions_estimated`` flag.
     """
-    native = store.param_importances()
-    if native:
-        ranked = dict(
-            sorted(native.items(), key=lambda kv: kv[1], reverse=True)
-        )
-        return ImportanceReport(
-            importances=ranked,
-            method="fanova",
-            interactions_estimated=True,
-        )
+    # A per-objective request cannot use the native (scalar-targeted) model.
+    if objective is None:
+        native = store.param_importances()
+        if native:
+            ranked = dict(
+                sorted(native.items(), key=lambda kv: kv[1], reverse=True)
+            )
+            return ImportanceReport(
+                importances=ranked,
+                method="fanova",
+                interactions_estimated=True,
+            )
     return ImportanceReport(
-        importances=_rf_permutation_importance(store, random_state=random_state),
+        importances=_rf_permutation_importance(
+            store, random_state=random_state, objective=objective
+        ),
         method="rf-permutation",
         interactions_estimated=False,
     )
 
 
 def _rf_permutation_importance(
-    store: StudyStore, *, random_state: int = 0
+    store: StudyStore, *, random_state: int = 0, objective: str | None = None
 ) -> dict[str, float]:
     """The homegrown fallback: RandomForest + permutation importance.
 
-    Fits a ``RandomForestRegressor`` on the trials' (encoded) params → score and
-    runs ``permutation_importance``. Non-numeric params are one-hot encoded
-    (per-key prefix) and the encoded importances summed back to the original key;
-    absent conditional params fill to ``0``. Imports no optuna — the lazy-import
-    boundary holds on this path (screening-importance.md §1).
+    Fits a ``RandomForestRegressor`` on the trials' (encoded) params → target and
+    runs ``permutation_importance``. The target is ``Trial.score`` when
+    ``objective`` is ``None`` (single-objective), else ``Trial.objectives[name]``
+    over the trials that carry it (others are dropped). Non-numeric params are
+    one-hot encoded (per-key prefix) and the encoded importances summed back to
+    the original key; absent conditional params fill to ``0``. Imports no optuna —
+    the lazy-import boundary holds on this path (screening-importance.md §1).
 
     Args:
         store: The journal of completed trials.
         random_state: Seed for the forest + permutation (reproducibility).
+        objective: The named multi-objective to target, or ``None`` for the
+            scalar ``Trial.score`` (plan §0a sidecar).
 
     Returns:
         ``{param_key: importance}`` sorted descending. Empty when fewer than two
-        non-failed trials (nothing to fit).
+        usable trials (nothing to fit).
     """
     trials = [t for t in store.trials if not t.failed]
+    if objective is not None:
+        # Per-objective: keep only trials that carry the named objective.
+        trials = [
+            t
+            for t in trials
+            if t.objectives is not None and objective in t.objectives
+        ]
     if len(trials) < 2:
         return {}
 
     raw = pd.DataFrame([t.params for t in trials])
-    y = np.asarray([t.score for t in trials], dtype=float)
+    if objective is None:
+        y = np.asarray([t.score for t in trials], dtype=float)
+    else:
+        y = np.asarray(
+            [t.objectives[objective] for t in trials],  # type: ignore[index]
+            dtype=float,
+        )
     original_keys = list(raw.columns)
 
     numeric = raw.select_dtypes(include="number")
