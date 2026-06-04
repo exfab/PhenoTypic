@@ -514,35 +514,48 @@ def resolve_event_log_path(output_dir: Path) -> Path:
 
 
 def migrate_legacy_machine_state(output_dir: Path) -> bool:
-    """Move a pre-migration run's machine-state into ``.phenotypic/`` once.
+    """Move a pre-migration run's machine-state into ``.phenotypic/``.
 
-    If ``<output>/.phenotypic/`` does not yet exist but legacy machine-state
-    (``progress/``, ``processing_state.json``, ``processing_events.log``) is
-    present at the output root, move those into the cache dir so the run
-    proceeds coherently against a single location. Idempotent: a no-op once
-    ``.phenotypic/`` exists or when no legacy state is present.
+    If legacy machine-state (``progress/``, ``processing_state.json``,
+    ``processing_events.log``) is present at the output root, move each artifact
+    into the ``.phenotypic/`` cache so the run proceeds coherently against a
+    single location. A no-op when no legacy state is present or everything is
+    already migrated.
+
+    Robust to interruption and concurrency (the SLURM array case): each artifact
+    is moved only when its source still exists and its destination does not, so a
+    migration interrupted mid-move *completes* on the next call rather than
+    leaving split state; and a lost move race (a concurrent worker moved the
+    artifact first) is ignored rather than crashing. Keying per-artifact instead
+    of on ``cache.exists()`` is what makes both safe.
 
     Returns:
-        ``True`` if anything was moved, else ``False``.
+        ``True`` if this call moved anything, else ``False``.
     """
     import shutil
 
     cache = phenotypic_cache_dir(output_dir)
-    if cache.exists():
-        return False
     legacy_progress = _legacy_progress_dir(output_dir)
     legacy_state = _legacy_processing_state_path(output_dir)
     legacy_events = output_dir / PROCESSING_EVENTS_LOG
     if not (legacy_progress.exists() or legacy_state.exists() or legacy_events.exists()):
         return False
     cache.mkdir(parents=True, exist_ok=True)
-    if legacy_progress.exists():
-        shutil.move(str(legacy_progress), str(cache / DIR_PROGRESS))
-    if legacy_state.exists():
-        shutil.move(str(legacy_state), str(cache / PROCESSING_STATE_JSON))
-    if legacy_events.exists():
-        shutil.move(str(legacy_events), str(cache / PROCESSING_EVENTS_LOG))
-    return True
+    moved = False
+    for src, dst in (
+        (legacy_progress, cache / DIR_PROGRESS),
+        (legacy_state, cache / PROCESSING_STATE_JSON),
+        (legacy_events, cache / PROCESSING_EVENTS_LOG),
+    ):
+        if src.exists() and not dst.exists():
+            try:
+                shutil.move(str(src), str(dst))
+                moved = True
+            except (FileNotFoundError, shutil.Error):
+                # Lost a migration race with a concurrent worker; the winner is
+                # moving (or has moved) this artifact — safe to skip.
+                pass
+    return moved
 
 
 def master_measurements_csv_path(output_dir: Path) -> Path:
@@ -755,9 +768,12 @@ def qc_review_state_path(output_dir: Path) -> Path:
 
 
 def read_run_manifest(output_dir: Path) -> Optional[dict]:
-    """Read ``<output>/progress/manifest.json`` if present.
+    """Read the run manifest if present, resolving legacy layouts.
 
-    Replaces 4 inline ``json.loads(manifest_path.read_text())`` blocks.
+    Reads ``<output>/.phenotypic/progress/manifest.json``, falling back to the
+    pre-migration ``<output>/progress/manifest.json`` for legacy runs (via
+    :func:`resolve_manifest_json_path`). Replaces 4 inline
+    ``json.loads(manifest_path.read_text())`` blocks.
 
     Args:
         output_dir: Run output directory containing ``progress/``.
@@ -766,7 +782,7 @@ def read_run_manifest(output_dir: Path) -> Optional[dict]:
         Parsed manifest dict, or :data:`None` when the file is missing
         or unparseable (callers can decide whether absence is fatal).
     """
-    path = manifest_json_path(output_dir)
+    path = resolve_manifest_json_path(output_dir)
     if not path.exists():
         return None
     try:

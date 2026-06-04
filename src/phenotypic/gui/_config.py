@@ -36,9 +36,12 @@ These are bare *filenames*, not paths. The user-facing run artifacts
 under ``<output>/deliverables/`` — ``DELIVERABLES_DIRNAME`` (= ``"deliverables"``,
 backed by ``DIR_DELIVERABLES`` in :mod:`phenotypic.tools_`). Join them via the
 ``phenotypic.tools_`` path helpers (``deliverables_dir(output)``,
-``master_measurements_parquet_path(output)``, …). ``RESULTS_DIRNAME`` /
-``PROGRESS_DIRNAME`` / ``QC_DIRNAME`` and ``processing_state.json`` are *not*
-deliverables and stay at the output-dir root.
+``master_measurements_parquet_path(output)``, …). ``RESULTS_DIRNAME`` and
+``QC_DIRNAME`` are *not* deliverables and stay at the output-dir root; the
+machine-state sidecars ``PROGRESS_DIRNAME`` (``progress/``) and
+``processing_state.json`` now live under the hidden ``<output>/.phenotypic/``
+cache (``PHENOTYPIC_CACHE_DIRNAME``), resolved for legacy runs via
+``resolve_manifest_json_path``.
 """
 from __future__ import annotations
 

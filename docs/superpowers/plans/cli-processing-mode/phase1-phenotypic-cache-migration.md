@@ -694,3 +694,16 @@ git commit -m "test: update root-level state-path assertions to .phenotypic layo
 - **Spec coverage:** D1/D7 (migrate progress + state + events) → Tasks 1–4. D6 (re-root + read-fallback) → Task 1 resolvers + migrator. D11 (sweep excluded) → grep-gate allowlist. D14 (event log sibling) → Task 1 + leave `checkpoint_handler:200`. §5.2 GUI reads → Task 5. Back-compat resume/discovery → Tasks 2,5,6.
 - **Placeholder scan:** none — every code step shows the code; mechanical edits are exact old→new with a verifying grep gate.
 - **Type consistency:** helper names used downstream (`progress_dir`, `processing_state_path`, `event_log_path`, `resolve_*`, `migrate_legacy_machine_state`) match Task 1 definitions and the existing signatures (`output_dir: Path`).
+
+---
+
+## Spec reconciliation (post-implementation review)
+
+Recorded deviations from the literal plan, accepted during the Phase 1 review gate (both functionally correct, D14/§5.2 semantics preserved):
+
+1. **`resolve_event_log_path()` helper added** (`_io_constants.py`). The plan prescribed inlining `resolve_progress_dir(output_dir).parent / PROCESSING_EVENTS_LOG` at each event-log read site — but that form contains `/ PROCESSING_EVENTS_LOG`, which the grep-gate pattern flags as an offender at every call site (the prescribed code and the prescribed gate were mutually contradictory). Extracting the join into a read-only resolver in `_io_constants.py` (where the gate allows it) keeps every consumer clean and preserves D14 exactly (event log = sibling of `progress/`, legacy-aware).
+2. **`.phenotypic` hidden-dir skip is structural, not an enumerated set.** §5.2 said "add `.phenotypic` to the skip set alongside `.phenotypic-gui`/`.gui_log`", but no literal skip set exists — GUI run discovery skips any dot-prefixed child via `_sandbox.py`'s generic `name.startswith(".")` rule, so `.phenotypic` is skipped automatically. `_config.py` exposes `PHENOTYPIC_CACHE_DIRNAME` as documentation.
+
+Post-review hardening (review-gate fixes, committed after Task 7):
+3. **`migrate_legacy_machine_state` made resumable + concurrency-tolerant.** Keyed per-artifact (`src.exists() and not dst.exists()`) with race-tolerant moves instead of an early `cache.exists()` return, so a migration interrupted mid-move completes on the next call and concurrent SLURM workers don't crash on an already-moved source.
+4. **`read_run_manifest` now uses `resolve_manifest_json_path`** (was `manifest_json_path`) so the public reader finds legacy-layout manifests; stale `_config.py` machine-state-location docstring corrected.

@@ -723,6 +723,41 @@ class TestMigrateLegacyMachineState:
 
         assert migrate_legacy_machine_state(tmp_path) is False
 
+    def test_completes_interrupted_partial_migration(self, tmp_path: Path) -> None:
+        """A migration interrupted mid-move (``.phenotypic/`` exists with only
+        some artifacts inside, the rest still at the root) completes on the next
+        call instead of being skipped — guards against split state after a
+        SLURM preemption."""
+        from phenotypic.tools_ import (
+            migrate_legacy_machine_state,
+            progress_dir,
+            processing_state_path,
+            event_log_path,
+        )
+
+        out = tmp_path
+        # progress/ already moved; state + events still at the legacy root.
+        progress_dir(out).mkdir(parents=True)
+        (out / "processing_state.json").write_text("{}", encoding="utf-8")
+        (out / "processing_events.log").write_text("x\n", encoding="utf-8")
+        assert migrate_legacy_machine_state(out) is True
+        assert processing_state_path(out).is_file()
+        assert event_log_path(out).is_file()
+        assert not (out / "processing_state.json").exists()
+        assert not (out / "processing_events.log").exists()
+
+    def test_partial_present_moves_only_what_exists(self, tmp_path: Path) -> None:
+        """Only the legacy artifacts that exist are moved (e.g. an event log but
+        no state file), and a re-run is then a no-op."""
+        from phenotypic.tools_ import migrate_legacy_machine_state, event_log_path
+
+        out = tmp_path
+        (out / "processing_events.log").write_text("x\n", encoding="utf-8")
+        assert migrate_legacy_machine_state(out) is True
+        assert event_log_path(out).is_file()
+        assert not (out / "processing_events.log").exists()
+        assert migrate_legacy_machine_state(out) is False
+
 
 # ---------------------------------------------------------------------------
 # Grep gate: no hand-joined machine-state paths outside _io_constants
