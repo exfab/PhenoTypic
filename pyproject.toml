@@ -186,6 +186,12 @@ required-environments = [
     "sys_platform == 'linux' and platform_machine == 'x86_64'",
     "sys_platform == 'win32' and platform_machine == 'x86_64'",
 ]
+# Cap the Qt runtime on Linux to the last release that still ships a
+# manylinux_2_28 wheel. PyQt6-Qt6 6.10+ require glibc 2.34, but the UCR
+# HPCC nodes (RHEL 8) only have glibc 2.28, so newer wheels can't install.
+constraint-dependencies = [
+    "pyqt6-qt6<=6.9.0; sys_platform == 'linux'",
+]
 
 [tool.ruff]
 line-length = 79
