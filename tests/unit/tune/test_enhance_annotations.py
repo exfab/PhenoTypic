@@ -19,15 +19,20 @@ from pydantic import ValidationError
 from phenotypic import ImagePipeline
 from phenotypic.enhance import (
     BM3DDenoiser,
+    ContrastStretching,
     EnhanceBlobs,
     EnhanceFeatures,
     EnhanceLocalContrast,
     FlattenIllumination,
     GaussianBlur,
+    GrayOpening,
     LocalEdgeDenoise,
     MedianFilter,
+    NonLocalMeansDenoiser,
     SharpenEdgeGauss,
     SubtractGaussian,
+    SubtractOpening,
+    SubtractRollingBall,
 )
 from phenotypic.tune import FloatRange, IntRange, infer_search_space
 
@@ -67,6 +72,13 @@ def _excluded(op, field_name: str):
         (EnhanceBlobs(), "min_radius", FloatRange, (1.0, 5.0)),
         (EnhanceBlobs(), "max_radius", FloatRange, (8.0, 50.0)),
         (EnhanceBlobs(), "num_scales", IntRange, (4, 20)),
+        (NonLocalMeansDenoiser(), "patch_size", IntRange, (5, 15)),
+        (NonLocalMeansDenoiser(), "h", FloatRange, (0.1, 2.0, True)),
+        (GrayOpening(), "width", IntRange, (3, 15)),
+        (SubtractOpening(), "width", IntRange, (31, 101)),
+        (ContrastStretching(), "lower_percentile", IntRange, (1, 5)),
+        (ContrastStretching(), "upper_percentile", IntRange, (95, 99)),
+        (SubtractRollingBall(), "radius", IntRange, (50, 200, True)),
     ],
 )
 def test_tune_spec_resolves_tier1(op, field_name, expected_domain, expected_bounds):

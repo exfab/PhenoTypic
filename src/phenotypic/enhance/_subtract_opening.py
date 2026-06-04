@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Literal, TYPE_CHECKING
+from typing import Annotated, Literal, TYPE_CHECKING
 
 import cv2
 
@@ -9,6 +9,7 @@ if TYPE_CHECKING:
 
 from phenotypic.abc_ import ImageEnhancer
 from phenotypic.tools_.mixin import FootprintMixin
+from phenotypic.tools_.typing_ import TuneSpec
 
 
 class SubtractOpening(ImageEnhancer, FootprintMixin):
@@ -61,8 +62,8 @@ class SubtractOpening(ImageEnhancer, FootprintMixin):
     """
 
     shape: Literal["square", "diamond", "disk"] = "disk"
-    width: int = 51
-    n_iter: int = 1
+    width: Annotated[int, TuneSpec(31, 101, step=2)] = 51
+    n_iter: Annotated[int, TuneSpec(1, 3)] = 1
 
     def _operate(self, image: Image) -> Image:
         image.detect_mat[:] = cv2.morphologyEx(

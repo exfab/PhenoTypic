@@ -17,6 +17,7 @@ from phenotypic.detect import (
     FilamentousFungiDetector,
     InoculumDetector,
     RoundPeaksDetector,
+    SinePeakDetector,
     WatershedDetector,
 )
 from phenotypic.tune import Categorical, FloatRange, IntRange, infer_search_space
@@ -51,6 +52,9 @@ def _excluded(op, field_name: str):
         (InoculumDetector(), "max_diameter", FloatRange, (50.0, 300.0, True)),
         (FilamentousFungiDetector(), "max_colony_radius_px", FloatRange, (50.0, 500.0, True)),
         (FilamentousFungiDetector(), "min_branch_width_px", IntRange, (2, 10)),
+        (SinePeakDetector(), "footprint_width", IntRange, (4, 20)),
+        (SinePeakDetector(), "noise_radius", IntRange, (1, 3)),
+        (SinePeakDetector(), "correlation_threshold", FloatRange, (0.1, 0.5)),
     ],
 )
 def test_tune_spec_resolves_tier1(op, field_name, expected_domain, expected_bounds):
@@ -134,6 +138,8 @@ def test_tunespec_is_pure_metadata(factory):
         lambda: CannyDetector(sigma=0.0),
         lambda: RoundPeaksDetector(footprint_width=0),
         lambda: RoundPeaksDetector(noise_radius=0),
+        lambda: SinePeakDetector(footprint_width=0),
+        lambda: SinePeakDetector(noise_radius=0),
     ],
 )
 def test_invalid_value_still_raises_validation_error(factory):

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, Annotated, ClassVar
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -9,6 +9,7 @@ from skimage.restoration import denoise_nl_means
 
 from ..abc_ import ImageDenoiser
 from ..tools_.mixin import _GATSupportMixin
+from ..tools_.typing_ import TuneSpec
 
 
 class NonLocalMeansDenoiser(_GATSupportMixin, ImageDenoiser):
@@ -77,11 +78,11 @@ class NonLocalMeansDenoiser(_GATSupportMixin, ImageDenoiser):
     _GAT_NOISE_PARAMS: ClassVar[dict[str, float]] = {"h": 1.0, "sigma": 1.0}
     _GAT_DEFER_ATTRS: ClassVar[tuple[str, ...]] = ()
 
-    patch_size: int = 5
-    search_dist: int = 11
-    h: float = 0.5
+    patch_size: Annotated[int, TuneSpec(5, 15, step=2)] = 5
+    search_dist: Annotated[int, TuneSpec(5, 21, step=2)] = 11
+    h: Annotated[float, TuneSpec(0.1, 2.0, log=True)] = 0.5
     fast_mode: bool = False
-    sigma: float = 0.0
+    sigma: Annotated[float, TuneSpec(tunable=False)] = 0.0
 
     def _operate(self, image: Image) -> Image:
         """Apply non-local means denoising to detection matrix."""
