@@ -102,6 +102,9 @@ def migrate_manifest_to_spec(manifest: dict, *, scorer: Scorer) -> TuningSpec:
                 continue  # constant → not a knob
             knob_kwargs: dict[str, Any] = dict(
                 key=f"{position}.{fname}",
+                # sorted by repr only for a deterministic, stable choice order
+                # across heterogeneous types; the order is arbitrary (not
+                # semantic) — the golden lock compares grids as a set.
                 domain=Categorical(choices=tuple(sorted(values, key=repr))),
             )
             if optional:

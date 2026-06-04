@@ -61,17 +61,24 @@ class TuningEngine:
                 break
             strategy.suggest()
 
-        failures = 0
+        # Seed both budget counters from the store so resume is symmetric:
+        # n_trials counts all recorded trials, max_failures counts recorded
+        # failures (else the failure safety-valve resets to 0 on every resume).
+        failures = sum(1 for t in self._store.trials if t.failed)
         number = completed
+        budget = spec.budget
         while not strategy.is_exhausted():
-            if spec.budget.n_trials is not None and number >= spec.budget.n_trials:
+            if budget.n_trials is not None and number >= budget.n_trials:
+                break
+            # Checked at the top (not only after a failing trial) so a run
+            # resumed at/over the failure cap stops immediately.
+            if budget.max_failures is not None and failures >= budget.max_failures:
                 break
             params, _channel = strategy.suggest()
             params = dict(params)
             result = spec.evaluator.evaluate(
                 spec.pipeline, spec.scorer, params, images
             )
-            failed = result.failed  # explicit flag set by the Evaluator, not inferred
             self._store.append(
                 Trial(
                     number=number,
@@ -79,17 +86,12 @@ class TuningEngine:
                     score=result.score,
                     terms=result.terms,
                     n_images=result.n_images,
-                    failed=failed,
+                    failed=result.failed,  # explicit flag from the Evaluator
                 )
             )
             strategy.register_result(params, result)
             number += 1
-            if failed:
+            if result.failed:
                 failures += 1
-                if (
-                    spec.budget.max_failures is not None
-                    and failures >= spec.budget.max_failures
-                ):
-                    break
 
         return self._store.best()

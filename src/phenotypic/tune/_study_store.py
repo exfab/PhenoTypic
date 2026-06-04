@@ -68,9 +68,13 @@ class StudyStore:
             return None
         return max(valid, key=lambda t: t.score)
 
+    #: Stable column order for the trials frame (explicit so an empty store
+    #: still writes a valid parquet schema rather than a zero-column frame).
+    _COLUMNS = ["number", "score", "n_images", "failed", "params_json", "terms_json"]
+
     def to_dataframe(self) -> pd.DataFrame:
         """One row per trial; ``params``/``terms`` serialized as JSON strings."""
-        return pd.DataFrame(
+        rows = [
             {
                 "number": t.number,
                 "score": t.score,
@@ -80,7 +84,8 @@ class StudyStore:
                 "terms_json": json.dumps(t.terms, sort_keys=True),
             }
             for t in self._trials
-        )
+        ]
+        return pd.DataFrame(rows, columns=self._COLUMNS)
 
     def to_parquet(self, path: Path) -> None:
         """Write the journal to ``path`` (creating parent dirs)."""
