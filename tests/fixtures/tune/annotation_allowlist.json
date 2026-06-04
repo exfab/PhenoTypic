@@ -3,11 +3,6 @@
   "allowlist": [
     "BayesShrinkEnhancer.sigma",
     "BayesShrinkEnhancer.wavelet_levels",
-    "CannyDetector.connectivity",
-    "CannyDetector.high_threshold",
-    "CannyDetector.low_threshold",
-    "CannyDetector.min_size",
-    "CannyDetector.sigma",
     "ChanVeseDetector.connectivity",
     "ChanVeseDetector.dt",
     "ChanVeseDetector.lambda1",
