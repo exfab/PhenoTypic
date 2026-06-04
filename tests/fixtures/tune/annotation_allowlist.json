@@ -1,8 +1,6 @@
 {
   "_comment": "Allowlist of numeric-tunable detect/+enhance/ fields not yet annotated with a TuneSpec, a Field bound, or TuneSpec(tunable=False). The coverage gate (test_annotation_coverage.py) fails if the actual uncovered set GROWS beyond this list, and a companion test fails if an allowlisted field becomes covered (forcing each migration wave to delete its entries). Shrinks to empty as the workstream completes.",
   "allowlist": [
-    "BM3DDenoiser.block_size",
-    "BM3DDenoiser.sigma_psd",
     "BayesShrinkEnhancer.sigma",
     "BayesShrinkEnhancer.wavelet_levels",
     "CannyDetector.connectivity",
