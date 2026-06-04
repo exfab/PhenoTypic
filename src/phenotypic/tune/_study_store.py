@@ -25,9 +25,15 @@ class Trial(BaseModel):
     Args:
         number: The zero-based trial index in journaling order.
         params: The sampled combo (``{root-relative-key: value}``).
-        score: The finalized scalar objective (higher = better).
+        score: The finalized scalar objective (higher = better). For a
+            multi-objective trial this is the scalar projection of
+            ``objectives`` (``mean(objectives.values())``).
         terms: The robust-aggregated per-term scores backing ``score``.
         n_images: Number of calibration images evaluated.
+        objectives: The named multi-objective values (plan §0a sidecar), or
+            ``None`` for a single-objective trial. Carried from
+            ``EvaluationResult.objectives``; persisted as the ``objectives_json``
+            journal column. ``None`` for every legacy (pre-sidecar) trial.
         failed: ``True`` when the candidate raised and scored the failure floor.
         pruned: ``True`` when the rung ladder early-stopped this candidate.
             Distinct from ``failed``: pruned trials ran cleanly on a partial set
@@ -41,6 +47,7 @@ class Trial(BaseModel):
     score: float
     terms: dict[str, float]
     n_images: int
+    objectives: Optional[dict[str, float]] = None
     failed: bool = False
     pruned: bool = False
 
@@ -100,13 +107,19 @@ class JournalStudyStore:
 
     #: Stable column order for the trials frame (explicit so an empty store
     #: still writes a valid parquet schema rather than a zero-column frame).
+    #: ``objectives_json`` is the multi-objective sidecar column (plan §0a):
+    #: ``null`` for single-objective trials, a JSON dict for multi-objective ones.
     _COLUMNS = [
         "number", "score", "n_images", "failed", "pruned",
-        "params_json", "terms_json",
+        "params_json", "terms_json", "objectives_json",
     ]
 
     def to_dataframe(self) -> pd.DataFrame:
-        """One row per trial; ``params``/``terms`` serialized as JSON strings."""
+        """One row per trial; ``params``/``terms``/``objectives`` as JSON strings.
+
+        ``objectives_json`` is ``None`` for single-objective trials (the column
+        holds ``null``) and ``json.dumps(t.objectives)`` for multi-objective ones.
+        """
         rows = [
             {
                 "number": t.number,
@@ -116,6 +129,11 @@ class JournalStudyStore:
                 "pruned": t.pruned,
                 "params_json": json.dumps(t.params, sort_keys=True),
                 "terms_json": json.dumps(t.terms, sort_keys=True),
+                "objectives_json": (
+                    json.dumps(t.objectives, sort_keys=True)
+                    if t.objectives
+                    else None
+                ),
             }
             for t in self._trials
         ]
@@ -128,7 +146,13 @@ class JournalStudyStore:
 
     @classmethod
     def from_parquet(cls, path: Path) -> "JournalStudyStore":
-        """Reload a journal previously written by :meth:`to_parquet`."""
+        """Reload a journal previously written by :meth:`to_parquet`.
+
+        Reads ``objectives_json`` defensively: a legacy Phase-1/2 parquet
+        predating the multi-objective sidecar (plan §0a) has no such column, and a
+        single-objective trial stores ``null`` — both resolve to
+        ``objectives=None`` so older journals still load.
+        """
         df = pd.read_parquet(path)
         trials = [
             Trial(
@@ -137,6 +161,7 @@ class JournalStudyStore:
                 score=float(row["score"]),
                 terms=json.loads(str(row["terms_json"])),
                 n_images=int(row["n_images"]),
+                objectives=cls._parse_objectives(row.get("objectives_json")),
                 failed=bool(row["failed"]),
                 # Tolerate pre-pruned-column journals (default to not-pruned).
                 pruned=bool(row.get("pruned", False)),
@@ -144,6 +169,26 @@ class JournalStudyStore:
             for row in df.to_dict(orient="records")
         ]
         return cls(trials)
+
+    @staticmethod
+    def _parse_objectives(raw: Any) -> Optional[dict[str, float]]:
+        """Decode an ``objectives_json`` cell into a dict, or ``None``.
+
+        Tolerates the three back-compat shapes: a missing column (``raw`` is
+        ``None`` via ``row.get``), a ``null``/``NaN`` cell (single-objective
+        trial), and a JSON dict string (multi-objective trial).
+
+        Args:
+            raw: The raw ``objectives_json`` cell — ``None``, a pandas ``NaN``, or
+                a JSON dict string.
+
+        Returns:
+            The decoded ``{objective: value}`` dict, or ``None`` when there is no
+            multi-objective payload.
+        """
+        if raw is None or (isinstance(raw, float) and pd.isna(raw)):
+            return None
+        return json.loads(str(raw))
 
 
 #: Back-compat alias: ``StudyStore`` historically named the concrete journal.
