@@ -1,0 +1,24 @@
+{
+  "version": "0.16.0",
+  "name": "f710f89b-ea80-449b-a3a0-46a1cd62f8e5",
+  "desc": null,
+  "reset": false,
+  "pipe_cfgs": {
+    "CannyDetector": {
+      "class": "CannyDetector",
+      "params": {
+        "sigma": 0.5,
+        "low_threshold": 0.1,
+        "high_threshold": 0.2,
+        "use_quantiles": true,
+        "min_size": 1,
+        "invert_edges": true,
+        "connectivity": 1
+      }
+    }
+  },
+  "meas": {},
+  "post": {},
+  "filters": {},
+  "model": null
+}

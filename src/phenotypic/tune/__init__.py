@@ -36,9 +36,9 @@ Infer a candidate space from a configured pipeline:
     >>> pipe = ImagePipeline(ops=[GaussianBlur(sigma=2.0), OtsuDetector()])
     >>> proposal = infer_search_space(pipe)
     >>> next(k.domain.high for k in proposal.knobs if k.key == "0.sigma")
-    8.0
-    >>> proposal.needs_review
-    True
+    5.0
+    >>> proposal.needs_review  # every knob fully resolved (sigma via TuneSpec)
+    False
 """
 from __future__ import annotations
 

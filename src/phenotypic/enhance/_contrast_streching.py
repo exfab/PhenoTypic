@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -9,6 +9,7 @@ import numpy as np
 from skimage.exposure import rescale_intensity
 
 from ..abc_ import ImageEnhancer
+from ..tools_.typing_ import TuneSpec
 
 
 class ContrastStretching(ImageEnhancer):
@@ -46,8 +47,8 @@ class ContrastStretching(ImageEnhancer):
         into the pipeline model.
     """
 
-    lower_percentile: int = 2
-    upper_percentile: int = 98
+    lower_percentile: Annotated[int, TuneSpec(1, 5)] = 2
+    upper_percentile: Annotated[int, TuneSpec(95, 99)] = 98
 
     def _operate(self, image: Image) -> Image:
         p_lower, p_upper = np.percentile(

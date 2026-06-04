@@ -1,14 +1,15 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
-from pydantic import field_validator
+from pydantic import Field
 from skimage.filters import unsharp_mask
 
 from ..abc_ import ImageEnhancer
+from ..tools_.typing_ import TuneSpec
 
 
 class SharpenEdgeGauss(ImageEnhancer):
@@ -62,26 +63,10 @@ class SharpenEdgeGauss(ImageEnhancer):
         unsharp masking and sharpening strategies.
     """
 
-    radius: float = 2.0
-    amount: float = 1.0
+    radius: Annotated[float, TuneSpec(0.5, 15.0, log=True)] = Field(2.0, gt=0.0)
+    amount: Annotated[float, TuneSpec(0.3, 2.0)] = 1.0
     preserve_range: bool = False
-    n_iter: int = 1
-
-    @field_validator("radius")
-    @classmethod
-    def _check_radius(cls, radius: float) -> float:
-        """Require a positive blur radius (matches the legacy guard)."""
-        if radius <= 0:
-            raise ValueError("width must be > 0")
-        return radius
-
-    @field_validator("n_iter")
-    @classmethod
-    def _check_n_iter(cls, n_iter: int) -> int:
-        """Require at least one sharpening pass (matches the legacy guard)."""
-        if n_iter < 1:
-            raise ValueError("n_iter must be >= 1")
-        return n_iter
+    n_iter: Annotated[int, TuneSpec(1, 3)] = Field(1, ge=1)
 
     def _operate(self, image: Image) -> Image:
         """Apply unsharp masking to enhance colony edges in the detection matrix channel."""

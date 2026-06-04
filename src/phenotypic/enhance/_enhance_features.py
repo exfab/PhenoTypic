@@ -10,13 +10,14 @@ References:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, List, Literal
+from typing import TYPE_CHECKING, Annotated, List, Literal
 
 import numpy as np
 from numpy.fft import fft2, ifft2, ifftshift
-from pydantic import field_validator
+from pydantic import Field
 
 from ..abc_ import ImageEnhancer
+from ..tools_.typing_ import TuneSpec
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -108,84 +109,16 @@ class EnhanceFeatures(ImageEnhancer):
         phase congruency and the Local Energy Model.
     """
 
-    n_scale: int = 4
-    n_orient: int = 6
-    min_wavelength: float = 3.0
-    mult: float = 2.1
-    sigma_onf: float = 0.55
-    k: float = 2.0
-    cutoff: float = 0.5
-    g: float = 10.0
-    noise_method: float = -1.0
+    n_scale: Annotated[int, TuneSpec(3, 6)] = Field(4, ge=1)
+    n_orient: Annotated[int, TuneSpec(4, 8)] = Field(6, ge=1)
+    min_wavelength: Annotated[float, TuneSpec(2.0, 10.0)] = Field(3.0, ge=2.0)
+    mult: Annotated[float, TuneSpec(1.5, 3.0)] = Field(2.1, gt=1.0)
+    sigma_onf: Annotated[float, TuneSpec(0.1, 1.0)] = Field(0.55, ge=0.1, le=1.0)
+    k: Annotated[float, TuneSpec(0.0, 20.0)] = Field(2.0, ge=0.0)
+    cutoff: Annotated[float, TuneSpec(0.3, 0.7)] = Field(0.5, gt=0.0, lt=1.0)
+    g: Annotated[float, TuneSpec(2.0, 20.0)] = Field(10.0, gt=0.0)
+    noise_method: Annotated[float, TuneSpec(tunable=False)] = -1.0
     output: Literal["M", "m", "pc_sum"] = "pc_sum"
-
-    @field_validator("n_scale")
-    @classmethod
-    def _check_n_scale(cls, n_scale: int) -> int:
-        """Require at least one wavelet scale (matches the legacy guard)."""
-        if n_scale < 1:
-            raise ValueError(f"n_scale must be >= 1, got {n_scale}")
-        return n_scale
-
-    @field_validator("n_orient")
-    @classmethod
-    def _check_n_orient(cls, n_orient: int) -> int:
-        """Require at least one filter orientation (matches the legacy guard)."""
-        if n_orient < 1:
-            raise ValueError(f"n_orient must be >= 1, got {n_orient}")
-        return n_orient
-
-    @field_validator("min_wavelength")
-    @classmethod
-    def _check_min_wavelength(cls, min_wavelength: float) -> float:
-        """Require a minimum wavelength of at least 2 (matches the legacy guard)."""
-        if min_wavelength < 2:
-            raise ValueError(
-                f"min_wavelength must be >= 2, got {min_wavelength}"
-            )
-        return min_wavelength
-
-    @field_validator("mult")
-    @classmethod
-    def _check_mult(cls, mult: float) -> float:
-        """Require a wavelength scaling factor > 1 (matches the legacy guard)."""
-        if mult <= 1:
-            raise ValueError(f"mult must be > 1, got {mult}")
-        return mult
-
-    @field_validator("sigma_onf")
-    @classmethod
-    def _check_sigma_onf(cls, sigma_onf: float) -> float:
-        """Require ``sigma_onf`` within [0.1, 1.0] (matches the legacy guard)."""
-        if not 0.1 <= sigma_onf <= 1.0:
-            raise ValueError(
-                f"sigma_onf must be in [0.1, 1.0], got {sigma_onf}"
-            )
-        return sigma_onf
-
-    @field_validator("k")
-    @classmethod
-    def _check_k(cls, k: float) -> float:
-        """Require a non-negative noise multiplier (matches the legacy guard)."""
-        if k < 0:
-            raise ValueError(f"k must be >= 0, got {k}")
-        return k
-
-    @field_validator("cutoff")
-    @classmethod
-    def _check_cutoff(cls, cutoff: float) -> float:
-        """Require ``cutoff`` within (0, 1) (matches the legacy guard)."""
-        if not 0 < cutoff < 1:
-            raise ValueError(f"cutoff must be in (0, 1), got {cutoff}")
-        return cutoff
-
-    @field_validator("g")
-    @classmethod
-    def _check_g(cls, g: float) -> float:
-        """Require a positive sigmoid sharpness (matches the legacy guard)."""
-        if g <= 0:
-            raise ValueError(f"g must be > 0, got {g}")
-        return g
 
     def _operate(self, image: Image) -> Image:
         """Apply phase congruency enhancement to the detection matrix channel."""

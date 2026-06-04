@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -8,7 +8,7 @@ if TYPE_CHECKING:
 from skimage.restoration import rolling_ball
 
 from phenotypic.abc_ import ImageEnhancer
-from phenotypic.tools_.typing_ import NdArrayField
+from phenotypic.tools_.typing_ import NdArrayField, TuneSpec
 
 
 class SubtractRollingBall(ImageEnhancer):
@@ -57,7 +57,7 @@ class SubtractRollingBall(ImageEnhancer):
         rolling-ball and other illumination correction strategies.
     """
 
-    radius: int = 100
+    radius: Annotated[int, TuneSpec(50, 200, log=True)] = 100
     kernel: NdArrayField | None = None
     nansafe: bool = False
 

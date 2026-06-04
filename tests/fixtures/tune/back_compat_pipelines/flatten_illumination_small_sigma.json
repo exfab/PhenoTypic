@@ -1,0 +1,28 @@
+{
+  "version": "0.16.0",
+  "name": "991a9e06-28a5-4cc3-977c-9415e820b117",
+  "desc": null,
+  "reset": false,
+  "pipe_cfgs": {
+    "FlattenIllumination": {
+      "class": "FlattenIllumination",
+      "params": {
+        "sigma": 40.0,
+        "gamma_low": 0.5,
+        "gamma_high": 1.5,
+        "eps": 1e-06
+      }
+    },
+    "OtsuDetector": {
+      "class": "OtsuDetector",
+      "params": {
+        "ignore_zeros": false,
+        "ignore_borders": true
+      }
+    }
+  },
+  "meas": {},
+  "post": {},
+  "filters": {},
+  "model": null
+}

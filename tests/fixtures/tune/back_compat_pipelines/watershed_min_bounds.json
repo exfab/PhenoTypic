@@ -1,0 +1,23 @@
+{
+  "version": "0.16.0",
+  "name": "bce8fae2-c5e2-4a9d-9250-aa79bffb3115",
+  "desc": null,
+  "reset": false,
+  "pipe_cfgs": {
+    "WatershedDetector": {
+      "class": "WatershedDetector",
+      "params": {
+        "footprint": null,
+        "min_size": 1,
+        "compactness": 0.0,
+        "connectivity": 1,
+        "relabel": true,
+        "ignore_zeros": false
+      }
+    }
+  },
+  "meas": {},
+  "post": {},
+  "filters": {},
+  "model": null
+}
