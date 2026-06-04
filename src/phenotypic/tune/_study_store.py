@@ -93,13 +93,13 @@ class StudyStore:
         df = pd.read_parquet(path)
         trials = [
             Trial(
-                number=int(row.number),
-                params=json.loads(row.params_json),
-                score=float(row.score),
-                terms=json.loads(row.terms_json),
-                n_images=int(row.n_images),
-                failed=bool(row.failed),
+                number=int(row["number"]),
+                params=json.loads(str(row["params_json"])),
+                score=float(row["score"]),
+                terms=json.loads(str(row["terms_json"])),
+                n_images=int(row["n_images"]),
+                failed=bool(row["failed"]),
             )
-            for row in df.itertuples(index=False)
+            for row in df.to_dict(orient="records")
         ]
         return cls(trials)
