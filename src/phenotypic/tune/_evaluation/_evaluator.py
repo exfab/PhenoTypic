@@ -13,6 +13,7 @@ import numpy as np
 from pydantic import BaseModel, ConfigDict
 
 from .._scoring._scorer import Scorer
+from .._strategies._pruning import NoOpChannel, PruningChannel
 from ._builder import build_pipeline
 
 
@@ -77,6 +78,8 @@ class Evaluator(BaseModel):
         scorer: Scorer,
         params: dict[str, Any],
         images: list,
+        *,
+        channel: PruningChannel = NoOpChannel(),
     ) -> EvaluationResult:
         """Build, score, robust-aggregate, and finalize one candidate.
 
@@ -85,6 +88,10 @@ class Evaluator(BaseModel):
             scorer: The objective.
             params: The sampled combo (``{root-relative-key: value}``).
             images: The calibration images (must be non-empty).
+            channel: The pruning channel (default :class:`NoOpChannel`, which
+                never prunes). ``evaluate`` reports its running aggregate to
+                the channel and checks ``should_prune`` between rungs; with the
+                no-op default the score is identical to a single full pass.
 
         Returns:
             The candidate's :class:`EvaluationResult`.
@@ -119,6 +126,10 @@ class Evaluator(BaseModel):
             for term, values in per_term.items()
         }
         score = float(scorer.finalize(aggregated))
+        # Report the (full-set) running aggregate so a channel observes progress;
+        # the no-op default ignores it. The rung ladder (B3) refines this into a
+        # per-rung report + should_prune check.
+        channel.report(score, len(images))
         return EvaluationResult(
             score=score, terms=aggregated, n_images=len(images)
         )

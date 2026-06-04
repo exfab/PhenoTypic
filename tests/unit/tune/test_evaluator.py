@@ -12,6 +12,7 @@ from phenotypic.tune._evaluation._evaluator import (
     _robust_aggregate,
 )
 from phenotypic.tune._scoring._scorer import Scorer
+from phenotypic.tune._strategies._pruning import NoOpChannel
 
 
 def test_robust_aggregate_penalizes_spread():
@@ -69,6 +70,46 @@ def test_evaluate_failure_assigns_failure_score():
     assert result.terms == {}
     assert result.n_images == 1
     assert result.failed is True
+
+
+class _RecordingChannel:
+    """A pruning channel that records every ``report`` and never prunes."""
+
+    def __init__(self) -> None:
+        self.reports: list[tuple[float, int]] = []
+
+    def report(self, value: float, step: int) -> None:
+        self.reports.append((value, step))
+
+    def should_prune(self) -> bool:
+        return False
+
+
+def test_evaluate_accepts_channel_keyword():
+    base = ImagePipeline(ops=[OtsuDetector()])
+    img = load_synth_yeast_plate()
+    scorer = _SequenceScorer(values=[1.0, 2.0, 3.0])
+    channel = _RecordingChannel()
+    result = Evaluator().evaluate(
+        base, scorer, {}, [img, img, img], channel=channel
+    )
+    assert isinstance(result, EvaluationResult)
+    # The channel saw at least one interim report (one per rung).
+    assert channel.reports
+
+
+def test_noop_channel_default_preserves_score():
+    # Omitting the channel (NoOp default) must yield exactly the legacy score.
+    base = ImagePipeline(ops=[OtsuDetector()])
+    img = load_synth_yeast_plate()
+    scorer = _SequenceScorer(values=[1.0, 2.0, 3.0])
+    without = Evaluator().evaluate(base, scorer, {}, [img, img, img])
+    scorer2 = _SequenceScorer(values=[1.0, 2.0, 3.0])
+    with_noop = Evaluator().evaluate(
+        base, scorer2, {}, [img, img, img], channel=NoOpChannel()
+    )
+    assert with_noop.score == pytest.approx(without.score)
+    assert with_noop.pruned is False
 
 
 def test_result_carries_pruned_flag():
