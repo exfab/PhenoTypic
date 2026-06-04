@@ -3,6 +3,9 @@
 This package is built up phase-by-phase; each phase appends its public symbols
 to ``__all__`` below. Phase 1a ships the hand-authorable **search space**: the
 discriminated-union domains plus the ``Knob`` / ``SearchSpace`` containers.
+Phase 1b adds the serializable **strategy configs**. Phase 1c adds the
+**scoring** objective (``Scorer`` / ``QCScorer``) and the candidate
+**evaluation** layer (``Evaluator`` / ``EvaluationResult`` / ``build_pipeline``).
 
 Hand-author a search space and inspect it:
 
@@ -18,7 +21,11 @@ Hand-author a search space and inspect it:
 """
 from __future__ import annotations
 
+# --- Phase 1c: scoring + evaluation -------------------------------------------
+from ._evaluation import EvaluationResult, Evaluator, build_pipeline
+
 # --- Phase 1a: search space (domains + Knob/SearchSpace) ----------------------
+from ._scoring import QCScorer, Scorer
 from ._search_space import (
     Categorical,
     Domain,
@@ -45,4 +52,11 @@ __all__ = [
     "StrategyConfig",
     "GridConfig",
     "RandomConfig",
+    # Phase 1c: scoring
+    "Scorer",
+    "QCScorer",
+    # Phase 1c: evaluation
+    "Evaluator",
+    "EvaluationResult",
+    "build_pipeline",
 ]

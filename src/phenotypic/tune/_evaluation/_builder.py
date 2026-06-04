@@ -105,7 +105,7 @@ def build_pipeline(base: ImagePipeline, params: dict[str, Any]) -> ImagePipeline
         else:
             overrides.setdefault(position, {})[field] = value
 
-    new_ops = []
+    new_ops: list[Any] = []
     for position, op in enumerate(ordered_ops):
         if not enabled.get(position, True):
             continue  # presence toggled off → drop the op
