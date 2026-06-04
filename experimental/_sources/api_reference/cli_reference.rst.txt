@@ -8,19 +8,24 @@ Usage
 
 .. code-block:: bash
 
-   python -m phenotypic PIPELINE_JSON INPUT_DIR OUTPUT_DIR [OPTIONS]
+   python -m phenotypic --pipeline PIPELINE_JSON --input INPUT_DIR [OPTIONS]
 
-Positional Arguments
---------------------
+Path Options
+------------
 
-``PIPELINE_JSON``
+``-p, --pipeline PIPELINE_JSON``
    Path to a pipeline configuration file created with ``pipeline.to_json()``.
+   Required for normal runs and ``--measure``.
 
-``INPUT_DIR``
-   Directory containing plate images to process.
+``-i, --input INPUT_DIR``
+   Directory containing plate images to process. Required for normal runs.
+   Optional in ``--measure`` mode; if provided there, it is ignored because
+   images are discovered from the previous output directory.
 
-``OUTPUT_DIR``
+``-o, --output-dir OUTPUT_DIR``
    Directory where results (overlays, measurements, checkpoints) are saved.
+   Normal runs auto-generate an output directory when omitted. Required for
+   ``--measure``, ``--resume``, and ``--restart``.
 
 Image Options
 -------------
@@ -82,8 +87,9 @@ Resume and Recovery
 SLURM Options
 -------------
 
-``--slurm-args KEY=VALUE``
-   Pass SLURM scheduling parameters (e.g., ``time=04:00:00``, ``partition=gpu``).
+``--slurm KEY=VALUE``
+   Pass SLURM scheduling parameters as repeated key-value pairs (e.g.,
+   ``--slurm time=04:00:00 --slurm partition=gpu``).
 
 ``--wait``
    Wait for SLURM jobs to complete before returning.

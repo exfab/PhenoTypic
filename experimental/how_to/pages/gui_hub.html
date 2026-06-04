@@ -681,11 +681,11 @@ command for the bound port.</p>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
 <p><strong><code class="docutils literal notranslate"><span class="pre">phenotypic</span> <span class="pre">gui</span></code> (without a hyphen) is not supported.</strong></p>
-<p>The existing <code class="docutils literal notranslate"><span class="pre">phenotypic</span></code> CLI uses positional arguments that conflict with
-any subcommand named <code class="docutils literal notranslate"><span class="pre">gui</span></code>. Always use the hyphenated form
+<p>The existing <code class="docutils literal notranslate"><span class="pre">phenotypic</span></code> CLI is reserved for batch pipeline execution with
+explicit path options, not subcommands. Always use the hyphenated form
 <code class="docutils literal notranslate"><span class="pre">phenotypic-gui</span></code> or the module form <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">phenotypic.gui</span></code>. Typing
-<code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">run</span> <span class="pre">phenotypic</span> <span class="pre">gui</span></code> will be interpreted as passing <code class="docutils literal notranslate"><span class="pre">gui</span></code> as the
-pipeline path and will fail with a confusing error.</p>
+<code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">run</span> <span class="pre">phenotypic</span> <span class="pre">gui</span></code> will fail because <code class="docutils literal notranslate"><span class="pre">gui</span></code> is an unexpected positional
+argument.</p>
 </div>
 </section>
 <section id="the-four-pages">

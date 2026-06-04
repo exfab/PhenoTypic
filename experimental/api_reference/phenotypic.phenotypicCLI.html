@@ -581,34 +581,34 @@ SLURM cluster execution.</p>
 <li><p>Progress monitoring tools</p></li>
 </ul>
 </dd>
-<dt>Usage:</dt><dd><p>python -m phenotypic PIPELINE_JSON INPUT_PATH [OPTIONS]</p>
+<dt>Usage:</dt><dd><p>python -m phenotypic –pipeline pipeline.json –input ./images [OPTIONS]</p>
 </dd>
 </dl>
 <div class="admonition-examples admonition">
 <p class="admonition-title">Examples</p>
 <p># Basic usage with auto-generated output directory
-uv run python -m phenotypic pipeline.json ./images</p>
+uv run python -m phenotypic –pipeline pipeline.json –input ./images</p>
 <p># Specify output directory
-uv run python -m phenotypic pipeline.json ./images -o ./results</p>
+uv run python -m phenotypic –pipeline pipeline.json –input ./images -o ./results</p>
 <p># Dry-run to preview processing plan
-uv run python -m phenotypic pipeline.json ./images –dry-run</p>
+uv run python -m phenotypic –pipeline pipeline.json –input ./images –dry-run</p>
 <p># Sample 5 images per dataset for testing
-uv run python -m phenotypic pipeline.json ./images –sample 5</p>
+uv run python -m phenotypic –pipeline pipeline.json –input ./images –sample 5</p>
 <p># Resume interrupted processing
-uv run python -m phenotypic pipeline.json ./images -o ./results –resume</p>
+uv run python -m phenotypic –pipeline pipeline.json –input ./images -o ./results –resume</p>
 <p># Restart processing from beginning (clears previous state)
-uv run python -m phenotypic pipeline.json ./images -o ./results –restart</p>
+uv run python -m phenotypic –pipeline pipeline.json –input ./images -o ./results –restart</p>
 <p># SLURM execution (autonomous)
-uv run python -m phenotypic pipeline.json ./images         –slurm slurm_partition=compute         –slurm slurm_account=proj         –slurm mem_gb=16</p>
+uv run python -m phenotypic –pipeline pipeline.json –input ./images         –slurm slurm_partition=compute         –slurm slurm_account=proj         –slurm mem_gb=16</p>
 <p># SLURM with progress monitoring
-uv run python -m phenotypic pipeline.json ./images         –slurm slurm_partition=compute         –slurm slurm_account=proj         –wait</p>
+uv run python -m phenotypic –pipeline pipeline.json –input ./images         –slurm slurm_partition=compute         –slurm slurm_account=proj         –wait</p>
 <p># GridImage with custom dimensions
-uv run python -m phenotypic pipeline.json ./plates         –image-type GridImage –nrows 16 –ncols 24</p>
+uv run python -m phenotypic –pipeline pipeline.json –input ./plates         –image-type GridImage –nrows 16 –ncols 24</p>
 <p># Rerun measurements on a previous forward run without re-detecting
 # (reads HDFs from &lt;previous-output-dir&gt;/results/<a href="#id1"><span class="problematic" id="id2">*</span></a>/hdf/, rewrites
 # parquet measurements + master CSV, skips detection, does NOT
 # regenerate overlays, does NOT touch processing state):
-uv run python -m phenotypic pipeline.json –measure         -o &lt;previous-output-dir&gt;</p>
+uv run python -m phenotypic –pipeline pipeline.json –measure         -o &lt;previous-output-dir&gt;</p>
 <p># Recompile a previous output directory: re-aggregate the master
 # measurements CSV, fill in any overlay PNGs missing under
 # results/&lt;ds&gt;/overlays/ by reloading their HDFs (threaded across
@@ -656,12 +656,12 @@ slurm_gpus_per_node GPUs per node for GPU-accelerated operations</p>
 </ul>
 </dd>
 <dt>Example: Submit with account, partition, memory, and time limits</dt><dd><dl class="simple">
-<dt>uv run python -m phenotypic pipeline.json ./images </dt><dd><p>–slurm slurm_partition=compute –slurm slurm_account=lab_proj –slurm mem_gb=32 –slurm time=120 –slurm slurm_mail_type=END –slurm <a class="reference external" href="mailto:slurm_mail_user=user&#37;&#52;&#48;university&#46;edu">slurm_mail_user=user<span>&#64;</span>university<span>&#46;</span>edu</a> –wait</p>
+<dt>uv run python -m phenotypic –pipeline pipeline.json –input ./images </dt><dd><p>–slurm slurm_partition=compute –slurm slurm_account=lab_proj –slurm mem_gb=32 –slurm time=120 –slurm slurm_mail_type=END –slurm <a class="reference external" href="mailto:slurm_mail_user=user&#37;&#52;&#48;university&#46;edu">slurm_mail_user=user<span>&#64;</span>university<span>&#46;</span>edu</a> –wait</p>
 </dd>
 </dl>
 </dd>
 <dt>Example: Dry-run to preview SLURM submission plan</dt><dd><dl class="simple">
-<dt>uv run python -m phenotypic pipeline.json ./images </dt><dd><p>–slurm slurm_partition=compute –slurm slurm_account=lab_proj –dry-run</p>
+<dt>uv run python -m phenotypic –pipeline pipeline.json –input ./images </dt><dd><p>–slurm slurm_partition=compute –slurm slurm_account=lab_proj –dry-run</p>
 </dd>
 </dl>
 </dd>

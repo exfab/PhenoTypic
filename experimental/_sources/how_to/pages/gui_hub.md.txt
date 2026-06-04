@@ -44,11 +44,11 @@ command for the bound port.
 :::{warning}
 **`phenotypic gui` (without a hyphen) is not supported.**
 
-The existing `phenotypic` CLI uses positional arguments that conflict with
-any subcommand named `gui`. Always use the hyphenated form
+The existing `phenotypic` CLI is reserved for batch pipeline execution with
+explicit path options, not subcommands. Always use the hyphenated form
 `phenotypic-gui` or the module form `python -m phenotypic.gui`. Typing
-`uv run phenotypic gui` will be interpreted as passing `gui` as the
-pipeline path and will fail with a confusing error.
+`uv run phenotypic gui` will fail because `gui` is an unexpected positional
+argument.
 :::
 
 ## The four pages

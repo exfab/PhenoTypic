@@ -9,7 +9,7 @@ The CLI automatically generates overlay images and measurement summaries
 in the output directory:
 
 ```bash
-python -m phenotypic pipeline.json /plates/ /output/
+python -m phenotypic --pipeline pipeline.json --input /plates/ -o /output/
 ```
 
 **Output structure:**

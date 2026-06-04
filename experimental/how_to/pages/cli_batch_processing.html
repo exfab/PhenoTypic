@@ -612,33 +612,33 @@
 interface.</p>
 <section id="basic-usage">
 <h2>Basic Usage<a class="headerlink" href="#basic-usage" title="Link to this heading">#</a></h2>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w"> </span>pipeline.json<span class="w"> </span>/path/to/plates/<span class="w"> </span>/path/to/output/
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w"> </span>--pipeline<span class="w"> </span>pipeline.json<span class="w"> </span>--input<span class="w"> </span>/path/to/plates/<span class="w"> </span>-o<span class="w"> </span>/path/to/output/
 </pre></div>
 </div>
-<p><strong>Arguments:</strong></p>
+<p><strong>Required path options:</strong></p>
 <ol class="arabic simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">pipeline.json</span></code> — Pipeline configuration (created with <code class="docutils literal notranslate"><span class="pre">pipeline.to_json()</span></code>)</p></li>
-<li><p>Input directory — Folder containing plate images</p></li>
-<li><p>Output directory — Where results are saved</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--pipeline</span> <span class="pre">pipeline.json</span></code> — Pipeline configuration (created with <code class="docutils literal notranslate"><span class="pre">pipeline.to_json()</span></code>)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--input</span> <span class="pre">/path/to/plates/</span></code> — Folder containing plate images</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-o</span> <span class="pre">/path/to/output/</span></code> — Where results are saved</p></li>
 </ol>
 </section>
 <section id="grid-plates">
 <h2>Grid Plates<a class="headerlink" href="#grid-plates" title="Link to this heading">#</a></h2>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w"> </span>pipeline.json<span class="w"> </span>/plates/<span class="w"> </span>/output/<span class="w"> </span><span class="se">\</span>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w"> </span>--pipeline<span class="w"> </span>pipeline.json<span class="w"> </span>--input<span class="w"> </span>/plates/<span class="w"> </span>-o<span class="w"> </span>/output/<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--image-type<span class="w"> </span>GridImage<span class="w"> </span>--nrows<span class="w"> </span><span class="m">8</span><span class="w"> </span>--ncols<span class="w"> </span><span class="m">12</span><span class="w"> </span>--ext<span class="w"> </span>.png
 </pre></div>
 </div>
 </section>
 <section id="parallelism">
 <h2>Parallelism<a class="headerlink" href="#parallelism" title="Link to this heading">#</a></h2>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w"> </span>pipeline.json<span class="w"> </span>/plates/<span class="w"> </span>/output/<span class="w"> </span>--n-jobs<span class="w"> </span><span class="m">4</span>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w"> </span>--pipeline<span class="w"> </span>pipeline.json<span class="w"> </span>--input<span class="w"> </span>/plates/<span class="w"> </span>-o<span class="w"> </span>/output/<span class="w"> </span>--n-jobs<span class="w"> </span><span class="m">4</span>
 </pre></div>
 </div>
 <p>Omit <code class="docutils literal notranslate"><span class="pre">--n-jobs</span></code> to use all available CPU cores.</p>
 </section>
 <section id="resume-after-interruption">
 <h2>Resume After Interruption<a class="headerlink" href="#resume-after-interruption" title="Link to this heading">#</a></h2>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w"> </span>pipeline.json<span class="w"> </span>/plates/<span class="w"> </span>/output/<span class="w"> </span>--resume
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w"> </span>--pipeline<span class="w"> </span>pipeline.json<span class="w"> </span>--input<span class="w"> </span>/plates/<span class="w"> </span>-o<span class="w"> </span>/output/<span class="w"> </span>--resume
 </pre></div>
 </div>
 <p>Add <code class="docutils literal notranslate"><span class="pre">--retry-failures</span></code> to reprocess only failed images.</p>
@@ -646,10 +646,10 @@ interface.</p>
 <section id="testing">
 <h2>Testing<a class="headerlink" href="#testing" title="Link to this heading">#</a></h2>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Dry run: validate pipeline and list images without processing</span>
-python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w"> </span>pipeline.json<span class="w"> </span>/plates/<span class="w"> </span>/output/<span class="w"> </span>--dry-run
+python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w"> </span>--pipeline<span class="w"> </span>pipeline.json<span class="w"> </span>--input<span class="w"> </span>/plates/<span class="w"> </span>-o<span class="w"> </span>/output/<span class="w"> </span>--dry-run
 
 <span class="c1"># Process 5 random images as a test</span>
-python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w"> </span>pipeline.json<span class="w"> </span>/plates/<span class="w"> </span>/output/<span class="w"> </span>--sample<span class="w"> </span><span class="m">5</span>
+python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w"> </span>--pipeline<span class="w"> </span>pipeline.json<span class="w"> </span>--input<span class="w"> </span>/plates/<span class="w"> </span>-o<span class="w"> </span>/output/<span class="w"> </span>--sample<span class="w"> </span><span class="m">5</span>
 </pre></div>
 </div>
 </section>

@@ -580,48 +580,48 @@
 <span class="sd">    - Progress monitoring tools</span>
 
 <span class="sd">Usage:</span>
-<span class="sd">    python -m phenotypic PIPELINE_JSON INPUT_PATH [OPTIONS]</span>
+<span class="sd">    python -m phenotypic --pipeline pipeline.json --input ./images [OPTIONS]</span>
 
 <span class="sd">Examples:</span>
 <span class="sd">    # Basic usage with auto-generated output directory</span>
-<span class="sd">    uv run python -m phenotypic pipeline.json ./images</span>
+<span class="sd">    uv run python -m phenotypic --pipeline pipeline.json --input ./images</span>
 
 <span class="sd">    # Specify output directory</span>
-<span class="sd">    uv run python -m phenotypic pipeline.json ./images -o ./results</span>
+<span class="sd">    uv run python -m phenotypic --pipeline pipeline.json --input ./images -o ./results</span>
 
 <span class="sd">    # Dry-run to preview processing plan</span>
-<span class="sd">    uv run python -m phenotypic pipeline.json ./images --dry-run</span>
+<span class="sd">    uv run python -m phenotypic --pipeline pipeline.json --input ./images --dry-run</span>
 
 <span class="sd">    # Sample 5 images per dataset for testing</span>
-<span class="sd">    uv run python -m phenotypic pipeline.json ./images --sample 5</span>
+<span class="sd">    uv run python -m phenotypic --pipeline pipeline.json --input ./images --sample 5</span>
 
 <span class="sd">    # Resume interrupted processing</span>
-<span class="sd">    uv run python -m phenotypic pipeline.json ./images -o ./results --resume</span>
+<span class="sd">    uv run python -m phenotypic --pipeline pipeline.json --input ./images -o ./results --resume</span>
 
 <span class="sd">    # Restart processing from beginning (clears previous state)</span>
-<span class="sd">    uv run python -m phenotypic pipeline.json ./images -o ./results --restart</span>
+<span class="sd">    uv run python -m phenotypic --pipeline pipeline.json --input ./images -o ./results --restart</span>
 
 <span class="sd">    # SLURM execution (autonomous)</span>
-<span class="sd">    uv run python -m phenotypic pipeline.json ./images \</span>
+<span class="sd">    uv run python -m phenotypic --pipeline pipeline.json --input ./images \</span>
 <span class="sd">        --slurm slurm_partition=compute \</span>
 <span class="sd">        --slurm slurm_account=proj \</span>
 <span class="sd">        --slurm mem_gb=16</span>
 
 <span class="sd">    # SLURM with progress monitoring</span>
-<span class="sd">    uv run python -m phenotypic pipeline.json ./images \</span>
+<span class="sd">    uv run python -m phenotypic --pipeline pipeline.json --input ./images \</span>
 <span class="sd">        --slurm slurm_partition=compute \</span>
 <span class="sd">        --slurm slurm_account=proj \</span>
 <span class="sd">        --wait</span>
 
 <span class="sd">    # GridImage with custom dimensions</span>
-<span class="sd">    uv run python -m phenotypic pipeline.json ./plates \</span>
+<span class="sd">    uv run python -m phenotypic --pipeline pipeline.json --input ./plates \</span>
 <span class="sd">        --image-type GridImage --nrows 16 --ncols 24</span>
 
 <span class="sd">    # Rerun measurements on a previous forward run without re-detecting</span>
 <span class="sd">    # (reads HDFs from &lt;previous-output-dir&gt;/results/*/hdf/, rewrites</span>
 <span class="sd">    # parquet measurements + master CSV, skips detection, does NOT</span>
 <span class="sd">    # regenerate overlays, does NOT touch processing state):</span>
-<span class="sd">    uv run python -m phenotypic pipeline.json --measure \</span>
+<span class="sd">    uv run python -m phenotypic --pipeline pipeline.json --measure \</span>
 <span class="sd">        -o &lt;previous-output-dir&gt;</span>
 
 <span class="sd">    # Recompile a previous output directory: re-aggregate the master</span>
@@ -673,7 +673,7 @@
 <span class="sd">        - Valid range: 1-10080 minutes (1 minute to 7 days)</span>
 
 <span class="sd">    Example: Submit with account, partition, memory, and time limits</span>
-<span class="sd">        uv run python -m phenotypic pipeline.json ./images \\</span>
+<span class="sd">        uv run python -m phenotypic --pipeline pipeline.json --input ./images \\</span>
 <span class="sd">            --slurm slurm_partition=compute \\</span>
 <span class="sd">            --slurm slurm_account=lab_proj \\</span>
 <span class="sd">            --slurm mem_gb=32 \\</span>
@@ -683,7 +683,7 @@
 <span class="sd">            --wait</span>
 
 <span class="sd">    Example: Dry-run to preview SLURM submission plan</span>
-<span class="sd">        uv run python -m phenotypic pipeline.json ./images \\</span>
+<span class="sd">        uv run python -m phenotypic --pipeline pipeline.json --input ./images \\</span>
 <span class="sd">            --slurm slurm_partition=compute \\</span>
 <span class="sd">            --slurm slurm_account=lab_proj \\</span>
 <span class="sd">            --dry-run</span>
@@ -1039,18 +1039,53 @@
     <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">()</span>
 
 
-<span class="nd">@click</span><span class="o">.</span><span class="n">command</span><span class="p">()</span>
-<span class="nd">@click</span><span class="o">.</span><span class="n">argument</span><span class="p">(</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_format_explicit_cli_usage_hint</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the canonical explicit-path CLI usage hint.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="p">(</span>
+        <span class="s2">&quot;Use explicit path options instead:</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="s2">&quot;  python -m phenotypic --pipeline pipeline.json --input ./images &quot;</span>
+        <span class="s2">&quot;-o ./results</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="s2">&quot;Short form:</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="s2">&quot;  python -m phenotypic -p pipeline.json -i ./images -o ./results&quot;</span>
+    <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_reject_unexpected_positional_args</span><span class="p">(</span><span class="n">extra_args</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Reject legacy positional CLI arguments with a migration hint.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        extra_args: Unparsed tokens captured by Click after option parsing.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        click.UsageError: If any extra positional tokens were supplied.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">extra_args</span><span class="p">:</span>
+        <span class="k">return</span>
+    <span class="n">preview</span> <span class="o">=</span> <span class="s2">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">extra_args</span><span class="p">)</span>
+    <span class="k">raise</span> <span class="n">click</span><span class="o">.</span><span class="n">UsageError</span><span class="p">(</span>
+        <span class="s2">&quot;Unexpected positional argument(s): &quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">preview</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="s2">&quot;Positional pipeline and input path arguments are no longer supported.</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">_format_explicit_cli_usage_hint</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="p">)</span>
+
+
+<span class="nd">@click</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="n">context_settings</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;allow_extra_args&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">})</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span>
+    <span class="s2">&quot;-p&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;--pipeline&quot;</span><span class="p">,</span>
     <span class="s2">&quot;pipeline_json&quot;</span><span class="p">,</span>
     <span class="nb">type</span><span class="o">=</span><span class="n">click</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">exists</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">dir_okay</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">path_type</span><span class="o">=</span><span class="n">Path</span><span class="p">),</span>
     <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-    <span class="n">required</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Pipeline JSON configuration file created with pipeline.to_json().&quot;</span><span class="p">,</span>
 <span class="p">)</span>
-<span class="nd">@click</span><span class="o">.</span><span class="n">argument</span><span class="p">(</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span>
+    <span class="s2">&quot;-i&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;--input&quot;</span><span class="p">,</span>
     <span class="s2">&quot;input_path&quot;</span><span class="p">,</span>
     <span class="nb">type</span><span class="o">=</span><span class="n">click</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">exists</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">dir_okay</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">file_okay</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">path_type</span><span class="o">=</span><span class="n">Path</span><span class="p">),</span>
     <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-    <span class="n">required</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Input image file or directory to process.&quot;</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span>
     <span class="s2">&quot;-o&quot;</span><span class="p">,</span>
@@ -1223,7 +1258,9 @@
          <span class="s2">&quot;whenever the pipeline has a non-empty &#39;qc&#39; section (writing the &quot;</span>
          <span class="s2">&quot;qc/ artifact and resetting GUI review progress).&quot;</span><span class="p">,</span>
 <span class="p">)</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">pass_context</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">phenotypic_cli</span><span class="p">(</span>
+    <span class="n">ctx</span><span class="p">:</span> <span class="n">click</span><span class="o">.</span><span class="n">Context</span><span class="p">,</span>
     <span class="n">pipeline_json</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">],</span>
     <span class="n">input_path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">],</span>
     <span class="n">output_dir</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">],</span>
@@ -1256,11 +1293,13 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Execute a PhenoTypic pipeline on images.</span>
 
-<span class="sd">    PIPELINE_JSON: Path to pipeline configuration file</span>
+<span class="sd">    --pipeline: Path to pipeline configuration file</span>
 
-<span class="sd">    INPUT_PATH: Image file or directory to process</span>
+<span class="sd">    --input: Image file or directory to process</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">try</span><span class="p">:</span>
+        <span class="n">_reject_unexpected_positional_args</span><span class="p">(</span><span class="n">ctx</span><span class="o">.</span><span class="n">args</span><span class="p">)</span>
+
         <span class="n">include_dataset_column</span> <span class="o">=</span> <span class="ow">not</span> <span class="n">no_dataset_column</span>
 
         <span class="c1"># Parse SLURM args before the recompile branch so --recompile can</span>
@@ -1341,12 +1380,12 @@
         <span class="c1"># --measure is a one-shot re-measurement run over HDFs already</span>
         <span class="c1"># written by a previous forward run.  It is incompatible with any</span>
         <span class="c1"># flag that implies a fresh detection pass or state mutation, and</span>
-        <span class="c1"># it uses &lt;output-dir&gt;/results/*/hdf/ as its image source, so the</span>
-        <span class="c1"># positional INPUT_PATH becomes optional.</span>
+        <span class="c1"># it uses &lt;output-dir&gt;/results/*/hdf/ as its image source, so</span>
+        <span class="c1"># --input is optional.</span>
         <span class="k">if</span> <span class="n">measure_only</span><span class="p">:</span>
             <span class="c1"># Reject incompatible flags first so the user gets a pointed</span>
             <span class="c1"># rejection (&quot;--measure cannot be combined with --X&quot;) regardless</span>
-            <span class="c1"># of whether --output-dir / PIPELINE_JSON are also wrong.</span>
+            <span class="c1"># of whether --output-dir / --pipeline are also wrong.</span>
             <span class="k">if</span> <span class="n">resume</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="n">click</span><span class="o">.</span><span class="n">UsageError</span><span class="p">(</span>
                     <span class="s2">&quot;--measure cannot be combined with --resume; &quot;</span>
@@ -1379,7 +1418,7 @@
 
             <span class="k">if</span> <span class="n">pipeline_json</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="n">click</span><span class="o">.</span><span class="n">UsageError</span><span class="p">(</span>
-                    <span class="s2">&quot;--measure requires PIPELINE_JSON to be specified.&quot;</span>
+                    <span class="s2">&quot;--measure requires --pipeline to be specified.&quot;</span>
                 <span class="p">)</span>
             <span class="k">if</span> <span class="n">output_dir</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="n">click</span><span class="o">.</span><span class="n">UsageError</span><span class="p">(</span>
@@ -1395,15 +1434,21 @@
                 <span class="p">)</span>
             <span class="k">if</span> <span class="n">input_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;Warning: INPUT_PATH (</span><span class="si">{</span><span class="n">input_path</span><span class="si">}</span><span class="s2">) is ignored in &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;Warning: --input (</span><span class="si">{</span><span class="n">input_path</span><span class="si">}</span><span class="s2">) is ignored in &quot;</span>
                     <span class="s2">&quot;--measure mode; images are discovered under &quot;</span>
                     <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">output_dir</span><span class="si">}</span><span class="s2">/results/*/hdf/.&quot;</span><span class="p">,</span>
                     <span class="n">err</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
                 <span class="p">)</span>
 
         <span class="k">if</span> <span class="ow">not</span> <span class="n">measure_only</span> <span class="ow">and</span> <span class="p">(</span><span class="n">pipeline_json</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">input_path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">):</span>
+            <span class="n">missing</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">if</span> <span class="n">pipeline_json</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">missing</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;--pipeline&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">input_path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">missing</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;--input&quot;</span><span class="p">)</span>
             <span class="k">raise</span> <span class="n">click</span><span class="o">.</span><span class="n">UsageError</span><span class="p">(</span>
-                <span class="s2">&quot;PIPELINE_JSON and INPUT_PATH are required unless --recompile is set.&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="s1">&#39; and &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">missing</span><span class="p">)</span><span class="si">}</span><span class="s2"> required unless --recompile is set.</span><span class="se">\n</span><span class="s2">&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">_format_explicit_cli_usage_hint</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span>
             <span class="p">)</span>
 
         <span class="n">resume_state</span> <span class="o">=</span> <span class="kc">None</span>
@@ -1441,7 +1486,7 @@
             <span class="p">)</span>
             <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span>
                 <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Example:</span><span class="se">\n</span><span class="s2">&quot;</span>
-                <span class="s2">&quot;  python -m phenotypic pipeline.json ./images </span><span class="se">\\\n</span><span class="s2">&quot;</span>
+                <span class="s2">&quot;  python -m phenotypic --pipeline pipeline.json --input ./images </span><span class="se">\\\n</span><span class="s2">&quot;</span>
                 <span class="s2">&quot;    --output-dir ./results_2024-01-12_10-30-45 </span><span class="se">\\\n</span><span class="s2">&quot;</span>
                 <span class="s2">&quot;    --restart&quot;</span><span class="p">,</span>
                 <span class="n">err</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
@@ -1513,7 +1558,7 @@
                 <span class="p">)</span>
                 <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span>
                     <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Example:</span><span class="se">\n</span><span class="s2">&quot;</span>
-                    <span class="s2">&quot;  python -m phenotypic pipeline.json ./images </span><span class="se">\\\n</span><span class="s2">&quot;</span>
+                    <span class="s2">&quot;  python -m phenotypic --pipeline pipeline.json --input ./images </span><span class="se">\\\n</span><span class="s2">&quot;</span>
                     <span class="s2">&quot;    --output-dir ./results_2024-01-12_10-30-45 </span><span class="se">\\\n</span><span class="s2">&quot;</span>
                     <span class="s2">&quot;    --resume&quot;</span><span class="p">,</span>
                     <span class="n">err</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
@@ -1557,6 +1602,7 @@
 
         <span class="c1"># Handle restart mode - clear previous state</span>
         <span class="k">if</span> <span class="n">restart</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="n">output_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>  <span class="c1"># narrowed by the --restart guard above</span>
             <span class="n">state_file</span> <span class="o">=</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="n">PROCESSING_STATE_JSON</span>
             <span class="k">if</span> <span class="n">output_dir</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
                 <span class="k">if</span> <span class="n">state_file</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
@@ -1739,6 +1785,7 @@
         <span class="c1"># --measure mode, which never mutates processing state.</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">measure_only</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">resume</span><span class="p">:</span>
+                <span class="k">assert</span> <span class="n">resume_state</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
                 <span class="n">state</span> <span class="o">=</span> <span class="n">update_state_from_events</span><span class="p">(</span><span class="n">resume_state</span><span class="p">,</span> <span class="n">output_dir</span><span class="p">)</span>
                 <span class="n">state</span><span class="o">.</span><span class="n">execution_mode</span> <span class="o">=</span> <span class="s2">&quot;slurm&quot;</span> <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">is_slurm_mode</span><span class="p">()</span> <span class="k">else</span> <span class="s2">&quot;local&quot;</span>
                 <span class="n">state</span><span class="o">.</span><span class="n">pipeline_path</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">pipeline_json</span>
