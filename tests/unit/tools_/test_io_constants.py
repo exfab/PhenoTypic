@@ -809,3 +809,17 @@ class TestReporterReadsResolve:
 
         state = _load_state_for_report(tmp_path)
         assert state is not None
+
+
+# ---------------------------------------------------------------------------
+# Process-only run keeps its pipeline.json under .phenotypic/ (no deliverables)
+# ---------------------------------------------------------------------------
+
+
+def test_phenotypic_cache_pipeline_json_path(tmp_path: Path) -> None:
+    from phenotypic.tools_ import PIPELINE_JSON, phenotypic_cache_pipeline_json_path
+
+    assert (
+        phenotypic_cache_pipeline_json_path(tmp_path)
+        == tmp_path / ".phenotypic" / PIPELINE_JSON
+    )

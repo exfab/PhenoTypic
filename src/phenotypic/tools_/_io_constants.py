@@ -583,6 +583,13 @@ def pipeline_json_path(output_dir: Path) -> Path:
     return deliverables_dir(output_dir) / PIPELINE_JSON
 
 
+def phenotypic_cache_pipeline_json_path(output_dir: Path) -> Path:
+    """Return ``<output>/.phenotypic/pipeline.json`` — the process-only run's
+    reproducibility copy. Distinct from :func:`pipeline_json_path`, which roots
+    under ``deliverables/`` (process-only writes no deliverables)."""
+    return phenotypic_cache_dir(output_dir) / PIPELINE_JSON
+
+
 def analysis_csv_path(output_dir: Path) -> Path:
     """Return ``<output>/deliverables/analysis.csv``."""
     return deliverables_dir(output_dir) / ANALYSIS_CSV
