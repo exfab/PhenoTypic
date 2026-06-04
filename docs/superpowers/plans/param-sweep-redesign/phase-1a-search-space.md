@@ -302,7 +302,7 @@ class Knob(BaseModel):
     ``infer_search_space`` (Phase 3).
     """
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     key: str
     domain: Domain
@@ -313,9 +313,14 @@ class Knob(BaseModel):
 
 
 class SearchSpace(BaseModel):
-    """The clean, optimizer-facing collection of tunable knobs."""
+    """The clean, optimizer-facing collection of tunable knobs.
 
-    model_config = ConfigDict(frozen=True)
+    Note: ``__iter__`` is overridden to yield ``Knob`` instances (not pydantic's
+    default ``(field_name, value)`` pairs), so ``dict(space)`` does **not** produce
+    a model dict — use ``model_dump()`` for serialization.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     knobs: tuple[Knob, ...]
 

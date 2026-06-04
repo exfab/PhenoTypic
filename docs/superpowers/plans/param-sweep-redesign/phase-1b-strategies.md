@@ -401,7 +401,7 @@ class GridStrategy:
         self._cursor = 0
 
     def suggest(self) -> "tuple[Mapping[str, Any], PruningChannel]":
-        params = self._combos[self._cursor]
+        params = dict(self._combos[self._cursor])  # defensive copy: callers must not mutate the stored combo
         self._cursor += 1
         return params, NoOpChannel()
 

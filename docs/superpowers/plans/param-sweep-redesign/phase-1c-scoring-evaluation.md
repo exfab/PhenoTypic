@@ -152,7 +152,13 @@ from pydantic import BaseModel
 
 
 class Scorer(BaseModel, ABC):
-    """Base class for tuning objectives (no-GT, supervised, reference-free, …)."""
+    """Base class for tuning objectives (no-GT, supervised, reference-free, …).
+
+    Production scorers must be **stateless** across ``score_image`` calls: the
+    engine (Phase 1d) reuses one scorer instance for every trial, so per-trial
+    mutable state would bleed across candidates. (A test double that deliberately
+    returns a preset sequence via a private cursor is the documented exception.)
+    """
 
     @abstractmethod
     def score_image(
@@ -677,7 +683,8 @@ def build_pipeline(base: ImagePipeline, params: dict[str, Any]) -> ImagePipeline
     Raises:
         IndexError / ValueError / NotImplementedError: Propagated from key parsing.
     """
-    ordered_ops = list(base.get_ops().values())
+    candidate = base.model_copy(deep=True)  # preserves meas/post/qc; isolates ops from base
+    ordered_ops = list(candidate.get_ops().values())
 
     overrides: dict[int, dict[str, Any]] = {}
     enabled: dict[int, bool] = {}
@@ -693,9 +700,9 @@ def build_pipeline(base: ImagePipeline, params: dict[str, Any]) -> ImagePipeline
         if not enabled.get(position, True):
             continue  # presence toggled off → drop the op
         op_overrides = overrides.get(position)
+        # un-overridden ops come from `candidate` (the deep copy), never `base`
         new_ops.append(_rebuild_op(op, op_overrides) if op_overrides else op)
 
-    candidate = base.model_copy(deep=True)  # preserves meas/post/qc/name
     candidate.set_ops(new_ops)
     return candidate
 ```
@@ -798,6 +805,7 @@ def test_evaluate_runs_3_step_loop_and_aggregates():
     assert result.terms == {"X": pytest.approx(1.5)}
     # default finalize = mean of one term → 1.5
     assert result.score == pytest.approx(1.5)
+    assert result.failed is False
 
 
 def test_evaluate_requires_images():
@@ -812,6 +820,7 @@ def test_evaluate_failure_assigns_failure_score():
     assert result.score == 0.0
     assert result.terms == {}
     assert result.n_images == 1
+    assert result.failed is True
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -866,6 +875,7 @@ class EvaluationResult(BaseModel):
     score: float                  # the finalized scalar objective (higher = better)
     terms: dict[str, float]       # robust-aggregated per-term scores
     n_images: int                 # calibration images evaluated
+    failed: bool = False          # True when the candidate raised and was floored to failure_score
 
 
 class Evaluator(BaseModel):
@@ -913,7 +923,7 @@ class Evaluator(BaseModel):
         except Exception:
             # A broken candidate scores worst, never crashing the sweep.
             return EvaluationResult(
-                score=self.failure_score, terms={}, n_images=len(images)
+                score=self.failure_score, terms={}, n_images=len(images), failed=True
             )
 
         aggregated = {
@@ -965,11 +975,29 @@ Proves the three real pieces compose: `build_pipeline` → `ImagePipeline.measur
 `OtsuDetector` recovers all 96, so a layout expecting 96 scores `Count == 1.0`, and a
 layout expecting 120 scores `Count == exp(−ln2·(24/120)/0.10) == 0.25`.
 
-- [ ] **Step 1: Export the Phase-1c public surface**
+- [ ] **Step 1: Export the Phase-1c public surface (cumulative `__init__.py`)**
+
+This file accretes across 1a → 1b → 1c. Write the **complete cumulative file** below (1a's
+doctest + exports, 1b's strategy *configs*, 1c's scoring/evaluation). Do **not** drop the 1b
+config exports — 1d's tests do `from phenotypic.tune import GridConfig`, so omitting them
+turns the 1d suite red at import time.
 
 ```python
-# src/phenotypic/tune/__init__.py  (extend the Phase-1a exports)
-"""Parameter-tuning engine — public API (in progress)."""
+# src/phenotypic/tune/__init__.py  (cumulative: 1a doctest + 1a/1b/1c exports)
+"""Parameter-tuning engine — public API (in progress).
+
+Hand-author a search space:
+
+    >>> from phenotypic.tune import SearchSpace, Knob, FloatRange, Categorical
+    >>> space = SearchSpace(knobs=(
+    ...     Knob(key="0.sigma", domain=FloatRange(low=0.5, high=8.0)),
+    ...     Knob(key="1.ignore_zeros", domain=Categorical(choices=(True, False))),
+    ... ))
+    >>> space.keys()
+    ['0.sigma', '1.ignore_zeros']
+    >>> space.domain("0.sigma").high
+    8.0
+"""
 from __future__ import annotations
 
 from ._evaluation import EvaluationResult, Evaluator, build_pipeline
@@ -983,6 +1011,7 @@ from ._search_space import (
     Knob,
     SearchSpace,
 )
+from ._strategies import GridConfig, RandomConfig, StrategyConfig
 
 __all__ = [
     # search space (Phase 1a)
@@ -993,6 +1022,10 @@ __all__ = [
     "Domain",
     "Knob",
     "SearchSpace",
+    # strategies (Phase 1b)
+    "StrategyConfig",
+    "GridConfig",
+    "RandomConfig",
     # scoring (Phase 1c)
     "Scorer",
     "QCScorer",
@@ -1003,9 +1036,12 @@ __all__ = [
 ]
 ```
 
-> Preserve any Phase-1b strategy exports already present in this file — merge, don't
-> overwrite. (1b added `GridStrategy`/`RandomStrategy`/`StrategyConfig`/… to `__all__`;
-> keep them.)
+> **Why cumulative, not a fresh file:** 1a wrote the module doctest + search-space exports;
+> 1b appended `StrategyConfig`/`GridConfig`/`RandomConfig` (the *configs* — the `GridStrategy`/
+> `RandomStrategy` *classes* stay in `_strategies` and are imported via the subpackage in
+> tests, **not** re-exported here). The block above already includes all of them, so writing
+> it verbatim is safe; just never omit the 1b configs. The 1a doctest is retained because 1d's
+> gate runs `pytest --doctest-modules src/phenotypic/tune`.
 
 - [ ] **Step 2: Write the failing integration test**
 

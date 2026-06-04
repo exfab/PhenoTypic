@@ -5,6 +5,10 @@ Phased implementation of the parameter-tuning engine (`src/phenotypic/tune/`). T
 — start with the master spec + [`engine-architecture.md`](../../specs/param-sweep-redesign/engine-architecture.md)
 (the ABC/interface layer the plans build on).
 
+> **▶ To implement, start with [`EXECUTION.md`](EXECUTION.md)** — the execution entrypoint:
+> the implementation strategy (dispatch cadence, per-phase review/simplify), the verification
+> strategy (green-gates + cross-cutting locks), the phase DAG, and the risk register.
+
 > **Deprecation:** `tune` replaces `sweep` via a **hard cutover** — `sweep` is **deleted
 > wholesale at the end of Phase 1** (master §9). The two are not coupled; they only share
 > the extracted `_execution` module.
@@ -19,11 +23,11 @@ Phased implementation of the parameter-tuning engine (`src/phenotypic/tune/`). T
 | &nbsp;&nbsp;↳ **1b · Strategies** | `PruningChannel` · grid enumeration · `Grid`/`Random` `SearchStrategy` · `StrategyConfig` | [`phase-1b-strategies.md`](phase-1b-strategies.md) | ✅ written |
 | &nbsp;&nbsp;↳ **1c · Scoring + evaluation** | `Scorer` ABC · Count-only `QCScorer` · params→pipeline builder · `Evaluator` (CV-only MVP, `median−λ·IQR`) | [`phase-1c-scoring-evaluation.md`](phase-1c-scoring-evaluation.md) | ✅ written |
 | &nbsp;&nbsp;↳ **1d · Engine + CLI** | `TuningEngine` · `TuningSpec` (embeds `pipeline`) · StudyStore · RF-permutation importance · CLI (`-i/-o`) · **golden byte-compat lock** · **deletes `sweep`** | [`phase-1d-engine-cli.md`](phase-1d-engine-cli.md) | ✅ written |
-| **2 · Optuna backend** *(`tune` extra)* | `OptunaStrategy` (TPE/CMA-ES/NSGA-II) · ASHA pruning · SQLite persist/resume · fANOVA · two-round freeze · distributed · `SlurmExecutor` | _planned_ | ⬜ |
-| **3 · Auto-space + reference-free** | `infer_search_space` · `TuneSpec` markers · `--auto-space` · `ReferenceFreeScorer` + meta-validation gate | _planned_ | ⬜ |
-| **4 · Supervised + multi-objective** | `SupervisedScorer` · `CompositeScorer` · Pareto reporting / `--multi-objective` | _planned_ | ⬜ |
-| **5 · Dash co-pilot** | the `/tune/` view: 6a monitor → 6b curate → 6c space-edit; FEATURES/WORKFLOWS/screenshot gates | _planned_ | ⬜ |
-| *Parallel* · **Operation annotations** | `Field(ge,le)` + `TuneSpec` on operation fields (decoupled workstream) | _planned_ | ⬜ |
+| **2 · Optuna backend** *(`tune` extra)* | `OptunaStrategy` (TPE/CMA-ES/NSGA-II) · ASHA pruning · SQLite persist/resume · fANOVA · two-round freeze · distributed · `SlurmExecutor` | [`phase-2-optuna-backend.md`](phase-2-optuna-backend.md) | ✅ outlined |
+| **3 · Auto-space + reference-free** | `infer_search_space` · `TuneSpec` markers · `--auto-space` · `ReferenceFreeScorer` + meta-validation gate | [`phase-3-autospace-reference-free.md`](phase-3-autospace-reference-free.md) | ✅ outlined |
+| **4 · Supervised + multi-objective** | `SupervisedScorer` · `CompositeScorer` · Pareto reporting / `--multi-objective` | [`phase-4-supervised-multiobjective.md`](phase-4-supervised-multiobjective.md) | ✅ outlined |
+| **5 · Dash co-pilot** | the `/tune/` view: 6a monitor → 6b curate → 6c space-edit; FEATURES/WORKFLOWS/screenshot gates | [`phase-5-dash-copilot.md`](phase-5-dash-copilot.md) | ✅ outlined |
+| *Parallel* · **Operation annotations** | `Field(ge,le)` + `TuneSpec` on operation fields (decoupled workstream) | [`workstream-operation-annotations.md`](workstream-operation-annotations.md) | ✅ outlined |
 | *Deferred* · **MCP** | the `tune_*` agentic surface (out of scope per the param-sweep focus) | — | 🚫 |
 
 ## Dependency notes

@@ -359,7 +359,7 @@ class TuningSpec(BaseModel):
         return json.loads(value.to_json())
 ```
 
-> The `scorer: ScorerField` round-trip requires the Phase-0 registry edit (`_find_class_in_phenotypic` includes `phenotypic.tune`) and the `QCScorer` export from `tune/__init__.py` (1c). Both are prerequisites; if the round-trip test errors with "class not found", that edit is missing.
+> The `scorer: ScorerField` round-trip has **three** Phase-0/1c prerequisites: (1) the registry edit (`_find_class_in_phenotypic` includes `phenotypic.tune`), (2) the **base-parameterized** `polymorphic_field` guard from Phase-0 Task A — a `QCScorer` is *not* a `BaseOperation`, so the guard must be `_make_require_value(Scorer)`, never a hard-coded `BaseOperation` assert — and (3) the `QCScorer` export from `tune/__init__.py` (1c). If the round-trip raises *"class not found"*, prerequisite 1 or 3 is missing; if it raises a `ValidationError` about expecting a `BaseOperation`/operation, prerequisite 2 (the Phase-0 guard parameterization) was not done.
 
 - [ ] **Step 4: Run test to verify it passes**
 
@@ -541,7 +541,7 @@ class TuningEngine:
             result = spec.evaluator.evaluate(
                 spec.pipeline, spec.scorer, params, images
             )
-            failed = len(result.terms) == 0
+            failed = result.failed  # explicit flag set by the Evaluator (1c), not inferred
             self._store.append(
                 Trial(
                     number=number,
@@ -735,24 +735,32 @@ Append to `src/phenotypic/tools_/_io_constants.py` (next to `deliverables_dir`,
 `pipeline_json_path`, etc.):
 
 ```python
+# Filenames as module-level Final[str] constants — matching this file's existing
+# PIPELINE_JSON / MASTER_MEASUREMENTS_* convention (reuse the existing `Final` import):
+TUNING_SPEC_JSON: Final[str] = "tuning_spec.json"
+BEST_PIPELINE_JSON: Final[str] = "best_pipeline.json"
+PARAM_IMPORTANCE_JSON: Final[str] = "param_importance.json"
+TRIALS_PARQUET: Final[str] = "trials.parquet"
+
+
 def tuning_spec_path(output_dir: Path) -> Path:
     """Resolved ``tuning_spec.json`` (under ``deliverables/``)."""
-    return deliverables_dir(output_dir) / "tuning_spec.json"
+    return deliverables_dir(output_dir) / TUNING_SPEC_JSON
 
 
 def best_pipeline_path(output_dir: Path) -> Path:
     """The winning ``best_pipeline.json`` (under ``deliverables/``)."""
-    return deliverables_dir(output_dir) / "best_pipeline.json"
+    return deliverables_dir(output_dir) / BEST_PIPELINE_JSON
 
 
 def param_importance_path(output_dir: Path) -> Path:
     """The ``param_importance.json`` report (under ``deliverables/``)."""
-    return deliverables_dir(output_dir) / "param_importance.json"
+    return deliverables_dir(output_dir) / PARAM_IMPORTANCE_JSON
 
 
 def trials_parquet_path(output_dir: Path) -> Path:
     """The trial journal ``trials.parquet`` (at the output-dir root)."""
-    return Path(output_dir) / "trials.parquet"
+    return Path(output_dir) / TRIALS_PARQUET
 ```
 
 - [ ] **Step 2: Write the failing test**
@@ -865,7 +873,19 @@ def _load_images(input_dir: Path) -> list:
         p for p in Path(input_dir).iterdir()
         if p.is_file() and p.suffix.lower() in _IMAGE_SUFFIXES
     )
-    return [GridImage.imread(p) for p in paths]
+    images, failures = [], []
+    for path in paths:
+        try:
+            images.append(GridImage.imread(path))
+        except Exception as exc:  # skip unreadable / non-grid files, don't abort the whole run
+            failures.append((path.name, str(exc)))
+    if failures:
+        import logging
+        logging.getLogger(__name__).warning(
+            "skipped %d unreadable image(s): %s",
+            len(failures), ", ".join(name for name, _ in failures),
+        )
+    return images
 
 
 def run_tuning(
@@ -1324,6 +1344,8 @@ git commit -m "feat(tune): hard cutover — delete sweep, ship manifest->spec mi
 - screening-importance RF+permutation fallback → Task 4.
 
 **Deferred (correctly, with later phases noted in code/docstrings):** Optuna SQLite `study.db`, ASHA pruning, fANOVA, `SlurmExecutor`, multi-objective `pareto/`, `tuning_report.html`, `screening/`/`splits/` dirs, metadata-stratified calibration split + held-out guard, `--auto-space`/`--screen`/`--multi-objective` CLI flags. Phase 1d ships the **CV-only-MVP happy path**: load images → grid/random → journal → best + importance.
+
+> **Journal durability caveat:** `run_tuning` writes `trials.parquet` **once, after `optimize` returns** — so a crash mid-`optimize` loses that run's in-memory trials; resume only recovers a *completed* prior run's journal. Incremental/atomic per-trial journaling (crash-safe mid-run resume) lands with parallel execution in Phase 2.
 
 **Placeholder scan:** none — every code/test step is complete. The embedded-pipeline custom serializer, the `ScorerField` round-trip, the builder/measure stack, the 6-combo grid, and the golden op-set were all verified against the live codebase before writing.
 

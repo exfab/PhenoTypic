@@ -121,7 +121,9 @@ Expected: FAIL — `ImportError: cannot import name 'polymorphic_field'`.
 
 - [ ] **Step 3: Implement the factory in `typing_.py`**
 
-In `src/phenotypic/tools_/typing_.py`, **replace** the standalone guard `_require_operation_value` (`:234-262`) and the `OperationField = Annotated[...]` definition (`:309-315`) with a base-parameterized guard + the factory + the alias. Keep `_serialize_operation_value`, `_deserialize_operation_value`, and `_OperationFieldMarker` exactly as they are (already generic). Add `from typing import Callable` to the imports if not present.
+In `src/phenotypic/tools_/typing_.py`, **replace** the standalone guard `_require_operation_value` (`:234-262`) and the `OperationField = Annotated[...]` definition (`:309-315`) with a base-parameterized guard + the factory + the alias. Keep `_serialize_operation_value`, `_deserialize_operation_value`, and `_OperationFieldMarker` exactly as they are (already generic).
+
+> **Required import (do this first):** `typing_.py` currently imports `from typing import TYPE_CHECKING, Annotated, Any, Dict, List, Literal, Tuple` — **no `Callable`**. Add `Callable` to that line. `from __future__ import annotations` keeps the string annotations runtime-safe, so the tests pass either way, but **`mypy` (Step 6) fails with `Name "Callable" is not defined`** without it.
 
 ```python
 # src/phenotypic/tools_/typing_.py  (replaces _require_operation_value + OperationField)
@@ -194,7 +196,7 @@ Expected: PASS (4 tests).
 - [ ] **Step 5: Run the back-compat lock (existing serialization + GUI registry suites stay green)**
 
 Run: `uv run pytest tests/unit/tools_ tests/unit/core tests/unit/gui -k "serial or registry or operation or pipeline" -q`
-Expected: PASS — no regressions in operation/pipeline round-trips or the GUI `OperationRegistry`. If anything references the removed `_require_operation_value` symbol, repoint it to `_make_require_value(_lazy_base_operation)` (search: `uv run python -c "import subprocess"` → `grep -rn _require_operation_value src tests`).
+Expected: PASS — no regressions in operation/pipeline round-trips or the GUI `OperationRegistry`. If anything references the removed `_require_operation_value` symbol, repoint it to `_make_require_value(_lazy_base_operation)`. Search first: `grep -rn '_require_operation_value' src tests` (expected: no hits outside `typing_.py` itself).
 
 - [ ] **Step 6: Type-check, lint, commit**
 
@@ -512,7 +514,9 @@ def test_golden_matches_fresh_generation_while_sweep_exists():
     # Belt-and-suspenders: while sweep still exists, the committed golden must
     # equal a fresh generation (so we know it wasn't hand-edited). Phase 1's
     # GridStrategy will be locked to this golden after sweep is deleted.
-    from scripts.capture_grid_golden_manifest import build_golden_config
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts"))
+    from capture_grid_golden_manifest import build_golden_config
     from phenotypic.sweep import generate_sweep_manifest
 
     fresh = generate_sweep_manifest(build_golden_config())
@@ -520,7 +524,7 @@ def test_golden_matches_fresh_generation_while_sweep_exists():
     assert json.loads(json.dumps(fresh, sort_keys=True)) == committed
 ```
 
-> If `test_golden_matches_fresh_generation_while_sweep_exists` can't import `scripts...` (not a package), add `tests/conftest.py`-level `sys.path` insertion of the repo root, or move `build_golden_config` into `tests/unit/tune/_grid_golden_config.py` and import it from both the script and the test. Prefer the shared-helper module: create `tests/unit/tune/_grid_golden_config.py` with `build_golden_config`, and have the script import it.
+> Import mechanics (the fix is shown above): `scripts/` is not an importable package, so the test inserts the `scripts/` dir on `sys.path` and imports the generator module **by basename** (`capture_grid_golden_manifest`). This keeps `build_golden_config` defined once (in the script) — no shared-helper module, no repo-root `conftest.py` hack, and no `ModuleNotFoundError` at collection time.
 
 - [ ] **Step 4: Create the test package marker + run the lock**
 
