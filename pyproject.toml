@@ -170,6 +170,7 @@ markers = [
     "smoke: basic operation test",
     "slow: heavy parametrize sweep, excluded from PR runs by default",
     "ci_flaky: e2e tests that pass locally but flake on shared CI runners (Playwright DOM polls); CI workflow deselects via `-m 'not ci_flaky'`. See tests/CLAUDE.md.",
+    "postgres: tune study-DB tests needing a live Postgres server; autoskipped by tests/conftest.py unless PHENOTYPIC_TEST_PG_URL is set.",
 ]
 filterwarnings = [
     "ignore::SyntaxWarning:mahotas",
