@@ -2,11 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add `--process-only {rgb|gray|detect_mat|objmap}`, a run mode that executes `pipeline.apply()` only and writes a single image layer per input image (TIFF at the image's bit depth for `rgb`/`gray`/`detect_mat`; 16-bit raw-label PNG for `objmap`), mirroring the input tree, with full local + SLURM + resume reuse and no measurement/analysis output suite.
+**Goal:** Add `--process-only {rgb|gray|detect_mat|objmap}`, a run mode that executes `pipeline.apply()` only and writes a single image layer per input image via the layer accessor's `imsave` (`rgb` integer TIFF at the source bit depth; `gray`/`detect_mat` float TIFF preserving full precision; `objmap` 16-bit raw-label PNG; PhenoTypic metadata embedded), mirroring the input tree, with full local + SLURM + resume reuse and no measurement/analysis output suite.
 
-**Architecture:** A sibling per-image worker (`process_single_apply_only_core`) runs `pipeline.apply()` then writes one layer via a worker-side bit-depth quantizer; the existing `LocalParallelStrategy`/`AutonomousSLURMStrategy` branch on a new `ExecutionConfig.process_only_layer` for both the per-image callable and the finalize step (manifest-only, no dashboard/aggregation). Machine-state lives in `.phenotypic/` (Phase 1). A new classifier signal makes a process-only run discoverable in the run console without a dashboard/results affordance.
+**Architecture:** A sibling per-image worker (`process_single_apply_only_core`) runs `pipeline.apply()` then writes one layer by delegating to the accessor's `imsave` (the single, golden-tested IO writer — no parallel writer, no quantization); the existing `LocalParallelStrategy`/`AutonomousSLURMStrategy` branch on a new `ExecutionConfig.process_only_layer` for both the per-image callable and the finalize step (manifest-only, no dashboard/aggregation). Machine-state lives in `.phenotypic/` (Phase 1). A new classifier signal makes a process-only run discoverable in the run console without a dashboard/results affordance.
 
-**Tech Stack:** Python 3.12, `uv`, `click`, `tifffile`, `scikit-image` (`img_as_ubyte`/`img_as_uint`), `pytest`, Dash GUI.
+**Tech Stack:** Python 3.12, `uv`, `click`, `pytest`, Dash GUI. Layer writing reuses the accessor `imsave` IO (`tifffile`/`cv2`/PIL under the hood); the process-only path performs no pixel quantization of its own.
 
 **Spec:** `docs/superpowers/specs/2026-06-03-cli-process-only-and-phenotypic-cache-design.md` (§5.3–5.7; decisions D2, D3, D5, D8, D9, D10, D12, D13).
 
@@ -23,7 +23,7 @@
 | `src/phenotypic/tools_/typing_.py` | `ProcessOnlyLayer` Literal alias | Modify |
 | `src/phenotypic/tools_/_io_constants.py` | `phenotypic_cache_pipeline_json_path` helper | Modify |
 | `src/phenotypic/_cli/_cli_types.py` | `ExecutionConfig.process_only_layer` field | Modify |
-| `src/phenotypic/_cli/_cli_process_only.py` | **New** — output-path mapper, layer writer (bit-depth quantization), `process_single_apply_only_core` | Create |
+| `src/phenotypic/_cli/_cli_process_only.py` | **New** — output-path mapper, layer writer (`imsave` delegation), `process_single_apply_only_core` | Create |
 | `src/phenotypic/_cli/_cli_process_single.py` | Worker-CLI `--process-only` / `--input-root` options | Modify |
 | `src/phenotypic/_cli/_cli_execution_strategies.py` | Local/SLURM dispatch (worker + finalize) | Modify |
 | `src/phenotypic/_cli/_cli_slurm_array_scripts.py` | Thread `--process-only`/`--input-root`; manifest-only finalize | Modify |
@@ -200,12 +200,12 @@ def test_write_rgb_is_uint8_for_8bit_source(tmp_path):
     assert arr.dtype == np.uint8 and arr.ndim == 3
 
 
-def test_write_detect_mat_float_quantized_to_source_depth(tmp_path):
-    img = load_synth_yeast_plate()              # detect_mat is float64 in [0,1]
+def test_write_detect_mat_preserves_float_precision(tmp_path):
+    img = load_synth_yeast_plate()              # detect_mat is float in [0,1]
     p = tmp_path / "dm.tiff"
     write_process_only_layer(img, "detect_mat", p)
     arr = tifffile.imread(p)
-    assert arr.dtype == np.uint8                # 8-bit source -> uint8, not float
+    assert np.issubdtype(arr.dtype, np.floating)  # imsave writes a float TIFF — full precision, not quantized
 
 
 def test_write_objmap_is_uint16_png(tmp_path):
@@ -250,9 +250,6 @@ import warnings
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-import numpy as np
-import skimage as ski
-
 from phenotypic import GridImage, Image, ImagePipeline
 from phenotypic.tools_.typing_ import ImageTypeName, ProcessOnlyLayer
 
@@ -276,30 +273,22 @@ def process_only_output_path(
 
 
 def write_process_only_layer(image: Any, layer: ProcessOnlyLayer, out_path: Path) -> None:
-    """Write one image layer. TIFF at the image's bit depth for intensity
-    layers (float layers quantized via skimage); 16-bit raw-label PNG for
-    objmap (D10)."""
+    """Write one image layer by delegating to the accessor's ``imsave``.
+
+    Reuses the single, golden-tested writer (`_accessor_io_handler.imsave` /
+    the multichannel and objmap `imsave` overrides): each layer is written at
+    its **native dtype** with the PhenoTypic metadata embedded — ``rgb`` as an
+    integer TIFF at the source bit depth, ``gray``/``detect_mat`` as float TIFFs
+    (full precision preserved), and ``objmap`` as a 16-bit raw-label PNG (D10).
+    No quantization is performed here.
+    """
     out_path.parent.mkdir(parents=True, exist_ok=True)
     accessor = getattr(image, layer)
-
-    if layer == "objmap":
-        if accessor.isempty():
-            warnings.warn(
-                f"pipeline produced no objects; writing empty object map to {out_path}"
-            )
-        accessor.imsave(filepath=out_path)  # raw labels (use_label2rgb=False) -> 16-bit PNG
-        return
-
-    arr = accessor[:]
-    target = image.bit_depth or 8
-    if np.issubdtype(arr.dtype, np.floating):
-        arr = np.clip(arr, 0.0, 1.0)
-        arr = ski.util.img_as_ubyte(arr) if target == 8 else ski.util.img_as_uint(arr)
-
-    import tifffile
-
-    photometric = "rgb" if arr.ndim == 3 and arr.shape[2] >= 3 else "minisblack"
-    tifffile.imwrite(out_path, arr, photometric=photometric)
+    if layer == "objmap" and accessor.isempty():
+        warnings.warn(
+            f"pipeline produced no objects; writing empty object map to {out_path}"
+        )
+    accessor.imsave(filepath=out_path)  # native dtype + embedded metadata
 
 
 def process_single_apply_only_core(
@@ -353,7 +342,7 @@ Expected: PASS (all 6 tests).
 
 ```bash
 git add src/phenotypic/_cli/_cli_process_only.py tests/unit/cli/test_cli_process_only.py
-git commit -m "feat(cli): process-only output-path mapper + bit-depth-aware layer writer + apply-only worker"
+git commit -m "feat(cli): process-only output-path mapper + imsave-delegating layer writer + apply-only worker"
 ```
 
 ---
@@ -745,9 +734,8 @@ Add the option to `phenotypic_cli` (after `--no-qc`):
     type=click.Choice(["rgb", "gray", "detect_mat", "objmap"]),
     default=None,
     help="Apply-only mode: run pipeline.apply() and export this single layer "
-    "(16-bit-capable TIFF for rgb/gray/detect_mat at the image's bit depth, "
-    "raw-label PNG for objmap), mirroring the input tree. Skips measurement, "
-    "deliverables, QC, dashboard.",
+    "(TIFF for rgb/gray/detect_mat, 16-bit raw-label PNG for objmap), "
+    "mirroring the input tree. Skips measurement, deliverables, QC, dashboard.",
 )
 ```
 
@@ -897,7 +885,7 @@ def test_process_only_end_to_end(tmp_path, synth_one_level_input, simple_pipelin
     assert r.exit_code == 0, r.output
     tiffs = list(out.rglob("*_detect_mat.tiff"))
     assert tiffs, "no mirrored tiffs"
-    assert tifffile.imread(tiffs[0]).dtype == np.uint8       # 8-bit source
+    assert np.issubdtype(tifffile.imread(tiffs[0]).dtype, np.floating)  # detect_mat float TIFF (imsave, full precision)
     assert manifest_json_path(out).is_file()                  # run-console visibility
     assert phenotypic_cache_dir(out).is_dir()
     assert not deliverables_dir(out).exists()                 # no analysis suite
@@ -912,7 +900,7 @@ Expected: PASS once Tasks 1–7 are in. If it fails, the failure points at the m
 - [ ] **Step 3: Docs**
 
 - `phenotypic_cli` docstring: add a `--process-only` paragraph with an example invocation.
-- `CLAUDE.md` "CLI" section: add a bullet for `--process-only {rgb|gray|detect_mat|objmap}` (apply-only export; mirrors input tree; TIFF at image bit depth / objmap PNG; state in `.phenotypic/`).
+- `CLAUDE.md` "CLI" section: add a bullet for `--process-only {rgb|gray|detect_mat|objmap}` (apply-only export; mirrors input tree; layers written via accessor `imsave` — rgb integer / gray·detect_mat float TIFF, objmap 16-bit PNG; state in `.phenotypic/`).
 - `README.md`: one line under the CLI usage block.
 
 - [ ] **Step 4: Re-run the integration test + full suites**
@@ -933,6 +921,6 @@ git commit -m "test+docs(cli): process-only end-to-end + CLI docs"
 
 ## Self-Review (completed)
 
-- **Spec coverage:** §5.3 surface → Task 7. §5.4 worker+finalize+input_root → Tasks 3,5,6. §5.5 mirror path (D2/D8/D12) → Task 3. §5.6 bit depth (D10) → Task 3. §5.7 dry-run → Task 7. D3 single layer → Choice type. D9 objmap-empty → Task 3. D13 GUI visibility → Task 8 (corrected: needs a classifier signal, not free). SLURM (D5/full reuse) → Task 6.
+- **Spec coverage:** §5.3 surface → Task 7. §5.4 worker+finalize+input_root → Tasks 3,5,6. §5.5 mirror path (D2/D8/D12) → Task 3. §5.6 imsave delegation (D10) → Task 3. §5.7 dry-run → Task 7. D3 single layer → Choice type. D9 objmap-empty → Task 3. D13 GUI visibility → Task 8 (corrected: needs a classifier signal, not free). SLURM (D5/full reuse) → Task 6.
 - **Placeholder scan:** code shown for every implementation step. The two SLURM/CLI-wiring steps that require reading an existing function first (Task 6 finalize seam, Task 7 `ExecutionConfig(`/dry-run locations) name the exact function and the exact additions — no "handle X" hand-waving.
 - **Type consistency:** `ProcessOnlyLayer` (Task 1) used in `ExecutionConfig.process_only_layer` (Task 2), worker `layer` param (Task 3), and both CLI `click.Choice` lists (Tasks 4,7) — same four values. `process_single_apply_only_core` signature is identical at definition (Task 3) and both call sites (Tasks 4,5). `write_process_only_layer`/`process_only_output_path` names match across Tasks 3,5,7. `is_process_only_output` defined and consumed consistently in Task 8.
