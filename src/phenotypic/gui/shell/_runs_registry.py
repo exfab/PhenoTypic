@@ -278,7 +278,7 @@ class RunRegistry:
                 if not child.is_dir():
                     continue
                 caps = classify(child)
-                if caps.is_cli_output:
+                if caps.is_cli_output or caps.is_process_only_output:
                     yield child
                 # Recurse regardless — a CLI output may itself contain
                 # nested ones in unusual sandboxes (unlikely but cheap).

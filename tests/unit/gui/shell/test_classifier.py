@@ -61,6 +61,7 @@ def test_empty_directory(tmp_path: Path) -> None:
         has_pipeline_json=False,
         is_cli_output=False,
         has_dashboard=False,
+        is_process_only_output=False,
         image_count=None,
         bad_perms=False,
     )
