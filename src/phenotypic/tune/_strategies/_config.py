@@ -7,8 +7,9 @@ this union for the built-in kinds.
 """
 from __future__ import annotations
 
+import os
 from abc import abstractmethod
-from typing import Annotated, Any, Literal, Optional, Union
+from typing import Annotated, Any, Literal, Optional, TypeAlias, Union
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -19,6 +20,19 @@ from ._random import RandomStrategy
 
 #: Closed set of strategy-config discriminator tags (reused by the union).
 StrategyKind = Literal["grid", "random"]
+
+#: The Optuna sampler roster — a closed set (never a bare ``str``). ``"tpe"`` is
+#: the default (handles our mixed categorical/conditional space); ``"cmaes"`` is
+#: the continuous-dominant / post-screening focused-round sampler; ``"gp"`` the
+#: low-dim expensive-eval Gaussian-process sampler; ``"nsga2"`` the
+#: multi-objective genetic sampler (auto-selected for a multi-objective study).
+SamplerKind: TypeAlias = Literal["tpe", "cmaes", "gp", "nsga2"]
+
+#: Environment variable naming the Optuna storage URL when ``OptunaConfig`` is
+#: built with ``storage_url=None`` (e.g. a SLURM array exporting a shared
+#: Postgres/SQLite URL to every worker). Resolved inside ``build`` only — never
+#: at construction — so the lazy-import boundary holds.
+PHENOTYPIC_TUNE_STORAGE_URL_ENV: str = "PHENOTYPIC_TUNE_STORAGE_URL"
 
 
 class StrategyConfig(BaseModel):
@@ -76,7 +90,64 @@ class RandomConfig(StrategyConfig):
         return RandomStrategy(space, n_trials=self.n_trials, seed=self.seed)
 
 
-#: Discriminated union of the built-in (Phase 1) strategy configs.
+class OptunaConfig(StrategyConfig):
+    """Builds an ``OptunaStrategy`` (TPE/CMA-ES/GP/NSGA-II + ASHA pruning).
+
+    The Phase-2 backend config. Construction and serialization stay
+    Optuna-free; only :meth:`build` resolves the optional ``tune`` extra (via
+    ``_require_optuna``). It rides the ``TuningSpec.strategy`` polymorphic field
+    (not the closed ``StrategyConfigUnion``), so it round-trips through the
+    class registry like any ``StrategyConfig`` subclass.
+
+    Args:
+        kind: The discriminator tag; always ``"optuna"``.
+        sampler: The Optuna sampler (a closed :data:`SamplerKind` set); defaults
+            to ``"tpe"``. A multi-objective study auto-selects NSGA-II at build
+            time regardless of this value (Phase 4 wires the scorer).
+        n_trials: The completed+pruned trial budget before exhaustion.
+        prune: Whether to enable ASHA pruning (opt-in; the explore round runs
+            unpruned). Defaults to ``False``.
+        seed: The sampler seed for reproducibility; defaults to ``0``.
+        storage_url: The Optuna storage URL (SQLite/Postgres). ``None`` resolves
+            from ``$PHENOTYPIC_TUNE_STORAGE_URL`` at build time; if that is also
+            unset the strategy uses an in-memory study.
+    """
+
+    kind: Literal["optuna"] = "optuna"
+    sampler: SamplerKind = "tpe"
+    n_trials: int
+    prune: bool = False
+    storage_url: Optional[str] = None
+
+    def build(self, space: SearchSpace, store: Optional[Any]) -> SearchStrategy:
+        """Construct the live ``OptunaStrategy`` (resolves the ``tune`` extra).
+
+        ``import optuna`` is deferred to ``OptunaStrategy``'s body; this method
+        calls ``_require_optuna`` first to raise an actionable error when the
+        extra is missing. The storage URL falls back to
+        ``$PHENOTYPIC_TUNE_STORAGE_URL`` when ``storage_url is None``.
+        """
+        from ._optuna import OptunaStrategy
+        from ._optuna_support import _require_optuna
+
+        _require_optuna()
+        storage_url = self.storage_url
+        if storage_url is None:
+            storage_url = os.environ.get(PHENOTYPIC_TUNE_STORAGE_URL_ENV)
+        return OptunaStrategy(
+            space,
+            sampler=self.sampler,
+            n_trials=self.n_trials,
+            prune=self.prune,
+            seed=self.seed,
+            storage_url=storage_url,
+            store=store,
+        )
+
+
+#: Discriminated union of the built-in (Phase 1) strategy configs. ``OptunaConfig``
+#: is intentionally **not** a member: it rides the ``TuningSpec.strategy``
+#: polymorphic field (registry round-trip), not this closed union.
 StrategyConfigUnion = Annotated[
     Union[GridConfig, RandomConfig], Field(discriminator="kind")
 ]

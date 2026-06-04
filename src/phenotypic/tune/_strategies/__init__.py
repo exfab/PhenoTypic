@@ -3,7 +3,9 @@ from __future__ import annotations
 
 from ._config import (
     GridConfig,
+    OptunaConfig,
     RandomConfig,
+    SamplerKind,
     StrategyConfig,
     StrategyConfigUnion,
 )
@@ -21,5 +23,7 @@ __all__ = [
     "StrategyConfig",
     "GridConfig",
     "RandomConfig",
+    "OptunaConfig",
+    "SamplerKind",
     "StrategyConfigUnion",
 ]

@@ -67,7 +67,14 @@ from ._search_space import (
 from ._spec import Budget, TuningSpec
 
 # --- Phase 1b: strategy configs (serializable; build live SearchStrategy) ------
-from ._strategies import GridConfig, RandomConfig, StrategyConfig
+# --- Phase 2 (chunk 2): OptunaConfig (registry round-trip; builds OptunaStrategy)
+from ._strategies import (
+    GridConfig,
+    OptunaConfig,
+    RandomConfig,
+    SamplerKind,
+    StrategyConfig,
+)
 
 # --- Phase 2 (chunk 1): StudyStore Protocol + concrete journal -----------------
 # ``StudyStore`` remains the public name (back-compat alias for the concrete
@@ -89,6 +96,9 @@ __all__ = [
     "StrategyConfig",
     "GridConfig",
     "RandomConfig",
+    # Phase 2 (chunk 2): Optuna backend config
+    "OptunaConfig",
+    "SamplerKind",
     # Phase 1c: scoring
     "Scorer",
     "QCScorer",
