@@ -40,8 +40,12 @@ StrategyConfigField: TypeAlias = Any  # = polymorphic_field(base=StrategyConfig)
 StrategyConfigField = polymorphic_field(base=StrategyConfig)  # type: ignore[misc]
 
 #: TypeAdapter over the built-in discriminated union, reused to reconstruct a
-#: legacy discriminator-tagged strategy dict (no ``"class"`` wrapper).
-_STRATEGY_UNION_ADAPTER = TypeAdapter(StrategyConfigUnion)
+#: legacy discriminator-tagged strategy dict (no ``"class"`` wrapper). Annotated
+#: as the common ``StrategyConfig`` base (the union's ``Annotated`` form is not a
+#: type mypy can infer the adapter's generic from).
+_STRATEGY_UNION_ADAPTER: TypeAdapter[StrategyConfig] = TypeAdapter(
+    StrategyConfigUnion
+)
 
 
 class Budget(BaseModel):
