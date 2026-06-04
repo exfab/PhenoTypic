@@ -50,7 +50,12 @@ from ._evaluation import EvaluationResult, Evaluator, build_pipeline
 
 # --- Phase 1a: search space (domains + Knob/SearchSpace) ----------------------
 from ._scoring import QCScorer, ReferenceFreeScorer, Scorer
-from ._screening import compute_param_importance
+from ._screening import (
+    ImportanceMethod,
+    ImportanceReport,
+    compute_param_importance,
+    compute_param_importance_report,
+)
 from ._search_space import (
     Categorical,
     Domain,
@@ -116,6 +121,9 @@ __all__ = [
     "JournalStudyStore",
     "Trial",
     "compute_param_importance",
+    "compute_param_importance_report",
+    "ImportanceReport",
+    "ImportanceMethod",
     "run_tuning",
     # Phase 3: search-space inference
     "TuneSpec",

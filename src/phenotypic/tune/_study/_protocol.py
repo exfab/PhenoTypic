@@ -58,3 +58,17 @@ class StudyStore(Protocol):
         evaluation (optuna-integration.md §8).
         """
         ...
+
+    def param_importances(self) -> Optional[dict[str, float]]:
+        """Native (fANOVA) parameter importances, or ``None`` when unsupported.
+
+        A backend that owns a richer importance model (e.g. an Optuna study →
+        ``optuna.importance.get_param_importances`` fANOVA, which attributes
+        interaction variance to each parameter) returns the ranked dict here.
+        ``None`` signals "no native model" — the screening layer then falls back
+        to its own RandomForest + permutation estimate (screening-importance.md
+        §1). The journal returns ``None`` (no model); the Optuna store returns
+        ``None`` too whenever its trials carry no native sampler dimensions (the
+        ``append`` path stores params off-band), so the fallback still fires.
+        """
+        ...

@@ -90,6 +90,14 @@ class JournalStudyStore:
         """The number of completed (non-failed) trials; pruned counts as done."""
         return sum(1 for t in self._trials if not t.failed)
 
+    def param_importances(self) -> Optional[dict[str, float]]:
+        """Always ``None``: the journal owns no native importance model.
+
+        The screening layer falls back to its RandomForest + permutation
+        estimate over the journaled trials (screening-importance.md §1).
+        """
+        return None
+
     #: Stable column order for the trials frame (explicit so an empty store
     #: still writes a valid parquet schema rather than a zero-column frame).
     _COLUMNS = [

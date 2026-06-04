@@ -169,3 +169,28 @@ class OptunaStudyStore:
     def completed_count(self) -> int:
         """The number of completed (non-failed) trials; pruned counts as done."""
         return sum(1 for t in self.trials if not t.failed)
+
+    def param_importances(self) -> Optional[dict[str, float]]:
+        """The study's fANOVA importances, or ``None`` when unavailable.
+
+        Delegates to ``optuna.importance.get_param_importances`` (default fANOVA
+        evaluator), whose variance decomposition attributes each parameter's main
+        **and** interaction contribution. Returns ``None`` — so the screening
+        layer falls back to its RandomForest + permutation estimate — when the
+        study has no native sampler dimensions (the :meth:`append` path stores
+        params in ``user_attrs``, leaving native ``params`` empty) or fewer than
+        two completed trials, both of which make fANOVA degenerate.
+
+        ``import optuna`` stays lazy in the body (the lazy-import boundary).
+        """
+        import optuna
+
+        try:
+            importances = optuna.importance.get_param_importances(self._study)
+        except (ValueError, RuntimeError):
+            # Too few trials / single-objective requirement unmet → no model.
+            return None
+        if not importances:
+            # No native dimensions (append-path trials carry params off-band).
+            return None
+        return {key: float(value) for key, value in importances.items()}

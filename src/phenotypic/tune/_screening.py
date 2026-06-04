@@ -1,23 +1,130 @@
-"""Parameter importance — Phase-1 RF + permutation fallback (fANOVA is Phase 2)."""
+"""Parameter importance — fANOVA-vs-RF dispatch on store capability (Phase 2).
+
+The screening layer ranks tuned parameters by their contribution to the
+objective. It dispatches **on store capability**, never on type: a backend that
+exposes ``param_importances()`` (an Optuna study → fANOVA, whose variance
+decomposition attributes interaction effects to each parameter) drives the
+``"fanova"`` path; any backend returning ``None`` (the journal, or an Optuna
+study with no native sampler dimensions) falls back to the homegrown
+``RandomForest`` + permutation estimate (``"rf-permutation"``). The
+``interactions_estimated`` honesty flag records whether the chosen method
+accounts for interactions (fANOVA does; RF-permutation is main-effect only) so a
+downstream freeze decision can be conservative when interactions are unverified
+(screening-importance.md §1, §7).
+"""
 from __future__ import annotations
+
+from typing import Literal
 
 import numpy as np
 import pandas as pd
+from pydantic import BaseModel, ConfigDict
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.inspection import permutation_importance
 
 from ._study_store import StudyStore
 
+#: The importance estimators, a closed set (never a bare ``str``). ``"fanova"``
+#: is the native Optuna variance decomposition (main + interaction); the
+#: ``"rf-permutation"`` fallback is the homegrown RandomForest + permutation
+#: estimate (main effects only).
+ImportanceMethod = Literal["fanova", "rf-permutation"]
+
+
+class ImportanceReport(BaseModel):
+    """A ranked importance estimate plus its method + interaction honesty flag.
+
+    Args:
+        importances: ``{param_key: importance}`` sorted descending (empty when
+            there is nothing to fit).
+        method: Which estimator produced ``importances`` (a closed
+            :data:`ImportanceMethod` set).
+        interactions_estimated: Whether ``method`` accounts for interaction
+            effects. ``True`` for ``"fanova"`` (variance decomposition); ``False``
+            for ``"rf-permutation"`` (main-effect permutation only). A freeze
+            decision should stay conservative when this is ``False`` — a
+            low-main/high-interaction parameter may look unimportant
+            (screening-importance.md §7).
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    importances: dict[str, float]
+    method: ImportanceMethod
+    interactions_estimated: bool
+
 
 def compute_param_importance(
     store: StudyStore, *, random_state: int = 0
 ) -> dict[str, float]:
-    """Rank tuned parameters by permutation importance against the objective.
+    """Rank tuned parameters by importance against the objective (the dict view).
+
+    The back-compat, dict-returning façade over
+    :func:`compute_param_importance_report`: it dispatches the same way (native
+    fANOVA when the store offers it, RandomForest + permutation otherwise) but
+    discards the method / honesty metadata.
+
+    Args:
+        store: The study store of completed trials.
+        random_state: Seed for the forest + permutation (reproducibility); only
+            used on the RandomForest fallback path.
+
+    Returns:
+        ``{param_key: importance}`` sorted descending. Empty when fewer than two
+        non-failed trials (nothing to fit).
+    """
+    return compute_param_importance_report(
+        store, random_state=random_state
+    ).importances
+
+
+def compute_param_importance_report(
+    store: StudyStore, *, random_state: int = 0
+) -> ImportanceReport:
+    """Rank parameters and record the method + interaction honesty flag.
+
+    First asks the store for a native importance model via
+    ``store.param_importances()`` (capability dispatch — never an ``isinstance``
+    check). A non-empty result is the fANOVA path
+    (``interactions_estimated=True``); ``None`` falls back to the homegrown
+    RandomForest + permutation estimate (``interactions_estimated=False``).
+
+    Args:
+        store: The study store of completed trials. Any object exposing
+            ``param_importances()`` and ``trials`` satisfies the contract.
+        random_state: Seed for the forest + permutation (RandomForest path).
+
+    Returns:
+        An :class:`ImportanceReport` carrying the ranked importances, the
+        ``method``, and the ``interactions_estimated`` flag.
+    """
+    native = store.param_importances()
+    if native:
+        ranked = dict(
+            sorted(native.items(), key=lambda kv: kv[1], reverse=True)
+        )
+        return ImportanceReport(
+            importances=ranked,
+            method="fanova",
+            interactions_estimated=True,
+        )
+    return ImportanceReport(
+        importances=_rf_permutation_importance(store, random_state=random_state),
+        method="rf-permutation",
+        interactions_estimated=False,
+    )
+
+
+def _rf_permutation_importance(
+    store: StudyStore, *, random_state: int = 0
+) -> dict[str, float]:
+    """The homegrown fallback: RandomForest + permutation importance.
 
     Fits a ``RandomForestRegressor`` on the trials' (encoded) params → score and
     runs ``permutation_importance``. Non-numeric params are one-hot encoded
     (per-key prefix) and the encoded importances summed back to the original key;
-    absent conditional params fill to ``0``.
+    absent conditional params fill to ``0``. Imports no optuna — the lazy-import
+    boundary holds on this path (screening-importance.md §1).
 
     Args:
         store: The journal of completed trials.
