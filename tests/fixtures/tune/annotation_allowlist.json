@@ -35,8 +35,6 @@
     "EnhanceFeatures.n_scale",
     "EnhanceFeatures.noise_method",
     "EnhanceFeatures.sigma_onf",
-    "EnhanceLocalContrast.clip_limit",
-    "EnhanceLocalContrast.kernel_size",
     "FilamentousFungiDetector.border_margin_px",
     "FilamentousFungiDetector.coherence_window_radius",
     "FilamentousFungiDetector.edge_noise_threshold",
