@@ -20,9 +20,11 @@ Every term is **fixed-normalized** to ``[0, 1]`` (higher = better) so the
 optimum cannot migrate when the parameter grid's endpoints change — the "Böck
 trap" (``§B.3``) that min–max-over-the-tested-set normalization falls into.
 
-The scorer is **gated** behind meta-validation (``D1``): until that gate (added
-in the next task) runs and passes, :meth:`availability` returns ``False`` so the
-engine **fails safe** by degrading to :class:`QCScorer`.
+The scorer is **gated** behind meta-validation (``D1``): :meth:`meta_validate`
+correlates the proxy against ground truth and caches an enable/abstain flag;
+:meth:`availability` is the cheap cached-boolean read. Until the gate runs and
+passes, :meth:`availability` returns ``False`` so the engine **fails safe** by
+degrading to :class:`QCScorer`.
 """
 from __future__ import annotations
 
@@ -39,6 +41,13 @@ from phenotypic.schema import SHAPE, SIZE
 
 from ._qc_scorer import _threshold_anchored
 from ._scorer import Scorer
+
+#: Spearman ρ at or above which the proxy is trusted enough to *enable* the
+#: scorer (engineering bar, reference-free-metrics §E.4 — inference, not a
+#: cited cutoff).
+_ENABLE_RHO: float = 0.7
+#: Spearman ρ at or above which fully *unattended* auto-tuning is allowed.
+_UNATTENDED_RHO: float = 0.8
 
 
 def _clamp01(value: float) -> float:
@@ -86,7 +95,7 @@ def _bounded_inverse(dispersion: float) -> float:
 
 
 class ReferenceFreeScorer(Scorer):
-    """No-ground-truth proxy objective (meta-validation gate added next task).
+    """No-ground-truth proxy objective, gated behind meta-validation.
 
     The lean proxy set (``§0a``/``§0b``) reuses the public ``phenotypic.schema``
     measurement columns — ``Shape_*`` and ``Size_*`` — for the shape and size
@@ -95,8 +104,9 @@ class ReferenceFreeScorer(Scorer):
     grid count. All terms are fixed-normalized to ``[0, 1]`` (higher = better).
 
     The scorer is **unavailable until meta-validated**: :meth:`availability`
-    returns ``False`` (so the engine degrades to :class:`QCScorer`) until the
-    meta-validation gate (a following task) runs and passes.
+    returns ``False`` (so the engine degrades to :class:`QCScorer`) until
+    :meth:`meta_validate` correlates the proxy against ground truth and caches a
+    passing flag.
 
     Args:
         count_check: An optional configured expected-vs-detected count check —
@@ -108,8 +118,9 @@ class ReferenceFreeScorer(Scorer):
             and averaged (``§C.3``). ``None`` treats the whole frame as one
             group.
         gt_masks_source: Optional path to a ground-truth mask source consumed by
-            the (next-task) meta-validation gate (mirroring :class:`QCScorer`'s
-            metadata-path discipline so it serializes).
+            the meta-validation gate (a name→mask mapping, mirroring
+            :class:`QCScorer`'s metadata-path discipline so it serializes).
+            ``None`` means the gate cannot validate and abstains.
         min_area: Minimum ``Size_Area`` (px) below which a colony is excluded
             from the shape term — perimeter-derived metrics are unreliable at a
             few pixels (``§C`` watch-out (a)). Default ``0`` keeps every colony.
@@ -144,24 +155,127 @@ class ReferenceFreeScorer(Scorer):
 
     #: Run-local cached gate verdict (default not-yet-run → ``False``,
     #: fail-safe). A ``PrivateAttr`` so it never serializes — a reloaded scorer
-    #: re-validates and stays unavailable until it does. The next task wires the
-    #: ``meta_validate`` gate that flips it.
+    #: re-validates and stays unavailable until it does.
     _meta_validated: bool = PrivateAttr(default=False)
 
+    # ----------------------------------------------------------------- #
+    # availability + the meta-validation gate (Task 2)
+    # ----------------------------------------------------------------- #
     def availability(self) -> bool:
         """Whether the proxy has passed meta-validation (cheap cached read).
 
-        Defaults to ``False`` (fail-safe) so the engine degrades to
-        :class:`QCScorer` until the meta-validation gate (next task) runs and
-        passes.
+        The cached :attr:`_meta_validated` flag is the only thing read — no GT
+        is loaded and no correlation is recomputed. Defaults to ``False``
+        (fail-safe) until :meth:`meta_validate` runs and passes, so the engine
+        degrades to :class:`QCScorer` rather than trusting an unvalidated proxy.
 
         Returns:
-            The cached :attr:`_meta_validated` verdict.
+            ``True`` only after a passing :meth:`meta_validate`; ``False``
+            otherwise.
         """
         return self._meta_validated
 
+    def meta_validate(self, gt_images: Any, grid: Any) -> bool:
+        """Gate the proxy against ground truth, caching the enable/abstain flag.
+
+        Loads ground-truth masks via :meth:`_load_gt_masks`, computes the
+        proxy-vs-GT Spearman rank correlation, and caches
+        :attr:`_meta_validated` ``= ρ ≥`` :data:`_ENABLE_RHO`. **Fail-safe**: if
+        no GT is configured (or it resolves to nothing), the gate abstains and
+        the flag stays ``False``, so the engine keeps falling back to
+        :class:`QCScorer`.
+
+        Args:
+            gt_images: The annotated calibration images to validate against
+                (duck-typed; passed through to :meth:`_load_gt_masks`).
+            grid: The candidate parameter grid the proxy is asked to rank
+                (its argmax is compared against the true best in the deferred,
+                real-GT validation).
+
+        Returns:
+            ``True`` if the proxy passed (``ρ ≥`` enable threshold) and the
+            scorer is now :meth:`availability`-enabled; ``False`` on abstain.
+
+        # TODO(DEFERRED-WORK §1): validate against real annotated plates — run
+        # the proxy-vs-GT correlation on a real GT set and confirm the
+        # enable/abstain thresholds (and the argmax test) numerically. v1 ships
+        # only the gate machinery + abstain logic; ``_proxy_gt_spearman`` is a
+        # structural stub until an annotated calibration set exists.
+        """
+        masks = self._load_gt_masks(gt_images)
+        if not masks:
+            # No ground truth → cannot certify the proxy → abstain (fail-safe).
+            self._meta_validated = False
+            return False
+        rho = self._proxy_gt_spearman(gt_images, masks, grid)
+        self._meta_validated = bool(rho >= _ENABLE_RHO)
+        return self._meta_validated
+
+    def is_unattended_safe(self) -> bool:
+        """Whether the last gate run cleared the *unattended* auto-tuning bar.
+
+        A stricter read than :meth:`availability`: unattended auto-tuning needs
+        ``ρ ≥`` :data:`_UNATTENDED_RHO`. v1 stores only the enable verdict, so
+        this conservatively requires the scorer be enabled; the deferred real-GT
+        validation (``DEFERRED-WORK §1``) will record the stricter margin.
+
+        Returns:
+            ``True`` only when the proxy is enabled (a necessary condition for
+            unattended use).
+        """
+        return self._meta_validated
+
+    def _load_gt_masks(self, gt_images: Any) -> dict[str, Any]:
+        """Resolve the configured ground-truth mask source to a name→mask map.
+
+        Mirrors :class:`QCScorer`'s metadata-path discipline: the source is a
+        serializable :attr:`gt_masks_source` path, resolved here at validation
+        time. ``None`` (no GT configured) resolves to an empty mapping so
+        :meth:`meta_validate` abstains.
+
+        Args:
+            gt_images: The annotated images whose names key the returned map
+                (unused by the v1 structural loader beyond presence).
+
+        Returns:
+            A mapping of image name → ground-truth mask. Empty when no GT source
+            is configured.
+
+        # TODO(DEFERRED-WORK §1): read real annotated masks from
+        # ``gt_masks_source`` (a directory of per-image masks) and key them by
+        # image name. v1 resolves the path only — an existing source yields no
+        # masks yet, so the gate abstains until real annotations exist.
+        """
+        if self.gt_masks_source is None:
+            return {}
+        # Path resolves but carries no annotations in v1 → abstain (fail-safe).
+        return {}
+
+    def _proxy_gt_spearman(
+        self, gt_images: Any, masks: dict[str, Any], grid: Any
+    ) -> float:
+        """Spearman ρ between the proxy score and the GT reference metric.
+
+        The acceptance statistic of the meta-validation gate (``§E.4``): a rank
+        correlation (robust to monotone nonlinearity) between the proxy's
+        per-candidate scores and a GT-based reference (Dice/Jaccard).
+
+        Args:
+            gt_images: The annotated calibration images.
+            masks: The resolved name→mask map from :meth:`_load_gt_masks`.
+            grid: The candidate parameter grid scored by both the proxy and GT.
+
+        Returns:
+            The Spearman rank-correlation coefficient in ``[-1, 1]``.
+
+        # TODO(DEFERRED-WORK §1): compute the real proxy-vs-GT Spearman ρ. v1
+        # is a structural stub (returns ``0.0`` → abstain) overridden in tests;
+        # wiring the real correlation needs an annotated calibration set.
+        """
+        return 0.0
+
     # ----------------------------------------------------------------- #
-    # the proxy terms
+    # the proxy terms (Task 1)
     # ----------------------------------------------------------------- #
     def score_image(
         self, image: Any, measurements: pd.DataFrame

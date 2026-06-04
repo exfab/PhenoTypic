@@ -96,7 +96,7 @@ def test_keys_are_stable_across_images():
     )
 
 
-def test_shape_regularity_reuses_schema_columns_no_recompute():
+def test_shape_regularity_reuses_schema_columns_no_recompute(monkeypatch):
     # The shape term must read Shape_* columns from the frame, never recompute
     # geometry from the image. Drop the shape columns -> the term must degrade
     # to the neutral floor rather than recomputing from the mask/objmap.
@@ -219,7 +219,80 @@ def test_round_trips_inside_tuning_spec(tmp_path):
     assert isinstance(back.scorer, ReferenceFreeScorer)
 
 
+# --------------------------------------------------------------------------- #
+# Task 2 — availability() + meta_validate() gate (structure / abstain logic)
+# --------------------------------------------------------------------------- #
 def test_availability_is_false_before_meta_validate_runs():
     # Fail-safe: until the gate runs and passes, the scorer is unavailable so the
     # engine degrades to QCScorer.
     assert ReferenceFreeScorer().availability() is False
+
+
+def test_availability_reads_cached_flag_cheaply(monkeypatch):
+    scorer = ReferenceFreeScorer()
+    # availability() is a cheap cached-boolean read — it must NOT load GT or
+    # recompute the correlation.
+    monkeypatch.setattr(
+        scorer,
+        "_load_gt_masks",
+        lambda *a, **k: (_ for _ in ()).throw(
+            AssertionError("availability() must not load GT")
+        ),
+    )
+    assert scorer.availability() is False
+    object.__setattr__(scorer, "_meta_validated", True)
+    assert scorer.availability() is True
+
+
+def test_meta_validate_abstains_without_gt():
+    # No gt_masks_source configured → cannot validate → flag stays False
+    # (degrade to QCScorer).
+    scorer = ReferenceFreeScorer()
+    passed = scorer.meta_validate([load_synth_yeast_plate()], grid={})
+    assert passed is False
+    assert scorer.availability() is False
+
+
+def test_meta_validate_abstains_on_weak_correlation(monkeypatch):
+    scorer = ReferenceFreeScorer(gt_masks_source="/some/gt")
+    # Stub the proxy-vs-GT correlation to a weak rho (< 0.7 enable threshold).
+    monkeypatch.setattr(scorer, "_load_gt_masks", lambda images: {"x": object()})
+    monkeypatch.setattr(scorer, "_proxy_gt_spearman", lambda *a, **k: 0.42)
+    passed = scorer.meta_validate([load_synth_yeast_plate()], grid={})
+    assert passed is False
+    assert scorer.availability() is False
+
+
+def test_meta_validate_enables_on_strong_correlation(monkeypatch):
+    scorer = ReferenceFreeScorer(gt_masks_source="/some/gt")
+    # Stub a strong rho (>= 0.7) → the gate flips the cached flag to enabled.
+    monkeypatch.setattr(scorer, "_load_gt_masks", lambda images: {"x": object()})
+    monkeypatch.setattr(scorer, "_proxy_gt_spearman", lambda *a, **k: 0.85)
+    passed = scorer.meta_validate([load_synth_yeast_plate()], grid={})
+    assert passed is True
+    assert scorer.availability() is True
+
+
+def test_meta_validate_caches_the_flag(monkeypatch):
+    scorer = ReferenceFreeScorer(gt_masks_source="/some/gt")
+    monkeypatch.setattr(scorer, "_load_gt_masks", lambda images: {"x": object()})
+    monkeypatch.setattr(scorer, "_proxy_gt_spearman", lambda *a, **k: 0.9)
+    scorer.meta_validate([load_synth_yeast_plate()], grid={})
+    # After a passing run, availability() reads the cached flag — no re-correlation.
+    monkeypatch.setattr(
+        scorer,
+        "_proxy_gt_spearman",
+        lambda *a, **k: (_ for _ in ()).throw(
+            AssertionError("availability() must not re-correlate")
+        ),
+    )
+    assert scorer.availability() is True
+
+
+def test_meta_validation_flag_does_not_serialize():
+    # The cached gate flag is run-local state, not part of the recipe — it must
+    # not round-trip (a reloaded scorer re-validates, fail-safe to unavailable).
+    scorer = ReferenceFreeScorer(gt_masks_source="/some/gt")
+    object.__setattr__(scorer, "_meta_validated", True)
+    reloaded = ReferenceFreeScorer.model_validate_json(scorer.model_dump_json())
+    assert reloaded.availability() is False
