@@ -195,8 +195,9 @@ class EnhanceFeatures(ImageEnhancer):
         output_map = {"M": result.M, "m": result.m, "pc_sum": result.pc_sum}
         selected = output_map[self.output]
 
-        # Ensure output is in [0, 1] range for detect_mat compatibility
-        image.detect_mat[:] = np.clip(selected, 0.0, 1.0).astype(np.float64)
+        # Ensure output is in [0, 1] range for detect_mat compatibility.
+        # detect_mat enforces float32 on assignment, so no explicit cast is needed.
+        image.detect_mat[:] = np.clip(selected, 0.0, 1.0)
         return image
 
     def _phasecong3(self, img: np.ndarray) -> _PhaseCong3Result:
