@@ -55,6 +55,7 @@ from phenotypic.tools_ import (
     DIR_INSPECT,
     DIR_MEASUREMENTS,
     DIR_OVERLAYS,
+    DIR_PHENOTYPIC,
     DIR_PROGRESS,
     DIR_QC,
     DIR_RESULTS,
@@ -319,7 +320,11 @@ VIEWER_CACHE_DIRNAME: str = ".viewer_cache"
 # generated HTML reports, README, and pipeline.json) now resolve under
 # ``<output>/deliverables/`` (DELIVERABLES_DIRNAME / DIR_DELIVERABLES) via the
 # phenotypic.tools_ path helpers (deliverables_dir, master_measurements_parquet_path,
-# …). DIR_RESULTS / DIR_PROGRESS / DIR_QC stay at the output-dir root.
+# …). The per-image results dir and the qc dir stay at the output-dir root,
+# while machine-state (progress dir, processing_state.json, processing_events.log)
+# now lives under the hidden cache dir ``<output>/.phenotypic/``
+# (PHENOTYPIC_CACHE_DIRNAME / DIR_PHENOTYPIC); resolve it via the
+# phenotypic.tools_ helpers (progress_dir, resolve_manifest_json_path, …).
 #
 # ---------------------------------------------------------------------------
 # GUI-only convenience aliases for re-exported CLI artifact names
@@ -328,8 +333,15 @@ VIEWER_CACHE_DIRNAME: str = ".viewer_cache"
 #: ``results`` — the CLI output ``results/`` directory name.
 RESULTS_DIRNAME: str = DIR_RESULTS
 
-#: ``progress`` — the CLI output ``progress/`` directory name.
+#: ``progress`` — the CLI output ``progress/`` directory name. Now nested
+#: under the hidden machine-state cache (see PHENOTYPIC_CACHE_DIRNAME); resolve
+#: full paths via the ``phenotypic.tools_`` helpers rather than joining this.
 PROGRESS_DIRNAME: str = DIR_PROGRESS
+
+#: ``.phenotypic`` — the hidden machine-state cache dir holding the run's
+#: progress/, processing_state.json, and processing_events.log. Distinct from
+#: the GUI's ``.phenotypic-gui`` sandbox dir (SANDBOX_GUI_DIRNAME).
+PHENOTYPIC_CACHE_DIRNAME: str = DIR_PHENOTYPIC
 
 #: ``qc`` — the CLI output ``qc/`` artifact directory name.
 QC_DIRNAME: str = DIR_QC

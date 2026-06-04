@@ -38,7 +38,7 @@ from typing import Iterable, Iterator, Literal
 from phenotypic.tools_ import (
     DashboardManifestKey,
     DashboardManifestSlurmInfoKey,
-    manifest_json_path,
+    resolve_manifest_json_path,
 )
 
 from phenotypic.gui.shell._classifier import classify
@@ -294,7 +294,7 @@ class RunRegistry:
         """
         import json
 
-        manifest_path = manifest_json_path(output_dir)
+        manifest_path = resolve_manifest_json_path(output_dir)
         if not manifest_path.is_file():
             return ("unknown", "unknown", None)
         try:
