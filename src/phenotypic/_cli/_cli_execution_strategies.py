@@ -192,11 +192,12 @@ class LocalParallelStrategy(ExecutionStrategy):
         else:
             effective_n_jobs = self.config.n_jobs
 
-        worker = (
-            self._process_single_local_measure
-            if measure_only
-            else self._process_single_local
-        )
+        if self.config.process_only_layer:
+            worker = self._process_single_local_apply_only
+        elif measure_only:
+            worker = self._process_single_local_measure
+        else:
+            worker = self._process_single_local
         results = Parallel(n_jobs=effective_n_jobs, verbose=11)(
             delayed(worker)(dataset, image_path, output_dir, event_log)
             for dataset, image_path in all_tasks
@@ -210,12 +211,29 @@ class LocalParallelStrategy(ExecutionStrategy):
         # Generate progress manifest and dashboard (local mode — runs once)
         try:
             datasets_totals = {ds.name: len(ds.images) for ds in datasets}
-            local_job_meta: dict = {
-                JobMetadataKey.START_TIME: start_time.isoformat(timespec="milliseconds"),
-                JobMetadataKey.INPUT_PATH: self.config.input_path.stem,
-                JobMetadataKey.EXECUTION_MODE: "local",
-            }
-            regenerate_dashboard_artifacts(output_dir, local_job_meta, datasets_totals)
+            start_iso = start_time.isoformat(timespec="milliseconds")
+            if self.config.process_only_layer:
+                # Manifest only — no dashboard HTML, no aggregation (D13).
+                from ._dashboard._manifest_builder import build_manifest
+                from phenotypic.tools_ import progress_dir as _progress_dir
+
+                build_manifest(
+                    output_dir=output_dir,
+                    progress_dir=_progress_dir(output_dir),
+                    datasets=datasets_totals,
+                    execution_mode="local",
+                    start_time=start_iso,
+                    input_path=self.config.input_path.stem,
+                )
+            else:
+                local_job_meta: dict = {
+                    JobMetadataKey.START_TIME: start_iso,
+                    JobMetadataKey.INPUT_PATH: self.config.input_path.stem,
+                    JobMetadataKey.EXECUTION_MODE: "local",
+                }
+                regenerate_dashboard_artifacts(
+                    output_dir, local_job_meta, datasets_totals
+                )
         except Exception:
             logger.debug("Failed to generate progress dashboard", exc_info=True)
 
@@ -306,6 +324,77 @@ class LocalParallelStrategy(ExecutionStrategy):
                 logger.warning("Failed to write failure record", exc_info=True)
 
             return (dataset.name, image_path.name, False, tb)
+
+    def _process_single_local_apply_only(
+        self,
+        dataset: Dataset,
+        image_path: Path,
+        output_dir: Path,
+        event_log: Path,
+    ) -> tuple[str, str, bool, str]:
+        """Apply-only (process-only) per-image worker.
+
+        Mirrors :meth:`_process_single_local` — same event-log helpers and
+        ``(name, success, error)`` return shape so the manifest aggregator
+        treats process-only results identically — but dispatches to
+        :func:`phenotypic._cli._cli_process_only.process_single_apply_only_core`
+        with ``input_root`` captured from ``self.config.input_path`` for
+        mirrored output paths.
+        """
+        from ._cli_process_only import process_single_apply_only_core
+
+        append_event(event_log, dataset.name, image_path.name, "started")
+        try:
+            read_kwargs: Dict[str, Any] = {}
+            if self.config.bit_depth:
+                read_kwargs["bit_depth"] = self.config.bit_depth
+            if self.config.detect_mode != "gray":
+                read_kwargs["detect_mode"] = self.config.detect_mode
+
+            process_single_apply_only_core(
+                pipeline_path=self.config.pipeline_json,
+                image_path=image_path,
+                input_root=self.config.input_path,
+                output_dir=output_dir,
+                image_type=self.config.image_type,
+                layer=self.config.process_only_layer,  # type: ignore[arg-type]
+                read_kwargs=read_kwargs,
+                cli_nrows=self.config.nrows,
+                cli_ncols=self.config.ncols,
+            )
+            append_completion_event(
+                event_log, dataset.name, image_path.name, "completed"
+            )
+            return (dataset.name, image_path.name, True, "")
+        except Exception as e:
+            import traceback
+
+            error_msg = str(e)
+            tb = traceback.format_exc()
+            logger.error(
+                "Apply-only failed for %s/%s:\n%s",
+                dataset.name, image_path.name, tb,
+            )
+            append_completion_event(
+                event_log,
+                dataset.name,
+                image_path.name,
+                "failed",
+                _truncate_error_message(error_msg),
+            )
+            try:
+                prog_dir = progress_dir(output_dir)
+                append_failure(
+                    prog_dir,
+                    dataset=dataset.name,
+                    image=image_path.name,
+                    error_type=type(e).__name__,
+                    error_message=error_msg,
+                    traceback=tb,
+                )
+            except Exception:
+                logger.warning("Failed to write failure record", exc_info=True)
+            return (dataset.name, image_path.name, False, error_msg)
 
     def _process_single_local_measure(
         self,
