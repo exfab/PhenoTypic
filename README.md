@@ -97,6 +97,18 @@ use it, some metadata from raw
 files may not be able to be imported. Read more
 here: https://pypi.org/project/PyExifTool/#pyexiftool-dependencies
 
+# Run the CLI
+
+Process a directory of plate images through a saved pipeline:
+
+```bash
+uv run python -m phenotypic --pipeline pipeline.json --input ./images --output-dir ./out
+```
+
+Add `--process-only {rgb|gray|detect_mat|objmap}` for an apply-only export run that
+writes a single image layer per input (mirroring the input tree) and skips the
+measurement/analysis suite — handy for previewing detection or enhanced layers.
+
 # Launch the GUI
 
 The unified GUI hub bundles the pipeline builder, results viewer, and run console

@@ -17,6 +17,11 @@ FootprintShape = Literal["disk", "square", "diamond"]
 
 DetectMode = Literal["gray", "red", "green", "blue", "MinRGB", "LabL", "LabA", "LabB", "HsvS", "HsvV", "InvS"]
 
+#: Image layer a process-only CLI run (``--process-only``) exports. A closed
+#: subset of the layers exposed as Image accessors; ``rgb``/``gray``/
+#: ``detect_mat`` save as TIFF, ``objmap`` as a raw-label PNG.
+ProcessOnlyLayer = Literal["rgb", "gray", "detect_mat", "objmap"]
+
 GridSearchSaveData = List[
     Literal["rgb", "gray", "detect_mat", "objmap", "objmask", "map2rgb"]
 ]

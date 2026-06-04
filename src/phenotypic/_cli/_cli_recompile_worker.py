@@ -17,17 +17,18 @@ from ._cli_recompile_slurm_scripts import (
 )
 from phenotypic.tools_ import (
     DIR_MEASUREMENTS,
-    DIR_PROGRESS,
-    DIR_RECOMPILE,
     DIR_RECOMPILE_SHARDS,
-    DIR_RECOMPILE_STATUS,
     DIR_RESULTS,
     JobMetadataKey,
     load_image_from_hdf,
     master_measurements_csv_path,
     master_measurements_parquet_path,
     task_status_filename,
+    task_status_path,
     shard_parquet_filename,
+    progress_dir as progress_dir_helper,
+    recompile_dir as recompile_dir_helper,
+    recompile_status_dir,
 )
 
 logger = logging.getLogger(__name__)
@@ -117,13 +118,7 @@ def _write_status(
     """Atomically write one recompile task status JSON."""
     from ._cli_output_manager import _atomic_write
 
-    status_path = (
-        output_dir
-        / DIR_PROGRESS
-        / DIR_RECOMPILE
-        / DIR_RECOMPILE_STATUS
-        / task_status_filename(task_index)
-    )
+    status_path = task_status_path(output_dir, task_index)
     payload = {"task_type": task_type, **fields}
 
     def _writer(path: str) -> None:
@@ -170,9 +165,7 @@ def _run_measurement_task(output_dir: Path, task: dict[str, Any]) -> None:
 
     shard_id = int(task["shard_id"])
     shard_path = (
-        output_dir
-        / DIR_PROGRESS
-        / DIR_RECOMPILE
+        recompile_dir_helper(progress_dir_helper(output_dir))
         / DIR_RECOMPILE_SHARDS
         / shard_parquet_filename(shard_id)
     )
@@ -260,9 +253,8 @@ def _run_overlay_task(
 
 def _run_finalizer_task(output_dir: Path, task: dict[str, Any]) -> None:
     """Finalize recompile outputs after all non-finalizer tasks finish."""
-    progress_dir = output_dir / DIR_PROGRESS
-    recompile_dir = progress_dir / DIR_RECOMPILE
-    status_dir = recompile_dir / DIR_RECOMPILE_STATUS
+    progress_dir = progress_dir_helper(output_dir)
+    status_dir = recompile_status_dir(progress_dir)
     expected = int(task.get("expected_non_finalizer_tasks", 0))
 
     statuses = _wait_for_non_finalizer_statuses(status_dir, expected)
@@ -326,7 +318,7 @@ def _write_master_outputs_from_shards(output_dir: Path) -> Any | None:
 
     from ._cli_output_manager import _atomic_write
 
-    shard_dir = output_dir / DIR_PROGRESS / DIR_RECOMPILE / DIR_RECOMPILE_SHARDS
+    shard_dir = recompile_dir_helper(progress_dir_helper(output_dir)) / DIR_RECOMPILE_SHARDS
     shard_files = sorted(shard_dir.glob("shard_*.parquet"))
     if not shard_files:
         return None

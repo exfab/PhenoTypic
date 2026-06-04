@@ -84,6 +84,7 @@ _PLACEHOLDER_CAPS = Capabilities(
     has_pipeline_json=False,
     is_cli_output=False,
     has_dashboard=False,
+    is_process_only_output=False,
     image_count=None,
     bad_perms=False,
 )

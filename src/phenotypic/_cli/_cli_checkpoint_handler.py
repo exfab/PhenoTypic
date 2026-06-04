@@ -17,12 +17,12 @@ import click
 from ._cli_file_locking import FileLockTimeout, file_lock
 from ._cli_utils import load_job_metadata
 from phenotypic.tools_ import (
-    DIR_PROGRESS,
     PROCESSING_EVENTS_LOG,
     JobMetadataKey,
     checkpoint_lock_filename,
     measurements_parquet_path,
     resolve_execution_mode,
+    progress_dir as progress_dir_helper,
 )
 from phenotypic.tools_.typing_ import CheckpointType
 
@@ -45,7 +45,7 @@ def main(output_dir: Path, checkpoint_type: str) -> None:
     # Click validated the value via Choice, but it arrives as bare str — narrow
     # to the typed alias before passing into render functions / comparisons.
     checkpoint: CheckpointType = "manifest" if checkpoint_type == "manifest" else "finalize"
-    progress_dir = output_dir / DIR_PROGRESS
+    progress_dir = progress_dir_helper(output_dir)
     lock_path = progress_dir / checkpoint_lock_filename(checkpoint)
     lock_path.parent.mkdir(parents=True, exist_ok=True)
     lock_path.touch(exist_ok=True)

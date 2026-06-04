@@ -131,7 +131,7 @@ import logging
 import shutil
 import sys
 from pathlib import Path
-from typing import Any, Optional, Sequence
+from typing import Any, List, Optional, Sequence
 
 import click
 
@@ -158,7 +158,7 @@ from phenotypic._cli._cli_state_management import (
     update_state_from_events,
     validate_resume_compatibility,
 )
-from phenotypic._cli._cli_types import ExecutionConfig
+from phenotypic._cli._cli_types import Dataset, ExecutionConfig
 from phenotypic._cli._cli_utils import (
     normalize_extension,
     parse_slurm_args,
@@ -180,19 +180,20 @@ from phenotypic._cli._cli_constants import (
     MAX_SLURM_TIME_MINUTES,
 )
 from phenotypic.tools_ import (
-    DIR_PROGRESS,
     DIR_RESULTS,
     DIR_OVERLAYS,
-    DIR_RECOMPILE,
     JOB_METADATA_JSON,
-    PROCESSING_STATE_JSON,
     RECOMPILE_TASK_MANIFEST_JSON,
     JobMetadataKey,
     dashboard_html_path,
     dataset_measurements_dir,
     load_image_from_hdf,
+    clear_machine_state,
     measurements_parquet_path,
     processing_report_html_path,
+    progress_dir,
+    recompile_dir,
+    resolve_processing_state_path,
 )
 from phenotypic.tools_.typing_ import ImageTypeName
 
@@ -502,6 +503,59 @@ def _reject_unexpected_positional_args(extra_args: Sequence[str]) -> None:
     )
 
 
+def _print_process_only_dry_run_plan(
+    config: ExecutionConfig, datasets: List[Dataset], output_dir: Path
+) -> None:
+    """Print the resolved plan for a ``--process-only`` dry run (no processing).
+
+    Shows the mode + layer, per-dataset image counts, a sample of mirrored
+    output paths, the execution backend, and the ``.phenotypic`` machine-state
+    location. See spec §5.7.
+    """
+    from phenotypic._cli._cli_process_only import process_only_output_path
+    from phenotypic.tools_ import phenotypic_cache_dir
+
+    layer = config.process_only_layer
+    backend = "slurm" if config.is_slurm_mode() else "local"
+
+    click.echo("\n" + "=" * 80)
+    click.echo("DRY-RUN MODE: process-only (No Jobs Will Be Executed)")
+    click.echo("=" * 80)
+    click.echo(f"\n  Mode:        process-only ({layer})")
+    click.echo(f"  Pipeline:    {config.pipeline_json}")
+    click.echo(f"  Input root:  {config.input_path}")
+    click.echo(f"  Output dir:  {output_dir}")
+    click.echo(f"  Execution:   {backend}")
+    click.echo(f"  Cache dir:   {phenotypic_cache_dir(output_dir)}")
+
+    total_images = 0
+    click.echo("\nDatasets:")
+    sample_paths: List[Path] = []
+    for dataset in datasets:
+        count = len(dataset.images)
+        total_images += count
+        click.echo(f"  {dataset.name}: {count} image(s)")
+        for img in dataset.images[:2]:
+            sample_paths.append(
+                process_only_output_path(
+                    output_dir, img, config.input_path, layer  # type: ignore[arg-type]
+                )
+            )
+
+    click.echo("\nSample mirrored output paths:")
+    for p in sample_paths[:5]:
+        click.echo(f"  {p}")
+
+    click.echo("\nProcessing Summary:")
+    click.echo(f"  Total images to process: {total_images}")
+    click.echo(f"  Total datasets: {len(datasets)}")
+    click.echo(f"  Layer exported per image: {layer}")
+    click.echo(
+        "  No deliverables/, results/, QC, overlays, or dashboard "
+        "(apply-only export).\n"
+    )
+
+
 @click.command(context_settings={"allow_extra_args": True})
 @click.option(
     "-p",
@@ -690,6 +744,15 @@ def _reject_unexpected_positional_args(extra_args: Sequence[str]) -> None:
          "whenever the pipeline has a non-empty 'qc' section (writing the "
          "qc/ artifact and resetting GUI review progress).",
 )
+@click.option(
+    "--process-only",
+    "process_only_layer",
+    type=click.Choice(["rgb", "gray", "detect_mat", "objmap"]),
+    default=None,
+    help="Apply-only mode: run pipeline.apply() and export this single layer "
+         "(TIFF for rgb/gray/detect_mat, 16-bit raw-label PNG for objmap), "
+         "mirroring the input tree. Skips measurement, deliverables, QC, dashboard.",
+)
 @click.pass_context
 def phenotypic_cli(
     ctx: click.Context,
@@ -721,6 +784,7 @@ def phenotypic_cli(
     skip_validation: bool,
     recompile: Optional[Path],
     no_qc: bool,
+    process_only_layer: Optional[str],
 ):
     """
     Execute a PhenoTypic pipeline on images.
@@ -728,11 +792,54 @@ def phenotypic_cli(
     --pipeline: Path to pipeline configuration file
 
     --input: Image file or directory to process
+
+    --process-only {rgb|gray|detect_mat|objmap}: apply-only export mode. Runs
+    pipeline.apply() and writes a single image layer per input via the layer
+    accessor's imsave (rgb integer TIFF at the source bit depth; gray/detect_mat
+    float TIFF preserving full precision; objmap 16-bit raw-label PNG; PhenoTypic
+    metadata embedded), mirroring the input tree under --output-dir. Skips
+    measurement, deliverables, QC, and the dashboard; machine-state (progress
+    manifest, event log, pipeline copy) lives under <output>/.phenotypic/. Full
+    local + SLURM + resume reuse. Example::
+
+        uv run python -m phenotypic --pipeline pipe.json --input ./plates \\
+            --output-dir ./out --process-only detect_mat --force-local
     """
     try:
         _reject_unexpected_positional_args(ctx.args)
 
         include_dataset_column = not no_dataset_column
+
+        # ---- Early validation for --process-only -----------------------
+        # Process-only is an apply-only export run (one image layer per
+        # input, mirrored input tree, no measurement / deliverables / QC /
+        # dashboard). Validate it before the --measure / --recompile branches
+        # so conflicting run modes are rejected with a clear message.
+        if process_only_layer is not None:
+            for bad, name in (
+                (measure_only, "--measure"),
+                (recompile is not None, "--recompile"),
+            ):
+                if bad:
+                    raise click.UsageError(
+                        f"--process-only cannot be combined with {name} "
+                        "(conflicting run modes)."
+                    )
+            if pipeline_json is None or input_path is None:
+                raise click.UsageError(
+                    "--process-only requires --pipeline and --input."
+                )
+            for val, name in (
+                (metadata_csv, "--metadata"),
+                (no_qc, "--no-qc"),
+                (no_dataset_column, "--no-dataset-column"),
+            ):
+                if val:
+                    click.echo(
+                        f"Warning: {name} is ignored in --process-only mode "
+                        "(no measurement/aggregation output).",
+                        err=True,
+                    )
 
         # Parse SLURM args before the recompile branch so --recompile can
         # explicitly choose between local and SLURM recompile dispatch.
@@ -974,6 +1081,7 @@ def phenotypic_cli(
             metadata_csv=metadata_csv,
             checkpoint_interval=checkpoint_interval,
             measure_only=measure_only,
+            process_only_layer=process_only_layer,  # type: ignore[arg-type]
         )
 
         # Handle resume mode BEFORE creating output directory
@@ -1009,8 +1117,8 @@ def phenotypic_cli(
                 )
                 sys.exit(1)
 
-            # Check for processing state file
-            state_file = output_dir / PROCESSING_STATE_JSON
+            # Check for processing state file (tolerate a legacy-root run)
+            state_file = resolve_processing_state_path(output_dir)
             if not state_file.exists():
                 click.echo(f"Error: No processing state found in {output_dir}", err=True)
                 click.echo(f"\nLooking for: {state_file}", err=True)
@@ -1032,14 +1140,20 @@ def phenotypic_cli(
 
             click.echo(f"✓ Resuming from {output_dir}")
 
-        # Handle restart mode - clear previous state
+        # Handle restart mode - clear ALL previous machine-state so the
+        # orchestration re-runs cleanly (fresh state + event log + progress),
+        # while preserving any output artifacts (results/, deliverables/, qc/)
+        # that --restart intentionally keeps — unlike --overwrite, which wipes
+        # the whole dir. Clearing the event log here prevents the restart from
+        # appending to, and rebuilding its manifest/failure records from, the
+        # prior run's events.
         if restart:
             assert output_dir is not None  # narrowed by the --restart guard above
-            state_file = output_dir / PROCESSING_STATE_JSON
             if output_dir.exists():
-                if state_file.exists():
-                    state_file.unlink()
-                    click.echo(f"✓ Cleared previous processing state from {output_dir}")
+                if clear_machine_state(output_dir):
+                    click.echo(
+                        f"✓ Cleared previous machine-state (.phenotypic/) from {output_dir}"
+                    )
                 else:
                     click.echo(
                         f"Note: No previous state found in {output_dir} (starting fresh)"
@@ -1151,7 +1265,10 @@ def phenotypic_cli(
 
         # Handle dry-run mode
         if config.dry_run:
-            execute_dry_run(config, datasets, output_dir)
+            if config.process_only_layer:
+                _print_process_only_dry_run_plan(config, datasets, output_dir)
+            else:
+                execute_dry_run(config, datasets, output_dir)
             sys.exit(0)
 
         # Handle sample mode
@@ -1249,11 +1366,27 @@ def phenotypic_cli(
             overlay_alpha=config.overlay_alpha,
             save_overlays=config.save_overlays,
         )
-        output_manager.create_structure(datasets)
+        # Process-only runs export image layers mirroring the input tree and
+        # write no results/ or deliverables/ structure; the worker creates its
+        # own output dirs and the strategy writes the .phenotypic/ manifest.
+        if not config.process_only_layer:
+            output_manager.create_structure(datasets)
 
-        # Copy pipeline JSON to output directory for reproducibility
-        # (skip in --measure mode — the forward run already copied it).
-        if not measure_only:
+        # Copy pipeline JSON for reproducibility (skip in --measure mode — the
+        # forward run already copied it). Process-only writes its copy under
+        # the hidden cache (.phenotypic/pipeline.json), not deliverables/.
+        if config.process_only_layer:
+            try:
+                from phenotypic.tools_ import phenotypic_cache_pipeline_json_path
+
+                cache_copy = phenotypic_cache_pipeline_json_path(output_dir)
+                cache_copy.parent.mkdir(parents=True, exist_ok=True)
+                cache_copy.write_bytes(Path(config.pipeline_json).read_bytes())
+                click.echo(f"  Pipeline: {cache_copy}")
+            except OSError as e:
+                logger.warning(f"Failed to copy pipeline JSON: {e}")
+                click.echo(f"⚠ Warning: Could not copy pipeline JSON ({e})", err=True)
+        elif not measure_only:
             try:
                 copied = _copy_pipeline_to_output(config.pipeline_json, output_dir)
                 if copied:
@@ -1270,6 +1403,23 @@ def phenotypic_cli(
         click.echo(f"\nStarting {execution_mode} processing...")
 
         results = strategy.execute(datasets, output_dir)
+
+        # Process-only (apply-only) runs export image layers + a progress
+        # manifest only — no measurement aggregation, HTML report, README,
+        # or deliverables. The strategy already wrote the mirrored layers and
+        # the manifest; print a focused summary and exit.
+        if config.process_only_layer:
+            click.echo("\n" + "=" * 60)
+            click.echo("PROCESS-ONLY COMPLETE")
+            click.echo("=" * 60)
+            click.echo(f"Layer exported: {config.process_only_layer}")
+            click.echo(
+                f"Completed: {results.total_completed}/{results.total_images}"
+            )
+            click.echo(f"Failed:    {results.total_failed}")
+            click.echo(f"Duration: {_format_duration(results.duration)}")
+            click.echo(f"\nMirrored layer files saved under: {output_dir}")
+            sys.exit(0 if results.total_failed == 0 else 1)
 
         # Load pipeline once for the finalizer — reused by both the
         # per-feature split in aggregate_master_csv and the README generator.
@@ -1511,11 +1661,11 @@ def _handle_recompile_slurm(
     from phenotypic._cli._dashboard import generate_dashboard
 
     output_dir = Path(output_dir)
-    progress_dir = output_dir / DIR_PROGRESS
-    progress_dir.mkdir(parents=True, exist_ok=True)
+    prog_dir = progress_dir(output_dir)
+    prog_dir.mkdir(parents=True, exist_ok=True)
     console = Console()
 
-    job_meta = load_job_metadata(progress_dir)
+    job_meta = load_job_metadata(prog_dir)
     dataset_names = _discover_recompile_dataset_names(output_dir, job_meta)
     if not dataset_names:
         error_exit("No datasets found in output directory", str(output_dir))
@@ -1578,7 +1728,7 @@ def _handle_recompile_slurm(
     job_ids = submission.job_ids
 
     recompile_manifest_path = (
-        output_dir / DIR_PROGRESS / DIR_RECOMPILE / RECOMPILE_TASK_MANIFEST_JSON
+        recompile_dir(progress_dir(output_dir)) / RECOMPILE_TASK_MANIFEST_JSON
     )
     job_metadata = {
         JobMetadataKey.START_TIME: datetime.now().isoformat(timespec="milliseconds"),
@@ -1598,7 +1748,7 @@ def _handle_recompile_slurm(
             "finalizer_task_index": finalizer_task_index,
         },
     }
-    metadata_path = progress_dir / JOB_METADATA_JSON
+    metadata_path = prog_dir / JOB_METADATA_JSON
     metadata_path.write_text(
         json.dumps(job_metadata, indent=2, ensure_ascii=False) + "\n",
         encoding="utf-8",
@@ -1702,14 +1852,8 @@ def _wait_for_recompile_finalizer_status(
     import json
     import time
 
-    from phenotypic.tools_ import DIR_RECOMPILE_STATUS, task_status_filename
-    status_path = (
-        output_dir
-        / DIR_PROGRESS
-        / DIR_RECOMPILE
-        / DIR_RECOMPILE_STATUS
-        / task_status_filename(finalizer_task_index)
-    )
+    from phenotypic.tools_ import task_status_path
+    status_path = task_status_path(output_dir, finalizer_task_index)
     deadline = time.monotonic() + timeout if timeout is not None else None
     while True:
         if status_path.exists():
@@ -1773,8 +1917,8 @@ def _handle_recompile(
     )
 
     console = Console()
-    progress_dir = output_dir / DIR_PROGRESS
-    job_meta = load_job_metadata(progress_dir)
+    prog_dir = progress_dir(output_dir)
+    job_meta = load_job_metadata(prog_dir)
 
     dataset_names = _discover_recompile_dataset_names(output_dir, job_meta)
 
@@ -1820,14 +1964,14 @@ def _handle_recompile(
                     "Failed to read measurements mirror for analysis plugins",
                     exc_info=True,
                 )
-        _run_analysis_plugins(output_dir, progress_dir, merged_df)
+        _run_analysis_plugins(output_dir, prog_dir, merged_df)
         console.print("[green]Analysis plugins complete")
     except Exception:
         logger.warning("Analysis plugin dispatch failed", exc_info=True)
         console.print("[yellow]Analysis plugin dispatch failed (see logs)")
 
     console.print("[cyan]Rebuilding manifest...")
-    progress_dir.mkdir(parents=True, exist_ok=True)
+    prog_dir.mkdir(parents=True, exist_ok=True)
 
     datasets_totals: dict[str, int] = {}
     for name in dataset_names:

@@ -304,6 +304,14 @@ DIR_QC: Final[str] = "qc"
 #: roots at :func:`deliverables_dir`.
 DIR_DELIVERABLES: Final[str] = "deliverables"
 
+#: ``<output>/.phenotypic/`` — hidden machine-state cache root. Holds the
+#: run's progress/, processing_state.json, and processing_events.log. Hidden
+#: so it does not clutter the user-facing output folder and is skipped by the
+#: GUI's run/dataset candidate scan. NOTE: distinct from the GUI's
+#: ``.phenotypic-gui`` sandbox dir (presets/state) — different root, different
+#: purpose.
+DIR_PHENOTYPIC: Final[str] = ".phenotypic"
+
 
 # ---------------------------------------------------------------------------
 # Templated filenames — Final[str] template + typed render function
@@ -404,13 +412,21 @@ def checkpoint_lock_filename(checkpoint_type: CheckpointType) -> str:
 # ---------------------------------------------------------------------------
 
 
+def phenotypic_cache_dir(output_dir: Path) -> Path:
+    """Return ``<output>/.phenotypic/`` — the hidden machine-state root.
+
+    Pure path expression; callers ``mkdir`` when they intend to write.
+    """
+    return output_dir / DIR_PHENOTYPIC
+
+
 def progress_dir(output_dir: Path) -> Path:
-    """Return ``<output>/progress/``.
+    """Return ``<output>/.phenotypic/progress/``.
 
     Pure path expression; callers are responsible for ``mkdir`` when they
     intend to write into it.
     """
-    return output_dir / DIR_PROGRESS
+    return phenotypic_cache_dir(output_dir) / DIR_PROGRESS
 
 
 def results_dir(output_dir: Path) -> Path:
@@ -436,13 +452,148 @@ def deliverables_dir(output_dir: Path) -> Path:
 
 
 def event_log_path(output_dir: Path) -> Path:
-    """Return ``<output>/processing_events.log``."""
-    return output_dir / PROCESSING_EVENTS_LOG
+    """Return ``<output>/.phenotypic/processing_events.log``."""
+    return phenotypic_cache_dir(output_dir) / PROCESSING_EVENTS_LOG
 
 
 def processing_state_path(output_dir: Path) -> Path:
-    """Return ``<output>/processing_state.json``."""
+    """Return ``<output>/.phenotypic/processing_state.json``."""
+    return phenotypic_cache_dir(output_dir) / PROCESSING_STATE_JSON
+
+
+def _legacy_progress_dir(output_dir: Path) -> Path:
+    """Pre-migration location: ``<output>/progress/``."""
+    return output_dir / DIR_PROGRESS
+
+
+def _legacy_processing_state_path(output_dir: Path) -> Path:
+    """Pre-migration location: ``<output>/processing_state.json``."""
     return output_dir / PROCESSING_STATE_JSON
+
+
+def resolve_progress_dir(output_dir: Path) -> Path:
+    """Return the progress dir that exists, preferring ``.phenotypic/``.
+
+    Read-only helper for resume/discovery so a pre-migration run (progress
+    at the output root) is still found. Falls back to the new location when
+    neither exists (the default for fresh writes).
+    """
+    new = progress_dir(output_dir)
+    if new.exists():
+        return new
+    legacy = _legacy_progress_dir(output_dir)
+    if legacy.exists():
+        return legacy
+    return new
+
+
+def resolve_processing_state_path(output_dir: Path) -> Path:
+    """Return the processing-state file that exists, preferring ``.phenotypic/``."""
+    new = processing_state_path(output_dir)
+    if new.exists():
+        return new
+    legacy = _legacy_processing_state_path(output_dir)
+    if legacy.exists():
+        return legacy
+    return new
+
+
+def resolve_manifest_json_path(output_dir: Path) -> Path:
+    """Return ``<progress>/manifest.json`` resolving the progress dir for legacy runs."""
+    return resolve_progress_dir(output_dir) / MANIFEST_JSON
+
+
+def resolve_event_log_path(output_dir: Path) -> Path:
+    """Return the event log sibling of the resolved progress dir.
+
+    The event log lives beside ``progress/`` (D14): in ``.phenotypic/`` for a
+    migrated/new run, at the output root for a not-yet-migrated legacy read.
+    Read-only helper for resume/discovery; never mutates the run dir.
+    """
+    return resolve_progress_dir(output_dir).parent / PROCESSING_EVENTS_LOG
+
+
+def migrate_legacy_machine_state(output_dir: Path) -> bool:
+    """Move a pre-migration run's machine-state into ``.phenotypic/``.
+
+    If legacy machine-state (``progress/``, ``processing_state.json``,
+    ``processing_events.log``) is present at the output root, move each artifact
+    into the ``.phenotypic/`` cache so the run proceeds coherently against a
+    single location. A no-op when no legacy state is present or everything is
+    already migrated.
+
+    Robust to interruption and concurrency (the SLURM array case): each artifact
+    is moved only when its source still exists and its destination does not, so a
+    migration interrupted mid-move *completes* on the next call rather than
+    leaving split state; and a lost move race (a concurrent worker moved the
+    artifact first) is ignored rather than crashing. Keying per-artifact instead
+    of on ``cache.exists()`` is what makes both safe.
+
+    Returns:
+        ``True`` if this call moved anything, else ``False``.
+    """
+    import shutil
+
+    cache = phenotypic_cache_dir(output_dir)
+    legacy_progress = _legacy_progress_dir(output_dir)
+    legacy_state = _legacy_processing_state_path(output_dir)
+    legacy_events = output_dir / PROCESSING_EVENTS_LOG
+    if not (legacy_progress.exists() or legacy_state.exists() or legacy_events.exists()):
+        return False
+    cache.mkdir(parents=True, exist_ok=True)
+    moved = False
+    for src, dst in (
+        (legacy_progress, cache / DIR_PROGRESS),
+        (legacy_state, cache / PROCESSING_STATE_JSON),
+        (legacy_events, cache / PROCESSING_EVENTS_LOG),
+    ):
+        if src.exists() and not dst.exists():
+            try:
+                shutil.move(str(src), str(dst))
+                moved = True
+            except (FileNotFoundError, shutil.Error):
+                # Lost a migration race with a concurrent worker; the winner is
+                # moving (or has moved) this artifact — safe to skip.
+                pass
+    return moved
+
+
+def clear_machine_state(output_dir: Path) -> bool:
+    """Remove **all** of a run's machine-state for a clean ``--restart``.
+
+    Deletes the ``.phenotypic/`` cache (``progress/``, ``processing_state.json``,
+    ``processing_events.log``) and any pre-migration root-level machine-state,
+    while leaving user-facing output artifacts (``deliverables/``, ``results/``,
+    ``qc/``, ``logs/``, …) untouched. This is the difference between ``--restart``
+    (re-run the orchestration against clean state, keep outputs) and
+    ``--overwrite`` (delete the whole output dir). Clearing the event log here is
+    what stops a restart from appending to — and rebuilding its manifest/failure
+    records from — the prior run's events.
+
+    Returns:
+        ``True`` if any machine-state was removed, else ``False``.
+    """
+    import shutil
+
+    removed = False
+    # Current layout: the hidden cache holds state + event log + progress/.
+    cache = phenotypic_cache_dir(output_dir)
+    if cache.exists():
+        shutil.rmtree(cache)
+        removed = True
+    # Pre-migration (legacy) root-level machine-state, if a legacy run is restarted.
+    legacy_progress = _legacy_progress_dir(output_dir)
+    if legacy_progress.exists():
+        shutil.rmtree(legacy_progress)
+        removed = True
+    for legacy_file in (
+        _legacy_processing_state_path(output_dir),
+        output_dir / PROCESSING_EVENTS_LOG,
+    ):
+        if legacy_file.exists():
+            legacy_file.unlink()
+            removed = True
+    return removed
 
 
 def master_measurements_csv_path(output_dir: Path) -> Path:
@@ -468,6 +619,13 @@ def measurements_parquet_path(output_dir: Path) -> Path:
 def pipeline_json_path(output_dir: Path) -> Path:
     """Return ``<output>/deliverables/pipeline.json``."""
     return deliverables_dir(output_dir) / PIPELINE_JSON
+
+
+def phenotypic_cache_pipeline_json_path(output_dir: Path) -> Path:
+    """Return ``<output>/.phenotypic/pipeline.json`` — the process-only run's
+    reproducibility copy. Distinct from :func:`pipeline_json_path`, which roots
+    under ``deliverables/`` (process-only writes no deliverables)."""
+    return phenotypic_cache_dir(output_dir) / PIPELINE_JSON
 
 
 def analysis_csv_path(output_dir: Path) -> Path:
@@ -655,9 +813,12 @@ def qc_review_state_path(output_dir: Path) -> Path:
 
 
 def read_run_manifest(output_dir: Path) -> Optional[dict]:
-    """Read ``<output>/progress/manifest.json`` if present.
+    """Read the run manifest if present, resolving legacy layouts.
 
-    Replaces 4 inline ``json.loads(manifest_path.read_text())`` blocks.
+    Reads ``<output>/.phenotypic/progress/manifest.json``, falling back to the
+    pre-migration ``<output>/progress/manifest.json`` for legacy runs (via
+    :func:`resolve_manifest_json_path`). Replaces 4 inline
+    ``json.loads(manifest_path.read_text())`` blocks.
 
     Args:
         output_dir: Run output directory containing ``progress/``.
@@ -666,7 +827,7 @@ def read_run_manifest(output_dir: Path) -> Optional[dict]:
         Parsed manifest dict, or :data:`None` when the file is missing
         or unparseable (callers can decide whether absence is fatal).
     """
-    path = manifest_json_path(output_dir)
+    path = resolve_manifest_json_path(output_dir)
     if not path.exists():
         return None
     try:

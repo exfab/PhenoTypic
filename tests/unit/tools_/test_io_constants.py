@@ -226,16 +226,16 @@ class TestPathHelpers:
         return Path("/tmp/pht_run")
 
     def test_progress_dir(self, output: Path) -> None:
-        assert progress_dir(output) == output / "progress"
+        assert progress_dir(output) == output / ".phenotypic" / "progress"
 
     def test_results_dir(self, output: Path) -> None:
         assert results_dir(output) == output / "results"
 
     def test_event_log_path(self, output: Path) -> None:
-        assert event_log_path(output) == output / "processing_events.log"
+        assert event_log_path(output) == output / ".phenotypic" / "processing_events.log"
 
     def test_processing_state_path(self, output: Path) -> None:
-        assert processing_state_path(output) == output / "processing_state.json"
+        assert processing_state_path(output) == output / ".phenotypic" / "processing_state.json"
 
     def test_master_measurements_paths(self, output: Path) -> None:
         deliv = output / "deliverables"
@@ -259,8 +259,9 @@ class TestPathHelpers:
         assert dashboard_html_path(output) == output / "deliverables" / "dashboard.html"
 
     def test_progress_sidecar_paths(self, output: Path) -> None:
-        assert job_metadata_path(output) == output / "progress" / "job_metadata.json"
-        assert manifest_json_path(output) == output / "progress" / "manifest.json"
+        prog = output / ".phenotypic" / "progress"
+        assert job_metadata_path(output) == prog / "job_metadata.json"
+        assert manifest_json_path(output) == prog / "manifest.json"
 
     def test_dataset_subdirs(self, output: Path) -> None:
         assert dataset_results_dir(output, "ds1") == output / "results" / "ds1"
@@ -275,7 +276,7 @@ class TestPathHelpers:
 
     def test_task_status_path(self, output: Path) -> None:
         assert task_status_path(output, 3) == (
-            output / "progress" / "recompile" / "status" / "task_3.json"
+            output / ".phenotypic" / "progress" / "recompile" / "status" / "task_3.json"
         )
 
     def test_progress_rooted_helpers(self) -> None:
@@ -317,16 +318,17 @@ class TestPathHelpers:
             slurm_scripts_dir,
         )
 
+        prog = output / ".phenotypic" / "progress"
         assert logs_dir(output) == output / "logs"
         assert slurm_scripts_dir(output) == output / "slurm_scripts"
         assert analysis_html_path(output) == output / "deliverables" / "analysis.html"
         assert processing_report_html_path(output) == (
             output / "deliverables" / "processing_report.html"
         )
-        assert failures_jsonl_path(output) == output / "progress" / "failures.jsonl"
-        assert chunk_manifest_path(output) == output / "progress" / "chunk_manifest.json"
-        assert chunk_state_path(output) == output / "progress" / "chunk_state.json"
-        assert overlay_manifest_path(output) == output / "progress" / "overlay_manifest.json"
+        assert failures_jsonl_path(output) == prog / "failures.jsonl"
+        assert chunk_manifest_path(output) == prog / "chunk_manifest.json"
+        assert chunk_state_path(output) == prog / "chunk_state.json"
+        assert overlay_manifest_path(output) == prog / "overlay_manifest.json"
 
 
 # ---------------------------------------------------------------------------
@@ -391,13 +393,19 @@ class TestDeliverablesLayout:
             )
 
     def test_per_image_and_state_helpers_stay_at_root(self, output: Path) -> None:
-        """``results/`` and ``processing_state.json`` are NOT deliverables."""
+        """``results/`` stays at root; machine-state lives under ``.phenotypic/``.
+
+        Neither is a deliverable: ``results/`` is per-image output at the
+        output root, and ``processing_state.json`` now lives in the hidden
+        machine-state cache ``<output>/.phenotypic/`` — but never under
+        ``deliverables/``.
+        """
         assert results_dir(output) == output / "results"
         assert dataset_measurements_dir(output, "ds1") == (
             output / "results" / "ds1" / "measurements"
         )
         assert dataset_overlays_dir(output, "ds1") == output / "results" / "ds1" / "overlays"
-        assert processing_state_path(output) == output / "processing_state.json"
+        assert processing_state_path(output) == output / ".phenotypic" / "processing_state.json"
         # None of these touch the deliverables folder.
         deliv = deliverables_dir(output)
         assert deliv not in results_dir(output).parents
@@ -538,22 +546,22 @@ class TestReadRunManifest:
     def test_valid_manifest_returns_dict(self, tmp_path: Path) -> None:
         import json
 
-        from phenotypic.tools_ import read_run_manifest
+        from phenotypic.tools_ import manifest_json_path, read_run_manifest
 
-        progress = tmp_path / "progress"
-        progress.mkdir()
+        manifest_path = manifest_json_path(tmp_path)
+        manifest_path.parent.mkdir(parents=True)
         payload = {"failed": 3, "execution_mode": "slurm"}
-        (progress / "manifest.json").write_text(json.dumps(payload))
+        manifest_path.write_text(json.dumps(payload))
 
         manifest = read_run_manifest(tmp_path)
         assert manifest == payload
 
     def test_malformed_manifest_returns_none(self, tmp_path: Path) -> None:
-        from phenotypic.tools_ import read_run_manifest
+        from phenotypic.tools_ import manifest_json_path, read_run_manifest
 
-        progress = tmp_path / "progress"
-        progress.mkdir()
-        (progress / "manifest.json").write_text("{not valid json")
+        manifest_path = manifest_json_path(tmp_path)
+        manifest_path.parent.mkdir(parents=True)
+        manifest_path.write_text("{not valid json")
 
         # Should not raise; should warn and return None
         assert read_run_manifest(tmp_path) is None
@@ -613,3 +621,259 @@ class TestResolveExecutionMode:
         assert resolve_execution_mode({"execution_mode": "alien"}) == "local"
         assert resolve_execution_mode({"execution_mode": ""}) == "local"
         assert resolve_execution_mode({"execution_mode": None}) == "local"  # type: ignore[dict-item]
+
+
+# ---------------------------------------------------------------------------
+# .phenotypic machine-state cache layout, resolvers, migrator
+# ---------------------------------------------------------------------------
+
+
+class TestPhenotypicCacheLayout:
+    def test_machine_state_roots_under_phenotypic(self) -> None:
+        from phenotypic.tools_ import (
+            DIR_PHENOTYPIC,
+            event_log_path,
+            manifest_json_path,
+            phenotypic_cache_dir,
+            processing_state_path,
+            progress_dir,
+        )
+
+        out = Path("/tmp/run")
+        assert DIR_PHENOTYPIC == ".phenotypic"
+        assert phenotypic_cache_dir(out) == out / ".phenotypic"
+        assert progress_dir(out) == out / ".phenotypic" / "progress"
+        assert processing_state_path(out) == out / ".phenotypic" / "processing_state.json"
+        assert event_log_path(out) == out / ".phenotypic" / "processing_events.log"
+        # manifest composes from progress_dir, so it follows the re-root
+        assert manifest_json_path(out) == out / ".phenotypic" / "progress" / "manifest.json"
+
+    def test_user_facing_dirs_unchanged(self) -> None:
+        from phenotypic.tools_ import (
+            deliverables_dir,
+            logs_dir,
+            qc_dir,
+            results_dir,
+            slurm_scripts_dir,
+        )
+
+        out = Path("/tmp/run")
+        assert deliverables_dir(out) == out / "deliverables"
+        assert results_dir(out) == out / "results"
+        assert qc_dir(out) == out / "qc"
+        assert logs_dir(out) == out / "logs"
+        assert slurm_scripts_dir(out) == out / "slurm_scripts"
+
+
+class TestBackCompatResolvers:
+    def test_resolver_prefers_new_then_legacy_then_new_default(self, tmp_path: Path) -> None:
+        from phenotypic.tools_ import (
+            processing_state_path,
+            progress_dir,
+            resolve_manifest_json_path,
+            resolve_processing_state_path,
+            resolve_progress_dir,
+        )
+
+        out = tmp_path
+        # Neither exists -> default to new location
+        assert resolve_processing_state_path(out) == processing_state_path(out)
+        assert resolve_progress_dir(out) == progress_dir(out)
+        # Legacy exists, new does not -> resolver returns legacy
+        legacy_state = out / "processing_state.json"
+        legacy_state.write_text("{}", encoding="utf-8")
+        (out / "progress").mkdir()
+        assert resolve_processing_state_path(out) == legacy_state
+        assert resolve_progress_dir(out) == out / "progress"
+        assert resolve_manifest_json_path(out) == out / "progress" / "manifest.json"
+        # New exists -> new wins over legacy
+        processing_state_path(out).parent.mkdir(parents=True, exist_ok=True)
+        processing_state_path(out).write_text("{}", encoding="utf-8")
+        progress_dir(out).mkdir(parents=True, exist_ok=True)
+        assert resolve_processing_state_path(out) == processing_state_path(out)
+        assert resolve_progress_dir(out) == progress_dir(out)
+
+
+class TestMigrateLegacyMachineState:
+    def test_moves_legacy_into_cache_dir(self, tmp_path: Path) -> None:
+        from phenotypic.tools_ import migrate_legacy_machine_state
+
+        out = tmp_path
+        (out / "progress").mkdir()
+        (out / "progress" / "manifest.json").write_text("{}", encoding="utf-8")
+        (out / "processing_state.json").write_text("{}", encoding="utf-8")
+        (out / "processing_events.log").write_text("x\n", encoding="utf-8")
+        moved = migrate_legacy_machine_state(out)
+        assert moved is True
+        assert (out / ".phenotypic" / "progress" / "manifest.json").is_file()
+        assert (out / ".phenotypic" / "processing_state.json").is_file()
+        assert (out / ".phenotypic" / "processing_events.log").is_file()
+        assert not (out / "progress").exists()
+        assert not (out / "processing_state.json").exists()
+
+    def test_noop_when_already_migrated(self, tmp_path: Path) -> None:
+        from phenotypic.tools_ import migrate_legacy_machine_state, progress_dir
+
+        out = tmp_path
+        progress_dir(out).mkdir(parents=True)
+        assert migrate_legacy_machine_state(out) is False
+
+    def test_noop_when_nothing_present(self, tmp_path: Path) -> None:
+        from phenotypic.tools_ import migrate_legacy_machine_state
+
+        assert migrate_legacy_machine_state(tmp_path) is False
+
+    def test_completes_interrupted_partial_migration(self, tmp_path: Path) -> None:
+        """A migration interrupted mid-move (``.phenotypic/`` exists with only
+        some artifacts inside, the rest still at the root) completes on the next
+        call instead of being skipped — guards against split state after a
+        SLURM preemption."""
+        from phenotypic.tools_ import (
+            migrate_legacy_machine_state,
+            progress_dir,
+            processing_state_path,
+            event_log_path,
+        )
+
+        out = tmp_path
+        # progress/ already moved; state + events still at the legacy root.
+        progress_dir(out).mkdir(parents=True)
+        (out / "processing_state.json").write_text("{}", encoding="utf-8")
+        (out / "processing_events.log").write_text("x\n", encoding="utf-8")
+        assert migrate_legacy_machine_state(out) is True
+        assert processing_state_path(out).is_file()
+        assert event_log_path(out).is_file()
+        assert not (out / "processing_state.json").exists()
+        assert not (out / "processing_events.log").exists()
+
+    def test_partial_present_moves_only_what_exists(self, tmp_path: Path) -> None:
+        """Only the legacy artifacts that exist are moved (e.g. an event log but
+        no state file), and a re-run is then a no-op."""
+        from phenotypic.tools_ import migrate_legacy_machine_state, event_log_path
+
+        out = tmp_path
+        (out / "processing_events.log").write_text("x\n", encoding="utf-8")
+        assert migrate_legacy_machine_state(out) is True
+        assert event_log_path(out).is_file()
+        assert not (out / "processing_events.log").exists()
+        assert migrate_legacy_machine_state(out) is False
+
+
+class TestClearMachineState:
+    def test_removes_phenotypic_cache_and_preserves_outputs(
+        self, tmp_path: Path
+    ) -> None:
+        """``--restart`` wipes ALL machine-state (state + event log + progress)
+        but leaves user-facing output artifacts (``results/``, ``deliverables/``)
+        intact — restart re-runs the orchestration without nuking outputs."""
+        from phenotypic.tools_ import (
+            clear_machine_state,
+            deliverables_dir,
+            event_log_path,
+            phenotypic_cache_dir,
+            processing_state_path,
+            progress_dir,
+            results_dir,
+        )
+
+        out = tmp_path
+        progress_dir(out).mkdir(parents=True)
+        (progress_dir(out) / "manifest.json").write_text("{}", encoding="utf-8")
+        processing_state_path(out).write_text("{}", encoding="utf-8")
+        event_log_path(out).write_text("x\n", encoding="utf-8")
+        deliverables_dir(out).mkdir(parents=True)
+        (deliverables_dir(out) / "master_measurements.parquet").write_bytes(b"x")
+        results_dir(out).mkdir(parents=True)
+        (results_dir(out) / "keep.parquet").write_bytes(b"x")
+
+        assert clear_machine_state(out) is True
+        assert not phenotypic_cache_dir(out).exists()
+        # User-facing outputs survive.
+        assert (deliverables_dir(out) / "master_measurements.parquet").is_file()
+        assert (results_dir(out) / "keep.parquet").is_file()
+
+    def test_removes_legacy_root_machine_state(self, tmp_path: Path) -> None:
+        """A pre-migration (legacy-layout) run being restarted has its root-level
+        machine-state cleared too."""
+        from phenotypic.tools_ import clear_machine_state
+
+        out = tmp_path
+        (out / "progress").mkdir()
+        (out / "progress" / "manifest.json").write_text("{}", encoding="utf-8")
+        (out / "processing_state.json").write_text("{}", encoding="utf-8")
+        (out / "processing_events.log").write_text("x\n", encoding="utf-8")
+        assert clear_machine_state(out) is True
+        assert not (out / "progress").exists()
+        assert not (out / "processing_state.json").exists()
+        assert not (out / "processing_events.log").exists()
+
+    def test_noop_when_nothing_present(self, tmp_path: Path) -> None:
+        from phenotypic.tools_ import clear_machine_state
+
+        assert clear_machine_state(tmp_path) is False
+
+
+# ---------------------------------------------------------------------------
+# Grep gate: no hand-joined machine-state paths outside _io_constants
+# ---------------------------------------------------------------------------
+
+
+class TestNoHandJoinedStatePaths:
+    def test_machine_state_paths_only_in_io_constants(self) -> None:
+        """No module outside _io_constants (sweep excepted) hand-joins
+        machine-state paths; everything must go through the helpers."""
+        import subprocess
+
+        pattern = (
+            r'/ ?"progress"|/ ?PROCESSING_STATE_JSON|/ ?"processing_state\.json"'
+            r'|/ ?PROCESSING_EVENTS_LOG|/ ?"processing_events\.log"|/ ?DIR_PROGRESS'
+        )
+        proc = subprocess.run(
+            ["grep", "-rn", "--include=*.py", "-E", pattern, "src/phenotypic"],
+            capture_output=True,
+            text=True,
+        )
+        offenders = [
+            ln
+            for ln in proc.stdout.splitlines()
+            if "_io_constants.py" not in ln
+            and "/sweep/" not in ln  # D11: sweep intentionally excluded
+            and "checkpoint_handler" not in ln  # progress_dir.parent / EVENTS — correct by design (D14)
+        ]
+        assert offenders == [], "Hand-joined machine-state paths remain:\n" + "\n".join(
+            offenders
+        )
+
+
+# ---------------------------------------------------------------------------
+# tools_ reporters resolve run state via the .phenotypic resolvers
+# ---------------------------------------------------------------------------
+
+
+class TestReporterReadsResolve:
+    def test_generate_report_finds_state_in_phenotypic(self, tmp_path: Path) -> None:
+        from phenotypic.tools_ import event_log_path, processing_state_path
+
+        processing_state_path(tmp_path).parent.mkdir(parents=True, exist_ok=True)
+        processing_state_path(tmp_path).write_text(
+            '{"version":"2","datasets":{}}', encoding="utf-8"
+        )
+        event_log_path(tmp_path).write_text("", encoding="utf-8")
+        from phenotypic.tools_.generate_report import _load_state_for_report
+
+        state = _load_state_for_report(tmp_path)
+        assert state is not None
+
+
+# ---------------------------------------------------------------------------
+# Process-only run keeps its pipeline.json under .phenotypic/ (no deliverables)
+# ---------------------------------------------------------------------------
+
+
+def test_phenotypic_cache_pipeline_json_path(tmp_path: Path) -> None:
+    from phenotypic.tools_ import PIPELINE_JSON, phenotypic_cache_pipeline_json_path
+
+    assert (
+        phenotypic_cache_pipeline_json_path(tmp_path)
+        == tmp_path / ".phenotypic" / PIPELINE_JSON
+    )

@@ -27,7 +27,6 @@ if TYPE_CHECKING:
 from ._cli_types import Dataset
 from ._cli_duckdb_agg import duckdb_aggregate
 from phenotypic.tools_ import (
-    PROCESSING_STATE_JSON,
     DIR_RESULTS,
     DIR_MEASUREMENTS,
     DIR_LOGS,
@@ -44,6 +43,7 @@ from phenotypic.tools_ import (
     measurements_csv_path,
     measurements_parquet_path,
     pipeline_json_path,
+    resolve_processing_state_path,
 )
 
 logger = logging.getLogger(__name__)
@@ -300,7 +300,7 @@ def _load_pipeline_from_output_dir(
             )
             # Fall through to legacy lookup.
 
-    state_path = output_dir / PROCESSING_STATE_JSON
+    state_path = resolve_processing_state_path(output_dir)
     if not state_path.exists():
         return None
     try:

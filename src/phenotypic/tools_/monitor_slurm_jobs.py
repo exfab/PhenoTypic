@@ -17,6 +17,7 @@ from pathlib import Path
 import click
 
 from phenotypic._cli._cli_update_state import aggregate_state_from_events
+from phenotypic.tools_ import resolve_event_log_path, resolve_processing_state_path
 
 
 @click.command()
@@ -52,8 +53,8 @@ def main(output_dir: Path, refresh_interval: int, no_clear: bool):
         # Monitor without clearing screen (good for logging)
         python -m phenotypic.tools_.monitor_slurm_jobs ./results --no-clear
     """
-    event_log = output_dir / "processing_events.log"
-    state_file = output_dir / "processing_state.json"
+    event_log = resolve_event_log_path(output_dir)
+    state_file = resolve_processing_state_path(output_dir)
 
     # Validate files exist
     if not state_file.exists():

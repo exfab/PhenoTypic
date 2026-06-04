@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 from datetime import datetime
 
-from phenotypic.tools_.typing_ import ExecutionMode, ImageTypeName
+from phenotypic.tools_.typing_ import ExecutionMode, ImageTypeName, ProcessOnlyLayer
 
 
 @dataclass
@@ -132,7 +132,11 @@ class ExecutionConfig:
 
     # Measure-only mode: reload HDFs and rerun pipeline.measure() without detection
     measure_only: bool = False
-    
+
+    # Process-only mode: run pipeline.apply() and export a single image layer
+    # (no measurement / analysis output). None = normal forward/measure run.
+    process_only_layer: Optional[ProcessOnlyLayer] = None
+
     def is_slurm_mode(self) -> bool:
         """Check if SLURM mode should be used."""
         if self.force_local:

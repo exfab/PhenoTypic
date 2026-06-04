@@ -14,7 +14,7 @@ from importlib.resources import files
 from pathlib import Path
 
 from phenotypic.tools_.register import AnalysisPluginRegistry
-from phenotypic.tools_ import DIR_PROGRESS, dashboard_html_path, analysis_html_path
+from phenotypic.tools_ import dashboard_html_path, analysis_html_path
 from phenotypic.tools_.typing_ import ExecutionMode
 
 from ._vendor_js import MARKED_MIN_JS
@@ -115,15 +115,15 @@ def regenerate_dashboard_artifacts(
             runs that pre-date metadata persistence).
         datasets: Mapping of dataset name to total image count.
     """
-    from phenotypic.tools_ import DIR_PROGRESS, JobMetadataKey, resolve_execution_mode
+    from phenotypic.tools_ import JobMetadataKey, progress_dir, resolve_execution_mode
     from ._manifest_builder import build_manifest
 
-    progress_dir = output_dir / DIR_PROGRESS
+    prog_dir = progress_dir(output_dir)
     execution_mode = resolve_execution_mode(job_meta)
 
     build_manifest(
         output_dir=output_dir,
-        progress_dir=progress_dir,
+        progress_dir=prog_dir,
         datasets=datasets,
         execution_mode=execution_mode,
         start_time=(job_meta or {}).get(JobMetadataKey.START_TIME, ""),
@@ -142,9 +142,11 @@ def _write_js_sidecar(output_dir: Path, filename: str, label: str) -> None:
         filename: Asset filename (e.g. ``"plotly.min.js"``).
         label: Human-readable name for log messages (e.g. ``"Plotly.js"``).
     """
-    progress_dir = output_dir / DIR_PROGRESS
-    progress_dir.mkdir(parents=True, exist_ok=True)
-    dest = progress_dir / filename
+    from phenotypic.tools_ import progress_dir
+
+    prog_dir = progress_dir(output_dir)
+    prog_dir.mkdir(parents=True, exist_ok=True)
+    dest = prog_dir / filename
     try:
         src = files("phenotypic._cli._dashboard").joinpath("_assets", filename)
         src_data = src.read_bytes()

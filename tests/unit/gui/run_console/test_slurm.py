@@ -28,6 +28,7 @@ from phenotypic.gui.run_console._slurm import (
     wait_for_job_id,
 )
 from phenotypic.gui.run_console._state import RunConsoleState
+from phenotypic.tools_ import job_metadata_path
 
 
 def _state_for(output_dir: Path) -> RunConsoleState:
@@ -44,9 +45,9 @@ def _write_manifest(
     output_dir: Path,
     chunk_job_ids: dict[str, str],
 ) -> None:
-    progress = output_dir / "progress"
-    progress.mkdir(parents=True, exist_ok=True)
-    (progress / "job_metadata.json").write_text(
+    metadata_path = job_metadata_path(output_dir)
+    metadata_path.parent.mkdir(parents=True, exist_ok=True)
+    metadata_path.write_text(
         json.dumps({"chunk_job_ids": chunk_job_ids}),
         encoding="utf-8",
     )

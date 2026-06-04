@@ -38,7 +38,7 @@ from typing import Iterable, Iterator, Literal
 from phenotypic.tools_ import (
     DashboardManifestKey,
     DashboardManifestSlurmInfoKey,
-    manifest_json_path,
+    resolve_manifest_json_path,
 )
 
 from phenotypic.gui.shell._classifier import classify
@@ -278,7 +278,7 @@ class RunRegistry:
                 if not child.is_dir():
                     continue
                 caps = classify(child)
-                if caps.is_cli_output:
+                if caps.is_cli_output or caps.is_process_only_output:
                     yield child
                 # Recurse regardless — a CLI output may itself contain
                 # nested ones in unusual sandboxes (unlikely but cheap).
@@ -294,7 +294,7 @@ class RunRegistry:
         """
         import json
 
-        manifest_path = manifest_json_path(output_dir)
+        manifest_path = resolve_manifest_json_path(output_dir)
         if not manifest_path.is_file():
             return ("unknown", "unknown", None)
         try:

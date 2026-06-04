@@ -41,7 +41,13 @@ from ._cli_failure_tracker import append_failure, read_failures
 from ._dashboard import generate_dashboard, regenerate_dashboard_artifacts
 
 from ._cli_constants import MAX_TRACEBACK_LINES
-from phenotypic.tools_ import DIR_PROGRESS, JOB_METADATA_JSON, PROCESSING_EVENTS_LOG, JobMetadataKey, HdfAttr
+from phenotypic.tools_ import (
+    JOB_METADATA_JSON,
+    JobMetadataKey,
+    HdfAttr,
+    event_log_path,
+    progress_dir,
+)
 from phenotypic.tools_.typing_ import ImageTypeName
 
 logger = logging.getLogger(__name__)
@@ -118,7 +124,7 @@ class LocalParallelStrategy(ExecutionStrategy):
             Execution results with success/failure statistics
         """
         start_time = datetime.now()
-        event_log = output_dir / PROCESSING_EVENTS_LOG
+        event_log = event_log_path(output_dir)
         measure_only = bool(self.config.measure_only)
 
         # Flatten all images across datasets
@@ -186,11 +192,12 @@ class LocalParallelStrategy(ExecutionStrategy):
         else:
             effective_n_jobs = self.config.n_jobs
 
-        worker = (
-            self._process_single_local_measure
-            if measure_only
-            else self._process_single_local
-        )
+        if self.config.process_only_layer:
+            worker = self._process_single_local_apply_only
+        elif measure_only:
+            worker = self._process_single_local_measure
+        else:
+            worker = self._process_single_local
         results = Parallel(n_jobs=effective_n_jobs, verbose=11)(
             delayed(worker)(dataset, image_path, output_dir, event_log)
             for dataset, image_path in all_tasks
@@ -204,12 +211,28 @@ class LocalParallelStrategy(ExecutionStrategy):
         # Generate progress manifest and dashboard (local mode — runs once)
         try:
             datasets_totals = {ds.name: len(ds.images) for ds in datasets}
-            local_job_meta: dict = {
-                JobMetadataKey.START_TIME: start_time.isoformat(timespec="milliseconds"),
-                JobMetadataKey.INPUT_PATH: self.config.input_path.stem,
-                JobMetadataKey.EXECUTION_MODE: "local",
-            }
-            regenerate_dashboard_artifacts(output_dir, local_job_meta, datasets_totals)
+            start_iso = start_time.isoformat(timespec="milliseconds")
+            if self.config.process_only_layer:
+                # Manifest only — no dashboard HTML, no aggregation (D13).
+                from ._dashboard._manifest_builder import build_manifest
+
+                build_manifest(
+                    output_dir=output_dir,
+                    progress_dir=progress_dir(output_dir),
+                    datasets=datasets_totals,
+                    execution_mode="local",
+                    start_time=start_iso,
+                    input_path=self.config.input_path.stem,
+                )
+            else:
+                local_job_meta: dict = {
+                    JobMetadataKey.START_TIME: start_iso,
+                    JobMetadataKey.INPUT_PATH: self.config.input_path.stem,
+                    JobMetadataKey.EXECUTION_MODE: "local",
+                }
+                regenerate_dashboard_artifacts(
+                    output_dir, local_job_meta, datasets_totals
+                )
         except Exception:
             logger.debug("Failed to generate progress dashboard", exc_info=True)
 
@@ -287,9 +310,9 @@ class LocalParallelStrategy(ExecutionStrategy):
 
             # Write structured failure record
             try:
-                progress_dir = output_dir / DIR_PROGRESS
+                prog_dir = progress_dir(output_dir)
                 append_failure(
-                    progress_dir,
+                    prog_dir,
                     dataset=dataset.name,
                     image=image_path.name,
                     error_type=type(e).__name__,
@@ -300,6 +323,77 @@ class LocalParallelStrategy(ExecutionStrategy):
                 logger.warning("Failed to write failure record", exc_info=True)
 
             return (dataset.name, image_path.name, False, tb)
+
+    def _process_single_local_apply_only(
+        self,
+        dataset: Dataset,
+        image_path: Path,
+        output_dir: Path,
+        event_log: Path,
+    ) -> tuple[str, str, bool, str]:
+        """Apply-only (process-only) per-image worker.
+
+        Mirrors :meth:`_process_single_local` — same event-log helpers and
+        ``(name, success, error)`` return shape so the manifest aggregator
+        treats process-only results identically — but dispatches to
+        :func:`phenotypic._cli._cli_process_only.process_single_apply_only_core`
+        with ``input_root`` captured from ``self.config.input_path`` for
+        mirrored output paths.
+        """
+        from ._cli_process_only import process_single_apply_only_core
+
+        append_event(event_log, dataset.name, image_path.name, "started")
+        try:
+            read_kwargs: Dict[str, Any] = {}
+            if self.config.bit_depth:
+                read_kwargs["bit_depth"] = self.config.bit_depth
+            if self.config.detect_mode != "gray":
+                read_kwargs["detect_mode"] = self.config.detect_mode
+
+            process_single_apply_only_core(
+                pipeline_path=self.config.pipeline_json,
+                image_path=image_path,
+                input_root=self.config.input_path,
+                output_dir=output_dir,
+                image_type=self.config.image_type,
+                layer=self.config.process_only_layer,  # type: ignore[arg-type]
+                read_kwargs=read_kwargs,
+                cli_nrows=self.config.nrows,
+                cli_ncols=self.config.ncols,
+            )
+            append_completion_event(
+                event_log, dataset.name, image_path.name, "completed"
+            )
+            return (dataset.name, image_path.name, True, "")
+        except Exception as e:
+            import traceback
+
+            error_msg = str(e)
+            tb = traceback.format_exc()
+            logger.error(
+                "Apply-only failed for %s/%s:\n%s",
+                dataset.name, image_path.name, tb,
+            )
+            append_completion_event(
+                event_log,
+                dataset.name,
+                image_path.name,
+                "failed",
+                _truncate_error_message(error_msg),
+            )
+            try:
+                prog_dir = progress_dir(output_dir)
+                append_failure(
+                    prog_dir,
+                    dataset=dataset.name,
+                    image=image_path.name,
+                    error_type=type(e).__name__,
+                    error_message=error_msg,
+                    traceback=tb,
+                )
+            except Exception:
+                logger.warning("Failed to write failure record", exc_info=True)
+            return (dataset.name, image_path.name, False, error_msg)
 
     def _process_single_local_measure(
         self,
@@ -399,9 +493,9 @@ class LocalParallelStrategy(ExecutionStrategy):
             )
 
             try:
-                progress_dir = output_dir / DIR_PROGRESS
+                prog_dir = progress_dir(output_dir)
                 append_failure(
-                    progress_dir,
+                    prog_dir,
                     dataset=dataset.name,
                     image=image_path.name,
                     error_type=type(e).__name__,
@@ -630,8 +724,8 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
         flat_scripts = submission.flat_scripts
 
         # ── Progress dashboard setup ──────────────────────────────────
-        progress_dir = output_dir / DIR_PROGRESS
-        progress_dir.mkdir(parents=True, exist_ok=True)
+        prog_dir = progress_dir(output_dir)
+        prog_dir.mkdir(parents=True, exist_ok=True)
 
         # Build image-task mapping: {job_id}_{array_idx} -> [dataset, image]
         # NOTE: Only chunk 0's job ID is known at submission time. Subsequent
@@ -665,27 +759,39 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
             JobMetadataKey.METADATA_CSV: str(self.config.metadata_csv) if self.config.metadata_csv else None,
             JobMetadataKey.INPUT_PATH: self.config.input_path.stem,
         }
-        metadata_path = progress_dir / JOB_METADATA_JSON
+        metadata_path = prog_dir / JOB_METADATA_JSON
         metadata_path.write_text(
             json.dumps(job_metadata, indent=2, ensure_ascii=False) + "\n",
             encoding="utf-8",
         )
         console.print(f"[green]✓[/green] Job metadata: [dim]{metadata_path}[/dim]")
 
-        # Checkpoint, manifest, and finalizer tasks are embedded in the
-        # array job scripts — no separate sentinel job needed.
-        console.print(
-            "[green]✓[/green] Checkpoint tasks embedded in array scripts "
-            "(manifest + finalizer)"
-        )
+        if self.config.process_only_layer:
+            # Process-only (D13): no aggregation/checkpoint chain and no dashboard
+            # HTML. The manifest-only finalizer is embedded as a sentinel in the
+            # LAST chunk (reusing the forward path's last-chunk finalizer
+            # mechanism), so it rebuilds progress/manifest.json after every image
+            # across all chunks — no separate dependent job, correct under the
+            # drip-feed for any number of chunks.
+            console.print(
+                "[green]✓[/green] Manifest finalizer embedded in last chunk "
+                "(process-only: no aggregation/dashboard)\n"
+            )
+        else:
+            # Checkpoint, manifest, and finalizer tasks are embedded in the
+            # array job scripts — no separate sentinel job needed.
+            console.print(
+                "[green]✓[/green] Checkpoint tasks embedded in array scripts "
+                "(manifest + finalizer)"
+            )
 
-        # Generate dashboard HTML
-        generate_dashboard(output_dir, execution_mode="slurm")
-        console.print(
-            f"[green]✓[/green] Dashboard: "
-            f"[bold]{output_dir / 'dashboard.html'}[/bold]  "
-            f"Analysis: [bold]{output_dir / 'analysis.html'}[/bold]\n"
-        )
+            # Generate dashboard HTML
+            generate_dashboard(output_dir, execution_mode="slurm")
+            console.print(
+                f"[green]✓[/green] Dashboard: "
+                f"[bold]{output_dir / 'dashboard.html'}[/bold]  "
+                f"Analysis: [bold]{output_dir / 'analysis.html'}[/bold]\n"
+            )
 
         # Wait if requested
         if self.config.wait:
@@ -698,7 +804,7 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
             click.echo(f"  Open: {output_dir / 'dashboard.html'}")
             click.echo(f"  Analysis: {output_dir / 'analysis.html'}")
             click.echo("  squeue -u $USER --array")
-            click.echo(f"  tail -f {output_dir}/processing_events.log")
+            click.echo(f"  tail -f {event_log_path(output_dir)}")
             final_results = None
 
         end_time = datetime.now()
@@ -732,7 +838,7 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
         Returns:
             Final execution results after all jobs complete
         """
-        event_log = output_dir / PROCESSING_EVENTS_LOG
+        event_log = event_log_path(output_dir)
         start_time = datetime.now()
 
         total_images = sum(len(d.images) for d in datasets)
@@ -778,8 +884,8 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
         datasets_state = aggregate_state_from_events(event_log)
 
         # Enrich with structured failure data from failures.jsonl
-        progress_dir = output_dir / DIR_PROGRESS
-        failure_records = read_failures(progress_dir)
+        prog_dir = progress_dir(output_dir)
+        failure_records = read_failures(prog_dir)
         failure_lookup: dict[tuple[str, str], dict] = {}
         for rec in failure_records:
             key = (rec.get("dataset", ""), rec.get("image", ""))
