@@ -1,15 +1,16 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated
 
 import cv2
 import numpy as np
-from pydantic import field_validator
+from pydantic import Field
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
 from ..abc_ import ImageEnhancer
+from ..tools_.typing_ import TuneSpec
 
 
 class FlattenIllumination(ImageEnhancer):
@@ -63,18 +64,10 @@ class FlattenIllumination(ImageEnhancer):
         contrast and illumination correction methods.
     """
 
-    sigma: float = 200.0
-    gamma_low: float = 0.5
-    gamma_high: float = 1.5
-    eps: float = 1e-6
-
-    @field_validator("sigma")
-    @classmethod
-    def _check_sigma_positive(cls, sigma: float) -> float:
-        """Reject a non-positive ``sigma`` (matches the pre-migration guard)."""
-        if sigma <= 0:
-            raise ValueError(f"sigma must be positive, got {sigma}")
-        return sigma
+    sigma: Annotated[float, TuneSpec(40.0, 300.0, log=True)] = Field(200.0, gt=0.0)
+    gamma_low: Annotated[float, TuneSpec(0.3, 0.8)] = 0.5
+    gamma_high: Annotated[float, TuneSpec(1.0, 2.5)] = 1.5
+    eps: Annotated[float, TuneSpec(tunable=False)] = 1e-6
 
     @staticmethod
     def _filter(
