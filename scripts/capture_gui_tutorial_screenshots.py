@@ -9,7 +9,7 @@ The script:
 1. Builds a synthetic 3-plate yeast dataset under
    ``docs/source/_static/gui_images/_dataset/``.
 2. Runs the CLI once against that dataset to produce real CLI output
-   (master parquet + ``results/`` + ``dashboard.html``).
+   (``deliverables/`` + ``results/``).
 3. Boots ``phenotypic-gui --root <dataset_parent>`` on a free port.
 4. Drives a headless Chromium browser through every tutorial workflow
    and saves PNGs into ``docs/source/_static/gui_images/<workflow>/``.
@@ -155,12 +155,12 @@ def build_tutorial_dataset(force: bool = False) -> None:
 def run_cli_once() -> None:
     """Invoke ``python -m phenotypic`` to produce real CLI output.
 
-    The output (parquet + per-image overlays + dashboard.html) is what the
-    "Viewing Results" walkthrough screenshots capture. Skip if the output
-    already exists — re-running this is expensive (~minutes on a real
-    pipeline; ~seconds on the synthetic dataset but still avoidable).
+    The output (deliverables + per-image overlays) is what the "Viewing
+    Results" walkthrough screenshots capture. Skip if the output already
+    exists — re-running this is expensive (~minutes on a real pipeline;
+    ~seconds on the synthetic dataset but still avoidable).
     """
-    if (OUTPUT_DIR / "master_measurements.parquet").exists():
+    if (OUTPUT_DIR / "deliverables" / "master_measurements.parquet").exists():
         print(
             f"[cli] reusing existing CLI output at {OUTPUT_DIR.relative_to(REPO_ROOT)}")
         return
@@ -171,7 +171,9 @@ def run_cli_once() -> None:
         sys.executable,
         "-m",
         "phenotypic",
+        "--pipeline",
         str(PIPELINE_JSON),
+        "--input",
         str(PLATES_DIR),
         "-o",
         str(OUTPUT_DIR),
