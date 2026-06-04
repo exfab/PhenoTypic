@@ -13,8 +13,10 @@ Two related changes to the PhenoTypic CLI:
    that executes `pipeline.apply()` only (preprocessing/detection, **no
    measurement, no analysis output suite**) and writes a **single chosen image
    layer** per input image into the output folder, **mirroring the input
-   directory tree**. `rgb`/`gray`/`detect_mat` are saved as 16-bit TIFFs;
-   `objmap` is saved as a raw-label PNG (matching prior CLI iterations). This
+   directory tree**. `rgb`/`gray`/`detect_mat` are saved as TIFFs **at the
+   image's bit depth** (8-bit source → 8-bit TIFF, 16-bit source → 16-bit
+   TIFF); `objmap` is saved as a 16-bit raw-label PNG (matching prior CLI
+   iterations). This
    lets users leverage PhenoTypic's preprocessing pipeline as an image
    transformer without paying for the full measurement/dashboard/deliverables
    machinery.
@@ -63,7 +65,7 @@ Both build on the existing single-source-of-truth layout module
 | D7 | Migration set | machine-state sidecars only: `progress/`, `processing_state.json`, `processing_events.log` (**not** `logs/`, `slurm_scripts/`, `results/`, `qc/`, `deliverables/`) |
 | D8 | Output filename | `<stem>_<layer>.<ext>` (self-documenting) |
 | D9 | objmap without a detector | Warn per image + write the (empty) map; do not fail |
-| D10 | 16-bit TIFF coercion (added in self-review) | **Worker-side coercion** via `skimage.img_as_uint`; do **not** modify shared accessor IO. (See §5.6.) |
+| D10 | TIFF bit depth (added in self-review) | **Output follows `image.bit_depth`** (8→8, 16→16; no forced upcast). Worker-side quantization of float layers via `skimage.img_as_ubyte`/`img_as_uint`; do **not** modify shared accessor IO. `objmap` stays 16-bit labels. (See §5.6.) |
 
 ## 4. Background (current state)
 
@@ -75,9 +77,11 @@ Both build on the existing single-source-of-truth layout module
   - Color/gray/detect_mat go through `_accessor_io_handler.imsave` →
     `_save_image`. For a `.tiff` path it writes true 16-bit via `tifffile`
     **only when the array is already `uint16`**; otherwise PIL (→ 8-bit for
-    `uint8`, float TIFF for float). ⚠️ The `bit_depth` argument is **ignored in
-    the TIFF branch** — it does *not* force conversion. See §5.6; this drives
-    decision D10.
+    `uint8`, **float TIFF for float**). ⚠️ The `bit_depth` argument is
+    **ignored in the TIFF branch** — and there is **no float→int quantization**
+    there (unlike the PNG branch). With the "follow `image.bit_depth`" rule the
+    `uint8` `rgb` case is fine, but the **float** `gray`/`detect_mat` layers
+    would write as floating-point TIFFs. See §5.6; this drives decision D10.
   - `objmap.imsave(path, use_label2rgb=False)`
     (`accessors/_objmap_accessor.py:531`) writes the **raw labeled map**
     (integer labels). `objmap` is `uint16`, and `_save_image`'s PNG branch
@@ -269,60 +273,77 @@ out   = output_dir / rel.parent / f"{rel.stem}_{layer}{ext}"
 
 ### 5.6 Layer write semantics (D3, D9, D10)
 
-> **Self-review correction.** The earlier draft claimed
-> `accessor.imsave(out, bit_depth=16)` would produce 16-bit TIFFs. **It does
-> not.** `_accessor_io_handler._save_image`'s TIFF branch keys solely on
-> `arr.dtype` and **ignores the `bit_depth` argument entirely** (only the PNG
-> branch honors it, and even then only to quantize *float* arrays). Verified
-> runtime layer dtypes on `load_synth_yeast_plate()` (an 8-bit image):
+**Rule: output intensity depth follows `image.bit_depth`** (8-bit source →
+8-bit output; 16-bit source → 16-bit output). No forced upcast — an 8-bit input
+yielding an 8-bit TIFF is the intended, accepted behavior.
+
+> **Self-review correction (revised per user).** The first draft claimed
+> `accessor.imsave(out, bit_depth=16)` would force 16-bit TIFFs. It would not:
+> `_accessor_io_handler._save_image`'s TIFF branch keys solely on `arr.dtype`
+> and **ignores `bit_depth` entirely** (only the PNG branch honors it, and only
+> to quantize *float* arrays). With the "follow `image.bit_depth`" rule the
+> `rgb` case is no longer a problem, but the **float** layers still are.
+> Verified runtime dtypes on `load_synth_yeast_plate()` (an 8-bit image):
 >
-> | Layer | dtype | `imsave(".tiff", bit_depth=16)` today | Wanted |
-> |-------|-------|----------------------------------------|--------|
-> | `rgb` | `uint8` | **8-bit** TIFF (PIL) | 16-bit |
-> | `gray` | `float64` | **float** TIFF (PIL) | 16-bit |
-> | `detect_mat` | `float64` | **float** TIFF (PIL) | 16-bit |
+> | Layer | dtype | naive `imsave(".tiff")` today | Wanted (8-bit source) |
+> |-------|-------|-------------------------------|-----------------------|
+> | `rgb` | `uint8` | 8-bit TIFF | 8-bit TIFF ✓ (already fine) |
+> | `gray` | `float64` | **float** TIFF (PIL mode `F`) | **8-bit** TIFF ✗ |
+> | `detect_mat` | `float64` | **float** TIFF | **8-bit** TIFF ✗ |
 > | `objmap` | `uint16` | n/a (PNG) | 16-bit PNG ✓ |
 >
-> So 3 of the 4 layers come out wrong. The fix must coerce the array to
-> `uint16` **before** writing.
+> The remaining defect: the **float** layers (`gray`, `detect_mat`) write as
+> floating-point TIFFs, not integer images at the source bit depth. The worker
+> must quantize them.
 
-**Coercion (D10 — worker-side).** The process-only writer coerces each
-TIFF-bound layer to `uint16` itself, then writes, leaving the shared accessor
-IO (which is covered by `test_image.py` / `test_metadata_io.py` and is
-golden-sensitive) untouched:
+**Coercion (D10 — worker-side).** The process-only writer quantizes float
+layers to the image's bit depth itself, then writes, leaving the shared
+accessor IO (covered by `test_image.py` / `test_metadata_io.py`, golden-
+sensitive) untouched:
 
 ```python
 import numpy as np, skimage as ski
 arr = accessor[:]
-if arr.dtype != np.uint16:
-    arr = ski.util.img_as_uint(np.clip(arr, 0.0, 1.0) if np.issubdtype(arr.dtype, np.floating) else arr)
-# arr is now uint16; write 16-bit TIFF (tifffile), optionally embedding metadata
+target = image.bit_depth                       # 8 or 16
+if np.issubdtype(arr.dtype, np.floating):      # gray, detect_mat
+    arr = np.clip(arr, 0.0, 1.0)               # guard enhancer overshoot
+    arr = ski.util.img_as_ubyte(arr) if target == 8 else ski.util.img_as_uint(arr)
+# integer intensity layers (rgb) are already at the source depth → pass through
+# write via tifffile.imwrite(out, arr, photometric=...); 8/16-bit follows dtype
 ```
 
-`img_as_uint` gives the correct mapping (verified): `uint8` 0..255 → 0..65535
-(×257); `float` [0,1] → 0..65535; `uint16` passthrough. Floats are clipped to
-[0,1] first so an enhancer that pushes `detect_mat` slightly out of range can't
-trip skimage's range error / wraparound.
+The float→int mappings are verified: `img_as_ubyte([0,0.5,1.0]) → [0,128,255]`;
+`img_as_uint([0,0.5,1.0]) → [0,32768,65535]`. Both are **fixed-domain** maps
+(`[0,1] → full range`), **not** per-image min–max stretches, so absolute
+intensity stays comparable across images. Clipping to `[0,1]` first stops an
+enhancer that emits a slightly-out-of-range float from tripping skimage's range
+check.
 
 | Layer | Format | How |
 |-------|--------|-----|
-| `rgb` | 16-bit TIFF | coerce→uint16, write via `tifffile.imwrite` |
-| `gray` | 16-bit TIFF | clip→`img_as_uint`→write |
-| `detect_mat` | 16-bit TIFF | clip→`img_as_uint`→write |
-| `objmap` | 16-bit PNG (raw labels) | `image.objmap.imsave(out)` — already correct: `objmap` is `uint16`, `_save_image`'s PNG branch routes uint16 to `_write_png_cv2`. `use_label2rgb=False`. |
+| `rgb` | TIFF at `image.bit_depth` | integer already → write via `tifffile.imwrite` |
+| `gray` | TIFF at `image.bit_depth` | clip→`img_as_ubyte`/`img_as_uint`→write |
+| `detect_mat` | TIFF at `image.bit_depth` | clip→`img_as_ubyte`/`img_as_uint`→write |
+| `objmap` | **16-bit** PNG (raw labels) | `image.objmap.imsave(out)` — already correct: `objmap` is `uint16`, `_save_image`'s PNG branch routes uint16 to `_write_png_cv2`. `use_label2rgb=False`. **Exempt from the bit-depth rule** — a label map is not an intensity image, and capping it at 8-bit would corrupt plates with >255 colonies. |
 
 The process-only writer lives in the new worker module (or a small helper in
 `_cli_output_manager`), reusing `tifffile`/`cv2` the same way the accessor IO
 does. Embedding the phenotypic-metadata JSON in the TIFF (as `imsave` does) is
 **optional** for v1 — decide in the plan; the layer pixels are the deliverable.
 
+> **Precision note (non-blocking):** for an 8-bit source, quantizing the float
+> `detect_mat` to 8-bit collapses it to 256 levels. That is accepted (user
+> directive: 8-bit in → 8-bit out). If a future use wants to preserve the
+> enhanced matrix's full precision, a per-layer override could force
+> `detect_mat` to 16-bit; out of scope for v1.
+
 > **Alternative considered (not chosen):** fix `_save_image` to honor
 > `bit_depth` for TIFF (the param is *documented* to do this, so this is
 > arguably a latent bug). Rejected for v1 because it changes shared,
-> golden-covered accessor IO — notably it would turn today's float-TIFF output
-> (default `bit_depth`) into integer TIFF, risking `test_metadata_io.py` /
-> golden churn. Worth doing as a separate, well-tested cleanup later; tracked
-> as a follow-up, not part of this feature.
+> golden-covered accessor IO — it would turn today's float-TIFF output into
+> integer TIFF, risking `test_metadata_io.py` / golden churn. Worth doing as a
+> separate, well-tested cleanup; tracked as a follow-up, not part of this
+> feature.
 
 - **objmap with no detector in the pipeline** → `image.objmap.isempty()` is
   true: log a per-image warning ("pipeline produced no objects; writing empty
@@ -337,9 +358,10 @@ sample of mirrored output paths, execution mode (local/SLURM), and the
 
 ## 6. Error handling & edge cases
 
-- 16-bit coercion is **worker-side** (`img_as_uint` after clipping floats to
-  [0,1]); see §5.6. Do not rely on `imsave(bit_depth=16)` — it is a no-op for
-  TIFF.
+- Output bit depth follows `image.bit_depth`; float-layer quantization is
+  **worker-side** (`img_as_ubyte`/`img_as_uint` after clipping floats to
+  [0,1]); see §5.6. Do not rely on `imsave(bit_depth=...)` for TIFF — the TIFF
+  branch ignores it and does not quantize floats.
 - Per-image failures use the **same** failure-tracking path as the forward run
   (`append_failure` into `.phenotypic/progress/failures.jsonl`), so one bad
   image doesn't abort the batch.
@@ -367,11 +389,15 @@ sample of mirrored output paths, execution mode (local/SLURM), and the
   paths and `_layer` suffix; objmap → `.png`, others → `.tiff`.
 - Worker: each layer writes a file of the right format/bit-depth (small synth
   image). **Explicit dtype assertions** (the bug this caught): load the written
-  file and assert `rgb`/`gray`/`detect_mat` TIFFs are `uint16` from an 8-bit
-  source (uint8 rgb + float64 gray/detect_mat), and `objmap` PNG is `uint16`
-  raw labels. Assert a float `detect_mat` value of `1.0`→`65535` and `0.0`→`0`
-  (correct `img_as_uint` mapping, not a min-max rescale). Out-of-range float
-  (e.g. an enhancer emitting `1.2`) is clipped, not wrapped.
+  file and assert output depth follows `image.bit_depth`:
+  - 8-bit source → `rgb`/`gray`/`detect_mat` TIFFs are `uint8` (float
+    `gray`/`detect_mat` quantized via `img_as_ubyte`, e.g. `1.0`→`255`,
+    `0.0`→`0`); not float TIFFs.
+  - 16-bit source → the same TIFFs are `uint16` (`img_as_uint`, `1.0`→`65535`).
+  - `objmap` PNG is always `uint16` raw labels, **regardless** of
+    `image.bit_depth` (assert with an 8-bit source).
+  - Mapping is fixed-domain, not min–max rescaled; an out-of-range float (e.g.
+    an enhancer emitting `1.2`) is clipped, not wrapped.
 - objmap-without-detector warns and writes an all-zero map.
 - CLI validation matrix: every rejected-flag combination raises `UsageError`;
   required-flag enforcement; happy-path parsing populates
@@ -379,7 +405,8 @@ sample of mirrored output paths, execution mode (local/SLURM), and the
 
 **Integration**
 - `--process-only detect_mat` over a nested-input fixture, local executor,
-  asserts mirrored 16-bit TIFFs exist, no `deliverables/`/`results/`, and
+  asserts mirrored TIFFs exist at the fixture's bit depth (uint8 for an 8-bit
+  fixture), no `deliverables/`/`results/`, and
   `.phenotypic/` tracking is present.
 - `--dry-run` output contains the plan and `.phenotypic/` path.
 - SLURM script generation asserts `--process-only` (+ input root) is threaded
@@ -415,10 +442,11 @@ Phase 1 lands and is verifiable on its own; Phase 2 depends on it.
   runs visible.
 - **Resume predicate**: ✅ resolved (event-log based — see §6). No predicate
   change needed.
-- **16-bit coercion vs. shared IO**: the documented-but-unimplemented
-  `bit_depth`-for-TIFF behavior is left untouched to avoid golden/test churn
-  (§5.6). Risk shifts to the worker-side coercion being correct → covered by
-  the explicit dtype/value assertions in §7.
+- **TIFF bit depth vs. shared IO**: output depth follows `image.bit_depth`
+  (§5.6); the documented-but-unimplemented `bit_depth`-for-TIFF behavior in
+  shared accessor IO is left untouched to avoid golden/test churn. Risk shifts
+  to the worker-side float→int quantization being correct → covered by the
+  explicit dtype/value assertions in §7.
 
 ## 10. Open questions for implementation (non-blocking)
 
