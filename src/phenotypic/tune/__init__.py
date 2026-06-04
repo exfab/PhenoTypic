@@ -29,6 +29,9 @@ from ._search_space import (
     SearchSpace,
 )
 
+# --- Phase 1b: strategy configs (serializable; build live SearchStrategy) ------
+from ._strategies import GridConfig, RandomConfig, StrategyConfig
+
 __all__ = [
     # Phase 1a: search space
     "Categorical",
@@ -38,4 +41,8 @@ __all__ = [
     "Domain",
     "Knob",
     "SearchSpace",
+    # Phase 1b: strategy configs
+    "StrategyConfig",
+    "GridConfig",
+    "RandomConfig",
 ]
