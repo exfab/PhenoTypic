@@ -171,8 +171,14 @@ def generate_array_job_script(
             f"Empty chunk for dataset {dataset.name}: indices ({start_idx}, {end_idx})"
         )
 
-    # Build task entries, interleaving checkpoint sentinels at regular intervals
-    entries = _build_entry_list(chunk_images, checkpoint_interval, is_last_chunk)
+    # Build task entries, interleaving checkpoint sentinels at regular intervals.
+    # Process-only runs carry no aggregation chain (manifest-only finalize is a
+    # separate dependent task submitted by the strategy), so suppress all
+    # checkpoint / manifest / finalizer sentinels here.
+    if config.process_only_layer:
+        entries = _build_entry_list(chunk_images, None, False)
+    else:
+        entries = _build_entry_list(chunk_images, checkpoint_interval, is_last_chunk)
 
     # Create script directory
     script_dir = output_dir / DIR_SLURM_SCRIPTS / dataset.name
@@ -258,16 +264,28 @@ def generate_array_job_script(
     if not config.include_dataset_column:
         cmd_parts.append("--no-dataset-column")
 
-    # Measure-only mode supersedes overlay generation; they are mutually exclusive.
-    if config.measure_only:
+    # Process-only (apply-only) mode: export a single layer, mirror the input
+    # tree, and skip overlays/measurement entirely. Mutually exclusive with the
+    # measure / forward overlay flags.
+    if config.process_only_layer:
+        cmd_parts.extend(
+            [
+                "--process-only",
+                config.process_only_layer,
+                "--input-root",
+                shlex.quote(str(config.input_path.absolute())),
+            ]
+        )
+    elif config.measure_only:
+        # Measure-only mode supersedes overlay generation; mutually exclusive.
         cmd_parts.append("--measure")
     else:
         cmd_parts.append("--save-overlays")
 
     # --save-inspect is honored in BOTH forward and --measure modes,
     # since re-measurement repopulates the diagnostic cache that
-    # MeasureFeatures.inspect() depends on.
-    if config.save_inspects:
+    # MeasureFeatures.inspect() depends on. Never relevant in process-only mode.
+    if config.save_inspects and not config.process_only_layer:
         cmd_parts.append("--save-inspect")
 
     # Add event log
@@ -300,6 +318,53 @@ def generate_array_job_script(
         f"--output-dir {q_output_dir} "
         f"--checkpoint-type finalize"
     )
+
+    # Dispatch block: process-only runs carry no aggregation/manifest/finalizer
+    # sentinels (manifest-only finalize is a separate dependent task), so emit a
+    # plain per-image command with no sentinel branches. Forward / measure runs
+    # keep the checkpoint→manifest→finalizer sentinel dispatch.
+    if config.process_only_layer:
+        dispatch_block = f"""# Process image (apply-only mode; no aggregation sentinels)
+echo "Processing image $((SLURM_ARRAY_TASK_ID + 1))/${{#IMAGE_LIST[@]}}: $CURRENT_IMAGE"
+echo ""
+
+{cmd}
+
+EXIT_CODE=$?"""
+    else:
+        dispatch_block = f"""if [ "$CURRENT_IMAGE" = "{_CHECKPOINT_SENTINEL}" ]; then
+    # Checkpoint task: aggregate per-image Parquets into a dashboard chunk
+    echo "Running checkpoint aggregation (task $SLURM_ARRAY_TASK_ID)"
+    echo ""
+
+    {checkpoint_cmd}
+
+    EXIT_CODE=$?
+elif [ "$CURRENT_IMAGE" = "{_MANIFEST_SENTINEL}" ]; then
+    # Manifest task: rebuild manifest after checkpoint aggregation
+    echo "Running manifest rebuild (task $SLURM_ARRAY_TASK_ID)"
+    echo ""
+
+    {manifest_cmd}
+
+    EXIT_CODE=$?
+elif [ "$CURRENT_IMAGE" = "{_FINALIZER_SENTINEL}" ]; then
+    # Finalizer task: final aggregation and cleanup for the last chunk
+    echo "Running finalizer (task $SLURM_ARRAY_TASK_ID)"
+    echo ""
+
+    {finalizer_cmd}
+
+    EXIT_CODE=$?
+else
+    # Normal image processing
+    echo "Processing image $((SLURM_ARRAY_TASK_ID + 1))/${{#IMAGE_LIST[@]}}: $CURRENT_IMAGE"
+    echo ""
+
+    {cmd}
+
+    EXIT_CODE=$?
+fi"""
 
     # Generate complete script
     script_content = f"""#!/bin/bash
@@ -344,39 +409,7 @@ fi
 # Get current entry using array task ID
 CURRENT_IMAGE="${{IMAGE_LIST[$SLURM_ARRAY_TASK_ID]}}"
 
-if [ "$CURRENT_IMAGE" = "{_CHECKPOINT_SENTINEL}" ]; then
-    # Checkpoint task: aggregate per-image Parquets into a dashboard chunk
-    echo "Running checkpoint aggregation (task $SLURM_ARRAY_TASK_ID)"
-    echo ""
-
-    {checkpoint_cmd}
-
-    EXIT_CODE=$?
-elif [ "$CURRENT_IMAGE" = "{_MANIFEST_SENTINEL}" ]; then
-    # Manifest task: rebuild manifest after checkpoint aggregation
-    echo "Running manifest rebuild (task $SLURM_ARRAY_TASK_ID)"
-    echo ""
-
-    {manifest_cmd}
-
-    EXIT_CODE=$?
-elif [ "$CURRENT_IMAGE" = "{_FINALIZER_SENTINEL}" ]; then
-    # Finalizer task: final aggregation and cleanup for the last chunk
-    echo "Running finalizer (task $SLURM_ARRAY_TASK_ID)"
-    echo ""
-
-    {finalizer_cmd}
-
-    EXIT_CODE=$?
-else
-    # Normal image processing
-    echo "Processing image $((SLURM_ARRAY_TASK_ID + 1))/${{#IMAGE_LIST[@]}}: $CURRENT_IMAGE"
-    echo ""
-
-    {cmd}
-
-    EXIT_CODE=$?
-fi
+{dispatch_block}
 
 echo ""
 echo "======================================"
@@ -470,3 +503,69 @@ def generate_all_array_job_scripts(
         all_scripts[dataset.name] = scripts
 
     return all_scripts
+
+
+def generate_process_only_finalize_script(
+    config: ExecutionConfig,
+    output_dir: Path,
+) -> Path:
+    """Generate the manifest-only finalize script for a process-only SLURM run.
+
+    A process-only run has no aggregation / dashboard chain (D13). Its single
+    dependent finalize task only rebuilds ``progress/manifest.json`` (whose
+    ``is_complete`` flag is the run-console completion signal) by invoking the
+    checkpoint handler's manifest path — no ``aggregate_measurements``, no
+    dashboard HTML.
+
+    The strategy submits the returned script with
+    ``sbatch --dependency=afterok:<array>`` so it runs once the image array
+    finishes.
+
+    Args:
+        config: Execution configuration (used for SBATCH directives).
+        output_dir: Base output directory.
+
+    Returns:
+        Path to the generated finalize script.
+    """
+    script_dir = output_dir / DIR_SLURM_SCRIPTS
+    script_dir.mkdir(parents=True, exist_ok=True)
+    log_dir = output_dir / DIR_LOGS / "slurm"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    log_path = log_dir / "process_only_finalize_%A.log"
+
+    directives = generate_slurm_directives(
+        job_name="pht-process-only-finalize",
+        slurm_args=config.slurm_args,
+        output_log=log_path,
+        error_log=log_path,
+    )
+
+    python_str = " ".join(get_python_command(for_slurm=True)[0])
+    q_output_dir = shlex.quote(str(output_dir.absolute()))
+    manifest_cmd = (
+        f"{python_str} -m phenotypic._cli._cli_checkpoint_handler "
+        f"--output-dir {q_output_dir} "
+        f"--checkpoint-type manifest"
+    )
+
+    script_content = f"""#!/bin/bash
+{directives}
+
+# Auto-generated by PhenoTypic CLI (process-only manifest-only finalize)
+# Rebuilds progress/manifest.json once the image array completes. No
+# aggregation, no dashboard HTML (D13).
+
+set -e
+set -u
+
+{SLURM_THREAD_PIN_BASH}
+
+echo "Running process-only manifest finalize"
+{manifest_cmd}
+"""
+
+    script_path = script_dir / "process_only_finalize.sh"
+    script_path.write_text(script_content, encoding="utf-8")
+    script_path.chmod(0o755)
+    return script_path

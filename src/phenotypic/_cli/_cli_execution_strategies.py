@@ -767,20 +767,48 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
         )
         console.print(f"[green]✓[/green] Job metadata: [dim]{metadata_path}[/dim]")
 
-        # Checkpoint, manifest, and finalizer tasks are embedded in the
-        # array job scripts — no separate sentinel job needed.
-        console.print(
-            "[green]✓[/green] Checkpoint tasks embedded in array scripts "
-            "(manifest + finalizer)"
-        )
+        if self.config.process_only_layer:
+            # Process-only (D13): no aggregation/sentinel/checkpoint chain and
+            # no dashboard HTML. Submit a single dependent manifest-only
+            # finalize task (afterany on the image array) whose manifest.json
+            # is_complete flag is the run-console completion signal.
+            from ._cli_slurm_array_scripts import (
+                generate_process_only_finalize_script,
+            )
+            from phenotypic.tools_.slurm._sbatch import submit_script
 
-        # Generate dashboard HTML
-        generate_dashboard(output_dir, execution_mode="slurm")
-        console.print(
-            f"[green]✓[/green] Dashboard: "
-            f"[bold]{output_dir / 'dashboard.html'}[/bold]  "
-            f"Analysis: [bold]{output_dir / 'analysis.html'}[/bold]\n"
-        )
+            finalize_script = generate_process_only_finalize_script(
+                self.config, output_dir
+            )
+            try:
+                finalize_job_id = submit_script(
+                    finalize_script, dependency_job_id=str(job_ids[0])
+                )
+                console.print(
+                    f"[green]✓[/green] Manifest finalize: "
+                    f"[green]Job {finalize_job_id}[/green] "
+                    f"(depends on {job_ids[0]})\n"
+                )
+            except RuntimeError as exc:
+                console.print(
+                    f"[yellow]Warning: manifest finalize submission failed: "
+                    f"{exc}[/yellow]\n"
+                )
+        else:
+            # Checkpoint, manifest, and finalizer tasks are embedded in the
+            # array job scripts — no separate sentinel job needed.
+            console.print(
+                "[green]✓[/green] Checkpoint tasks embedded in array scripts "
+                "(manifest + finalizer)"
+            )
+
+            # Generate dashboard HTML
+            generate_dashboard(output_dir, execution_mode="slurm")
+            console.print(
+                f"[green]✓[/green] Dashboard: "
+                f"[bold]{output_dir / 'dashboard.html'}[/bold]  "
+                f"Analysis: [bold]{output_dir / 'analysis.html'}[/bold]\n"
+            )
 
         # Wait if requested
         if self.config.wait:
