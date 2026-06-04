@@ -62,7 +62,9 @@ class MeasureBounds(MeasureFeatures):
 
     def _operate(self, image: Image) -> pd.DataFrame:
         objmap = image.objmap[:]
-        gray = image.gray[:]
+        # gray is stored float32; upcast for the intensity-weighted centroid
+        # accumulation so values match the historical float64 layer.
+        gray = image.gray[:].astype(np.float64, copy=False)
 
         results = pd.DataFrame(
                 data=regionprops_table(

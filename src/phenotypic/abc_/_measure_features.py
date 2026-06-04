@@ -478,6 +478,31 @@ class MeasureFeatures(BaseOperation, ABC):
             return np.asarray(value)
 
     @staticmethod
+    def _as_accumulation_dtype(array: ArrayLike) -> np.ndarray:
+        """Upcast floating arrays to float64 for numerically-stable reductions.
+
+        Intensity layers (``gray``/``detect_mat``) are stored as ``float32``;
+        ``scipy.ndimage`` reductions and ``np.quantile`` accumulate in the input
+        dtype, so summing/averaging/interpolating over large objects in float32
+        loses precision relative to the historical float64 layers. Casting the
+        input up to float64 here keeps measurements bit-for-bit comparable with
+        the pre-float32 behaviour. Non-float arrays (e.g. the binary
+        ``objmask``, integer label maps) pass through unchanged — their
+        reductions are already exact.
+
+        Args:
+            array: Input array fed to a reduction/comprehension helper.
+
+        Returns:
+            np.ndarray: ``array`` upcast to float64 when it is a lower-precision
+                floating dtype; otherwise the array unchanged (no copy).
+        """
+        array = np.asarray(array)
+        if np.issubdtype(array.dtype, np.floating) and array.dtype != np.float64:
+            return array.astype(np.float64, copy=False)
+        return array
+
+    @staticmethod
     @catch_warnings_decorator
     def _calculate_center_of_mass(array: np.ndarray, objmap: ArrayLike = None):
         """Calculate the weighted center of mass for each labeled object.
@@ -620,6 +645,7 @@ class MeasureFeatures(BaseOperation, ABC):
             # Returns: [128.5, 142.3, 135.8, ...] avg brightness per colony
             # High values = dense/pigmented growth
         """
+        array = MeasureFeatures._as_accumulation_dtype(array)
         if objmap is not None:
             indexes = np.unique(objmap)
             indexes = indexes[indexes != 0]
@@ -663,6 +689,7 @@ class MeasureFeatures(BaseOperation, ABC):
             >>> median_int = MeasureFeatures._calculate_median(gray, objmap)
             # More stable than mean for noisy images
         """
+        array = MeasureFeatures._as_accumulation_dtype(array)
         if objmap is not None:
             indexes = np.unique(objmap)
             indexes = indexes[indexes != 0]
@@ -750,6 +777,7 @@ class MeasureFeatures(BaseOperation, ABC):
             # Low stddev = smooth/uniform growth
             >>> rough_colonies = np.where(stddev > 20)[0]
         """
+        array = MeasureFeatures._as_accumulation_dtype(array)
         if objmap is not None:
             indexes = np.unique(objmap)
             indexes = indexes[indexes != 0]
@@ -798,6 +826,7 @@ class MeasureFeatures(BaseOperation, ABC):
             ...                                           image.objmap[:])
             # Returns total brightness per colony
         """
+        array = MeasureFeatures._as_accumulation_dtype(array)
         if objmap is not None:
             indexes = np.unique(objmap)
             indexes = indexes[indexes != 0]
@@ -841,6 +870,7 @@ class MeasureFeatures(BaseOperation, ABC):
             >>> variance = MeasureFeatures._calculate_variance(gray, objmap)
             >>> stddev = np.sqrt(variance)  # Convert back to original units
         """
+        array = MeasureFeatures._as_accumulation_dtype(array)
         if objmap is not None:
             indexes = np.unique(objmap)
             indexes = indexes[indexes != 0]
@@ -1170,6 +1200,7 @@ class MeasureFeatures(BaseOperation, ABC):
             - Low Q1 suggests colonies with sparse pixel coverage
             - Used to compute IQR (Q3 - Q1)
         """
+        array = MeasureFeatures._as_accumulation_dtype(array)
         find_q1 = partial(np.quantile, q=0.25, method=method)
         q1 = MeasureFeatures._funcmap2objects(
                 func=find_q1,
@@ -1204,6 +1235,7 @@ class MeasureFeatures(BaseOperation, ABC):
             - IQR = Q3 - Q1 (robust measure of spread)
             - Used with Q1 to identify outlier intensities
         """
+        array = MeasureFeatures._as_accumulation_dtype(array)
         find_q3 = partial(np.quantile, q=0.75, method=method)
         q3 = MeasureFeatures._funcmap2objects(
                 func=find_q3,
@@ -1253,6 +1285,7 @@ class MeasureFeatures(BaseOperation, ABC):
             # IQR < 30: smooth, uniform colonies
             # IQR > 100: rough, textured growth
         """
+        array = MeasureFeatures._as_accumulation_dtype(array)
         find_iqr = partial(
                 scipy.stats.iqr, axis=None, nan_policy=nan_policy, interpolation=method
         )

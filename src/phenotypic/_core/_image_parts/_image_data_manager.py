@@ -19,13 +19,43 @@ from phenotypic.tools_.constants_ import IMAGE_MODE, IMAGE_TYPES
 
 @dataclass
 class ImageData:
-    """Container for _core image data representations."""
+    """Container for _core image data representations.
+
+    The floating-point luminance layers (``gray`` and ``detect_mat``) are
+    normalized intensities in ``[0, 1]``; ``float32`` carries far more precision
+    than the underlying 8/16-bit sensor quantization while halving the in-memory
+    and on-disk footprint of these (typically largest) layers. ``__setattr__``
+    enforces this single-precision contract at every assignment site so callers
+    never have to remember to downcast (skimage's ``rgb2gray`` returns float64).
+    """
 
     rgb: np.ndarray | None = None
     gray: np.ndarray | None = None
     detect_mat: np.ndarray | None = None
     sparse_object_map: csc_matrix | None = None
     detect_mode: str = "gray"
+
+    #: dtype enforced for the floating-point luminance layers.
+    FLOAT_LAYER_DTYPE = np.float32
+    #: attributes coerced to ``FLOAT_LAYER_DTYPE`` on assignment.
+    _FLOAT_LAYERS = ("gray", "detect_mat")
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        """Coerce floating ``gray`` / ``detect_mat`` assignments to float32.
+
+        Any floating-point ndarray assigned to a luminance layer is downcast to
+        ``FLOAT_LAYER_DTYPE`` (no-op when already that dtype). Non-float arrays
+        (e.g. an integer source matrix) and ``None`` pass through untouched so
+        upstream dtype inference is not disturbed.
+        """
+        if (
+                name in self._FLOAT_LAYERS
+                and isinstance(value, np.ndarray)
+                and np.issubdtype(value.dtype, np.floating)
+                and value.dtype != self.FLOAT_LAYER_DTYPE
+        ):
+            value = value.astype(self.FLOAT_LAYER_DTYPE, copy=False)
+        super().__setattr__(name, value)
 
     def clear(self):
         self.rgb = np.empty((0, 3), dtype=np.uint8)

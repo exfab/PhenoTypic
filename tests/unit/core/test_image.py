@@ -91,11 +91,15 @@ def test_image_matrix_access(sample_image_array_with_imformat):
     input_image, input_imformat, true_imformat = sample_image_array_with_imformat
     ps_image = phenotypic.Image(arr=input_image)
     if not ps_image.rgb.isempty():
-        assert np.array_equal(ps_image.gray[:], skimage.color.rgb2gray(input_image)), (
-            f"Image.gray and skimage.color.rgb2gray do not match at {np.unique(ps_image.gray[:] != skimage.color.rgb2gray(input_image), return_counts=True)}"
+        # ``gray`` is stored as float32 (enforced luminance-layer contract);
+        # skimage.color.rgb2gray returns float64, so compare at float32
+        # tolerance rather than bit-exact equality.
+        expected_gray = skimage.color.rgb2gray(input_image)
+        assert ps_image.gray[:].dtype == np.float32
+        assert np.allclose(ps_image.gray[:], expected_gray, atol=1e-6), (
+            f"Image.gray and skimage.color.rgb2gray do not match at "
+            f"{np.unique(ps_image.gray[:] != expected_gray, return_counts=True)}"
         )
-        # assert np.allclose(ps_image.gray[:], skimage.color.rgb2gray(arr), atol=1.0 / np.finfo(ps_image.gray[:].dtype).max),\
-        #     f'Image.gray and skimage.color.rgb2gray do not match at {np.unique(ps_image.gray[:] != skimage.color.rgb2gray(arr), return_counts=True)}'
     else:
         assert np.array_equal(ps_image.gray[:], input_image)
 

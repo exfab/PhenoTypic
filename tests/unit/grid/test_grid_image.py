@@ -122,14 +122,16 @@ class TestGridImageDtypeHandling:
 
     @timeit
     def test_gridimage_float64_grayscale_initialization(self):
-        """Test GridImage initialization with float64 grayscale plate array."""
+        """GridImage downcasts a float64 grayscale plate to the float32 contract."""
         float64_gray = np.random.rand(512, 768).astype(np.float64)
         grid_image = GridImage(arr=float64_gray, nrows=8, ncols=12)
 
         assert grid_image.isempty() is False
         assert grid_image.bit_depth == 16
-        # Grayscale float arrays are NOT converted (only RGB floats are)
-        assert np.array_equal(grid_image.gray[:], float64_gray)
+        # gray/detect_mat are stored float32 (ImageData enforces it); the float64
+        # input is preserved to float32 precision, not bit-exact.
+        assert grid_image.gray[:].dtype == np.float32
+        assert np.allclose(grid_image.gray[:], float64_gray, atol=1e-6)
 
     @timeit
     def test_gridimage_bit_depth_preserved_with_grid_finder(self):

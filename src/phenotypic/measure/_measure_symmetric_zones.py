@@ -315,7 +315,10 @@ class MeasureSymmetricZones(MeasureFeatures):
         if prop is not None:
             target_prop = prop
         else:
-            props = regionprops(image.objmap[:], intensity_image=image.gray[:])
+            props = regionprops(
+                image.objmap[:],
+                intensity_image=image.gray[:].astype(np.float64, copy=False),
+        )
 
             if object_label is not None:
                 target_prop = None
@@ -597,7 +600,10 @@ class MeasureSymmetricZones(MeasureFeatures):
             if feature != SYMMETRIC_ZONES.CATEGORY
         }
 
-        props = regionprops(image.objmap[:], intensity_image=image.gray[:])
+        props = regionprops(
+                image.objmap[:],
+                intensity_image=image.gray[:].astype(np.float64, copy=False),
+        )
 
         # Refresh cache so inspect() can reuse these results
         self.__cache_image = image
@@ -1187,7 +1193,7 @@ class MeasureSymmetricZones(MeasureFeatures):
         flat = intensity_crop.astype(np.float64).ravel()
         p5, p95 = np.percentile(flat, [5.0, 95.0])
         if local_mask.any():
-            mask_mean = float(intensity_crop[local_mask].mean())
+            mask_mean = float(intensity_crop[local_mask].astype(np.float64).mean())
         else:
             mask_mean = float(flat.mean())
         if abs(mask_mean - p5) <= abs(mask_mean - p95):
@@ -1457,7 +1463,10 @@ class MeasureSymmetricZones(MeasureFeatures):
         if image is None:
             image = self._require_cache_image()
 
-        props = regionprops(image.objmap[:], intensity_image=image.gray[:])
+        props = regionprops(
+                image.objmap[:],
+                intensity_image=image.gray[:].astype(np.float64, copy=False),
+        )
         intermediates_cache: dict[int, _SymmetryIntermediates] = {}
         for prop in props:
             if (
