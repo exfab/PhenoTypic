@@ -558,6 +558,44 @@ def migrate_legacy_machine_state(output_dir: Path) -> bool:
     return moved
 
 
+def clear_machine_state(output_dir: Path) -> bool:
+    """Remove **all** of a run's machine-state for a clean ``--restart``.
+
+    Deletes the ``.phenotypic/`` cache (``progress/``, ``processing_state.json``,
+    ``processing_events.log``) and any pre-migration root-level machine-state,
+    while leaving user-facing output artifacts (``deliverables/``, ``results/``,
+    ``qc/``, ``logs/``, …) untouched. This is the difference between ``--restart``
+    (re-run the orchestration against clean state, keep outputs) and
+    ``--overwrite`` (delete the whole output dir). Clearing the event log here is
+    what stops a restart from appending to — and rebuilding its manifest/failure
+    records from — the prior run's events.
+
+    Returns:
+        ``True`` if any machine-state was removed, else ``False``.
+    """
+    import shutil
+
+    removed = False
+    # Current layout: the hidden cache holds state + event log + progress/.
+    cache = phenotypic_cache_dir(output_dir)
+    if cache.exists():
+        shutil.rmtree(cache)
+        removed = True
+    # Pre-migration (legacy) root-level machine-state, if a legacy run is restarted.
+    legacy_progress = _legacy_progress_dir(output_dir)
+    if legacy_progress.exists():
+        shutil.rmtree(legacy_progress)
+        removed = True
+    for legacy_file in (
+        _legacy_processing_state_path(output_dir),
+        output_dir / PROCESSING_EVENTS_LOG,
+    ):
+        if legacy_file.exists():
+            legacy_file.unlink()
+            removed = True
+    return removed
+
+
 def master_measurements_csv_path(output_dir: Path) -> Path:
     """Return ``<output>/deliverables/master_measurements.csv``."""
     return deliverables_dir(output_dir) / MASTER_MEASUREMENTS_CSV

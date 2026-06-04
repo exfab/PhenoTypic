@@ -188,6 +188,7 @@ from phenotypic.tools_ import (
     dashboard_html_path,
     dataset_measurements_dir,
     load_image_from_hdf,
+    clear_machine_state,
     measurements_parquet_path,
     processing_report_html_path,
     progress_dir,
@@ -1139,14 +1140,20 @@ def phenotypic_cli(
 
             click.echo(f"✓ Resuming from {output_dir}")
 
-        # Handle restart mode - clear previous state
+        # Handle restart mode - clear ALL previous machine-state so the
+        # orchestration re-runs cleanly (fresh state + event log + progress),
+        # while preserving any output artifacts (results/, deliverables/, qc/)
+        # that --restart intentionally keeps — unlike --overwrite, which wipes
+        # the whole dir. Clearing the event log here prevents the restart from
+        # appending to, and rebuilding its manifest/failure records from, the
+        # prior run's events.
         if restart:
             assert output_dir is not None  # narrowed by the --restart guard above
-            state_file = resolve_processing_state_path(output_dir)
             if output_dir.exists():
-                if state_file.exists():
-                    state_file.unlink()
-                    click.echo(f"✓ Cleared previous processing state from {output_dir}")
+                if clear_machine_state(output_dir):
+                    click.echo(
+                        f"✓ Cleared previous machine-state (.phenotypic/) from {output_dir}"
+                    )
                 else:
                     click.echo(
                         f"Note: No previous state found in {output_dir} (starting fresh)"

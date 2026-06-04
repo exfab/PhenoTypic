@@ -759,6 +759,60 @@ class TestMigrateLegacyMachineState:
         assert migrate_legacy_machine_state(out) is False
 
 
+class TestClearMachineState:
+    def test_removes_phenotypic_cache_and_preserves_outputs(
+        self, tmp_path: Path
+    ) -> None:
+        """``--restart`` wipes ALL machine-state (state + event log + progress)
+        but leaves user-facing output artifacts (``results/``, ``deliverables/``)
+        intact — restart re-runs the orchestration without nuking outputs."""
+        from phenotypic.tools_ import (
+            clear_machine_state,
+            deliverables_dir,
+            event_log_path,
+            phenotypic_cache_dir,
+            processing_state_path,
+            progress_dir,
+            results_dir,
+        )
+
+        out = tmp_path
+        progress_dir(out).mkdir(parents=True)
+        (progress_dir(out) / "manifest.json").write_text("{}", encoding="utf-8")
+        processing_state_path(out).write_text("{}", encoding="utf-8")
+        event_log_path(out).write_text("x\n", encoding="utf-8")
+        deliverables_dir(out).mkdir(parents=True)
+        (deliverables_dir(out) / "master_measurements.parquet").write_bytes(b"x")
+        results_dir(out).mkdir(parents=True)
+        (results_dir(out) / "keep.parquet").write_bytes(b"x")
+
+        assert clear_machine_state(out) is True
+        assert not phenotypic_cache_dir(out).exists()
+        # User-facing outputs survive.
+        assert (deliverables_dir(out) / "master_measurements.parquet").is_file()
+        assert (results_dir(out) / "keep.parquet").is_file()
+
+    def test_removes_legacy_root_machine_state(self, tmp_path: Path) -> None:
+        """A pre-migration (legacy-layout) run being restarted has its root-level
+        machine-state cleared too."""
+        from phenotypic.tools_ import clear_machine_state
+
+        out = tmp_path
+        (out / "progress").mkdir()
+        (out / "progress" / "manifest.json").write_text("{}", encoding="utf-8")
+        (out / "processing_state.json").write_text("{}", encoding="utf-8")
+        (out / "processing_events.log").write_text("x\n", encoding="utf-8")
+        assert clear_machine_state(out) is True
+        assert not (out / "progress").exists()
+        assert not (out / "processing_state.json").exists()
+        assert not (out / "processing_events.log").exists()
+
+    def test_noop_when_nothing_present(self, tmp_path: Path) -> None:
+        from phenotypic.tools_ import clear_machine_state
+
+        assert clear_machine_state(tmp_path) is False
+
+
 # ---------------------------------------------------------------------------
 # Grep gate: no hand-joined machine-state paths outside _io_constants
 # ---------------------------------------------------------------------------

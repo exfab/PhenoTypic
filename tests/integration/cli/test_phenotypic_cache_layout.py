@@ -93,3 +93,43 @@ def test_resume_of_legacy_layout_migrates_and_completes(
     assert res.exit_code == 0, res.output
     assert processing_state_path(out).is_file()  # migrated into .phenotypic
     assert not (out / "processing_state.json").exists()
+
+
+def test_restart_wipes_stale_machine_state_and_keeps_outputs(
+    tmp_path: Path, synth_plate_dir: Path, simple_pipeline_json: Path
+) -> None:
+    """``--restart`` clears the prior run's machine-state — so a stale event does
+    not survive into the new run's records — while preserving output artifacts
+    (unlike ``--overwrite``, which wipes the whole dir)."""
+    from phenotypic.tools_ import deliverables_dir, event_log_path
+
+    out = tmp_path / "out"
+    args = [
+        "--pipeline",
+        str(simple_pipeline_json),
+        "--input",
+        str(synth_plate_dir),
+        "--output-dir",
+        str(out),
+        "--force-local",
+        "--skip-validation",
+        "--n-jobs",
+        "1",
+    ]
+    first = CliRunner().invoke(phenotypic_cli, args)
+    assert first.exit_code == 0, first.output
+    assert deliverables_dir(out).exists()
+
+    # Inject a phantom stale event that must NOT survive a restart.
+    elog = event_log_path(out)
+    elog.write_text(
+        elog.read_text(encoding="utf-8") + '{"image": "ghost_stale_image"}\n',
+        encoding="utf-8",
+    )
+
+    res = CliRunner().invoke(phenotypic_cli, args + ["--restart"])
+    assert res.exit_code == 0, res.output
+    # The stale event log was wiped and rebuilt fresh — no phantom carried over.
+    assert "ghost_stale_image" not in event_log_path(out).read_text(encoding="utf-8")
+    # Output artifacts are regenerated/preserved (restart keeps outputs).
+    assert deliverables_dir(out).exists()
