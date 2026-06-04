@@ -14,7 +14,14 @@ from datetime import datetime
 
 from ._cli_types import ProcessingState, DatasetState, Dataset, ExecutionConfig
 from ._cli_update_state import aggregate_state_from_events
-from phenotypic.tools_ import PROCESSING_STATE_JSON, PROCESSING_EVENTS_LOG, ProcessingStateKey
+from phenotypic.tools_ import (
+    PROCESSING_EVENTS_LOG,
+    ProcessingStateKey,
+    migrate_legacy_machine_state,
+    processing_state_path,
+    resolve_processing_state_path,
+    resolve_progress_dir,
+)
 
 
 def save_processing_state(
@@ -34,8 +41,9 @@ def save_processing_state(
     Returns:
         Path to saved state file
     """
-    state_file = output_dir / PROCESSING_STATE_JSON
-    
+    state_file = processing_state_path(output_dir)
+    state_file.parent.mkdir(parents=True, exist_ok=True)
+
     # Convert state to dictionary
     state_dict = {
         ProcessingStateKey.VERSION: state.version,
@@ -76,20 +84,21 @@ def load_processing_state(output_dir: Path) -> Optional[ProcessingState]:
     Returns:
         ProcessingState object, or None if no state file exists
     """
-    state_file = output_dir / PROCESSING_STATE_JSON
-    
+    migrate_legacy_machine_state(output_dir)
+    state_file = resolve_processing_state_path(output_dir)
+
     if not state_file.exists():
         return None
-    
+
     # Load state JSON
     state_dict = json.loads(state_file.read_text(encoding="utf-8"))
-    
+
     # Parse timestamps
     timestamp = datetime.fromisoformat(state_dict[ProcessingStateKey.TIMESTAMP])
     last_updated = datetime.fromisoformat(state_dict[ProcessingStateKey.LAST_UPDATED])
 
-    # Aggregate latest events from log
-    event_log = output_dir / PROCESSING_EVENTS_LOG
+    # Aggregate latest events from log (sibling of progress/, per D14)
+    event_log = resolve_progress_dir(output_dir).parent / PROCESSING_EVENTS_LOG
     if event_log.exists():
         latest_states = aggregate_state_from_events(event_log)
     else:
@@ -183,11 +192,11 @@ def update_state_from_events(state: ProcessingState, output_dir: Path) -> Proces
     Args:
         state: Current processing state
         output_dir: Output directory containing event log
-        
+
     Returns:
         Updated ProcessingState object
     """
-    event_log = output_dir / PROCESSING_EVENTS_LOG
+    event_log = resolve_progress_dir(output_dir).parent / PROCESSING_EVENTS_LOG
     
     if event_log.exists():
         # Aggregate events
