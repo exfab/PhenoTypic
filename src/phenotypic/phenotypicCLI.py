@@ -131,7 +131,7 @@ import logging
 import shutil
 import sys
 from pathlib import Path
-from typing import Any, Optional, Sequence
+from typing import Any, List, Optional, Sequence
 
 import click
 
@@ -158,7 +158,7 @@ from phenotypic._cli._cli_state_management import (
     update_state_from_events,
     validate_resume_compatibility,
 )
-from phenotypic._cli._cli_types import ExecutionConfig
+from phenotypic._cli._cli_types import Dataset, ExecutionConfig
 from phenotypic._cli._cli_utils import (
     normalize_extension,
     parse_slurm_args,
@@ -502,6 +502,59 @@ def _reject_unexpected_positional_args(extra_args: Sequence[str]) -> None:
     )
 
 
+def _print_process_only_dry_run_plan(
+    config: ExecutionConfig, datasets: List[Dataset], output_dir: Path
+) -> None:
+    """Print the resolved plan for a ``--process-only`` dry run (no processing).
+
+    Shows the mode + layer, per-dataset image counts, a sample of mirrored
+    output paths, the execution backend, and the ``.phenotypic`` machine-state
+    location. See spec §5.7.
+    """
+    from phenotypic._cli._cli_process_only import process_only_output_path
+    from phenotypic.tools_ import phenotypic_cache_dir
+
+    layer = config.process_only_layer
+    backend = "slurm" if config.is_slurm_mode() else "local"
+
+    click.echo("\n" + "=" * 80)
+    click.echo("DRY-RUN MODE: process-only (No Jobs Will Be Executed)")
+    click.echo("=" * 80)
+    click.echo(f"\n  Mode:        process-only ({layer})")
+    click.echo(f"  Pipeline:    {config.pipeline_json}")
+    click.echo(f"  Input root:  {config.input_path}")
+    click.echo(f"  Output dir:  {output_dir}")
+    click.echo(f"  Execution:   {backend}")
+    click.echo(f"  Cache dir:   {phenotypic_cache_dir(output_dir)}")
+
+    total_images = 0
+    click.echo("\nDatasets:")
+    sample_paths: List[Path] = []
+    for dataset in datasets:
+        count = len(dataset.images)
+        total_images += count
+        click.echo(f"  {dataset.name}: {count} image(s)")
+        for img in dataset.images[:2]:
+            sample_paths.append(
+                process_only_output_path(
+                    output_dir, img, config.input_path, layer  # type: ignore[arg-type]
+                )
+            )
+
+    click.echo("\nSample mirrored output paths:")
+    for p in sample_paths[:5]:
+        click.echo(f"  {p}")
+
+    click.echo("\nProcessing Summary:")
+    click.echo(f"  Total images to process: {total_images}")
+    click.echo(f"  Total datasets: {len(datasets)}")
+    click.echo(f"  Layer exported per image: {layer}")
+    click.echo(
+        "  No deliverables/, results/, QC, overlays, or dashboard "
+        "(apply-only export).\n"
+    )
+
+
 @click.command(context_settings={"allow_extra_args": True})
 @click.option(
     "-p",
@@ -690,6 +743,15 @@ def _reject_unexpected_positional_args(extra_args: Sequence[str]) -> None:
          "whenever the pipeline has a non-empty 'qc' section (writing the "
          "qc/ artifact and resetting GUI review progress).",
 )
+@click.option(
+    "--process-only",
+    "process_only_layer",
+    type=click.Choice(["rgb", "gray", "detect_mat", "objmap"]),
+    default=None,
+    help="Apply-only mode: run pipeline.apply() and export this single layer "
+         "(TIFF for rgb/gray/detect_mat, 16-bit raw-label PNG for objmap), "
+         "mirroring the input tree. Skips measurement, deliverables, QC, dashboard.",
+)
 @click.pass_context
 def phenotypic_cli(
     ctx: click.Context,
@@ -721,6 +783,7 @@ def phenotypic_cli(
     skip_validation: bool,
     recompile: Optional[Path],
     no_qc: bool,
+    process_only_layer: Optional[str],
 ):
     """
     Execute a PhenoTypic pipeline on images.
@@ -733,6 +796,37 @@ def phenotypic_cli(
         _reject_unexpected_positional_args(ctx.args)
 
         include_dataset_column = not no_dataset_column
+
+        # ---- Early validation for --process-only -----------------------
+        # Process-only is an apply-only export run (one image layer per
+        # input, mirrored input tree, no measurement / deliverables / QC /
+        # dashboard). Validate it before the --measure / --recompile branches
+        # so conflicting run modes are rejected with a clear message.
+        if process_only_layer is not None:
+            for bad, name in (
+                (measure_only, "--measure"),
+                (recompile is not None, "--recompile"),
+            ):
+                if bad:
+                    raise click.UsageError(
+                        f"--process-only cannot be combined with {name} "
+                        "(conflicting run modes)."
+                    )
+            if pipeline_json is None or input_path is None:
+                raise click.UsageError(
+                    "--process-only requires --pipeline and --input."
+                )
+            for val, name in (
+                (metadata_csv, "--metadata"),
+                (no_qc, "--no-qc"),
+                (no_dataset_column, "--no-dataset-column"),
+            ):
+                if val:
+                    click.echo(
+                        f"Warning: {name} is ignored in --process-only mode "
+                        "(no measurement/aggregation output).",
+                        err=True,
+                    )
 
         # Parse SLURM args before the recompile branch so --recompile can
         # explicitly choose between local and SLURM recompile dispatch.
@@ -974,6 +1068,7 @@ def phenotypic_cli(
             metadata_csv=metadata_csv,
             checkpoint_interval=checkpoint_interval,
             measure_only=measure_only,
+            process_only_layer=process_only_layer,  # type: ignore[arg-type]
         )
 
         # Handle resume mode BEFORE creating output directory
@@ -1151,7 +1246,10 @@ def phenotypic_cli(
 
         # Handle dry-run mode
         if config.dry_run:
-            execute_dry_run(config, datasets, output_dir)
+            if config.process_only_layer:
+                _print_process_only_dry_run_plan(config, datasets, output_dir)
+            else:
+                execute_dry_run(config, datasets, output_dir)
             sys.exit(0)
 
         # Handle sample mode
