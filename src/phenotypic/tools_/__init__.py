@@ -141,6 +141,7 @@ from ._io_constants import (
 from .funcs_ import is_binary_mask, timed_execution
 from .hdf_ import HDF
 from .mixin import ClipControlMixin, FootprintMixin, GridInferenceMixin, LazyWidgetMixin
+from .typing_ import ProcessOnlyLayer
 
 __all__ = [
     # Mixins / utilities (existing)
@@ -162,6 +163,8 @@ __all__ = [
     "slurm",
     "slurm_",
     "timed_execution",
+    # Typing aliases (closed value sets)
+    "ProcessOnlyLayer",
     # I/O constants module (also re-exported below)
     "_io_constants",
     # Filename constants
