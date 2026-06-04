@@ -1,0 +1,74 @@
+"""The pluggable scoring objective — a pydantic ABC.
+
+A ``Scorer`` turns one image's measurement frame into a dict of **named term
+scores** (``score_image``), where *higher is better* and each term is a clean,
+comparable signal (typically normalized to ``[0, 1]``). The ``Evaluator``
+collects the per-image terms across a calibration set, robust-aggregates each
+term, then asks the scorer to ``finalize`` the aggregated terms into the single
+scalar objective the optimizer maximizes. ``availability`` lets a scorer report
+that it cannot run (e.g. missing metadata) so the engine can degrade gracefully.
+"""
+from __future__ import annotations
+
+from abc import ABC, abstractmethod
+from typing import Any, Mapping
+
+import pandas as pd
+from pydantic import BaseModel, ConfigDict
+
+
+class Scorer(BaseModel, ABC):
+    """Base class for tuning objectives (no-GT, supervised, reference-free, …).
+
+    Production scorers must be **stateless** across ``score_image`` calls: the
+    engine (Phase 1d) reuses one scorer instance for every trial, so per-trial
+    mutable state would bleed across candidates. (A test double that deliberately
+    returns a preset sequence via a private cursor is the documented exception.)
+    """
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    @abstractmethod
+    def score_image(
+        self, image: Any, measurements: pd.DataFrame
+    ) -> dict[str, float]:
+        """Score one image's measurements as named terms (higher = better).
+
+        Args:
+            image: The (already-processed) image — duck-typed; reference-free
+                scorers read its mask/objmap, the ``QCScorer`` ignores it.
+            measurements: The measurement frame the candidate pipeline produced
+                for ``image`` (the output of ``ImagePipeline.measure``).
+
+        Returns:
+            A mapping of term name → score for this image. Keys must be stable
+            across images so the ``Evaluator`` can aggregate per term.
+        """
+        raise NotImplementedError
+
+    def availability(self) -> bool:
+        """Whether this scorer can run as configured (default: yes).
+
+        Returns:
+            ``True`` if scoring is possible; subclasses override to report a
+            missing prerequisite (e.g. a layout frame the ``QCScorer`` needs).
+        """
+        return True
+
+    def finalize(self, terms: Mapping[str, float]) -> float:
+        """Combine robust-aggregated per-term scores into one scalar objective.
+
+        The default is the arithmetic mean of the term values (a single term
+        passes through unchanged); composite scorers override to weight terms.
+
+        Args:
+            terms: Term name → robust-aggregated score (already reduced across
+                the calibration set by the ``Evaluator``).
+
+        Returns:
+            The scalar objective (higher = better). ``0.0`` for no terms.
+        """
+        values = list(terms.values())
+        if not values:
+            return 0.0
+        return float(sum(values) / len(values))
