@@ -7,13 +7,14 @@ if TYPE_CHECKING:
 
 import gc
 import logging
-from typing import Literal
+from typing import Annotated, Literal
 
 import numpy as np
-from pydantic import field_validator, model_validator
+from pydantic import Field, model_validator
 from typing_extensions import Self
 
 from phenotypic.abc_ import ObjectDetector
+from phenotypic.tools_.typing_ import TuneSpec
 from phenotypic.detect._round_peaks_detector import RoundPeaksDetector
 from phenotypic.enhance._contrast_streching import ContrastStretching
 from phenotypic.enhance._gray_opening import GrayOpening
@@ -109,40 +110,15 @@ class InoculumDetector(ObjectDetector):
             In-depth comparison of all detection strategies.
     """
 
-    min_diameter: float = 30.0
-    max_diameter: float = 100.0
+    min_diameter: Annotated[float, TuneSpec(5.0, 80.0, log=True)] = Field(30.0, gt=0.0)
+    max_diameter: Annotated[float, TuneSpec(50.0, 300.0, log=True)] = Field(100.0, gt=0.0)
     thresh_method: Literal[
         "otsu", "mean", "local", "triangle", "minimum", "isodata", "li"
     ] = "otsu"
     enable_gmm: bool = True
-    gmm_n_components: int = 2
-    gmm_separation_threshold: float = 0.9
+    gmm_n_components: Annotated[int, TuneSpec(2, 4)] = 2
+    gmm_separation_threshold: Annotated[float, TuneSpec(0.8, 1.2)] = 0.9
     validate_obj_count: bool = True
-
-    @field_validator("min_diameter")
-    @classmethod
-    def _check_min_diameter_positive(cls, value: float) -> float:
-        """Require ``min_diameter`` to be strictly positive.
-
-        Reproduces the ``min_diameter <= 0`` guard from the pre-migration
-        ``__init__`` (kept as a validator, not a ``Field(gt=0)``
-        constraint, so the original error message is preserved).
-        """
-        if value <= 0:
-            raise ValueError(f"min_diameter must be positive, got {value}")
-        return value
-
-    @field_validator("max_diameter")
-    @classmethod
-    def _check_max_diameter_positive(cls, value: float) -> float:
-        """Require ``max_diameter`` to be strictly positive.
-
-        Reproduces the ``max_diameter <= 0`` guard from the pre-migration
-        ``__init__``.
-        """
-        if value <= 0:
-            raise ValueError(f"max_diameter must be positive, got {value}")
-        return value
 
     @model_validator(mode="after")
     def _check_diameter_order(self) -> Self:
