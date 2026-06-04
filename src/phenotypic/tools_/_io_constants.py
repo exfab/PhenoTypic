@@ -141,6 +141,22 @@ PROCESSING_STATE_JSON: Final[str] = "processing_state.json"
 #: :func:`readme_md_path`.
 README_MD: Final[str] = "README.md"
 
+#: The resolved ``tuning_spec.json`` echoed by ``python -m phenotypic.tune``
+#: into :data:`DIR_DELIVERABLES` — the self-contained, re-runnable recipe.
+TUNING_SPEC_JSON: Final[str] = "tuning_spec.json"
+
+#: The winning ``best_pipeline.json`` written by the tune CLI into
+#: :data:`DIR_DELIVERABLES`; reloads as a runnable ``ImagePipeline``.
+BEST_PIPELINE_JSON: Final[str] = "best_pipeline.json"
+
+#: The RF-permutation ``param_importance.json`` report written by the tune
+#: CLI into :data:`DIR_DELIVERABLES`.
+PARAM_IMPORTANCE_JSON: Final[str] = "param_importance.json"
+
+#: The tune trial journal ``trials.parquet`` written at the output-dir root
+#: (powers CLI resume), not under :data:`DIR_DELIVERABLES`.
+TRIALS_PARQUET: Final[str] = "trials.parquet"
+
 # ---------------------------------------------------------------------------
 # QC artifact filenames (live inside DIR_QC)
 # ---------------------------------------------------------------------------
@@ -468,6 +484,26 @@ def measurements_parquet_path(output_dir: Path) -> Path:
 def pipeline_json_path(output_dir: Path) -> Path:
     """Return ``<output>/deliverables/pipeline.json``."""
     return deliverables_dir(output_dir) / PIPELINE_JSON
+
+
+def tuning_spec_path(output_dir: Path) -> Path:
+    """Return ``<output>/deliverables/tuning_spec.json`` (the resolved recipe)."""
+    return deliverables_dir(output_dir) / TUNING_SPEC_JSON
+
+
+def best_pipeline_path(output_dir: Path) -> Path:
+    """Return ``<output>/deliverables/best_pipeline.json`` (the tuned winner)."""
+    return deliverables_dir(output_dir) / BEST_PIPELINE_JSON
+
+
+def param_importance_path(output_dir: Path) -> Path:
+    """Return ``<output>/deliverables/param_importance.json`` (the report)."""
+    return deliverables_dir(output_dir) / PARAM_IMPORTANCE_JSON
+
+
+def trials_parquet_path(output_dir: Path) -> Path:
+    """Return ``<output>/trials.parquet`` (the trial journal; output-dir root)."""
+    return Path(output_dir) / TRIALS_PARQUET
 
 
 def analysis_csv_path(output_dir: Path) -> Path:
