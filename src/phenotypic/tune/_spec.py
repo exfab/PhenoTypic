@@ -7,6 +7,7 @@ from typing import Any, Optional, TypeAlias
 from pydantic import (
     BaseModel,
     ConfigDict,
+    TypeAdapter,
     field_serializer,
     field_validator,
 )
@@ -17,7 +18,7 @@ from phenotypic.tools_.typing_ import polymorphic_field
 from ._evaluation import Evaluator
 from ._scoring import Scorer
 from ._search_space import SearchSpace
-from ._strategies._config import StrategyConfigUnion
+from ._strategies._config import StrategyConfig, StrategyConfigUnion
 
 #: A ``Scorer``-valued field that round-trips any subclass via the registry
 #: (Phase-0 ``polymorphic_field`` + ``_find_class_in_phenotypic`` += ``phenotypic.tune``).
@@ -25,6 +26,22 @@ from ._strategies._config import StrategyConfigUnion
 #: as a field annotation — the ``AfterValidator`` restores the runtime guard.
 ScorerField: TypeAlias = Any  # = polymorphic_field(base=Scorer); see below
 ScorerField = polymorphic_field(base=Scorer)  # type: ignore[misc]
+
+#: A ``StrategyConfig``-valued field that round-trips **any** subclass via the
+#: class registry — Phase-1's built-in ``GridConfig``/``RandomConfig`` *and* the
+#: Phase-2 ``OptunaConfig`` (which lives outside the closed ``StrategyConfigUnion``
+#: discriminated union, so it could not round-trip through the union alone). The
+#: same ``polymorphic_field`` machinery as ``ScorerField``; ``StrategyConfigUnion``
+#: stays exported for callers that want the narrow built-in union. A frozen
+#: Phase-1 ``tuning_spec.json`` whose ``strategy`` block is the original
+#: discriminator form (``{"seed": 0, "kind": "grid"}`` — no ``"class"`` wrapper)
+#: is reconstructed by ``_coerce_strategy`` below.
+StrategyConfigField: TypeAlias = Any  # = polymorphic_field(base=StrategyConfig)
+StrategyConfigField = polymorphic_field(base=StrategyConfig)  # type: ignore[misc]
+
+#: TypeAdapter over the built-in discriminated union, reused to reconstruct a
+#: legacy discriminator-tagged strategy dict (no ``"class"`` wrapper).
+_STRATEGY_UNION_ADAPTER = TypeAdapter(StrategyConfigUnion)
 
 
 class Budget(BaseModel):
@@ -50,15 +67,20 @@ class TuningSpec(BaseModel):
     against the abstract ``ImageOperation``), so the field uses a custom
     serializer/validator delegating to the pipeline's own ``to_json``/
     ``from_json``. ``scorer`` is a ``ScorerField`` so any ``Scorer`` subclass
-    round-trips through the registry; ``strategy`` is the Phase-1b grid/random
-    discriminated union.
+    round-trips through the registry; ``strategy`` is a ``StrategyConfigField``
+    so any ``StrategyConfig`` subclass — the built-in ``GridConfig``/
+    ``RandomConfig`` *and* the Phase-2 ``OptunaConfig`` — round-trips through the
+    registry. A frozen Phase-1 ``tuning_spec.json`` (whose ``strategy`` block is
+    the original ``{"seed": ..., "kind": ...}`` discriminator form, with no
+    ``"class"`` wrapper) is still accepted via :meth:`_coerce_strategy`.
 
     Args:
         pipeline: The base pipeline being tuned (embedded).
         search_space: The hand-authored or migrated search space.
         scorer: The tuning objective (any ``Scorer`` subclass).
         evaluator: The candidate-evaluation policy.
-        strategy: The optimizer config (``GridConfig`` / ``RandomConfig``).
+        strategy: The optimizer config (``GridConfig`` / ``RandomConfig`` /
+            ``OptunaConfig``, or any ``StrategyConfig`` subclass).
         budget: The stopping criteria.
     """
 
@@ -68,7 +90,7 @@ class TuningSpec(BaseModel):
     search_space: SearchSpace
     scorer: ScorerField
     evaluator: Evaluator
-    strategy: StrategyConfigUnion
+    strategy: StrategyConfigField
     budget: Budget
 
     @field_validator("pipeline", mode="before")
@@ -85,6 +107,25 @@ class TuningSpec(BaseModel):
             f"pipeline must be an ImagePipeline, JSON string, or dict; "
             f"got {type(value).__name__}"
         )
+
+    @field_validator("strategy", mode="before")
+    @classmethod
+    def _coerce_strategy(cls, value: object) -> object:
+        """Reconstruct a legacy discriminator-tagged strategy dict.
+
+        The widened ``strategy`` field is a ``polymorphic_field`` whose tagged
+        form is ``{"class": ..., "params": {...}}``. A frozen Phase-1
+        ``tuning_spec.json`` instead carries the original discriminated-union
+        form ``{"seed": ..., "kind": "grid"}`` (no ``"class"`` wrapper). When we
+        see such a bare dict — a mapping with a ``"kind"`` discriminator and no
+        ``"class"`` key — route it through the built-in union adapter so the
+        concrete ``GridConfig``/``RandomConfig`` is rebuilt before the
+        polymorphic field's validators run. Live instances and new tagged dicts
+        pass through untouched.
+        """
+        if isinstance(value, dict) and "kind" in value and "class" not in value:
+            return _STRATEGY_UNION_ADAPTER.validate_python(value)
+        return value
 
     @field_serializer("pipeline")
     def _dump_pipeline(self, value: ImagePipeline) -> dict:
