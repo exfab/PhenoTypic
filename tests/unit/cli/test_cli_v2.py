@@ -719,6 +719,115 @@ class TestExecutionStrategies:
 class TestCLIv2Integration:
     """Integration tests for the new CLI."""
 
+    def test_cli_accepts_pipeline_input_options(
+        self, runner, temp_pipeline, temp_input_dir
+    ):
+        """Forward runs use explicit --pipeline and --input options."""
+        with runner.isolated_filesystem():
+            result = runner.invoke(
+                phenotypic_cli,
+                [
+                    "--pipeline",
+                    str(temp_pipeline),
+                    "--input",
+                    str(temp_input_dir),
+                    "--dry-run",
+                ],
+            )
+
+            assert result.exit_code == 0, result.output
+            assert "DRY-RUN MODE" in result.output
+
+    def test_cli_accepts_short_pipeline_input_options(
+        self, runner, temp_pipeline, temp_input_dir
+    ):
+        """Forward runs support -p and -i aliases."""
+        with runner.isolated_filesystem():
+            result = runner.invoke(
+                phenotypic_cli,
+                [
+                    "-p",
+                    str(temp_pipeline),
+                    "-i",
+                    str(temp_input_dir),
+                    "--dry-run",
+                ],
+            )
+
+            assert result.exit_code == 0, result.output
+            assert "DRY-RUN MODE" in result.output
+
+    def test_cli_rejects_old_positional_pipeline_input_style(
+        self, runner, temp_pipeline, temp_input_dir
+    ):
+        """Old positional forward-run arguments fail with migration guidance."""
+        result = runner.invoke(
+            phenotypic_cli,
+            [
+                str(temp_pipeline),
+                str(temp_input_dir),
+                "--dry-run",
+            ],
+        )
+
+        assert result.exit_code != 0
+        assert "--pipeline" in result.output
+        assert "--input" in result.output
+        assert "positional" in result.output.lower()
+
+    def test_cli_rejects_stray_positional_argument_with_explicit_options(
+        self, runner, temp_pipeline, temp_input_dir
+    ):
+        """Extra args captured by Click fail with the migration guidance."""
+        result = runner.invoke(
+            phenotypic_cli,
+            [
+                "--pipeline",
+                str(temp_pipeline),
+                "--input",
+                str(temp_input_dir),
+                "unexpected",
+                "--dry-run",
+            ],
+        )
+
+        assert result.exit_code != 0
+        assert "Unexpected positional argument" in result.output
+        assert "--pipeline" in result.output
+        assert "--input" in result.output
+
+    def test_cli_requires_pipeline_option_for_forward_run(
+        self, runner, temp_input_dir
+    ):
+        """Normal runs fail clearly when --pipeline is omitted."""
+        result = runner.invoke(
+            phenotypic_cli,
+            [
+                "--input",
+                str(temp_input_dir),
+                "--dry-run",
+            ],
+        )
+
+        assert result.exit_code != 0
+        assert "--pipeline" in result.output
+
+    def test_cli_requires_input_option_for_forward_run(
+        self, runner, temp_pipeline
+    ):
+        """Normal runs fail clearly when --input is omitted."""
+        result = runner.invoke(
+            phenotypic_cli,
+            [
+                "--pipeline",
+                str(temp_pipeline),
+                "--dry-run",
+            ],
+        )
+
+        assert result.exit_code != 0
+        assert "--input" in result.output
+
     def test_cli_dry_run(self, runner, temp_pipeline, temp_input_dir):
         """Test --dry-run flag."""
         # Use isolated filesystem to avoid creating files in repo
@@ -726,7 +835,9 @@ class TestCLIv2Integration:
             result = runner.invoke(
                 phenotypic_cli,
                 [
+                    "--pipeline",
                     str(temp_pipeline),
+                    "--input",
                     str(temp_input_dir),
                     "--dry-run",
                 ],
@@ -746,7 +857,9 @@ class TestCLIv2Integration:
             result = runner.invoke(
                 phenotypic_cli,
                 [
+                    "--pipeline",
                     str(temp_pipeline),
+                    "--input",
                     str(temp_input_dir),
                     "-o",
                     str(temp_output_dir),
@@ -765,7 +878,9 @@ class TestCLIv2Integration:
             result = runner.invoke(
                 phenotypic_cli,
                 [
+                    "--pipeline",
                     str(temp_pipeline),
+                    "--input",
                     str(temp_input_dir),
                     "-o",
                     str(output_dir),
@@ -787,7 +902,9 @@ class TestCLIv2Integration:
             result = runner.invoke(
                 phenotypic_cli,
                 [
+                    "--pipeline",
                     str(temp_pipeline),
+                    "--input",
                     str(temp_input_dir),
                     "-o",
                     str(output_dir),
@@ -879,7 +996,9 @@ class TestResumeMode:
         result = runner.invoke(
             phenotypic_cli,
             [
+                "--pipeline",
                 str(temp_pipeline),
+                "--input",
                 str(temp_input_dir),
                 "-o",
                 str(output_dir),
@@ -908,7 +1027,9 @@ class TestResumeMode:
         result = runner.invoke(
             phenotypic_cli,
             [
+                "--pipeline",
                 str(temp_pipeline),
+                "--input",
                 str(temp_input_dir),
                 "-o",
                 str(output_dir),
@@ -933,7 +1054,9 @@ class TestResumeMode:
         result = runner.invoke(
             phenotypic_cli,
             [
+                "--pipeline",
                 str(temp_pipeline),
+                "--input",
                 str(temp_input_dir),
                 "--resume",
                 "--skip-validation",
@@ -966,7 +1089,9 @@ class TestDryRunMode:
         result = runner.invoke(
             phenotypic_cli,
             [
+                "--pipeline",
                 str(temp_pipeline),
+                "--input",
                 str(temp_input_dir),
                 "-o",
                 str(output_dir),
@@ -999,7 +1124,9 @@ class TestDryRunMode:
         result = runner.invoke(
             phenotypic_cli,
             [
+                "--pipeline",
                 str(temp_pipeline),
+                "--input",
                 str(temp_input_dir),
                 "-o",
                 str(output_dir),
@@ -1029,7 +1156,9 @@ class TestEdgeCases:
         result = runner.invoke(
             phenotypic_cli,
             [
+                "--pipeline",
                 str(temp_pipeline),
+                "--input",
                 str(input_dir),
                 "-o",
                 str(output_dir),
@@ -1059,7 +1188,9 @@ class TestEdgeCases:
         result = runner.invoke(
             phenotypic_cli,
             [
+                "--pipeline",
                 str(temp_pipeline),
+                "--input",
                 str(input_dir),
                 "-o",
                 str(output_dir),
@@ -1093,7 +1224,9 @@ class TestEdgeCases:
         result = runner.invoke(
             phenotypic_cli,
             [
+                "--pipeline",
                 str(temp_pipeline),
+                "--input",
                 str(input_dir),
                 "-o",
                 str(output_dir),
@@ -1135,7 +1268,9 @@ class TestEdgeCases:
         result = runner.invoke(
             phenotypic_cli,
             [
+                "--pipeline",
                 str(temp_pipeline),
+                "--input",
                 str(input_dir),
                 "-o",
                 str(output_dir),
@@ -1171,7 +1306,9 @@ class TestEdgeCases:
         result = runner.invoke(
             phenotypic_cli,
             [
+                "--pipeline",
                 str(temp_pipeline),
+                "--input",
                 str(input_dir),
                 "-o",
                 str(output_dir),
@@ -1193,7 +1330,9 @@ class TestEdgeCases:
         result = runner.invoke(
             phenotypic_cli,
             [
+                "--pipeline",
                 str(temp_pipeline),
+                "--input",
                 str(input_dir),
                 "-o",
                 str(output_dir),
@@ -1516,7 +1655,9 @@ class TestNewCoverageGaps:
         result = runner.invoke(
             phenotypic_cli,
             [
+                "--pipeline",
                 str(temp_pipeline),
+                "--input",
                 str(input_dir),
                 "-o",
                 str(output_dir),

@@ -399,7 +399,7 @@ wells stay visually distinct from genuinely low-value cells.
 | `python -m phenotypic.gui`             | Module entry                                | Argparse `--root`/`--port`/...; calls `launch_gui`                        | ✅ shipping | integration | tests/integration/gui/test_console_script.py::test_phenotypic_gui_help_succeeds |
 | `phenotypic-gui` console script        | `[project.scripts]`                         | Same launcher; `--help` + `--root` work                                   | ✅ shipping | integration | tests/integration/gui/test_console_script.py::test_phenotypic_gui_help_succeeds |
 | Standalone `python -m ....run_console` | Standalone parity                           | Boots Run console only at `url_prefix="/"`                                | ✅ shipping | manual      | n/a (manual)                                                                    |
-| Existing CLI parity                    | `phenotypic pipeline.json input/ --dry-run` | Untouched; no click refactor                                              | ✅ shipping | integration | tests/integration/gui/test_console_script.py::test_phenotypic_cli_still_works   |
+| Existing CLI parity                    | `phenotypic --pipeline pipeline.json --input input/ --dry-run` | Main CLI help parses with explicit path options; run console emits the same shape | ✅ shipping | integration | tests/integration/gui/test_console_script.py::test_phenotypic_cli_still_works   |
 
 ## Documentation
 

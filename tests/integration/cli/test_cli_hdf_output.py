@@ -106,7 +106,9 @@ class TestForwardRunHdfLayout:
         result = runner.invoke(
             phenotypic_cli,
             [
+                "--pipeline",
                 str(temp_pipeline),
+                "--input",
                 str(plates_input_dir),
                 "-o",
                 str(output_dir),
@@ -174,7 +176,9 @@ class TestOverlayAlwaysOn:
         result = runner.invoke(
             phenotypic_cli,
             [
+                "--pipeline",
                 str(temp_pipeline),
+                "--input",
                 str(plates_input_dir),
                 "-o",
                 str(output_dir),
@@ -214,7 +218,9 @@ class TestMeasureRerun:
         forward = runner.invoke(
             phenotypic_cli,
             [
+                "--pipeline",
                 str(temp_pipeline),
+                "--input",
                 str(plates_input_dir),
                 "-o",
                 str(output_dir),
@@ -246,12 +252,14 @@ class TestMeasureRerun:
         # Sleep so mtimes actually differ on filesystems that round to seconds.
         time.sleep(0.1)
 
-        # --measure rerun. INPUT_PATH is still accepted (but ignored with a
+        # --measure rerun. --input is still accepted (but ignored with a
         # warning); we pass the same one for minimal drift from a real user.
         measure = runner.invoke(
             phenotypic_cli,
             [
+                "--pipeline",
                 str(temp_pipeline),
+                "--input",
                 str(plates_input_dir),
                 "-o",
                 str(output_dir),
@@ -299,7 +307,9 @@ class TestMeasureRerun:
         forward = runner.invoke(
             phenotypic_cli,
             [
+                "--pipeline",
                 str(temp_pipeline),
+                "--input",
                 str(plates_input_dir),
                 "-o",
                 str(output_dir),
@@ -361,6 +371,7 @@ class TestMeasureRerun:
         measure = runner.invoke(
             phenotypic_cli,
             [
+                "--pipeline",
                 str(temp_pipeline),
                 "-o",
                 str(output_dir),
@@ -417,7 +428,9 @@ class TestMeasureRerun:
         first = runner.invoke(
             phenotypic_cli,
             [
+                "--pipeline",
                 str(temp_pipeline),
+                "--input",
                 str(plates_input_dir),
                 "-o",
                 str(output_dir),
@@ -440,7 +453,9 @@ class TestMeasureRerun:
         second = runner.invoke(
             phenotypic_cli,
             [
+                "--pipeline",
                 str(temp_pipeline),
+                "--input",
                 str(plates_input_dir),
                 "-o",
                 str(output_dir),
@@ -494,7 +509,9 @@ class TestMeasureFlagValidation:
         forward = runner.invoke(
             phenotypic_cli,
             [
+                "--pipeline",
                 str(temp_pipeline),
+                "--input",
                 str(plates_input_dir),
                 "-o",
                 str(output_dir),
@@ -516,6 +533,7 @@ class TestMeasureFlagValidation:
         result = runner.invoke(
             phenotypic_cli,
             [
+                "--pipeline",
                 str(temp_pipeline),
                 "-o",
                 str(prepared_output_dir),
@@ -541,6 +559,7 @@ class TestMeasureFlagValidation:
         result = runner.invoke(
             phenotypic_cli,
             [
+                "--pipeline",
                 str(temp_pipeline),
                 "-o",
                 str(prepared_output_dir),
@@ -565,6 +584,7 @@ class TestMeasureFlagValidation:
         result = runner.invoke(
             phenotypic_cli,
             [
+                "--pipeline",
                 str(temp_pipeline),
                 "-o",
                 str(prepared_output_dir),
@@ -589,6 +609,7 @@ class TestMeasureFlagValidation:
         result = runner.invoke(
             phenotypic_cli,
             [
+                "--pipeline",
                 str(temp_pipeline),
                 "-o",
                 str(prepared_output_dir),
@@ -613,6 +634,7 @@ class TestMeasureFlagValidation:
         result = runner.invoke(
             phenotypic_cli,
             [
+                "--pipeline",
                 str(temp_pipeline),
                 "-o",
                 str(prepared_output_dir),
@@ -640,6 +662,7 @@ class TestMeasureFlagValidation:
         result = runner.invoke(
             phenotypic_cli,
             [
+                "--pipeline",
                 str(temp_pipeline),
                 "-o",
                 str(missing_dir),
