@@ -518,8 +518,13 @@ def generate_process_only_finalize_script(
     dashboard HTML.
 
     The strategy submits the returned script with
-    ``sbatch --dependency=afterok:<array>`` so it runs once the image array
-    finishes.
+    ``sbatch --dependency=afterany:<job>`` so it runs once the depended-on image
+    job finishes. **Limitation:** under the drip-feed dispatcher only chunk 0's
+    job ID is known at submission time, so for a process-only run that spans
+    multiple array chunks (more images than ``array_limit``) the finalize
+    depends on chunk 0 only and may rebuild the manifest before later chunks
+    complete. Single-chunk runs (the common 1-level case) are exact; the
+    strategy emits a runtime warning for the multi-chunk case.
 
     Args:
         config: Execution configuration (used for SBATCH directives).

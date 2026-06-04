@@ -42,3 +42,17 @@ def test_forward_run_not_flagged_process_only(tmp_path: Path) -> None:
     caps = classify(tmp_path)
     assert caps.is_cli_output is True
     assert caps.is_process_only_output is False
+
+
+def test_in_progress_forward_run_not_flagged_process_only(tmp_path: Path) -> None:
+    """A forward run mid-flight — ``results/`` and the progress manifest already
+    written, but ``deliverables/master_measurements.parquet`` not yet finalized —
+    must NOT be transiently classified as process-only (it has ``results/``,
+    which a process-only run never writes)."""
+    (tmp_path / "results").mkdir()
+    mp = manifest_json_path(tmp_path)
+    mp.parent.mkdir(parents=True, exist_ok=True)
+    mp.write_text('{"is_complete": false}', encoding="utf-8")
+    caps = classify(tmp_path)
+    assert caps.is_cli_output is False  # not finalized yet
+    assert caps.is_process_only_output is False  # but has results/ → not process-only

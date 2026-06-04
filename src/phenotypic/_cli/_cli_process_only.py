@@ -52,7 +52,7 @@ def write_process_only_layer(
     """
     out_path.parent.mkdir(parents=True, exist_ok=True)
     accessor = getattr(image, layer)
-    if layer == "objmap" and getattr(image, "num_objects", 0) == 0:
+    if layer == "objmap" and image.num_objects == 0:
         warnings.warn(
             f"pipeline produced no objects; writing empty object map to {out_path}"
         )

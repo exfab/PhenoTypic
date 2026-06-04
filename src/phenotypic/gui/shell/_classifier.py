@@ -252,11 +252,14 @@ def _classify_dir(path: Path) -> Capabilities:
     is_cli_output = is_cli_output_master and is_cli_output_results
 
     is_process_only_output = False
-    if not is_cli_output:
-        # No full-run artifacts: a process-only run is identified by its
-        # .phenotypic/progress/manifest.json (machine-state under the hidden
-        # cache dir). Resolve via the helper so a legacy-root manifest still
-        # surfaces.
+    if not is_cli_output and not is_cli_output_results:
+        # A process-only run writes machine-state (its
+        # .phenotypic/progress/manifest.json) but NO results/ and NO
+        # deliverables/. Gating on ``not is_cli_output_results`` prevents a
+        # forward run that has *started* (results/ + manifest already written)
+        # but not yet finalized (no master_measurements.parquet) from being
+        # transiently misclassified as process-only. Resolve via the helper so a
+        # legacy-root manifest still surfaces.
         from phenotypic.tools_ import resolve_manifest_json_path
 
         is_process_only_output = resolve_manifest_json_path(path).is_file()
