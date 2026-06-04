@@ -8,7 +8,7 @@ average), then ``finalize`` to the scalar objective the optimizer maximizes.
 from __future__ import annotations
 
 import math
-from typing import Any
+from typing import Any, Mapping, Optional
 
 import numpy as np
 from pydantic import BaseModel, ConfigDict
@@ -21,6 +21,34 @@ from ._builder import build_pipeline
 #: A per-image exception contributes this to every term so it honestly drags
 #: the aggregate (robust-eval §10) rather than dodging a bad plate by crashing.
 _WORST_TERM = 0.0
+
+
+def _project_finalize(
+    finalized: float | Mapping[str, float],
+) -> tuple[float, Optional[dict[str, float]]]:
+    """Split a ``Scorer.finalize`` result into ``(scalar_score, objectives)``.
+
+    The multi-objective sidecar (plan §0a): a scalar ``finalized`` is the
+    single-objective path and carries no sidecar (``objectives is None``); a
+    ``dict`` of named objectives is stashed as ``objectives`` and projected to the
+    scalar ``score`` as ``mean(objectives.values())`` (``0.0`` for an empty dict).
+    The single-objective branch is byte-identical to the pre-sidecar code.
+
+    Args:
+        finalized: The return of ``scorer.finalize`` — a ``float`` for a
+            single-objective scorer or a ``dict[str, float]`` of named objectives
+            for a multi-objective one.
+
+    Returns:
+        A ``(score, objectives)`` pair: ``objectives is None`` on the scalar path,
+        otherwise the named-objectives dict with ``score`` its mean projection.
+    """
+    if isinstance(finalized, Mapping):
+        objectives = {key: float(value) for key, value in finalized.items()}
+        values = list(objectives.values())
+        score = float(sum(values) / len(values)) if values else 0.0
+        return score, objectives
+    return float(finalized), None
 
 
 def _robust_aggregate(values: list[float], stability_weight: float) -> float:
@@ -44,9 +72,15 @@ class EvaluationResult(BaseModel):
     """The outcome of evaluating one candidate over the calibration set.
 
     Args:
-        score: The finalized scalar objective (higher = better).
+        score: The finalized scalar objective (higher = better). For a
+            multi-objective candidate this is the **scalar projection** of
+            ``objectives`` (``mean(objectives.values())``).
         terms: Robust-aggregated per-term scores (``median - λ·IQR`` each).
         n_images: Number of calibration images evaluated.
+        objectives: The named multi-objective values (plan §0a sidecar), or
+            ``None`` for a single-objective candidate. Set only when the scorer's
+            ``finalize`` returns a ``dict``; ``score`` is then their mean. The
+            sidecar leaves the single-objective scalar path untouched.
         failed: ``True`` when the candidate raised and was floored to
             ``failure_score``.
         pruned: ``True`` when the rung ladder early-stopped this candidate via
@@ -59,6 +93,7 @@ class EvaluationResult(BaseModel):
     score: float
     terms: dict[str, float]
     n_images: int
+    objectives: Optional[dict[str, float]] = None
     failed: bool = False
     pruned: bool = False
 
@@ -187,21 +222,29 @@ class Evaluator(BaseModel):
                 )
 
             running = self._aggregate(per_term, n_exceptions)
-            channel.report(float(scorer.finalize(running)), scored)
+            running_score, running_objectives = _project_finalize(
+                scorer.finalize(running)
+            )
+            channel.report(running_score, scored)
             # Check between rungs only (never after the final, full-fidelity rung).
             if rung_index < len(rungs) - 1 and channel.should_prune():
                 return EvaluationResult(
-                    score=float(scorer.finalize(running)),
+                    score=running_score,
                     terms=running,
                     n_images=scored,
+                    objectives=running_objectives,
                     pruned=True,
                 )
 
         aggregated = self._aggregate(per_term, n_exceptions)
+        final_score, final_objectives = _project_finalize(
+            scorer.finalize(aggregated)
+        )
         return EvaluationResult(
-            score=float(scorer.finalize(aggregated)),
+            score=final_score,
             terms=aggregated,
             n_images=len(ordered),
+            objectives=final_objectives,
         )
 
     @staticmethod
