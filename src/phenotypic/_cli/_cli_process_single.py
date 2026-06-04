@@ -343,11 +343,11 @@ def main(
         if process_only_layer is not None:
             if input_root is None:
                 raise click.UsageError("--process-only requires --input-root")
-            read_kwargs: Dict[str, Any] = {}
+            process_only_read_kwargs: Dict[str, Any] = {}
             if bit_depth is not None:
-                read_kwargs["bit_depth"] = bit_depth
+                process_only_read_kwargs["bit_depth"] = bit_depth
             if detect_mode != "gray":
-                read_kwargs["detect_mode"] = detect_mode
+                process_only_read_kwargs["detect_mode"] = detect_mode
             if event_log is not None:
                 append_event(
                     event_log=event_log,
@@ -369,7 +369,7 @@ def main(
                 output_dir=output_dir,
                 image_type=image_type,  # type: ignore[arg-type]
                 layer=process_only_layer,  # type: ignore[arg-type]
-                read_kwargs=read_kwargs,
+                read_kwargs=process_only_read_kwargs,
                 cli_nrows=nrows,
                 cli_ncols=ncols,
             )
