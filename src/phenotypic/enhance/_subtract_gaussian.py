@@ -10,7 +10,7 @@ from pydantic import Field
 from skimage.filters import gaussian
 
 from phenotypic.abc_ import ImageEnhancer
-from phenotypic.tune._search_space._tune_spec import TuneSpec
+from phenotypic.tools_.typing_ import TuneSpec
 
 
 class SubtractGaussian(ImageEnhancer):

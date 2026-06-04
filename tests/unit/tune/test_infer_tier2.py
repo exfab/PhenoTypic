@@ -242,11 +242,12 @@ def test_infer_real_pipeline_flat():
     space = infer_search_space(pipe)
     assert isinstance(space, InferredSearchSpace)
     keys = {k.key for k in space.knobs}
-    # GaussianBlur.sigma (unbounded) -> 0.sigma
+    # GaussianBlur.sigma now carries a TuneSpec -> Tier-1 ``tune_spec`` (the
+    # annotations workstream migrated it from the unbounded heuristic).
     assert "0.sigma" in keys
     sigma = next(k for k in space.knobs if k.key == "0.sigma")
-    assert sigma.source == "unbounded_heuristic"
-    assert (sigma.domain.low, sigma.domain.high) == (0.5, 8.0)
+    assert sigma.source == "tune_spec"
+    assert (sigma.domain.low, sigma.domain.high, sigma.domain.log) == (0.5, 5.0, True)
     assert "Standard deviation" in sigma.description
     # GaussianBlur.mode (Literal) -> 0.mode categorical
     mode = next(k for k in space.knobs if k.key == "0.mode")
@@ -255,9 +256,10 @@ def test_infer_real_pipeline_flat():
     # OtsuDetector.ignore_zeros (bool) -> 1.ignore_zeros
     iz = next(k for k in space.knobs if k.key == "1.ignore_zeros")
     assert iz.source == "bool"
-    # GaussianBlur.cval default 0.0 -> excluded (non-positive)
-    cval_excluded = any(e.key == "0.cval" for e in space.excluded)
-    assert cval_excluded
+    # GaussianBlur.cval now carries TuneSpec(tunable=False) -> excluded by opt-out.
+    cval_excluded = next((e for e in space.excluded if e.key == "0.cval"), None)
+    assert cval_excluded is not None
+    assert cval_excluded.reason == "tune_spec_off"
 
 
 def test_recurse_nested_is_noop_stub_this_chunk():

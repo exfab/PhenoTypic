@@ -7,7 +7,7 @@ if TYPE_CHECKING:
 from skimage.filters import gaussian
 
 from ..abc_ import ImageEnhancer
-from ..tune._search_space._tune_spec import TuneSpec
+from ..tools_.typing_ import TuneSpec
 
 
 class GaussianBlur(ImageEnhancer):

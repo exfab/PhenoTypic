@@ -9,7 +9,7 @@ from pydantic import Field
 from skimage.filters import unsharp_mask
 
 from ..abc_ import ImageEnhancer
-from ..tune._search_space._tune_spec import TuneSpec
+from ..tools_.typing_ import TuneSpec
 
 
 class SharpenEdgeGauss(ImageEnhancer):
