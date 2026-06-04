@@ -1,9 +1,12 @@
 """``infer_search_space`` — mine a pipeline's pydantic fields into a proposal.
 
-This chunk implements the **flat, single-op** Tier-2 dispatch (the §4 heuristic
+This module implements the **flat, single-op** Tier-2 dispatch (the §4 heuristic
 table of ``search-space-inference.md``) plus the Tier-1 ``TuneSpec`` override
-(§3). Nested-op recursion (``recurse_nested``) is accepted but a no-op stub in
-this chunk — full one-level recursion lands with the next chunk.
+(§3), and **one-level nested-op recursion** (§6): when ``recurse_nested=True``
+(the default), an ``OperationField`` field — a single nested op or a list of
+them — is recursed exactly one level, emitting ``"<pos>.<field>[<i>].<leaf>"``
+(or ``"<pos>.<field>.<leaf>"`` for a single op) knobs. The recursion is strictly
+additive; ``recurse_nested=False`` yields the flat-only proposal.
 
 The inference core, :func:`_infer_field`, maps one operation field to either a
 :class:`~phenotypic.tune.Knob` (a tunable domain) or an
@@ -526,6 +529,149 @@ def _annotation_str(annotation: Any) -> str:
     return str(annotation)
 
 
+def _is_recursable_op(value: Any) -> bool:
+    """Return ``True`` for a leaf operation worth recursing into (not a pipeline).
+
+    A nested ``OperationField`` value may be a single leaf operation, a nested
+    ``ImagePipeline``, or ``None``. We recurse only into a leaf op — one that
+    exposes ``model_fields`` but is **not** itself a pipeline (a pipeline has
+    ``get_ops``, and recursing into its ops would be a different, deferred
+    naming scheme). ``None`` slots and pipelines are skipped.
+    """
+    return (
+        value is not None
+        and hasattr(type(value), "model_fields")
+        and not hasattr(value, "get_ops")
+    )
+
+
+def _reparent_key(child_key: str, prefix: str) -> str:
+    """Rewrite a depth-0 child key ``"0.<leaf>"`` as ``"<prefix>.<leaf>"``.
+
+    ``_infer_field`` always builds keys as ``"<position>.<field>"`` with the
+    position it is handed. When recursing, we infer each nested leaf field at a
+    throwaway position ``0`` and then splice the real nested prefix
+    (``"1.detectors[0]"``) in front of the leaf name — so the canonical nested
+    key becomes ``"1.detectors[0].<leaf>"``.
+    """
+    _, _, leaf = child_key.partition(".")
+    return f"{prefix}.{leaf}"
+
+
+def _recurse_into_op(
+    leaf_op: Any,
+    prefix: str,
+    *,
+    factor: float,
+    conditional_on: tuple[tuple[str, Any], ...] | None,
+) -> tuple[list[Knob], list[Excluded]]:
+    """Infer one nested op's scalar fields (depth cap = 1).
+
+    Applies the same Tier-1 → Tier-2 dispatch to each of ``leaf_op``'s fields,
+    re-parents the resulting keys under ``prefix`` (``"<pos>.<field>[<i>]"`` or
+    ``"<pos>.<field>"``), and attaches ``conditional_on`` to every emitted knob.
+    The nested op's **own** operation-valued fields are excluded here — depth is
+    capped at one level (no chaining).
+
+    Args:
+        leaf_op: The nested operation instance to recurse into.
+        prefix: The root-relative path of the nested slot (e.g.
+            ``"1.detectors[0]"``).
+        factor: Multiplicative half-window for the unbounded heuristic.
+        conditional_on: Parent-presence gate to stamp on each nested knob (a
+            ``((key, value),)`` tuple), or ``None`` when the parent is not
+            presence-wrapped.
+
+    Returns:
+        ``(knobs, excluded)`` for the nested op's scalar fields.
+    """
+    knobs: list[Knob] = []
+    excluded: list[Excluded] = []
+    for field_name, field_info in type(leaf_op).model_fields.items():
+        result = _infer_field(leaf_op, 0, field_name, field_info, factor=factor)
+        new_key = _reparent_key(result.key, prefix)
+        if isinstance(result, Knob):
+            knobs.append(
+                result.model_copy(
+                    update={"key": new_key, "conditional_on": conditional_on}
+                )
+            )
+        else:
+            excluded.append(result.model_copy(update={"key": new_key}))
+    return knobs, excluded
+
+
+def _infer_nested_field(
+    op: Any,
+    position: int,
+    field_name: str,
+    *,
+    factor: float,
+) -> tuple[list[Knob], list[Excluded]]:
+    """Recurse one level into an operation-valued field's live value.
+
+    Reads ``op.<field_name>`` (a single nested op or a ``list`` of them) and
+    recurses via :func:`_recurse_into_op`. List members are indexed
+    (``<field>[<i>]``) and ``None`` slots / nested pipelines are skipped; a
+    single op recurses under the bare field path (``<field>``).
+
+    ``conditional_on`` ties a nested knob to the parent's ``__enabled__`` **only
+    when the parent op is presence-wrapped** (``type(op)._tune_optional`` is
+    truthy). In v1 nested ops are never presence-wrapped and top-level presence
+    wrapping is not emitted by inference, so this resolves to ``None`` — kept
+    explicit so a future presence layer needs no change here.
+
+    Args:
+        op: The parent operation instance owning the nested field.
+        position: The parent's position in the pipeline.
+        field_name: The operation-valued field name.
+        factor: Multiplicative half-window for the unbounded heuristic.
+
+    Returns:
+        ``(knobs, excluded)`` from the one-level recursion.
+    """
+    value = getattr(op, field_name, None)
+    conditional_on = _parent_presence_condition(op, position)
+
+    knobs: list[Knob] = []
+    excluded: list[Excluded] = []
+    if isinstance(value, list):
+        for index, member in enumerate(value):
+            if not _is_recursable_op(member):
+                continue  # skip None slots and nested pipelines (depth cap)
+            prefix = f"{position}.{field_name}[{index}]"
+            k, e = _recurse_into_op(
+                member, prefix, factor=factor, conditional_on=conditional_on
+            )
+            knobs.extend(k)
+            excluded.extend(e)
+    elif _is_recursable_op(value):
+        prefix = f"{position}.{field_name}"
+        k, e = _recurse_into_op(
+            value, prefix, factor=factor, conditional_on=conditional_on
+        )
+        knobs.extend(k)
+        excluded.extend(e)
+    return knobs, excluded
+
+
+def _parent_presence_condition(
+    op: Any, position: int
+) -> tuple[tuple[str, Any], ...] | None:
+    """Return the nested knob's ``conditional_on`` gate, or ``None``.
+
+    A nested knob is gated on its parent's ``__enabled__`` toggle **only** when
+    the parent op is presence-wrapped (``type(op)._tune_optional``). The live
+    ``Knob.conditional_on`` type is ``tuple[tuple[str, Any], ...]`` (not the
+    ``dict`` of the design sketch). In v1 no op sets ``_tune_optional`` and
+    inference emits no top-level presence knob, so this returns ``None``.
+    """
+    if getattr(type(op), "_tune_optional", False):
+        cls_name = type(op).__name__
+        return ((f"{position}.{cls_name}.__enabled__", True),)
+    return None
+
+
 def infer_search_space(
     pipeline: Any,
     *,
@@ -543,13 +689,15 @@ def infer_search_space(
             insertion order.
         unbounded_factor: Multiplicative half-window ``[d/f, d·f]`` for the
             unbounded numeric heuristic (default ``4.0`` → 16× span).
-        recurse_nested: Reserved for one-level nested-op recursion (next chunk);
-            accepted but a no-op in this chunk.
+        recurse_nested: Recurse **exactly one level** into operation-valued
+            (``OperationField``) fields — a single nested op or a list of them.
+            On by default; ``False`` yields the flat-only proposal (no nested
+            knobs), byte-identical to the pre-recursion space. The recursion is
+            strictly additive: a pipeline with no nested ops is unchanged.
 
     Returns:
         The ``InferredSearchSpace`` proposal.
     """
-    _ = recurse_nested  # nested recursion lands in the next chunk
     ops = list(pipeline.get_ops().values())
     knobs: list[Knob] = []
     excluded: list[Excluded] = []
@@ -562,7 +710,27 @@ def infer_search_space(
                 knobs.append(result)
             else:
                 excluded.append(result)
+            # One-level recursion into operation-valued fields. The flat pass
+            # above records the field as ``Excluded(unsupported_type)``; the
+            # nested leaves are emitted here (additive — keeps the marker record).
+            if recurse_nested and _field_holds_operation(field_info):
+                n_knobs, n_excluded = _infer_nested_field(
+                    op, position, field_name, factor=unbounded_factor
+                )
+                knobs.extend(n_knobs)
+                excluded.extend(n_excluded)
     return InferredSearchSpace(knobs=tuple(knobs), excluded=tuple(excluded))
+
+
+def _field_holds_operation(field_info: Any) -> bool:
+    """Return ``True`` if a field carries the ``_OperationFieldMarker``.
+
+    Detected by walking the annotation tree (the marker may sit under
+    ``Optional`` / inside a ``list``), matching by class *name* so this module
+    never imports the ``tools_`` marker.
+    """
+    metadata = list(field_info.metadata) + _walk_metadata(field_info.annotation)
+    return _has_marker(metadata, "_OperationFieldMarker")
 
 
 __all__ = ["infer_search_space", "_infer_field", "ExcludeReason"]
