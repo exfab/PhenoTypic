@@ -103,6 +103,15 @@ torch = [
     "sam2;sys_platform!='win32'",
 ]
 
+tune = [
+    # Optuna backend for the tune engine (Phase 2). Imported lazily inside
+    # phenotypic.tune._strategies._optuna_support so the base package and the
+    # Grid/Random paths stay Optuna-free (optuna-integration.md §10).
+    "optuna>=4.0",
+    "sqlalchemy>=2.0",
+    "psycopg[binary]>=3.1",
+]
+
 [project.scripts]
 phenotypic = "phenotypic.phenotypicCLI:phenotypic_cli"
 phenotypic-gui = "phenotypic.gui.shell._launcher:main"
