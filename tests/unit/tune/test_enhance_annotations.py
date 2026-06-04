@@ -19,6 +19,7 @@ from pydantic import ValidationError
 from phenotypic import ImagePipeline
 from phenotypic.enhance import (
     BM3DDenoiser,
+    EnhanceBlobs,
     EnhanceFeatures,
     EnhanceLocalContrast,
     FlattenIllumination,
@@ -63,6 +64,9 @@ def _excluded(op, field_name: str):
         (EnhanceFeatures(), "k", FloatRange, (0.0, 20.0, False)),
         (FlattenIllumination(), "sigma", FloatRange, (40.0, 300.0, True)),
         (BM3DDenoiser(), "sigma_psd", FloatRange, (0.01, 0.15, True)),
+        (EnhanceBlobs(), "min_radius", FloatRange, (1.0, 5.0)),
+        (EnhanceBlobs(), "max_radius", FloatRange, (8.0, 50.0)),
+        (EnhanceBlobs(), "num_scales", IntRange, (4, 20)),
     ],
 )
 def test_tune_spec_resolves_tier1(op, field_name, expected_domain, expected_bounds):
@@ -107,6 +111,7 @@ def test_tune_spec_off_excludes(op, field_name):
         lambda: EnhanceFeatures(n_scale=99, min_wavelength=999.0, k=999.0),
         lambda: FlattenIllumination(sigma=9999.0),
         lambda: BM3DDenoiser(sigma_psd=0.99),
+        lambda: EnhanceBlobs(min_radius=0.5, max_radius=999.0, num_scales=99),
     ],
 )
 def test_tunespec_is_pure_metadata(factory):
