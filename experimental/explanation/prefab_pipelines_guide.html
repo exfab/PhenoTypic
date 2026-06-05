@@ -303,7 +303,7 @@
           
           
           
-          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
             <span class="sr-only">GitHub</span></a>
         </li>
 </ul></div>
@@ -500,7 +500,7 @@
           
           
           
-          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
             <span class="sr-only">GitHub</span></a>
         </li>
 </ul></div>
@@ -653,7 +653,7 @@ workflow. Each is tuned for a specific imaging scenario.</p>
 <p><strong>Best for:</strong> General-purpose colony detection on clean, well-lit plates
 with uniform backgrounds.</p>
 <p><strong>Pipeline steps:</strong>
-GaussianBlur → EnhanceLocalContrast → MedianFilter → SobelFilter → OtsuDetector →
+GaussianBlur → EnhanceLocalContrast → MedianFilter → FocusEdgeSobel → OtsuDetector →
 MaskOpening → RemoveBorderObjects → SmallObjectRemover → MaskFill →
 GridOversizedObjectRemover → ReduceSectionsByLine → GridAligner</p>
 <p><strong>Measurements:</strong> MeasureShape, MeasureColor, MeasureTexture,

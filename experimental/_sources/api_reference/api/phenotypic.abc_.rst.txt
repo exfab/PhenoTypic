@@ -33,6 +33,12 @@
       ImageOperation
       ImageEnhancer
       ImageDenoiser
+      FocusEdge
+      FocusBlob
+      Smoothing
+      BackgroundSubtraction
+      MorphologicalFiltering
+      ContrastAdjustment
       ImageCorrector
       ObjectDetector
       ObjectRefiner

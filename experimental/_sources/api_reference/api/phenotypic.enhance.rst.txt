@@ -27,24 +27,24 @@
       EnhanceLocalContrast
       StructureSmoothing
       ContrastStretching
-      FrangiVesselness
+      FocusEdgeFrangi
       GaussianBlur
       SubtractGaussian
       GrayOpening
-      HessianFilter
+      FocusEdgeHessian
       FlattenIllumination
       ImageInverter
-      SharpenEdgeLaplace
+      FocusEdgeLaplace
       MedianFilter
-      MeijeringRidgeFilter
-      EnhanceBlobs
+      FocusEdgeMeijering
+      FocusBlobLoG
       NonLocalMeansDenoiser
       SubtractOpening
-      EnhanceFeatures
+      FocusEdgePhase
       RankMedianEnhancer
       SubtractRollingBall
-      SatoRidgeFilter
-      SobelFilter
+      FocusEdgeSato
+      FocusEdgeSobel
       SharpenEdgeGauss
       VisuShrinkEnhancer
       WhiteTophatEnhance

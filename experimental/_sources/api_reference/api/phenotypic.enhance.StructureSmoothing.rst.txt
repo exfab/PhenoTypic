@@ -58,7 +58,7 @@ phenotypic.enhance.StructureSmoothing
       ~StructureSmoothing.model_extra
       ~StructureSmoothing.model_fields
       ~StructureSmoothing.model_fields_set
-      ~StructureSmoothing.num_iterations
+      ~StructureSmoothing.num_iter
       ~StructureSmoothing.sigma
       ~StructureSmoothing.rho
       ~StructureSmoothing.dt

@@ -62,7 +62,7 @@
     <link rel="canonical" href="https://exfab.github.io/PhenoTypic/experimental/api_reference/api/phenotypic.enhance.GrayOpening.html" />
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="phenotypic.enhance.HessianFilter" href="phenotypic.enhance.HessianFilter.html" />
+    <link rel="next" title="phenotypic.enhance.FocusEdgeHessian" href="phenotypic.enhance.FocusEdgeHessian.html" />
     <link rel="prev" title="phenotypic.enhance.SubtractGaussian" href="phenotypic.enhance.SubtractGaussian.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
@@ -303,7 +303,7 @@
           
           
           
-          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
             <span class="sr-only">GitHub</span></a>
         </li>
 </ul></div>
@@ -500,7 +500,7 @@
           
           
           
-          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
             <span class="sr-only">GitHub</span></a>
         </li>
 </ul></div>
@@ -570,6 +570,12 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.ImageOperation.html">phenotypic.abc_.ImageOperation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.ImageEnhancer.html">phenotypic.abc_.ImageEnhancer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.ImageDenoiser.html">phenotypic.abc_.ImageDenoiser</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.FocusEdge.html">phenotypic.abc_.FocusEdge</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.FocusBlob.html">phenotypic.abc_.FocusBlob</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.Smoothing.html">phenotypic.abc_.Smoothing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.BackgroundSubtraction.html">phenotypic.abc_.BackgroundSubtraction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.MorphologicalFiltering.html">phenotypic.abc_.MorphologicalFiltering</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.ContrastAdjustment.html">phenotypic.abc_.ContrastAdjustment</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.ImageCorrector.html">phenotypic.abc_.ImageCorrector</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.ObjectDetector.html">phenotypic.abc_.ObjectDetector</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.ObjectRefiner.html">phenotypic.abc_.ObjectRefiner</a></li>
@@ -665,24 +671,24 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.EnhanceLocalContrast.html">phenotypic.enhance.EnhanceLocalContrast</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.StructureSmoothing.html">phenotypic.enhance.StructureSmoothing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.ContrastStretching.html">phenotypic.enhance.ContrastStretching</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FrangiVesselness.html">phenotypic.enhance.FrangiVesselness</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeFrangi.html">phenotypic.enhance.FocusEdgeFrangi</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.GaussianBlur.html">phenotypic.enhance.GaussianBlur</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.SubtractGaussian.html">phenotypic.enhance.SubtractGaussian</a></li>
 <li class="toctree-l2 current active"><a class="current reference internal" href="#">phenotypic.enhance.GrayOpening</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.HessianFilter.html">phenotypic.enhance.HessianFilter</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeHessian.html">phenotypic.enhance.FocusEdgeHessian</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FlattenIllumination.html">phenotypic.enhance.FlattenIllumination</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.ImageInverter.html">phenotypic.enhance.ImageInverter</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.SharpenEdgeLaplace.html">phenotypic.enhance.SharpenEdgeLaplace</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeLaplace.html">phenotypic.enhance.FocusEdgeLaplace</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.MedianFilter.html">phenotypic.enhance.MedianFilter</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.MeijeringRidgeFilter.html">phenotypic.enhance.MeijeringRidgeFilter</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.EnhanceBlobs.html">phenotypic.enhance.EnhanceBlobs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeMeijering.html">phenotypic.enhance.FocusEdgeMeijering</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusBlobLoG.html">phenotypic.enhance.FocusBlobLoG</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.NonLocalMeansDenoiser.html">phenotypic.enhance.NonLocalMeansDenoiser</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.SubtractOpening.html">phenotypic.enhance.SubtractOpening</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.EnhanceFeatures.html">phenotypic.enhance.EnhanceFeatures</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgePhase.html">phenotypic.enhance.FocusEdgePhase</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.RankMedianEnhancer.html">phenotypic.enhance.RankMedianEnhancer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.SubtractRollingBall.html">phenotypic.enhance.SubtractRollingBall</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.SatoRidgeFilter.html">phenotypic.enhance.SatoRidgeFilter</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.SobelFilter.html">phenotypic.enhance.SobelFilter</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeSato.html">phenotypic.enhance.FocusEdgeSato</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeSobel.html">phenotypic.enhance.FocusEdgeSobel</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.SharpenEdgeGauss.html">phenotypic.enhance.SharpenEdgeGauss</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.VisuShrinkEnhancer.html">phenotypic.enhance.VisuShrinkEnhancer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.WhiteTophatEnhance.html">phenotypic.enhance.WhiteTophatEnhance</a></li>
@@ -1005,7 +1011,7 @@
 <dl class="py class">
 <dt class="sig sig-object py" id="phenotypic.enhance.GrayOpening">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.enhance.</span></span><span class="sig-name descname"><span class="pre">GrayOpening</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">shape</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><span class="pre">Literal</span></a><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'square'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'diamond'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'disk'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'square'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">width</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_iter</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/enhance/_gray_opening.html#GrayOpening"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.enhance.GrayOpening" title="Link to this definition">#</a></dt>
-<dd><p>Bases: <a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.ImageEnhancer" title="phenotypic.abc_._image_enhancer.ImageEnhancer"><code class="xref py py-class docutils literal notranslate"><span class="pre">ImageEnhancer</span></code></a>, <a class="reference internal" href="../phenotypic.tools_.mixin.html#phenotypic.tools_.mixin.FootprintMixin" title="phenotypic.tools_.mixin._footprint_mixin.FootprintMixin"><code class="xref py py-class docutils literal notranslate"><span class="pre">FootprintMixin</span></code></a></p>
+<dd><p>Bases: <a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.MorphologicalFiltering" title="phenotypic.abc_._enhance_markers._morphological_filtering.MorphologicalFiltering"><code class="xref py py-class docutils literal notranslate"><span class="pre">MorphologicalFiltering</span></code></a>, <a class="reference internal" href="../phenotypic.tools_.mixin.html#phenotypic.tools_.mixin.FootprintMixin" title="phenotypic.tools_.mixin._footprint_mixin.FootprintMixin"><code class="xref py py-class docutils literal notranslate"><span class="pre">FootprintMixin</span></code></a></p>
 <p>Remove small bright artifacts from <code class="docutils literal notranslate"><span class="pre">detect_mat</span></code> via morphological opening.</p>
 <p>Applies erosion followed by dilation with a structuring element, removing
 bright features smaller than the element while preserving the shape of

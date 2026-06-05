@@ -300,7 +300,7 @@
           
           
           
-          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
             <span class="sr-only">GitHub</span></a>
         </li>
 </ul></div>
@@ -495,7 +495,7 @@
           
           
           
-          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
             <span class="sr-only">GitHub</span></a>
         </li>
 </ul></div>
@@ -568,17 +568,17 @@
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConfigDict</span><span class="p">,</span> <span class="n">Field</span><span class="p">,</span> <span class="n">model_validator</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConfigDict</span><span class="p">,</span> <span class="n">model_validator</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">scipy.ndimage</span><span class="w"> </span><span class="kn">import</span> <span class="n">gaussian_filter</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">skimage.feature</span><span class="w"> </span><span class="kn">import</span> <span class="n">structure_tensor_eigenvalues</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing_extensions</span><span class="w"> </span><span class="kn">import</span> <span class="n">Self</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">..abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageEnhancer</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">Smoothing</span>
 
 
 <div class="viewcode-block" id="StructureSmoothing">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.enhance.html#phenotypic.enhance.StructureSmoothing">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">StructureSmoothing</span><span class="p">(</span><span class="n">ImageEnhancer</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">StructureSmoothing</span><span class="p">(</span><span class="n">Smoothing</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Enhance filamentous structures via anisotropic coherence-enhancing diffusion.</span>
 
 <span class="sd">    Smooths ``detect_mat`` preferentially along coherent structures (lines,</span>
@@ -625,9 +625,9 @@
 <span class="sd">    Consider Also:</span>
 <span class="sd">        - :class:`LocalEdgeDenoise` for isotropic edge-preserving denoising</span>
 <span class="sd">          of round colonies without directional features.</span>
-<span class="sd">        - :class:`SatoRidgeFilter` for direct ridge detection without a</span>
+<span class="sd">        - :class:`FocusEdgeSato` for direct ridge detection without a</span>
 <span class="sd">          diffusion preprocessing step.</span>
-<span class="sd">        - :class:`MeijeringRidgeFilter` for detecting very fine neurite-like</span>
+<span class="sd">        - :class:`FocusEdgeMeijering` for detecting very fine neurite-like</span>
 <span class="sd">          filaments.</span>
 
 <span class="sd">    References:</span>
@@ -641,15 +641,9 @@
 <span class="sd">        anisotropic diffusion and structure tensor analysis.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="c1"># ``num_iter`` is the public constructor keyword; the algorithm body</span>
-    <span class="c1"># (``_operate``) reads it as ``self.num_iterations``. The field keeps</span>
-    <span class="c1"># the algorithm-facing name and accepts the public ``num_iter`` kwarg</span>
-    <span class="c1"># via a validation alias, so neither the call sites nor ``_operate``</span>
-    <span class="c1"># change. ``populate_by_name`` lets the field also be set/dumped under</span>
-    <span class="c1"># its own name (used by JSON round-trips of migrated pipelines).</span>
     <span class="n">model_config</span> <span class="o">=</span> <span class="n">ConfigDict</span><span class="p">(</span><span class="n">populate_by_name</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
-    <span class="n">num_iterations</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">validation_alias</span><span class="o">=</span><span class="s2">&quot;num_iter&quot;</span><span class="p">)</span>
+    <span class="n">num_iter</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span>
     <span class="n">sigma</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.5</span>
     <span class="n">rho</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">dt</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span>
@@ -668,14 +662,14 @@
 <span class="sd">            ValueError: If any diffusion parameter is outside its valid</span>
 <span class="sd">                range (see the class ``Args:`` block).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_iterations</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_iter</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;num_iter must be &gt;= 1&quot;</span><span class="p">)</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dt</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;dt must be &gt; 0&quot;</span><span class="p">)</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dt</span> <span class="o">&gt;</span> <span class="mf">0.125</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="s2">&quot;dt &gt; 0.125 exceeds the 2D forward-Euler stability bound (1/8); &quot;</span>
-                <span class="s2">&quot;use smaller values&quot;</span>
+                    <span class="s2">&quot;dt &gt; 0.125 exceeds the 2D forward-Euler stability bound (1/8); &quot;</span>
+                    <span class="s2">&quot;use smaller values&quot;</span>
             <span class="p">)</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigma</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;sigma must be &gt; 0&quot;</span><span class="p">)</span>
@@ -684,8 +678,8 @@
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;rho must be &gt; 0&quot;</span><span class="p">)</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rho</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigma</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;rho (</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">rho</span><span class="si">}</span><span class="s2">) must be &gt;= sigma (</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">sigma</span><span class="si">}</span><span class="s2">); the &quot;</span>
-                    <span class="s2">&quot;integration scale cannot be smaller than the noise scale&quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;rho (</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">rho</span><span class="si">}</span><span class="s2">) must be &gt;= sigma (</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">sigma</span><span class="si">}</span><span class="s2">); the &quot;</span>
+                        <span class="s2">&quot;integration scale cannot be smaller than the noise scale&quot;</span>
                 <span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mi">0</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">):</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;alpha must be in (0, 1)&quot;</span><span class="p">)</span>
@@ -726,7 +720,7 @@
         <span class="n">out</span><span class="p">[</span><span class="n">ix</span><span class="p">(</span><span class="mi">0</span><span class="p">)]</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1.5</span> <span class="o">*</span> <span class="n">arr</span><span class="p">[</span><span class="n">ix</span><span class="p">(</span><span class="mi">0</span><span class="p">)]</span> <span class="o">+</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">arr</span><span class="p">[</span><span class="n">ix</span><span class="p">(</span><span class="mi">1</span><span class="p">)]</span> <span class="o">-</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">arr</span><span class="p">[</span><span class="n">ix</span><span class="p">(</span><span class="mi">2</span><span class="p">)]</span>
         <span class="c1"># Backward boundary (acc=2): [0.5, -2.0, 1.5]</span>
         <span class="n">out</span><span class="p">[</span><span class="n">ix</span><span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)]</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="mf">0.5</span> <span class="o">*</span> <span class="n">arr</span><span class="p">[</span><span class="n">ix</span><span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">3</span><span class="p">)]</span> <span class="o">-</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">arr</span><span class="p">[</span><span class="n">ix</span><span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">2</span><span class="p">)]</span> <span class="o">+</span> <span class="mf">1.5</span> <span class="o">*</span> <span class="n">arr</span><span class="p">[</span><span class="n">ix</span><span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)]</span>
+                <span class="mf">0.5</span> <span class="o">*</span> <span class="n">arr</span><span class="p">[</span><span class="n">ix</span><span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">3</span><span class="p">)]</span> <span class="o">-</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">arr</span><span class="p">[</span><span class="n">ix</span><span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">2</span><span class="p">)]</span> <span class="o">+</span> <span class="mf">1.5</span> <span class="o">*</span> <span class="n">arr</span><span class="p">[</span><span class="n">ix</span><span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)]</span>
         <span class="p">)</span>
         <span class="k">return</span> <span class="n">out</span>
 
@@ -752,7 +746,7 @@
                 <span class="p">(</span><span class="n">l1_0</span> <span class="o">-</span> <span class="n">l2_0</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">C</span><span class="p">,</span>
         <span class="p">)</span>
 
-        <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_iterations</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_iter</span><span class="p">):</span>
             <span class="c1"># Two-scale structure tensor (Weickert IJCV 1999)</span>
             <span class="c1"># Gaussian derivatives at noise scale sigma</span>
             <span class="n">u_r</span> <span class="o">=</span> <span class="n">gaussian_filter</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sigma</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>

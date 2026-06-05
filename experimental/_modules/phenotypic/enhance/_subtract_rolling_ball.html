@@ -300,7 +300,7 @@
           
           
           
-          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
             <span class="sr-only">GitHub</span></a>
         </li>
 </ul></div>
@@ -495,7 +495,7 @@
           
           
           
-          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
             <span class="sr-only">GitHub</span></a>
         </li>
 </ul></div>
@@ -569,13 +569,13 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">skimage.restoration</span><span class="w"> </span><span class="kn">import</span> <span class="n">rolling_ball</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageEnhancer</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">BackgroundSubtraction</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">NdArrayField</span>
 
 
 <div class="viewcode-block" id="SubtractRollingBall">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.enhance.html#phenotypic.enhance.SubtractRollingBall">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">SubtractRollingBall</span><span class="p">(</span><span class="n">ImageEnhancer</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">SubtractRollingBall</span><span class="p">(</span><span class="n">BackgroundSubtraction</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Remove background from ``detect_mat`` with ImageJ-style rolling-ball subtraction.</span>
 
 <span class="sd">    Models the background as the surface traced by rolling a parabolic ball</span>

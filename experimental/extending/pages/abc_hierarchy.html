@@ -303,7 +303,7 @@
           
           
           
-          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
             <span class="sr-only">GitHub</span></a>
         </li>
 </ul></div>
@@ -500,7 +500,7 @@
           
           
           
-          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
             <span class="sr-only">GitHub</span></a>
         </li>
 </ul></div>
@@ -602,6 +602,13 @@ correct custom operations.</p>
 <h2>The Hierarchy<a class="headerlink" href="#the-hierarchy" title="Link to this heading">#</a></h2>
 <div class="highlight-python3 notranslate"><div class="highlight"><pre><span></span><span class="n">ImageOperation</span> <span class="p">(</span><span class="n">root</span> <span class="n">ABC</span><span class="p">)</span>
 <span class="err">├──</span> <span class="n">ImageEnhancer</span>          <span class="err">—</span> <span class="n">modifies</span> <span class="n">detect_mat</span>
+<span class="err">│</span>   <span class="err">├──</span> <span class="n">ImageDenoiser</span>            <span class="err">—</span> <span class="n">noise</span><span class="o">-</span><span class="n">estimate</span><span class="o">-</span><span class="n">driven</span> <span class="n">restoration</span>
+<span class="err">│</span>   <span class="err">├──</span> <span class="n">FocusEdge</span>            <span class="err">—</span> <span class="n">output</span> <span class="ow">is</span> <span class="n">an</span> <span class="n">edge</span><span class="o">/</span><span class="n">ridge</span> <span class="n">response</span> <span class="nb">map</span>
+<span class="err">│</span>   <span class="err">├──</span> <span class="n">FocusBlob</span>            <span class="err">—</span> <span class="n">output</span> <span class="ow">is</span> <span class="n">a</span> <span class="n">blob</span><span class="o">/</span><span class="n">scale</span><span class="o">-</span><span class="n">space</span> <span class="n">response</span>
+<span class="err">│</span>   <span class="err">├──</span> <span class="n">Smoothing</span>                <span class="err">—</span> <span class="n">kernel</span><span class="o">/</span><span class="n">diffusion</span> <span class="n">blur</span>
+<span class="err">│</span>   <span class="err">├──</span> <span class="n">BackgroundSubtraction</span>    <span class="err">—</span> <span class="n">removes</span> <span class="n">slow</span><span class="o">-</span><span class="n">varying</span> <span class="n">background</span>
+<span class="err">│</span>   <span class="err">├──</span> <span class="n">MorphologicalFiltering</span>   <span class="err">—</span> <span class="n">structuring</span><span class="o">-</span><span class="n">element</span> <span class="n">small</span><span class="o">-</span><span class="n">feature</span> <span class="n">ops</span>
+<span class="err">│</span>   <span class="err">└──</span> <span class="n">ContrastAdjustment</span>       <span class="err">—</span> <span class="n">intensity</span><span class="o">/</span><span class="n">contrast</span> <span class="n">remapping</span>
 <span class="err">├──</span> <span class="n">ImageCorrector</span>         <span class="err">—</span> <span class="n">transforms</span> <span class="n">the</span> <span class="n">entire</span> <span class="n">image</span>
 <span class="err">├──</span> <span class="n">ObjectDetector</span>         <span class="err">—</span> <span class="n">writes</span> <span class="n">to</span> <span class="n">objmask</span> <span class="ow">and</span> <span class="n">objmap</span>
 <span class="err">│</span>   <span class="err">└──</span> <span class="n">ThresholdDetector</span>  <span class="err">—</span> <span class="n">convenience</span> <span class="n">base</span> <span class="k">for</span> <span class="n">threshold</span> <span class="n">methods</span>
@@ -612,6 +619,11 @@ correct custom operations.</p>
 <span class="err">└──</span> <span class="n">PostMeasurement</span>        <span class="err">—</span> <span class="n">transforms</span> <span class="n">measurement</span> <span class="n">DataFrames</span>
 </pre></div>
 </div>
+<p>The seven <code class="docutils literal notranslate"><span class="pre">ImageEnhancer</span></code> subgroups are <strong>marker ABCs</strong>: they add no new
+methods or parameters and exist purely to label an enhancer’s purpose
+(for documentation, GUI grouping, and <code class="docutils literal notranslate"><span class="pre">isinstance</span></code> checks). A concrete
+enhancer subclasses the group that matches what its <code class="docutils literal notranslate"><span class="pre">_operate</span></code> produces;
+every one is still an <code class="docutils literal notranslate"><span class="pre">ImageEnhancer</span></code> and only touches <code class="docutils literal notranslate"><span class="pre">detect_mat</span></code>.</p>
 </section>
 <section id="what-each-abc-enforces">
 <h2>What Each ABC Enforces<a class="headerlink" href="#what-each-abc-enforces" title="Link to this heading">#</a></h2>

@@ -21,7 +21,7 @@ workflow. Each is tuned for a specific imaging scenario.
 with uniform backgrounds.
 
 **Pipeline steps:**
-GaussianBlur → EnhanceLocalContrast → MedianFilter → SobelFilter → OtsuDetector →
+GaussianBlur → EnhanceLocalContrast → MedianFilter → FocusEdgeSobel → OtsuDetector →
 MaskOpening → RemoveBorderObjects → SmallObjectRemover → MaskFill →
 GridOversizedObjectRemover → ReduceSectionsByLine → GridAligner
 
