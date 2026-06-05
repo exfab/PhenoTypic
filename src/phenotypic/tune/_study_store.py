@@ -12,6 +12,7 @@ for the concrete journal.
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 from typing import Any, Optional
 
@@ -38,6 +39,15 @@ class Trial(BaseModel):
         pruned: ``True`` when the rung ladder early-stopped this candidate.
             Distinct from ``failed``: pruned trials ran cleanly on a partial set
             and still count against the budget (failed trials do not).
+        gap: The trial's relative across-plate dispersion of the primary term —
+            a cheap instability / overfit-risk flag carried from
+            ``EvaluationResult.gap``, persisted as the nullable-float ``gap``
+            journal column. **Not** a held-out generalization gap. ``None`` when
+            the signal was unavailable (and for every legacy pre-4.5p1 trial).
+        suspicious: ``True`` when the trial matched the qc §5 under-detection
+            gaming signature; carried from ``EvaluationResult.suspicious`` and
+            persisted as the ``suspicious`` bool journal column. ``False`` for
+            every legacy (pre-4.5p1) trial.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -50,6 +60,8 @@ class Trial(BaseModel):
     objectives: Optional[dict[str, float]] = None
     failed: bool = False
     pruned: bool = False
+    gap: Optional[float] = None
+    suspicious: bool = False
 
 
 class JournalStudyStore:
@@ -130,9 +142,12 @@ class JournalStudyStore:
     #: still writes a valid parquet schema rather than a zero-column frame).
     #: ``objectives_json`` is the multi-objective sidecar column (plan §0a):
     #: ``null`` for single-objective trials, a JSON dict for multi-objective ones.
+    #: ``gap`` (nullable float) + ``suspicious`` (bool) are the 4.5p1 robust-eval
+    #: signals, appended **last** so a legacy parquet without them still loads.
     _COLUMNS = [
         "number", "score", "n_images", "failed", "pruned",
         "params_json", "terms_json", "objectives_json",
+        "gap", "suspicious",
     ]
 
     def to_dataframe(self) -> pd.DataFrame:
@@ -155,6 +170,8 @@ class JournalStudyStore:
                     if t.objectives
                     else None
                 ),
+                "gap": None if t.gap is None else float(t.gap),
+                "suspicious": bool(t.suspicious),
             }
             for t in self._trials
         ]
@@ -186,6 +203,9 @@ class JournalStudyStore:
                 failed=bool(row["failed"]),
                 # Tolerate pre-pruned-column journals (default to not-pruned).
                 pruned=bool(row.get("pruned", False)),
+                # Tolerate pre-4.5p1 journals (no gap/suspicious → neutral).
+                gap=cls._parse_optional_float(row.get("gap")),
+                suspicious=bool(row.get("suspicious", False)),
             )
             for row in df.to_dict(orient="records")
         ]
@@ -210,6 +230,28 @@ class JournalStudyStore:
         if raw is None or (isinstance(raw, float) and pd.isna(raw)):
             return None
         return json.loads(str(raw))
+
+    @staticmethod
+    def _parse_optional_float(raw: Any) -> Optional[float]:
+        """Decode a nullable-float journal cell (e.g. ``gap``) into ``float``.
+
+        Mirrors :meth:`_parse_objectives` for the 4.5p1 ``gap`` column: tolerates
+        the three back-compat shapes — a missing column (``raw`` is ``None`` via
+        ``row.get``), a ``null``/``NaN`` cell (the signal was unavailable), and a
+        real numeric value.
+
+        Args:
+            raw: The raw cell — ``None``, a pandas ``NaN``, or a number.
+
+        Returns:
+            The decoded ``float``, or ``None`` when there is no value.
+        """
+        if raw is None:
+            return None
+        value = float(raw)
+        if math.isnan(value):
+            return None
+        return value
 
 
 #: Back-compat alias: ``StudyStore`` historically named the concrete journal.
