@@ -368,14 +368,27 @@ def _submit_slurm_fleet(
     )
     n_trials = getattr(spec.strategy, "n_trials", None)
     n_workers = min(8, n_trials) if isinstance(n_trials, int) and n_trials > 0 else 4
+    # Each worker launches with the submitting process's own venv interpreter
+    # (the absolute sys.executable, shared across the cluster filesystem) — bare
+    # ``python`` on a fresh compute node would not resolve phenotypic/optuna. This
+    # reuses the forward CLI's SLURM interpreter resolution for parity.
+    from phenotypic._cli._cli_utils import get_python_command
+
+    python_command, _ = get_python_command(for_slurm=True)
+    # Workers reload the RESOLVED spec persisted to deliverables/tuning_spec.json
+    # (written above), NOT the raw input ``spec_path``: the --strategy / --n-trials
+    # / --held-out overrides live only in the resolved spec, so handing the workers
+    # the input file would silently run the original (e.g. grid) strategy on every
+    # node and the distributed Optuna study would never form.
     executor = SlurmExecutor(
         output_dir=output_dir,
-        spec_path=Path(spec_path),
+        spec_path=io.tuning_spec_path(output_dir),
         images_dir=Path(images_dir),
         study_name="tune",
         n_workers=n_workers,
         slurm_args={"slurm_partition": "batch"},
         storage_url=url,
+        python_command=python_command,
     )
     executor.run(lambda w: w, list(range(n_workers)))
     return None
