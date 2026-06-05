@@ -6,15 +6,15 @@ if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
 import numpy as np
-from pydantic import ConfigDict, Field, model_validator
+from pydantic import ConfigDict, model_validator
 from scipy.ndimage import gaussian_filter
 from skimage.feature import structure_tensor_eigenvalues
 from typing_extensions import Self
 
-from ..abc_ import ImageEnhancer
+from ..abc_ import Smoothing
 
 
-class StructureSmoothing(ImageEnhancer):
+class StructureSmoothing(Smoothing):
     """Enhance filamentous structures via anisotropic coherence-enhancing diffusion.
 
     Smooths ``detect_mat`` preferentially along coherent structures (lines,
@@ -61,9 +61,9 @@ class StructureSmoothing(ImageEnhancer):
     Consider Also:
         - :class:`LocalEdgeDenoise` for isotropic edge-preserving denoising
           of round colonies without directional features.
-        - :class:`SatoRidgeFilter` for direct ridge detection without a
+        - :class:`FocusEdgeSato` for direct ridge detection without a
           diffusion preprocessing step.
-        - :class:`MeijeringRidgeFilter` for detecting very fine neurite-like
+        - :class:`FocusEdgeMeijering` for detecting very fine neurite-like
           filaments.
 
     References:
@@ -77,15 +77,9 @@ class StructureSmoothing(ImageEnhancer):
         anisotropic diffusion and structure tensor analysis.
     """
 
-    # ``num_iter`` is the public constructor keyword; the algorithm body
-    # (``_operate``) reads it as ``self.num_iterations``. The field keeps
-    # the algorithm-facing name and accepts the public ``num_iter`` kwarg
-    # via a validation alias, so neither the call sites nor ``_operate``
-    # change. ``populate_by_name`` lets the field also be set/dumped under
-    # its own name (used by JSON round-trips of migrated pipelines).
     model_config = ConfigDict(populate_by_name=True)
 
-    num_iterations: int = Field(default=20, validation_alias="num_iter")
+    num_iter: int = 20
     sigma: float = 1.5
     rho: float | None = None
     dt: float = 0.1
@@ -104,14 +98,14 @@ class StructureSmoothing(ImageEnhancer):
             ValueError: If any diffusion parameter is outside its valid
                 range (see the class ``Args:`` block).
         """
-        if self.num_iterations < 1:
+        if self.num_iter < 1:
             raise ValueError("num_iter must be >= 1")
         if self.dt <= 0:
             raise ValueError("dt must be > 0")
         if self.dt > 0.125:
             raise ValueError(
-                "dt > 0.125 exceeds the 2D forward-Euler stability bound (1/8); "
-                "use smaller values"
+                    "dt > 0.125 exceeds the 2D forward-Euler stability bound (1/8); "
+                    "use smaller values"
             )
         if self.sigma <= 0:
             raise ValueError("sigma must be > 0")
@@ -120,8 +114,8 @@ class StructureSmoothing(ImageEnhancer):
                 raise ValueError("rho must be > 0")
             if self.rho < self.sigma:
                 raise ValueError(
-                    f"rho ({self.rho}) must be >= sigma ({self.sigma}); the "
-                    "integration scale cannot be smaller than the noise scale"
+                        f"rho ({self.rho}) must be >= sigma ({self.sigma}); the "
+                        "integration scale cannot be smaller than the noise scale"
                 )
         if not (0 < self.alpha < 1):
             raise ValueError("alpha must be in (0, 1)")
@@ -162,7 +156,7 @@ class StructureSmoothing(ImageEnhancer):
         out[ix(0)] = -1.5 * arr[ix(0)] + 2.0 * arr[ix(1)] - 0.5 * arr[ix(2)]
         # Backward boundary (acc=2): [0.5, -2.0, 1.5]
         out[ix(n - 1)] = (
-            0.5 * arr[ix(n - 3)] - 2.0 * arr[ix(n - 2)] + 1.5 * arr[ix(n - 1)]
+                0.5 * arr[ix(n - 3)] - 2.0 * arr[ix(n - 2)] + 1.5 * arr[ix(n - 1)]
         )
         return out
 
@@ -188,7 +182,7 @@ class StructureSmoothing(ImageEnhancer):
                 (l1_0 - l2_0) ** 2, self.C,
         )
 
-        for _ in range(self.num_iterations):
+        for _ in range(self.num_iter):
             # Two-scale structure tensor (Weickert IJCV 1999)
             # Gaussian derivatives at noise scale sigma
             u_r = gaussian_filter(img, sigma=self.sigma, order=[1, 0])

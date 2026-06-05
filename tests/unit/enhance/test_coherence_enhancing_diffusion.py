@@ -99,7 +99,7 @@ class TestDefaults:
 
     def test_default_values(self):
         ced = StructureSmoothing()
-        assert ced.num_iterations == 20
+        assert ced.num_iter == 20
         assert ced.sigma == 1.5
         assert ced.rho is None
         assert ced.dt == 0.1
@@ -108,9 +108,9 @@ class TestDefaults:
 
     def test_custom_values(self):
         ced = StructureSmoothing(
-            num_iter=10, sigma=2.0, rho=4.0, dt=0.05, alpha=0.01, C=75.0,
+                num_iter=10, sigma=2.0, rho=4.0, dt=0.05, alpha=0.01, C=75.0,
         )
-        assert ced.num_iterations == 10
+        assert ced.num_iter == 10
         assert ced.sigma == 2.0
         assert ced.rho == 4.0
         assert ced.dt == 0.05
@@ -180,16 +180,16 @@ class TestRhoIntegrationScale:
         image_b = Image(arr=arr.copy())
 
         ced_none = StructureSmoothing(
-            num_iter=5, sigma=1.5, rho=None,
+                num_iter=5, sigma=1.5, rho=None,
         )
         ced_equal = StructureSmoothing(
-            num_iter=5, sigma=1.5, rho=1.5,
+                num_iter=5, sigma=1.5, rho=1.5,
         )
         result_a = ced_none.apply(image_a)
         result_b = ced_equal.apply(image_b)
 
         np.testing.assert_array_equal(
-            result_a.detect_mat[:], result_b.detect_mat[:],
+                result_a.detect_mat[:], result_b.detect_mat[:],
         )
 
     def test_larger_rho_produces_different_output(self):
@@ -200,16 +200,16 @@ class TestRhoIntegrationScale:
         image_b = Image(arr=arr.copy())
 
         ced_small = StructureSmoothing(
-            num_iter=5, sigma=1.5, rho=1.5,
+                num_iter=5, sigma=1.5, rho=1.5,
         )
         ced_large = StructureSmoothing(
-            num_iter=5, sigma=1.5, rho=4.0,
+                num_iter=5, sigma=1.5, rho=4.0,
         )
         result_a = ced_small.apply(image_a)
         result_b = ced_large.apply(image_b)
 
         assert not np.array_equal(
-            result_a.detect_mat[:], result_b.detect_mat[:],
+                result_a.detect_mat[:], result_b.detect_mat[:],
         )
 
 
@@ -227,7 +227,7 @@ class TestAnisotropy:
         image = Image(arr=img)
 
         ced = StructureSmoothing(
-            num_iter=10, sigma=2.0, dt=0.1, alpha=0.001, C=50.0,
+                num_iter=10, sigma=2.0, dt=0.1, alpha=0.001, C=50.0,
         )
         result = ced.apply(image)
         result_mat = result.detect_mat[:]
@@ -303,7 +303,7 @@ class TestSerialization:
     def test_roundtrip_preserves_params(self):
         pipeline = ImagePipeline(ops=[
             StructureSmoothing(
-                num_iter=15, sigma=2.5, rho=5.0, dt=0.08, alpha=0.01, C=85.0,
+                    num_iter=15, sigma=2.5, rho=5.0, dt=0.08, alpha=0.01, C=85.0,
             ),
         ])
         json_str = pipeline.to_json()
@@ -313,7 +313,7 @@ class TestSerialization:
         assert len(ops) == 1
         ced = ops[0]
         assert isinstance(ced, StructureSmoothing)
-        assert ced.num_iterations == 15
+        assert ced.num_iter == 15
         assert ced.sigma == 2.5
         assert ced.rho == 5.0
         assert ced.dt == 0.08
@@ -326,6 +326,6 @@ class TestSerialization:
         loaded = ImagePipeline.from_json(json_str)
 
         ced = list(loaded._ops.values())[0]
-        assert ced.num_iterations == 20
+        assert ced.num_iter == 20
         assert ced.rho is None
         assert ced.C == 99.0

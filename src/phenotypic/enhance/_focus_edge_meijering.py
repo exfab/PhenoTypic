@@ -7,16 +7,16 @@ if TYPE_CHECKING:
 from pydantic import field_validator
 from skimage.filters import meijering
 
-from phenotypic.abc_ import ImageEnhancer
+from phenotypic.abc_ import FocusEdge
 
 
-class MeijeringRidgeFilter(ImageEnhancer):
+class FocusEdgeMeijering(FocusEdge):
     """Enhance fine ridge-like structures in ``detect_mat`` with the Meijering neuriteness filter.
 
     Computes the Meijering neuriteness measure from Hessian matrix eigenvalues
     to highlight elongated, thread-like structures such as delicate filaments,
     thin wrinkles, and network-like features. More selective than
-    :class:`SatoRidgeFilter` for very fine, well-separated ridges.
+    :class:`FocusEdgeSato` for very fine, well-separated ridges.
 
     For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 
@@ -47,9 +47,9 @@ class MeijeringRidgeFilter(ImageEnhancer):
           sensitive ridge detection.
 
     Consider Also:
-        - :class:`SatoRidgeFilter` for thicker, continuous tubular
+        - :class:`FocusEdgeSato` for thicker, continuous tubular
           structures with less sensitivity to parameter tuning.
-        - :class:`HessianFilter` for combined edge and ridge detection
+        - :class:`FocusEdgeHessian` for combined edge and ridge detection
           with blob sensitivity control.
         - :class:`StructureSmoothing` for enhancing directional
           structures via anisotropic smoothing before ridge detection.

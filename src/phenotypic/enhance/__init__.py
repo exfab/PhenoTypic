@@ -17,28 +17,28 @@ from ._bm3d_denoiser import BM3DDenoiser
 from ._enhance_local_contrast import EnhanceLocalContrast
 from ._structure_smoothing import StructureSmoothing
 from ._contrast_streching import ContrastStretching
-from ._frangi_vesselness import FrangiVesselness
+from ._focus_edge_frangi import FocusEdgeFrangi
 from ._gaussian_blur import GaussianBlur
-from ._hessian_filter import HessianFilter
+from ._focus_edge_hessian import FocusEdgeHessian
 from ._subtract_gaussian import SubtractGaussian
 from ._image_inverter import ImageInverter
-from ._sharpen_edge_laplace import SharpenEdgeLaplace
+from ._focus_edge_laplace import FocusEdgeLaplace
 from ._median_filter import MedianFilter
-from ._enhance_features import EnhanceFeatures
-from ._meijering_ridge_filter import MeijeringRidgeFilter
+from ._focus_edge_phase import FocusEdgePhase
+from ._focus_edge_meijering import FocusEdgeMeijering
 from ._non_local_means import NonLocalMeansDenoiser
 from ._subtract_opening import SubtractOpening
 from ._rank_median_enhancer import RankMedianEnhancer
 from ._subtract_rolling_ball import SubtractRollingBall
-from ._sato_ridge_filter import SatoRidgeFilter
-from ._sobel_filter import SobelFilter
+from ._focus_edge_sato import FocusEdgeSato
+from ._focus_edge_sobel import FocusEdgeSobel
 from ._sharpen_edge_gauss import SharpenEdgeGauss
 from ._visushrink_enhancer import VisuShrinkEnhancer
 from ._subtract_white_tophat import SubtractWhiteTophat
 from ._white_tophat_enhance import WhiteTophatEnhance
 from ._gray_opening import GrayOpening
 from ._flatten_illumination import FlattenIllumination
-from ._enhance_blobs import EnhanceBlobs
+from ._focus_blob_log import FocusBlobLoG
 from ._set_detect_mode import SetDetectMode
 
 __all__ = [
@@ -48,24 +48,24 @@ __all__ = [
     "EnhanceLocalContrast",
     "StructureSmoothing",
     "ContrastStretching",
-    "FrangiVesselness",
+    "FocusEdgeFrangi",
     "GaussianBlur",
     "SubtractGaussian",
     "GrayOpening",
-    "HessianFilter",
+    "FocusEdgeHessian",
     "FlattenIllumination",
     "ImageInverter",
-    "SharpenEdgeLaplace",
+    "FocusEdgeLaplace",
     "MedianFilter",
-    "MeijeringRidgeFilter",
-    "EnhanceBlobs",
+    "FocusEdgeMeijering",
+    "FocusBlobLoG",
     "NonLocalMeansDenoiser",
     "SubtractOpening",
-    "EnhanceFeatures",
+    "FocusEdgePhase",
     "RankMedianEnhancer",
     "SubtractRollingBall",
-    "SatoRidgeFilter",
-    "SobelFilter",
+    "FocusEdgeSato",
+    "FocusEdgeSobel",
     "SharpenEdgeGauss",
     "VisuShrinkEnhancer",
     "WhiteTophatEnhance",
