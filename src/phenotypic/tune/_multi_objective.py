@@ -16,9 +16,7 @@ from __future__ import annotations
 
 from typing import Any
 
-#: Every objective in a tuning study is normalized higher-is-better
-#: (robust-eval §5), so a multi-objective study maximizes every axis.
-_MAXIMIZE = "maximize"
+from ._strategies._optuna_support import _MAXIMIZE
 
 
 def is_multi_objective(scorer: Any) -> bool:

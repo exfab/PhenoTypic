@@ -26,6 +26,10 @@ from .._search_space import (
     SearchSpace,
 )
 from ._config import SamplerKind
+from ._optuna_support import (
+    is_multi_objective_directions,
+    study_objective_kwargs,
+)
 from ._pruning import NoOpChannel, PruningChannel
 
 if TYPE_CHECKING:  # pragma: no cover - typing only, never imports optuna at runtime
@@ -115,9 +119,7 @@ class OptunaStrategy:
         self._seed = seed
         self._storage_url = storage_url
         self._directions = list(directions) if directions is not None else None
-        self._multi_objective = self._directions is not None and len(
-            self._directions
-        ) > 1
+        self._multi_objective = is_multi_objective_directions(self._directions)
         self._rung_floor = rung_floor
         self._rung_factor = rung_factor
         self._stashed: Optional["optuna.trial.Trial"] = None
@@ -132,11 +134,8 @@ class OptunaStrategy:
             "storage": storage_url,
             "study_name": study_name,
             "load_if_exists": study_name is not None,
+            **study_objective_kwargs(self._directions),
         }
-        if self._multi_objective:
-            create_kwargs["directions"] = self._directions
-        else:
-            create_kwargs["direction"] = "maximize"
         self._study = optuna.create_study(**create_kwargs)
 
     # -- sampler selection ----------------------------------------------------

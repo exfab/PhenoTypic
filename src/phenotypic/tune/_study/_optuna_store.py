@@ -18,6 +18,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Optional
 
+from .._strategies._optuna_support import (
+    is_multi_objective_directions,
+    study_objective_kwargs,
+)
 from .._study_store import Trial
 
 if TYPE_CHECKING:  # pragma: no cover - typing only; never imports optuna at runtime
@@ -66,7 +70,7 @@ class OptunaStudyStore:
 
         self._storage_url = storage_url
         self._study_name = study_name
-        self._multi_objective = directions is not None and len(directions) > 1
+        self._multi_objective = is_multi_objective_directions(directions)
 
         if storage_url.startswith("sqlite"):
             self._enable_sqlite_wal(optuna, storage_url)
@@ -75,11 +79,8 @@ class OptunaStudyStore:
             "storage": storage_url,
             "study_name": study_name,
             "load_if_exists": True,
+            **study_objective_kwargs(directions),
         }
-        if self._multi_objective:
-            create_kwargs["directions"] = directions
-        else:
-            create_kwargs["direction"] = "maximize"
         self._study = optuna.create_study(**create_kwargs)
 
     @staticmethod
