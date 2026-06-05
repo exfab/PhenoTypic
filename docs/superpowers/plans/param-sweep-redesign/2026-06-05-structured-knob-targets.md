@@ -741,6 +741,8 @@ from ._targets import with_op_class
 
 (`ops = list(pipeline.get_ops().values())` is already in scope at the top of the function.)
 
+**Why this is key-preserving (verified):** `infer_search_space` emits only `Param` and `Nested` knobs in v1 — `_parent_presence_condition` confirms it emits **no** presence knobs and `conditional_on` is `None` (no op sets `_tune_optional`). `op_class` appears in the rendered key **only** for `Presence` (`"0.Class.__enabled__"`), never for `Param`/`Nested` (`"0.sigma"` / `"0.f[i].leaf"`). So stamping `op_class` here never changes a `.key`, and the conditional-gating ↔ presence-knob key match is untouched. If a future op sets `_tune_optional`, **do not** blindly stamp `op_class` on a `Presence` target here (it would flip its key bare→classed and desync any `conditional_on` referencing it) — stamp the presence knob and its `conditional_on` references together.
+
 - [ ] **Step 4: Run it to verify it passes**
 
 Run: `uv run pytest tests/unit/tune/test_infer_search_space.py -n 8`
@@ -939,9 +941,13 @@ def test_targets_subpackage_is_optuna_free():
     assert "optuna" not in sys.modules
 
 
-def test_top_level_all_unchanged_count():
+def test_target_symbols_absent_from_top_level():
     import phenotypic.tune as t
-    assert len(t.__all__) == 39   # the targets surface lives in the subpackage
+    # the param-reference surface lives in the targets subpackage, not the
+    # flat top-level __all__ (keeps it lean)
+    for name in ("Param", "Presence", "Nested", "KnobTarget",
+                 "TunableParam", "pipeline_targets", "parse_key"):
+        assert name not in t.__all__
 ```
 
 - [ ] **Step 2: Run it to verify it fails**
