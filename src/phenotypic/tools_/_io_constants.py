@@ -162,6 +162,17 @@ TRIALS_PARQUET: Final[str] = "trials.parquet"
 #: store's persistent, resumable sampler state when the ``tune`` extra is used.
 STUDY_DB: Final[str] = "study.db"
 
+#: The robust-eval held-out split assignment ``split.json`` written inside
+#: :data:`DIR_SPLITS` (output-dir root). A machine-state sidecar — it must
+#: survive a fresh-master rewrite and gate resume — so it lives at the root, not
+#: under :data:`DIR_DELIVERABLES`. See :func:`split_assignment_path`.
+SPLIT_ASSIGNMENT_JSON: Final[str] = "split.json"
+
+#: The robust-eval generalization report ``generalization.json`` written into
+#: :data:`DIR_DELIVERABLES` — a user-facing deliverable (the winner's held-out
+#: gap verdict). See :func:`generalization_path`.
+GENERALIZATION_JSON: Final[str] = "generalization.json"
+
 #: The Pareto-front parquet written by a **multi-objective** tune run into
 #: :data:`DIR_PARETO` (under ``deliverables/``). One row per non-dominated trial
 #: (the same schema as :data:`TRIALS_PARQUET`, with ``objectives_json`` populated).
@@ -343,6 +354,13 @@ DIR_QC: Final[str] = "qc"
 #: artifact-path helper below that previously rooted at ``<output>/`` now
 #: roots at :func:`deliverables_dir`.
 DIR_DELIVERABLES: Final[str] = "deliverables"
+
+#: ``<output>/splits/`` — the robust-eval held-out **split assignment** sidecar
+#: folder (holds :data:`SPLIT_ASSIGNMENT_JSON`). Rooted at the output dir (a
+#: sibling to :data:`TRIALS_PARQUET` / :data:`STUDY_DB`), **not** under
+#: :data:`DIR_DELIVERABLES`: the split is machine state that must survive a
+#: fresh-master rewrite and gate resume. See :func:`splits_dir`.
+DIR_SPLITS: Final[str] = "splits"
 
 #: ``<output>/deliverables/pareto/`` — the **multi-objective** sub-folder holding
 #: the Pareto front parquet (:data:`PARETO_FRONT_PARQUET`) and the per-objective
@@ -545,6 +563,55 @@ def study_db_path(output_dir: Path) -> Path:
     installed.
     """
     return Path(output_dir) / STUDY_DB
+
+
+def splits_dir(output_dir: Path) -> Path:
+    """Return ``<output>/splits/`` — the robust-eval split-assignment folder.
+
+    Rooted at the output dir (a sibling to :func:`trials_parquet_path` /
+    :func:`study_db_path`), **not** under :func:`deliverables_dir`: the held-out
+    split is machine state that must survive a fresh-master rewrite and gate
+    resume. Pure path expression; callers ``mkdir`` when they intend to write.
+
+    Args:
+        output_dir: The run output directory.
+
+    Returns:
+        ``<output_dir>/splits/``.
+    """
+    return Path(output_dir) / DIR_SPLITS
+
+
+def split_assignment_path(output_dir: Path) -> Path:
+    """Return ``<output>/splits/split.json`` — the held-out split assignment.
+
+    The persisted calibration / held-out partition (plate names + split kind +
+    dataset identity + seed entropy). Read-if-exists-else-derive on resume, so
+    a re-run reuses the original partition regardless of the new master seed.
+
+    Args:
+        output_dir: The run output directory.
+
+    Returns:
+        ``<output_dir>/splits/split.json``.
+    """
+    return splits_dir(output_dir) / SPLIT_ASSIGNMENT_JSON
+
+
+def generalization_path(output_dir: Path) -> Path:
+    """Return ``<output>/deliverables/generalization.json`` — the held-out report.
+
+    The winner's generalization verdict (calibration vs held-out score, the gap,
+    and the pass/fail margin), a user-facing deliverable. The held-out pass that
+    writes it is Phase 4.5 part 2; this helper resolves the canonical location.
+
+    Args:
+        output_dir: The run output directory.
+
+    Returns:
+        ``<output_dir>/deliverables/generalization.json``.
+    """
+    return deliverables_dir(output_dir) / GENERALIZATION_JSON
 
 
 def pareto_dir(output_dir: Path) -> Path:
