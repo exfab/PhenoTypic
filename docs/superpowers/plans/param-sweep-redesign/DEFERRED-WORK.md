@@ -85,6 +85,33 @@
 
 ---
 
+## Postgres connection ergonomics — service file / `PG*` env (a future version)
+
+**Decision (2026-06-05):** *Ship the explicit password-less `--storage-url`; defer the
+"don't retype the address" conveniences to a future version.*
+
+- **Why the address is required today:** `--storage-url` is the connection **target** (driver +
+  host + port + **dbname** + user); `~/.pgpass` is **password-only**, keyed by `host:port:db:user`
+  (and our entries use `db=*`, so it doesn't even pin a database). **Verified live:** an empty
+  conninfo with no target defaults to the local unix socket and fails — `.pgpass` alone gives libpq
+  no server to reach. So the target must come from the URL (or `PG*` env, or a service file). This is
+  correct + standard; not a flaw.
+- **Future ergonomics (no core code needed — standard libpq, already flows through our stack):**
+  - **`~/.pg_service.conf`** named service: define `[tune]` (host/port/dbname/user) once, then
+    `--storage-url "postgresql+psycopg://?service=tune"`. **Verified 2026-06-05** that this connects
+    end-to-end through `psycopg → SQLAlchemy → optuna RDBStorage` with **zero code change** (target
+    from the service file, password from `~/.pgpass`, nothing in argv/history/repo).
+  - **`PG*` env** (`PGHOST`/`PGPORT`/`PGDATABASE`/`PGUSER`) + a bare `postgresql+psycopg://` URL —
+    also verified (empty conninfo + `PG*` env connects, password from `~/.pgpass`).
+- **Deferred (future version):** (1) **document** all three forms in the Phase 6
+  `tune_distributed_hpcc.md` (full password-less URL · `?service=tune` · `PG*` env), with `.pgpass`
+  for the secret; (2) *optional* CLI sugar — e.g. a `--pg-service NAME` flag that builds the
+  `?service=NAME` URL — so a user never types host/port/db at all.
+- **Unblock when:** a CLI-ergonomics polish pass, or users ask to stop retyping the address. Until
+  then `?service=…` already works for anyone who wants it.
+
+---
+
 ## Phase 4.5 robust-eval — held-out generalization (deferrals + one deviation)
 
 > Shipped (4.5 part 1 + part 2): the reproducible calibration/held-out **split**
