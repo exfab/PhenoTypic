@@ -86,6 +86,16 @@ class EvaluationResult(BaseModel):
         pruned: ``True`` when the rung ladder early-stopped this candidate via
             the pruning channel. Distinct from ``failed``: a pruned trial ran
             cleanly on a partial set and carries its partial aggregate.
+        gap: The candidate's relative across-plate dispersion of the primary
+            term — a cheap instability / overfit-risk flag (the relative IQR of
+            the per-image primary-term scores). This is **not** a held-out
+            generalization gap (that is Phase 4.5 part 2). ``None`` when the
+            signal is unavailable — too few images to estimate dispersion, or a
+            failed/pruned candidate.
+        suspicious: ``True`` when the candidate matches the qc §5 "great score on
+            under-detection" gaming signature (a high ``score`` paired with a
+            low ``terms["Count"]``). A heuristic flag for downstream review, not
+            a hard rejection.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -96,6 +106,8 @@ class EvaluationResult(BaseModel):
     objectives: Optional[dict[str, float]] = None
     failed: bool = False
     pruned: bool = False
+    gap: Optional[float] = None
+    suspicious: bool = False
 
 
 class Evaluator(BaseModel):
