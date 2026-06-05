@@ -130,6 +130,10 @@ class SearchSpace(BaseModel):
         """Return the knob keys in declaration order."""
         return [k.key for k in self.knobs]
 
+    def targets(self) -> list[KnobTarget]:
+        """Return the knob targets in declaration order."""
+        return [k.target for k in self.knobs]
+
     def domain(self, key: str) -> Domain:
         """Return the domain for ``key``; raise ``KeyError`` if absent."""
         for k in self.knobs:

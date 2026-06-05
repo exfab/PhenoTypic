@@ -87,3 +87,13 @@ def test_knob_serializes_target_structurally_and_loads_legacy_string():
     again = Knob.model_validate({"key": "0.GaussianBlur.__enabled__",
                                  "domain": {"kind": "categorical", "choices": [True, False]}})
     assert again.key == "0.GaussianBlur.__enabled__"
+
+
+def test_search_space_targets_and_keys():
+    space = SearchSpace(knobs=(
+        Knob(target=Param(op=0, field="sigma"), domain=FloatRange(low=0.5, high=8.0)),
+        Knob(key="1.ignore_zeros", domain=Categorical(choices=(True, False))),
+    ))
+    assert space.keys() == ["0.sigma", "1.ignore_zeros"]      # via .key property
+    assert [t.kind for t in space.targets()] == ["param", "param"]
+    assert space.domain("0.sigma").high == 8.0
