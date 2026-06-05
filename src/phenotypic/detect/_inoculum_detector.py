@@ -18,7 +18,7 @@ from phenotypic.detect._round_peaks_detector import RoundPeaksDetector
 from phenotypic.enhance._contrast_streching import ContrastStretching
 from phenotypic.enhance._gray_opening import GrayOpening
 from phenotypic.enhance._median_filter import MedianFilter
-from phenotypic.enhance._enhance_blobs import EnhanceBlobs
+from phenotypic.enhance._focus_blob_log import FocusBlobLoG
 from phenotypic.enhance._subtract_gaussian import SubtractGaussian
 from phenotypic.refine._extract_colony_core import ExtractColonyCore
 from phenotypic.refine._keep_section_largest import KeepSectionLargest
@@ -204,12 +204,12 @@ class InoculumDetector(ObjectDetector):
         self._log_memory_usage("MedianFilter")
 
         # --- Step 4: Multi-scale LoG blob enhancement ---
-        EnhanceBlobs(
+        FocusBlobLoG(
                 min_radius=log_min_radius,
                 max_radius=log_max_radius,
                 num_scales=15,
         ).apply(work, inplace=True)
-        self._log_memory_usage("EnhanceBlobs")
+        self._log_memory_usage("FocusBlobLoG")
 
         # --- Step 5: Contrast stretching ---
         ContrastStretching().apply(work, inplace=True)

@@ -7,10 +7,10 @@ if TYPE_CHECKING:
 
 import numpy as np
 
-from ..abc_ import ImageEnhancer
+from ..abc_ import ContrastAdjustment
 
 
-class ImageInverter(ImageEnhancer):
+class ImageInverter(ContrastAdjustment):
     """Invert ``detect_mat`` pixel intensities (negate brightness).
 
     Reverses the brightness scale so dark regions become bright and vice

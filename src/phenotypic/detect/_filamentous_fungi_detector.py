@@ -9,7 +9,7 @@ from typing_extensions import Self
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
     from phenotypic._core._grid_image import GridImage
-    from phenotypic.enhance._enhance_features import _PhaseCong3Result
+    from phenotypic.enhance._focus_edge_phase import _PhaseCong3Result
 
 from scipy.ndimage import center_of_mass, label as ndi_label
 from skimage.filters import threshold_otsu
@@ -21,7 +21,7 @@ from phenotypic import ImagePipeline
 from phenotypic.enhance import (
     SubtractGaussian,
     ContrastStretching,
-    EnhanceFeatures,
+    FocusEdgePhase,
 )
 from phenotypic.tools_.typing_ import OperationField
 
@@ -332,7 +332,7 @@ class FilamentousFungiDetector(GridObjectDetector):
         del enhanced_work  # no longer valid after destructive call
 
         # Mask B: PCT branches
-        pct_result = EnhanceFeatures(
+        pct_result = FocusEdgePhase(
                 n_orient=self.pct_n_orient,
                 min_wavelength=self.pct_min_wavelength,
                 k=self.edge_noise_threshold,

@@ -6,10 +6,10 @@ if TYPE_CHECKING:
     from phenotypic._core._image import Image
 from skimage.filters import gaussian
 
-from ..abc_ import ImageEnhancer
+from ..abc_ import Smoothing
 
 
-class GaussianBlur(ImageEnhancer):
+class GaussianBlur(Smoothing):
     """Smooth noise in detect_mat using isotropic Gaussian convolution.
 
     Reduces high-frequency noise, scanner artifacts, and minor agar texture

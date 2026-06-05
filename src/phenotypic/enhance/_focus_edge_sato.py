@@ -8,10 +8,10 @@ import numpy as np
 from pydantic import field_validator
 from skimage.feature import hessian_matrix, hessian_matrix_eigvals
 
-from phenotypic.abc_ import ImageEnhancer
+from phenotypic.abc_ import FocusEdge
 
 
-class SatoRidgeFilter(ImageEnhancer):
+class FocusEdgeSato(FocusEdge):
     """Enhance tubular and ridge-like structures in ``detect_mat`` with the Sato tubeness filter.
 
     Computes the Sato tubeness measure from Hessian matrix eigenvalues to
@@ -46,9 +46,9 @@ class SatoRidgeFilter(ImageEnhancer):
         - Organisms with branching or root-like colony morphologies.
 
     Consider Also:
-        - :class:`MeijeringRidgeFilter` for very fine neurite-like filaments
+        - :class:`FocusEdgeMeijering` for very fine neurite-like filaments
           where higher selectivity is needed.
-        - :class:`HessianFilter` for combined edge and ridge detection with
+        - :class:`FocusEdgeHessian` for combined edge and ridge detection with
           blob sensitivity control.
         - :class:`StructureSmoothing` for anisotropic smoothing
           that enhances directional structures before ridge detection.

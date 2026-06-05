@@ -8,10 +8,10 @@ if TYPE_CHECKING:
 import numpy as np
 from skimage.morphology import white_tophat
 
-from phenotypic.abc_ import ImageEnhancer
+from phenotypic.abc_ import MorphologicalFiltering
 
 
-class SubtractWhiteTophat(ImageEnhancer):
+class SubtractWhiteTophat(MorphologicalFiltering):
     """Suppress small bright artifacts in ``detect_mat`` by subtracting the white top-hat.
 
     Computes the white top-hat (original minus morphological opening) and
