@@ -28,16 +28,13 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from typing import Any, Literal, Optional, TypeAlias
 
+from ._aggregate_math import _relative
 from ._split import SplitKind
 
 #: The generalization estimate's provenance — a real held-out pass
 #: (``"held_out"``) or the data-poor calibration-stability proxy
 #: (``"calibration_stability"``). A closed value set, reused as a typed field.
 Estimate: TypeAlias = Literal["held_out", "calibration_stability"]
-
-#: Denominator floor for the relative-drop ratio — guards a near-zero
-#: calibration score (matching the per-trial-gap ``_GAP_EPS`` convention).
-_GAP_EPS = 1e-12
 
 #: The within-group hold-out caveat note (a weaker, within-group guarantee).
 _WITHIN_GROUP_NOTE = (
@@ -101,7 +98,7 @@ def compute_generalization_gap(
         False
     """
     absolute_drop = float(cal_score) - float(heldout_score)
-    relative_drop = absolute_drop / max(abs(float(cal_score)), _GAP_EPS)
+    relative_drop = _relative(absolute_drop, float(cal_score))
     flagged = (relative_drop > rel_margin) and (absolute_drop > abs_margin)
     return relative_drop, absolute_drop, flagged
 

@@ -10,11 +10,11 @@ from __future__ import annotations
 import math
 from typing import Any, Mapping, Optional
 
-import numpy as np
 from pydantic import BaseModel, ConfigDict
 
 from .._scoring._scorer import Scorer, project_objectives_to_scalar
 from .._strategies._pruning import NoOpChannel, PruningChannel
+from ._aggregate_math import _median_iqr, _relative
 from ._builder import build_pipeline
 
 #: The worst possible per-image term score (higher-is-better objective floor).
@@ -61,14 +61,8 @@ def _robust_aggregate(values: list[float], stability_weight: float) -> float:
         The stability-penalized central tendency. For a single value the IQR is
         ``0`` and the result is that value.
     """
-    arr = np.asarray(values, dtype=float)
-    median = float(np.median(arr))
-    q75, q25 = np.percentile(arr, [75, 25])
-    return median - stability_weight * float(q75 - q25)
-
-
-#: Denominator floor for the relative-IQR ``gap`` — guards a near-zero median.
-_GAP_EPS = 1e-12
+    median, iqr = _median_iqr(values)
+    return median - stability_weight * iqr
 
 
 def _per_trial_dispersion(
@@ -103,10 +97,8 @@ def _per_trial_dispersion(
         return 0.0
     if n < min_n:
         return None
-    arr = np.asarray(values, dtype=float)
-    median = float(np.median(arr))
-    q75, q25 = np.percentile(arr, [75, 25])
-    return float(q75 - q25) / max(abs(median), _GAP_EPS)
+    median, iqr = _median_iqr(values)
+    return _relative(iqr, median)
 
 
 def _is_suspicious(
