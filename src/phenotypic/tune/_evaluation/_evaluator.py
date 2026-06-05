@@ -104,7 +104,6 @@ def _per_trial_dispersion(
 def _is_suspicious(
     score: float,
     terms: Mapping[str, float],
-    n_images: int,
     *,
     score_floor: float,
     count_floor: float,
@@ -121,8 +120,6 @@ def _is_suspicious(
     Args:
         score: The finalized scalar objective (higher = better).
         terms: The robust-aggregated per-term scores; ``terms["Count"]`` is read.
-        n_images: The number of images evaluated (unused; accepted for a uniform
-            call site alongside the gap helper).
         score_floor: The minimum ``score`` for the "great score" half.
         count_floor: The maximum ``terms["Count"]`` for the "under-detection" half.
 
@@ -333,7 +330,6 @@ class Evaluator(BaseModel):
         suspicious = _is_suspicious(
             final_score,
             aggregated,
-            len(ordered),
             score_floor=self.suspicious_score_floor,
             count_floor=self.suspicious_count_floor,
         )

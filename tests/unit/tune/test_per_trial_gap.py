@@ -128,7 +128,7 @@ def test_is_suspicious_high_score_low_count():
 
     # High score paired with a low Count → the qc §5 under-detection signature.
     assert _is_suspicious(
-        0.95, {"Count": 0.2}, 5, score_floor=0.7, count_floor=0.3
+        0.95, {"Count": 0.2}, score_floor=0.7, count_floor=0.3
     ) is True
 
 
@@ -137,7 +137,7 @@ def test_is_suspicious_faithful_high_count():
 
     # High score with a faithful (high) Count is NOT suspicious.
     assert _is_suspicious(
-        0.95, {"Count": 0.9}, 5, score_floor=0.7, count_floor=0.3
+        0.95, {"Count": 0.9}, score_floor=0.7, count_floor=0.3
     ) is False
 
 
@@ -146,15 +146,15 @@ def test_is_suspicious_respects_thresholds():
 
     # Score below the floor → not flagged even with a low Count.
     assert _is_suspicious(
-        0.5, {"Count": 0.1}, 5, score_floor=0.7, count_floor=0.3
+        0.5, {"Count": 0.1}, score_floor=0.7, count_floor=0.3
     ) is False
     # Count above the floor → not flagged even with a high score.
     assert _is_suspicious(
-        0.99, {"Count": 0.31}, 5, score_floor=0.7, count_floor=0.3
+        0.99, {"Count": 0.31}, score_floor=0.7, count_floor=0.3
     ) is False
     # Exactly on both boundaries (>= score_floor AND <= count_floor) → flagged.
     assert _is_suspicious(
-        0.7, {"Count": 0.3}, 5, score_floor=0.7, count_floor=0.3
+        0.7, {"Count": 0.3}, score_floor=0.7, count_floor=0.3
     ) is True
 
 
@@ -162,7 +162,7 @@ def test_is_suspicious_missing_count_defaults_faithful():
     from phenotypic.tune._evaluation._evaluator import _is_suspicious
 
     # No Count term → default 1.0 (faithful) → never suspicious.
-    assert _is_suspicious(0.99, {}, 5, score_floor=0.7, count_floor=0.3) is False
+    assert _is_suspicious(0.99, {}, score_floor=0.7, count_floor=0.3) is False
 
 
 class _GamingScorer(Scorer):
