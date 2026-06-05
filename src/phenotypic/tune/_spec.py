@@ -18,16 +18,9 @@ from phenotypic.tools_.typing_ import polymorphic_field
 
 from ._evaluation import Evaluator, HeldOutConfig
 from ._multi_objective import reject_grid_random_multi_objective
-from ._scoring import Scorer
+from ._scoring import ScorerField
 from ._search_space import SearchSpace
 from ._strategies._config import StrategyConfig, StrategyConfigUnion
-
-#: A ``Scorer``-valued field that round-trips any subclass via the registry
-#: (Phase-0 ``polymorphic_field`` + ``_find_class_in_phenotypic`` += ``phenotypic.tune``).
-#: Typed ``TypeAlias`` so mypy accepts the ``Annotated`` core (erased to ``Any``)
-#: as a field annotation — the ``AfterValidator`` restores the runtime guard.
-ScorerField: TypeAlias = Any  # = polymorphic_field(base=Scorer); see below
-ScorerField = polymorphic_field(base=Scorer)  # type: ignore[misc]
 
 #: A ``StrategyConfig``-valued field that round-trips **any** subclass via the
 #: class registry — Phase-1's built-in ``GridConfig``/``RandomConfig`` *and* the

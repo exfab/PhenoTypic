@@ -11,10 +11,12 @@ that it cannot run (e.g. missing metadata) so the engine can degrade gracefully.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Mapping
+from typing import Any, Mapping, TypeAlias
 
 import pandas as pd
 from pydantic import BaseModel, ConfigDict
+
+from phenotypic.tools_.typing_ import polymorphic_field
 
 
 class Scorer(BaseModel, ABC):
@@ -80,3 +82,15 @@ class Scorer(BaseModel, ABC):
         if not values:
             return 0.0
         return float(sum(values) / len(values))
+
+
+#: A ``Scorer``-valued field that round-trips any subclass via the ``phenotypic``
+#: class registry (Phase-0 ``polymorphic_field`` + ``_find_class_in_phenotypic``
+#: += ``phenotypic.tune``). Defined here — beside the ``Scorer`` base it widens,
+#: the lowest module in the ``_scoring`` import graph — so both ``CompositeScorer``
+#: (``_composite``) and ``TuningSpec`` (``_spec``) consume one canonical field
+#: without either re-building it. Typed ``TypeAlias`` so mypy accepts the
+#: ``Annotated`` core (erased to ``Any``) as a field annotation — the
+#: ``AfterValidator`` restores the runtime guard.
+ScorerField: TypeAlias = Any  # = polymorphic_field(base=Scorer); see below
+ScorerField = polymorphic_field(base=Scorer)  # type: ignore[misc]

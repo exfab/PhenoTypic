@@ -29,23 +29,12 @@ construction rather than recursing forever at score time.
 from __future__ import annotations
 
 import math
-from typing import Any, Final, Mapping, Optional, TypeAlias
+from typing import Any, Final, Mapping, Optional
 
 import pandas as pd
 from pydantic import ConfigDict, model_validator
 
-from phenotypic.tools_.typing_ import polymorphic_field
-
-from ._scorer import Scorer
-
-#: A ``Scorer``-valued field that round-trips any subclass via the ``phenotypic``
-#: class registry — defined here (not imported from ``.._spec``) so ``_composite``
-#: stays *below* ``_spec`` in the import graph and the ``_scoring`` package can
-#: re-export ``CompositeScorer`` without dragging in the evaluation/strategy
-#: stack. Identical machinery to ``_spec.ScorerField`` (same ``polymorphic_field``
-#: base), so a child round-trips the same way through either field.
-ScorerField: TypeAlias = Any  # = polymorphic_field(base=Scorer); see below
-ScorerField = polymorphic_field(base=Scorer)  # type: ignore[misc]
+from ._scorer import Scorer, ScorerField
 
 #: The per-child handle prefix: child ``i`` owns the ``"s{i}."`` term namespace,
 #: so collisions across children are impossible and ``finalize`` can re-group
