@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import os
 from abc import abstractmethod
-from typing import Annotated, Any, Literal, Optional, TypeAlias, Union
+from typing import Annotated, Any, Literal, Optional, TypeAlias, Union, get_args
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -27,6 +27,16 @@ StrategyKind = Literal["grid", "random"]
 #: low-dim expensive-eval Gaussian-process sampler; ``"nsga2"`` the
 #: multi-objective genetic sampler (auto-selected for a multi-objective study).
 SamplerKind: TypeAlias = Literal["tpe", "cmaes", "gp", "nsga2"]
+
+#: The :data:`SamplerKind` roster as a runtime ``frozenset`` — the single source
+#: the CLI's "is this strategy name an Optuna sampler?" test reads (so the roster
+#: lives once, beside the ``Literal`` it mirrors).
+OPTUNA_SAMPLERS: frozenset[str] = frozenset(get_args(SamplerKind))
+
+#: The full ``--strategy`` choice tuple: the homegrown ``grid``/``random`` plus
+#: every Optuna sampler, derived from :data:`SamplerKind` so the CLI choices and
+#: the sampler roster cannot drift apart.
+STRATEGY_CHOICES: tuple[str, ...] = ("grid", "random", *get_args(SamplerKind))
 
 #: Environment variable naming the Optuna storage URL when ``OptunaConfig`` is
 #: built with ``storage_url=None`` (e.g. a SLURM array exporting a shared

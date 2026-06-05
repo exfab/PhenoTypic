@@ -39,6 +39,7 @@ from .._screening import compute_param_importance
 from .._screening_freeze import ScreeningConfig, ScreeningController
 from .._spec import TuningSpec
 from .._strategies._config import (
+    OPTUNA_SAMPLERS,
     PHENOTYPIC_TUNE_STORAGE_URL_ENV,
     GridConfig,
     OptunaConfig,
@@ -49,10 +50,6 @@ from .._study._protocol import StudyStore
 from .._study_store import JournalStudyStore, Trial
 
 _IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".h5"}
-
-#: Strategy names that map onto an Optuna sampler (an Optuna study backend); the
-#: remaining names (``grid`` / ``random``) use the homegrown journal backend.
-_OPTUNA_SAMPLERS = frozenset({"tpe", "cmaes", "gp", "nsga2"})
 
 
 def _load_images(input_dir: Path) -> list:
@@ -117,7 +114,7 @@ def resolve_strategy(
         return GridConfig()
     if name == "random":
         return RandomConfig(n_trials=n_trials if n_trials is not None else 50)
-    if name in _OPTUNA_SAMPLERS:
+    if name in OPTUNA_SAMPLERS:
         # Fail fast + actionable when the extra is missing, before constructing a
         # config the engine could not build.
         from .._strategies import _optuna_support

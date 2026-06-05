@@ -22,7 +22,7 @@ from typing import Optional, Sequence
 from phenotypic import ImagePipeline
 
 from ._spec import TuningSpec
-from ._strategies._config import PHENOTYPIC_TUNE_STORAGE_URL_ENV
+from ._strategies._config import PHENOTYPIC_TUNE_STORAGE_URL_ENV, STRATEGY_CHOICES
 from ._tune_cli._auto_space import _render_review_table, run_auto_space
 from ._tune_cli._run import _load_images, run_tuning
 
@@ -50,7 +50,7 @@ def _build_parser() -> argparse.ArgumentParser:
     run_p.add_argument("-o", "--output", default=None, help="output directory")
     run_p.add_argument(
         "--strategy",
-        choices=("grid", "random", "tpe", "cmaes", "gp", "nsga2"),
+        choices=STRATEGY_CHOICES,
         default=None,
         help=(
             "override the spec's strategy: grid/random use the built-in configs; "

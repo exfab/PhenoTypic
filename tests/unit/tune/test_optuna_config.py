@@ -7,10 +7,24 @@ Construction + dump must stay Optuna-free (the lazy-import boundary): only
 from __future__ import annotations
 
 import sys
+from typing import get_args
 
 import pytest
 
 from phenotypic.tune import OptunaConfig
+
+
+def test_optuna_samplers_roster_matches_sampler_kind_literal():
+    # The runtime ``OPTUNA_SAMPLERS`` frozenset and the ``STRATEGY_CHOICES`` CLI
+    # tuple are derived from ``SamplerKind`` — assert they cannot drift apart.
+    from phenotypic.tune._strategies._config import (
+        OPTUNA_SAMPLERS,
+        STRATEGY_CHOICES,
+        SamplerKind,
+    )
+
+    assert set(get_args(SamplerKind)) == OPTUNA_SAMPLERS
+    assert STRATEGY_CHOICES == ("grid", "random", *get_args(SamplerKind))
 
 
 def test_kind_and_defaults():
