@@ -9,7 +9,7 @@ from __future__ import annotations
 import itertools
 from typing import Any
 
-from .._search_space import Categorical, Domain, Fixed, IntRange, Knob, SearchSpace
+from .._search_space import Categorical, Domain, Fixed, IntRange, SearchSpace
 
 
 def grid_values(domain: Domain) -> list[Any]:
@@ -26,12 +26,6 @@ def grid_values(domain: Domain) -> list[Any]:
     )
 
 
-def _is_active(knob: Knob, chosen: dict[str, Any]) -> bool:
-    if knob.conditional_on is None:
-        return True
-    return all(chosen.get(pkey) == pval for pkey, pval in knob.conditional_on)
-
-
 def enumerate_grid(space: SearchSpace) -> list[dict[str, Any]]:
     """All param dicts in the conditional Cartesian product.
 
@@ -46,7 +40,7 @@ def enumerate_grid(space: SearchSpace) -> list[dict[str, Any]]:
     root_values = [grid_values(k.domain) for k in roots]
     for root_combo in itertools.product(*root_values):
         base = {k.key: v for k, v in zip(roots, root_combo)}
-        active = [k for k in conditionals if _is_active(k, base)]
+        active = [k for k in conditionals if k.is_active(base)]
         if not active:
             combos.append(dict(base))
             continue

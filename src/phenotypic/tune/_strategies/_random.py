@@ -57,9 +57,7 @@ class RandomStrategy:
         chosen: dict[str, Any] = {}
         # Sample knobs in order; a conditional knob is sampled only if active.
         for knob in self._space.knobs:
-            if knob.conditional_on is not None and not all(
-                chosen.get(pk) == pv for pk, pv in knob.conditional_on
-            ):
+            if not knob.is_active(chosen):
                 continue
             chosen[knob.key] = self._sample_domain(knob.domain)
         self._count += 1

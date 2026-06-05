@@ -1,7 +1,7 @@
 """The optimizer-facing search space: knobs + their domains."""
 from __future__ import annotations
 
-from typing import Any, Iterator, Literal, Optional
+from typing import Any, Iterator, Literal, Mapping, Optional
 
 from pydantic import BaseModel, ConfigDict
 
@@ -53,6 +53,26 @@ class Knob(BaseModel):
     source: KnobSource = "manual"
     needs_review: bool = False
     description: str = ""
+
+    def is_active(self, chosen: Mapping[str, Any]) -> bool:
+        """Whether this knob's parent presence conditions hold in ``chosen``.
+
+        An unconditional knob (``conditional_on is None``) is always active; a
+        conditional knob is active only when **every** ``(parent_key, value)``
+        pair in :attr:`conditional_on` matches what was already chosen this trial
+        (define-by-run conditional nesting). The single predicate every strategy
+        (grid / random / Optuna) gates conditional knobs by.
+
+        Args:
+            chosen: The parameter values already assigned this trial
+                (``{key: value}``); a missing parent key never matches.
+
+        Returns:
+            ``True`` if the knob should be assigned given ``chosen``.
+        """
+        if self.conditional_on is None:
+            return True
+        return all(chosen.get(pkey) == pval for pkey, pval in self.conditional_on)
 
 
 class SearchSpace(BaseModel):

@@ -197,9 +197,7 @@ class OptunaStrategy:
         """
         chosen: dict[str, Any] = {}
         for knob in self._space.knobs:
-            if knob.conditional_on is not None and not all(
-                chosen.get(pk) == pv for pk, pv in knob.conditional_on
-            ):
+            if not knob.is_active(chosen):
                 continue
             chosen[knob.key] = self._suggest_domain(trial, knob.key, knob.domain)
         return chosen
