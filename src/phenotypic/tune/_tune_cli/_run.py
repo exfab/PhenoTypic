@@ -24,6 +24,13 @@ from phenotypic._execution._slurm import SlurmExecutor
 from phenotypic.tools_ import _io_constants as io
 
 from .._engine import TuningEngine
+from .._evaluation import (
+    Split,
+    _dataset_identity,
+    infer_group_key,
+    resolve_split,
+    run_held_out,
+)
 from .._multi_objective import (
     objective_directions,
     reject_grid_random_multi_objective,
@@ -256,12 +263,21 @@ def run_tuning(
         directions=directions,
     )
 
+    # Robust-eval held-out split (4.5p2): resolve (read-if-exists-else-derive)
+    # the calibration / held-out partition, then run the search on the
+    # calibration plates ONLY — the held-out plates are reserved for the
+    # report-only generalization pass and never touch the optimizer. The split
+    # lives in the run layer; the engine stays a pure optimizer (RESOLVED design).
+    split, images_by_name, cal_images = _resolve_calibration_images(
+        resolved_spec, images, output_dir
+    )
+
     if screen:
-        best = _run_screened(resolved_spec, images, store)
+        best = _run_screened(resolved_spec, cal_images, store)
         winner_pipeline = _best_pipeline(resolved_spec, store)
     else:
         engine = TuningEngine(resolved_spec, store=store)
-        best = engine.optimize(images)
+        best = engine.optimize(cal_images)
         winner_pipeline = engine.best_pipeline()
 
     _finalize_outputs(store, trials_path, output_dir, winner_pipeline)
@@ -270,6 +286,10 @@ def run_tuning(
     # knee; a single-objective run's empty front makes this a no-op (no pareto/
     # dir — the back-compat lock, plan §0b).
     _finalize_pareto_outputs(store, resolved_spec, output_dir)
+    # Report-only held-out generalization verdict → deliverables/generalization.json.
+    _finalize_generalization(
+        store, resolved_spec, output_dir, split, images, images_by_name
+    )
     return best
 
 
@@ -340,6 +360,90 @@ def _submit_slurm_fleet(
     )
     executor.run(lambda w: w, list(range(n_workers)))
     return None
+
+
+def _resolve_calibration_images(
+    spec: TuningSpec, images: list, output_dir: Path
+) -> tuple[Split, dict[str, Any], list]:
+    """Resolve the held-out split and the calibration-only search set.
+
+    Reads-if-exists-else-derives the persisted split (so resume reuses the
+    original partition regardless of the new master seed), then partitions the
+    loaded plates by **name-membership** (RESOLVED design): a held-out plate is
+    one whose ``name`` is in ``split.held_out``; calibration is everything else,
+    so a NEW plate present in neither list falls into calibration (never
+    silently held out). The master seed is the strategy's ``seed`` (grid/random),
+    and the group key is the explicit ``held_out.group_key`` or, when unset, the
+    count scorer's inferred ``groupby[0]`` (CLI flag > spec value > inference is
+    enforced upstream when the spec's ``held_out`` is overridden).
+
+    Args:
+        spec: The resolved tuning spec (``strategy.seed`` + ``held_out`` policy +
+            ``scorer`` for group-key inference).
+        images: The loaded plates.
+        output_dir: The run directory (where ``splits/split.json`` lives).
+
+    Returns:
+        ``(split, images_by_name, calibration_images)`` — the resolved split, the
+        ``{name: image}`` index of the loaded plates, and the calibration subset
+        the search runs on.
+    """
+    held_out = spec.held_out
+    master_seed = int(getattr(spec.strategy, "seed", 0) or 0)
+    group_key = held_out.group_key or infer_group_key(spec.scorer)
+    split = resolve_split(
+        output_dir,
+        images,
+        master_seed=master_seed,
+        group_key=group_key,
+        held_out_fraction=held_out.held_out_fraction,
+        min_heldout_plates=held_out.min_heldout_plates,
+    )
+    images_by_name = {im.name: im for im in images}
+    held_out_names = set(split.held_out)
+    # Calibration = every loaded plate NOT in the held-out list (a new plate,
+    # absent from both lists, falls here rather than being silently reserved).
+    cal_images = [im for im in images if im.name not in held_out_names]
+    return split, images_by_name, cal_images
+
+
+def _finalize_generalization(
+    store: StudyStore,
+    spec: TuningSpec,
+    output_dir: Path,
+    split: Split,
+    images: list,
+    images_by_name: dict[str, Any],
+) -> None:
+    """Run the report-only held-out pass on the winner → ``generalization.json``.
+
+    Re-evaluates ``store.best()`` on the held-out plates (the 3-tier verdict by
+    ``split.kind``) and writes ``deliverables/generalization.json``. A run with no
+    successful trial (no winner) skips the report. The dataset-changed flag is
+    resolved here by comparing the current :func:`_dataset_identity` of the loaded
+    plates against the persisted ``split.dataset_identity``.
+
+    Args:
+        store: The finished study store (its ``best()`` is the winner).
+        spec: The resolved tuning spec (its ``evaluator`` runs the held-out pass).
+        output_dir: The run directory.
+        split: The resolved held-out split.
+        images: The loaded plates (for the current dataset identity).
+        images_by_name: ``{name: image}`` of the loaded plates.
+    """
+    winner = store.best()
+    if winner is None:
+        return  # no successful trial → no generalization verdict
+    report = run_held_out(
+        spec,
+        winner,
+        split,
+        images_by_name,
+        current_identity=_dataset_identity(images),
+    )
+    io.generalization_path(output_dir).write_text(
+        json.dumps(report.to_dict(), indent=2)
+    )
 
 
 def _finalize_outputs(
