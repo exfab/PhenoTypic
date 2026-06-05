@@ -45,6 +45,7 @@ from phenotypic._cli._dashboard._manifest_builder import (
 from phenotypic._cli._dashboard import generate_dashboard
 from phenotypic._cli._cli_sentinel_scripts import generate_sentinel_script
 from phenotypic.tools_ import analysis_html_path, dashboard_html_path
+from phenotypic.tools_ import progress_dir as _progress_dir
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -571,6 +572,28 @@ class TestDashboard:
         assert "showFetchError" in html
         assert "clearFetchError" in html
         assert "fetchErrors" in html
+
+    def test_logo_embedded_as_data_uri(self, tmp_dir):
+        """The header logo is read from phenotypic/_assets/logos and
+        base64-embedded; an empty data URI would mean the asset was not found.
+        """
+        generate_dashboard(tmp_dir)
+        html = dashboard_html_path(tmp_dir).read_text()
+        assert "data:image/png;base64," in html
+
+    def test_js_sidecars_written_from_assets_vendor(self, tmp_dir):
+        """plotly.min.js / hyparquet.min.js are copied from
+        phenotypic/_assets/vendor into the run's progress/ dir. This is the
+        end-to-end guard for the relocated vendor assets (and the wheel
+        packaging bug they previously triggered).
+        """
+        generate_dashboard(tmp_dir)
+        prog = _progress_dir(tmp_dir)  # run's progress/ dir under .phenotypic/
+        plotly = prog / "plotly.min.js"
+        hyparquet = prog / "hyparquet.min.js"
+        assert plotly.exists() and hyparquet.exists()
+        # Plotly is multi-MB; a truncated/missing copy would be tiny.
+        assert plotly.stat().st_size > 1_000_000
 
 
 # ──────────────────────────────────────────────────────────────────────

@@ -10,9 +10,9 @@ from __future__ import annotations
 
 import base64
 import logging
-from importlib.resources import files
 from pathlib import Path
 
+from phenotypic._assets import asset_bytes
 from phenotypic.tools_.register import AnalysisPluginRegistry
 from phenotypic.tools_ import dashboard_html_path, analysis_html_path
 from phenotypic.tools_.typing_ import ExecutionMode
@@ -148,8 +148,7 @@ def _write_js_sidecar(output_dir: Path, filename: str, label: str) -> None:
     prog_dir.mkdir(parents=True, exist_ok=True)
     dest = prog_dir / filename
     try:
-        src = files("phenotypic._cli._dashboard").joinpath("_assets", filename)
-        src_data = src.read_bytes()
+        src_data = asset_bytes(f"vendor/{filename}")
         if dest.exists() and dest.stat().st_size == len(src_data):
             return
         dest.write_bytes(src_data)
@@ -212,11 +211,7 @@ def _build_analysis_html() -> str:
 def _load_logo_data_uri() -> str:
     """Read the logo PNG and return a ``data:`` URI, or empty string on failure."""
     try:
-        raw = (
-            files("phenotypic._cli._dashboard")
-            .joinpath("_assets", "LogoArtOnly.png")
-            .read_bytes()
-        )
+        raw = asset_bytes("logos/LogoArtOnly.png")
         b64 = base64.b64encode(raw).decode("ascii")
         return f"data:image/png;base64,{b64}"
     except (OSError, ModuleNotFoundError, TypeError):
