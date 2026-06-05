@@ -1,6 +1,7 @@
 """The tuning_spec.json model — one self-contained, round-trippable recipe."""
 from __future__ import annotations
 
+import difflib
 import json
 from typing import Any, Optional, TypeAlias
 
@@ -20,6 +21,7 @@ from ._evaluation import Evaluator, HeldOutConfig
 from ._multi_objective import reject_grid_random_multi_objective
 from ._scoring import ScorerField
 from ._search_space import SearchSpace
+from ._search_space._targets import KnobTarget, Nested, Param
 from ._strategies._config import StrategyConfig, StrategyConfigUnion
 
 #: A ``StrategyConfig``-valued field that round-trips **any** subclass via the
@@ -56,6 +58,56 @@ class Budget(BaseModel):
 
     n_trials: Optional[int] = None
     max_failures: Optional[int] = None
+
+
+def _check_field(op_obj: Any, field: str, op: int, cls_name: str) -> None:
+    """Assert ``field`` exists on ``op_obj``; raise with a did-you-mean otherwise."""
+    if field in type(op_obj).model_fields:
+        return
+    available = sorted(type(op_obj).model_fields)
+    suggestion = difflib.get_close_matches(field, available, n=1)
+    hint = f" — did you mean {suggestion[0]!r}?" if suggestion else ""
+    raise ValueError(
+        f"op {op} ({cls_name}) has no field {field!r}{hint}; available: {available}"
+    )
+
+
+def _validate_target(target: KnobTarget, ordered_ops: list) -> None:
+    """Validate one knob target against the live pipeline ops (cross-check)."""
+    op = target.op
+    if not 0 <= op < len(ordered_ops):
+        raise ValueError(
+            f"knob target {target.key!r} addresses op {op}, but the pipeline has "
+            f"{len(ordered_ops)} op(s)"
+        )
+    actual = ordered_ops[op]
+    actual_cls = type(actual).__name__
+    if target.op_class is not None and target.op_class != actual_cls:
+        raise ValueError(
+            f"knob target {target.key!r} names class {target.op_class!r}, but op "
+            f"{op} is a {actual_cls!r}"
+        )
+    if isinstance(target, Param):
+        _check_field(actual, target.field, op, actual_cls)
+    elif isinstance(target, Nested):
+        nested = getattr(actual, target.field, None)
+        if not isinstance(nested, list):
+            raise ValueError(
+                f"nested target {target.key!r}: {actual_cls}.{target.field} is not "
+                "a list-of-ops field"
+            )
+        if not 0 <= target.index < len(nested):
+            raise ValueError(
+                f"nested target {target.key!r}: index {target.index} out of range "
+                f"({len(nested)} slot(s))"
+            )
+        slot = nested[target.index]
+        if slot is None:
+            raise ValueError(
+                f"nested target {target.key!r}: slot {target.index} is empty (None)"
+            )
+        _check_field(slot, target.leaf, op, type(slot).__name__)
+    # Presence: op-range + op_class already checked above.
 
 
 class TuningSpec(BaseModel):
@@ -158,4 +210,27 @@ class TuningSpec(BaseModel):
                 not an Optuna strategy.
         """
         reject_grid_random_multi_objective(self.scorer, self.strategy)
+        return self
+
+    @model_validator(mode="after")
+    def _validate_targets_against_pipeline(self) -> "TuningSpec":
+        """Cross-check every knob target (and conditional parent) vs the pipeline.
+
+        Catches targeting mistakes — out-of-range op, ``op_class`` mismatch,
+        missing field/leaf (with a did-you-mean), unresolvable nesting — at spec
+        construction (where an MCP submits), rather than deep in
+        ``build_pipeline`` at evaluation time. Complements the apply-time ``⊆``
+        backstop, which still catches validator-enforced value bounds.
+
+        Returns:
+            ``self`` when every target resolves.
+
+        Raises:
+            ValueError: With an actionable message naming the offending target.
+        """
+        ordered_ops = list(self.pipeline.get_ops().values())
+        for knob in self.search_space.knobs:
+            _validate_target(knob.target, ordered_ops)
+            for parent, _ in (knob.conditional_on or ()):
+                _validate_target(parent, ordered_ops)
         return self

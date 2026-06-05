@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 import pandas as pd
+import pytest
 
 from phenotypic import ImagePipeline
 from phenotypic.analysis import ExpectedVsDetectedCount
@@ -12,12 +13,14 @@ from phenotypic.enhance import GaussianBlur
 from phenotypic.tune import (
     Categorical,
     Evaluator,
+    FloatRange,
     GridConfig,
     Knob,
     QCScorer,
     RandomConfig,
     SearchSpace,
 )
+from phenotypic.tune._search_space._targets import Param
 from phenotypic.tune._spec import Budget, TuningSpec
 
 #: The frozen Phase-1 ``tuning_spec.json`` (strategy block in the original
@@ -104,3 +107,60 @@ def test_phase1_grid_spec_json_still_loads(tmp_path):
     assert [type(o).__name__ for o in back.pipeline.get_ops().values()] == [
         "GaussianBlur", "OtsuDetector",
     ]
+
+
+def _qc(tmp_path) -> QCScorer:
+    csv = tmp_path / "qc_layout.csv"
+    pd.DataFrame(
+        {"Metadata_ImageName": ["p1"] * 96, "Object_Label": list(range(96))}
+    ).to_csv(csv, index=False)
+    return QCScorer(
+        check=ExpectedVsDetectedCount(
+            metadata=str(csv), groupby=["Metadata_ImageName"]
+        )
+    )
+
+
+def _spec_with(knobs, tmp_path) -> TuningSpec:
+    return TuningSpec(
+        pipeline=ImagePipeline(ops=[GaussianBlur(sigma=2.0), OtsuDetector()]),
+        search_space=SearchSpace(knobs=knobs),
+        scorer=_qc(tmp_path),
+        evaluator=Evaluator(),
+        strategy=GridConfig(),
+        budget=Budget(),
+    )
+
+
+def test_valid_targets_pass(tmp_path):
+    _spec_with(
+        (Knob(target=Param(op=0, field="sigma"), domain=FloatRange(low=0.5, high=8.0)),),
+        tmp_path,
+    )
+
+
+def test_out_of_range_op_rejected(tmp_path):
+    with pytest.raises(Exception, match="op 5"):
+        _spec_with(
+            (Knob(target=Param(op=5, field="sigma"),
+                  domain=FloatRange(low=0.5, high=8.0)),),
+            tmp_path,
+        )
+
+
+def test_op_class_mismatch_rejected(tmp_path):
+    with pytest.raises(Exception, match="OtsuDetector"):
+        _spec_with(
+            (Knob(target=Param(op=0, field="sigma", op_class="OtsuDetector"),
+                  domain=FloatRange(low=0.5, high=8.0)),),
+            tmp_path,
+        )
+
+
+def test_missing_field_suggests(tmp_path):
+    with pytest.raises(Exception, match="did you mean 'sigma'"):
+        _spec_with(
+            (Knob(target=Param(op=0, field="sigam"),
+                  domain=FloatRange(low=0.5, high=8.0)),),
+            tmp_path,
+        )
