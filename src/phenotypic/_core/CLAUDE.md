@@ -7,7 +7,7 @@
 Linear MRO chain (bottom → top):
 ```
 ImageDataManager → ImageHandler → ImageObjectsHandler → ImagePlotHandler
-→ ImagePanelHandler → ImageColorSpace → ImageIOHandler → Image
+→ ImageColorSpace → ImageIOHandler → Image
 ```
 `GridImage` extends `Image` via `ImageGridHandler`.
 
@@ -32,8 +32,7 @@ Data accessed through accessors (not direct attributes) — ensures consistency,
 - `image.grid` — grid layout/alignment
 - `image.metadata` — EXIF, file info
 - `image.measurements` — extracted features
-- `image.plot` — visualization
-- `image.panel` — interactive dashboard
+- `image.plot` — visualization (interactive views via `image.plot.dash.<name>()`)
 
 ### NumPy Interface
 

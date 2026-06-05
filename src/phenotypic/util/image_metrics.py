@@ -5,9 +5,9 @@ evaluating detection matrices before colony detection. Metrics include
 noise estimation, contrast analysis, structural coherence, and
 background uniformity assessment.
 
-The :class:`ImageMetricsCalculator` computes metrics used by both the
-matplotlib-based :class:`DiagnosticsPlotter` and the Panel-based
-:class:`DiagnosticsDashboard`.
+The :class:`ImageMetricsCalculator` computes metrics used by the
+:class:`DiagnosticsPlotter` for both its static matplotlib figures and
+its interactive ``image.plot.dash.diagnostics()`` views.
 
 Examples:
     >>> from phenotypic.data import load_synth_yeast_plate
@@ -91,8 +91,8 @@ class ImageMetricsCalculator:
 
     This class extracts noise, contrast, structure, and background
     metrics used to assess image quality for colony detection.
-    It provides the computational core shared by both matplotlib-based
-    and Panel-based diagnostics visualizations.
+    It provides the computational core shared by both the static
+    matplotlib and the interactive Plotly diagnostics visualizations.
 
     Args:
         detect_mat: 2D grayscale detection matrix (typically ``image.detect_mat[:]``).

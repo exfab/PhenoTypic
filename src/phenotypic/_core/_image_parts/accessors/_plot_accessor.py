@@ -14,6 +14,9 @@ from phenotypic._core._image_parts.accessor_abstracts._image_accessor_base impor
 from phenotypic._core._image_parts.plot_accessor._all_data_plotter import (
     AllDataPlotter,
 )
+from phenotypic._core._image_parts.plot_accessor._detect_modes_plotter import (
+    DetectModesPlotter,
+)
 from phenotypic._core._image_parts.plot_accessor._diagnostics_plotter import (
     DiagnosticsPlotter,
 )
@@ -96,11 +99,32 @@ class PlotAccessor(ImageAccessorBase):
         """
         super().__init__(root_image)
         self._instances: dict[str, Any] = {}
+        self._dash_accessor: Any = None
 
     @property
     def _accessor_property_name(self) -> str:
         """Name of the Image property that surfaces this accessor."""
         return "plot"
+
+    @property
+    def dash(self) -> Any:
+        """Interactive Plotly/ipywidgets views: ``image.plot.dash.<name>()``.
+
+        Dispatches to a registered :class:`FigureProvider` plotter's ``.dash()``
+        — a composed ``go.Figure`` for control-free providers, or an ipywidgets
+        dashboard when the figures declare ``Control``s. Mirrors the
+        ``@register_plotter`` registry used by ``image.plot.<name>()``.
+
+        Examples:
+            >>> from phenotypic.data import load_synth_yeast_plate
+            >>> image = load_synth_yeast_plate()
+            >>> dashboard = image.plot.dash.diagnostics()  # ipywidgets dashboard
+        """
+        if self._dash_accessor is None:
+            from ._dash_plot_accessor import DashPlotAccessor
+
+            self._dash_accessor = DashPlotAccessor(self)
+        return self._dash_accessor
 
     def _get_or_create(self, cls: type) -> Any:
         """Lazily instantiate and cache a plotter by its class.
@@ -197,6 +221,13 @@ class PlotAccessor(ImageAccessorBase):
         See :meth:`~phenotypic._core._image_parts.plot_accessor.DiagnosticsPlotter.diagnostics`.
         """
         return self._get_or_create(DiagnosticsPlotter).diagnostics(*args, **kwargs)
+
+    def detect_modes(self, *args: Any, **kwargs: Any) -> Any:
+        """Faceted comparison of every registered detection mode.
+
+        See :meth:`~phenotypic._core._image_parts.plot_accessor.DetectModesPlotter.detect_modes`.
+        """
+        return self._get_or_create(DetectModesPlotter).detect_modes(*args, **kwargs)
 
     # -- Dynamic dispatch for user-registered plotters --
 

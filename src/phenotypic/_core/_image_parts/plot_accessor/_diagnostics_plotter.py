@@ -6,13 +6,16 @@ from typing import Any, Literal
 
 import matplotlib.pyplot as plt
 import numpy as np
+import plotly.graph_objects as go
 from matplotlib.gridspec import GridSpec
 from scipy import fft as scipy_fft
 from scipy.stats import norm
 from skimage.filters import sobel
 
+from phenotypic.abc_ import Control, FigureProvider, figure
 from phenotypic.tools_.register import register_plotter
 from phenotypic.util.image_metrics import ImageMetricsCalculator, THRESHOLDS
+from phenotypic.viz.figures._theme import NAVY, OKABE_ITO
 
 from ._base_plotter import BasePlotter
 from ._diagnostics_types import (
@@ -29,9 +32,40 @@ from ._diagnostics_types import (
     PanelDescription,
 )
 
+# Module-level Control constants — defined ONCE and shared BY IDENTITY across
+# the @figure methods that reference them, so the dashboard renders one widget
+# per logical knob rather than a duplicate per figure.
+STRUCTURE_SIGMA = Control(
+    label="Structure σ", kind="float", default=1.5, bounds=(0.5, 5.0), step=0.1
+)
+RIDGE_METHOD = Control(
+    label="Ridge method",
+    kind="select",
+    default="meijering",
+    options=("meijering", "frangi", "hessian"),
+)
+BACKGROUND_SIGMA = Control(
+    label="Background σ", kind="float", default=50.0, bounds=(10.0, 150.0), step=5.0
+)
+
+# Multiscale ridge detection scales are held FIXED (a list does not fit the
+# float/select/bool/text Control kinds, so ``ridge_scales`` is intentionally
+# not exposed as a control). This mirrors the matplotlib ``diagnostics()``
+# default and is reused by every structure/summary figure below.
+DEFAULT_RIDGE_SCALES: list[float] = [0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 5.0]
+
+# Quality-threshold trace colors carried over verbatim from the matplotlib
+# panels (these are explicit per-trace data colors, not theme styling, so they
+# are kept rather than delegated to the template).
+_POOR_COLOR = "#c0392b"  # red — below critical threshold
+_MARGINAL_COLOR = "#f39c12"  # yellow — between critical and marginal
+_GOOD_COLOR = "#27ae60"  # green — above marginal threshold
+#: Border color for the white annotation callout boxes.
+AXIS_ANNOTATION_BORDER = "#cccccc"
+
 
 @register_plotter
-class DiagnosticsPlotter(BasePlotter):
+class DiagnosticsPlotter(BasePlotter, FigureProvider):
     """Generates comprehensive image quality diagnostics for preprocessing pipeline development.
 
     This class provides multi-panel figures analyzing noise, contrast, structure, and
@@ -42,8 +76,19 @@ class DiagnosticsPlotter(BasePlotter):
     the current state of preprocessing applied to the image.
 
     The metrics computation is delegated to :class:`ImageMetricsCalculator` from
-    ``phenotypic.util.image_metrics``, which is shared with the Panel-based
-    :class:`DiagnosticsDashboard`.
+    ``phenotypic.util.image_metrics``, shared by the static matplotlib figure and
+    the interactive ``image.plot.dash.diagnostics()`` view.
+
+    Dual renderer:
+        The static matplotlib :meth:`diagnostics` (returning
+        ``(matplotlib Figure, metrics dict)``) is preserved unchanged. In
+        addition, this class mixes in :class:`~phenotypic.abc_.FigureProvider`
+        and declares a parallel set of interactive Plotly ``@figure`` methods
+        (named ``fig_*``) that surface the uniform ``.inspect()`` / ``.dash()``
+        / dashboard contract. The Plotly figures mirror the matplotlib panels
+        one-for-one; control-bearing figures (structure σ, ridge method,
+        background σ) recompute on demand from a fresh
+        :class:`ImageMetricsCalculator`.
 
     Examples:
         Generate full diagnostics report:
@@ -69,8 +114,17 @@ class DiagnosticsPlotter(BasePlotter):
         return 255 if self._root_image.bit_depth == 8 else 65535
 
     def _get_calculator(self) -> ImageMetricsCalculator:
-        """Get or create an ImageMetricsCalculator for the current image."""
+        """Build a fresh ImageMetricsCalculator over the current detect_mat."""
         return ImageMetricsCalculator(self._root_image.detect_mat[:])
+
+    def _figure_subject(self) -> Any:
+        """Subject for the ``FigureProvider`` mixin.
+
+        This plotter is a *helper* provider: each ``@figure`` method reads
+        ``self`` directly and takes no subject parameter, so the returned
+        subject is informational only (the root :class:`Image`).
+        """
+        return self._root_image
 
     def _get_histogram_panel_description(self) -> PanelDescription:
         """Generate histogram panel description with bit-depth-aware intensity range."""
@@ -83,6 +137,654 @@ class DiagnosticsPlotter(BasePlotter):
             poor_values="Bimodal, clipped at edges, very narrow spread",
             pipeline_link="EnhanceLocalContrast, ContrastStretching, GammaCorrection",
         )
+
+    # ============================================================================
+    # PLOTLY FIGURE METHODS (interactive dual renderer)
+    #
+    # Each ``fig_*`` method returns a RAW ``go.Figure`` (the @figure decorator
+    # auto-applies the house "phenotypic" theme). They mirror the matplotlib
+    # ``_plot_*`` panels one-for-one but never touch the matplotlib path.
+    # ============================================================================
+
+    # -- section "noise" --------------------------------------------------------
+
+    @figure(
+        title="A: Intensity Histogram",
+        section="noise",
+    )
+    def fig_intensity_histogram(self) -> go.Figure:
+        """Plotly intensity histogram with Gaussian fit (Panel A).
+
+        Mirrors :meth:`_plot_intensity_histogram`: a filled histogram of the
+        detection-matrix intensities overlaid with a fitted Gaussian, annotated
+        with mean, standard deviation, and the robust MAD noise estimate.
+
+        Returns:
+            A ``go.Figure`` whose primary trace is the histogram density
+            (``go.Scatter`` fill) plus the Gaussian fit overlay.
+        """
+        detect_mat = self._root_image.detect_mat[:]
+        calculator = self._get_calculator()
+        sigma_mad = calculator.compute_noise_metrics()["sigma_mad"]
+
+        bins = 256
+        counts, bin_edges = np.histogram(
+            detect_mat.ravel(), bins=bins, range=(0, self._max_intensity)
+        )
+        bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+        counts_norm = counts / (counts.sum() * (bin_edges[1] - bin_edges[0]))
+
+        mean_val = float(np.mean(detect_mat))
+        std_val = float(np.std(detect_mat))
+        x_fit = np.linspace(0, self._max_intensity, 500)
+        gaussian_fit = norm.pdf(x_fit, mean_val, std_val)
+
+        fig = go.Figure()
+        fig.add_trace(
+            go.Scatter(
+                x=bin_centers,
+                y=counts_norm,
+                fill="tozeroy",
+                mode="lines",
+                line=dict(color=NAVY, width=1),
+                name="Data",
+            )
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=x_fit,
+                y=gaussian_fit,
+                mode="lines",
+                line=dict(color=OKABE_ITO[6], width=2, dash="dash"),
+                name="Gaussian fit",
+            )
+        )
+        fig.update_layout(
+            title="A: Intensity Histogram",
+            xaxis_title="Intensity",
+            yaxis_title="Density",
+            xaxis_range=[0, self._max_intensity],
+        )
+        fig.add_annotation(
+            xref="paper",
+            yref="paper",
+            x=0.98,
+            y=0.98,
+            text=f"μ={mean_val:.1f}<br>σ={std_val:.1f}<br>MAD={sigma_mad:.2f}",
+            showarrow=False,
+            align="right",
+            bgcolor="rgba(255,255,255,0.8)",
+            bordercolor=AXIS_ANNOTATION_BORDER,
+            borderwidth=1,
+        )
+        return fig
+
+    @figure(
+        title="B: Noise Autocorrelation",
+        section="noise",
+        description=PANEL_B_AUTOCORR,
+    )
+    def fig_noise_autocorrelation(self) -> go.Figure:
+        """Plotly noise autocorrelation heatmap (Panel B).
+
+        Mirrors :meth:`_plot_noise_autocorrelation`: the FFT-based 2D
+        autocorrelation of the detection matrix, normalized to ``[0, 1]`` and
+        rendered with a Hot colorscale, annotated with the correlation length
+        ξ in pixels.
+
+        Returns:
+            A ``go.Figure`` whose primary trace is a ``go.Heatmap``.
+        """
+        detect_mat = self._root_image.detect_mat[:]
+        correlation_length = self._get_calculator().compute_noise_metrics()[
+            "correlation_length"
+        ]
+
+        autocorr = self._compute_autocorrelation(detect_mat.astype(np.float64))
+        autocorr_norm = autocorr / (autocorr.max() + 1e-10)
+
+        fig = go.Figure(
+            go.Heatmap(
+                z=autocorr_norm,
+                colorscale="Hot",
+                zmin=0,
+                zmax=1,
+                colorbar=dict(title="Corr."),
+            )
+        )
+        fig.update_layout(
+            title="B: Noise Autocorrelation",
+            xaxis_title="Lag (pixels)",
+            yaxis_title="Lag (pixels)",
+        )
+        fig.update_yaxes(autorange="reversed", scaleanchor="x", constrain="domain")
+        fig.add_annotation(
+            xref="paper",
+            yref="paper",
+            x=0.98,
+            y=0.98,
+            text=f"ξ={correlation_length:.1f} px",
+            showarrow=False,
+            align="right",
+            bgcolor="rgba(255,255,255,0.8)",
+            bordercolor=AXIS_ANNOTATION_BORDER,
+            borderwidth=1,
+        )
+        return fig
+
+    @figure(
+        title="C: Power Spectral Density",
+        section="noise",
+        description=PANEL_C_PSD,
+    )
+    def fig_power_spectral_density(self) -> go.Figure:
+        """Plotly radially-averaged power spectral density (Panel C).
+
+        Mirrors :meth:`_plot_power_spectral_density`: the radially-averaged PSD
+        on log-log axes with a fitted power-law slope overlay.
+
+        Returns:
+            A ``go.Figure`` whose primary trace is a log-log ``go.Scatter``.
+        """
+        detect_mat = self._root_image.detect_mat[:]
+        freqs, psd = self._compute_psd(detect_mat.astype(np.float64))
+
+        valid = (freqs > 0.01) & (psd > 0)
+        freqs_valid = freqs[valid]
+        psd_valid = psd[valid]
+
+        fig = go.Figure()
+        if len(freqs_valid) > 0:
+            fig.add_trace(
+                go.Scatter(
+                    x=freqs_valid,
+                    y=psd_valid,
+                    mode="lines",
+                    line=dict(color=NAVY, width=1.5),
+                    name="PSD",
+                )
+            )
+            if len(freqs_valid) > 10:
+                log_f = np.log10(freqs_valid)
+                log_p = np.log10(psd_valid)
+                coeffs = np.polyfit(log_f, log_p, 1)
+                slope = coeffs[0]
+                fit_line = 10 ** (coeffs[0] * log_f + coeffs[1])
+                fig.add_trace(
+                    go.Scatter(
+                        x=freqs_valid,
+                        y=fit_line,
+                        mode="lines",
+                        line=dict(color=OKABE_ITO[6], width=1, dash="dash"),
+                        name=f"slope={slope:.2f}",
+                    )
+                )
+        fig.update_layout(
+            title="C: Power Spectral Density",
+            xaxis_title="Spatial Frequency (normalized)",
+            yaxis_title="Power",
+            xaxis_type="log",
+            yaxis_type="log",
+        )
+        return fig
+
+    # -- section "contrast" -----------------------------------------------------
+
+    @figure(
+        title="D: Detection Matrix",
+        section="contrast",
+        description=PANEL_D_ORIGINAL,
+    )
+    def fig_detection_matrix(self) -> go.Figure:
+        """Plotly detection-matrix grayscale image (Panel D).
+
+        Mirrors :meth:`_plot_original_image`: a grayscale rendering of the
+        current ``detect_mat`` used for detection.
+
+        Returns:
+            A ``go.Figure`` whose primary trace is a grayscale ``go.Heatmap``.
+        """
+        detect_mat = self._root_image.detect_mat[:]
+        fig = go.Figure(
+            go.Heatmap(
+                z=detect_mat,
+                colorscale="gray",
+                zmin=0,
+                zmax=self._max_intensity,
+                colorbar=dict(title="Intensity"),
+            )
+        )
+        fig.update_layout(title="D: Detection Matrix")
+        fig.update_xaxes(showticklabels=False, showgrid=False)
+        fig.update_yaxes(
+            autorange="reversed",
+            showticklabels=False,
+            showgrid=False,
+            scaleanchor="x",
+            constrain="domain",
+        )
+        return fig
+
+    @figure(
+        title="E: Local Contrast Map",
+        section="contrast",
+        description=PANEL_E_CONTRAST,
+    )
+    def fig_local_contrast_map(self) -> go.Figure:
+        """Plotly local Weber-contrast map (Panel E).
+
+        Mirrors :meth:`_plot_local_contrast_map`: the local Weber contrast,
+        clipped at the 99th percentile and rendered with a Magma colorscale.
+
+        Returns:
+            A ``go.Figure`` whose primary trace is a ``go.Heatmap``.
+        """
+        calculator = self._get_calculator()
+        contrast_map = calculator.compute_local_contrast()  # uses internal detect_mat
+
+        fig = go.Figure(
+            go.Heatmap(
+                z=contrast_map,
+                colorscale="Magma",
+                zmin=0,
+                zmax=float(np.percentile(contrast_map, 99)),
+                colorbar=dict(title="Weber Contrast"),
+            )
+        )
+        fig.update_layout(title="E: Local Contrast Map")
+        fig.update_xaxes(showticklabels=False, showgrid=False)
+        fig.update_yaxes(
+            autorange="reversed",
+            showticklabels=False,
+            showgrid=False,
+            scaleanchor="x",
+            constrain="domain",
+        )
+        return fig
+
+    @figure(
+        title="F: Contrast Metrics",
+        section="contrast",
+        description=PANEL_F_BARS,
+    )
+    def fig_contrast_metrics(self) -> go.Figure:
+        """Plotly contrast-metric bars with quality color coding (Panel F).
+
+        Mirrors :meth:`_plot_contrast_metrics_bars`: RMS contrast, Michelson
+        contrast, and dynamic range as a horizontal bar chart, each colored
+        red/yellow/green against critical/marginal thresholds.
+
+        Returns:
+            A ``go.Figure`` whose primary trace is a horizontal ``go.Bar``.
+        """
+        metrics = self._get_calculator().compute_contrast_metrics()
+
+        metric_names = ["RMS Contrast", "Michelson", "Dynamic Range"]
+        metric_values = [
+            metrics["rms_contrast"],
+            metrics["michelson"],
+            metrics["dynamic_range"],
+        ]
+        thresholds = {
+            "RMS Contrast": (0.02, 0.05),
+            "Michelson": (0.1, 0.3),
+            "Dynamic Range": (0.3, 0.6),
+        }
+        colors = []
+        for name, val in zip(metric_names, metric_values):
+            crit, marg = thresholds[name]
+            if val < crit:
+                colors.append(_POOR_COLOR)
+            elif val < marg:
+                colors.append(_MARGINAL_COLOR)
+            else:
+                colors.append(_GOOD_COLOR)
+
+        fig = go.Figure(
+            go.Bar(
+                x=metric_values,
+                y=metric_names,
+                orientation="h",
+                marker=dict(color=colors, line=dict(color="black", width=1)),
+                text=[f"{v:.3f}" for v in metric_values],
+                textposition="outside",
+            )
+        )
+        fig.update_layout(
+            title="F: Contrast Metrics",
+            xaxis_title="Value",
+            xaxis_range=[0, 1],
+            showlegend=False,
+        )
+        return fig
+
+    # -- section "structure" ----------------------------------------------------
+
+    @figure(
+        title="G: Gradient Magnitude",
+        section="structure",
+        description=PANEL_G_GRADIENT,
+    )
+    def fig_gradient_magnitude(self) -> go.Figure:
+        """Plotly Sobel gradient-magnitude map (Panel G).
+
+        Mirrors :meth:`_plot_gradient_magnitude`: the Sobel edge-strength map,
+        clipped at the 99th percentile and rendered with a Viridis colorscale.
+
+        Returns:
+            A ``go.Figure`` whose primary trace is a ``go.Heatmap``.
+        """
+        detect_mat = self._root_image.detect_mat[:]
+        img_norm = detect_mat.astype(np.float64) / self._max_intensity
+        gradient = sobel(img_norm)
+
+        fig = go.Figure(
+            go.Heatmap(
+                z=gradient,
+                colorscale="Viridis",
+                zmin=0,
+                zmax=float(np.percentile(gradient, 99)),
+                colorbar=dict(title="Edge Strength"),
+            )
+        )
+        fig.update_layout(title="G: Gradient Magnitude")
+        fig.update_xaxes(showticklabels=False, showgrid=False)
+        fig.update_yaxes(
+            autorange="reversed",
+            showticklabels=False,
+            showgrid=False,
+            scaleanchor="x",
+            constrain="domain",
+        )
+        return fig
+
+    @figure(
+        title="H: Orientation Coherence",
+        section="structure",
+        controls={"sigma": STRUCTURE_SIGMA},
+        description=PANEL_H_COHERENCE,
+    )
+    def fig_orientation_coherence(self, *, sigma) -> go.Figure:
+        """Plotly orientation-coherence map from the structure tensor (Panel H).
+
+        Mirrors :meth:`_plot_orientation_coherence`: the per-pixel coherence
+        ``(λ1 - λ2) / (λ1 + λ2)`` rendered with a Plasma colorscale and
+        annotated with the mean coherence. Recomputes from a fresh
+        :class:`ImageMetricsCalculator` using the passed ``sigma``.
+
+        Args:
+            sigma: Structure-tensor smoothing σ (bound to ``STRUCTURE_SIGMA``).
+
+        Returns:
+            A ``go.Figure`` whose primary trace is a ``go.Heatmap``.
+        """
+        calculator = ImageMetricsCalculator(self._root_image.detect_mat[:])
+        structure = calculator.compute_structure_metrics(
+            sigma=sigma, scales=DEFAULT_RIDGE_SCALES
+        )
+        coherence_map = structure["coherence_map"]
+        mean_coherence = structure["mean_coherence"]
+
+        fig = go.Figure(
+            go.Heatmap(
+                z=coherence_map,
+                colorscale="Plasma",
+                zmin=0,
+                zmax=1,
+                colorbar=dict(title="Coherence"),
+            )
+        )
+        fig.update_layout(title="H: Orientation Coherence")
+        fig.update_xaxes(showticklabels=False, showgrid=False)
+        fig.update_yaxes(
+            autorange="reversed",
+            showticklabels=False,
+            showgrid=False,
+            scaleanchor="x",
+            constrain="domain",
+        )
+        fig.add_annotation(
+            xref="paper",
+            yref="paper",
+            x=0.98,
+            y=0.98,
+            text=f"Mean: {mean_coherence:.3f}",
+            showarrow=False,
+            align="right",
+            bgcolor="rgba(255,255,255,0.8)",
+            bordercolor=AXIS_ANNOTATION_BORDER,
+            borderwidth=1,
+        )
+        return fig
+
+    @figure(
+        title="I: Ridge Response",
+        section="structure",
+        controls={"sigma": STRUCTURE_SIGMA, "ridge_method": RIDGE_METHOD},
+        description=PANEL_I_RIDGE,
+    )
+    def fig_ridge_response(self, *, sigma, ridge_method) -> go.Figure:
+        """Plotly multiscale ridge-response curve (Panel I).
+
+        Mirrors :meth:`_plot_multiscale_ridge_response`: the mean ridge
+        response across the fixed scale set, marking the optimal scale.
+        Recomputes from a fresh :class:`ImageMetricsCalculator` using the
+        passed ``sigma`` and ``ridge_method``.
+
+        Args:
+            sigma: Structure-tensor smoothing σ (bound to ``STRUCTURE_SIGMA``).
+            ridge_method: Ridge detector, one of ``"meijering"``, ``"frangi"``,
+                ``"hessian"`` (bound to ``RIDGE_METHOD``).
+
+        Returns:
+            A ``go.Figure`` whose primary trace is a ``go.Scatter`` curve.
+        """
+        calculator = ImageMetricsCalculator(self._root_image.detect_mat[:])
+        structure = calculator.compute_structure_metrics(
+            sigma=sigma, scales=DEFAULT_RIDGE_SCALES, ridge_method=ridge_method
+        )
+        scales = structure["scales"]
+        ridge_responses = structure["ridge_responses"]
+        optimal_scale = structure["optimal_scale"]
+        opt_idx = scales.index(optimal_scale) if optimal_scale in scales else 0
+
+        fig = go.Figure()
+        fig.add_trace(
+            go.Scatter(
+                x=scales,
+                y=ridge_responses,
+                mode="lines+markers",
+                line=dict(color=NAVY, width=2),
+                marker=dict(size=8),
+                name="Response",
+            )
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=[optimal_scale],
+                y=[ridge_responses[opt_idx]],
+                mode="markers",
+                marker=dict(color=OKABE_ITO[6], size=16, symbol="star"),
+                name=f"Optimal σ={optimal_scale:.1f}",
+            )
+        )
+        fig.add_vline(
+            x=optimal_scale,
+            line=dict(color=OKABE_ITO[6], width=1, dash="dash"),
+        )
+        fig.update_layout(
+            title=f"I: Ridge Response ({ridge_method})",
+            xaxis_title="Scale (σ)",
+            yaxis_title="Mean Response",
+        )
+        return fig
+
+    # -- section "background" ---------------------------------------------------
+
+    @figure(
+        title="J: Background Estimate",
+        section="background",
+        controls={"bg_sigma": BACKGROUND_SIGMA},
+        description=PANEL_J_BACKGROUND,
+    )
+    def fig_background_estimate(self, *, bg_sigma) -> go.Figure:
+        """Plotly background-estimate map (Panel J).
+
+        Mirrors :meth:`_plot_background_estimate`: the large-sigma Gaussian
+        background estimate rendered grayscale, annotated with the
+        nonuniformity percentage (colored by quality threshold). Recomputes
+        from a fresh :class:`ImageMetricsCalculator` using the passed
+        ``bg_sigma``.
+
+        Args:
+            bg_sigma: Gaussian σ for background estimation (bound to
+                ``BACKGROUND_SIGMA``).
+
+        Returns:
+            A ``go.Figure`` whose primary trace is a grayscale ``go.Heatmap``.
+        """
+        calculator = ImageMetricsCalculator(self._root_image.detect_mat[:])
+        background_metrics = calculator.compute_background_metrics(sigma=bg_sigma)
+        background = background_metrics["background_estimate"]
+        nonuniformity = background_metrics["nonuniformity_ratio"]
+
+        if nonuniformity > THRESHOLDS["nonuniformity"]["critical"]:
+            color = _POOR_COLOR
+        elif nonuniformity > THRESHOLDS["nonuniformity"]["marginal"]:
+            color = _MARGINAL_COLOR
+        else:
+            color = _GOOD_COLOR
+
+        fig = go.Figure(
+            go.Heatmap(
+                z=background,
+                colorscale="gray",
+                colorbar=dict(title="Intensity"),
+            )
+        )
+        fig.update_layout(title="J: Background Estimate")
+        fig.update_xaxes(showticklabels=False, showgrid=False)
+        fig.update_yaxes(
+            autorange="reversed",
+            showticklabels=False,
+            showgrid=False,
+            scaleanchor="x",
+            constrain="domain",
+        )
+        fig.add_annotation(
+            xref="paper",
+            yref="paper",
+            x=0.98,
+            y=0.98,
+            text=f"Nonunif: {nonuniformity:.1%}",
+            showarrow=False,
+            align="right",
+            font=dict(color=color),
+            bgcolor="rgba(255,255,255,0.8)",
+            bordercolor=AXIS_ANNOTATION_BORDER,
+            borderwidth=1,
+        )
+        return fig
+
+    @figure(
+        title="K: Local Variance (log)",
+        section="background",
+        description=PANEL_K_VARIANCE,
+    )
+    def fig_local_variance(self) -> go.Figure:
+        """Plotly local-variance map on a log scale (Panel K).
+
+        Mirrors :meth:`_plot_local_variance_map`: the windowed local variance,
+        log-scaled and rendered with an Inferno colorscale.
+
+        Returns:
+            A ``go.Figure`` whose primary trace is a ``go.Heatmap``.
+        """
+        calculator = self._get_calculator()
+        variance = calculator.compute_local_variance()  # uses internal detect_mat
+        variance_log = np.log10(variance + 1)
+
+        fig = go.Figure(
+            go.Heatmap(
+                z=variance_log,
+                colorscale="Inferno",
+                colorbar=dict(title="log₁₀(variance)"),
+            )
+        )
+        fig.update_layout(title="K: Local Variance (log)")
+        fig.update_xaxes(showticklabels=False, showgrid=False)
+        fig.update_yaxes(
+            autorange="reversed",
+            showticklabels=False,
+            showgrid=False,
+            scaleanchor="x",
+            constrain="domain",
+        )
+        return fig
+
+    # -- section "summary" ------------------------------------------------------
+
+    @figure(
+        title="Image Quality Summary",
+        section="summary",
+        controls={
+            "sigma": STRUCTURE_SIGMA,
+            "ridge_method": RIDGE_METHOD,
+            "bg_sigma": BACKGROUND_SIGMA,
+        },
+        primary=True,
+    )
+    def fig_quality_summary(self, *, sigma, ridge_method, bg_sigma) -> go.Figure:
+        """Plotly executive-summary radar chart (the ``inspect()`` figure).
+
+        Mirrors :meth:`_plot_spider_chart`: the five normalized quality scores
+        (SNR, Contrast, Coherence, Uniformity, Sharpness) as a closed
+        ``go.Scatterpolar`` radar. Recomputes every metric from a fresh
+        :class:`ImageMetricsCalculator` using all three controls; marked
+        ``primary=True`` so :meth:`inspect` selects it.
+
+        Args:
+            sigma: Structure-tensor smoothing σ (bound to ``STRUCTURE_SIGMA``).
+            ridge_method: Ridge detector (bound to ``RIDGE_METHOD``).
+            bg_sigma: Background-estimation σ (bound to ``BACKGROUND_SIGMA``).
+
+        Returns:
+            A ``go.Figure`` whose primary trace is a ``go.Scatterpolar``.
+        """
+        calculator = ImageMetricsCalculator(self._root_image.detect_mat[:])
+        noise = calculator.compute_noise_metrics()
+        contrast = calculator.compute_contrast_metrics()
+        structure = calculator.compute_structure_metrics(
+            sigma=sigma, scales=DEFAULT_RIDGE_SCALES, ridge_method=ridge_method
+        )
+        background = calculator.compute_background_metrics(sigma=bg_sigma)
+        quality_scores = calculator.compute_quality_scores(
+            noise, contrast, structure, background
+        )
+
+        categories = list(quality_scores.keys())
+        values = list(quality_scores.values())
+        # Close the polygon back to the first vertex.
+        categories_closed = categories + categories[:1]
+        values_closed = values + values[:1]
+
+        fig = go.Figure(
+            go.Scatterpolar(
+                r=values_closed,
+                theta=categories_closed,
+                fill="toself",
+                mode="lines+markers",
+                line=dict(color=NAVY, width=2),
+                fillcolor="rgba(0,54,96,0.25)",
+                name="Quality",
+            )
+        )
+        fig.update_layout(
+            title="Image Quality Summary",
+            polar=dict(radialaxis=dict(visible=True, range=[0, 1])),
+            showlegend=False,
+        )
+        return fig
 
     # ============================================================================
     # HELPER METHODS FOR PLOTTING
@@ -569,7 +1271,7 @@ class DiagnosticsPlotter(BasePlotter):
     ) -> tuple[plt.Figure, dict[str, Any]]:
         """Generate comprehensive image quality diagnostics as a static matplotlib figure.
 
-        For an interactive Panel dashboard, use ``image.panel.diagnostics()`` instead.
+        For an interactive dashboard, use ``image.plot.dash.diagnostics()`` instead.
 
         Args:
             sections: Which sections to include. "all" for complete diagnostics, or a
@@ -609,10 +1311,9 @@ class DiagnosticsPlotter(BasePlotter):
             >>> plt.savefig("diagnostics.png", dpi=150, bbox_inches="tight")
             >>> plt.close(fig)
 
-            For interactive Panel dashboard:
+            For an interactive dashboard:
 
-            >>> dashboard = image.panel.diagnostics()
-            >>> dashboard.panel()  # Display interactive dashboard
+            >>> dashboard = image.plot.dash.diagnostics()  # doctest: +SKIP
         """
         # Default ridge scales
         if ridge_scales is None:

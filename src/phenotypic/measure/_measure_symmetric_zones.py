@@ -21,7 +21,7 @@ from pydantic import PrivateAttr
 from scipy.ndimage import convolve, distance_transform_edt
 from skimage.measure import approximate_polygon, find_contours, regionprops
 
-from phenotypic.abc_ import MeasureFeatures
+from phenotypic.abc_ import Control, FigureProvider, MeasureFeatures, figure
 from phenotypic.schema import OBJECT
 from phenotypic.schema import SYMMETRIC_ZONES
 
@@ -44,6 +44,16 @@ _OI_BLUE = "#0072B2"
 _OI_PURPLE = "#CC79A7"
 _OI_VERMILION = "#D55E00"
 _OI_GREY = "#BBBBBB"
+
+# Which image array backs the plotly overlay; a select Control bound (by identity)
+# to the inspect() figure's ``base_layer`` kwarg for the interactive dashboard.
+BASE_LAYER = Control(
+        label="Base layer",
+        kind="select",
+        default="gray",
+        options=("rgb", "gray", "detect_mat"),
+        help="Image array rendered behind the symmetric-radius overlay.",
+)
 
 
 @dataclass
@@ -92,7 +102,7 @@ class _SymmetryIntermediates:
     zones_computed: bool = False
 
 
-class MeasureSymmetricZones(MeasureFeatures):
+class MeasureSymmetricZones(MeasureFeatures, FigureProvider):
     """Measure colony radial expansion and angular symmetry from the object mask alone.
 
     Quantifies each colony by four scalars derived directly from its binary
@@ -1427,6 +1437,11 @@ class MeasureSymmetricZones(MeasureFeatures):
 
     # ── diagnostics ──────────────────────────────────────────────────
 
+    @figure(
+            title="Symmetric-radius overlay",
+            primary=True,
+            controls={"base_layer": BASE_LAYER},
+    )
     def inspect(
             self,
             image: Image | None = None,
@@ -1491,7 +1506,7 @@ class MeasureSymmetricZones(MeasureFeatures):
                     text="No objects found for symmetric-radius analysis.",
                     xref="paper", yref="paper", x=0.5, y=0.5,
                     showarrow=False,
-                    font=dict(family="DM Sans, sans-serif", color=_OI_NAVY),
+                    font=dict(color=_OI_NAVY),  # family from the phenotypic template
             )
             return fig
 
@@ -1505,7 +1520,7 @@ class MeasureSymmetricZones(MeasureFeatures):
         fig.update_layout(
                 title=dict(
                         text=f"Symmetric Radius -- {len(intermediates_cache)} objects",
-                        font=dict(family="DM Sans, sans-serif", color=_OI_NAVY),
+                        font=dict(color=_OI_NAVY),  # family from the phenotypic template
                 ),
                 height=overview_h,
         )
