@@ -12,7 +12,6 @@ for the concrete journal.
 from __future__ import annotations
 
 import json
-import math
 from pathlib import Path
 from typing import Any, Optional
 
@@ -212,7 +211,25 @@ class JournalStudyStore:
         return cls(trials)
 
     @staticmethod
-    def _parse_objectives(raw: Any) -> Optional[dict[str, float]]:
+    def _is_null_cell(raw: Any) -> bool:
+        """Whether a journal cell is null — ``None`` or a pandas ``NaN`` float.
+
+        The shared null/NaN preamble of :meth:`_parse_objectives` and
+        :meth:`_parse_optional_float`: a missing column reads as ``None`` (via
+        ``row.get``) and an empty cell reads as a ``float`` ``NaN``. Catching the
+        ``NaN`` here, before any ``float``/``json`` coercion, keeps both parsers'
+        null handling identical.
+
+        Args:
+            raw: The raw cell value.
+
+        Returns:
+            ``True`` when ``raw`` is ``None`` or a ``NaN`` float.
+        """
+        return raw is None or (isinstance(raw, float) and pd.isna(raw))
+
+    @classmethod
+    def _parse_objectives(cls, raw: Any) -> Optional[dict[str, float]]:
         """Decode an ``objectives_json`` cell into a dict, or ``None``.
 
         Tolerates the three back-compat shapes: a missing column (``raw`` is
@@ -227,18 +244,18 @@ class JournalStudyStore:
             The decoded ``{objective: value}`` dict, or ``None`` when there is no
             multi-objective payload.
         """
-        if raw is None or (isinstance(raw, float) and pd.isna(raw)):
-            return None
-        return json.loads(str(raw))
+        return None if cls._is_null_cell(raw) else json.loads(str(raw))
 
-    @staticmethod
-    def _parse_optional_float(raw: Any) -> Optional[float]:
+    @classmethod
+    def _parse_optional_float(cls, raw: Any) -> Optional[float]:
         """Decode a nullable-float journal cell (e.g. ``gap``) into ``float``.
 
         Mirrors :meth:`_parse_objectives` for the 4.5p1 ``gap`` column: tolerates
         the three back-compat shapes — a missing column (``raw`` is ``None`` via
         ``row.get``), a ``null``/``NaN`` cell (the signal was unavailable), and a
-        real numeric value.
+        real numeric value. The shared :meth:`_is_null_cell` guard catches the
+        ``NaN`` before the ``float`` coercion (strictly safe for the float/null
+        ``gap`` column).
 
         Args:
             raw: The raw cell — ``None``, a pandas ``NaN``, or a number.
@@ -246,12 +263,7 @@ class JournalStudyStore:
         Returns:
             The decoded ``float``, or ``None`` when there is no value.
         """
-        if raw is None:
-            return None
-        value = float(raw)
-        if math.isnan(value):
-            return None
-        return value
+        return None if cls._is_null_cell(raw) else float(raw)
 
 
 #: Back-compat alias: ``StudyStore`` historically named the concrete journal.
