@@ -5,6 +5,14 @@
 # PhenoTypic: A Python Framework for Bio-Image Analysis
 
 ![Development Stage](https://img.shields.io/badge/dev_stage-beta-orange)
+[![GUI checks](https://github.com/exfab/PhenoTypic/actions/workflows/gui-checks.yml/badge.svg)](https://github.com/exfab/PhenoTypic/actions/workflows/gui-checks.yml)
+[![Docs](https://github.com/exfab/PhenoTypic/actions/workflows/docs.yml/badge.svg)](https://github.com/exfab/PhenoTypic/actions/workflows/docs.yml)
+[![PyPI](https://img.shields.io/pypi/v/phenotypic)](https://pypi.org/project/phenotypic/)
+[![Python](https://img.shields.io/pypi/pyversions/phenotypic)](https://pypi.org/project/phenotypic/)
+[![License](https://img.shields.io/github/license/exfab/PhenoTypic)](https://github.com/exfab/PhenoTypic/blob/main/LICENSE)
+[![GitHub release](https://img.shields.io/github/v/release/exfab/PhenoTypic)](https://github.com/exfab/PhenoTypic/releases)
+[![Issues](https://img.shields.io/github/issues/exfab/PhenoTypic)](https://github.com/exfab/PhenoTypic/issues)
+[![Pull requests](https://img.shields.io/github/issues-pr/exfab/PhenoTypic)](https://github.com/exfab/PhenoTypic/pulls)
 
 A modular image processing framework developed at the NSF Ex-FAB BioFoundry, focused on
 arrayed colony phenotyping on solid media.
