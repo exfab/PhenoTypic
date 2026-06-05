@@ -105,6 +105,27 @@ class JournalStudyStore:
         """
         return None
 
+    def pareto_front(self) -> list[Trial]:
+        """The non-dominated trials by their ``objectives`` sidecar (plan §0a).
+
+        Delegates to the store-agnostic :func:`pareto_front_of` over the
+        journaled trials. A single-objective journal (no trial carries
+        ``objectives``) returns ``[]`` while scalar :meth:`best` still works.
+        """
+        from ._study._pareto import pareto_front_of
+
+        return pareto_front_of(self._trials)
+
+    def knee_point(self, front: list[Trial]) -> Optional[Trial]:
+        """The ``front`` trial at max perpendicular distance to the chord.
+
+        Delegates to the store-agnostic :func:`knee_point_of`; ``None`` for an
+        empty front.
+        """
+        from ._study._pareto import knee_point_of
+
+        return knee_point_of(front)
+
     #: Stable column order for the trials frame (explicit so an empty store
     #: still writes a valid parquet schema rather than a zero-column frame).
     #: ``objectives_json`` is the multi-objective sidecar column (plan §0a):

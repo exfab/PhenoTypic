@@ -29,6 +29,11 @@ _ATTR_NUMBER = "pheno_number"
 _ATTR_PARAMS = "pheno_params"
 _ATTR_TERMS = "pheno_terms"
 _ATTR_N_IMAGES = "pheno_n_images"
+#: The multi-objective sidecar (plan §0a): the ``{objective: value}`` dict is
+#: stored verbatim so a reopened study reconstructs ``Trial.objectives`` with its
+#: original objective names (the ``pareto/`` axis labels), independent of the
+#: study's native ``values`` ordering. ``None``/absent for a single-objective trial.
+_ATTR_OBJECTIVES = "pheno_objectives"
 
 
 class OptunaStudyStore:
@@ -92,9 +97,13 @@ class OptunaStudyStore:
 
         The trial is added as a frozen Optuna trial whose ``state`` mirrors the
         ``failed`` / ``pruned`` taxonomy and whose ``user_attrs`` carry the
-        non-native fields (our ``number``, ``params``, ``terms``, ``n_images``).
-        ``params``/``distributions`` are left empty — the search dimensions live
-        in ``user_attrs`` so ``add_trial`` needs no distribution metadata.
+        non-native fields (our ``number``, ``params``, ``terms``, ``n_images``,
+        and the multi-objective ``objectives`` sidecar). ``params`` /
+        ``distributions`` are left empty — the search dimensions live in
+        ``user_attrs`` so ``add_trial`` needs no distribution metadata. On a
+        multi-objective study the trial's ``values`` are the objective vector (in
+        the study's ``directions`` order) so ``study.best_trials`` computes the
+        Pareto front natively; a single-objective study tells the scalar ``value``.
         """
         import optuna
 
@@ -105,43 +114,76 @@ class OptunaStudyStore:
         else:
             state = optuna.trial.TrialState.COMPLETE
 
-        # A FAIL/PRUNED trial may legitimately carry no value; COMPLETE carries
-        # the score Optuna ranks ``best`` by.
-        value = None if trial.failed else float(trial.score)
-        frozen = optuna.trial.create_trial(
-            state=state,
-            value=value,
-            params={},
-            distributions={},
-            user_attrs={
-                _ATTR_NUMBER: trial.number,
-                _ATTR_PARAMS: trial.params,
-                _ATTR_TERMS: trial.terms,
-                _ATTR_N_IMAGES: trial.n_images,
-            },
-        )
+        user_attrs: dict[str, Any] = {
+            _ATTR_NUMBER: trial.number,
+            _ATTR_PARAMS: trial.params,
+            _ATTR_TERMS: trial.terms,
+            _ATTR_N_IMAGES: trial.n_images,
+        }
+        if trial.objectives is not None:
+            user_attrs[_ATTR_OBJECTIVES] = dict(trial.objectives)
+
+        # A FAIL/PRUNED trial may legitimately carry no value/values; a COMPLETE
+        # multi-objective trial carries the per-objective vector Optuna's Pareto
+        # ranking reads, a single-objective one the scalar score ``best`` ranks by.
+        create_kwargs: dict[str, Any] = {
+            "state": state,
+            "params": {},
+            "distributions": {},
+            "user_attrs": user_attrs,
+        }
+        if trial.failed:
+            create_kwargs["values" if self._multi_objective else "value"] = None
+        elif self._multi_objective and trial.objectives is not None:
+            create_kwargs["values"] = [
+                float(v) for v in trial.objectives.values()
+            ]
+        else:
+            create_kwargs["value"] = float(trial.score)
+        frozen = optuna.trial.create_trial(**create_kwargs)
         self._study.add_trial(frozen)
 
     # -- reads ----------------------------------------------------------------
 
     def _to_trial(self, frozen: "optuna.trial.FrozenTrial") -> Trial:
-        """Reconstruct our :class:`Trial` from an Optuna frozen trial."""
+        """Reconstruct our :class:`Trial` from an Optuna frozen trial.
+
+        Restores the multi-objective ``objectives`` sidecar from ``user_attrs``;
+        a multi-objective trial's scalar ``score`` is the mean of its objectives
+        (the same projection the Evaluator applies), since a multi-objective
+        Optuna trial carries no scalar ``value``.
+        """
         import optuna
 
         attrs = frozen.user_attrs
         failed = frozen.state == optuna.trial.TrialState.FAIL
         pruned = frozen.state == optuna.trial.TrialState.PRUNED
-        score = (
-            float(frozen.value)
-            if frozen.value is not None
-            else 0.0
+        raw_objectives = attrs.get(_ATTR_OBJECTIVES)
+        objectives = (
+            {str(k): float(v) for k, v in raw_objectives.items()}
+            if isinstance(raw_objectives, dict)
+            else None
         )
+        # ``frozen.value`` raises on a multi-objective study (read ``values``);
+        # the scalar ``score`` is then the mean of the objectives (the same
+        # projection the Evaluator applies).
+        if self._multi_objective:
+            score = (
+                float(sum(objectives.values()) / len(objectives))
+                if objectives
+                else 0.0
+            )
+        elif frozen.value is not None:
+            score = float(frozen.value)
+        else:
+            score = 0.0
         return Trial(
             number=int(attrs.get(_ATTR_NUMBER, frozen.number)),
             params=dict(attrs.get(_ATTR_PARAMS, {})),
             score=score,
             terms=dict(attrs.get(_ATTR_TERMS, {})),
             n_images=int(attrs.get(_ATTR_N_IMAGES, 0)),
+            objectives=objectives,
             failed=failed,
             pruned=pruned,
         )
@@ -194,3 +236,27 @@ class OptunaStudyStore:
             # No native dimensions (append-path trials carry params off-band).
             return None
         return {key: float(value) for key, value in importances.items()}
+
+    def pareto_front(self) -> list[Trial]:
+        """The non-dominated trials by their ``objectives`` sidecar (plan §0a).
+
+        A multi-objective study exposes its native Pareto front via
+        ``study.best_trials`` (Optuna's own non-domination over the per-objective
+        ``values``); each is reconstructed into our :class:`Trial` (objectives
+        restored from ``user_attrs``). A single-objective study has no
+        multi-objective front, so this returns ``[]`` (the back-compat lock).
+        """
+        if not self._multi_objective:
+            return []
+        return [self._to_trial(f) for f in self._study.best_trials]
+
+    def knee_point(self, front: list[Trial]) -> Optional[Trial]:
+        """The ``front`` trial at max perpendicular distance to the chord.
+
+        Delegates to the store-agnostic :func:`knee_point_of` so the Optuna and
+        journal backends pick the same knee from the same front; ``None`` for an
+        empty front.
+        """
+        from ._pareto import knee_point_of
+
+        return knee_point_of(front)

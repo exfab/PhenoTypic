@@ -128,3 +128,67 @@ def test_study_db_path_resolves_to_output_root(tmp_path):
     p = io.study_db_path(tmp_path)
     assert p == tmp_path / "study.db"
     assert p.name == io.STUDY_DB
+
+
+# ---------------------------------------------------------------------------
+# 4.6 — Pareto front / knee over the Optuna study's native best_trials
+# ---------------------------------------------------------------------------
+
+
+def _mo_store(tmp_path, name="mo"):
+    from phenotypic.tune._study._optuna_store import OptunaStudyStore
+
+    url = f"sqlite:///{tmp_path / 'study.db'}"
+    return OptunaStudyStore(
+        storage_url=url, study_name=name, directions=["maximize", "maximize"]
+    )
+
+
+def _mo_trial(number, objectives, *, failed=False):
+    score = sum(objectives.values()) / len(objectives)
+    return Trial(
+        number=number, params={"a": number}, score=score,
+        terms={}, n_images=2, objectives=objectives, failed=failed,
+    )
+
+
+def test_single_objective_optuna_store_has_empty_pareto_front(tmp_path):
+    # A single-objective study has no multi-objective front (back-compat lock).
+    store = _store(tmp_path)
+    store.append(_trial(0, 0.3))
+    store.append(_trial(1, 0.9))
+    assert store.pareto_front() == []
+    assert store.best().score == 0.9
+
+
+def test_multi_objective_optuna_store_pareto_front_excludes_dominated(tmp_path):
+    # best_trials must drop the dominated point and keep the non-dominated set.
+    store = _mo_store(tmp_path)
+    store.append(_mo_trial(0, {"Dice": 0.9, "IoU": 0.2}))  # non-dominated
+    store.append(_mo_trial(1, {"Dice": 0.5, "IoU": 0.5}))  # non-dominated
+    store.append(_mo_trial(2, {"Dice": 0.2, "IoU": 0.9}))  # non-dominated
+    store.append(_mo_trial(3, {"Dice": 0.4, "IoU": 0.4}))  # dominated by #1
+    front_numbers = {t.number for t in store.pareto_front()}
+    assert front_numbers == {0, 1, 2}
+
+
+def test_multi_objective_objectives_round_trip(tmp_path):
+    # The objectives sidecar survives the study round-trip (axis labels intact).
+    store = _mo_store(tmp_path)
+    store.append(_mo_trial(0, {"Dice": 0.8, "IoU": 0.3}))
+    reloaded = {t.number: t for t in store.trials}
+    assert reloaded[0].objectives == {"Dice": 0.8, "IoU": 0.3}
+
+
+def test_multi_objective_knee_point_matches_shared_math(tmp_path):
+    # The Optuna front's knee agrees with the store-agnostic knee math.
+    from phenotypic.tune._study._pareto import knee_point_of
+
+    store = _mo_store(tmp_path)
+    store.append(_mo_trial(0, {"Dice": 0.0, "IoU": 1.0}))
+    store.append(_mo_trial(1, {"Dice": 0.9, "IoU": 0.9}))  # elbow
+    store.append(_mo_trial(2, {"Dice": 1.0, "IoU": 0.0}))
+    front = store.pareto_front()
+    knee = store.knee_point(front)
+    assert knee is not None and knee.number == 1
+    assert knee.number == knee_point_of(front).number

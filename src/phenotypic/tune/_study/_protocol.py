@@ -72,3 +72,26 @@ class StudyStore(Protocol):
         ``append`` path stores params off-band), so the fallback still fires.
         """
         ...
+
+    def pareto_front(self) -> list["Trial"]:
+        """The non-dominated trials by their ``objectives`` sidecar (plan §0a).
+
+        A multi-objective trial carries an ``objectives`` dict (set when the
+        scorer's ``finalize`` returns a dict — e.g. a
+        ``CompositeScorer(multi_objective=True)``); a trial is on the front when
+        no other scored trial beats it on *every* objective. Failed trials and
+        single-objective (``objectives is None``) trials are excluded, so a
+        single-objective study returns ``[]`` here while scalar :meth:`best`
+        still works (the multi-objective back-compat lock).
+        """
+        ...
+
+    def knee_point(self, front: list["Trial"]) -> Optional["Trial"]:
+        """The front trial at max perpendicular distance to the extremes' chord.
+
+        The canonical multi-objective compromise pick (plan §0b): the
+        max-curvature elbow of the Pareto ``front``, found by maximizing each
+        front point's perpendicular distance to the chord between the two extreme
+        objective points. ``None`` for an empty front.
+        """
+        ...
