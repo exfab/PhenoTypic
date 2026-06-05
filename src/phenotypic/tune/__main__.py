@@ -77,8 +77,11 @@ def _build_parser() -> argparse.ArgumentParser:
         "--storage-url",
         default=None,
         help=(
-            "Optuna storage URL (sqlite:///… or postgresql+psycopg://…); falls "
-            f"back to ${PHENOTYPIC_TUNE_STORAGE_URL_ENV}"
+            "Optuna storage URL: sqlite:///… (local single node) or a "
+            "password-less postgresql+psycopg://USER@HOST:PORT/DB (distributed; "
+            "libpq reads the password from ~/.pgpass or $PGPASSWORD, so it never "
+            f"enters argv or the worker script); falls back to "
+            f"${PHENOTYPIC_TUNE_STORAGE_URL_ENV}"
         ),
     )
     run_p.add_argument(

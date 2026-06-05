@@ -68,16 +68,20 @@
 
 ## Postgres for distributed Optuna (tooling provided — wiring is Phase 2/6)
 
-- **Server tooling exists:** `~/util/postgres_server/` — a user-space PostgreSQL 18.4 server
-  (conda env `pg`) run as a Slurm job (`sbatch pgserver.sh`), writing its node address to
-  `connection_info.txt` and the superuser password to `pgpassword.txt` (port 54399). SQLite-WAL is
-  unsafe on NFS/Lustre, so distributed SLURM array studies use this Postgres backend.
+- **PhenoTypic is backend-agnostic (decoupled 2026-06-05):** it does **not** parse any specific
+  server's handshake files. SQLite-WAL is unsafe on NFS/Lustre, so distributed SLURM array studies
+  use a **generic, user-defined Postgres URL**. A user-space PostgreSQL Slurm job (e.g.
+  `~/util/postgres_server/`) is **one example** of standing up a server — documented in Phase 6, not
+  a PhenoTypic dependency. (The earlier `read_pg_connection_info()` helper + `_study/_pg.py` were
+  removed — coupling to one user's util.)
 - **Phase 2 wiring:** `OptunaConfig.storage_url` / `--storage-url` / `PHENOTYPIC_TUNE_STORAGE_URL`,
-  using the `postgresql+psycopg://USER:PW@NODE:54399/DB` scheme (psycopg3) + a
-  `read_pg_connection_info()` helper that parses `connection_info.txt`/`pgpassword.txt`. Postgres
-  integration tests are gated behind `PHENOTYPIC_TEST_PG_URL` / `@pytest.mark.postgres`; the default
-  suite uses local SQLite so CI stays hermetic. Local single-node runs use SQLite-WAL.
-- **Phase 6 docs:** `tune_distributed_hpcc.md` documents the why + the launch/read-address/wire-in flow.
+  using a **password-less** `postgresql+psycopg://USER@HOST:54399/DB` scheme (psycopg3); the password
+  is resolved by **libpq** from `~/.pgpass` / `$PGPASSWORD` (standard PostgreSQL — never in argv, the
+  shell, or the generated worker script). Postgres integration tests are gated behind
+  `PHENOTYPIC_TEST_PG_URL` / `@pytest.mark.postgres`; the default suite uses local SQLite so CI stays
+  hermetic. Local single-node runs use SQLite-WAL.
+- **Phase 6 docs:** `tune_distributed_hpcc.md` documents the why + the generic `--storage-url` +
+  `~/.pgpass` flow (with `~/util/postgres_server/` shown as one way to get a server).
 
 ---
 

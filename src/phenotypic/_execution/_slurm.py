@@ -9,11 +9,14 @@ Reuses the **forward CLI's drip-feed submission layer** (``format_sbatch_directi
 the **shared** Optuna ``study.db`` / Postgres URL until the shared budget exhausts
 (optuna-integration §7).
 
-The Postgres URL can be resolved at construction from the HPCC
-``postgres_server`` handshake files via ``read_pg_connection_info`` (psycopg3
-scheme), so a fleet on a rotating Slurm node still finds the live study. A
-dead/orphaned worker is re-enqueued **once** (a single bounded retry, never an
-unbounded resubmit loop).
+The shared study URL (``--storage-url`` / ``$PHENOTYPIC_TUNE_STORAGE_URL``) is a
+plain Optuna storage URL — SQLite-WAL for a local single node, or a Postgres
+``postgresql+psycopg://USER@HOST:PORT/DB`` for a distributed fleet. PhenoTypic is
+backend-agnostic and does not parse any server's handshake files: for a
+password-less Postgres URL the password is resolved by **libpq** from
+``~/.pgpass`` / ``PGPASSWORD`` (a shared-home ``~/.pgpass`` is read per worker),
+so the secret never enters the worker script. A dead/orphaned worker is
+re-enqueued **once** (a single bounded retry, never an unbounded resubmit loop).
 """
 from __future__ import annotations
 
@@ -56,13 +59,10 @@ class SlurmExecutor:
         n_workers: The number of array tasks (workers) to launch.
         slurm_args: SLURM parameters (partition, mem, time, …) forwarded to
             ``format_sbatch_directives`` and the drip-feed dispatchers.
-        storage_url: The shared Optuna storage URL. Mutually exclusive with the
-            ``pg_server_dir`` Postgres-handshake path; exactly one source must be
-            given.
-        pg_server_dir: A ``postgres_server`` handshake folder; when set (and
-            ``storage_url`` is ``None``) the URL is resolved via
-            ``read_pg_connection_info`` against ``pg_db``.
-        pg_db: The Postgres database name (used only with ``pg_server_dir``).
+        storage_url: The shared Optuna storage URL every worker opens — a plain
+            ``sqlite:///…`` or ``postgresql+psycopg://…`` (recommended
+            password-less: libpq resolves the secret from ``~/.pgpass`` /
+            ``PGPASSWORD`` per worker).
         python_command: The interpreter prefix the worker is launched with
             (default ``["python"]``); override for a non-default launcher.
     """
@@ -76,15 +76,9 @@ class SlurmExecutor:
         study_name: str,
         n_workers: int,
         slurm_args: dict[str, Any],
-        storage_url: Optional[str] = None,
-        pg_server_dir: Optional[Path] = None,
-        pg_db: str = "tune",
+        storage_url: str,
         python_command: Optional[Sequence[str]] = None,
     ) -> None:
-        if (storage_url is None) == (pg_server_dir is None):
-            raise ValueError(
-                "provide exactly one of storage_url or pg_server_dir"
-            )
         self.output_dir = Path(output_dir)
         self.spec_path = Path(spec_path)
         self.images_dir = Path(images_dir)
@@ -92,16 +86,7 @@ class SlurmExecutor:
         self.n_workers = int(n_workers)
         self.slurm_args = dict(slurm_args)
         self.python_command = list(python_command) if python_command else ["python"]
-
-        if storage_url is not None:
-            self.storage_url = storage_url
-        else:
-            from phenotypic.tune._study._pg import read_pg_connection_info
-
-            assert pg_server_dir is not None
-            self.storage_url = read_pg_connection_info(
-                Path(pg_server_dir), db=pg_db
-            )
+        self.storage_url = storage_url
 
         #: Worker indices already re-enqueued once (bounds the retry to a single
         #: resubmit per worker — no unbounded loop).

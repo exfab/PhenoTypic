@@ -3,7 +3,8 @@
 Mirrors the forward-CLI script-gen tests: we generate the array worker script
 and the drip-feed chain and assert on their contents, mock the sbatch submission,
 and exercise the dead-worker re-enqueue. The worker binds to the shared study by
-name + storage URL (reusing read_pg_connection_info for the Postgres case).
+name + a plain Optuna storage URL (SQLite-WAL or a password-less
+``postgresql+psycopg://…`` — libpq resolves the secret from ``~/.pgpass``).
 """
 from __future__ import annotations
 
@@ -12,9 +13,14 @@ from unittest.mock import patch
 
 import pytest
 
-pytestmark = pytest.mark.skipif(
-    sys.platform == "win32", reason="SLURM not available on Windows"
-)
+pytestmark = [
+    # Autoskipped by tests/conftest.py unless the SLURM client (sbatch) is on
+    # PATH — so CI and slurm-less local runs never fail on the fleet tests.
+    pytest.mark.slurm,
+    pytest.mark.skipif(
+        sys.platform == "win32", reason="SLURM not available on Windows"
+    ),
+]
 
 from phenotypic._execution import Executor  # noqa: E402
 from phenotypic._execution._slurm import SlurmExecutor  # noqa: E402
@@ -109,35 +115,6 @@ def test_dead_worker_re_enqueued_once(tmp_path):
         # A second re-enqueue of the same worker is a no-op (re-enqueue once).
         second = ex.reenqueue_dead_worker(worker_index=2)
     assert second is None
-
-
-def test_pg_url_resolved_via_read_pg_connection_info(tmp_path):
-    # When given a postgres server dir instead of a URL, the executor resolves
-    # the shared study URL through read_pg_connection_info (psycopg3 scheme).
-    server_dir = tmp_path / "pg"
-    server_dir.mkdir()
-    (server_dir / "connection_info.txt").write_text(
-        "Node        : i12   (i12.ib.hpcc.ucr.edu)\n"
-        "Port        : 54399\n"
-        "Superuser   : alice\n"
-    )
-    (server_dir / "pgpassword.txt").write_text("s3cr3t\n")
-
-    ex = SlurmExecutor(
-        output_dir=tmp_path,
-        spec_path=tmp_path / "tuning_spec.json",
-        images_dir=tmp_path / "images",
-        study_name="pgstudy",
-        pg_server_dir=server_dir,
-        pg_db="tune",
-        n_workers=2,
-        slurm_args={"slurm_partition": "short"},
-    )
-    assert ex.storage_url.startswith("postgresql+psycopg://")
-    assert "i12.ib.hpcc.ucr.edu:54399/tune" in ex.storage_url
-    # The password is never embedded in plaintext beyond the URL-encoded credential.
-    content = ex.generate_worker_array_script().read_text()
-    assert "pgstudy" in content
 
 
 # --- worker entry binds to the shared study -----------------------------------
