@@ -218,7 +218,7 @@ class MeasureSymmetricZones(MeasureFeatures):          # pydantic BaseModel
     @figure(title="Symmetric-radius overlay", primary=True,
             controls={"base_layer": BASE_LAYER})       # select control → shell path
     def inspect(self, image=None, *, base_layer="gray", for_save=False) -> go.Figure:
-        img = image if image is not None else self._cached_image()   # existing _opcache
+        img = image if image is not None else self._cached_image()   # declared PrivateAttr
         ...
     # .inspect(image)  → static primary figure (for_save flattens layers) — unchanged CLI
     # .dash(image)     → ipywidgets dashboard with a base_layer dropdown
@@ -232,12 +232,29 @@ class DiagnosticsPlotter(BasePlotter, FigureProvider):
         ...
 ```
 
-**Pydantic-safety:** `FigureProvider` adds only methods (no annotations → no
-fields; `model_json_schema()` unchanged). `Control`s are decorator args /
-module constants, never class annotations. Transient cache lives on
-`BoundFigures` / the existing `_opcache` per-instance cache (`image=None`
-reuses the last-measured image) — **nothing transient on the model**. May sit
-on `BaseOperation` so any operation can light up `inspect()`/`dash()` by
+**Pydantic-safety:** this reuses a pattern already proven in the hierarchy —
+`ImageOperation(BaseOperation, LazyWidgetMixin, ABC)` already composes a plain
+(non-`BaseModel`) mixin with the pydantic base and holds transient refs (e.g.
+`_image_ref`) via `PrivateAttr`. `FigureProvider` is the same shape:
+
+- **No fields added.** The mixin declares **only methods** — no class-level
+  annotations — so pydantic's `ModelMetaclass` adds nothing; `model_fields`,
+  `model_json_schema()`, `model_dump()` and `to_json()`/`from_json()` are
+  unchanged (figures are behavior, not data). `@figure` metadata rides on the
+  function object (`fn.__figure_spec__`), invisible to pydantic; `Control`s are
+  decorator args / module constants, never class annotations.
+- **No metaclass conflict.** `FigureProvider`'s metaclass is plain `type`;
+  pydantic's `ModelMetaclass` stays the most-derived metaclass, so the MRO
+  resolves exactly as it already does for `LazyWidgetMixin`.
+- **The mixin is stateless.** It adds no `__init__` and no instance attributes.
+  The `inspect(image=None)` "reuse the last-measured image" cache uses a
+  **declared `PrivateAttr`** (e.g. `_inspect_cache: dict = PrivateAttr(...)`,
+  exactly as `_image_ref` already works) — excluded from fields/schema/
+  serialization. The multi-figure dashboard's per-render cache lives on the
+  transient non-model `BoundFigures` object returned by `figures(subject)`.
+  So no undeclared attributes and no fields are ever set on the model.
+
+May sit on `BaseOperation` so any operation can light up `inspect()`/`dash()` by
 declaring `@figure` methods; existing hand-written `inspect()`/`dash()` methods
 returning `go.Figure` keep working.
 
