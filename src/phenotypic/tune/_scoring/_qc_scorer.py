@@ -42,6 +42,38 @@ def _threshold_anchored(metric: float, fail_threshold: float) -> float:
     return math.exp(-math.log(2.0) * metric / fail_threshold)
 
 
+def fold_expected_vs_detected_count(
+    check: ExpectedVsDetectedCount, measurements: pd.DataFrame
+) -> float:
+    """Fold a count check's per-group divergence into one higher-is-better score.
+
+    The shared count-tier reduction used by :class:`QCScorer`,
+    :class:`SupervisedScorer` (count tier), and :class:`ReferenceFreeScorer`
+    (optional count term): run ``check`` over ``measurements``, anchor each
+    ``groupby`` group's ``QC_Count_Metric`` on the check's ``fail_threshold`` via
+    :func:`_threshold_anchored`, and average across groups — turning the
+    lower-is-better divergence into a higher-is-better ``[0, 1]`` score. An empty
+    or ``None`` frame scores ``0.0`` (every caller's empty-frame floor).
+
+    Args:
+        check: A configured :class:`ExpectedVsDetectedCount` count check.
+        measurements: The candidate pipeline's measurement frame.
+
+    Returns:
+        The averaged anchored count score in ``[0, 1]`` (higher = better);
+        ``0.0`` for an empty or ``None`` frame.
+    """
+    if measurements is None or len(measurements) == 0:
+        return 0.0
+    augmented = check.analyze(measurements)
+    metric_col = check.metric_col()
+    per_group = augmented.groupby(check.groupby, dropna=False)[metric_col].first()
+    fail = float(check.fail_threshold)
+    return float(
+        per_group.map(lambda m: _threshold_anchored(float(m), fail)).mean()
+    )
+
+
 class QCScorer(Scorer):
     """Count-only quality objective backed by ``ExpectedVsDetectedCount``.
 
@@ -95,15 +127,8 @@ class QCScorer(Scorer):
         Returns:
             ``{"Count": <score in [0, 1]>}`` (higher = better).
         """
-        if measurements is None or len(measurements) == 0:
-            return {self.term_name: 0.0}
-        augmented = self.check.analyze(measurements)
-        metric_col = self.check.metric_col()
-        per_group = augmented.groupby(self.check.groupby, dropna=False)[
-            metric_col
-        ].first()
-        fail = float(self.check.fail_threshold)
-        score = float(
-            per_group.map(lambda m: _threshold_anchored(float(m), fail)).mean()
-        )
-        return {self.term_name: score}
+        return {
+            self.term_name: fold_expected_vs_detected_count(
+                self.check, measurements
+            )
+        }

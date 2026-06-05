@@ -45,7 +45,7 @@ from phenotypic.analysis import ExpectedVsDetectedCount
 from ._gt_loader import GroundTruthMasks
 from ._matching import MatchPair, match_iou_greedy, match_per_grid_cell
 from ._metrics import dice, iou
-from ._qc_scorer import _threshold_anchored
+from ._qc_scorer import fold_expected_vs_detected_count
 from ._scorer import Scorer
 
 #: The single region-overlap metric — Dice **xor** IoU (never both: they rank
@@ -318,15 +318,8 @@ class SupervisedScorer(Scorer):
         """
         if self.count_check is None:
             return {self.count_term_name: 0.0}
-        if measurements is None or len(measurements) == 0:
-            return {self.count_term_name: 0.0}
-        augmented = self.count_check.analyze(measurements)
-        metric_col = self.count_check.metric_col()
-        per_group = augmented.groupby(self.count_check.groupby, dropna=False)[
-            metric_col
-        ].first()
-        fail = float(self.count_check.fail_threshold)
-        score = float(
-            per_group.map(lambda m: _threshold_anchored(float(m), fail)).mean()
-        )
-        return {self.count_term_name: score}
+        return {
+            self.count_term_name: fold_expected_vs_detected_count(
+                self.count_check, measurements
+            )
+        }

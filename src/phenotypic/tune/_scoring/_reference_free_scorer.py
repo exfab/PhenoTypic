@@ -39,7 +39,7 @@ from pydantic import ConfigDict, PrivateAttr
 from phenotypic.analysis import ExpectedVsDetectedCount
 from phenotypic.schema import SHAPE, SIZE
 
-from ._qc_scorer import _threshold_anchored
+from ._qc_scorer import fold_expected_vs_detected_count
 from ._scorer import Scorer
 
 #: Spearman ρ at or above which the proxy is trusted enough to *enable* the
@@ -457,12 +457,4 @@ class ReferenceFreeScorer(Scorer):
         """
         if empty or self.count_check is None:
             return 0.0
-        augmented = self.count_check.analyze(measurements)
-        metric_col = self.count_check.metric_col()
-        per_group = augmented.groupby(
-            self.count_check.groupby, dropna=False
-        )[metric_col].first()
-        fail = float(self.count_check.fail_threshold)
-        return float(
-            per_group.map(lambda m: _threshold_anchored(float(m), fail)).mean()
-        )
+        return fold_expected_vs_detected_count(self.count_check, measurements)
