@@ -95,3 +95,52 @@ class Nested(_TargetBase):
 
 #: The discriminated union a ``Knob.target`` holds.
 KnobTarget = Annotated[Union[Param, Presence, Nested], Field(discriminator="kind")]
+
+
+def parse_key(key: str) -> "KnobTarget":
+    """Parse a canonical key string into a structured ``KnobTarget``.
+
+    The pipeline-free inverse of ``KnobTarget.key`` — a purely *structural*
+    parse; op-range / field-existence checks happen later against the pipeline
+    in the ``TuningSpec`` validator. ``op_class`` is recovered only from the
+    classed presence form (``"0.GaussianBlur.__enabled__"``); flat and nested
+    keys do not encode a class, so their ``op_class`` is ``None``.
+
+    Args:
+        key: A canonical key, e.g. ``"0.sigma"`` /
+            ``"0.GaussianBlur.__enabled__"`` / ``"0.refiners[1].min_size"``.
+
+    Returns:
+        The matching ``Param`` / ``Presence`` / ``Nested``.
+
+    Raises:
+        ValueError: When the first segment is not an int position, or the key
+            matches none of the three grammars.
+    """
+    parts = key.split(".")
+    try:
+        op = int(parts[0])
+    except ValueError as exc:
+        raise ValueError(f"key {key!r} does not start with an int position") from exc
+
+    # Nested: a "<field>[<index>]" segment selects the nested grammar.
+    for i, segment in enumerate(parts[1:], start=1):
+        if "[" in segment and segment.endswith("]"):
+            field, _, idx = segment[:-1].partition("[")
+            leaf = ".".join(parts[i + 1:])
+            if not field or not idx.isdigit() or not leaf:
+                raise ValueError(f"key {key!r} has a malformed nested segment")
+            return Nested(op=op, field=field, index=int(idx), leaf=leaf)
+
+    # Presence: trailing "__enabled__" (classed three-part or bare two-part).
+    if parts[-1] == _ENABLED:
+        if len(parts) == 3:
+            return Presence(op=op, op_class=parts[1])
+        if len(parts) == 2:
+            return Presence(op=op)
+        raise ValueError(f"presence key {key!r} is malformed")
+
+    # Flat: "<op>.<field>".
+    if len(parts) == 2:
+        return Param(op=op, field=parts[1])
+    raise ValueError(f"key {key!r} is not a recognised flat/presence/nested key")
