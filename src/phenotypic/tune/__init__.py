@@ -49,9 +49,12 @@ from ._engine import TuningEngine
 from ._evaluation import (
     EvaluationResult,
     Evaluator,
+    GeneralizationReport,
     HeldOutConfig,
     build_pipeline,
+    compute_generalization_gap,
     infer_group_key,
+    run_held_out,
 )
 
 # --- Phase 1a: search space (domains + Knob/SearchSpace) ----------------------
@@ -144,6 +147,10 @@ __all__ = [
     # Phase 4.5 part 1: robust-eval held-out config + group-key inference
     "HeldOutConfig",
     "infer_group_key",
+    # Phase 4.5 part 2: held-out generalization pass + report
+    "GeneralizationReport",
+    "compute_generalization_gap",
+    "run_held_out",
     # Phase 1d: engine + spec + study + screening + CLI
     "TuningEngine",
     "TuningSpec",
