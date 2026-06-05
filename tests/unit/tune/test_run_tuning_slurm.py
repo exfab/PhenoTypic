@@ -95,3 +95,44 @@ def test_slurm_fleet_workers_reload_the_resolved_spec(tmp_path, monkeypatch):
     # …and workers launch with the submitter's own venv interpreter (absolute
     # sys.executable), not a bare ``python`` that a compute node can't resolve.
     assert captured["python_command"] == [sys.executable]
+
+
+def test_slurm_fleet_pre_creates_the_shared_study(tmp_path, monkeypatch):
+    # The submitter must materialize the study (+ RDB schema) BEFORE the fleet
+    # starts, so cold-DB workers don't race to CREATE the Optuna schema (the live
+    # UniqueViolation on studydirection). After submission the study must already
+    # exist in the storage.
+    import optuna
+
+    class _FakeExecutor:
+        def __init__(self, **kw):
+            pass
+
+        def run(self, work, items):
+            return None
+
+    monkeypatch.setattr(
+        "phenotypic.tune._tune_cli._run.SlurmExecutor", _FakeExecutor
+    )
+
+    spec = _grid_input_spec()
+    spec_path = tmp_path / "spec.json"
+    spec_path.write_text(spec.model_dump_json())
+    out = tmp_path / "out"
+    url = f"sqlite:///{tmp_path / 'study.db'}"
+
+    run_tuning(
+        spec,
+        images=[],
+        output_dir=out,
+        strategy="tpe",
+        n_trials=4,
+        slurm=True,
+        spec_path=spec_path,
+        images_dir=tmp_path / "imgs",
+        storage_url=url,
+    )
+
+    # The study exists in the storage (pre-created) — load_study does not raise.
+    study = optuna.load_study(study_name="tune", storage=url)
+    assert study.study_name == "tune"

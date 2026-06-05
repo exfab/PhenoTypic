@@ -368,6 +368,18 @@ def _submit_slurm_fleet(
     )
     n_trials = getattr(spec.strategy, "n_trials", None)
     n_workers = min(8, n_trials) if isinstance(n_trials, int) and n_trials > 0 else 4
+    # Pre-create the shared study (and its RDB schema) in THIS process BEFORE the
+    # fleet starts. A cold Postgres DB has no Optuna schema, so N workers opening
+    # it simultaneously race to CREATE TYPE studydirection / the trial tables and
+    # all but one crash with a duplicate-key UniqueViolation. Materializing the
+    # study once here (Optuna's documented distributed pattern) means every worker
+    # finds an existing study and only reads/appends trials. The directions match
+    # what each worker's engine infers from the scorer, so the load_if_exists open
+    # never conflicts.
+    from .._study._optuna_store import OptunaStudyStore
+
+    directions = objective_directions(spec.scorer)
+    OptunaStudyStore(storage_url=url, study_name="tune", directions=directions)
     # Each worker launches with the submitting process's own venv interpreter
     # (the absolute sys.executable, shared across the cluster filesystem) — bare
     # ``python`` on a fresh compute node would not resolve phenotypic/optuna. This

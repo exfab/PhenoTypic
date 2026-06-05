@@ -24,7 +24,9 @@ from .._spec import TuningSpec
 from ._run import _load_images
 
 
-def build_worker_store(*, storage_url: str, study_name: str):
+def build_worker_store(
+    *, storage_url: str, study_name: str, directions: Optional[list[str]] = None
+):
     """Open the shared, resumable Optuna study this worker contributes trials to.
 
     Args:
@@ -32,6 +34,11 @@ def build_worker_store(*, storage_url: str, study_name: str):
             ``postgresql+psycopg://…``). Every worker in the fleet passes the same
             URL so they share one study.
         study_name: The shared study name (same across the fleet).
+        directions: Per-objective directions inferred from the scorer (multi-
+            objective) or ``None`` (single-objective). Must match what the
+            submitter pre-created the study with and what each worker's engine
+            strategy infers — else the ``load_if_exists`` open conflicts on the
+            study's objective shape.
 
     Returns:
         An :class:`~phenotypic.tune._study._optuna_store.OptunaStudyStore` bound to
@@ -39,7 +46,9 @@ def build_worker_store(*, storage_url: str, study_name: str):
     """
     from .._study._optuna_store import OptunaStudyStore
 
-    return OptunaStudyStore(storage_url=storage_url, study_name=study_name)
+    return OptunaStudyStore(
+        storage_url=storage_url, study_name=study_name, directions=directions
+    )
 
 
 def run_worker(
@@ -64,13 +73,19 @@ def run_worker(
         study_name: The shared study name.
     """
     from .._engine import TuningEngine
+    from .._multi_objective import objective_directions
 
     spec = TuningSpec.model_validate_json(Path(spec_path).read_text())
     images = _load_images(Path(images_dir))
     if not images:
         raise SystemExit(f"no images found under {str(images_dir)!r}")
 
-    store = build_worker_store(storage_url=storage_url, study_name=study_name)
+    # Match the study's objective shape (single vs multi) so binding to the shared,
+    # submitter-pre-created study never conflicts on directions.
+    directions = objective_directions(spec.scorer)
+    store = build_worker_store(
+        storage_url=storage_url, study_name=study_name, directions=directions
+    )
     TuningEngine(spec, store=store).optimize(images)
 
 
