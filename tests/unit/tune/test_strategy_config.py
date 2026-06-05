@@ -6,7 +6,7 @@ from phenotypic.tune._strategies import GridStrategy, RandomStrategy
 
 def _space() -> SearchSpace:
     return SearchSpace(knobs=(
-        Knob(key="a", domain=Categorical(choices=(1, 2))),
+        Knob(key="0.a", domain=Categorical(choices=(1, 2))),
     ))
 
 

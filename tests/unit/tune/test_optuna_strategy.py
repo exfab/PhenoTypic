@@ -53,48 +53,48 @@ def _result(score: float = 1.0, *, failed: bool = False, pruned: bool = False):
 
 def test_categorical_materializes_choice():
     space = SearchSpace(knobs=(
-        Knob(key="c", domain=Categorical(choices=("a", "b", "c"))),
+        Knob(key="0.c", domain=Categorical(choices=("a", "b", "c"))),
     ))
     strat = _strategy(space)
     params, _channel = strat.suggest()
-    assert params["c"] in ("a", "b", "c")
+    assert params["0.c"] in ("a", "b", "c")
 
 
 def test_int_range_materializes_with_step_and_log():
     space = SearchSpace(knobs=(
-        Knob(key="i", domain=IntRange(low=2, high=64, step=2)),
-        Knob(key="j", domain=IntRange(low=1, high=1000, log=True)),
+        Knob(key="0.i", domain=IntRange(low=2, high=64, step=2)),
+        Knob(key="0.j", domain=IntRange(low=1, high=1000, log=True)),
     ))
     strat = _strategy(space)
     params, _ = strat.suggest()
-    assert 2 <= params["i"] <= 64 and params["i"] % 2 == 0
-    assert 1 <= params["j"] <= 1000
+    assert 2 <= params["0.i"] <= 64 and params["0.i"] % 2 == 0
+    assert 1 <= params["0.j"] <= 1000
 
 
 def test_float_range_materializes_log():
     space = SearchSpace(knobs=(
-        Knob(key="f", domain=FloatRange(low=1e-4, high=1.0, log=True)),
+        Knob(key="0.f", domain=FloatRange(low=1e-4, high=1.0, log=True)),
     ))
     strat = _strategy(space)
     params, _ = strat.suggest()
-    assert 1e-4 <= params["f"] <= 1.0
+    assert 1e-4 <= params["0.f"] <= 1.0
 
 
 def test_fixed_injected_constant_not_a_trial_dim():
     import optuna
 
     space = SearchSpace(knobs=(
-        Knob(key="fixed", domain=Fixed(value=42)),
-        Knob(key="c", domain=Categorical(choices=("x", "y"))),
+        Knob(key="0.fixed", domain=Fixed(value=42)),
+        Knob(key="0.c", domain=Categorical(choices=("x", "y"))),
     ))
     strat = _strategy(space)
     params, _ = strat.suggest()
-    assert params["fixed"] == 42
+    assert params["0.fixed"] == 42
     # The Fixed knob must NOT be a sampled trial dimension.
     trial = strat._stashed
     assert isinstance(trial, optuna.trial.Trial)
-    assert "fixed" not in trial.params
-    assert "c" in trial.params
+    assert "0.fixed" not in trial.params
+    assert "0.c" in trial.params
 
 
 # ---------------------------------------------------------------------------
@@ -105,32 +105,32 @@ def test_fixed_injected_constant_not_a_trial_dim():
 def test_conditional_child_absent_when_parent_inactive():
     # Parent presence knob first, then a child gated on it being True.
     space = SearchSpace(knobs=(
-        Knob(key="p", domain=Categorical(choices=(False,))),
+        Knob(key="0.p", domain=Categorical(choices=(False,))),
         Knob(
-            key="child",
+            key="0.child",
             domain=FloatRange(low=0.0, high=1.0),
-            conditional_on=(("p", True),),
+            conditional_on=(("0.p", True),),
         ),
     ))
     strat = _strategy(space)
     params, _ = strat.suggest()
-    assert params["p"] is False
-    assert "child" not in params
+    assert params["0.p"] is False
+    assert "0.child" not in params
 
 
 def test_conditional_child_present_when_parent_active():
     space = SearchSpace(knobs=(
-        Knob(key="p", domain=Categorical(choices=(True,))),
+        Knob(key="0.p", domain=Categorical(choices=(True,))),
         Knob(
-            key="child",
+            key="0.child",
             domain=FloatRange(low=0.0, high=1.0),
-            conditional_on=(("p", True),),
+            conditional_on=(("0.p", True),),
         ),
     ))
     strat = _strategy(space)
     params, _ = strat.suggest()
-    assert params["p"] is True
-    assert "child" in params
+    assert params["0.p"] is True
+    assert "0.child" in params
 
 
 # ---------------------------------------------------------------------------
@@ -142,13 +142,13 @@ def test_int_step_and_log_guard_normalizes(caplog):
     import logging
 
     space = SearchSpace(knobs=(
-        Knob(key="i", domain=IntRange(low=1, high=128, step=4, log=True)),
+        Knob(key="0.i", domain=IntRange(low=1, high=128, step=4, log=True)),
     ))
     strat = _strategy(space)
     with caplog.at_level(logging.WARNING):
         params, _ = strat.suggest()
     # Must not raise; a value within range is produced.
-    assert 1 <= params["i"] <= 128
+    assert 1 <= params["0.i"] <= 128
     # A logged note about the normalization.
     assert any("log" in r.message.lower() for r in caplog.records)
 
@@ -161,7 +161,7 @@ def test_int_step_and_log_guard_normalizes(caplog):
 def test_register_result_tells_complete():
     import optuna
 
-    space = SearchSpace(knobs=(Knob(key="c", domain=Categorical(choices=(1, 2))),))
+    space = SearchSpace(knobs=(Knob(key="0.c", domain=Categorical(choices=(1, 2))),))
     strat = _strategy(space)
     params, _ = strat.suggest()
     strat.register_result(params, _result(0.75))
@@ -173,7 +173,7 @@ def test_register_result_tells_complete():
 def test_register_result_pruned_tells_pruned():
     import optuna
 
-    space = SearchSpace(knobs=(Knob(key="c", domain=Categorical(choices=(1, 2))),))
+    space = SearchSpace(knobs=(Knob(key="0.c", domain=Categorical(choices=(1, 2))),))
     strat = _strategy(space)
     params, _ = strat.suggest()
     strat.register_result(params, _result(0.2, pruned=True), pruned=True)
@@ -184,7 +184,7 @@ def test_register_result_pruned_tells_pruned():
 def test_register_result_failed_tells_fail():
     import optuna
 
-    space = SearchSpace(knobs=(Knob(key="c", domain=Categorical(choices=(1, 2))),))
+    space = SearchSpace(knobs=(Knob(key="0.c", domain=Categorical(choices=(1, 2))),))
     strat = _strategy(space)
     params, _ = strat.suggest()
     strat.register_result(params, _result(0.0, failed=True))
@@ -200,7 +200,7 @@ def test_register_result_failed_tells_fail():
 def test_suggest_returns_optuna_channel_when_pruning():
     from phenotypic.tune._strategies._optuna import OptunaPruningChannel
 
-    space = SearchSpace(knobs=(Knob(key="c", domain=Categorical(choices=(1, 2))),))
+    space = SearchSpace(knobs=(Knob(key="0.c", domain=Categorical(choices=(1, 2))),))
     strat = _strategy(space, prune=True)
     _params, channel = strat.suggest()
     assert isinstance(channel, OptunaPruningChannel)
@@ -212,7 +212,7 @@ def test_suggest_returns_optuna_channel_when_pruning():
 
 
 def test_is_exhausted_counts_completed_and_pruned():
-    space = SearchSpace(knobs=(Knob(key="c", domain=Categorical(choices=(1, 2))),))
+    space = SearchSpace(knobs=(Knob(key="0.c", domain=Categorical(choices=(1, 2))),))
     strat = _strategy(space, n_trials=2)
     assert not strat.is_exhausted()
     p1, _ = strat.suggest()
@@ -225,7 +225,7 @@ def test_is_exhausted_counts_completed_and_pruned():
 
 
 def test_failed_trials_do_not_count_toward_budget():
-    space = SearchSpace(knobs=(Knob(key="c", domain=Categorical(choices=(1, 2))),))
+    space = SearchSpace(knobs=(Knob(key="0.c", domain=Categorical(choices=(1, 2))),))
     strat = _strategy(space, n_trials=1)
     p1, _ = strat.suggest()
     strat.register_result(p1, _result(0.0, failed=True))
@@ -241,7 +241,7 @@ def test_failed_trials_do_not_count_toward_budget():
 def test_tpe_default_sampler():
     import optuna
 
-    space = SearchSpace(knobs=(Knob(key="c", domain=Categorical(choices=(1, 2))),))
+    space = SearchSpace(knobs=(Knob(key="0.c", domain=Categorical(choices=(1, 2))),))
     strat = _strategy(space, sampler="tpe")
     assert isinstance(strat._study.sampler, optuna.samplers.TPESampler)
 
@@ -250,7 +250,7 @@ def test_cmaes_explicit_sampler():
     import optuna
 
     space = SearchSpace(knobs=(
-        Knob(key="f", domain=FloatRange(low=0.0, high=1.0)),
+        Knob(key="0.f", domain=FloatRange(low=0.0, high=1.0)),
     ))
     strat = _strategy(space, sampler="cmaes")
     assert isinstance(strat._study.sampler, optuna.samplers.CmaEsSampler)
@@ -259,7 +259,7 @@ def test_cmaes_explicit_sampler():
 def test_multi_objective_selects_nsga2():
     import optuna
 
-    space = SearchSpace(knobs=(Knob(key="c", domain=Categorical(choices=(1, 2))),))
+    space = SearchSpace(knobs=(Knob(key="0.c", domain=Categorical(choices=(1, 2))),))
     strat = _strategy(space, directions=["maximize", "maximize"])
     assert isinstance(strat._study.sampler, optuna.samplers.NSGAIISampler)
     assert len(strat._study.directions) == 2
@@ -273,7 +273,7 @@ def test_multi_objective_selects_nsga2():
 def test_conforms_to_search_strategy_by_calling():
     from phenotypic.tune._strategies._protocol import SearchStrategy
 
-    space = SearchSpace(knobs=(Knob(key="c", domain=Categorical(choices=(1, 2))),))
+    space = SearchSpace(knobs=(Knob(key="0.c", domain=Categorical(choices=(1, 2))),))
     strat = _strategy(space, n_trials=1)
     assert isinstance(strat, SearchStrategy)
     params, channel = strat.suggest()
@@ -290,7 +290,7 @@ def test_conforms_to_search_strategy_by_calling():
 def test_config_build_constructs_strategy():
     from phenotypic.tune._strategies._optuna import OptunaStrategy
 
-    space = SearchSpace(knobs=(Knob(key="c", domain=Categorical(choices=(1, 2))),))
+    space = SearchSpace(knobs=(Knob(key="0.c", domain=Categorical(choices=(1, 2))),))
     cfg = OptunaConfig(n_trials=5)
     strat = cfg.build(space, store=None)
     assert isinstance(strat, OptunaStrategy)
@@ -299,7 +299,7 @@ def test_config_build_constructs_strategy():
 def test_config_build_resolves_storage_url_from_env(monkeypatch, tmp_path):
     db = tmp_path / "env.db"
     monkeypatch.setenv(PHENOTYPIC_TUNE_STORAGE_URL_ENV, f"sqlite:///{db}")
-    space = SearchSpace(knobs=(Knob(key="c", domain=Categorical(choices=(1, 2))),))
+    space = SearchSpace(knobs=(Knob(key="0.c", domain=Categorical(choices=(1, 2))),))
     cfg = OptunaConfig(n_trials=3, storage_url=None)
     strat = cfg.build(space, store=None)
     assert strat._storage_url == f"sqlite:///{db}"
@@ -308,7 +308,7 @@ def test_config_build_resolves_storage_url_from_env(monkeypatch, tmp_path):
 def test_config_build_explicit_storage_url_wins_over_env(monkeypatch, tmp_path):
     monkeypatch.setenv(PHENOTYPIC_TUNE_STORAGE_URL_ENV, "sqlite:///env.db")
     db = tmp_path / "explicit.db"
-    space = SearchSpace(knobs=(Knob(key="c", domain=Categorical(choices=(1, 2))),))
+    space = SearchSpace(knobs=(Knob(key="0.c", domain=Categorical(choices=(1, 2))),))
     cfg = OptunaConfig(n_trials=3, storage_url=f"sqlite:///{db}")
     strat = cfg.build(space, store=None)
     assert strat._storage_url == f"sqlite:///{db}"

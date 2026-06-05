@@ -11,19 +11,19 @@ from phenotypic.tune._strategies import (
 
 def _conditional_space() -> SearchSpace:
     return SearchSpace(knobs=(
-        Knob(key="g.__enabled__", domain=Categorical(choices=(True, False))),
-        Knob(key="g.sigma", domain=FloatRange(low=0.5, high=5.0),
-             conditional_on=(("g.__enabled__", True),)),
-        Knob(key="d.ignore_zeros", domain=Categorical(choices=(True, False))),
+        Knob(key="0.__enabled__", domain=Categorical(choices=(True, False))),
+        Knob(key="0.sigma", domain=FloatRange(low=0.5, high=5.0),
+             conditional_on=(("0.__enabled__", True),)),
+        Knob(key="1.ignore_zeros", domain=Categorical(choices=(True, False))),
     ))
 
 
 def _grid_space() -> SearchSpace:
     return SearchSpace(knobs=(
-        Knob(key="g.__enabled__", domain=Categorical(choices=(True, False))),
-        Knob(key="g.sigma", domain=Categorical(choices=(1.0, 2.0)),
-             conditional_on=(("g.__enabled__", True),)),
-        Knob(key="d.ignore_zeros", domain=Categorical(choices=(True, False))),
+        Knob(key="0.__enabled__", domain=Categorical(choices=(True, False))),
+        Knob(key="0.sigma", domain=Categorical(choices=(1.0, 2.0)),
+             conditional_on=(("0.__enabled__", True),)),
+        Knob(key="1.ignore_zeros", domain=Categorical(choices=(True, False))),
     ))
 
 
@@ -52,7 +52,7 @@ def test_random_respects_conditionals_and_seed():
         a.register_result(p, result=None)
         seq_a.append(p)
         # sigma present iff blur enabled
-        assert ("g.sigma" in p) == (p["g.__enabled__"] is True)
+        assert ("0.sigma" in p) == (p["0.__enabled__"] is True)
     assert len(seq_a) == 20
 
     b = RandomStrategy(_conditional_space(), n_trials=20, seed=42)

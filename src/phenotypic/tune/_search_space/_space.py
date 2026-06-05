@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from typing import Any, Iterator, Literal, Mapping, Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, model_validator
 
 from ._domains import Domain
+from ._targets import KnobTarget, parse_key
 
 #: Provenance of a knob's domain — a closed set (never a bare ``str``).
 #: ``"manual"`` is the hand-authored default; the remaining tags are assigned by
@@ -24,18 +25,23 @@ KnobSource = Literal[
 
 
 class Knob(BaseModel):
-    """One tunable parameter: a key, a domain, and optional provenance.
+    """One tunable parameter: a target, a domain, and optional provenance.
 
     Args:
-        key: Position-index path identifying the parameter, e.g.
-            ``"1.detectors[0].ignore_zeros"`` (the ``N.`` prefix is the
-            operation's position in the pipeline).
+        target: The structured ``KnobTarget`` identifying the parameter — a
+            ``Param`` / ``Presence`` / ``Nested`` whose ``.key`` renders the
+            canonical position-index path (e.g. ``"1.detectors[0].ignore_zeros"``,
+            where the ``N.`` prefix is the operation's pipeline position). A
+            legacy string ``key="0.sigma"`` is still accepted and coerced to a
+            target (string-preserving round-trip), so older call sites and frozen
+            ``tuning_spec.json`` blobs keep working without migration.
         domain: The value space to search over (the ``Domain`` discriminated
             union — ``Categorical`` / ``IntRange`` / ``FloatRange`` / ``Fixed``).
         conditional_on: Parent presence conditions that gate this knob; the knob
-            is active only when each ``(key, value)`` pair holds, e.g.
-            ``(("0.GaussianBlur.__enabled__", True),)`` — define-by-run
-            conditional nesting. ``None`` means unconditional.
+            is active only when each ``(target, value)`` pair holds, e.g.
+            ``((Presence(op=0, op_class="GaussianBlur"), True),)`` — define-by-run
+            conditional nesting. A string parent (``"0.GaussianBlur.__enabled__"``)
+            is coerced to a target. ``None`` means unconditional.
         source: Provenance of the knob (a closed ``KnobSource`` set). Defaults to
             ``"manual"`` for hand-authored spaces; ``infer_search_space`` (Phase 3)
             populates it with the inference origin.
@@ -47,18 +53,47 @@ class Knob(BaseModel):
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    key: str
+    target: KnobTarget
     domain: Domain
-    conditional_on: Optional[tuple[tuple[str, Any], ...]] = None
+    conditional_on: Optional[tuple[tuple[KnobTarget, Any], ...]] = None
     source: KnobSource = "manual"
     needs_review: bool = False
     description: str = ""
+
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce_legacy_strings(cls, data: Any) -> Any:
+        """Accept a legacy string ``key=`` and string ``conditional_on`` parents.
+
+        ``key="0.sigma"`` is coerced to ``target=parse_key("0.sigma")`` and
+        removed from the input (so ``extra="forbid"`` does not trip). A
+        ``conditional_on`` entry whose parent is a string is parsed the same way;
+        a dict (structured JSON) or a target instance passes through to the
+        discriminated-union validator unchanged.
+        """
+        if not isinstance(data, dict):
+            return data
+        data = dict(data)
+        if "key" in data and "target" not in data:
+            data["target"] = parse_key(data.pop("key"))
+        cond = data.get("conditional_on")
+        if cond is not None:
+            data["conditional_on"] = tuple(
+                (parse_key(parent) if isinstance(parent, str) else parent, value)
+                for parent, value in cond
+            )
+        return data
+
+    @property
+    def key(self) -> str:
+        """The canonical key string of this knob's target (back-compat read)."""
+        return self.target.key
 
     def is_active(self, chosen: Mapping[str, Any]) -> bool:
         """Whether this knob's parent presence conditions hold in ``chosen``.
 
         An unconditional knob (``conditional_on is None``) is always active; a
-        conditional knob is active only when **every** ``(parent_key, value)``
+        conditional knob is active only when **every** ``(parent_target, value)``
         pair in :attr:`conditional_on` matches what was already chosen this trial
         (define-by-run conditional nesting). The single predicate every strategy
         (grid / random / Optuna) gates conditional knobs by.
@@ -72,7 +107,7 @@ class Knob(BaseModel):
         """
         if self.conditional_on is None:
             return True
-        return all(chosen.get(pkey) == pval for pkey, pval in self.conditional_on)
+        return all(chosen.get(ptarget.key) == pval for ptarget, pval in self.conditional_on)
 
 
 class SearchSpace(BaseModel):

@@ -29,10 +29,10 @@ def test_enumerate_conditional_absent_collapses():
     space = SearchSpace(knobs=(
         Knob(key="0.GaussianBlur.__enabled__",
              domain=Categorical(choices=(True, False)), source="presence_optin"),
-        Knob(key="0.GaussianBlur.sigma",
+        Knob(key="0.sigma",
              domain=Categorical(choices=(1.0, 2.0)),
              conditional_on=(("0.GaussianBlur.__enabled__", True),)),
-        Knob(key="1.OtsuDetector.ignore_zeros",
+        Knob(key="1.ignore_zeros",
              domain=Categorical(choices=(True, False))),
     ))
     combos = enumerate_grid(space)
@@ -40,15 +40,15 @@ def test_enumerate_conditional_absent_collapses():
     assert len(combos) == 6
     absent = [c for c in combos if c["0.GaussianBlur.__enabled__"] is False]
     assert len(absent) == 2
-    assert all("0.GaussianBlur.sigma" not in c for c in absent)
+    assert all("0.sigma" not in c for c in absent)
     present = [c for c in combos if c["0.GaussianBlur.__enabled__"] is True]
     assert len(present) == 4
-    assert all("0.GaussianBlur.sigma" in c for c in present)
+    assert all("0.sigma" in c for c in present)
 
 
 def test_enumerate_unconditional_only():
     space = SearchSpace(knobs=(
-        Knob(key="a", domain=Categorical(choices=(1, 2))),
-        Knob(key="b", domain=IntRange(low=1, high=2)),
+        Knob(key="0.a", domain=Categorical(choices=(1, 2))),
+        Knob(key="1.b", domain=IntRange(low=1, high=2)),
     ))
     assert len(enumerate_grid(space)) == 4

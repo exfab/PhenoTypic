@@ -38,7 +38,7 @@ def _strategy(space: SearchSpace, **kw):
 
 
 def _cat_space() -> SearchSpace:
-    return SearchSpace(knobs=(Knob(key="c", domain=Categorical(choices=(1, 2))),))
+    return SearchSpace(knobs=(Knob(key="0.c", domain=Categorical(choices=(1, 2))),))
 
 
 def test_report_forwards_to_trial():
@@ -121,7 +121,7 @@ def test_bad_candidate_pruned_end_to_end(tmp_path):
     import optuna
 
     space = SearchSpace(knobs=(
-        Knob(key="f", domain=FloatRange(low=0.0, high=1.0)),
+        Knob(key="0.f", domain=FloatRange(low=0.0, high=1.0)),
     ))
     strat = _strategy(space, sampler="tpe", n_trials=50, rung_floor=1, rung_factor=2)
 

@@ -49,6 +49,7 @@ import numpy as np
 from ._domains import Categorical, FloatRange, IntRange
 from ._inferred import Excluded, ExcludeReason, InferredSearchSpace
 from ._space import Knob
+from ._targets import parse_key
 from ._tune_spec import TuneSpec
 
 #: Multiplicative half-window for the unbounded heuristic: ``[d/f, d·f]``.
@@ -188,7 +189,7 @@ def _bounded_knob(
     else:
         domain = FloatRange(low=low, high=high, log=log)
     return Knob(
-        key=key,
+        target=parse_key(key),
         domain=domain,
         source="bounded",
         needs_review=False,
@@ -227,7 +228,7 @@ def _unbounded_knob_or_excluded(
         log = low > 0 and (high / low) > _LOG_SPAN_THRESHOLD
         domain = FloatRange(low=low, high=high, log=log)
     return Knob(
-        key=key,
+        target=parse_key(key),
         domain=domain,
         source="unbounded_heuristic",
         needs_review=True,
@@ -348,7 +349,7 @@ def _resolve_tune_spec(
     # categories override -> Categorical (no numeric ⊆ check applies).
     if spec.categories is not None:
         return Knob(
-            key=key,
+            target=parse_key(key),
             domain=Categorical(choices=tuple(spec.categories)),
             source="tune_spec",
             needs_review=False,
@@ -372,7 +373,7 @@ def _resolve_tune_spec(
     else:
         domain = FloatRange(low=spec.low, high=spec.high, log=spec.log)
     return Knob(
-        key=key,
+        target=parse_key(key),
         domain=domain,
         source="tune_spec",
         needs_review=False,
@@ -469,7 +470,7 @@ def _dispatch_core(
     # bool (check before int — bool is an int subclass).
     if core is bool:
         return Knob(
-            key=key,
+            target=parse_key(key),
             domain=Categorical(choices=(True, False)),
             source="bool",
             needs_review=False,
@@ -479,7 +480,7 @@ def _dispatch_core(
     # Literal[...] -> Categorical(literal members).
     if get_origin(core) is Literal:
         return Knob(
-            key=key,
+            target=parse_key(key),
             domain=Categorical(choices=tuple(get_args(core))),
             source="literal",
             needs_review=False,
@@ -489,7 +490,7 @@ def _dispatch_core(
     # Enum -> Categorical(members).
     if isinstance(core, type) and issubclass(core, enum.Enum):
         return Knob(
-            key=key,
+            target=parse_key(key),
             domain=Categorical(choices=tuple(core)),
             source="enum",
             needs_review=False,
@@ -593,7 +594,10 @@ def _recurse_into_op(
         if isinstance(result, Knob):
             knobs.append(
                 result.model_copy(
-                    update={"key": new_key, "conditional_on": conditional_on}
+                    update={
+                        "target": parse_key(new_key),
+                        "conditional_on": conditional_on,
+                    }
                 )
             )
         else:
