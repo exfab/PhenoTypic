@@ -101,6 +101,13 @@ class TuningEngine:
                     # The multi-objective sidecar (plan §0a): carried verbatim
                     # from the Evaluator so the Pareto front / knee can read it.
                     objectives=result.objectives,
+                    # The robust-eval per-trial signals (plan 4.5p1): the
+                    # calibration-dispersion gap + the under-detection suspicious
+                    # flag, carried from the Evaluator so the journal/Optuna store
+                    # and the data-poor generalization fallback (which reads the
+                    # winner's gap) see real values, not nulls.
+                    gap=result.gap,
+                    suspicious=result.suspicious,
                     failed=result.failed,  # explicit flag from the Evaluator
                     pruned=result.pruned,  # early-stopped via the pruning channel
                 )

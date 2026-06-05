@@ -53,6 +53,43 @@ def _base():
     return ImagePipeline(ops=[GaussianBlur(sigma=1.0), OtsuDetector()])
 
 
+class _SuspiciousScorer(Scorer):
+    """High finalized score (mean 0.733) paired with a near-floor Count term (0.2).
+
+    Trips the suspicious gate (``score >= 0.7 and Count <= 0.3``) and yields a
+    computable per-trial dispersion, so a run exercises both robust-eval signals
+    end-to-end (Evaluator → Trial → store).
+    """
+
+    def score_image(self, image, measurements) -> dict[str, float]:
+        return {"Count": 0.2, "A": 1.0, "B": 1.0}
+
+
+def test_engine_carries_gap_and_suspicious_to_store():
+    # Regression (4.5p1): the engine's Trial construction must carry result.gap
+    # AND result.suspicious — not only objectives/failed/pruned. Dropping them
+    # left every real run's journal gap=None/suspicious=False and silently killed
+    # the data-poor generalization fallback's calibration_stability (which reads
+    # the winner's gap). min_stability_n=4, so 4 images make the per-trial
+    # dispersion computable (a flat term → 0.0, which is *not* None — that's what
+    # distinguishes the dropped-field bug from the fix).
+    images = [load_synth_yeast_plate() for _ in range(4)]
+    spec = TuningSpec(
+        pipeline=_base(),
+        search_space=_grid_space(),
+        scorer=_SuspiciousScorer(),
+        evaluator=Evaluator(),
+        strategy=GridConfig(),
+        budget=Budget(n_trials=1),
+    )
+    engine = TuningEngine(spec)
+    engine.optimize(images)
+    best = engine.store.best()
+    assert best is not None
+    assert best.gap is not None        # the dropped-field bug left this None
+    assert best.suspicious is True     # high score + near-floor Count term
+
+
 def test_engine_runs_full_grid():
     spec = _spec(Budget(), _base())
     engine = TuningEngine(spec)

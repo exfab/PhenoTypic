@@ -24,7 +24,7 @@ import hashlib
 import json
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Literal, Optional, TypeAlias
 
 import numpy as np
 
@@ -36,7 +36,7 @@ from phenotypic.tools_ import _io_constants as _io
 #: - ``"within_group"``: a fraction of plates within the (single) group is held
 #:   out — a weaker test, flagged via ``within_group_caveat``;
 #: - ``"none"``: too few plates to reserve any (data-poor skip; all calibration).
-SplitKind = Literal["group", "within_group", "none"]
+SplitKind: TypeAlias = Literal["group", "within_group", "none"]
 
 
 def _dataset_identity(images: list) -> str:

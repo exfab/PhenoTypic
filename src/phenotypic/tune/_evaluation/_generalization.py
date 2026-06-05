@@ -26,7 +26,14 @@ as calibration, just on the reserved plates.
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
-from typing import Any, Optional
+from typing import Any, Literal, Optional, TypeAlias
+
+from ._split import SplitKind
+
+#: The generalization estimate's provenance — a real held-out pass
+#: (``"held_out"``) or the data-poor calibration-stability proxy
+#: (``"calibration_stability"``). A closed value set, reused as a typed field.
+Estimate: TypeAlias = Literal["held_out", "calibration_stability"]
 
 #: Denominator floor for the relative-drop ratio — guards a near-zero
 #: calibration score (matching the per-trial-gap ``_GAP_EPS`` convention).
@@ -144,14 +151,14 @@ class GeneralizationReport:
             when a real held-out pass ran (or the winner had no gap signal).
     """
 
-    kind: str
+    kind: SplitKind
     calibration_score: float
     heldout_score: Optional[float]
     relative_drop: Optional[float]
     absolute_drop: Optional[float]
     gap: Optional[float]
     flagged: bool
-    estimate: str
+    estimate: Estimate
     cv_deferred: bool
     within_group_caveat: bool
     dataset_changed: bool
