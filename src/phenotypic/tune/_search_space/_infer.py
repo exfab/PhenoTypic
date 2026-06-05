@@ -49,7 +49,7 @@ import numpy as np
 from ._domains import Categorical, FloatRange, IntRange
 from ._inferred import Excluded, ExcludeReason, InferredSearchSpace
 from ._space import Knob
-from ._targets import parse_key
+from ._targets import parse_key, with_op_class
 from ._tune_spec import TuneSpec
 
 #: Multiplicative half-window for the unbounded heuristic: ``[d/f, d·f]``.
@@ -723,6 +723,9 @@ def infer_search_space(
                 )
                 knobs.extend(n_knobs)
                 excluded.extend(n_excluded)
+    knobs = [
+        k.model_copy(update={"target": with_op_class(k.target, ops)}) for k in knobs
+    ]
     return InferredSearchSpace(knobs=tuple(knobs), excluded=tuple(excluded))
 
 
