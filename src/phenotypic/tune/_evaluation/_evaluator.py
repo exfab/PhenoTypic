@@ -13,7 +13,7 @@ from typing import Any, Mapping, Optional
 import numpy as np
 from pydantic import BaseModel, ConfigDict
 
-from .._scoring._scorer import Scorer
+from .._scoring._scorer import Scorer, project_objectives_to_scalar
 from .._strategies._pruning import NoOpChannel, PruningChannel
 from ._builder import build_pipeline
 
@@ -45,8 +45,7 @@ def _project_finalize(
     """
     if isinstance(finalized, Mapping):
         objectives = {key: float(value) for key, value in finalized.items()}
-        values = list(objectives.values())
-        score = float(sum(values) / len(values)) if values else 0.0
+        score = project_objectives_to_scalar(objectives)
         return score, objectives
     return float(finalized), None
 

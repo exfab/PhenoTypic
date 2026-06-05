@@ -19,6 +19,28 @@ from pydantic import BaseModel, ConfigDict
 from phenotypic.tools_.typing_ import polymorphic_field
 
 
+def project_objectives_to_scalar(mapping: Mapping[str, float]) -> float:
+    """Project a named-objectives mapping to its mean scalar (``0.0`` if empty).
+
+    The single canonical "mean of a dict's values, ``0.0`` for an empty dict"
+    reduction shared by every multi-objective → scalar projection: the
+    :meth:`Scorer.finalize` default, ``CompositeScorer._as_scalar``, and the
+    ``Evaluator``'s ``_project_finalize`` sidecar all collapse a dict of named
+    objectives the same way (higher = better, ``0.0`` is the worst score).
+
+    Args:
+        mapping: Objective name → value (the robust-aggregated terms, or a
+            scorer's named-objectives sidecar).
+
+    Returns:
+        ``mean(mapping.values())`` as a ``float``; ``0.0`` for an empty mapping.
+    """
+    values = list(mapping.values())
+    if not values:
+        return 0.0
+    return float(sum(values) / len(values))
+
+
 class Scorer(BaseModel, ABC):
     """Base class for tuning objectives (no-GT, supervised, reference-free, …).
 
@@ -78,10 +100,7 @@ class Scorer(BaseModel, ABC):
             single-objective scorers, or a ``dict[str, float]`` of named
             objectives for a multi-objective scorer.
         """
-        values = list(terms.values())
-        if not values:
-            return 0.0
-        return float(sum(values) / len(values))
+        return project_objectives_to_scalar(terms)
 
 
 #: A ``Scorer``-valued field that round-trips any subclass via the ``phenotypic``

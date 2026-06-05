@@ -34,7 +34,7 @@ from typing import Any, Final, Mapping, Optional
 import pandas as pd
 from pydantic import ConfigDict, model_validator
 
-from ._scorer import Scorer, ScorerField
+from ._scorer import Scorer, ScorerField, project_objectives_to_scalar
 
 #: The per-child handle prefix: child ``i`` owns the ``"s{i}."`` term namespace,
 #: so collisions across children are impossible and ``finalize`` can re-group
@@ -292,8 +292,7 @@ class CompositeScorer(Scorer):
             dict).
         """
         if isinstance(finalized, Mapping):
-            vals = list(finalized.values())
-            return float(sum(vals) / len(vals)) if vals else 0.0
+            return project_objectives_to_scalar(finalized)
         return float(finalized)
 
     def _weighted_mean(self, child_scalars: dict[str, float]) -> float:
