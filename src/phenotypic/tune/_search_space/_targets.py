@@ -144,3 +144,25 @@ def parse_key(key: str) -> "KnobTarget":
     if len(parts) == 2:
         return Param(op=op, field=parts[1])
     raise ValueError(f"key {key!r} is not a recognised flat/presence/nested key")
+
+
+def with_op_class(target: "KnobTarget", ordered_ops: list) -> "KnobTarget":
+    """Return ``target`` with ``op_class`` filled from the op at ``target.op``.
+
+    Posture C: discovery / inference always stamp ``op_class`` so every
+    programmatic target is wrong-op cross-checked. An out-of-range ``op`` is
+    returned untouched (the ``TuningSpec`` validator reports the range error).
+
+    Args:
+        target: The target to enrich.
+        ordered_ops: The pipeline's ops in position order.
+
+    Returns:
+        A copy with ``op_class = type(ordered_ops[target.op]).__name__``, or the
+        unchanged ``target`` when ``op`` is out of range.
+    """
+    if not 0 <= target.op < len(ordered_ops):
+        return target
+    return target.model_copy(
+        update={"op_class": type(ordered_ops[target.op]).__name__}
+    )
