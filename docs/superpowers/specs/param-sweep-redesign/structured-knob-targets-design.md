@@ -7,8 +7,8 @@ typed **target classes** + early cross-validation + a discovery catalog, so that
 and **agent/MCP** construction is hard to get wrong — while keeping the canonical string as the
 internal/serialized rendering so the engine and the golden lock are untouched.
 
-- **Status:** Design settled (pre-implementation). Lands **before Phase 5** (the GUI `6c`
-  space-edit forms and the future MCP workstream build on it).
+- **Status:** Design settled (pre-implementation; all OQs resolved 2026-06-05). Lands **before
+  Phase 5** (the GUI `6c` space-edit forms and the future MCP workstream build on it).
 - **Maps to:** master §5 (knob-key grammar / position-index), search-space-inference §3/§6/§8
   (nested grammar, `InferredSearchSpace`, the inference that *generates* keys),
   dash-copilot-design §5 (`6c` consumes the proposal as forms), and the **MCP workstream** (the
@@ -63,21 +63,23 @@ strings. This is what keeps the change low-risk and additive.
 ## 3. The target union
 
 A discriminated union (`kind` discriminator) — one frozen pydantic model per grammar case — in
-a new `tune/_search_space/_targets.py`:
+a new `tune/_search_space/_targets.py`. The bare names (`Param`/`Presence`/`Nested`) read
+unambiguously because they are accessed through the `targets` subpackage (§8):
+`targets.Param(op=0, field="sigma")`.
 
 ```python
-class ParamRef(BaseModel):          # kind="param"     →  "0.sigma"
+class Param(BaseModel):             # kind="param"     →  "0.sigma"
     kind: Literal["param"] = "param"
     op: int
     field: str
     op_class: Optional[str] = None        # optional cross-check (see §5)
 
-class PresenceRef(BaseModel):       # kind="presence"  →  "0.GaussianBlur.__enabled__"
+class Presence(BaseModel):          # kind="presence"  →  "0.GaussianBlur.__enabled__"
     kind: Literal["presence"] = "presence"
     op: int
     op_class: Optional[str] = None        # also renders the classed key form
 
-class NestedRef(BaseModel):         # kind="nested"    →  "0.refiners[1].min_size"
+class Nested(BaseModel):            # kind="nested"    →  "0.refiners[1].min_size"
     kind: Literal["nested"] = "nested"
     op: int
     field: str
@@ -85,10 +87,10 @@ class NestedRef(BaseModel):         # kind="nested"    →  "0.refiners[1].min_s
     leaf: str
     op_class: Optional[str] = None
 
-KnobTarget = Annotated[ParamRef | PresenceRef | NestedRef, Field(discriminator="kind")]
+KnobTarget = Annotated[Param | Presence | Nested, Field(discriminator="kind")]
 ```
 
-- **`.key` property** on each renders the canonical string. `PresenceRef.key` renders the
+- **`.key` property** on each renders the canonical string. `Presence.key` renders the
   classed form (`"0.GaussianBlur.__enabled__"`) when `op_class` is set, else the bare
   (`"0.__enabled__"`) form — both already parse in `build_pipeline`.
 - **`parse_key(s: str) -> KnobTarget`** — the inverse, reusing the existing parse logic in
@@ -99,9 +101,9 @@ KnobTarget = Annotated[ParamRef | PresenceRef | NestedRef, Field(discriminator="
 - All three are `frozen=True`, keyword-only, with Google `Args:` docstrings (so
   `model_json_schema()` documents the MCP tool surface).
 
-**Depth.** `NestedRef` is depth-1 (single `(field, index, leaf)`), matching the current cap.
+**Depth.** `Nested` is depth-1 (single `(field, index, leaf)`), matching the current cap.
 Raising the cap is out of scope here (a separate, moderate change to the parser/applier/inference
-— see the depth assessment in the project notes); the union would generalize `NestedRef` to a
+— see the depth assessment in the project notes); the union would generalize `Nested` to a
 `path` of segments then.
 
 ---
@@ -112,15 +114,18 @@ Raising the cap is out of scope here (a separate, moderate change to the parser/
 legacy `key="0.sigma"` into `parse_key("0.sigma")`, so **both** spellings construct:
 
 ```python
-Knob(target=ParamRef(op=0, field="sigma"), domain=FloatRange(low=0.5, high=8.0))
-Knob(key="0.sigma",                          domain=FloatRange(low=0.5, high=8.0))   # coerced
+from phenotypic.tune import Knob, FloatRange
+from phenotypic.tune import targets
+
+Knob(target=targets.Param(op=0, field="sigma"), domain=FloatRange(low=0.5, high=8.0))
+Knob(key="0.sigma",                              domain=FloatRange(low=0.5, high=8.0))   # coerced
 ```
 
 - `Knob.key` remains as a **read property** → `self.target.key` (so existing `.key` readers and
   `SearchSpace.keys()` keep working).
 - `conditional_on` references **targets** instead of strings:
-  `conditional_on=((PresenceRef(op=0, op_class="GaussianBlur"), True),)`. A legacy string parent
-  key is coerced the same way.
+  `conditional_on=((targets.Presence(op=0, op_class="GaussianBlur"), True),)`. A legacy string
+  parent key is coerced the same way.
 - `SearchSpace` is otherwise unchanged: `.keys()` → `[k.target.key for k in knobs]`; add a
   `.targets()` accessor.
 
@@ -129,7 +134,7 @@ canonical/authoring surface is `target=`.
 
 ---
 
-## 5. Validation — the cross-check (decision A)
+## 5. Validation — the cross-check (decision A=2, posture C)
 
 The structural win is **early validation against the actual pipeline**. A
 `model_validator(mode="after")` on `TuningSpec` (which holds *both* `pipeline` and
@@ -138,17 +143,23 @@ The structural win is **early validation against the actual pipeline**. A
 - **op in range** — `0 <= op < len(pipeline ops)`; else a clear out-of-range error.
 - **`op_class` cross-check (decision A=2)** — when a target carries `op_class`, assert the op
   actually at `op` *is* that class (`op=0, op_class="GaussianBlur"` fails if index 0 is an
-  `OtsuDetector`). This catches the "wrong op / index drift" mistake class directly. `op_class`
-  is **optional**: the discovery catalog (§6) always fills it in, so MCP-built targets get the
-  check for free; hand-authored targets may omit it.
-- **field / leaf exists** — `ParamRef.field` ∈ `type(op).model_fields`; `NestedRef.leaf` ∈ the
+  `OtsuDetector`). This catches the "wrong op / index drift" mistake class directly.
+- **field / leaf exists** — `Param.field` ∈ `type(op).model_fields`; `Nested.leaf` ∈ the
   nested op's `model_fields`. On a miss, a **`difflib` did-you-mean** suggestion plus the list of
   available fields.
-- **nested resolution** — `NestedRef.field` is an op-valued list field, `index` in range, the
-  slot is not `None`.
+- **nested resolution** — `Nested.field` is an op-valued list field, `index` in range, the slot
+  is not `None`.
 - **rich errors regardless of `op_class`** — even a bare-index target's error names *what is
   actually at that index* ("op 0 is a `GaussianBlur`; for the `OtsuDetector` use op 1"), so an
   agent gets an actionable correction.
+
+**`op_class` posture = C (optional on the class, always populated by discovery/inference).**
+`op_class: Optional[str] = None` on every target, so **hand-authoring may omit it** (zero
+verbosity). But **every programmatic producer always sets it** — `pipeline_targets` (§6),
+`infer_search_space`, the GUI `6c` form, and the MCP tool all emit `op_class`-bearing targets, so
+every realistic path is wrong-op-cross-checked for free. The only uncovered case is a
+deliberately-bare hand-written target, which still gets the field-exists check + the rich
+"op 0 is actually a GaussianBlur" error.
 
 This complements (does not replace) the existing **apply-time `⊆` backstop** in `build_pipeline`
 (`_rebuild_op_or_raise_with_keys`), which still catches *validator*-enforced value bounds that
@@ -161,13 +172,14 @@ a pipeline can't be cross-checked at `SearchSpace` construction — validation l
 
 ## 6. Discovery catalog (decision D — in scope)
 
-So the agent/GUI **selects** valid targets rather than authoring them:
+So the agent/GUI **selects** valid targets rather than authoring them. Lives in the `targets`
+subpackage alongside the refs (§8):
 
 ```python
 class TunableParam(BaseModel):
-    target: KnobTarget                       # the structured ref to use
+    target: KnobTarget                       # the structured ref to use (op_class always set)
     op_class: str
-    value_type: Literal["float", "int", "bool", "categorical"]  # not 'kind' — avoids
+    value_type: Literal["float", "int", "bool", "categorical"]   # not 'kind' — avoids
                                              # colliding with the target union's discriminator
     default: Any                             # current value on the pipeline
     suggested_domain: Optional[Domain]       # from TuneSpec / heuristic inference
@@ -179,7 +191,8 @@ def pipeline_targets(pipeline) -> list[TunableParam]: ...
 
 - Built on the **existing `_infer.py` mining** (which already walks ops, reads `TuneSpec`
   markers, classifies field types, and infers domains) — `pipeline_targets` re-surfaces that as
-  per-parameter descriptors and **auto-fills `op_class`**.
+  per-parameter descriptors and **auto-fills `op_class`** (so every catalog target is
+  cross-checked per posture C).
 - Relationship to existing inference (unchanged in role): `infer_search_space()` keeps returning
   the **opinionated default `SearchSpace`** (picks fields, sets bounds, flags `needs_review`);
   `pipeline_targets()` returns the **full structured catalog** the GUI `6c` form and the MCP
@@ -204,14 +217,22 @@ pre-change `tuning_spec.json` / fixture still validates. Structured is the canon
 
 ---
 
-## 8. Public surface + namespacing
+## 8. Public surface + namespacing (decision = subpackage)
 
-Net new public symbols (~6): `ParamRef`, `PresenceRef`, `NestedRef`, `KnobTarget` (the union
-alias), `TunableParam`, `pipeline_targets`. Given the already-large flat `phenotypic.tune`
-`__all__` (39 symbols), **proposal: expose the target refs under a `phenotypic.tune.targets`
-submodule** (`from phenotypic.tune.targets import ParamRef, ...`) rather than the flat top level;
-`pipeline_targets`/`TunableParam` can sit at the top level (they pair with `infer_search_space`).
-This is a low-stakes open call (§11).
+The **entire param-reference + discovery surface lives in `phenotypic.tune.targets`** — the bare
+class names get their context from the subpackage, and the top-level `phenotypic.tune.__all__`
+(39 symbols) gains **zero** new entries:
+
+```python
+from phenotypic.tune import targets               # targets.Param, targets.Presence, …
+from phenotypic.tune.targets import Param, Presence, Nested, KnobTarget, \
+                                    TunableParam, pipeline_targets
+```
+
+- In `targets`: `Param`, `Presence`, `Nested`, `KnobTarget` (union alias), `parse_key`,
+  `TunableParam`, `pipeline_targets`.
+- Stays top-level: `infer_search_space` (it returns a `SearchSpace`, the higher-level
+  construct), and the consumers `Knob` / `SearchSpace` / `TuningSpec`.
 
 ---
 
@@ -219,11 +240,11 @@ This is a low-stakes open call (§11).
 
 | Area | Change |
 |------|--------|
-| `tune/_search_space/_targets.py` (new) | The 3-class union, `KnobTarget`, `parse_key`, `.key` renders |
+| `tune/_search_space/_targets.py` (new) | `Param` / `Presence` / `Nested`, `KnobTarget`, `parse_key`, `.key` renders, `TunableParam`, `pipeline_targets` |
+| `tune/targets.py` or `tune/targets/__init__.py` (new) | The public `targets` subpackage re-exporting the above |
 | `tune/_search_space/_space.py` (`Knob`) | `target` field; `key=` coercion; `.key` property; `conditional_on` → targets |
 | `tune/_spec.py` (`TuningSpec`) | `model_validator(after)` cross-check (op range, class, field/leaf, did-you-mean) |
-| `tune/_search_space/_infer.py` | Emit structured targets; expose `pipeline_targets` + `TunableParam` |
-| `tune/__init__.py` / a `targets` submodule | New exports |
+| `tune/_search_space/_infer.py` | Emit structured targets (op_class-bearing); back `pipeline_targets` |
 | `_builder.py`, engine, strategies, `trials.parquet`, golden lock | **Unchanged** (`.key` bridge) |
 | Tests / fixtures | Update `SearchSpace(knobs=...)` call sites to structured (or rely on `key=` coercion) |
 
@@ -235,40 +256,37 @@ This is a low-stakes open call (§11).
   and `t.key` equals the legacy canonical string.
 - **`Knob` dual constructor** — `key=` and `target=` produce equal knobs; `.key` reads through.
 - **Cross-validator** — a `TuningSpec` with: an out-of-range op; an `op_class` mismatch; a missing
-  field (asserts the did-you-mean suggestion text); a `NestedRef` into a non-list / `None` slot /
+  field (asserts the did-you-mean suggestion text); a `Nested` into a non-list / `None` slot /
   bad index — each raises with an actionable message. A valid spec passes.
 - **Discovery** — `pipeline_targets(synth_pipe)` returns descriptors with filled `op_class`,
-  types, defaults, `suggested_domain`, `needs_review`; `infer_search_space` still returns its
-  default space (unchanged behavior).
+  `value_type`, defaults, `suggested_domain`, `needs_review`; every target carries `op_class`
+  (posture C); `infer_search_space` still returns its default space (unchanged behavior).
 - **Serialization** — a spec round-trips structured; a legacy string-form fixture still loads.
 - **Locks stay green** — `build_pipeline` unchanged; the grid byte-compat golden lock and the full
   `tests/unit/tune` suite stay green (`-n 8`).
 
 ---
 
-## 11. Resolved choices / open questions
-
-**Resolved (the OQs, 2026-06-05):**
+## 11. Resolved choices (all settled 2026-06-05)
 
 1. **Op anchoring (A)** — position `int` **+ an optional `op_class` cross-check** (validated when
-   present, auto-filled by discovery). Full op-identity (uuid / `(class, occurrence)`) is deferred
-   future headroom; the engine still uses position internally.
+   present, auto-filled by discovery/inference). Full op-identity (uuid / `(class, occurrence)`) is
+   deferred future headroom; the engine still uses position internally.
 2. **Keep the string key (B)** — `Knob` accepts both `target=` (canonical) and `key=` (coerced),
    "for now". The internal `parse_key` stays regardless.
 3. **Decomposition (C)** — the **3-class discriminated union** (clean MCP schema), not a single
    class with a `kind` field + optional attrs.
-4. **Discovery scope (D)** — `TunableParam` + `pipeline_targets()` are **in this change** (the GUI
-   `6c` and the MCP both consume them; they re-surface `_infer.py` cheaply).
+4. **Discovery scope (D)** — `TunableParam` + `pipeline_targets()` are **in this change**.
 5. **Serialization (E)** — **structured** target in `tuning_spec.json`, legacy string accepted on
    load.
+6. **Naming** — bare `Param` / `Presence` / `Nested` (no suffix), union `KnobTarget`, kwarg
+   `target=`; read through the `targets` subpackage (`targets.Param(...)`).
+7. **Namespacing** — the whole param-reference + discovery surface lives in
+   `phenotypic.tune.targets`; top-level `__all__` is unchanged. `infer_search_space` stays
+   top-level.
+8. **`op_class` posture (C)** — optional on the class; **always populated** by discovery,
+   inference, the GUI `6c`, and the MCP — so every programmatic path is wrong-op-cross-checked,
+   with no hand-authoring burden.
 
-**Still open (low-stakes; settle during implementation):**
-
-- **Naming** — `ParamRef`/`PresenceRef`/`NestedRef` vs `OpParam`/`OpPresence`/`NestedParam`; the
-  union name `KnobTarget`; the kwarg `target=`.
-- **Namespacing** — `phenotypic.tune.targets` submodule (proposed §8) vs flat top-level exports.
-- **`op_class` posture** — keep optional everywhere, or make discovery-emitted targets carry it
-  mandatorily (so MCP-built specs always get the cross-check). Leaning: optional on the class,
-  always-populated by `pipeline_targets`.
-- **Nesting depth** — depth-1 stays; the `NestedRef`-to-`path` generalization is a separate,
-  scoped change if depth >1 is ever needed.
+**Deferred (not part of this change):** nesting depth >1 (`Nested` → a `path` of segments + the
+recursive applier), and full op-identity anchoring.
