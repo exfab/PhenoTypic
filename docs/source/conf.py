@@ -61,7 +61,7 @@ copyright = "2025, ExFAB BioFoundry"
 author = "Alexander Nguyen"
 
 # Variables
-github_url = "https://github.com/Wheeldon-Lab/PhenoScope#"
+github_url = "https://github.com/exfab/PhenoTypic"
 
 # Logo/brand assets live in phenotypic/_assets/logos (single source of truth).
 # Resolve the version AND the logo paths from the installed package. Absolute

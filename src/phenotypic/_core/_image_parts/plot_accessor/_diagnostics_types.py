@@ -121,7 +121,7 @@ PANEL_I_RIDGE = PanelDescription(
         how_to_read="Peak shows optimal scale for tubular structures",
         good_values="Clear peak at colony-relevant scale (1-5 px)",
         poor_values="No peak (no ridges) or peak at wrong scale",
-        pipeline_link="MeijeringRidgeFilter, FrangiVesselness, SatoRidgeFilter",
+        pipeline_link="FocusEdgeMeijering, FocusEdgeFrangi, FocusEdgeSato",
 )
 
 PANEL_J_BACKGROUND = PanelDescription(

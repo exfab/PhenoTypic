@@ -6,10 +6,10 @@ if TYPE_CHECKING:
 
 import skimage.filters
 
-from phenotypic.abc_ import ImageEnhancer
+from phenotypic.abc_ import FocusEdge
 
 
-class SobelFilter(ImageEnhancer):
+class FocusEdgeSobel(FocusEdge):
     """Highlight colony edges in detect_mat using the Sobel gradient operator.
 
     Computes the gradient magnitude to emphasize intensity transitions at
@@ -30,7 +30,7 @@ class SobelFilter(ImageEnhancer):
     Consider Also:
         - :class:`SharpenEdgeGauss` when you want to sharpen edges without
           converting to a pure edge map.
-        - :class:`SharpenEdgeLaplace` for second-derivative edge detection
+        - :class:`FocusEdgeLaplace` for second-derivative edge detection
           that responds to ridges and valleys.
 
     See Also:

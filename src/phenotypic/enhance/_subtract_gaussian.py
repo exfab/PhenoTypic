@@ -9,10 +9,10 @@ import numpy as np
 from pydantic import field_validator
 from skimage.filters import gaussian
 
-from phenotypic.abc_ import ImageEnhancer
+from phenotypic.abc_ import BackgroundSubtraction
 
 
-class SubtractGaussian(ImageEnhancer):
+class SubtractGaussian(BackgroundSubtraction):
     """Remove background from ``detect_mat`` by subtracting a Gaussian-blurred estimate.
 
     Estimates a smooth background via Gaussian blur and subtracts it,

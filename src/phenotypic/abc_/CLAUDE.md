@@ -6,6 +6,13 @@
 BaseOperation
 ├── ImageOperation
 │   ├── ImageEnhancer (+FootprintMixin)  # Modifies only detect_mat
+│   │   ├── ImageDenoiser                # Noise-estimate-driven restoration
+│   │   ├── FocusEdge                # Output is an edge/ridge response map
+│   │   ├── FocusBlob                # Output is a blob/scale-space response
+│   │   ├── Smoothing                    # Kernel/diffusion blur
+│   │   ├── BackgroundSubtraction        # Removes slow-varying background
+│   │   ├── MorphologicalFiltering       # Structuring-element small-feature ops
+│   │   └── ContrastAdjustment           # Intensity/contrast remapping
 │   ├── ImageCorrector                   # Transforms entire image
 │   │   └── GridCorrector (+GridOperation)
 │   ├── ObjectDetector                   # Produces objmask/objmap
@@ -27,7 +34,7 @@ Standalone: MeasurementInfo (enum base, now in `phenotypic.schema`; re-exported 
 
 | Goal | Subclass | Modifies |
 |------|----------|----------|
-| Preprocess (blur, contrast) | `ImageEnhancer` | `detect_mat` only |
+| Preprocess `detect_mat` | an `ImageEnhancer` purpose-group (below) | `detect_mat` only |
 | Detect colonies | `ObjectDetector` | `objmask`, `objmap` |
 | Threshold detection | `ThresholdDetector` | `objmask`, `objmap` |
 | Clean detection results | `ObjectRefiner` | `objmask`, `objmap` |
@@ -39,6 +46,26 @@ Standalone: MeasurementInfo (enum base, now in `phenotypic.schema`; re-exported 
 | Detect grid structure | `GridFinder` | Grid metadata |
 | Pre-built workflow | `PrefabPipeline` | Complete pipeline |
 
+### Enhancer purpose-groups
+
+Concrete enhancers subclass one of these **marker ABCs** (all in `phenotypic.abc_`,
+all subclass `ImageEnhancer`, none add methods/params) instead of `ImageEnhancer`
+directly. Pick the group by what `_operate` produces:
+
+| Enhancer produces | Marker ABC | Examples |
+|-------------------|-----------|----------|
+| Noise-estimate-driven restoration | `ImageDenoiser` | BM3DDenoiser, BayesShrinkEnhancer, NonLocalMeansDenoiser |
+| An edge/ridge response map | `FocusEdge` | FocusEdgeSobel, FocusEdgeHessian, FocusEdgeFrangi, FocusEdgePhase |
+| A blob/scale-space response | `FocusBlob` | FocusBlobLoG |
+| Kernel/diffusion blur | `Smoothing` | GaussianBlur, MedianFilter, StructureSmoothing |
+| A flattened background | `BackgroundSubtraction` | SubtractGaussian, SubtractRollingBall, FlattenIllumination |
+| Small-feature morphology | `MorphologicalFiltering` | GrayOpening, WhiteTophatEnhance |
+| Remapped intensity/contrast | `ContrastAdjustment` | EnhanceLocalContrast, ContrastStretching, ImageInverter |
+
+The markers are intentionally **not** re-exported from `phenotypic.enhance`, which
+keeps them out of the GUI builder's enhancer dropdown. The taxonomy is pinned by
+`tests/unit/abc_/test_enhancer_taxonomy.py`.
+
 ---
 
 ## Implementation Rules
@@ -47,7 +74,7 @@ Standalone: MeasurementInfo (enum base, now in `phenotypic.schema`; re-exported 
   Canonical: [`enhance/_gaussian_blur.py`](../enhance/_gaussian_blur.py).
 - **Operations must be instantiable with no required args** for `from_json()` to work. Operations that need mandatory args (e.g., `ColorCorrector` needs a fitted profile) cannot be generically deserialized and must be excluded from round-trip tests.
 - **Tuple attributes survive JSON round-trip** only if you coerce them back: JSON has no tuple type, so tuples become lists on `from_json()`. Add a `__setattr__` that re-coerces lists back to tuples whether set in `__init__` or via `setattr()`.
-  See [`detect/_manual_grid_point_detector.py`](../detect/_manual_grid_point_detector.py), `enhance/_frangi_vesselness.py`, `enhance/_hessian_filter.py` for the pattern.
+  See [`detect/_manual_grid_point_detector.py`](../detect/_manual_grid_point_detector.py), `enhance/_focus_edge_frangi.py`, `enhance/_focus_edge_hessian.py` for the pattern.
 - **Optional `inspect()` on `MeasureFeatures`** — implementing `def inspect(self, image=None, *, for_save=False, **kwargs)` returning an mpl or plotly Figure opts a subclass into the CLI's `--save-inspect` auto-discovery (saves a PNG per image under `results/<ds>/inspect/<step>/<stem>.png`). Contract details in the `MeasureFeatures` class docstring; reference impl in [`measure/_measure_symmetric_zones.py`](../measure/_measure_symmetric_zones.py).
 
 ---

@@ -9,10 +9,10 @@ from pydantic import field_validator
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
-from ..abc_ import ImageEnhancer
+from ..abc_ import BackgroundSubtraction
 
 
-class FlattenIllumination(ImageEnhancer):
+class FlattenIllumination(BackgroundSubtraction):
     """Correct uneven illumination in detect_mat using frequency-domain filtering.
 
     Separates illumination (low-frequency) and reflectance (high-frequency)

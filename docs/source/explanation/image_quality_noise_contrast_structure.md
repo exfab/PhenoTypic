@@ -59,7 +59,7 @@ how sharp the colony edges are and how consistent the spatial layout is.
 - **Coherence** — consistency of gradient orientation. High coherence on
   a grid plate suggests well-organized, regularly spaced colonies.
 
-**Mitigation:** `SharpenEdgeGauss`, `SobelFilter` (enhance edges before
+**Mitigation:** `SharpenEdgeGauss`, `FocusEdgeSobel` (enhance edges before
 detection).
 
 ## Quality-Guided Pipeline Design
