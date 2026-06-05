@@ -49,9 +49,9 @@ Remove large-scale brightness gradients.
 
 Enhance specific morphological features.
 
-- **FrangiVesselness** — enhances tubular structures (hyphae, branches)
-- **SobelFilter** — highlights edges
-- **EnhanceFeatures** — illumination-invariant edge detection
+- **FocusEdgeFrangi** — enhances tubular structures (hyphae, branches)
+- **FocusEdgeSobel** — highlights edges
+- **FocusEdgePhase** — illumination-invariant edge detection
 
 ## Stacking Enhancers
 

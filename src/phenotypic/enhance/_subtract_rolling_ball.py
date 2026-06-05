@@ -7,11 +7,11 @@ if TYPE_CHECKING:
 
 from skimage.restoration import rolling_ball
 
-from phenotypic.abc_ import ImageEnhancer
+from phenotypic.abc_ import BackgroundSubtraction
 from phenotypic.tools_.typing_ import NdArrayField
 
 
-class SubtractRollingBall(ImageEnhancer):
+class SubtractRollingBall(BackgroundSubtraction):
     """Remove background from ``detect_mat`` with ImageJ-style rolling-ball subtraction.
 
     Models the background as the surface traced by rolling a parabolic ball

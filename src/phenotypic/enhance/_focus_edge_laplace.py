@@ -7,11 +7,11 @@ if TYPE_CHECKING:
 from skimage.filters import laplace
 from typing import Optional
 
-from ..abc_ import ImageEnhancer
+from ..abc_ import FocusEdge
 from phenotypic.tools_.typing_ import NdArrayField
 
 
-class SharpenEdgeLaplace(ImageEnhancer):
+class FocusEdgeLaplace(FocusEdge):
     """Enhance colony edges in ``detect_mat`` with a Laplacian operator.
 
     Applies a discrete Laplacian that responds to rapid intensity changes,
@@ -39,11 +39,11 @@ class SharpenEdgeLaplace(ImageEnhancer):
         - Generating watershed seeds by highlighting boundary regions.
 
     Consider Also:
-        - :class:`HessianFilter` for multi-scale edge and ridge detection
+        - :class:`FocusEdgeHessian` for multi-scale edge and ridge detection
           with more tuning control.
         - :class:`SharpenEdgeGauss` for edge enhancement that retains the
           original intensity profile.
-        - :class:`EnhanceFeatures` for contrast-invariant edge
+        - :class:`FocusEdgePhase` for contrast-invariant edge
           detection under uneven illumination.
 
     See Also:

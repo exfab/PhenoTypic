@@ -1,4 +1,4 @@
-"""Tests for EnhanceBlobs.
+"""Tests for FocusBlobLoG.
 
 Tests defaults, shape/dtype preservation, rgb/gray immutability, module-level
 function, non-negative output, uniform image yields ~zero, blob response,
@@ -9,7 +9,7 @@ import numpy as np
 import pytest
 
 from phenotypic import Image, ImagePipeline
-from phenotypic.enhance._enhance_blobs import EnhanceBlobs
+from phenotypic.enhance._focus_blob_log import FocusBlobLoG
 
 
 # -- Helpers -----------------------------------------------------------------
@@ -39,19 +39,19 @@ class TestDefaults:
     """Verify default parameter values."""
 
     def test_default_min_radius(self):
-        op = EnhanceBlobs()
+        op = FocusBlobLoG()
         assert op.min_radius == 3.0
 
     def test_default_max_radius(self):
-        op = EnhanceBlobs()
+        op = FocusBlobLoG()
         assert op.max_radius == 12.0
 
     def test_default_num_scales(self):
-        op = EnhanceBlobs()
+        op = FocusBlobLoG()
         assert op.num_scales == 12
 
     def test_custom_values(self):
-        op = EnhanceBlobs(min_radius=2.0, max_radius=20.0, num_scales=8)
+        op = FocusBlobLoG(min_radius=2.0, max_radius=20.0, num_scales=8)
         assert op.min_radius == 2.0
         assert op.max_radius == 20.0
         assert op.num_scales == 8
@@ -65,15 +65,15 @@ class TestValidation:
 
     def test_min_ge_max_raises(self):
         with pytest.raises(ValueError, match="min_radius"):
-            EnhanceBlobs(min_radius=10.0, max_radius=5.0)
+            FocusBlobLoG(min_radius=10.0, max_radius=5.0)
 
     def test_equal_radii_raises(self):
         with pytest.raises(ValueError, match="min_radius"):
-            EnhanceBlobs(min_radius=5.0, max_radius=5.0)
+            FocusBlobLoG(min_radius=5.0, max_radius=5.0)
 
     def test_num_scales_zero_raises(self):
         with pytest.raises(ValueError, match="num_scales"):
-            EnhanceBlobs(num_scales=0)
+            FocusBlobLoG(num_scales=0)
 
 
 # -- Shape / dtype preservation ----------------------------------------------
@@ -95,25 +95,25 @@ class TestOutputInvariants:
         return Image(arr=arr)
 
     def test_shape_preserved(self, gray_image):
-        op = EnhanceBlobs()
+        op = FocusBlobLoG()
         result = op.apply(gray_image)
         assert result.detect_mat[:].shape == gray_image.detect_mat[:].shape
 
     def test_dtype_preserved(self, gray_image):
         original_dtype = gray_image.detect_mat[:].dtype
-        op = EnhanceBlobs()
+        op = FocusBlobLoG()
         result = op.apply(gray_image)
         assert result.detect_mat[:].dtype == original_dtype
 
     def test_rgb_immutability(self, rgb_image):
         original_rgb = rgb_image.rgb[:].copy()
-        op = EnhanceBlobs()
+        op = FocusBlobLoG()
         op.apply(rgb_image)
         np.testing.assert_array_equal(rgb_image.rgb[:], original_rgb)
 
     def test_gray_immutability(self, gray_image):
         original_gray = gray_image.gray[:].copy()
-        op = EnhanceBlobs()
+        op = FocusBlobLoG()
         op.apply(gray_image)
         np.testing.assert_array_equal(gray_image.gray[:], original_gray)
 
@@ -122,29 +122,29 @@ class TestOutputInvariants:
 
 
 class TestModuleLevelFunction:
-    """EnhanceBlobs._enhance() works directly on arrays."""
+    """FocusBlobLoG._enhance() works directly on arrays."""
 
     def test_returns_array_same_shape(self):
         rng = np.random.default_rng(42)
         arr = rng.random((64, 64)).astype(np.float64)
-        result = EnhanceBlobs._enhance(arr)
+        result = FocusBlobLoG._enhance(arr)
         assert result.shape == arr.shape
 
     def test_returns_float_dtype(self):
         rng = np.random.default_rng(42)
         arr = rng.random((64, 64)).astype(np.float64)
-        result = EnhanceBlobs._enhance(arr)
+        result = FocusBlobLoG._enhance(arr)
         assert np.issubdtype(result.dtype, np.floating)
 
     def test_min_ge_max_raises(self):
         arr = np.zeros((16, 16))
         with pytest.raises(ValueError, match="min_radius"):
-            EnhanceBlobs._enhance(arr, min_radius=10.0, max_radius=5.0)
+            FocusBlobLoG._enhance(arr, min_radius=10.0, max_radius=5.0)
 
     def test_num_scales_zero_raises(self):
         arr = np.zeros((16, 16))
         with pytest.raises(ValueError, match="num_scales"):
-            EnhanceBlobs._enhance(arr, num_scales=0)
+            FocusBlobLoG._enhance(arr, num_scales=0)
 
 
 # -- Non-negative output -----------------------------------------------------
@@ -157,14 +157,14 @@ class TestNonNegativeOutput:
         rng = np.random.default_rng(99)
         arr = rng.random((64, 64)).astype(np.float64)
         image = Image(arr=arr)
-        op = EnhanceBlobs()
+        op = FocusBlobLoG()
         result = op.apply(image)
         assert result.detect_mat[:].min() >= 0.0
 
     def test_function_output_non_negative(self):
         rng = np.random.default_rng(99)
         arr = rng.random((64, 64)).astype(np.float64)
-        result = EnhanceBlobs._enhance(arr)
+        result = FocusBlobLoG._enhance(arr)
         assert result.min() >= 0.0
 
 
@@ -180,13 +180,13 @@ class TestUniformImage:
         # These are negligible compared to real blob responses (>0.01).
         arr = np.full((64, 64), 0.5, dtype=np.float64)
         image = Image(arr=arr)
-        op = EnhanceBlobs()
+        op = FocusBlobLoG()
         result = op.apply(image)
         assert result.detect_mat[:].max() < 0.005
 
     def test_function_uniform_yields_near_zero(self):
         arr = np.full((64, 64), 0.5, dtype=np.float64)
-        result = EnhanceBlobs._enhance(arr)
+        result = FocusBlobLoG._enhance(arr)
         assert result.max() < 0.005
 
 
@@ -199,7 +199,7 @@ class TestBlobResponse:
     def test_bright_blob_detected(self):
         blob_img = _make_blob_image(size=128, radius=6.0, amplitude=0.8)
         image = Image(arr=blob_img)
-        op = EnhanceBlobs(min_radius=3.0, max_radius=12.0)
+        op = FocusBlobLoG(min_radius=3.0, max_radius=12.0)
         result = op.apply(image)
 
         # Centre region should have strong positive response
@@ -212,7 +212,7 @@ class TestBlobResponse:
 
     def test_blob_centre_is_local_max(self):
         blob_img = _make_blob_image(size=128, radius=6.0, amplitude=0.8)
-        result = EnhanceBlobs._enhance(blob_img, min_radius=3.0, max_radius=12.0)
+        result = FocusBlobLoG._enhance(blob_img, min_radius=3.0, max_radius=12.0)
 
         cy, cx = 64, 64
         centre_val = result[cy, cx]
@@ -237,10 +237,10 @@ class TestScaleSelectivity:
         large_blob = _make_blob_image(size=128, radius=10.0, amplitude=0.8)
 
         # Enhance each with a range that covers both radii
-        small_result = EnhanceBlobs._enhance(
+        small_result = FocusBlobLoG._enhance(
             small_blob, min_radius=2.0, max_radius=15.0, num_scales=20,
         )
-        large_result = EnhanceBlobs._enhance(
+        large_result = FocusBlobLoG._enhance(
             large_blob, min_radius=2.0, max_radius=15.0, num_scales=20,
         )
 
@@ -255,11 +255,11 @@ class TestScaleSelectivity:
         blob = _make_blob_image(size=128, radius=8.0, amplitude=0.8)
 
         # Correct range includes radius=8
-        good_result = EnhanceBlobs._enhance(
+        good_result = FocusBlobLoG._enhance(
             blob, min_radius=5.0, max_radius=12.0, num_scales=10,
         )
         # Mismatched range: only very small scales
-        poor_result = EnhanceBlobs._enhance(
+        poor_result = FocusBlobLoG._enhance(
             blob, min_radius=1.0, max_radius=2.0, num_scales=10,
         )
 
@@ -273,7 +273,7 @@ class TestScaleSelectivity:
 
 
 class TestPipelineIntegration:
-    """EnhanceBlobs works inside an ImagePipeline."""
+    """FocusBlobLoG works inside an ImagePipeline."""
 
     def test_in_pipeline(self):
         from phenotypic.enhance import GaussianBlur
@@ -284,7 +284,7 @@ class TestPipelineIntegration:
 
         pipeline = ImagePipeline(ops=[
             GaussianBlur(sigma=1.0),
-            EnhanceBlobs(min_radius=3.0, max_radius=10.0, num_scales=6),
+            FocusBlobLoG(min_radius=3.0, max_radius=10.0, num_scales=6),
         ])
         result = pipeline.apply(image)
         assert result.detect_mat[:].shape == image.detect_mat[:].shape
@@ -295,9 +295,9 @@ class TestPipelineIntegration:
 
 
 def _class_registered() -> bool:
-    """Check whether EnhanceBlobs is exported in enhance.__init__."""
+    """Check whether FocusBlobLoG is exported in enhance.__init__."""
     try:
-        from phenotypic.enhance import EnhanceBlobs as _  # noqa: F401
+        from phenotypic.enhance import FocusBlobLoG as _  # noqa: F401
         return True
     except ImportError:
         return False
@@ -305,7 +305,7 @@ def _class_registered() -> bool:
 
 _SKIP_SERIAL = pytest.mark.skipif(
     not _class_registered(),
-    reason="EnhanceBlobs not yet exported from enhance.__init__",
+    reason="FocusBlobLoG not yet exported from enhance.__init__",
 )
 
 
@@ -315,7 +315,7 @@ class TestSerialization:
     @_SKIP_SERIAL
     def test_roundtrip_preserves_params(self):
         pipeline = ImagePipeline(ops=[
-            EnhanceBlobs(min_radius=2.0, max_radius=15.0, num_scales=8),
+            FocusBlobLoG(min_radius=2.0, max_radius=15.0, num_scales=8),
         ])
         json_str = pipeline.to_json()
         loaded = ImagePipeline.from_json(json_str)
@@ -323,14 +323,14 @@ class TestSerialization:
         ops = list(loaded._ops.values())
         assert len(ops) == 1
         op = ops[0]
-        assert isinstance(op, EnhanceBlobs)
+        assert isinstance(op, FocusBlobLoG)
         assert op.min_radius == 2.0
         assert op.max_radius == 15.0
         assert op.num_scales == 8
 
     @_SKIP_SERIAL
     def test_default_params_roundtrip(self):
-        pipeline = ImagePipeline(ops=[EnhanceBlobs()])
+        pipeline = ImagePipeline(ops=[FocusBlobLoG()])
         json_str = pipeline.to_json()
         loaded = ImagePipeline.from_json(json_str)
 
