@@ -7,12 +7,12 @@ from skimage import morphology
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
-from phenotypic.abc_ import ImageEnhancer
+from phenotypic.abc_ import MorphologicalFiltering
 from phenotypic.tools_.mixin import FootprintMixin
 from phenotypic.tools_.typing_ import TuneSpec
 
 
-class GrayOpening(ImageEnhancer, FootprintMixin):
+class GrayOpening(MorphologicalFiltering, FootprintMixin):
     """Remove small bright artifacts from ``detect_mat`` via morphological opening.
 
     Applies erosion followed by dilation with a structuring element, removing

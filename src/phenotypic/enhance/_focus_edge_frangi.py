@@ -7,10 +7,10 @@ if TYPE_CHECKING:
 from pydantic import field_validator
 from skimage.filters import frangi
 
-from phenotypic.abc_ import ImageEnhancer
+from phenotypic.abc_ import FocusEdge
 
 
-class FrangiVesselness(ImageEnhancer):
+class FocusEdgeFrangi(FocusEdge):
     """Enhance tubular structures in detect_mat using Hessian-based vesselness filtering.
 
     Computes the Frangi vesselness measure from Hessian matrix eigenvalues at
@@ -47,11 +47,11 @@ class FrangiVesselness(ImageEnhancer):
         - Pre-filtering before ``FilamentousFungiDetector``.
 
     Consider Also:
-        - :class:`MeijeringRidgeFilter` for neurite-like structures with fewer
+        - :class:`FocusEdgeMeijering` for neurite-like structures with fewer
           parameters to tune.
-        - :class:`SatoRidgeFilter` for ridge detection with different
+        - :class:`FocusEdgeSato` for ridge detection with different
           sensitivity characteristics.
-        - :class:`EnhanceFeatures` for illumination-invariant edge
+        - :class:`FocusEdgePhase` for illumination-invariant edge
           enhancement of filaments.
 
     References:

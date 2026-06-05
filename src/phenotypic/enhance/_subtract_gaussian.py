@@ -9,11 +9,11 @@ import numpy as np
 from pydantic import Field
 from skimage.filters import gaussian
 
-from phenotypic.abc_ import ImageEnhancer
+from phenotypic.abc_ import BackgroundSubtraction
 from phenotypic.tools_.typing_ import TuneSpec
 
 
-class SubtractGaussian(ImageEnhancer):
+class SubtractGaussian(BackgroundSubtraction):
     """Remove background from ``detect_mat`` by subtracting a Gaussian-blurred estimate.
 
     Estimates a smooth background via Gaussian blur and subtracts it,

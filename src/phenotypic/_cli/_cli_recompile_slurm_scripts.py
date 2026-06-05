@@ -16,12 +16,12 @@ from phenotypic.tools_ import (
     DIR_LOGS,
     DIR_MEASUREMENTS,
     DIR_OVERLAYS,
-    DIR_PROGRESS,
-    DIR_RECOMPILE,
     DIR_RESULTS,
     DIR_SLURM_SCRIPTS,
     JobMetadataKey,
     RECOMPILE_TASK_MANIFEST_JSON,
+    progress_dir,
+    recompile_dir,
 )
 
 TASK_MEASUREMENTS: Final[str] = "measurements"
@@ -114,9 +114,9 @@ def generate_recompile_slurm_scripts(
         raise ValueError("array_limit must be positive")
 
     output_dir = Path(output_dir)
-    recompile_dir = output_dir / DIR_PROGRESS / DIR_RECOMPILE
-    recompile_dir.mkdir(parents=True, exist_ok=True)
-    manifest_path = recompile_dir / RECOMPILE_TASK_MANIFEST_JSON
+    rc_dir = recompile_dir(progress_dir(output_dir))
+    rc_dir.mkdir(parents=True, exist_ok=True)
+    manifest_path = rc_dir / RECOMPILE_TASK_MANIFEST_JSON
     manifest_path.write_text(
         json.dumps({"tasks": tasks}, indent=2) + "\n",
         encoding="utf-8",

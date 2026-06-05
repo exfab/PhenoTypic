@@ -5,6 +5,14 @@
 # PhenoTypic: A Python Framework for Bio-Image Analysis
 
 ![Development Stage](https://img.shields.io/badge/dev_stage-beta-orange)
+[![GUI checks](https://github.com/exfab/PhenoTypic/actions/workflows/gui-checks.yml/badge.svg)](https://github.com/exfab/PhenoTypic/actions/workflows/gui-checks.yml)
+[![Docs](https://github.com/exfab/PhenoTypic/actions/workflows/docs.yml/badge.svg)](https://github.com/exfab/PhenoTypic/actions/workflows/docs.yml)
+[![PyPI](https://img.shields.io/pypi/v/phenotypic)](https://pypi.org/project/phenotypic/)
+[![Python](https://img.shields.io/pypi/pyversions/phenotypic)](https://pypi.org/project/phenotypic/)
+[![License](https://img.shields.io/github/license/exfab/PhenoTypic)](https://github.com/exfab/PhenoTypic/blob/main/LICENSE)
+[![GitHub release](https://img.shields.io/github/v/release/exfab/PhenoTypic)](https://github.com/exfab/PhenoTypic/releases)
+[![Issues](https://img.shields.io/github/issues/exfab/PhenoTypic)](https://github.com/exfab/PhenoTypic/issues)
+[![Pull requests](https://img.shields.io/github/issues-pr/exfab/PhenoTypic)](https://github.com/exfab/PhenoTypic/pulls)
 
 A modular image processing framework developed at the NSF Ex-FAB BioFoundry, focused on
 arrayed colony phenotyping on solid media.
@@ -96,6 +104,18 @@ ExifTool. You can install ExifTool here: https://exiftool.org/install.html. If y
 use it, some metadata from raw
 files may not be able to be imported. Read more
 here: https://pypi.org/project/PyExifTool/#pyexiftool-dependencies
+
+# Run the CLI
+
+Process a directory of plate images through a saved pipeline:
+
+```bash
+uv run python -m phenotypic --pipeline pipeline.json --input ./images --output-dir ./out
+```
+
+Add `--process-only {rgb|gray|detect_mat|objmap}` for an apply-only export run that
+writes a single image layer per input (mirroring the input tree) and skips the
+measurement/analysis suite — handy for previewing detection or enhanced layers.
 
 # Launch the GUI
 

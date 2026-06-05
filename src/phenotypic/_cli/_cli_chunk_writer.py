@@ -29,7 +29,6 @@ from ._cli_file_locking import file_lock
 from ._cli_output_manager import _atomic_write, join_metadata
 from ._cli_utils import load_job_metadata, scan_parquets
 from phenotypic.tools_ import (
-    DIR_PROGRESS,
     DIR_CHUNKS,
     CHUNK_STATE_JSON,
     CHUNK_MANIFEST_JSON,
@@ -45,6 +44,7 @@ from phenotypic.tools_ import (
     analysis_full_parquet_path,
     master_measurements_csv_path,
     master_measurements_parquet_path,
+    progress_dir as progress_dir_helper,
 )
 
 logger = logging.getLogger(__name__)
@@ -64,7 +64,7 @@ def aggregate_chunks(output_dir: Path) -> None:
     tasks (SLURM may schedule multiple sentinels near-simultaneously)
     do not race on the shared state files or duplicate data.
     """
-    progress_dir = output_dir / DIR_PROGRESS
+    progress_dir = progress_dir_helper(output_dir)
     progress_dir.mkdir(parents=True, exist_ok=True)
 
     lock_path = chunk_lock_path(progress_dir)

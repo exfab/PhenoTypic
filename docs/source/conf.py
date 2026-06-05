@@ -59,7 +59,7 @@ copyright = "2025, ExFAB BioFoundry"
 author = "Alexander Nguyen"
 
 # Variables
-github_url = "https://github.com/Wheeldon-Lab/PhenoScope#"
+github_url = "https://github.com/exfab/PhenoTypic"
 LIGHT_LOGO_PATH = "./_static/assets/400x150/light_logo_exfab.svg"
 DARK_LOGO_PATH = "./_static/assets/400x150/gradient_logo_exfab.svg"
 

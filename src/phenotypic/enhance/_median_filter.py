@@ -4,13 +4,13 @@ from typing import Annotated, Literal, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
-from phenotypic.abc_ import ImageEnhancer
+from phenotypic.abc_ import Smoothing
 from phenotypic.tools_.typing_ import TuneSpec
 
 from skimage.filters import median
 
 
-class MedianFilter(ImageEnhancer):
+class MedianFilter(Smoothing):
     """Remove impulsive noise from detect_mat while preserving colony edges.
 
     Replaces each pixel with the median of its local neighborhood, making it

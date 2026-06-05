@@ -8,11 +8,11 @@ if TYPE_CHECKING:
 import numpy as np
 from skimage.exposure import rescale_intensity
 
-from ..abc_ import ImageEnhancer
+from ..abc_ import ContrastAdjustment
 from ..tools_.typing_ import TuneSpec
 
 
-class ContrastStretching(ImageEnhancer):
+class ContrastStretching(ContrastAdjustment):
     """Stretch the intensity range of detect_mat to fill the full dynamic range.
 
     Rescales pixel values based on lower and upper percentiles, compressing

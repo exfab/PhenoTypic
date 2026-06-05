@@ -16,7 +16,7 @@ import numpy as np
 from numpy.fft import fft2, ifft2, ifftshift
 from pydantic import Field
 
-from ..abc_ import ImageEnhancer
+from ..abc_ import FocusEdge
 from ..tools_.typing_ import TuneSpec
 
 if TYPE_CHECKING:
@@ -46,7 +46,7 @@ class _PhaseCong3Result:
     pc_sum: np.ndarray
 
 
-class EnhanceFeatures(ImageEnhancer):
+class FocusEdgePhase(FocusEdge):
     """Enhance colony edges in ``detect_mat`` with contrast-invariant phase congruency.
 
     Detects features where Fourier components are maximally in phase,
@@ -90,9 +90,9 @@ class EnhanceFeatures(ImageEnhancer):
         - Translucent or low-contrast colonies on agar.
 
     Consider Also:
-        - :class:`SharpenEdgeLaplace` for simpler edge detection when
+        - :class:`FocusEdgeLaplace` for simpler edge detection when
           illumination is uniform.
-        - :class:`HessianFilter` for multi-scale ridge and edge detection
+        - :class:`FocusEdgeHessian` for multi-scale ridge and edge detection
           with blob sensitivity control.
         - :class:`SharpenEdgeGauss` for edge sharpening that preserves the
           original intensity profile.
@@ -128,8 +128,9 @@ class EnhanceFeatures(ImageEnhancer):
         output_map = {"M": result.M, "m": result.m, "pc_sum": result.pc_sum}
         selected = output_map[self.output]
 
-        # Ensure output is in [0, 1] range for detect_mat compatibility
-        image.detect_mat[:] = np.clip(selected, 0.0, 1.0).astype(np.float64)
+        # Ensure output is in [0, 1] range for detect_mat compatibility.
+        # detect_mat enforces float32 on assignment, so no explicit cast is needed.
+        image.detect_mat[:] = np.clip(selected, 0.0, 1.0)
         return image
 
     def _phasecong3(self, img: np.ndarray) -> _PhaseCong3Result:

@@ -2189,3 +2189,60 @@ class TestAggregateMeasurements:
         master = pd.read_csv(master_measurements_csv_path(temp_output_dir))
         mirror = pd.read_csv(measurements_csv_path(temp_output_dir))
         pd.testing.assert_frame_equal(master, mirror)
+
+
+# ---------------------------------------------------------------------------
+# --process-only top-level CLI option: validation, ignored-flag warnings, dry-run
+# ---------------------------------------------------------------------------
+
+
+def test_process_only_rejects_measure(
+    tmp_path, simple_pipeline_json, synth_one_level_input
+):
+    r = CliRunner().invoke(
+        phenotypic_cli,
+        [
+            "--pipeline", str(simple_pipeline_json),
+            "--input", str(synth_one_level_input),
+            "--output-dir", str(tmp_path / "o"),
+            "--process-only", "rgb",
+            "--measure",
+        ],
+    )
+    assert r.exit_code != 0
+    assert "process-only" in r.output.lower() and "measure" in r.output.lower()
+
+
+def test_process_only_warns_ignored_flags(
+    tmp_path, simple_pipeline_json, synth_one_level_input
+):
+    r = CliRunner().invoke(
+        phenotypic_cli,
+        [
+            "--pipeline", str(simple_pipeline_json),
+            "--input", str(synth_one_level_input),
+            "--output-dir", str(tmp_path / "o2"),
+            "--process-only", "rgb",
+            "--no-qc", "--force-local", "--n-jobs", "1", "--dry-run",
+        ],
+    )
+    assert r.exit_code == 0, r.output
+    assert "ignored" in r.output.lower()
+
+
+def test_process_only_dry_run_lists_plan(
+    tmp_path, simple_pipeline_json, synth_one_level_input
+):
+    r = CliRunner().invoke(
+        phenotypic_cli,
+        [
+            "--pipeline", str(simple_pipeline_json),
+            "--input", str(synth_one_level_input),
+            "--output-dir", str(tmp_path / "o3"),
+            "--process-only", "detect_mat",
+            "--dry-run", "--force-local",
+        ],
+    )
+    assert r.exit_code == 0, r.output
+    assert "process-only" in r.output.lower()
+    assert ".phenotypic" in r.output

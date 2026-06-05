@@ -4,8 +4,8 @@
   "desc": null,
   "reset": false,
   "pipe_cfgs": {
-    "EnhanceFeatures": {
-      "class": "EnhanceFeatures",
+    "FocusEdgePhase": {
+      "class": "FocusEdgePhase",
       "params": {
         "n_scale": 1,
         "n_orient": 1,

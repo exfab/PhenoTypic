@@ -83,6 +83,12 @@ class Capabilities:
         has_dashboard: Directory contains ``deliverables/dashboard.html``.
             Used by the Run console's Recent Runs panel to enable the
             iframe link.
+        is_process_only_output: Directory is a ``--process-only`` run — it
+            carries a ``.phenotypic/progress/manifest.json`` (machine-state
+            under the hidden cache) but lacks the full forward-run
+            ``results/`` + ``deliverables/master_measurements.parquet``
+            markers. Lets the Run console list a process-only run (D13) even
+            though it has no dashboard / results affordance.
         image_count: Image-file count (capped at :data:`_IMAGE_COUNT_CAP`)
             when ``is_image_dir`` is true; ``None`` otherwise.
         bad_perms: ``True`` if listing the directory raised
@@ -93,6 +99,7 @@ class Capabilities:
     has_pipeline_json: bool
     is_cli_output: bool
     has_dashboard: bool
+    is_process_only_output: bool
     image_count: int | None
     bad_perms: bool
 
@@ -158,6 +165,7 @@ _EMPTY = Capabilities(
     has_pipeline_json=False,
     is_cli_output=False,
     has_dashboard=False,
+    is_process_only_output=False,
     image_count=None,
     bad_perms=False,
 )
@@ -166,6 +174,7 @@ _BAD_PERMS = Capabilities(
     has_pipeline_json=False,
     is_cli_output=False,
     has_dashboard=False,
+    is_process_only_output=False,
     image_count=None,
     bad_perms=True,
 )
@@ -197,6 +206,7 @@ def _classify_file(path: Path) -> Capabilities:
             has_pipeline_json=True,
             is_cli_output=False,
             has_dashboard=False,
+            is_process_only_output=False,
             image_count=None,
             bad_perms=False,
         )
@@ -239,12 +249,28 @@ def _classify_dir(path: Path) -> Capabilities:
         is_cli_output_master = (deliverables / _MASTER_MEASUREMENTS_FILENAME).is_file()
         has_dashboard = (deliverables / _DASHBOARD_FILENAME).is_file()
 
+    is_cli_output = is_cli_output_master and is_cli_output_results
+
+    is_process_only_output = False
+    if not is_cli_output and not is_cli_output_results:
+        # A process-only run writes machine-state (its
+        # .phenotypic/progress/manifest.json) but NO results/ and NO
+        # deliverables/. Gating on ``not is_cli_output_results`` prevents a
+        # forward run that has *started* (results/ + manifest already written)
+        # but not yet finalized (no master_measurements.parquet) from being
+        # transiently misclassified as process-only. Resolve via the helper so a
+        # legacy-root manifest still surfaces.
+        from phenotypic.tools_ import resolve_manifest_json_path
+
+        is_process_only_output = resolve_manifest_json_path(path).is_file()
+
     is_image_dir = image_count > 0
     return Capabilities(
         is_image_dir=is_image_dir,
         has_pipeline_json=False,  # only flagged for JSON files, not dirs
-        is_cli_output=is_cli_output_master and is_cli_output_results,
+        is_cli_output=is_cli_output,
         has_dashboard=has_dashboard,
+        is_process_only_output=is_process_only_output,
         image_count=image_count if is_image_dir else None,
         bad_perms=False,
     )

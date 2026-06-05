@@ -7,10 +7,10 @@ if TYPE_CHECKING:
 from pydantic import field_validator
 from skimage.filters import hessian
 
-from phenotypic.abc_ import ImageEnhancer
+from phenotypic.abc_ import FocusEdge
 
 
-class HessianFilter(ImageEnhancer):
+class FocusEdgeHessian(FocusEdge):
     """Enhance edges and ridge-like structures via multi-scale Hessian filtering.
 
     Computes eigenvalue-based Hessian responses across multiple scales to
@@ -51,10 +51,10 @@ class HessianFilter(ImageEnhancer):
         - Textured colonies or biofilms with complex internal structure.
 
     Consider Also:
-        - :class:`SatoRidgeFilter` for continuous tube-like structures where
+        - :class:`FocusEdgeSato` for continuous tube-like structures where
           Hessian eigenvalue ratios provide cleaner ridge responses.
-        - :class:`MeijeringRidgeFilter` for very fine neurite-like filaments.
-        - :class:`SharpenEdgeLaplace` for simpler second-derivative edge
+        - :class:`FocusEdgeMeijering` for very fine neurite-like filaments.
+        - :class:`FocusEdgeLaplace` for simpler second-derivative edge
           detection without multi-scale analysis.
 
     See Also:

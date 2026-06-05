@@ -23,7 +23,24 @@ from phenotypic._cli._cli_types import (
     ImageFailure,
 )
 from phenotypic._cli._cli_update_state import aggregate_state_from_events
-from phenotypic.tools_ import processing_report_html_path
+from phenotypic.tools_ import (
+    processing_report_html_path,
+    resolve_event_log_path,
+    resolve_processing_state_path,
+)
+
+
+def _load_state_for_report(output_dir: Path) -> dict | None:
+    """Read the run's processing-state JSON, resolving legacy locations.
+
+    Returns the parsed state dict, or ``None`` when no state file exists.
+    """
+    import json
+
+    state_file = resolve_processing_state_path(output_dir)
+    if not state_file.is_file():
+        return None
+    return json.loads(state_file.read_text(encoding="utf-8"))
 
 
 @click.command()
@@ -47,7 +64,7 @@ def generate_cli_report(output_dir: Path):
     click.echo(f"Generating report for {output_dir}...")
 
     # Check for event log
-    event_log = output_dir / "processing_events.log"
+    event_log = resolve_event_log_path(output_dir)
     if not event_log.exists():
         click.echo("Error: No processing_events.log found", err=True)
         click.echo(
@@ -115,11 +132,8 @@ def generate_cli_report(output_dir: Path):
 
     # Create ExecutionResults
     # Try to read timestamps from state file if it exists
-    state_file = output_dir / "processing_state.json"
-    if state_file.exists():
-        import json
-
-        state_dict = json.loads(state_file.read_text())
+    state_dict = _load_state_for_report(output_dir)
+    if state_dict is not None:
         start_time = datetime.fromisoformat(state_dict["timestamp"])
         end_time = datetime.now()
         execution_mode = state_dict.get("execution_mode", "local")

@@ -335,12 +335,19 @@ class TestImageInitializationDtypes:
         assert np.array_equal(img.gray[:], float32_gray_array)
 
     @timeit
-    def test_image_from_float64_grayscale_no_conversion(self, float64_gray_array):
-        """Test that float64 grayscale array is NOT converted."""
+    def test_image_from_float64_grayscale_converts_to_float32(self, float64_gray_array):
+        """float64 grayscale is downcast to the float32 luminance-layer contract.
+
+        ``gray``/``detect_mat`` are stored as float32 (enforced by
+        ``ImageData.__setattr__``); a float64 input is preserved to float32
+        precision while halving its footprint. ``bit_depth`` inference runs on
+        the *input* dtype and is unaffected.
+        """
         img = Image(arr=float64_gray_array)
 
         assert img.bit_depth == 16
-        assert np.array_equal(img.gray[:], float64_gray_array)
+        assert img.gray[:].dtype == np.float32
+        assert np.allclose(img.gray[:], float64_gray_array, atol=1e-6)
 
     @timeit
     def test_image_from_rgba_converts_to_rgb(self, rgba_array):
@@ -535,3 +542,54 @@ class TestGrayArrayDerivation:
         img = Image(arr=uint8_rgb_array)
 
         assert np.array_equal(img.detect_mat[:], img.gray[:])
+
+
+class TestFloat32LuminanceLayerContract:
+    """``gray`` / ``detect_mat`` are stored as float32 (enforced contract).
+
+    ``ImageData.__setattr__`` coerces any floating assignment to these luminance
+    layers to float32 — skimage's ``rgb2gray`` returns float64, so without this
+    the declared float32 contract was never actually enforced. This halves the
+    in-memory and on-disk footprint of the two largest layers at negligible
+    precision cost (float32 ≈ 7 significant digits, ~500× finer than the uint16
+    quantization step). Integer inputs are left untouched.
+    """
+
+    @timeit
+    def test_uint8_rgb_produces_float32_layers(self, uint8_rgb_array):
+        """RGB input derives float32 gray + detect_mat (rgb2gray float64 downcast)."""
+        img = Image(arr=uint8_rgb_array)
+        assert img.gray[:].dtype == np.float32
+        assert img.detect_mat[:].dtype == np.float32
+
+    @timeit
+    def test_uint16_rgb_produces_float32_layers(self, uint16_rgb_array):
+        """16-bit RGB input also derives float32 luminance layers."""
+        img = Image(arr=uint16_rgb_array)
+        assert img.gray[:].dtype == np.float32
+        assert img.detect_mat[:].dtype == np.float32
+
+    @timeit
+    def test_float64_grayscale_input_stored_as_float32(self, float64_gray_array):
+        """A float64 grayscale input is downcast to float32 on assignment."""
+        img = Image(arr=float64_gray_array)
+        assert img.gray[:].dtype == np.float32
+        assert np.allclose(img.gray[:], float64_gray_array, atol=1e-6)
+
+    @timeit
+    def test_accessor_write_coerces_float64_to_float32(self, uint8_rgb_array):
+        """Writing a float64 array through the detect_mat accessor stays float32."""
+        img = Image(arr=uint8_rgb_array)
+        img.detect_mat[:] = img.detect_mat[:].astype(np.float64)
+        assert img.detect_mat[:].dtype == np.float32
+
+    @timeit
+    def test_float32_layers_survive_hdf5_roundtrip(self, uint8_rgb_array, tmp_path):
+        """Saving then loading an HDF5 image preserves the float32 layer contract."""
+        img = Image(arr=uint8_rgb_array)
+        path = tmp_path / "f32_layers.h5"
+        img.save2hdf5(path)
+        loaded = Image.load_hdf5(path)
+        assert loaded.gray[:].dtype == np.float32
+        assert loaded.detect_mat[:].dtype == np.float32
+        assert np.allclose(loaded.gray[:], img.gray[:], atol=1e-6)

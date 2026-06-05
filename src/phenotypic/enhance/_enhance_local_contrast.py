@@ -7,11 +7,11 @@ if TYPE_CHECKING:
 
 from skimage.exposure import equalize_adapthist
 
-from phenotypic.abc_ import ImageEnhancer
+from phenotypic.abc_ import ContrastAdjustment
 from phenotypic.tools_.typing_ import TuneSpec
 
 
-class EnhanceLocalContrast(ImageEnhancer):
+class EnhanceLocalContrast(ContrastAdjustment):
     """Boost local contrast in detect_mat using adaptive histogram equalization.
 
     Divides detect_mat into tiles and equalizes the histogram within each tile,

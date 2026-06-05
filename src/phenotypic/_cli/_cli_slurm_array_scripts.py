@@ -15,7 +15,7 @@ from typing import Dict, List, Optional, Tuple
 from ._cli_slurm_scripts import generate_slurm_directives
 from ._cli_types import Dataset, ExecutionConfig
 from ._cli_utils import SLURM_THREAD_PIN_BASH, get_python_command
-from phenotypic.tools_ import DIR_LOGS, DIR_SLURM_SCRIPTS, PROCESSING_EVENTS_LOG
+from phenotypic.tools_ import DIR_LOGS, DIR_SLURM_SCRIPTS, event_log_path
 
 # Sentinel value inserted into the image list to trigger checkpoint aggregation
 _CHECKPOINT_SENTINEL = "__PHENOTYPIC_CHECKPOINT__"
@@ -171,8 +171,20 @@ def generate_array_job_script(
             f"Empty chunk for dataset {dataset.name}: indices ({start_idx}, {end_idx})"
         )
 
-    # Build task entries, interleaving checkpoint sentinels at regular intervals
-    entries = _build_entry_list(chunk_images, checkpoint_interval, is_last_chunk)
+    # Build task entries, interleaving checkpoint sentinels at regular intervals.
+    # Process-only runs carry no aggregation chain (D13): no checkpoint sentinels
+    # and no full finalizer. But the LAST chunk appends a single manifest-only
+    # sentinel so the final array task rebuilds progress/manifest.json after every
+    # image — this reuses the forward path's embedded-finalizer mechanism (minus
+    # aggregation/dashboard), so the completion signal is correct across the
+    # drip-feed for ANY number of chunks (the chunk sizing already reserves
+    # headroom for forward sentinels, which process-only otherwise leaves unused).
+    if config.process_only_layer:
+        entries = [str(img_path.absolute()) for img_path in chunk_images]
+        if is_last_chunk:
+            entries.append(_MANIFEST_SENTINEL)
+    else:
+        entries = _build_entry_list(chunk_images, checkpoint_interval, is_last_chunk)
 
     # Create script directory
     script_dir = output_dir / DIR_SLURM_SCRIPTS / dataset.name
@@ -210,7 +222,7 @@ def generate_array_job_script(
     )
 
     # Build command arguments for single-image processor
-    event_log = output_dir / PROCESSING_EVENTS_LOG
+    event_log = event_log_path(output_dir)
 
     # Get Python command (uses uv run python if available)
     python_cmd, _ = get_python_command(for_slurm=True)
@@ -258,16 +270,28 @@ def generate_array_job_script(
     if not config.include_dataset_column:
         cmd_parts.append("--no-dataset-column")
 
-    # Measure-only mode supersedes overlay generation; they are mutually exclusive.
-    if config.measure_only:
+    # Process-only (apply-only) mode: export a single layer, mirror the input
+    # tree, and skip overlays/measurement entirely. Mutually exclusive with the
+    # measure / forward overlay flags.
+    if config.process_only_layer:
+        cmd_parts.extend(
+            [
+                "--process-only",
+                config.process_only_layer,
+                "--input-root",
+                shlex.quote(str(config.input_path.absolute())),
+            ]
+        )
+    elif config.measure_only:
+        # Measure-only mode supersedes overlay generation; mutually exclusive.
         cmd_parts.append("--measure")
     else:
         cmd_parts.append("--save-overlays")
 
     # --save-inspect is honored in BOTH forward and --measure modes,
     # since re-measurement repopulates the diagnostic cache that
-    # MeasureFeatures.inspect() depends on.
-    if config.save_inspects:
+    # MeasureFeatures.inspect() depends on. Never relevant in process-only mode.
+    if config.save_inspects and not config.process_only_layer:
         cmd_parts.append("--save-inspect")
 
     # Add event log
@@ -300,6 +324,64 @@ def generate_array_job_script(
         f"--output-dir {q_output_dir} "
         f"--checkpoint-type finalize"
     )
+
+    # Dispatch block: process-only runs carry no aggregation sentinels, but the
+    # last chunk's final task is a manifest-only sentinel (rebuild
+    # progress/manifest.json — no aggregation, no dashboard). Forward / measure
+    # runs keep the full checkpoint→manifest→finalizer sentinel dispatch.
+    if config.process_only_layer:
+        dispatch_block = f"""if [ "$CURRENT_IMAGE" = "{_MANIFEST_SENTINEL}" ]; then
+    # Manifest-only finalize (process-only, D13): rebuild progress/manifest.json
+    # after every image in the last chunk. No aggregation, no dashboard HTML.
+    echo "Running manifest rebuild (task $SLURM_ARRAY_TASK_ID)"
+    echo ""
+
+    {manifest_cmd}
+
+    EXIT_CODE=$?
+else
+    # Normal image processing (apply-only mode)
+    echo "Processing image $((SLURM_ARRAY_TASK_ID + 1))/${{#IMAGE_LIST[@]}}: $CURRENT_IMAGE"
+    echo ""
+
+    {cmd}
+
+    EXIT_CODE=$?
+fi"""
+    else:
+        dispatch_block = f"""if [ "$CURRENT_IMAGE" = "{_CHECKPOINT_SENTINEL}" ]; then
+    # Checkpoint task: aggregate per-image Parquets into a dashboard chunk
+    echo "Running checkpoint aggregation (task $SLURM_ARRAY_TASK_ID)"
+    echo ""
+
+    {checkpoint_cmd}
+
+    EXIT_CODE=$?
+elif [ "$CURRENT_IMAGE" = "{_MANIFEST_SENTINEL}" ]; then
+    # Manifest task: rebuild manifest after checkpoint aggregation
+    echo "Running manifest rebuild (task $SLURM_ARRAY_TASK_ID)"
+    echo ""
+
+    {manifest_cmd}
+
+    EXIT_CODE=$?
+elif [ "$CURRENT_IMAGE" = "{_FINALIZER_SENTINEL}" ]; then
+    # Finalizer task: final aggregation and cleanup for the last chunk
+    echo "Running finalizer (task $SLURM_ARRAY_TASK_ID)"
+    echo ""
+
+    {finalizer_cmd}
+
+    EXIT_CODE=$?
+else
+    # Normal image processing
+    echo "Processing image $((SLURM_ARRAY_TASK_ID + 1))/${{#IMAGE_LIST[@]}}: $CURRENT_IMAGE"
+    echo ""
+
+    {cmd}
+
+    EXIT_CODE=$?
+fi"""
 
     # Generate complete script
     script_content = f"""#!/bin/bash
@@ -344,39 +426,7 @@ fi
 # Get current entry using array task ID
 CURRENT_IMAGE="${{IMAGE_LIST[$SLURM_ARRAY_TASK_ID]}}"
 
-if [ "$CURRENT_IMAGE" = "{_CHECKPOINT_SENTINEL}" ]; then
-    # Checkpoint task: aggregate per-image Parquets into a dashboard chunk
-    echo "Running checkpoint aggregation (task $SLURM_ARRAY_TASK_ID)"
-    echo ""
-
-    {checkpoint_cmd}
-
-    EXIT_CODE=$?
-elif [ "$CURRENT_IMAGE" = "{_MANIFEST_SENTINEL}" ]; then
-    # Manifest task: rebuild manifest after checkpoint aggregation
-    echo "Running manifest rebuild (task $SLURM_ARRAY_TASK_ID)"
-    echo ""
-
-    {manifest_cmd}
-
-    EXIT_CODE=$?
-elif [ "$CURRENT_IMAGE" = "{_FINALIZER_SENTINEL}" ]; then
-    # Finalizer task: final aggregation and cleanup for the last chunk
-    echo "Running finalizer (task $SLURM_ARRAY_TASK_ID)"
-    echo ""
-
-    {finalizer_cmd}
-
-    EXIT_CODE=$?
-else
-    # Normal image processing
-    echo "Processing image $((SLURM_ARRAY_TASK_ID + 1))/${{#IMAGE_LIST[@]}}: $CURRENT_IMAGE"
-    echo ""
-
-    {cmd}
-
-    EXIT_CODE=$?
-fi
+{dispatch_block}
 
 echo ""
 echo "======================================"

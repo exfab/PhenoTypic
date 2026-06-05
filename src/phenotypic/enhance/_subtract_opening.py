@@ -7,12 +7,12 @@ import cv2
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
-from phenotypic.abc_ import ImageEnhancer
+from phenotypic.abc_ import BackgroundSubtraction
 from phenotypic.tools_.mixin import FootprintMixin
 from phenotypic.tools_.typing_ import TuneSpec
 
 
-class SubtractOpening(ImageEnhancer, FootprintMixin):
+class SubtractOpening(BackgroundSubtraction, FootprintMixin):
     """Subtract background from ``detect_mat`` via OpenCV-accelerated morphological opening.
 
     Computes the white top-hat transform (original minus morphological

@@ -9,10 +9,10 @@ from pydantic import field_validator
 from skimage.filters.rank import median
 from skimage.util import img_as_ubyte, img_as_float
 
-from phenotypic.abc_ import ImageEnhancer
+from phenotypic.abc_ import Smoothing
 
 
-class RankMedianEnhancer(ImageEnhancer):
+class RankMedianEnhancer(Smoothing):
     """Suppress impulsive noise in ``detect_mat`` with rank-based median filtering.
 
     Applies a local median using rank filters with a configurable structuring

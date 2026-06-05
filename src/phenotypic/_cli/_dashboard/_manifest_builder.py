@@ -21,7 +21,6 @@ from typing import Dict, List, Optional, Tuple
 from .._cli_failure_tracker import append_failure, categorize_failures, read_failures
 from .._cli_update_state import aggregate_state_from_events, append_event
 from phenotypic.tools_ import (
-    PROCESSING_EVENTS_LOG,
     MANIFEST_JSON,
     DashboardManifestKey,
     DashboardManifestSlurmInfoKey,
@@ -29,6 +28,7 @@ from phenotypic.tools_ import (
     analysis_full_parquet_path,
     chunks_dir,
     master_measurements_parquet_path,
+    resolve_event_log_path,
 )
 from phenotypic.tools_.typing_ import ExecutionMode
 
@@ -308,7 +308,7 @@ def detect_silent_failures(
         List of failure record dicts for newly detected silent failures.
         Returns an empty list if ``sacct`` is unavailable.
     """
-    event_log = output_dir / PROCESSING_EVENTS_LOG
+    event_log = resolve_event_log_path(output_dir)
     dataset_states = aggregate_state_from_events(event_log)
 
     # Collect all in-progress images across datasets.
@@ -466,7 +466,7 @@ def build_manifest(
             image filename).  Stored in the manifest so the dashboard
             can show which input is being processed.
     """
-    event_log = output_dir / PROCESSING_EVENTS_LOG
+    event_log = resolve_event_log_path(output_dir)
 
     # 1. Aggregate state from the event log.
     dataset_states = aggregate_state_from_events(event_log)

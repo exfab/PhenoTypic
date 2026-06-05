@@ -8,11 +8,11 @@ if TYPE_CHECKING:
 from pydantic import Field
 from skimage.filters import unsharp_mask
 
-from ..abc_ import ImageEnhancer
+from ..abc_ import ContrastAdjustment
 from ..tools_.typing_ import TuneSpec
 
 
-class SharpenEdgeGauss(ImageEnhancer):
+class SharpenEdgeGauss(ContrastAdjustment):
     """Sharpen colony edges in ``detect_mat`` with unsharp masking.
 
     Subtracts a Gaussian-blurred copy from the original and scales the
@@ -51,9 +51,9 @@ class SharpenEdgeGauss(ImageEnhancer):
     Consider Also:
         - :class:`LocalEdgeDenoise` for denoising before sharpening on
           grainy images to avoid amplifying noise.
-        - :class:`SharpenEdgeLaplace` for second-derivative edge detection
+        - :class:`FocusEdgeLaplace` for second-derivative edge detection
           that replaces rather than enhances the intensity profile.
-        - :class:`EnhanceFeatures` for contrast-invariant edge
+        - :class:`FocusEdgePhase` for contrast-invariant edge
           detection under uneven illumination.
 
     See Also:

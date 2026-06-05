@@ -1,5 +1,5 @@
 """
-Tests for EnhanceFeatures.
+Tests for FocusEdgePhase.
 
 Tests parameter validation, output properties, and basic functionality.
 """
@@ -9,11 +9,11 @@ import numpy as np
 from pydantic import ValidationError
 
 from phenotypic import Image
-from phenotypic.enhance import EnhanceFeatures
+from phenotypic.enhance import FocusEdgePhase
 
 
 class TestPhaseCongruencyEnhancerParameterValidation:
-    """Test EnhanceFeatures parameter validation.
+    """Test FocusEdgePhase parameter validation.
 
     The bare-scalar bounds migrated from ``field_validator``s to
     ``Field(ge=, le=, gt=, lt=)`` (the annotations workstream), so these assert
@@ -24,50 +24,50 @@ class TestPhaseCongruencyEnhancerParameterValidation:
     def test_n_scale_less_than_one_raises_error(self):
         """Test that n_scale < 1 raises ValidationError."""
         with pytest.raises(ValidationError):
-            EnhanceFeatures(n_scale=0)
+            FocusEdgePhase(n_scale=0)
 
     def test_n_orient_less_than_one_raises_error(self):
         """Test that n_orient < 1 raises ValidationError."""
         with pytest.raises(ValidationError):
-            EnhanceFeatures(n_orient=0)
+            FocusEdgePhase(n_orient=0)
 
     def test_min_wavelength_less_than_two_raises_error(self):
         """Test that min_wavelength < 2 raises ValidationError."""
         with pytest.raises(ValidationError):
-            EnhanceFeatures(min_wavelength=1.5)
+            FocusEdgePhase(min_wavelength=1.5)
 
     def test_mult_less_than_or_equal_one_raises_error(self):
         """Test that mult <= 1 raises ValidationError."""
         with pytest.raises(ValidationError):
-            EnhanceFeatures(mult=1.0)
+            FocusEdgePhase(mult=1.0)
         with pytest.raises(ValidationError):
-            EnhanceFeatures(mult=0.5)
+            FocusEdgePhase(mult=0.5)
 
     def test_sigma_onf_out_of_range_raises_error(self):
         """Test that sigma_onf outside [0.1, 1.0] raises ValidationError."""
         with pytest.raises(ValidationError):
-            EnhanceFeatures(sigma_onf=0.05)
+            FocusEdgePhase(sigma_onf=0.05)
         with pytest.raises(ValidationError):
-            EnhanceFeatures(sigma_onf=1.5)
+            FocusEdgePhase(sigma_onf=1.5)
 
     def test_negative_k_raises_error(self):
         """Test that k < 0 raises ValidationError."""
         with pytest.raises(ValidationError):
-            EnhanceFeatures(k=-1.0)
+            FocusEdgePhase(k=-1.0)
 
     def test_cutoff_out_of_range_raises_error(self):
         """Test that cutoff outside (0, 1) raises ValidationError."""
         with pytest.raises(ValidationError):
-            EnhanceFeatures(cutoff=0.0)
+            FocusEdgePhase(cutoff=0.0)
         with pytest.raises(ValidationError):
-            EnhanceFeatures(cutoff=1.0)
+            FocusEdgePhase(cutoff=1.0)
 
     def test_g_non_positive_raises_error(self):
         """Test that g <= 0 raises ValidationError."""
         with pytest.raises(ValidationError):
-            EnhanceFeatures(g=0.0)
+            FocusEdgePhase(g=0.0)
         with pytest.raises(ValidationError):
-            EnhanceFeatures(g=-5.0)
+            FocusEdgePhase(g=-5.0)
 
     def test_invalid_output_raises_error(self):
         """Test that invalid output mode raises ValueError.
@@ -77,11 +77,11 @@ class TestPhaseCongruencyEnhancerParameterValidation:
         ``ValueError``) rather than the legacy hand-rolled message.
         """
         with pytest.raises(ValueError, match="Input should be"):
-            EnhanceFeatures(output="invalid")
+            FocusEdgePhase(output="invalid")
 
     def test_valid_parameters_accepted(self):
         """Test that valid parameters are accepted."""
-        enhancer = EnhanceFeatures(
+        enhancer = FocusEdgePhase(
             n_scale=4,
             n_orient=6,
             min_wavelength=3.0,
@@ -106,7 +106,7 @@ class TestPhaseCongruencyEnhancerParameterValidation:
 
 
 class TestPhaseCongruencyEnhancerOutputProperties:
-    """Test EnhanceFeatures output properties."""
+    """Test FocusEdgePhase output properties."""
 
     @pytest.fixture
     def synthetic_image(self):
@@ -124,45 +124,45 @@ class TestPhaseCongruencyEnhancerOutputProperties:
 
     def test_output_shape_preserved(self, synthetic_image):
         """Test that output has same shape as input."""
-        enhancer = EnhanceFeatures(n_scale=3, n_orient=4)
+        enhancer = FocusEdgePhase(n_scale=3, n_orient=4)
         result = enhancer.apply(synthetic_image)
         assert result.detect_mat[:].shape == synthetic_image.detect_mat[:].shape
 
     def test_output_range_clipped_to_unit_interval(self, synthetic_image):
         """Test that output is in [0, 1] range."""
-        enhancer = EnhanceFeatures()
+        enhancer = FocusEdgePhase()
         result = enhancer.apply(synthetic_image)
         assert result.detect_mat[:].min() >= 0.0
         assert result.detect_mat[:].max() <= 1.0
 
     def test_pc_sum_output_mode(self, synthetic_image):
         """Test pc_sum output mode works."""
-        enhancer = EnhanceFeatures(output="pc_sum")
+        enhancer = FocusEdgePhase(output="pc_sum")
         result = enhancer.apply(synthetic_image)
         assert result.detect_mat[:].shape == synthetic_image.detect_mat[:].shape
 
     def test_M_output_mode(self, synthetic_image):
         """Test M (edge strength) output mode works."""
-        enhancer = EnhanceFeatures(output="M")
+        enhancer = FocusEdgePhase(output="M")
         result = enhancer.apply(synthetic_image)
         assert result.detect_mat[:].shape == synthetic_image.detect_mat[:].shape
 
     def test_m_output_mode(self, synthetic_image):
         """Test m (corner strength) output mode works."""
-        enhancer = EnhanceFeatures(output="m")
+        enhancer = FocusEdgePhase(output="m")
         result = enhancer.apply(synthetic_image)
         assert result.detect_mat[:].shape == synthetic_image.detect_mat[:].shape
 
     def test_uniform_image_low_response(self, uniform_image):
         """Test that uniform image produces low phase congruency."""
-        enhancer = EnhanceFeatures(n_scale=3, n_orient=4)
+        enhancer = FocusEdgePhase(n_scale=3, n_orient=4)
         result = enhancer.apply(uniform_image)
         # Uniform regions should have low PC values
         assert result.detect_mat[:].mean() < 0.3
 
 
 class TestPhaseCongruencyEnhancerEdgeDetection:
-    """Test EnhanceFeatures edge detection capabilities."""
+    """Test FocusEdgePhase edge detection capabilities."""
 
     def test_vertical_edge_detected(self):
         """Test that vertical edges are detected with high M values."""
@@ -171,7 +171,7 @@ class TestPhaseCongruencyEnhancerEdgeDetection:
         arr[:, 64:] = 1.0
         image = Image(arr=arr)
 
-        enhancer = EnhanceFeatures(output="M", n_scale=3, n_orient=4)
+        enhancer = FocusEdgePhase(output="M", n_scale=3, n_orient=4)
         result = enhancer.apply(image)
 
         # Edge region (columns ~60-68) should have higher values than uniform regions
@@ -189,7 +189,7 @@ class TestPhaseCongruencyEnhancerEdgeDetection:
         arr[64:, :] = 1.0
         image = Image(arr=arr)
 
-        enhancer = EnhanceFeatures(output="M", n_scale=3, n_orient=4)
+        enhancer = FocusEdgePhase(output="M", n_scale=3, n_orient=4)
         result = enhancer.apply(image)
 
         # Edge region (rows ~60-68) should have higher values than uniform regions
@@ -217,26 +217,26 @@ class TestPhaseCongruencyEnhancerNoiseHandling:
 
     def test_noise_method_median(self, noisy_image):
         """Test median noise estimation method (-1)."""
-        enhancer = EnhanceFeatures(noise_method=-1, n_scale=3, n_orient=4)
+        enhancer = FocusEdgePhase(noise_method=-1, n_scale=3, n_orient=4)
         result = enhancer.apply(noisy_image)
         assert result.detect_mat[:].shape == noisy_image.detect_mat[:].shape
 
     def test_noise_method_mode(self, noisy_image):
         """Test mode noise estimation method (-2)."""
-        enhancer = EnhanceFeatures(noise_method=-2, n_scale=3, n_orient=4)
+        enhancer = FocusEdgePhase(noise_method=-2, n_scale=3, n_orient=4)
         result = enhancer.apply(noisy_image)
         assert result.detect_mat[:].shape == noisy_image.detect_mat[:].shape
 
     def test_noise_method_fixed(self, noisy_image):
         """Test fixed noise threshold (>= 0)."""
-        enhancer = EnhanceFeatures(noise_method=0.1, n_scale=3, n_orient=4)
+        enhancer = FocusEdgePhase(noise_method=0.1, n_scale=3, n_orient=4)
         result = enhancer.apply(noisy_image)
         assert result.detect_mat[:].shape == noisy_image.detect_mat[:].shape
 
     def test_higher_k_reduces_response(self, noisy_image):
         """Test that higher k (more noise rejection) reduces overall response."""
-        enhancer_low_k = EnhanceFeatures(k=2.0, n_scale=3, n_orient=4)
-        enhancer_high_k = EnhanceFeatures(k=10.0, n_scale=3, n_orient=4)
+        enhancer_low_k = FocusEdgePhase(k=2.0, n_scale=3, n_orient=4)
+        enhancer_high_k = FocusEdgePhase(k=10.0, n_scale=3, n_orient=4)
 
         result_low_k = enhancer_low_k.apply(noisy_image)
         result_high_k = enhancer_high_k.apply(noisy_image)
@@ -254,7 +254,7 @@ class TestPhaseCongruencyEnhancerIntegration:
         image = Image(arr=arr)
         original_rgb = image.rgb[:].copy()
 
-        enhancer = EnhanceFeatures(n_scale=3, n_orient=4)
+        enhancer = FocusEdgePhase(n_scale=3, n_orient=4)
         enhancer.apply(image)
 
         # Original image rgb should be unchanged
@@ -266,7 +266,7 @@ class TestPhaseCongruencyEnhancerIntegration:
         image = Image(arr=arr)
         original_gray = image.gray[:].copy()
 
-        enhancer = EnhanceFeatures(n_scale=3, n_orient=4)
+        enhancer = FocusEdgePhase(n_scale=3, n_orient=4)
         enhancer.apply(image)
 
         # Original image gray should be unchanged
@@ -278,7 +278,7 @@ class TestPhaseCongruencyEnhancerIntegration:
         image = Image(arr=arr)
         original_detect_mat = image.detect_mat[:].copy()
 
-        enhancer = EnhanceFeatures(n_scale=3, n_orient=4)
+        enhancer = FocusEdgePhase(n_scale=3, n_orient=4)
         result = enhancer.apply(image, inplace=True)
 
         # Result should be the same object

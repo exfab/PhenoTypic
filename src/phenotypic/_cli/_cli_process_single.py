@@ -22,10 +22,11 @@ matplotlib.use("Agg")  # Non-interactive backend
 
 from phenotypic import Image, GridImage, ImagePipeline
 from ._cli_output_manager import OutputManager
+from ._cli_process_only import process_single_apply_only_core
 from ._cli_update_state import append_event, append_completion_event
 from ._cli_failure_tracker import append_failure
 from ._cli_utils import normalize_extension
-from phenotypic.tools_ import DIR_PROGRESS, EnvVar, HdfAttr
+from phenotypic.tools_ import EnvVar, HdfAttr, progress_dir
 from phenotypic.tools_.typing_ import ImageTypeName
 
 logger = logging.getLogger(__name__)
@@ -295,6 +296,21 @@ def process_single_hdf_measure_core(
         "Honored on both forward runs and --measure HDF reruns."
     ),
 )
+@click.option(
+    "--process-only",
+    "process_only_layer",
+    type=click.Choice(["rgb", "gray", "detect_mat", "objmap"]),
+    default=None,
+    help="Apply-only mode: run pipeline.apply() and save this single layer "
+    "(no measurement). Requires --input-root for mirrored output paths.",
+)
+@click.option(
+    "--input-root",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Root of the input tree, used to compute the mirrored output path "
+    "in --process-only mode.",
+)
 def main(
     pipeline: Path,
     image: Path,
@@ -312,6 +328,8 @@ def main(
     measure_only: bool,
     save_overlays: bool,
     save_inspect: bool,
+    process_only_layer: Optional[str],
+    input_root: Optional[Path],
 ):
     """
     Process a single image with PhenoTypic pipeline.
@@ -320,6 +338,52 @@ def main(
     execution. It processes one image and logs completion to event log.
     """
     try:
+        # Process-only (apply-only) mode: run pipeline.apply() and export one
+        # layer, mirroring the input tree. No measurement / aggregation output.
+        if process_only_layer is not None:
+            if input_root is None:
+                raise click.UsageError("--process-only requires --input-root")
+            process_only_read_kwargs: Dict[str, Any] = {}
+            if bit_depth is not None:
+                process_only_read_kwargs["bit_depth"] = bit_depth
+            if detect_mode != "gray":
+                process_only_read_kwargs["detect_mode"] = detect_mode
+            if event_log is not None:
+                append_event(
+                    event_log=event_log,
+                    dataset=dataset_name,
+                    image=image.name,
+                    status="started",
+                    slurm_job_id=os.environ.get(EnvVar.SLURM_JOB_ID, ""),
+                    slurm_array_task_id=os.environ.get(
+                        EnvVar.SLURM_ARRAY_TASK_ID, ""
+                    ),
+                )
+            click.echo(
+                f"Processing (apply-only, {process_only_layer}) {image.name}..."
+            )
+            process_single_apply_only_core(
+                pipeline_path=pipeline,
+                image_path=image,
+                input_root=input_root,
+                output_dir=output_dir,
+                image_type=image_type,  # type: ignore[arg-type]
+                layer=process_only_layer,  # type: ignore[arg-type]
+                read_kwargs=process_only_read_kwargs,
+                cli_nrows=nrows,
+                cli_ncols=ncols,
+            )
+            if event_log is not None:
+                append_completion_event(
+                    event_log=event_log,
+                    dataset=dataset_name,
+                    image=image.name,
+                    status="completed",
+                    error_msg="",
+                )
+            click.echo(f"✓ Successfully processed {image.name}")
+            sys.exit(0)
+
         # Validate extension (used for overlay / legacy call sites)
         try:
             ext_normalized = normalize_extension(ext, ".tiff")
@@ -462,7 +526,7 @@ def main(
 
         # Write structured failure record
         try:
-            progress_dir = output_dir / DIR_PROGRESS
+            prog_dir = progress_dir(output_dir)
             slurm_job_id = os.environ.get(EnvVar.SLURM_JOB_ID, "")
             slurm_task_id = os.environ.get(EnvVar.SLURM_ARRAY_TASK_ID, "")
             full_slurm_id = (
@@ -471,7 +535,7 @@ def main(
                 else slurm_job_id
             )
             append_failure(
-                progress_dir,
+                prog_dir,
                 dataset=dataset_name,
                 image=image.name,
                 error_type=type(e).__name__,

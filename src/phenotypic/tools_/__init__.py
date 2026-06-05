@@ -39,6 +39,7 @@ from ._io_constants import (
     DIR_MEASUREMENTS,
     DIR_MEASUREMENTS_BY_FEATURE,
     DIR_OVERLAYS,
+    DIR_PHENOTYPIC,
     DIR_PROGRESS,
     DIR_QC,
     DIR_RECOMPILE,
@@ -110,6 +111,8 @@ from ._io_constants import (
     measurements_csv_path,
     measurements_parquet_path,
     overlay_manifest_path,
+    phenotypic_cache_dir,
+    phenotypic_cache_pipeline_json_path,
     pipeline_json_path,
     processing_report_html_path,
     processing_state_path,
@@ -123,7 +126,13 @@ from ._io_constants import (
     read_run_manifest,
     recompile_dir,
     recompile_status_dir,
+    resolve_event_log_path,
     resolve_execution_mode,
+    resolve_manifest_json_path,
+    resolve_processing_state_path,
+    resolve_progress_dir,
+    migrate_legacy_machine_state,
+    clear_machine_state,
     results_dir,
     sentinel_resubmitted_path,
     shard_parquet_filename,
@@ -134,6 +143,7 @@ from ._io_constants import (
 from .funcs_ import is_binary_mask, timed_execution
 from .hdf_ import HDF
 from .mixin import ClipControlMixin, FootprintMixin, GridInferenceMixin, LazyWidgetMixin
+from .typing_ import ProcessOnlyLayer
 
 __all__ = [
     # Mixins / utilities (existing)
@@ -155,6 +165,8 @@ __all__ = [
     "slurm",
     "slurm_",
     "timed_execution",
+    # Typing aliases (closed value sets)
+    "ProcessOnlyLayer",
     # I/O constants module (also re-exported below)
     "_io_constants",
     # Filename constants
@@ -197,6 +209,7 @@ __all__ = [
     "DIR_MEASUREMENTS",
     "DIR_MEASUREMENTS_BY_FEATURE",
     "DIR_OVERLAYS",
+    "DIR_PHENOTYPIC",
     "DIR_PROGRESS",
     "DIR_QC",
     "DIR_RECOMPILE",
@@ -247,7 +260,11 @@ __all__ = [
     "measurements_by_feature_dir",
     "measurements_csv_path",
     "measurements_parquet_path",
+    "migrate_legacy_machine_state",
+    "clear_machine_state",
     "overlay_manifest_path",
+    "phenotypic_cache_dir",
+    "phenotypic_cache_pipeline_json_path",
     "pipeline_json_path",
     "processing_report_html_path",
     "processing_state_path",
@@ -261,7 +278,11 @@ __all__ = [
     "read_run_manifest",
     "recompile_dir",
     "recompile_status_dir",
+    "resolve_event_log_path",
     "resolve_execution_mode",
+    "resolve_manifest_json_path",
+    "resolve_processing_state_path",
+    "resolve_progress_dir",
     "results_dir",
     "sentinel_resubmitted_path",
     "shard_parquet_filename",
