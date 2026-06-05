@@ -118,3 +118,83 @@ def test_evaluator_has_robust_eval_config_defaults():
     assert ev.min_stability_n == 4
     assert ev.suspicious_score_floor == 0.7
     assert ev.suspicious_count_floor == 0.3
+
+
+# -- C2: the suspicious gaming-signature flag ---------------------------------
+
+
+def test_is_suspicious_high_score_low_count():
+    from phenotypic.tune._evaluation._evaluator import _is_suspicious
+
+    # High score paired with a low Count → the qc §5 under-detection signature.
+    assert _is_suspicious(
+        0.95, {"Count": 0.2}, 5, score_floor=0.7, count_floor=0.3
+    ) is True
+
+
+def test_is_suspicious_faithful_high_count():
+    from phenotypic.tune._evaluation._evaluator import _is_suspicious
+
+    # High score with a faithful (high) Count is NOT suspicious.
+    assert _is_suspicious(
+        0.95, {"Count": 0.9}, 5, score_floor=0.7, count_floor=0.3
+    ) is False
+
+
+def test_is_suspicious_respects_thresholds():
+    from phenotypic.tune._evaluation._evaluator import _is_suspicious
+
+    # Score below the floor → not flagged even with a low Count.
+    assert _is_suspicious(
+        0.5, {"Count": 0.1}, 5, score_floor=0.7, count_floor=0.3
+    ) is False
+    # Count above the floor → not flagged even with a high score.
+    assert _is_suspicious(
+        0.99, {"Count": 0.31}, 5, score_floor=0.7, count_floor=0.3
+    ) is False
+    # Exactly on both boundaries (>= score_floor AND <= count_floor) → flagged.
+    assert _is_suspicious(
+        0.7, {"Count": 0.3}, 5, score_floor=0.7, count_floor=0.3
+    ) is True
+
+
+def test_is_suspicious_missing_count_defaults_faithful():
+    from phenotypic.tune._evaluation._evaluator import _is_suspicious
+
+    # No Count term → default 1.0 (faithful) → never suspicious.
+    assert _is_suspicious(0.99, {}, 5, score_floor=0.7, count_floor=0.3) is False
+
+
+class _GamingScorer(Scorer):
+    """A gamer: a high finalized ``score`` masking a low aggregated ``Count``.
+
+    ``score_image`` reports a low Count term per image; ``finalize`` overrides to
+    return an inflated scalar regardless of the term — reproducing the qc §5
+    "great score on under-detection" signature the suspicious flag catches.
+    """
+
+    def score_image(self, image, measurements) -> dict[str, float]:
+        return {"Count": 0.1}
+
+    def finalize(self, terms):
+        return 0.95  # inflated, ignores the low Count term
+
+
+def test_suspicious_high_score_low_count_end_to_end():
+    base = ImagePipeline(ops=[OtsuDetector()])
+    result = Evaluator(
+        suspicious_score_floor=0.7, suspicious_count_floor=0.3
+    ).evaluate(base, _GamingScorer(), {}, _plates(4))
+    # score 0.95 (>= 0.7) AND aggregated Count ~0.1 (<= 0.3) → suspicious.
+    assert result.score == 0.95
+    assert result.terms["Count"] <= 0.3
+    assert result.suspicious is True
+
+
+def test_not_suspicious_faithful():
+    base = ImagePipeline(ops=[OtsuDetector()])
+    # High Count term + the default mean finalize → faithful high score.
+    result = Evaluator().evaluate(
+        base, _SequenceCountScorer(values=[0.9, 0.9, 0.9, 0.9]), {}, _plates(4),
+    )
+    assert result.suspicious is False

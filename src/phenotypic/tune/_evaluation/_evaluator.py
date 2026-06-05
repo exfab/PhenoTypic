@@ -110,6 +110,39 @@ def _per_trial_dispersion(
     return float(q75 - q25) / max(abs(median), _GAP_EPS)
 
 
+def _is_suspicious(
+    score: float,
+    terms: Mapping[str, float],
+    n_images: int,
+    *,
+    score_floor: float,
+    count_floor: float,
+) -> bool:
+    """Flag the qc §5 "great score on under-detection" gaming signature.
+
+    A candidate is suspicious when a **high** finalized ``score`` is paired with a
+    **low** aggregated ``Count`` term — the signature of a pipeline that scores
+    well precisely *because* it under-detects (detecting fewer colonies dodges
+    the spread/quality penalties the score rewards). Read from already-computed
+    aggregates; a heuristic review flag, not a hard rejection. A missing ``Count``
+    term defaults to ``1.0`` (faithful) so a non-count objective is never flagged.
+
+    Args:
+        score: The finalized scalar objective (higher = better).
+        terms: The robust-aggregated per-term scores; ``terms["Count"]`` is read.
+        n_images: The number of images evaluated (unused; accepted for a uniform
+            call site alongside the gap helper).
+        score_floor: The minimum ``score`` for the "great score" half.
+        count_floor: The maximum ``terms["Count"]`` for the "under-detection" half.
+
+    Returns:
+        ``True`` when ``score >= score_floor`` **and**
+        ``terms["Count"] <= count_floor``.
+    """
+    count = float(terms.get("Count", 1.0))
+    return score >= score_floor and count <= count_floor
+
+
 class EvaluationResult(BaseModel):
     """The outcome of evaluating one candidate over the calibration set.
 
@@ -306,12 +339,20 @@ class Evaluator(BaseModel):
             scorer.finalize(aggregated)
         )
         gap = _per_trial_dispersion(per_term, min_n=self.min_stability_n)
+        suspicious = _is_suspicious(
+            final_score,
+            aggregated,
+            len(ordered),
+            score_floor=self.suspicious_score_floor,
+            count_floor=self.suspicious_count_floor,
+        )
         return EvaluationResult(
             score=final_score,
             terms=aggregated,
             n_images=len(ordered),
             objectives=final_objectives,
             gap=gap,
+            suspicious=suspicious,
         )
 
     @staticmethod
