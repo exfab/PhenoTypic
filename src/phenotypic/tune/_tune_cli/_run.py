@@ -24,7 +24,10 @@ from phenotypic._execution._slurm import SlurmExecutor
 from phenotypic.tools_ import _io_constants as io
 
 from .._engine import TuningEngine
-from .._multi_objective import objective_directions
+from .._multi_objective import (
+    objective_directions,
+    reject_grid_random_multi_objective,
+)
 from .._screening import compute_param_importance
 from .._screening_freeze import ScreeningConfig, ScreeningController
 from .._spec import TuningSpec
@@ -207,7 +210,6 @@ def run_tuning(
         submission, or no successful trial).
     """
     output_dir = Path(output_dir)
-    io.deliverables_dir(output_dir).mkdir(parents=True, exist_ok=True)
 
     resolved_spec = spec
     if strategy is not None:
@@ -218,6 +220,15 @@ def run_tuning(
                 )
             }
         )
+    # A ``--strategy grid``/``random`` override bypasses TuningSpec's
+    # construction-time guard (``model_copy`` skips validators), so re-assert it
+    # at run validation — before any output is written — so a multi-objective
+    # scorer without an Optuna strategy aborts cleanly with an actionable error.
+    reject_grid_random_multi_objective(
+        resolved_spec.scorer, resolved_spec.strategy
+    )
+
+    io.deliverables_dir(output_dir).mkdir(parents=True, exist_ok=True)
 
     # Always echo the resolved spec so the deliverable is re-runnable.
     io.tuning_spec_path(output_dir).write_text(

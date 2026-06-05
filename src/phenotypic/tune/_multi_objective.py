@@ -58,6 +58,38 @@ def objective_names(scorer: Any) -> list[str]:
     return []
 
 
+def reject_grid_random_multi_objective(scorer: Any, strategy: Any) -> None:
+    """Reject a multi-objective scorer paired with a non-Optuna strategy.
+
+    The single guard behind both the ``TuningSpec`` construction-time validator
+    and the ``run_tuning`` run-validation backstop (a ``--strategy`` override
+    bypasses the model validator). Multi-objective (Pareto) search needs an
+    Optuna NSGA-II study; the exhaustive grid and seeded-random strategies are
+    single-objective only, so the pairing is a configuration error.
+
+    Args:
+        scorer: The tuning spec's scorer.
+        strategy: The (possibly ``--strategy``-overridden) strategy config.
+
+    Raises:
+        ValueError: When ``scorer`` is multi-objective but ``strategy`` is not an
+            Optuna strategy. The message is actionable (points at
+            ``--strategy nsga2`` / an Optuna strategy).
+    """
+    if not is_multi_objective(scorer):
+        return
+    # Duck-typed Optuna check: an Optuna strategy carries the ``sampler`` field
+    # (avoids importing the concrete config here and keeps the guard reusable).
+    if getattr(strategy, "kind", None) == "optuna":
+        return
+    raise ValueError(
+        "multi-objective scoring (a CompositeScorer with multi_objective=True) "
+        "requires an Optuna strategy — the grid and random strategies are "
+        f"single-objective. Got {type(strategy).__name__}; use --strategy nsga2 "
+        "(or another Optuna sampler) / an OptunaConfig strategy."
+    )
+
+
 def objective_directions(scorer: Any) -> list[str] | None:
     """The per-objective Optuna ``directions`` for a multi-objective ``scorer``.
 

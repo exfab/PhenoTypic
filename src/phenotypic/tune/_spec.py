@@ -10,12 +10,14 @@ from pydantic import (
     TypeAdapter,
     field_serializer,
     field_validator,
+    model_validator,
 )
 
 from phenotypic import ImagePipeline
 from phenotypic.tools_.typing_ import polymorphic_field
 
 from ._evaluation import Evaluator
+from ._multi_objective import reject_grid_random_multi_objective
 from ._scoring import Scorer
 from ._search_space import SearchSpace
 from ._strategies._config import StrategyConfig, StrategyConfigUnion
@@ -137,3 +139,25 @@ class TuningSpec(BaseModel):
         if payload is None:  # pragma: no cover - to_json always returns a string
             raise ValueError("ImagePipeline.to_json() returned None")
         return json.loads(payload)
+
+    @model_validator(mode="after")
+    def _reject_multi_objective_without_optuna(self) -> "TuningSpec":
+        """Reject a multi-objective scorer paired with a grid/random strategy.
+
+        Multi-objective (Pareto) search needs a multi-objective optimizer — the
+        Optuna NSGA-II sampler. The exhaustive grid and the seeded-random
+        strategies are single-objective only (they have no notion of a
+        non-dominated set), so pairing one with a
+        ``CompositeScorer(multi_objective=True)`` is a configuration error caught
+        here, at construction, with an actionable message (the same guard the
+        ``run_tuning`` ``--strategy`` override re-asserts).
+
+        Returns:
+            ``self`` (unchanged) for a valid pairing.
+
+        Raises:
+            ValueError: When the scorer is multi-objective but the strategy is
+                not an Optuna strategy.
+        """
+        reject_grid_random_multi_objective(self.scorer, self.strategy)
+        return self

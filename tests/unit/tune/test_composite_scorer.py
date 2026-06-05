@@ -200,9 +200,9 @@ def test_composite_nests_qc_and_supervised_round_trip(tmp_path):
         Budget,
         Categorical,
         Evaluator,
-        GridConfig,
         GroundTruthMasks,
         Knob,
+        OptunaConfig,
         SearchSpace,
         SupervisedScorer,
     )
@@ -228,7 +228,9 @@ def test_composite_nests_qc_and_supervised_round_trip(tmp_path):
         ),
         scorer=comp,
         evaluator=Evaluator(),
-        strategy=GridConfig(),
+        # A multi-objective composite requires an Optuna strategy (the 4.8 guard);
+        # grid/random are single-objective and rejected at construction.
+        strategy=OptunaConfig(sampler="nsga2", n_trials=4),
         budget=Budget(),
     )
     back = TuningSpec.model_validate_json(spec.model_dump_json())
