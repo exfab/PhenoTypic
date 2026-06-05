@@ -16,7 +16,7 @@ from pydantic import (
 from phenotypic import ImagePipeline
 from phenotypic.tools_.typing_ import polymorphic_field
 
-from ._evaluation import Evaluator
+from ._evaluation import Evaluator, HeldOutConfig
 from ._multi_objective import reject_grid_random_multi_objective
 from ._scoring import Scorer
 from ._search_space import SearchSpace
@@ -88,6 +88,10 @@ class TuningSpec(BaseModel):
         strategy: The optimizer config (``GridConfig`` / ``RandomConfig`` /
             ``OptunaConfig``, or any ``StrategyConfig`` subclass).
         budget: The stopping criteria.
+        held_out: The robust-eval held-out / generalization policy. Defaults to a
+            conservative :class:`HeldOutConfig`; a frozen pre-4.5p1
+            ``tuning_spec.json`` with **no** ``held_out`` block still validates
+            (the field defaults), so the addition is back-compatible.
     """
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -98,6 +102,7 @@ class TuningSpec(BaseModel):
     evaluator: Evaluator
     strategy: StrategyConfigField
     budget: Budget
+    held_out: HeldOutConfig = HeldOutConfig()
 
     @field_validator("pipeline", mode="before")
     @classmethod

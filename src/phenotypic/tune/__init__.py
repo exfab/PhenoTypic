@@ -46,7 +46,13 @@ from __future__ import annotations
 from ._engine import TuningEngine
 
 # --- Phase 1c: scoring + evaluation -------------------------------------------
-from ._evaluation import EvaluationResult, Evaluator, build_pipeline
+from ._evaluation import (
+    EvaluationResult,
+    Evaluator,
+    HeldOutConfig,
+    build_pipeline,
+    infer_group_key,
+)
 
 # --- Phase 1a: search space (domains + Knob/SearchSpace) ----------------------
 # --- Phase 4 chunk B: supervised + composite scorers + GT loader --------------
@@ -135,6 +141,9 @@ __all__ = [
     "Evaluator",
     "EvaluationResult",
     "build_pipeline",
+    # Phase 4.5 part 1: robust-eval held-out config + group-key inference
+    "HeldOutConfig",
+    "infer_group_key",
     # Phase 1d: engine + spec + study + screening + CLI
     "TuningEngine",
     "TuningSpec",
