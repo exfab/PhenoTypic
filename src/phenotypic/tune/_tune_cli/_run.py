@@ -17,7 +17,7 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Final, Optional
 
 from phenotypic import GridImage
 from phenotypic._execution._slurm import SlurmExecutor
@@ -50,6 +50,10 @@ from .._study._protocol import StudyStore
 from .._study_store import JournalStudyStore, Trial
 
 _IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".h5"}
+
+#: Default trial budget when ``--n-trials`` is omitted for a ``random`` or Optuna
+#: strategy (grid is exhaustive and ignores it).
+_DEFAULT_N_TRIALS: Final[int] = 50
 
 
 def _load_images(input_dir: Path) -> list:
@@ -113,7 +117,9 @@ def resolve_strategy(
     if name == "grid":
         return GridConfig()
     if name == "random":
-        return RandomConfig(n_trials=n_trials if n_trials is not None else 50)
+        return RandomConfig(
+            n_trials=n_trials if n_trials is not None else _DEFAULT_N_TRIALS
+        )
     if name in OPTUNA_SAMPLERS:
         # Fail fast + actionable when the extra is missing, before constructing a
         # config the engine could not build.
@@ -122,7 +128,7 @@ def resolve_strategy(
         _optuna_support._require_optuna()
         return OptunaConfig(
             sampler=name,  # type: ignore[arg-type]  # name ∈ SamplerKind here
-            n_trials=n_trials if n_trials is not None else 50,
+            n_trials=n_trials if n_trials is not None else _DEFAULT_N_TRIALS,
             storage_url=storage_url,
         )
     raise ValueError(f"unknown strategy {name!r}")
