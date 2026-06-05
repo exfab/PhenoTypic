@@ -47,9 +47,9 @@ docs/source/api_reference/api/
 # functions of code already under version control, so the build always
 # reconstructs them.
 #   - downloads.rst <- generate_downloadables_rst (docs/source/conf.py)
-#   - measurements_ref/index.rst <- _generate (docs/source/_extensions/measurements_ref.py)
+#   - measurements_ref/ <- _generate (docs/source/_extensions/measurements_ref.py)
 docs/source/downloads.rst
-docs/source/measurements_ref/index.rst
+docs/source/measurements_ref/
 
 # Project-specific
 deprecated/
