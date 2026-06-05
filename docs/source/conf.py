@@ -33,6 +33,8 @@ Link
 
 import os
 import sys
+from pathlib import Path
+
 import sphinx_autosummary_accessors
 
 sys.path.insert(0, os.path.abspath("../../src"))
@@ -60,16 +62,24 @@ author = "Alexander Nguyen"
 
 # Variables
 github_url = "https://github.com/Wheeldon-Lab/PhenoScope#"
-LIGHT_LOGO_PATH = "./_static/assets/400x150/light_logo_exfab.svg"
-DARK_LOGO_PATH = "./_static/assets/400x150/gradient_logo_exfab.svg"
 
-# Try to get the version from PhenoTypic, but use a default if not available
+# Logo/brand assets live in phenotypic/_assets/logos (single source of truth).
+# Resolve the version AND the logo paths from the installed package. Absolute
+# paths are intentional: pydata_sphinx_theme's copy_logo_images joins srcdir
+# with the given path (an absolute path wins) and copies the file flat into the
+# output _static/ dir, where the theme then references it by basename. So
+# html_static_path stays ["_static"] and the logos need not live under docs/.
 try:
     import phenotypic
 
     version = str(phenotypic.__version__)
+    _PKG_LOGOS = Path(phenotypic.__file__).resolve().parent / "_assets" / "logos"
+    LIGHT_LOGO_PATH = str(_PKG_LOGOS / "400x150" / "light_logo_exfab.svg")
+    DARK_LOGO_PATH = str(_PKG_LOGOS / "400x150" / "gradient_logo_exfab.svg")
 except ImportError:
     version = "0.1.0"  # Default version if PhenoTypic is not installed
+    LIGHT_LOGO_PATH = ""  # package absent -> no logo (theme skips falsy paths)
+    DARK_LOGO_PATH = ""
 release = version
 
 # -- General configuration ---------------------------------------------------
@@ -184,7 +194,7 @@ html_css_files = [
 
 if html_theme == "pydata_sphinx_theme":
     html_title = "PhenoTypic"
-    html_logo = LIGHT_LOGO_PATH
+    html_logo = LIGHT_LOGO_PATH or None
     html_theme_options = {
         "logo"                       : {
             "alt_text"   : "PhenoTypic",

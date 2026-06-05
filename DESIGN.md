@@ -36,7 +36,7 @@ Agents must treat violations as hard errors.
 
 ## 00 -- Logo and Branding
 
-Use the following logo to the left of the dashboard view title: @docs/source/_static/assets/500x500_png/LogoArtOnly.png
+Use the following logo to the left of the dashboard view title: @src/phenotypic/_assets/logos/500x500_png/LogoArtOnly.png
 
 ---
 

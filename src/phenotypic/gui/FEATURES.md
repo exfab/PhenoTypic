@@ -238,8 +238,8 @@ mode, missing/duplicate Input Image, stage order).
 ## Dashboard logo (per-app header branding)
 
 Each Dash sub-app shows the same `dashboard_logo.svg` in its top-of-page
-header. The asset lives **once** at `gui/_shared/_static/dashboard_logo.svg`;
-each sub-app's `_app.py` registers a small Flask blueprint
+header. The asset lives **once** at `phenotypic/_assets/logos/dashboard_logo.svg`
+(served via `logos_dir()`); each sub-app's `_app.py` registers a small Flask blueprint
 (`gui/_shared/_blueprint.py::register_shared_static`) on its own server
 that serves the file under `/_shared/<filename>`. Layouts reference the
 URL via `f"{url_prefix}{SHARED_LOGO_PATH}"`, which routes correctly
@@ -247,7 +247,7 @@ under both standalone and dispatcher-mounted launches.
 
 | Feature                    | Element                                  | Expected behaviour                                                                         | Status     | Test layer  | Test ref                                                                            |
 |----------------------------|------------------------------------------|--------------------------------------------------------------------------------------------|------------|-------------|-------------------------------------------------------------------------------------|
-| Single-source SVG          | `gui/_shared/_static/dashboard_logo.svg` | One canonical file used by every sub-app; no per-app duplicate copies in `assets/`         | ✅ shipping | integration | tests/integration/gui/test_smoke_shell.py::test_builder_logo_uses_prefix            |
+| Single-source SVG          | `phenotypic/_assets/logos/dashboard_logo.svg` | One canonical file used by every sub-app; no per-app duplicate copies in `assets/`         | ✅ shipping | integration | tests/integration/gui/test_smoke_shell.py::test_builder_logo_uses_prefix            |
 | Shared-static blueprint    | `register_shared_static(server)`         | Registers `/_shared/<filename>` on each sub-app's Flask server; idempotent re-registration | ✅ shipping | integration | tests/integration/gui/test_smoke_shell.py::test_shared_logo_served_under_each_mount |
 | Builder header logo        | `pheno-app-header__logo` `<img>`         | `<img src="{url_prefix}_shared/dashboard_logo.svg">` in builder navbar                     | ✅ shipping | integration | tests/integration/gui/test_smoke_shell.py::test_builder_logo_uses_prefix            |
 | Results Viewer header logo | `results-viewer-header__logo` `<img>`    | Logo rendered at start of viewer header `top_row`; URL prefixed by `url_prefix`            | ✅ shipping | manual      | n/a (manual)                                                                        |

@@ -1,5 +1,5 @@
 <div style="background-color: white; display: inline-block; padding: 10px; border-radius: 0px;">
-  <img src="./docs/source/_static/assets/400x150/light_logo_exfab.svg" alt="Phenotypic Logo" style="width: 400px; height: auto;">
+  <img src="./src/phenotypic/_assets/logos/400x150/light_logo_exfab.svg" alt="Phenotypic Logo" style="width: 400px; height: auto;">
 </div>
 
 # PhenoTypic: A Python Framework for Bio-Image Analysis
@@ -155,5 +155,5 @@ Note: `phenotypic gui` (no hyphen, as a subcommand) is **not supported**. Use
 # Sponsors
 
 <div style="background-color: white; display: inline-block; padding: 10px; border-radius: 5px;">
-  <img src="./docs/source/_static/assets/ExFabLogo.svg" alt="Phenotypic Logo" style="width: 400px; height: auto;">
+  <img src="./src/phenotypic/_assets/logos/ExFabLogo.svg" alt="Phenotypic Logo" style="width: 400px; height: auto;">
 </div>
