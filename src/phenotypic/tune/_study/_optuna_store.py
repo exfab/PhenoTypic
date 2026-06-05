@@ -34,6 +34,12 @@ _ATTR_N_IMAGES = "pheno_n_images"
 #: original objective names (the ``pareto/`` axis labels), independent of the
 #: study's native ``values`` ordering. ``None``/absent for a single-objective trial.
 _ATTR_OBJECTIVES = "pheno_objectives"
+#: The 4.5p1 robust-eval signals: the per-trial relative across-plate dispersion
+#: ``gap`` (an instability flag, stored only when not ``None``) and the qc §5
+#: under-detection ``suspicious`` flag (stored only when ``True``). A reopened
+#: study reconstructs both; an absent attr restores the neutral default.
+_ATTR_GAP = "pheno_gap"
+_ATTR_SUSPICIOUS = "pheno_suspicious"
 
 
 class OptunaStudyStore:
@@ -98,7 +104,9 @@ class OptunaStudyStore:
         The trial is added as a frozen Optuna trial whose ``state`` mirrors the
         ``failed`` / ``pruned`` taxonomy and whose ``user_attrs`` carry the
         non-native fields (our ``number``, ``params``, ``terms``, ``n_images``,
-        and the multi-objective ``objectives`` sidecar). ``params`` /
+        the multi-objective ``objectives`` sidecar, and the 4.5p1 robust-eval
+        ``gap`` / ``suspicious`` signals — each stored only when non-neutral).
+        ``params`` /
         ``distributions`` are left empty — the search dimensions live in
         ``user_attrs`` so ``add_trial`` needs no distribution metadata. On a
         multi-objective study the trial's ``values`` are the objective vector (in
@@ -122,6 +130,10 @@ class OptunaStudyStore:
         }
         if trial.objectives is not None:
             user_attrs[_ATTR_OBJECTIVES] = dict(trial.objectives)
+        if trial.gap is not None:
+            user_attrs[_ATTR_GAP] = float(trial.gap)
+        if trial.suspicious:
+            user_attrs[_ATTR_SUSPICIOUS] = True
 
         # A FAIL/PRUNED trial may legitimately carry no value/values; a COMPLETE
         # multi-objective trial carries the per-objective vector Optuna's Pareto
@@ -148,10 +160,12 @@ class OptunaStudyStore:
     def _to_trial(self, frozen: "optuna.trial.FrozenTrial") -> Trial:
         """Reconstruct our :class:`Trial` from an Optuna frozen trial.
 
-        Restores the multi-objective ``objectives`` sidecar from ``user_attrs``;
-        a multi-objective trial's scalar ``score`` is the mean of its objectives
-        (the same projection the Evaluator applies), since a multi-objective
-        Optuna trial carries no scalar ``value``.
+        Restores the multi-objective ``objectives`` sidecar **and** the 4.5p1
+        robust-eval ``gap`` / ``suspicious`` signals from ``user_attrs`` (an
+        absent attr restores the neutral default); a multi-objective trial's
+        scalar ``score`` is the mean of its objectives (the same projection the
+        Evaluator applies), since a multi-objective Optuna trial carries no
+        scalar ``value``.
         """
         import optuna
 
@@ -177,6 +191,8 @@ class OptunaStudyStore:
             score = float(frozen.value)
         else:
             score = 0.0
+        raw_gap = attrs.get(_ATTR_GAP)
+        gap = float(raw_gap) if raw_gap is not None else None
         return Trial(
             number=int(attrs.get(_ATTR_NUMBER, frozen.number)),
             params=dict(attrs.get(_ATTR_PARAMS, {})),
@@ -186,6 +202,8 @@ class OptunaStudyStore:
             objectives=objectives,
             failed=failed,
             pruned=pruned,
+            gap=gap,
+            suspicious=bool(attrs.get(_ATTR_SUSPICIOUS, False)),
         )
 
     @property
