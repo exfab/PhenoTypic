@@ -19,6 +19,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Optional
 
 from .._strategies._optuna_support import (
+    PHENO_GAP as _ATTR_GAP,
+    PHENO_N_IMAGES as _ATTR_N_IMAGES,
+    PHENO_NUMBER as _ATTR_NUMBER,
+    PHENO_OBJECTIVES as _ATTR_OBJECTIVES,
+    PHENO_PARAMS as _ATTR_PARAMS,
+    PHENO_SUSPICIOUS as _ATTR_SUSPICIOUS,
+    PHENO_TERMS as _ATTR_TERMS,
     is_multi_objective_directions,
     study_objective_kwargs,
 )
@@ -26,24 +33,6 @@ from .._study_store import Trial
 
 if TYPE_CHECKING:  # pragma: no cover - typing only; never imports optuna at runtime
     import optuna
-
-#: ``user_attrs`` keys carrying the non-native ``Trial`` fields on each Optuna
-#: trial, namespaced so they never collide with a user's own attrs.
-_ATTR_NUMBER = "pheno_number"
-_ATTR_PARAMS = "pheno_params"
-_ATTR_TERMS = "pheno_terms"
-_ATTR_N_IMAGES = "pheno_n_images"
-#: The multi-objective sidecar (plan §0a): the ``{objective: value}`` dict is
-#: stored verbatim so a reopened study reconstructs ``Trial.objectives`` with its
-#: original objective names (the ``pareto/`` axis labels), independent of the
-#: study's native ``values`` ordering. ``None``/absent for a single-objective trial.
-_ATTR_OBJECTIVES = "pheno_objectives"
-#: The 4.5p1 robust-eval signals: the per-trial relative across-plate dispersion
-#: ``gap`` (an instability flag, stored only when not ``None``) and the qc §5
-#: under-detection ``suspicious`` flag (stored only when ``True``). A reopened
-#: study reconstructs both; an absent attr restores the neutral default.
-_ATTR_GAP = "pheno_gap"
-_ATTR_SUSPICIOUS = "pheno_suspicious"
 
 
 class OptunaStudyStore:
@@ -82,6 +71,16 @@ class OptunaStudyStore:
             **study_objective_kwargs(directions),
         }
         self._study = optuna.create_study(**create_kwargs)
+
+    @property
+    def study_name(self) -> str:
+        """The shared study name (so the strategy can bind to this same study)."""
+        return self._study_name
+
+    @property
+    def storage_url(self) -> str:
+        """The storage URL backing this study (the strategy binds to the same one)."""
+        return self._storage_url
 
     @staticmethod
     def _enable_sqlite_wal(optuna: Any, storage_url: str) -> None:

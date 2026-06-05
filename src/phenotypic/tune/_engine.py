@@ -66,8 +66,10 @@ class TuningEngine:
         # Resume: a deterministic journal is fast-forwarded by replaying the
         # strategy past the recorded trials; an in-place-resumable backend (e.g.
         # an Optuna RDB) already restores the sampler state, so it skips replay.
+        # The same flag decides who writes each trial below (see the loop).
         completed = len(self._store)
-        if not self._store.is_resumable_in_place():
+        resumable = self._store.is_resumable_in_place()
+        if not resumable:
             for _ in range(completed):
                 if strategy.is_exhausted():
                     break
@@ -91,29 +93,37 @@ class TuningEngine:
             result = spec.evaluator.evaluate(
                 spec.pipeline, spec.scorer, params, images, channel=channel
             )
-            self._store.append(
-                Trial(
-                    number=number,
-                    params=params,
-                    score=result.score,
-                    terms=result.terms,
-                    n_images=result.n_images,
-                    # The multi-objective sidecar (plan §0a): carried verbatim
-                    # from the Evaluator so the Pareto front / knee can read it.
-                    objectives=result.objectives,
-                    # The robust-eval per-trial signals (plan 4.5p1): the
-                    # calibration-dispersion gap + the under-detection suspicious
-                    # flag, carried from the Evaluator so the journal/Optuna store
-                    # and the data-poor generalization fallback (which reads the
-                    # winner's gap) see real values, not nulls.
-                    gap=result.gap,
-                    suspicious=result.suspicious,
-                    failed=result.failed,  # explicit flag from the Evaluator
-                    pruned=result.pruned,  # early-stopped via the pruning channel
+            # Who writes the trial depends on the backend. On an in-place-resumable
+            # store (an Optuna RDB) the strategy's register_result IS the writer:
+            # its native ask/tell trial carries the sampler distributions AND our
+            # off-model fields (via set_trial_user_attrs) into the ONE shared
+            # study, so appending here too would double-record it. Only the
+            # deterministic journal needs the engine to append a Trial record.
+            if not resumable:
+                self._store.append(
+                    Trial(
+                        number=number,
+                        params=params,
+                        score=result.score,
+                        terms=result.terms,
+                        # The multi-objective sidecar (plan §0a): carried verbatim
+                        # from the Evaluator so the Pareto front / knee can read it.
+                        n_images=result.n_images,
+                        objectives=result.objectives,
+                        # The robust-eval per-trial signals (plan 4.5p1): the
+                        # calibration-dispersion gap + the under-detection
+                        # suspicious flag, carried from the Evaluator so the
+                        # journal and the data-poor generalization fallback (which
+                        # reads the winner's gap) see real values, not nulls.
+                        gap=result.gap,
+                        suspicious=result.suspicious,
+                        failed=result.failed,  # explicit flag from the Evaluator
+                        pruned=result.pruned,  # early-stopped via the channel
+                    )
                 )
-            )
             # Tell the strategy how the trial ended; a pruned trial flows back as
-            # pruned=True (Optuna marks it TrialState.PRUNED).
+            # pruned=True (Optuna marks it TrialState.PRUNED). On the Optuna path
+            # this is the sole write of the shared study (params + user_attrs).
             strategy.register_result(params, result, pruned=result.pruned)
             # Budget counts completed + pruned (a pruned trial is a real, if
             # partial, evaluation). Only true failures feed the failure cap.

@@ -28,6 +28,7 @@ from .._search_space import (
 from ._config import SamplerKind
 from ._optuna_support import (
     is_multi_objective_directions,
+    set_trial_user_attrs,
     study_objective_kwargs,
 )
 from ._pruning import NoOpChannel, PruningChannel
@@ -118,6 +119,7 @@ class OptunaStrategy:
         self._prune = prune
         self._seed = seed
         self._storage_url = storage_url
+        self._study_name = study_name
         self._directions = list(directions) if directions is not None else None
         self._multi_objective = is_multi_objective_directions(self._directions)
         self._rung_floor = rung_floor
@@ -250,6 +252,13 @@ class OptunaStrategy:
         if trial is None:  # pragma: no cover - register without a prior suggest
             raise RuntimeError("register_result called before suggest")
         self._stashed = None
+
+        # Stamp our off-model Trial fields onto the in-flight trial BEFORE telling
+        # so the strategy's native ask/tell trial IS the full persisted record
+        # (one shared study, no add_trial mirror): the store's _to_trial reads
+        # these back. Set regardless of terminal state — a FAIL/PRUNED trial still
+        # carries its params/terms for the journal export.
+        set_trial_user_attrs(trial, params=params, result=result)
 
         if getattr(result, "failed", False):
             self._study.tell(trial, state=optuna.trial.TrialState.FAIL)

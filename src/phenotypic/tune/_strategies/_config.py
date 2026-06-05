@@ -184,7 +184,14 @@ class OptunaConfig(StrategyConfig):
         from ._optuna_support import _require_optuna
 
         _require_optuna()
-        storage_url = self.storage_url
+        # Bind the strategy to the STORE's shared study so its native ask/tell is
+        # the single persisted record (sampler resumes in place, the SLURM fleet
+        # drains one budget, no phantom auto-named study). An Optuna store exposes
+        # ``study_name`` + ``storage_url``; a non-Optuna store (the screening
+        # rounds' journal) exposes neither, so the strategy falls back to its own
+        # study from the explicit URL / the ``$PHENOTYPIC_TUNE_STORAGE_URL`` env.
+        study_name = getattr(store, "study_name", None)
+        storage_url = getattr(store, "storage_url", None) or self.storage_url
         if storage_url is None:
             storage_url = os.environ.get(PHENOTYPIC_TUNE_STORAGE_URL_ENV)
         return OptunaStrategy(
@@ -195,6 +202,7 @@ class OptunaConfig(StrategyConfig):
             seed=self.seed,
             storage_url=storage_url,
             store=store,
+            study_name=study_name,
             directions=directions,
         )
 
