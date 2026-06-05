@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
 from phenotypic.abc_ import GpuDetector
-from phenotypic.nn._checkpoint_manager import (
+from phenotypic.detect.nn._checkpoint_manager import (
     Device,
     MicroSamModelType,
 )
@@ -114,7 +114,7 @@ class MicroSamDetector(GpuDetector):
 
         **Checkpoint caching.** micro-sam manages its own cache via
         ``platformdirs`` (respects the ``MICROSAM_CACHEDIR`` environment
-        variable). Use ``python -m phenotypic.nn download --model-type
+        variable). Use ``python -m phenotypic.detect.nn download --model-type
         microsam`` to pre-download checkpoints on login nodes before
         submitting SLURM jobs on compute nodes without internet access.
 
@@ -135,7 +135,7 @@ class MicroSamDetector(GpuDetector):
         Detect colonies on a synthetic yeast plate:
 
         >>> from phenotypic.data import load_synth_yeast_plate
-        >>> from phenotypic.nn import MicroSamDetector
+        >>> from phenotypic.detect.nn import MicroSamDetector
         >>> image = load_synth_yeast_plate()
         >>> detector = MicroSamDetector(model_type="vit_b_lm")
         >>> detected = detector.apply(image)  # doctest: +SKIP
@@ -146,7 +146,7 @@ class MicroSamDetector(GpuDetector):
 
         >>> from phenotypic import ImagePipeline
         >>> from phenotypic.data import load_synth_yeast_plate
-        >>> from phenotypic.nn import MicroSamDetector
+        >>> from phenotypic.detect.nn import MicroSamDetector
         >>> pipeline = ImagePipeline(
         ...     ops=[MicroSamDetector(model_type="vit_b_lm", device="cpu")]
         ... )
@@ -186,7 +186,7 @@ class MicroSamDetector(GpuDetector):
                 "micro_sam together."
             ) from None
 
-        from phenotypic.nn._checkpoint_manager import resolve_device
+        from phenotypic.detect.nn._checkpoint_manager import resolve_device
 
         self._predictor, self._segmenter = get_predictor_and_segmenter(
             model_type=self.model_type,

@@ -598,7 +598,7 @@ class SerializablePipeline(NapariPipelineViewer):
             "phenotypic.analysis",
             "phenotypic.prefab",
             "phenotypic.post",
-            "phenotypic.nn",
+            "phenotypic.detect.nn",
         ]
 
         for module_name in submodules:

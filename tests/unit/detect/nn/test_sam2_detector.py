@@ -11,7 +11,7 @@ import pytest
 
 from phenotypic import ImagePipeline
 from phenotypic.abc_ import GpuDetector, ObjectDetector
-from phenotypic.nn import SAM2_AVAILABLE, Sam2Detector
+from phenotypic.detect.nn import SAM2_AVAILABLE, Sam2Detector
 
 
 # ---------------------------------------------------------------------------
@@ -161,7 +161,7 @@ def _sam2_tiny_available() -> bool:
     """
     if not SAM2_AVAILABLE:
         return False
-    from phenotypic.nn._checkpoint_manager import Sam2CheckpointManager
+    from phenotypic.detect.nn._checkpoint_manager import Sam2CheckpointManager
     if Sam2CheckpointManager.is_cached("tiny"):
         return True
     import urllib.error

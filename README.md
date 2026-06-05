@@ -156,7 +156,7 @@ Note: `phenotypic gui` (no hyphen, as a subcommand) is **not supported**. Use
 | `phenotypic.enhance`    | Preprocessing tools that alter a copy of your image and can improve the results of the detection algorithms                                                          |
 | `phenotypic.grid`       | Modules that rely on grid and object information to function                                                                                                         |
 | `phenotypic.measure`    | The various measurements PhenoTypic is capable of extracting from objects                                                                                            |
-| `phenotypic.nn`         | GPU-accelerated detectors (SAM2, micro-sam) with checkpoint management — see [setup guide](https://exfab.github.io/PhenoTypic/how_to/pages/gpu_detection_setup.html) |
+| `phenotypic.detect.nn`  | GPU-accelerated detectors (SAM2, micro-sam) with checkpoint management — see [setup guide](https://exfab.github.io/PhenoTypic/how_to/pages/gpu_detection_setup.html) |
 | `phenotypic.refine`     | Different tools to edit the detected objects such as morphology, relabeling, joining, or removing                                                                    |
 | `phenotypic.prefab`     | Various premade image processing pipelines that are in use at ExFAB                                                                                                  |
 

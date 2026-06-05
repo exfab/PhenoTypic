@@ -34,7 +34,7 @@ class SmallObjectRemover(ObjectRefiner):
     Consider Also:
         - :class:`RemoveBorderObjects` for removing partial colonies at
           image edges (size-independent).
-        - :class:`RemoveNonCircular` for removing non-circular artifacts
+        - :class:`RemoveLowCircularity` for removing non-circular artifacts
           regardless of size.
 
     See Also:
