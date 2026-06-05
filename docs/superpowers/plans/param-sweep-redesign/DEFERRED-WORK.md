@@ -78,3 +78,89 @@
   integration tests are gated behind `PHENOTYPIC_TEST_PG_URL` / `@pytest.mark.postgres`; the default
   suite uses local SQLite so CI stays hermetic. Local single-node runs use SQLite-WAL.
 - **Phase 6 docs:** `tune_distributed_hpcc.md` documents the why + the launch/read-address/wire-in flow.
+
+---
+
+## Phase 4.5 robust-eval — held-out generalization (deferrals + one deviation)
+
+> Shipped (4.5 part 1 + part 2): the reproducible calibration/held-out **split**
+> (3-tier: whole-group / within-group / data-poor skip; numpy-only, cross-process
+> + resume stable), the per-trial **calibration-dispersion `gap`** + **suspicious**
+> under-detection flag, the **report-only held-out pass** on the winner, and the
+> user-facing `deliverables/generalization.json` verdict (both-thresholds overfit
+> gate, the 3-tier report, the `--held-out-fraction` / `--cv-group` CLI overrides).
+> The following are intentionally deferred.
+
+### (a) Full group-aware cross-validation  — *deferred*
+
+**Decision:** *Ship single held-out split; defer multi-fold group-aware CV.*
+
+- **Built:** a **single** calibration/held-out partition — one whole group held
+  out (`kind="group"`), or one within-group slice (`kind="within_group"`).
+- **Deferred:** proper **k-fold** group-aware CV — `StratifiedGroupKFold` /
+  leave-one-group-out — rotating every group through held-out and averaging the
+  generalization estimate across folds (lower-variance than a single split).
+- **Unblock when:** enough groups exist that single-split variance is the
+  limiting factor on the verdict's reliability.
+
+### (b) Metadata-stratified pruning rungs  — *deferred*
+
+**Decision:** *Ship id-sorted deterministic rungs; defer stratification.*
+
+- **Built:** the ASHA-style fidelity ladder evaluates a candidate over a
+  **deterministic, id-sorted** subset of calibration plates (`Evaluator._rung_sizes`).
+- **Deferred:** **metadata-stratified** rungs — each rung a representative
+  stratified sample across the grouping column, so an early rung does not
+  over-represent one batch and mis-rank a candidate before the full pass.
+- **Unblock when:** rung-induced ranking instability is observed on a
+  multi-batch calibration set.
+
+### (c) Incremental per-image `measure()`-frame cache  — *deferred*
+
+**Decision:** *Ship per-rung memoization within one trial; defer a cross-trial cache.*
+
+- **Built:** within one `Evaluator.evaluate` each image is measured **once**
+  (memoized across rungs).
+- **Deferred:** an **incremental cross-trial cache** of per-image `measure()`
+  frames keyed by `(image, candidate-params-affecting-detection)`, so two trials
+  sharing a measurement-equivalent sub-pipeline reuse the frame instead of
+  re-measuring. (Memory-bounded — images are large; the project's accuracy-over-
+  speed bias means this only pays once measurement dominates the trial budget.)
+- **Unblock when:** profiling shows `measure()` re-computation, not scoring,
+  dominates wall-clock.
+
+### (d) §8 data-poor "CV-estimate" → **substituted** by a calibration-stability estimate — *deviation*
+
+**Decision:** *For `kind="none"` (data-poor), report a calibration-stability
+proxy instead of a cross-validation estimate.* ⚠️ **Deviation from the spec's §8.**
+
+- **Spec §8:** a data-poor run (too few plates to reserve a held-out set) would
+  fall back to a **cross-validation** estimate of the generalization gap.
+- **Shipped instead:** the data-poor branch of `run_held_out` writes
+  `generalization.json` with `estimate="calibration_stability"`,
+  **`cv_deferred=true`**, `gap=null`, `flagged=false`, and carries the winner's
+  per-trial **calibration dispersion** (`Trial.gap`, the relative across-plate
+  IQR of the primary term) as the `calibration_stability` proxy, plus a
+  "no untouched held-out — calibration-stability estimate (CV deferred)" warning.
+- **Why:** a real CV estimate needs the multi-fold machinery deferred in (a); the
+  stability proxy is a cheap, already-computed honesty signal that ships now. The
+  `cv_deferred=true` flag is the explicit marker to swap in CV when (a) lands.
+- **Unblock when:** (a) ships — replace the proxy with the k-fold CV estimate and
+  set `cv_deferred=false`.
+
+### (e) QC batch-panel / geometric-fusion / Count-floor  — *approximated, deferred*
+
+**Decision:** *Approximate the gaming defense via a score-vs-Count-floor heuristic.*
+
+- **Built:** the **`suspicious`** flag (`EvaluationResult.suspicious` /
+  `Trial.suspicious`) approximates the qc gaming defense: a **high** finalized
+  `score` paired with a **low** aggregated `Count` term (the "great score on
+  under-detection" signature) is flagged for review. The
+  `test_qc_gaming_regression` lock additionally pins that a faithful detection
+  scores strictly higher than an under-detecting one.
+- **Deferred:** the full qc design — a **batch panel** of per-plate diagnostics,
+  **geometric fusion** of multiple count/quality signals, and a hard **Count
+  floor** that rejects (not just flags) a degenerate under-detecting candidate.
+- **Unblock when:** the single score-vs-Count-floor heuristic proves
+  insufficient on a real gaming case (a candidate slips past the flag), or a
+  hard reject (not a review flag) is wanted in the search loop.
