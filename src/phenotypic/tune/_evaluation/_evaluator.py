@@ -68,6 +68,48 @@ def _robust_aggregate(values: list[float], stability_weight: float) -> float:
     return median - stability_weight * float(q75 - q25)
 
 
+#: Denominator floor for the relative-IQR ``gap`` — guards a near-zero median.
+_GAP_EPS = 1e-12
+
+
+def _per_trial_dispersion(
+    per_term_scores: dict[str, list[float]], *, min_n: int
+) -> Optional[float]:
+    """The relative across-plate dispersion of the **primary (first) term**.
+
+    The per-trial ``gap`` signal: the relative IQR
+    ``(q75 - q25) / max(|median|, eps)`` of the first term's per-image scores — a
+    cheap instability / overfit-risk flag, NOT a held-out generalization gap. A
+    single-image trial has no dispersion (``0.0``); below ``min_n`` images the
+    estimate is unreliable (``None``, mirroring the stability small-n guard); a
+    perfectly flat term is maximally stable (``0.0``).
+
+    Args:
+        per_term_scores: Term → clean per-image scores (the evaluator's
+            ``per_term`` accumulator). The **first** key is the primary term
+            (e.g. ``"Count"`` for the QC objective).
+        min_n: The minimum image count for a reliable estimate
+            (``Evaluator.min_stability_n``).
+
+    Returns:
+        The relative IQR of the primary term's scores, ``0.0`` for a single
+        image, or ``None`` when there is no primary term or too few images.
+    """
+    if not per_term_scores:
+        return None
+    primary = next(iter(per_term_scores))
+    values = per_term_scores[primary]
+    n = len(values)
+    if n == 1:
+        return 0.0
+    if n < min_n:
+        return None
+    arr = np.asarray(values, dtype=float)
+    median = float(np.median(arr))
+    q75, q25 = np.percentile(arr, [75, 25])
+    return float(q75 - q25) / max(abs(median), _GAP_EPS)
+
+
 class EvaluationResult(BaseModel):
     """The outcome of evaluating one candidate over the calibration set.
 
@@ -123,6 +165,14 @@ class Evaluator(BaseModel):
         rung_factor: The geometric growth factor between rungs (×3 by default).
         min_rungs: The fewest distinct rungs worth running a ladder for; below
             this the ladder self-disables to a single full-fidelity rung.
+        min_stability_n: The minimum image count for a reliable per-trial ``gap``
+            (relative across-plate dispersion); below it ``gap`` is ``None``.
+        suspicious_score_floor: A trial is flagged ``suspicious`` only when its
+            ``score`` is at least this high (the qc §5 "great score" half of the
+            under-detection gaming signature).
+        suspicious_count_floor: A trial is flagged ``suspicious`` only when its
+            primary ``terms["Count"]`` is at most this low (the "on
+            under-detection" half of the signature).
     """
 
     model_config = ConfigDict(frozen=True)
@@ -132,6 +182,9 @@ class Evaluator(BaseModel):
     rung_floor: int = 6
     rung_factor: int = 3
     min_rungs: int = 2
+    min_stability_n: int = 4  # TODO: review (unverified vs literature)
+    suspicious_score_floor: float = 0.7  # TODO: review (unverified vs literature)
+    suspicious_count_floor: float = 0.3  # TODO: review (unverified vs literature)
 
     def _rung_sizes(self, n_images: int) -> list[int]:
         """The cumulative rung sizes for ``n_images`` calibration plates.
@@ -252,11 +305,13 @@ class Evaluator(BaseModel):
         final_score, final_objectives = _project_finalize(
             scorer.finalize(aggregated)
         )
+        gap = _per_trial_dispersion(per_term, min_n=self.min_stability_n)
         return EvaluationResult(
             score=final_score,
             terms=aggregated,
             n_images=len(ordered),
             objectives=final_objectives,
+            gap=gap,
         )
 
     @staticmethod
