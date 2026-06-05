@@ -61,6 +61,18 @@ class IntRange(_DomainBase):
             raise ValueError(f"IntRange high ({self.high}) < low ({self.low})")
         return self
 
+    def values(self) -> list[int]:
+        """The discrete integers in ``[low, high]`` stepped by :attr:`step`.
+
+        The enumerable grid an ``IntRange`` exposes to the grid and random
+        strategies (``range(low, high + 1, step)`` — ``high`` inclusive). The
+        log scale is a *sampling* hint and does not change the enumerated set.
+
+        Returns:
+            The stepped integers from ``low`` to ``high`` inclusive.
+        """
+        return list(range(self.low, self.high + 1, self.step))
+
 
 class FloatRange(_DomainBase):
     """A float range ``[low, high]`` with an optional log scale.

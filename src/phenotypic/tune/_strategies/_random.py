@@ -42,8 +42,7 @@ class RandomStrategy:
         if isinstance(domain, Categorical):
             return self._rng.choice(list(domain.choices))
         if isinstance(domain, IntRange):
-            vals = list(range(domain.low, domain.high + 1, domain.step))
-            return self._rng.choice(vals)
+            return self._rng.choice(domain.values())
         if isinstance(domain, FloatRange):
             if domain.log:
                 lo, hi = math.log(domain.low), math.log(domain.high)

@@ -17,7 +17,7 @@ def grid_values(domain: Domain) -> list[Any]:
     if isinstance(domain, Categorical):
         return list(domain.choices)
     if isinstance(domain, IntRange):
-        return list(range(domain.low, domain.high + 1, domain.step))
+        return domain.values()
     if isinstance(domain, Fixed):
         return [domain.value]
     raise ValueError(
