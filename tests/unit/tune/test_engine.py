@@ -147,7 +147,10 @@ def test_engine_passes_channel_from_suggest_to_evaluate(monkeypatch):
         def is_exhausted(self) -> bool:
             return self._done
 
-    monkeypatch.setattr(_GridConfig, "build", lambda self, space, store: _OneShotGrid())
+    monkeypatch.setattr(
+        _GridConfig, "build",
+        lambda self, space, store, *, directions=None: _OneShotGrid(),
+    )
     engine = TuningEngine(_spec(Budget(n_trials=1), _base()))
     engine.optimize([load_synth_yeast_plate()])
     assert spy.reported, "the channel from suggest() must reach evaluate()"
@@ -178,7 +181,10 @@ def test_engine_registers_pruned_flag(monkeypatch):
     def _fake_eval(self, base, scorer, params, images, *, channel=None):
         return EvaluationResult(score=0.1, terms={"X": 0.1}, n_images=1, pruned=True)
 
-    monkeypatch.setattr(_GridConfig, "build", lambda self, space, store: _PruneOnceGrid())
+    monkeypatch.setattr(
+        _GridConfig, "build",
+        lambda self, space, store, *, directions=None: _PruneOnceGrid(),
+    )
     monkeypatch.setattr(Evaluator, "evaluate", _fake_eval)
     engine = TuningEngine(_spec(Budget(n_trials=1), _base()))
     engine.optimize([load_synth_yeast_plate()])

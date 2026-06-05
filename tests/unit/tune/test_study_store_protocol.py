@@ -134,7 +134,10 @@ def test_engine_drives_a_fake_resumable_store_without_replay(monkeypatch):
                 return False
             return True
 
-    monkeypatch.setattr(_GridConfig, "build", lambda self, space, store: _CountingGrid())
+    monkeypatch.setattr(
+        _GridConfig, "build",
+        lambda self, space, store, *, directions=None: _CountingGrid(),
+    )
 
     store = _FakeResumableStore()
     # Pre-seed a prior trial: an in-place store would NOT replay these.

@@ -156,6 +156,21 @@ class CompositeScorer(Scorer):
         """
         return f"{_CHILD_HANDLE}{index}"
 
+    def objective_names(self) -> list[str]:
+        """The ordered objective-axis names of a multi-objective composite.
+
+        Returns the per-child handles (``["s0", "s1", …]``) in :attr:`scorers`
+        order — exactly the keys :meth:`finalize` emits when
+        :attr:`multi_objective` is ``True``, and therefore the
+        ``Trial.objectives`` / ``objectives_json`` keys and the ``pareto/`` axis
+        labels. Stable across a study so the per-objective directions, the
+        per-objective best pipelines, and the front parquet all align.
+
+        Returns:
+            The child handles in order; ``[]`` for an empty composite.
+        """
+        return [self._handle(index) for index in range(len(self.scorers))]
+
     def availability(self) -> bool:
         """Whether the composite can contribute any signal.
 

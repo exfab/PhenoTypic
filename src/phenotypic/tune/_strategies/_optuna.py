@@ -240,8 +240,10 @@ class OptunaStrategy:
         Args:
             params: The combo this trial evaluated (unused — the stashed trial
                 carries its own suggestions; accepted for Protocol parity).
-            result: The :class:`EvaluationResult`; its ``score`` is told on a
-                clean completion.
+            result: The :class:`EvaluationResult`; on a clean completion its
+                ``score`` is told for a single-objective study, or its
+                ``objectives`` vector (in emission order, matching the study's
+                ``directions``) for a multi-objective one.
             pruned: Whether the rung ladder early-stopped the trial → told as
                 ``TrialState.PRUNED``.
         """
@@ -257,6 +259,12 @@ class OptunaStrategy:
             return
         if pruned or getattr(result, "pruned", False):
             self._study.tell(trial, state=optuna.trial.TrialState.PRUNED)
+            return
+        if self._multi_objective:
+            # Tell the per-objective vector (emission order == directions order)
+            # so NSGA-II ranks the Pareto front natively.
+            objectives = getattr(result, "objectives", None) or {}
+            self._study.tell(trial, [float(v) for v in objectives.values()])
             return
         self._study.tell(trial, float(result.score))
 

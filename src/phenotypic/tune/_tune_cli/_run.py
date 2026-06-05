@@ -24,6 +24,7 @@ from phenotypic._execution._slurm import SlurmExecutor
 from phenotypic.tools_ import _io_constants as io
 
 from .._engine import TuningEngine
+from .._multi_objective import objective_directions
 from .._screening import compute_param_importance
 from .._screening_freeze import ScreeningConfig, ScreeningController
 from .._spec import TuningSpec
@@ -131,19 +132,24 @@ def _open_store(
     *,
     storage_url: Optional[str],
     resume_path: Path,
+    directions: Optional[list[str]] = None,
 ) -> StudyStore:
     """Select + open the study backend matching ``strategy``.
 
     An Optuna strategy gets a resumable :class:`OptunaStudyStore` on the shared
     ``study.db`` (or the explicit ``storage_url``); any other strategy gets the
     homegrown :class:`JournalStudyStore` (resumed from ``trials.parquet`` when one
-    already exists).
+    already exists). A multi-objective run passes ``directions`` so the Optuna
+    store opens a multi-objective study (its ``append`` records the per-objective
+    vector and ``pareto_front`` reads the study's native ``best_trials``).
 
     Args:
         strategy: The resolved strategy config.
         output_dir: The run directory (for ``study.db`` placement).
         storage_url: An explicit Optuna storage URL; ``None`` → ``study.db``.
         resume_path: The ``trials.parquet`` path the journal resumes from.
+        directions: Per-objective ``["maximize"] * n`` for a multi-objective run
+            (Optuna store only); ``None`` → single-objective.
 
     Returns:
         The opened store.
@@ -152,7 +158,9 @@ def _open_store(
         from .._study._optuna_store import OptunaStudyStore
 
         url = storage_url or f"sqlite:///{io.study_db_path(output_dir)}"
-        return OptunaStudyStore(storage_url=url, study_name="tune")
+        return OptunaStudyStore(
+            storage_url=url, study_name="tune", directions=directions
+        )
     if resume_path.exists():
         return JournalStudyStore.from_parquet(resume_path)
     return JournalStudyStore()
@@ -226,11 +234,15 @@ def run_tuning(
         )
 
     trials_path = io.trials_parquet_path(output_dir)
+    # Multi-objective is inferred from the scorer (plan §0b): the directions feed
+    # both the Optuna store (Pareto front) and, via the engine, the NSGA-II study.
+    directions = objective_directions(resolved_spec.scorer)
     store = _open_store(
         resolved_spec.strategy,
         output_dir,
         storage_url=storage_url,
         resume_path=trials_path,
+        directions=directions,
     )
 
     if screen:
@@ -242,6 +254,11 @@ def run_tuning(
         winner_pipeline = engine.best_pipeline()
 
     _finalize_outputs(store, trials_path, output_dir, winner_pipeline)
+    # Multi-objective runs additionally publish deliverables/pareto/ (front +
+    # per-objective best pipelines) and overwrite best_pipeline.json with the
+    # knee; a single-objective run's empty front makes this a no-op (no pareto/
+    # dir — the back-compat lock, plan §0b).
+    _finalize_pareto_outputs(store, resolved_spec, output_dir)
     return best
 
 
@@ -346,3 +363,69 @@ def _export_trials_parquet(store: StudyStore, trials_path: Path) -> None:
         return
     mirror = JournalStudyStore(list(store.trials))
     mirror.to_parquet(trials_path)
+
+
+#: Per-objective importance filename written into ``deliverables/pareto/``:
+#: ``param_importance_<objective>.json``. A parameterized string, not an
+#: enumeration — kept as a private template paired with the writer in
+#: :func:`_finalize_pareto_outputs`.
+_PARETO_IMPORTANCE_FILENAME_TEMPLATE = "param_importance_{objective}.json"
+
+
+def _finalize_pareto_outputs(
+    store: StudyStore, spec: TuningSpec, output_dir: Path
+) -> None:
+    """Publish ``deliverables/pareto/`` when the run was multi-objective.
+
+    A multi-objective run (a scorer whose ``finalize`` returns a dict, so trials
+    carry ``Trial.objectives``) has a non-empty :meth:`StudyStore.pareto_front`;
+    a single-objective run's front is empty and this is a **no-op** — no
+    ``pareto/`` directory is created (the back-compat lock, plan §0b). When the
+    front is non-empty it writes, under :func:`pareto_dir`:
+
+    * ``pareto_front.parquet`` — the front's trials (same schema as
+      ``trials.parquet``, ``objectives_json`` populated);
+    * ``best_<objective>.json`` — the front pipeline maximizing each objective
+      axis, plus that axis's :func:`compute_param_importance`;
+    * and it overwrites the top-level ``best_pipeline.json`` with the **knee**
+      (the max-curvature compromise pick).
+
+    Args:
+        store: The finished study store (any backend).
+        spec: The resolved tuning spec (its ``pipeline`` is the build base).
+        output_dir: The run directory.
+    """
+    from .._evaluation import build_pipeline
+
+    front = store.pareto_front()
+    if not front:
+        return  # single-objective run — no pareto/ dir (back-compat lock)
+
+    pareto_dir = io.pareto_dir(output_dir)
+    pareto_dir.mkdir(parents=True, exist_ok=True)
+
+    # The front parquet (mirror the front into a journal for a uniform schema).
+    JournalStudyStore(list(front)).to_parquet(io.pareto_front_parquet_path(output_dir))
+
+    # One best pipeline + importance per objective axis (stable name order).
+    objective_names = list(front[0].objectives or {})
+    for name in objective_names:
+        winner = max(
+            (t for t in front if t.objectives and name in t.objectives),
+            key=lambda t: t.objectives[name],  # type: ignore[index]
+            default=None,
+        )
+        if winner is not None:
+            pipeline = build_pipeline(spec.pipeline, winner.params)
+            io.pareto_best_pipeline_path(output_dir, name).write_text(
+                pipeline.to_json() or ""
+            )
+        (pareto_dir / _PARETO_IMPORTANCE_FILENAME_TEMPLATE.format(objective=name)).write_text(
+            json.dumps(compute_param_importance(store, objective=name), indent=2)
+        )
+
+    # The knee is the run's headline winner — overwrite best_pipeline.json.
+    knee = store.knee_point(front)
+    if knee is not None:
+        knee_pipeline = build_pipeline(spec.pipeline, knee.params)
+        io.best_pipeline_path(output_dir).write_text(knee_pipeline.to_json() or "")

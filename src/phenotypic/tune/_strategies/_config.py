@@ -50,7 +50,13 @@ class StrategyConfig(BaseModel):
     seed: int = 0
 
     @abstractmethod
-    def build(self, space: SearchSpace, store: Optional[Any]) -> SearchStrategy:
+    def build(
+        self,
+        space: SearchSpace,
+        store: Optional[Any],
+        *,
+        directions: Optional[list[str]] = None,
+    ) -> SearchStrategy:
         """Construct the live strategy for ``space``.
 
         Args:
@@ -58,6 +64,11 @@ class StrategyConfig(BaseModel):
             store: The study store (Phase 1d's ``StudyStore``); accepted for a
                 uniform factory signature but unused by the zero-dependency
                 grid/random strategies.
+            directions: Per-objective Optuna ``directions`` for a multi-objective
+                run (``["maximize"] * n``), inferred from the scorer by the
+                engine. ``None`` → single-objective. Only the Optuna backend
+                honors it; grid/random ignore it (4.8 rejects pairing them with a
+                multi-objective scorer at validation, so they never receive it).
         """
         ...
 
@@ -71,7 +82,15 @@ class GridConfig(StrategyConfig):
 
     kind: Literal["grid"] = "grid"
 
-    def build(self, space: SearchSpace, store: Optional[Any]) -> SearchStrategy:
+    def build(
+        self,
+        space: SearchSpace,
+        store: Optional[Any],
+        *,
+        directions: Optional[list[str]] = None,
+    ) -> SearchStrategy:
+        # Grid enumeration is single-objective; ``directions`` is ignored (a
+        # multi-objective scorer with grid is rejected at validation, 4.8).
         return GridStrategy(space)
 
 
@@ -86,7 +105,15 @@ class RandomConfig(StrategyConfig):
     kind: Literal["random"] = "random"
     n_trials: int
 
-    def build(self, space: SearchSpace, store: Optional[Any]) -> SearchStrategy:
+    def build(
+        self,
+        space: SearchSpace,
+        store: Optional[Any],
+        *,
+        directions: Optional[list[str]] = None,
+    ) -> SearchStrategy:
+        # Random sampling is single-objective; ``directions`` is ignored (a
+        # multi-objective scorer with random is rejected at validation, 4.8).
         return RandomStrategy(space, n_trials=self.n_trials, seed=self.seed)
 
 
@@ -119,13 +146,29 @@ class OptunaConfig(StrategyConfig):
     prune: bool = False
     storage_url: Optional[str] = None
 
-    def build(self, space: SearchSpace, store: Optional[Any]) -> SearchStrategy:
+    def build(
+        self,
+        space: SearchSpace,
+        store: Optional[Any],
+        *,
+        directions: Optional[list[str]] = None,
+    ) -> SearchStrategy:
         """Construct the live ``OptunaStrategy`` (resolves the ``tune`` extra).
 
         ``import optuna`` is deferred to ``OptunaStrategy``'s body; this method
         calls ``_require_optuna`` first to raise an actionable error when the
         extra is missing. The storage URL falls back to
-        ``$PHENOTYPIC_TUNE_STORAGE_URL`` when ``storage_url is None``.
+        ``$PHENOTYPIC_TUNE_STORAGE_URL`` when ``storage_url is None``. When
+        ``directions`` is multi-objective the strategy auto-selects **NSGA-II**
+        (the multi-objective sampler) regardless of :attr:`sampler` and disables
+        pruning (Optuna pruners are single-objective; optuna-integration §9).
+
+        Args:
+            space: The search space to materialize each trial from.
+            store: The study store (the Optuna study owns persistence; passed for
+                the uniform factory signature).
+            directions: Per-objective ``["maximize"] * n`` for a multi-objective
+                run, inferred from the scorer; ``None`` → single-objective.
         """
         from ._optuna import OptunaStrategy
         from ._optuna_support import _require_optuna
@@ -142,6 +185,7 @@ class OptunaConfig(StrategyConfig):
             seed=self.seed,
             storage_url=storage_url,
             store=store,
+            directions=directions,
         )
 
 

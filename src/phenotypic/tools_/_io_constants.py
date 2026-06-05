@@ -162,6 +162,18 @@ TRIALS_PARQUET: Final[str] = "trials.parquet"
 #: store's persistent, resumable sampler state when the ``tune`` extra is used.
 STUDY_DB: Final[str] = "study.db"
 
+#: The Pareto-front parquet written by a **multi-objective** tune run into
+#: :data:`DIR_PARETO` (under ``deliverables/``). One row per non-dominated trial
+#: (the same schema as :data:`TRIALS_PARQUET`, with ``objectives_json`` populated).
+PARETO_FRONT_PARQUET: Final[str] = "pareto_front.parquet"
+
+#: Per-objective best-pipeline filename template written into :data:`DIR_PARETO`:
+#: ``best_<objective>.json`` (e.g. ``best_Dice.json``, ``best_s0.json``). One per
+#: objective axis — the pipeline maximizing that single objective on the front.
+#: Rendered by :func:`pareto_best_pipeline_path`; kept private (a parameterized
+#: string is not an enumeration — see the code-style note on render functions).
+_PARETO_BEST_PIPELINE_FILENAME_TEMPLATE: Final[str] = "best_{objective}.json"
+
 # ---------------------------------------------------------------------------
 # QC artifact filenames (live inside DIR_QC)
 # ---------------------------------------------------------------------------
@@ -324,6 +336,13 @@ DIR_QC: Final[str] = "qc"
 #: artifact-path helper below that previously rooted at ``<output>/`` now
 #: roots at :func:`deliverables_dir`.
 DIR_DELIVERABLES: Final[str] = "deliverables"
+
+#: ``<output>/deliverables/pareto/`` — the **multi-objective** sub-folder holding
+#: the Pareto front parquet (:data:`PARETO_FRONT_PARQUET`) and the per-objective
+#: best pipelines (:func:`pareto_best_pipeline_path`). Written only by a
+#: multi-objective tune run; a single-objective run never creates it (the
+#: back-compat lock — plan §0b). Rooted under :func:`deliverables_dir`.
+DIR_PARETO: Final[str] = "pareto"
 
 
 # ---------------------------------------------------------------------------
@@ -519,6 +538,39 @@ def study_db_path(output_dir: Path) -> Path:
     installed.
     """
     return Path(output_dir) / STUDY_DB
+
+
+def pareto_dir(output_dir: Path) -> Path:
+    """Return ``<output>/deliverables/pareto/`` — the multi-objective sub-folder.
+
+    Holds a multi-objective tune run's Pareto front + per-objective best
+    pipelines. A single-objective run never creates it (the back-compat lock).
+    """
+    return deliverables_dir(output_dir) / DIR_PARETO
+
+
+def pareto_front_parquet_path(output_dir: Path) -> Path:
+    """Return ``<output>/deliverables/pareto/pareto_front.parquet`` (the front)."""
+    return pareto_dir(output_dir) / PARETO_FRONT_PARQUET
+
+
+def pareto_best_pipeline_path(output_dir: Path, objective: str) -> Path:
+    """Return ``deliverables/pareto/best_<objective>.json`` (a per-axis winner).
+
+    The pipeline maximizing the single ``objective`` axis on the Pareto front.
+    ``objective`` is the objective name as it appears in ``objectives_json`` (a
+    scorer-defined label, e.g. ``"Dice"`` or a composite child handle ``"s0"``).
+
+    Args:
+        output_dir: The run directory.
+        objective: The objective-axis name (the ``best_<objective>.json`` stem).
+
+    Returns:
+        The per-objective best-pipeline path under :func:`pareto_dir`.
+    """
+    return pareto_dir(output_dir) / _PARETO_BEST_PIPELINE_FILENAME_TEMPLATE.format(
+        objective=objective
+    )
 
 
 def analysis_csv_path(output_dir: Path) -> Path:

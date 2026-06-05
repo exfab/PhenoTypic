@@ -405,6 +405,75 @@ class TestDeliverablesLayout:
 
 
 # ---------------------------------------------------------------------------
+# Multi-objective Pareto deliverables (Phase 4 chunk C)
+# ---------------------------------------------------------------------------
+
+
+class TestParetoPaths:
+    """The ``deliverables/pareto/`` multi-objective artifact paths.
+
+    A multi-objective tune run writes its Pareto front + per-objective winners
+    into ``<output>/deliverables/pareto/``; these helpers resolve those paths so
+    no caller hand-joins ``"pareto"`` (plan §0b path-helper rule).
+    """
+
+    @pytest.fixture
+    def output(self) -> Path:
+        return Path("/tmp/pht_tune")
+
+    def test_dir_pareto_constant(self) -> None:
+        from phenotypic.tools_._io_constants import DIR_PARETO
+
+        assert DIR_PARETO == "pareto"
+
+    def test_pareto_front_parquet_constant(self) -> None:
+        from phenotypic.tools_._io_constants import PARETO_FRONT_PARQUET
+
+        assert PARETO_FRONT_PARQUET == "pareto_front.parquet"
+
+    def test_pareto_dir_under_deliverables(self, output: Path) -> None:
+        from phenotypic.tools_._io_constants import deliverables_dir, pareto_dir
+
+        assert pareto_dir(output) == deliverables_dir(output) / "pareto"
+
+    def test_pareto_front_parquet_path(self, output: Path) -> None:
+        from phenotypic.tools_._io_constants import (
+            pareto_dir,
+            pareto_front_parquet_path,
+        )
+
+        assert pareto_front_parquet_path(output) == (
+            pareto_dir(output) / "pareto_front.parquet"
+        )
+
+    def test_pareto_best_pipeline_path_per_objective(self, output: Path) -> None:
+        from phenotypic.tools_._io_constants import (
+            pareto_best_pipeline_path,
+            pareto_dir,
+        )
+
+        assert pareto_best_pipeline_path(output, "Dice") == (
+            pareto_dir(output) / "best_Dice.json"
+        )
+        assert pareto_best_pipeline_path(output, "s0") == (
+            pareto_dir(output) / "best_s0.json"
+        )
+
+    def test_pareto_paths_root_under_deliverables(self, output: Path) -> None:
+        from phenotypic.tools_._io_constants import (
+            deliverables_dir,
+            pareto_best_pipeline_path,
+            pareto_dir,
+            pareto_front_parquet_path,
+        )
+
+        deliv = deliverables_dir(output)
+        assert deliv in pareto_dir(output).parents or pareto_dir(output).parent == deliv
+        assert deliv in pareto_front_parquet_path(output).parents
+        assert deliv in pareto_best_pipeline_path(output, "IoU").parents
+
+
+# ---------------------------------------------------------------------------
 # JSON contract key namespace classes
 # ---------------------------------------------------------------------------
 

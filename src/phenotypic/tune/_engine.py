@@ -11,6 +11,7 @@ from typing import Optional
 from phenotypic import ImagePipeline
 
 from ._evaluation import build_pipeline
+from ._multi_objective import objective_directions
 from ._spec import TuningSpec
 from ._study._protocol import StudyStore
 from ._study_store import JournalStudyStore, Trial
@@ -54,7 +55,13 @@ class TuningEngine:
             The best :class:`Trial`, or ``None`` if none succeeded.
         """
         spec = self._spec
-        strategy = spec.strategy.build(spec.search_space, self._store)
+        # Multi-objective is inferred from the scorer (plan §0b): a dict-returning
+        # scorer yields per-objective ``directions`` the Optuna backend turns into
+        # an NSGA-II Pareto study; ``None`` keeps the scalar single-objective path.
+        directions = objective_directions(spec.scorer)
+        strategy = spec.strategy.build(
+            spec.search_space, self._store, directions=directions
+        )
 
         # Resume: a deterministic journal is fast-forwarded by replaying the
         # strategy past the recorded trials; an in-place-resumable backend (e.g.
@@ -91,6 +98,9 @@ class TuningEngine:
                     score=result.score,
                     terms=result.terms,
                     n_images=result.n_images,
+                    # The multi-objective sidecar (plan §0a): carried verbatim
+                    # from the Evaluator so the Pareto front / knee can read it.
+                    objectives=result.objectives,
                     failed=result.failed,  # explicit flag from the Evaluator
                     pruned=result.pruned,  # early-stopped via the pruning channel
                 )
