@@ -376,13 +376,6 @@ def _export_trials_parquet(store: StudyStore, trials_path: Path) -> None:
     mirror.to_parquet(trials_path)
 
 
-#: Per-objective importance filename written into ``deliverables/pareto/``:
-#: ``param_importance_<objective>.json``. A parameterized string, not an
-#: enumeration — kept as a private template paired with the writer in
-#: :func:`_finalize_pareto_outputs`.
-_PARETO_IMPORTANCE_FILENAME_TEMPLATE = "param_importance_{objective}.json"
-
-
 def _finalize_pareto_outputs(
     store: StudyStore, spec: TuningSpec, output_dir: Path
 ) -> None:
@@ -419,8 +412,16 @@ def _finalize_pareto_outputs(
     JournalStudyStore(list(front)).to_parquet(io.pareto_front_parquet_path(output_dir))
 
     # One best pipeline + importance per objective axis (stable name order).
-    objective_names = list(front[0].objectives or {})
-    for name in objective_names:
+    # Source the axis order from the scorer (authoritative — every axis the
+    # study optimized) rather than an arbitrary front member, so each axis gets
+    # a best_<axis>.json even when the front's first trial floored one to 0.0;
+    # fall back to the first trial's keys for a scorer exposing no names.
+    from .._multi_objective import objective_names as _scorer_objective_axes
+
+    objective_axes = _scorer_objective_axes(spec.scorer) or list(
+        front[0].objectives or {}
+    )
+    for name in objective_axes:
         winner = max(
             (t for t in front if t.objectives and name in t.objectives),
             key=lambda t: t.objectives[name],  # type: ignore[index]
@@ -431,7 +432,7 @@ def _finalize_pareto_outputs(
             io.pareto_best_pipeline_path(output_dir, name).write_text(
                 pipeline.to_json() or ""
             )
-        (pareto_dir / _PARETO_IMPORTANCE_FILENAME_TEMPLATE.format(objective=name)).write_text(
+        io.pareto_importance_path(output_dir, name).write_text(
             json.dumps(compute_param_importance(store, objective=name), indent=2)
         )
 

@@ -174,6 +174,13 @@ PARETO_FRONT_PARQUET: Final[str] = "pareto_front.parquet"
 #: string is not an enumeration — see the code-style note on render functions).
 _PARETO_BEST_PIPELINE_FILENAME_TEMPLATE: Final[str] = "best_{objective}.json"
 
+#: Per-objective param-importance filename template written into :data:`DIR_PARETO`:
+#: ``param_importance_<objective>.json`` (e.g. ``param_importance_s0.json``). The
+#: multi-objective sibling of :data:`PARAM_IMPORTANCE_JSON` — one RF-permutation
+#: importance report per objective axis. Rendered by :func:`pareto_importance_path`;
+#: kept private (a parameterized string is not an enumeration).
+_PARETO_IMPORTANCE_FILENAME_TEMPLATE: Final[str] = "param_importance_{objective}.json"
+
 # ---------------------------------------------------------------------------
 # QC artifact filenames (live inside DIR_QC)
 # ---------------------------------------------------------------------------
@@ -569,6 +576,26 @@ def pareto_best_pipeline_path(output_dir: Path, objective: str) -> Path:
         The per-objective best-pipeline path under :func:`pareto_dir`.
     """
     return pareto_dir(output_dir) / _PARETO_BEST_PIPELINE_FILENAME_TEMPLATE.format(
+        objective=objective
+    )
+
+
+def pareto_importance_path(output_dir: Path, objective: str) -> Path:
+    """Return ``deliverables/pareto/param_importance_<objective>.json``.
+
+    The per-objective RF-permutation importance report (the multi-objective
+    sibling of :func:`param_importance_path`). ``objective`` is the objective
+    name as it appears in ``objectives_json`` (a scorer-defined label, e.g.
+    ``"Dice"`` or a composite child handle ``"s0"``).
+
+    Args:
+        output_dir: The run directory.
+        objective: The objective-axis name (the filename's ``<objective>`` slot).
+
+    Returns:
+        The per-objective importance-report path under :func:`pareto_dir`.
+    """
+    return pareto_dir(output_dir) / _PARETO_IMPORTANCE_FILENAME_TEMPLATE.format(
         objective=objective
     )
 

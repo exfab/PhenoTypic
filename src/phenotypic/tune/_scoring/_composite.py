@@ -220,9 +220,16 @@ class CompositeScorer(Scorer):
         each child's own :meth:`Scorer.finalize` over its un-prefixed sub-terms
         (projecting a child's own multi-objective dict to its mean), then:
 
-        * ``multi_objective=True`` → returns ``{handle: child_scalar}`` — the
-          plan §0a sidecar the ``Evaluator`` stashes on
-          ``EvaluationResult.objectives``.
+        * ``multi_objective=True`` → returns ``{handle: child_scalar}`` over
+          **every** axis in :meth:`objective_names` order — the plan §0a sidecar
+          the ``Evaluator`` stashes on ``EvaluationResult.objectives``. A child
+          that abstains (no terms this run) is floored to ``0.0`` (the
+          higher-is-better worst score) rather than dropped, so the dict keys +
+          order stay invariant and exactly match the multi-objective study's
+          fixed ``directions``. A dropped axis would otherwise make the NSGA-II
+          value vector the wrong length and crash Optuna's ``tell`` mid-run; the
+          ``0.0`` floor also mirrors the journal Pareto ``_vector`` fill so the
+          journal and Optuna backends agree on an abstaining axis.
         * with :attr:`weights` → the weighted arithmetic mean of the per-child
           scalars (missing weights default to ``1.0``).
         * otherwise → the geometric mean of the per-child scalars (so a single
@@ -235,12 +242,15 @@ class CompositeScorer(Scorer):
 
         Returns:
             The scalar objective (``0.0`` for no children/terms) for the
-            single-objective path, or the per-child ``dict`` for the
-            multi-objective path.
+            single-objective path, or the per-child ``dict`` (one entry per axis,
+            abstainers floored to ``0.0``) for the multi-objective path.
         """
         child_scalars = self._per_child_scalars(terms)
         if self.multi_objective:
-            return child_scalars
+            return {
+                handle: child_scalars.get(handle, 0.0)
+                for handle in self.objective_names()
+            }
         values = list(child_scalars.values())
         if not values:
             return 0.0

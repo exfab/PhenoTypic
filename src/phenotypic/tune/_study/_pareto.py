@@ -120,6 +120,15 @@ def knee_point_of(front: list["Trial"]) -> "Trial | None":
     §0b). A degenerate front (zero/one point, or all points coincident so the
     chord has zero length) returns the first member (or ``None`` when empty).
 
+    **Two-objective exactness, n-objective heuristic.** For two objectives the
+    lexicographic min/max *are* the two front-spanning extremes, so the chord is
+    the true endpoint-to-endpoint line and the knee is exact — the case Phase-4
+    multi-objective runs use. For ≥3 objectives the lexicographic min/max are not
+    generally the spanning extremes, so the chord (and hence the "knee") is a
+    reasonable but heuristic compromise pick, not a provably-optimal one. (A
+    true n-D knee would project onto the hyperplane through all extreme points;
+    deferred until a ≥3-objective scorer ships.)
+
     Args:
         front: The Pareto front (e.g. from :func:`pareto_front_of`).
 

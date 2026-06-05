@@ -459,18 +459,33 @@ class TestParetoPaths:
             pareto_dir(output) / "best_s0.json"
         )
 
+    def test_pareto_importance_path_per_objective(self, output: Path) -> None:
+        from phenotypic.tools_._io_constants import (
+            pareto_dir,
+            pareto_importance_path,
+        )
+
+        assert pareto_importance_path(output, "Dice") == (
+            pareto_dir(output) / "param_importance_Dice.json"
+        )
+        assert pareto_importance_path(output, "s0") == (
+            pareto_dir(output) / "param_importance_s0.json"
+        )
+
     def test_pareto_paths_root_under_deliverables(self, output: Path) -> None:
         from phenotypic.tools_._io_constants import (
             deliverables_dir,
             pareto_best_pipeline_path,
             pareto_dir,
             pareto_front_parquet_path,
+            pareto_importance_path,
         )
 
         deliv = deliverables_dir(output)
         assert deliv in pareto_dir(output).parents or pareto_dir(output).parent == deliv
         assert deliv in pareto_front_parquet_path(output).parents
         assert deliv in pareto_best_pipeline_path(output, "IoU").parents
+        assert deliv in pareto_importance_path(output, "IoU").parents
 
 
 # ---------------------------------------------------------------------------
