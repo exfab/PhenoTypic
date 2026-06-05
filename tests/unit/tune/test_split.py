@@ -16,6 +16,9 @@ from phenotypic.tune._evaluation._split import (
     _dataset_identity,
     _split_subseed,
     derive_split,
+    read_split,
+    resolve_split,
+    write_split,
 )
 
 
@@ -178,3 +181,44 @@ def test_split_is_a_frozen_dataclass():
         assert "frozen" in type(exc).__name__.lower() or "frozen" in str(exc).lower()
     else:
         raise AssertionError("Split must be a frozen dataclass")
+
+
+# -- B3: persist + reload + resume reuse --------------------------------------
+
+
+def test_split_persists_and_reloads(tmp_path):
+    groups = ["A", "A", "A", "A", "B", "B", "B", "B"]
+    images = _plates(8, groups=groups)
+    split = derive_split(
+        images, master_seed=3, group_key="Metadata_Group",
+        held_out_fraction=0.25, min_heldout_plates=2,
+    )
+    write_split(tmp_path, split)
+    reloaded = read_split(tmp_path)
+    assert reloaded == split
+
+
+def test_read_split_missing_returns_none(tmp_path):
+    assert read_split(tmp_path) is None
+
+
+def test_resume_reuses_persisted_split(tmp_path):
+    groups = ["A", "A", "A", "A", "B", "B", "B", "B"]
+    images = _plates(8, groups=groups)
+    common = dict(
+        group_key="Metadata_Group", held_out_fraction=0.25, min_heldout_plates=2,
+    )
+    first = resolve_split(tmp_path, images, master_seed=1, **common)
+    # A second resolve with a DIFFERENT master seed must reuse the persisted split.
+    second = resolve_split(tmp_path, images, master_seed=42, **common)
+    assert second == first
+
+
+def test_fresh_run_derives_and_persists(tmp_path):
+    images = _plates(8, groups=["A", "A", "A", "A", "B", "B", "B", "B"])
+    assert read_split(tmp_path) is None
+    split = resolve_split(
+        tmp_path, images, master_seed=0, group_key="Metadata_Group",
+        held_out_fraction=0.25, min_heldout_plates=2,
+    )
+    assert read_split(tmp_path) == split

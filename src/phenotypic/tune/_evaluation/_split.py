@@ -21,10 +21,14 @@ optuna-free (the lazy-import lock).
 from __future__ import annotations
 
 import hashlib
-from dataclasses import dataclass, field
+import json
+from dataclasses import asdict, dataclass, field
+from pathlib import Path
 from typing import Literal, Optional
 
 import numpy as np
+
+from phenotypic.tools_ import _io_constants as _io
 
 #: The held-out partition tier (robust-eval split policy):
 #: - ``"group"``: a whole metadata group is held out (the strongest test of
@@ -131,6 +135,8 @@ def _resolve_groups(images: list, group_key: Optional[str]) -> dict[str, list[st
 def _entropy_list(subseed: np.random.SeedSequence) -> list[int]:
     """The ``SeedSequence`` entropy normalized to a JSON-friendly list of ints."""
     entropy = subseed.entropy
+    if entropy is None:
+        return []
     if isinstance(entropy, int):
         return [entropy]
     return [int(value) for value in entropy]
@@ -227,3 +233,87 @@ def derive_split(
         within_group_caveat=True,
         seed_entropy=entropy,
     )
+
+
+def write_split(output_dir: Path, split: Split) -> Path:
+    """Persist ``split`` to ``<output>/splits/split.json`` (creating ``splits/``).
+
+    Args:
+        output_dir: The run output directory.
+        split: The derived :class:`Split`.
+
+    Returns:
+        The path the split was written to.
+    """
+    path = _io.split_assignment_path(Path(output_dir))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(asdict(split), sort_keys=True, indent=2))
+    return path
+
+
+def read_split(output_dir: Path) -> Optional[Split]:
+    """Reload a persisted :class:`Split`, or ``None`` when none exists.
+
+    Args:
+        output_dir: The run output directory.
+
+    Returns:
+        The reconstructed :class:`Split`, or ``None`` when
+        ``<output>/splits/split.json`` is absent.
+    """
+    path = _io.split_assignment_path(Path(output_dir))
+    if not path.exists():
+        return None
+    payload = json.loads(path.read_text())
+    return Split(
+        calibration=list(payload["calibration"]),
+        held_out=list(payload["held_out"]),
+        kind=payload["kind"],
+        group_key=payload["group_key"],
+        dataset_identity=payload["dataset_identity"],
+        within_group_caveat=bool(payload["within_group_caveat"]),
+        seed_entropy=[int(v) for v in payload["seed_entropy"]],
+    )
+
+
+def resolve_split(
+    output_dir: Path,
+    images: list,
+    *,
+    master_seed: int,
+    group_key: Optional[str],
+    held_out_fraction: float,
+    min_heldout_plates: int,
+) -> Split:
+    """Reuse a persisted split if present, else derive one and persist it.
+
+    Read-if-exists-else-derive-and-write: a fresh run derives + persists; a
+    resume reuses the persisted partition **regardless of the new master seed**,
+    so the held-out plates never leak into calibration across restarts. (Whether
+    a persisted split still matches the current dataset is the caller's check via
+    :attr:`Split.dataset_identity`; this resolver always honors an existing
+    ``split.json``.)
+
+    Args:
+        output_dir: The run output directory.
+        images: The plates being tuned.
+        master_seed: The run's master seed (used only on a fresh derive).
+        group_key: The metadata column defining plate groups, or ``None``.
+        held_out_fraction: The within-group target held-out fraction.
+        min_heldout_plates: The data-poor floor.
+
+    Returns:
+        The persisted or freshly-derived :class:`Split`.
+    """
+    existing = read_split(output_dir)
+    if existing is not None:
+        return existing
+    split = derive_split(
+        images,
+        master_seed=master_seed,
+        group_key=group_key,
+        held_out_fraction=held_out_fraction,
+        min_heldout_plates=min_heldout_plates,
+    )
+    write_split(output_dir, split)
+    return split
