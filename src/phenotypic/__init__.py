@@ -43,6 +43,7 @@ from . import (
     settings_,
     sweep,
     tools_,
+    util,
     prefab,
 )
 
@@ -63,6 +64,7 @@ __all__ = [
     "enhance",
     "nn",
     "tools_",
+    "util",
     "settings_",
     "sweep",
 ]
