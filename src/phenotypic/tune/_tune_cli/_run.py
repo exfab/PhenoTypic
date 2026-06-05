@@ -188,6 +188,8 @@ def run_tuning(
     slurm: bool = False,
     spec_path: Optional[Path] = None,
     images_dir: Optional[Path] = None,
+    held_out_fraction: Optional[float] = None,
+    cv_group: Optional[str] = None,
 ) -> Optional[Trial]:
     """Run ``spec`` over ``images`` and write the ``deliverables/`` artifacts.
 
@@ -211,6 +213,12 @@ def run_tuning(
         spec_path: Path to the on-disk ``tuning_spec.json`` (required for
             ``--slurm`` so each worker can load it).
         images_dir: The calibration image directory (required for ``--slurm``).
+        held_out_fraction: Optional ``--held-out-fraction`` override of the spec's
+            :attr:`HeldOutConfig.held_out_fraction` (robust-eval). ``None`` keeps
+            the spec value. CLI flag > spec value > inference.
+        cv_group: Optional ``--cv-group`` override of the held-out grouping column
+            (:attr:`HeldOutConfig.group_key`). ``None`` keeps the spec value (then
+            the scorer's inferred ``groupby[0]``). The gap margins stay spec-only.
 
     Returns:
         The best :class:`Trial`, or ``None`` (e.g. a fire-and-forget SLURM
@@ -233,6 +241,14 @@ def run_tuning(
     # scorer without an Optuna strategy aborts cleanly with an actionable error.
     reject_grid_random_multi_objective(
         resolved_spec.scorer, resolved_spec.strategy
+    )
+
+    # Held-out CLI overrides (robust-eval): --held-out-fraction / --cv-group take
+    # precedence over the spec's HeldOutConfig (CLI flag > spec value > inference)
+    # and are folded in BEFORE the resolved spec is persisted, so tuning_spec.json
+    # records the policy the run actually used. The gap margins stay spec-only.
+    resolved_spec = _apply_held_out_overrides(
+        resolved_spec, held_out_fraction=held_out_fraction, cv_group=cv_group
     )
 
     io.deliverables_dir(output_dir).mkdir(parents=True, exist_ok=True)
@@ -360,6 +376,40 @@ def _submit_slurm_fleet(
     )
     executor.run(lambda w: w, list(range(n_workers)))
     return None
+
+
+def _apply_held_out_overrides(
+    spec: TuningSpec,
+    *,
+    held_out_fraction: Optional[float],
+    cv_group: Optional[str],
+) -> TuningSpec:
+    """Fold the ``--held-out-fraction`` / ``--cv-group`` flags into the spec.
+
+    Returns ``spec`` untouched when neither flag is given; otherwise a copy whose
+    :class:`~phenotypic.tune.HeldOutConfig` carries the overrides (the only fields
+    the flags touch — the gap margins stay spec-only). CLI flag > spec value >
+    inference precedence: a flag wins over the spec block, and an unset flag
+    leaves the spec value (which itself defers to inference downstream).
+
+    Args:
+        spec: The resolved tuning spec.
+        held_out_fraction: The ``--held-out-fraction`` override, or ``None``.
+        cv_group: The ``--cv-group`` grouping-column override, or ``None``.
+
+    Returns:
+        The spec (possibly a ``model_copy`` with an overridden ``held_out`` block).
+    """
+    updates: dict[str, Any] = {}
+    if held_out_fraction is not None:
+        updates["held_out_fraction"] = held_out_fraction
+    if cv_group is not None:
+        updates["group_key"] = cv_group
+    if not updates:
+        return spec
+    return spec.model_copy(
+        update={"held_out": spec.held_out.model_copy(update=updates)}
+    )
 
 
 def _resolve_calibration_images(

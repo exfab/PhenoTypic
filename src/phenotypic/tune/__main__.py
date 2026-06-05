@@ -87,6 +87,25 @@ def _build_parser() -> argparse.ArgumentParser:
         default=False,
         help="submit a distributed worker fleet over SLURM instead of running locally",
     )
+    run_p.add_argument(
+        "--held-out-fraction",
+        type=float,
+        default=None,
+        dest="held_out_fraction",
+        help=(
+            "override the spec's held-out fraction (robust-eval): the target "
+            "share of plates reserved for the generalization pass"
+        ),
+    )
+    run_p.add_argument(
+        "--cv-group",
+        default=None,
+        dest="cv_group",
+        help=(
+            "override the held-out grouping column (robust-eval); when unset the "
+            "spec value, then the count scorer's groupby[0], is inferred"
+        ),
+    )
 
     auto_p = sub.add_parser(
         "auto-space",
@@ -135,6 +154,8 @@ def _run_command(args: argparse.Namespace) -> None:
         slurm=args.slurm,
         spec_path=Path(args.spec),
         images_dir=Path(args.input),
+        held_out_fraction=args.held_out_fraction,
+        cv_group=args.cv_group,
     )
 
 

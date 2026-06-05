@@ -86,3 +86,67 @@ def test_auto_space_subcommand_infers_without_running_engine(tmp_path):
 
     assert io.tuning_spec_path(out).exists()
     assert not io.trials_parquet_path(out).exists()  # no engine run
+
+
+# -- E2: held-out CLI overrides reach HeldOutConfig ----------------------------
+
+
+def test_held_out_flags_override_spec(tmp_path, monkeypatch):
+    """``--held-out-fraction`` + ``--cv-group`` reach the resolved spec's policy."""
+    from phenotypic.tune import __main__ as cli
+    from phenotypic.tune._tune_cli import _run as run_mod
+
+    spec_path = tmp_path / "spec.json"
+    spec_path.write_text(_spec(tmp_path).model_dump_json())
+    out = tmp_path / "out"
+    monkeypatch.setattr(cli, "_load_images", lambda _p: [load_synth_yeast_plate()])
+
+    captured: dict = {}
+    original = run_mod.run_tuning
+
+    def _capture(spec, images, output_dir, **kwargs):
+        captured["held_out_fraction"] = kwargs.get("held_out_fraction")
+        captured["cv_group"] = kwargs.get("cv_group")
+        return original(spec, images, output_dir, **kwargs)
+
+    monkeypatch.setattr(cli, "run_tuning", _capture)
+
+    cli.main([
+        "run", str(spec_path), "-i", str(tmp_path), "-o", str(out),
+        "--held-out-fraction", "0.25", "--cv-group", "Metadata_Batch",
+    ])
+
+    # The flags threaded through _run_command → run_tuning.
+    assert captured["held_out_fraction"] == 0.25
+    assert captured["cv_group"] == "Metadata_Batch"
+    # The resolved + persisted spec carries the overridden HeldOutConfig.
+    from phenotypic.tune._spec import TuningSpec as _Spec
+
+    resolved = _Spec.model_validate_json(io.tuning_spec_path(out).read_text())
+    assert resolved.held_out.held_out_fraction == 0.25
+    assert resolved.held_out.group_key == "Metadata_Batch"
+
+
+def test_run_tuning_held_out_overrides_directly(tmp_path, monkeypatch):
+    """``run_tuning(..., held_out_fraction=, cv_group=)`` overrides the spec block."""
+    from phenotypic.tune._tune_cli._run import run_tuning
+
+    spec = _spec(tmp_path)
+    out = tmp_path / "out"
+
+    run_tuning(
+        spec,
+        [load_synth_yeast_plate()],
+        out,
+        held_out_fraction=0.3,
+        cv_group="Metadata_Plate",
+    )
+
+    from phenotypic.tune._spec import TuningSpec as _Spec
+
+    resolved = _Spec.model_validate_json(io.tuning_spec_path(out).read_text())
+    assert resolved.held_out.held_out_fraction == 0.3
+    assert resolved.held_out.group_key == "Metadata_Plate"
+    # gap margins are spec-only (untouched by the flags) — keep their defaults.
+    assert resolved.held_out.gap_margin_relative == spec.held_out.gap_margin_relative
+    assert resolved.held_out.gap_margin_absolute == spec.held_out.gap_margin_absolute
