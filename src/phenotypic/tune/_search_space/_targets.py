@@ -1,0 +1,97 @@
+"""Typed parameter-reference targets for search-space knobs.
+
+A ``Knob`` addresses a pipeline parameter by a structured ``KnobTarget`` — one
+of ``Param`` (a flat field on a top-level op), ``Presence`` (an op on/off
+toggle), or ``Nested`` (a depth-1 nested-op leaf). Each renders the canonical
+``.key`` string the engine already consumes (``build_pipeline`` is untouched),
+so targets are a typed authoring/serialization layer over the existing keys.
+
+The public surface lives in the ``phenotypic.tune.targets`` subpackage; these
+classes are accessed as ``targets.Param(...)``. This module imports neither
+``_space`` nor ``_infer`` (it sits below both, so there is no import cycle).
+"""
+from __future__ import annotations
+
+from typing import Annotated, Literal, Optional, Union
+
+from pydantic import BaseModel, ConfigDict, Field
+
+#: The presence-toggle dunder segment (an op on/off flag in the key grammar).
+_ENABLED = "__enabled__"
+
+
+class _TargetBase(BaseModel):
+    """Shared config for every target value-model (frozen, no extra fields)."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+
+class Param(_TargetBase):
+    """A flat scalar field on the top-level op at ``op`` — key ``"<op>.<field>"``.
+
+    Args:
+        op: The op's position index in the pipeline.
+        field: The scalar field name on that op.
+        op_class: Optional class-name cross-check — when set, the ``TuningSpec``
+            validator asserts the op at ``op`` is this class (posture C: always
+            populated by discovery / inference).
+    """
+
+    kind: Literal["param"] = "param"
+    op: int
+    field: str
+    op_class: Optional[str] = None
+
+    @property
+    def key(self) -> str:
+        """The canonical ``"<op>.<field>"`` key string."""
+        return f"{self.op}.{self.field}"
+
+
+class Presence(_TargetBase):
+    """An op on/off toggle — key ``"<op>[.<Class>].__enabled__"``.
+
+    Args:
+        op: The op's position index.
+        op_class: The op's class name; when set, renders the classed key form
+            and is cross-checked by the ``TuningSpec`` validator.
+    """
+
+    kind: Literal["presence"] = "presence"
+    op: int
+    op_class: Optional[str] = None
+
+    @property
+    def key(self) -> str:
+        """The canonical presence key (classed when ``op_class`` is set)."""
+        if self.op_class:
+            return f"{self.op}.{self.op_class}.{_ENABLED}"
+        return f"{self.op}.{_ENABLED}"
+
+
+class Nested(_TargetBase):
+    """A depth-1 nested-op leaf — key ``"<op>.<field>[<index>].<leaf>"``.
+
+    Args:
+        op: The parent (top-level) op's position index.
+        field: The parent's operation-valued list field.
+        index: The slot in that list.
+        leaf: The scalar field on the nested op.
+        op_class: Optional class-name cross-check of the *parent* op at ``op``.
+    """
+
+    kind: Literal["nested"] = "nested"
+    op: int
+    field: str
+    index: int
+    leaf: str
+    op_class: Optional[str] = None
+
+    @property
+    def key(self) -> str:
+        """The canonical ``"<op>.<field>[<index>].<leaf>"`` key string."""
+        return f"{self.op}.{self.field}[{self.index}].{self.leaf}"
+
+
+#: The discriminated union a ``Knob.target`` holds.
+KnobTarget = Annotated[Union[Param, Presence, Nested], Field(discriminator="kind")]
