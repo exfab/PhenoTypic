@@ -65,3 +65,43 @@ def test_with_op_class_fills_from_pipeline():
 
 def test_with_op_class_leaves_out_of_range_untouched():
     assert with_op_class(Param(op=9, field="x"), []).op_class is None
+
+
+# --- review-fix regressions: parse_key strictness must match build_pipeline ---
+
+def test_parse_key_rejects_depth_2_nested():
+    # parse_key must not be more permissive than build_pipeline's depth-1 cap:
+    # a leaf carrying a further "[i]" segment is rejected (else a Knob would
+    # parse fine but fail at evaluation in build_pipeline).
+    with pytest.raises(ValueError, match="depth cap"):
+        parse_key("0.f[1].g[2].h")
+    with pytest.raises(ValueError, match="depth cap"):
+        parse_key("0.f[1].g[2]")
+
+
+def test_parse_key_accepts_depth_1_nested():
+    t = parse_key("0.detectors[1].ignore_zeros")
+    assert (t.op, t.field, t.index, t.leaf) == (0, "detectors", 1, "ignore_zeros")
+
+
+def test_parse_key_rejects_empty_class_presence():
+    with pytest.raises(ValueError, match="empty class segment"):
+        parse_key("0..__enabled__")
+
+
+def test_parent_presence_condition_returns_a_target_parent():
+    # When an op opts into presence-wrapping, the nested-knob gate must be a
+    # structured Presence *target* (not a raw string) — the nested recursion
+    # stamps conditional_on via model_copy (bypassing Knob's str coercion), so a
+    # string parent would make Knob.is_active (ptarget.key) raise AttributeError.
+    from phenotypic.tune._search_space._infer import _parent_presence_condition
+
+    class _Wrapped:
+        _tune_optional = True
+
+    cond = _parent_presence_condition(_Wrapped(), 2)
+    assert cond is not None
+    (parent, value), = cond
+    assert isinstance(parent, Presence)
+    assert parent.op == 2 and parent.op_class == "_Wrapped" and value is True
+    assert parent.key == "2._Wrapped.__enabled__"

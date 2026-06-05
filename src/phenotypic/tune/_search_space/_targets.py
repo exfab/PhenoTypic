@@ -130,11 +130,22 @@ def parse_key(key: str) -> "KnobTarget":
             leaf = ".".join(parts[i + 1:])
             if not field or not idx.isdigit() or not leaf:
                 raise ValueError(f"key {key!r} has a malformed nested segment")
+            if "[" in leaf:
+                # Mirror build_pipeline's canonical depth-1 cap: the leaf must
+                # not carry a further "[i]" segment (e.g. "0.f[1].g[2].h").
+                raise ValueError(
+                    f"key {key!r} exceeds the nesting depth cap of 1 "
+                    "(the leaf must not carry a further '[i]' segment)"
+                )
             return Nested(op=op, field=field, index=int(idx), leaf=leaf)
 
     # Presence: trailing "__enabled__" (classed three-part or bare two-part).
     if parts[-1] == _ENABLED:
         if len(parts) == 3:
+            if not parts[1]:
+                # "0..__enabled__" — an empty class segment would render the bare
+                # key, a non-round-tripping parse; reject it like build_pipeline.
+                raise ValueError(f"presence key {key!r} has an empty class segment")
             return Presence(op=op, op_class=parts[1])
         if len(parts) == 2:
             return Presence(op=op)

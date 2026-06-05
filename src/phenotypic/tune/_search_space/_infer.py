@@ -49,7 +49,7 @@ import numpy as np
 from ._domains import Categorical, FloatRange, IntRange
 from ._inferred import Excluded, ExcludeReason, InferredSearchSpace
 from ._space import Knob
-from ._targets import parse_key, with_op_class
+from ._targets import KnobTarget, parse_key, with_op_class
 from ._tune_spec import TuneSpec
 
 #: Multiplicative half-window for the unbounded heuristic: ``[d/f, d·f]``.
@@ -564,7 +564,7 @@ def _recurse_into_op(
     prefix: str,
     *,
     factor: float,
-    conditional_on: tuple[tuple[str, Any], ...] | None,
+    conditional_on: tuple[tuple[KnobTarget, Any], ...] | None,
 ) -> tuple[list[Knob], list[Excluded]]:
     """Infer one nested op's scalar fields (depth cap = 1).
 
@@ -661,18 +661,22 @@ def _infer_nested_field(
 
 def _parent_presence_condition(
     op: Any, position: int
-) -> tuple[tuple[str, Any], ...] | None:
+) -> tuple[tuple[KnobTarget, Any], ...] | None:
     """Return the nested knob's ``conditional_on`` gate, or ``None``.
 
     A nested knob is gated on its parent's ``__enabled__`` toggle **only** when
-    the parent op is presence-wrapped (``type(op)._tune_optional``). The live
-    ``Knob.conditional_on`` type is ``tuple[tuple[str, Any], ...]`` (not the
-    ``dict`` of the design sketch). In v1 no op sets ``_tune_optional`` and
-    inference emits no top-level presence knob, so this returns ``None``.
+    the parent op is presence-wrapped (``type(op)._tune_optional``). The gate is
+    a structured ``Presence`` **target** (not a bare string): the live
+    ``Knob.conditional_on`` is ``tuple[tuple[KnobTarget, Any], ...]``, and the
+    nested-recursion stamps it via ``model_copy`` (which bypasses ``Knob``'s
+    string-coercion before-validator), so the parent must already be a target —
+    otherwise ``Knob.is_active`` (``ptarget.key``) would hit a raw ``str``. In v1
+    no op sets ``_tune_optional`` and inference emits no top-level presence knob,
+    so this returns ``None``.
     """
     if getattr(type(op), "_tune_optional", False):
         cls_name = type(op).__name__
-        return ((f"{position}.{cls_name}.__enabled__", True),)
+        return ((parse_key(f"{position}.{cls_name}.__enabled__"), True),)
     return None
 
 
