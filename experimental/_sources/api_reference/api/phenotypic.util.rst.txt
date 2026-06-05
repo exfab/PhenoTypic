@@ -17,6 +17,8 @@
       :nosignatures:
    
       geometric_median
+      generate_output_key
+      split_measurements
       decode_well_position
    
    
