@@ -69,6 +69,14 @@ from phenotypic.gui.builder._image_renderer import (
     dataframe_to_table,
     render_node_preview,
 )
+from phenotypic.gui.builder._linear_model import (
+    LinearTarget,
+    default_continuation_target,
+    resolve_selected_target,
+    scope_key,
+    target_from_dict,
+    target_to_dict,
+)
 from phenotypic.gui.builder._layout import (
     _sort_issues_for_badge,
     build_breadcrumb,
@@ -722,6 +730,694 @@ def _container_is_empty(block_dict: Dict[str, Any]) -> bool:
     return non_input_count == 0
 
 
+def _linear_current_scope(
+    state_dict: Dict[str, Any],
+) -> Tuple[List[str], Optional[Dict[str, Any]]]:
+    """Return the current DAG breadcrumb and scope dict for linear edits."""
+
+    breadcrumb = [
+        segment
+        for segment in list(state_dict.get("breadcrumb", []) or [])
+        if isinstance(segment, str)
+    ]
+    return breadcrumb, _dag_scope_at_breadcrumb(state_dict, breadcrumb)
+
+
+def _linear_selected_target(state_dict: Dict[str, Any]) -> LinearTarget:
+    """Resolve the active linear target from JSON state with fallback."""
+
+    return resolve_selected_target(state_from_json(state_dict))
+
+
+def _linear_set_target(
+    state_dict: Dict[str, Any], target: LinearTarget, *, open_menu: bool = False
+) -> None:
+    """Persist a selected target and optionally open its local menu."""
+
+    targets = state_dict.setdefault("selected_targets_by_scope", {})
+    targets[scope_key(target.scope_path)] = target_to_dict(target)
+    state_dict["open_port_menu"] = target_to_dict(target) if open_menu else None
+
+
+def _linear_reset_target_to_continuation(
+    state_dict: Dict[str, Any], scope_path: List[str]
+) -> None:
+    """Select the floating continuation port for ``scope_path``."""
+
+    _linear_set_target(
+        state_dict,
+        default_continuation_target(scope_path),
+        open_menu=False,
+    )
+
+
+def _linear_block(
+    scope_dict: Dict[str, Any], block_id: Optional[str]
+) -> Optional[Dict[str, Any]]:
+    """Find a direct block child inside ``scope_dict``."""
+
+    if not isinstance(block_id, str):
+        return None
+    return next(
+        (
+            block for block in scope_dict.get("blocks", []) or []
+            if block.get("block_id") == block_id
+        ),
+        None,
+    )
+
+
+def _linear_input_block(scope_dict: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Return the scope's InputImage block dict."""
+
+    return next(
+        (
+            block for block in scope_dict.get("blocks", []) or []
+            if block.get("class_name") == INPUT_IMAGE_CLASS_NAME
+        ),
+        None,
+    )
+
+
+def _linear_image_edge_from(
+    scope_dict: Dict[str, Any], source_block_id: str
+) -> Optional[Dict[str, Any]]:
+    """Return the image edge leaving ``source_block_id`` if present."""
+
+    return next(
+        (
+            edge for edge in scope_dict.get("edges", []) or []
+            if edge.get("kind") == "image"
+            and edge.get("source_block_id") == source_block_id
+        ),
+        None,
+    )
+
+
+def _linear_image_edge_to(
+    scope_dict: Dict[str, Any], target_block_id: str
+) -> Optional[Dict[str, Any]]:
+    """Return the image edge entering ``target_block_id`` if present."""
+
+    return next(
+        (
+            edge for edge in scope_dict.get("edges", []) or []
+            if edge.get("kind") == "image"
+            and edge.get("target_block_id") == target_block_id
+        ),
+        None,
+    )
+
+
+def _linear_spine_ids(scope_dict: Dict[str, Any]) -> List[str]:
+    """Return image-spine block ids in execution order."""
+
+    input_block = _linear_input_block(scope_dict)
+    if input_block is None:
+        return []
+    current_id = input_block.get("block_id")
+    if not isinstance(current_id, str):
+        return []
+    spine: List[str] = []
+    seen: set[str] = set()
+    while isinstance(current_id, str) and current_id not in seen:
+        seen.add(current_id)
+        spine.append(current_id)
+        next_edge = _linear_image_edge_from(scope_dict, current_id)
+        current_id = (
+            next_edge.get("target_block_id") if next_edge is not None else None
+        )
+    return spine
+
+
+def _linear_terminal_block(
+    scope_dict: Dict[str, Any],
+) -> Optional[Dict[str, Any]]:
+    """Return the terminal block in the current linear spine."""
+
+    spine = _linear_spine_ids(scope_dict)
+    return _linear_block(scope_dict, spine[-1]) if spine else None
+
+
+def _linear_new_edge(
+    source_block_id: str,
+    target_block_id: str,
+    *,
+    kind: Literal["image", "aux"],
+    target_port: str,
+    target_slot: Optional[int] = None,
+) -> Dict[str, Any]:
+    """Create a JSON edge dict for linear mutations."""
+
+    return {
+        "edge_id": _new_block_id(),
+        "source_block_id": source_block_id,
+        "source_port": "out",
+        "target_block_id": target_block_id,
+        "target_port": target_port,
+        "target_slot": target_slot,
+        "kind": kind,
+    }
+
+
+def _linear_new_block(class_name: str) -> Dict[str, Any]:
+    """Create a JSON block dict with defaults and optional nested scope."""
+
+    nested_scope: Optional[Dict[str, Any]] = None
+    if class_name == PIPELINE_CLASS_NAME:
+        nested_scope = {
+            "blocks": [],
+            "edges": [],
+            "name": "Pipeline",
+            "desc": "",
+            "nrows": None,
+            "ncols": None,
+        }
+        _seed_input_image_dict(nested_scope)
+    return {
+        "block_id": _new_block_id(),
+        "class_name": class_name,
+        "params": _default_params_for(class_name),
+        "label": None,
+        "nested": nested_scope,
+        "collapsed": False,
+        "list_slot_counts": {},
+    }
+
+
+def _linear_insert_block_in_list(
+    scope_dict: Dict[str, Any],
+    new_block: Dict[str, Any],
+    *,
+    before_block_id: Optional[str] = None,
+    after_block_id: Optional[str] = None,
+) -> None:
+    """Insert ``new_block`` near the visible target for stable rendering."""
+
+    blocks = scope_dict.setdefault("blocks", [])
+    insert_at = len(blocks)
+    if before_block_id is not None:
+        for idx, block in enumerate(blocks):
+            if block.get("block_id") == before_block_id:
+                insert_at = idx
+                break
+    elif after_block_id is not None:
+        for idx, block in enumerate(blocks):
+            if block.get("block_id") == after_block_id:
+                insert_at = idx + 1
+                break
+    blocks.insert(insert_at, new_block)
+
+
+def _linear_insert_spine_block(
+    state_dict: Dict[str, Any],
+    scope_dict: Dict[str, Any],
+    target: LinearTarget,
+    class_name: str,
+) -> Optional[str]:
+    """Insert a new main-spine block at ``target`` and reconnect image edges."""
+
+    new_block = _linear_new_block(class_name)
+    new_id = new_block["block_id"]
+    edges = scope_dict.setdefault("edges", [])
+
+    if target.kind == "continuation":
+        terminal = _linear_terminal_block(scope_dict)
+        if terminal is None:
+            return None
+        terminal_id = terminal.get("block_id")
+        if not isinstance(terminal_id, str):
+            return None
+        _linear_insert_block_in_list(
+            scope_dict, new_block, after_block_id=terminal_id
+        )
+        edges.append(
+            _linear_new_edge(
+                terminal_id, new_id, kind="image", target_port="in"
+            )
+        )
+    elif target.kind == "image_output":
+        source = _linear_block(scope_dict, target.block_id)
+        if source is None:
+            return None
+        source_id = source.get("block_id")
+        if not isinstance(source_id, str):
+            return None
+        old_next = _linear_image_edge_from(scope_dict, source_id)
+        next_target = (
+            old_next.get("target_block_id") if old_next is not None else None
+        )
+        if old_next is not None:
+            edges[:] = [
+                edge for edge in edges
+                if edge.get("edge_id") != old_next.get("edge_id")
+            ]
+        _linear_insert_block_in_list(
+            scope_dict, new_block, after_block_id=source_id
+        )
+        edges.append(
+            _linear_new_edge(source_id, new_id, kind="image", target_port="in")
+        )
+        if isinstance(next_target, str):
+            edges.append(
+                _linear_new_edge(
+                    new_id, next_target, kind="image", target_port="in"
+                )
+            )
+    elif target.kind == "image_input":
+        target_block = _linear_block(scope_dict, target.block_id)
+        if target_block is None:
+            return None
+        target_id = target_block.get("block_id")
+        if not isinstance(target_id, str):
+            return None
+        old_prev = _linear_image_edge_to(scope_dict, target_id)
+        if old_prev is None:
+            _queue_toast(
+                state_dict,
+                "Cannot insert before the Input Image source.",
+                kind="info",
+            )
+            return None
+        prev_source = old_prev.get("source_block_id")
+        if not isinstance(prev_source, str):
+            return None
+        edges[:] = [
+            edge for edge in edges
+            if edge.get("edge_id") != old_prev.get("edge_id")
+        ]
+        _linear_insert_block_in_list(
+            scope_dict, new_block, before_block_id=target_id
+        )
+        edges.append(
+            _linear_new_edge(prev_source, new_id, kind="image", target_port="in")
+        )
+        edges.append(
+            _linear_new_edge(new_id, target_id, kind="image", target_port="in")
+        )
+    else:
+        return None
+
+    out_path = list(target.scope_path)
+    state_dict["selected_block_id"] = new_id
+    state_dict["selected_edge_id"] = None
+    _linear_reset_target_to_continuation(state_dict, out_path)
+    return new_id
+
+
+def _linear_edges_for_param(
+    scope_dict: Dict[str, Any],
+    block_id: str,
+    param: str,
+    slot: Optional[int] = None,
+) -> List[Dict[str, Any]]:
+    """Return aux edges targeting ``block_id.param`` and optional slot."""
+
+    matches = [
+        edge for edge in scope_dict.get("edges", []) or []
+        if edge.get("kind") == "aux"
+        and edge.get("target_block_id") == block_id
+        and edge.get("target_port") == param
+    ]
+    if slot is None:
+        return matches
+    return [edge for edge in matches if edge.get("target_slot") == slot]
+
+
+def _linear_aux_subtree_ids(
+    scope_dict: Dict[str, Any], source_block_id: str
+) -> set[str]:
+    """Collect an aux source and its upstream aux dependencies."""
+
+    image_incident = any(
+        edge.get("kind") == "image"
+        and (
+            edge.get("source_block_id") == source_block_id
+            or edge.get("target_block_id") == source_block_id
+        )
+        for edge in scope_dict.get("edges", []) or []
+    )
+    if image_incident:
+        return set()
+
+    to_delete = {source_block_id}
+    changed = True
+    while changed:
+        changed = False
+        for edge in scope_dict.get("edges", []) or []:
+            if edge.get("kind") != "aux":
+                continue
+            if edge.get("target_block_id") not in to_delete:
+                continue
+            source_id = edge.get("source_block_id")
+            if isinstance(source_id, str) and source_id not in to_delete:
+                to_delete.add(source_id)
+                changed = True
+    return to_delete
+
+
+def _linear_delete_aux_sources(
+    scope_dict: Dict[str, Any], source_block_ids: List[str]
+) -> set[str]:
+    """Delete aux source blocks plus their upstream aux dependencies."""
+
+    delete_ids: set[str] = set()
+    for source_id in source_block_ids:
+        delete_ids.update(_linear_aux_subtree_ids(scope_dict, source_id))
+    if not delete_ids:
+        return set()
+
+    scope_dict["blocks"] = [
+        block for block in scope_dict.get("blocks", []) or []
+        if block.get("block_id") not in delete_ids
+    ]
+    scope_dict["edges"] = [
+        edge for edge in scope_dict.get("edges", []) or []
+        if edge.get("source_block_id") not in delete_ids
+        and edge.get("target_block_id") not in delete_ids
+    ]
+    return delete_ids
+
+
+def _linear_compact_list_slots_dict(
+    scope_dict: Dict[str, Any], block: Dict[str, Any], param: str
+) -> None:
+    """Renumber list aux edge slots without preserving empty gaps."""
+
+    indexed_edges = [
+        (idx, edge)
+        for idx, edge in enumerate(scope_dict.get("edges", []) or [])
+        if edge.get("kind") == "aux"
+        and edge.get("target_block_id") == block.get("block_id")
+        and edge.get("target_port") == param
+    ]
+    indexed_edges.sort(
+        key=lambda pair: (
+            pair[1].get("target_slot")
+            if isinstance(pair[1].get("target_slot"), int)
+            else 0,
+            pair[0],
+        )
+    )
+    for slot, (_idx, edge) in enumerate(indexed_edges):
+        edge["target_slot"] = slot
+    slot_counts = block.setdefault("list_slot_counts", {})
+    if indexed_edges:
+        slot_counts[param] = len(indexed_edges)
+    else:
+        slot_counts.pop(param, None)
+
+
+def _linear_remove_param_edges(
+    scope_dict: Dict[str, Any],
+    block: Dict[str, Any],
+    param: str,
+    *,
+    slot: Optional[int] = None,
+    compact: bool = True,
+) -> set[str]:
+    """Remove matching aux edges and owned aux subtrees."""
+
+    block_id = block.get("block_id")
+    if not isinstance(block_id, str):
+        return set()
+    edges_to_remove = _linear_edges_for_param(scope_dict, block_id, param, slot)
+    source_ids = [
+        edge.get("source_block_id")
+        for edge in edges_to_remove
+        if isinstance(edge.get("source_block_id"), str)
+    ]
+    edge_ids = {edge.get("edge_id") for edge in edges_to_remove}
+    scope_dict["edges"] = [
+        edge for edge in scope_dict.get("edges", []) or []
+        if edge.get("edge_id") not in edge_ids
+    ]
+    removed = _linear_delete_aux_sources(scope_dict, source_ids)
+    if compact:
+        _linear_compact_list_slots_dict(scope_dict, block, param)
+    return removed
+
+
+def _linear_param_info(
+    block: Dict[str, Any], param: str
+) -> Optional[Any]:
+    """Return registry metadata for a consumer parameter."""
+
+    from phenotypic.gui._operation_registry import get_registry
+
+    info = get_registry().get(block.get("class_name", ""))
+    if info is None:
+        return None
+    return info.parameters.get(param)
+
+
+def _linear_class_can_fill_param(class_name: str, param_info: Any) -> bool:
+    """Return whether ``class_name`` can be used as a parameter value."""
+
+    if class_name == PIPELINE_CLASS_NAME:
+        return bool(getattr(param_info, "is_pipeline", False))
+    return bool(getattr(param_info, "is_operation", False))
+
+
+def _linear_fill_parameter(
+    state_dict: Dict[str, Any],
+    scope_dict: Dict[str, Any],
+    target: LinearTarget,
+    class_name: str,
+) -> Optional[str]:
+    """Create or replace a side-loaded parameter value."""
+
+    if target.block_id is None or target.param is None:
+        return None
+    consumer = _linear_block(scope_dict, target.block_id)
+    if consumer is None:
+        return None
+    param_info = _linear_param_info(consumer, target.param)
+    if param_info is None:
+        return None
+    if not _linear_class_can_fill_param(class_name, param_info):
+        _queue_toast(
+            state_dict,
+            "Selected target does not accept that operation.",
+            kind="warning",
+        )
+        return None
+
+    is_list = bool(getattr(param_info, "is_list", False))
+    source_block = _linear_new_block(class_name)
+    source_id = source_block["block_id"]
+    if is_list:
+        slot = target.slot if target.kind == "parameter_slot" else None
+        if slot is None:
+            _linear_compact_list_slots_dict(scope_dict, consumer, target.param)
+            slot = int(
+                consumer.setdefault("list_slot_counts", {}).get(target.param, 0)
+            )
+        else:
+            _linear_remove_param_edges(
+                scope_dict,
+                consumer,
+                target.param,
+                slot=slot,
+                compact=False,
+            )
+        scope_dict.setdefault("blocks", []).append(source_block)
+        scope_dict.setdefault("edges", []).append(
+            _linear_new_edge(
+                source_id,
+                target.block_id,
+                kind="aux",
+                target_port=target.param,
+                target_slot=slot,
+            )
+        )
+        _linear_compact_list_slots_dict(scope_dict, consumer, target.param)
+    else:
+        _linear_remove_param_edges(
+            scope_dict, consumer, target.param, compact=False
+        )
+        scope_dict.setdefault("blocks", []).append(source_block)
+        scope_dict.setdefault("edges", []).append(
+            _linear_new_edge(
+                source_id,
+                target.block_id,
+                kind="aux",
+                target_port=target.param,
+            )
+        )
+
+    if class_name == PIPELINE_CLASS_NAME:
+        nested_path = list(target.scope_path) + [source_id]
+        state_dict["breadcrumb"] = nested_path
+        state_dict["selected_block_id"] = None
+        state_dict["selected_edge_id"] = None
+        _linear_reset_target_to_continuation(state_dict, nested_path)
+    else:
+        state_dict["selected_block_id"] = target.block_id
+        state_dict["selected_edge_id"] = None
+        _linear_reset_target_to_continuation(state_dict, list(target.scope_path))
+    return source_id
+
+
+def _linear_clear_param(
+    state_dict: Dict[str, Any],
+    scope_dict: Dict[str, Any],
+    target: LinearTarget,
+) -> None:
+    """Clear a scalar parameter value or one list slot."""
+
+    if target.block_id is None or target.param is None:
+        return
+    consumer = _linear_block(scope_dict, target.block_id)
+    if consumer is None:
+        return
+    slot = target.slot if target.kind == "parameter_slot" else None
+    _linear_remove_param_edges(scope_dict, consumer, target.param, slot=slot)
+    _linear_reset_target_to_continuation(state_dict, list(target.scope_path))
+
+
+def _linear_drill_param_pipeline(
+    state_dict: Dict[str, Any],
+    scope_dict: Dict[str, Any],
+    source_block_id: Optional[str],
+) -> None:
+    """Drill into an aux ImagePipeline source block."""
+
+    if not isinstance(source_block_id, str):
+        return
+    block = _linear_block(scope_dict, source_block_id)
+    if block is None or block.get("class_name") != PIPELINE_CLASS_NAME:
+        return
+    if not isinstance(block.get("nested"), dict):
+        return
+    scope_path = list(state_dict.get("breadcrumb", []) or []) + [source_block_id]
+    state_dict["breadcrumb"] = scope_path
+    state_dict["selected_block_id"] = None
+    state_dict["selected_edge_id"] = None
+    _linear_reset_target_to_continuation(state_dict, scope_path)
+
+
+def _linear_rewire_spine(
+    scope_dict: Dict[str, Any], spine_ids: List[str]
+) -> None:
+    """Replace image-flow edges with consecutive edges for ``spine_ids``."""
+
+    old_spine_ids = set(_linear_spine_ids(scope_dict))
+    scope_dict["edges"] = [
+        edge for edge in scope_dict.get("edges", []) or []
+        if not (
+            edge.get("kind") == "image"
+            and edge.get("source_block_id") in old_spine_ids
+            and edge.get("target_block_id") in old_spine_ids
+        )
+    ]
+    for source_id, target_id in zip(spine_ids, spine_ids[1:]):
+        scope_dict.setdefault("edges", []).append(
+            _linear_new_edge(source_id, target_id, kind="image", target_port="in")
+        )
+
+
+def _linear_reorder_blocks_by_spine(
+    scope_dict: Dict[str, Any], spine_ids: List[str]
+) -> None:
+    """Move spine blocks to match execution order while preserving aux order."""
+
+    by_id = {
+        block.get("block_id"): block
+        for block in scope_dict.get("blocks", []) or []
+        if isinstance(block.get("block_id"), str)
+    }
+    spine_set = set(spine_ids)
+    ordered = [by_id[block_id] for block_id in spine_ids if block_id in by_id]
+    ordered.extend(
+        block for block in scope_dict.get("blocks", []) or []
+        if block.get("block_id") not in spine_set
+    )
+    scope_dict["blocks"] = ordered
+
+
+def _linear_move_node(
+    state_dict: Dict[str, Any],
+    scope_dict: Dict[str, Any],
+    block_id: str,
+    direction: str,
+) -> None:
+    """Swap a main-spine node left or right."""
+
+    spine_ids = _linear_spine_ids(scope_dict)
+    if block_id not in spine_ids:
+        return
+    idx = spine_ids.index(block_id)
+    if idx == 0:
+        return
+    swap_idx = idx - 1 if direction == "left" else idx + 1
+    if swap_idx <= 0 or swap_idx >= len(spine_ids):
+        return
+    spine_ids[idx], spine_ids[swap_idx] = spine_ids[swap_idx], spine_ids[idx]
+    _linear_rewire_spine(scope_dict, spine_ids)
+    _linear_reorder_blocks_by_spine(scope_dict, spine_ids)
+    state_dict["selected_block_id"] = block_id
+    state_dict["selected_edge_id"] = None
+
+
+def _linear_delete_spine_node(
+    state_dict: Dict[str, Any],
+    scope_dict: Dict[str, Any],
+    block_id: str,
+) -> None:
+    """Delete a main-spine node, reconnecting its neighbors."""
+
+    block = _linear_block(scope_dict, block_id)
+    if block is None:
+        return
+    if block.get("class_name") == INPUT_IMAGE_CLASS_NAME:
+        _queue_toast(state_dict, "Input Image cannot be removed.", kind="info")
+        return
+
+    spine_ids = _linear_spine_ids(scope_dict)
+    if block_id not in spine_ids:
+        return
+    next_spine = [candidate for candidate in spine_ids if candidate != block_id]
+
+    aux_sources = [
+        edge.get("source_block_id")
+        for edge in scope_dict.get("edges", []) or []
+        if edge.get("kind") == "aux"
+        and edge.get("target_block_id") == block_id
+        and isinstance(edge.get("source_block_id"), str)
+    ]
+    removed_aux_ids = _linear_delete_aux_sources(scope_dict, aux_sources)
+
+    removed_edge_ids = {
+        edge.get("edge_id") for edge in scope_dict.get("edges", []) or []
+        if edge.get("source_block_id") == block_id
+        or edge.get("target_block_id") == block_id
+    }
+    scope_dict["blocks"] = [
+        candidate for candidate in scope_dict.get("blocks", []) or []
+        if candidate.get("block_id") != block_id
+    ]
+    scope_dict["edges"] = [
+        edge for edge in scope_dict.get("edges", []) or []
+        if edge.get("source_block_id") != block_id
+        and edge.get("target_block_id") != block_id
+    ]
+    _linear_rewire_spine(scope_dict, next_spine)
+    _linear_reorder_blocks_by_spine(scope_dict, next_spine)
+
+    stale_block_ids = removed_aux_ids | {block_id}
+    if out_selected := state_dict.get("selected_block_id"):
+        if out_selected in stale_block_ids:
+            state_dict["selected_block_id"] = None
+    if state_dict.get("selected_edge_id") in removed_edge_ids:
+        state_dict["selected_edge_id"] = None
+    if state_dict.get("pending_delete_block_id") == block_id:
+        state_dict["pending_delete_block_id"] = None
+    _linear_reset_target_to_continuation(
+        state_dict, list(state_dict.get("breadcrumb", []) or [])
+    )
+
+
 def _scope_contains_block_id(
     scope_dict: Dict[str, Any], block_id: str
 ) -> bool:
@@ -959,6 +1655,16 @@ DispatchKind: TypeAlias = Literal[
     "drill_to_scope",
     "block_delete_request",
     "block_delete_confirm",
+    # Fixed linear port-map dispatchers.
+    "target_select",
+    "target_menu_close",
+    "linear_palette_add",
+    "linear_delete_node_request",
+    "linear_delete_node_confirm",
+    "linear_node_move",
+    "linear_clear_param",
+    "linear_drill_param_pipeline",
+    "linear_select_aux_value",
 ]
 
 
@@ -1131,6 +1837,116 @@ def _dispatch_state_update(
 
     breadcrumb = list(out.get("breadcrumb", []) or [])
     scope = _scope_at_breadcrumb(out, breadcrumb)
+
+    if kind == "target_select":
+        breadcrumb_list = [
+            segment for segment in breadcrumb
+            if isinstance(segment, str)
+        ]
+        target = target_from_dict(payload.get("target", payload), breadcrumb_list)
+        _linear_set_target(
+            out,
+            target,
+            open_menu=bool(payload.get("open_menu", True)),
+        )
+        return out
+
+    if kind == "target_menu_close":
+        out["open_port_menu"] = None
+        return out
+
+    if kind == "linear_palette_add":
+        class_name = payload.get("class_name")
+        if not isinstance(class_name, str) or not class_name:
+            return out
+        if class_name == INPUT_IMAGE_CLASS_NAME:
+            _queue_toast(out, "scope already has an Input Image", kind="info")
+            return out
+        scope_path, linear_scope = _linear_current_scope(out)
+        if linear_scope is None:
+            return out
+        _seed_input_image_dict(linear_scope)
+        target = _linear_selected_target(out)
+        if target.kind in {"continuation", "image_output", "image_input"}:
+            _linear_insert_spine_block(out, linear_scope, target, class_name)
+            return out
+        if target.kind in {"parameter", "parameter_slot"}:
+            _linear_fill_parameter(out, linear_scope, target, class_name)
+            return out
+        _linear_reset_target_to_continuation(out, scope_path)
+        return out
+
+    if kind == "linear_clear_param":
+        scope_path, linear_scope = _linear_current_scope(out)
+        if linear_scope is None:
+            return out
+        target = target_from_dict(payload.get("target", payload), scope_path)
+        _linear_clear_param(out, linear_scope, target)
+        return out
+
+    if kind == "linear_drill_param_pipeline":
+        _scope_path, linear_scope = _linear_current_scope(out)
+        if linear_scope is None:
+            return out
+        source_block_id = payload.get("source_block_id")
+        if not isinstance(source_block_id, str):
+            target = target_from_dict(payload.get("target", payload), breadcrumb)
+            if target.block_id is not None and target.param is not None:
+                matches = _linear_edges_for_param(
+                    linear_scope,
+                    target.block_id,
+                    target.param,
+                    target.slot if target.kind == "parameter_slot" else None,
+                )
+                source_block_id = (
+                    matches[0].get("source_block_id") if matches else None
+                )
+        _linear_drill_param_pipeline(out, linear_scope, source_block_id)
+        return out
+
+    if kind == "linear_select_aux_value":
+        source_block_id = payload.get("source_block_id")
+        if not isinstance(source_block_id, str):
+            return out
+        _scope_path, linear_scope = _linear_current_scope(out)
+        if linear_scope is None:
+            return out
+        if _linear_block(linear_scope, source_block_id) is None:
+            return out
+        out["selected_block_id"] = source_block_id
+        out["selected_edge_id"] = None
+        return out
+
+    if kind == "linear_node_move":
+        block_id = payload.get("block_id")
+        direction = payload.get("direction")
+        if not isinstance(block_id, str) or direction not in {"left", "right"}:
+            return out
+        _scope_path, linear_scope = _linear_current_scope(out)
+        if linear_scope is None:
+            return out
+        _linear_move_node(out, linear_scope, block_id, direction)
+        return out
+
+    if kind == "linear_delete_node_request":
+        block_id = payload.get("block_id")
+        if not isinstance(block_id, str):
+            return out
+        return _dispatch_state_update(
+            out,
+            "linear_delete_node_confirm",
+            {"kind": "linear_delete_node_confirm", "block_id": block_id},
+        )
+
+    if kind == "linear_delete_node_confirm":
+        block_id = payload.get("block_id")
+        if not isinstance(block_id, str):
+            return out
+        _scope_path, linear_scope = _linear_current_scope(out)
+        if linear_scope is None:
+            return out
+        _linear_delete_spine_node(out, linear_scope, block_id)
+        return out
 
     if kind == "add_node":
         class_name = payload["class_name"]
