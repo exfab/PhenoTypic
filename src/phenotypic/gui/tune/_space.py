@@ -28,7 +28,7 @@ rest of :mod:`phenotypic.gui.tune`, importing this module must never drag
 """
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Mapping, Optional, Union
+from typing import TYPE_CHECKING, Any, Iterable, Mapping, Optional, Union
 
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 from dash import html
@@ -96,8 +96,39 @@ def _apply_edits(
         if updates:
             domain = domain.model_copy(update=updates)
     elif kind == "categorical" and edit.get("choices") is not None:
-        domain = domain.model_copy(update={"choices": tuple(edit["choices"])})
+        recovered = _recover_typed_choices(domain, edit["choices"])
+        domain = domain.model_copy(update={"choices": recovered})
     return knob.model_copy(update={"domain": domain})
+
+
+def _recover_typed_choices(
+    domain: Any, selected: "Iterable[Any]"
+) -> "tuple[Any, ...]":
+    """Map a checklist's stringified ``selected`` values back to typed members.
+
+    The Space categorical checklist renders each option's ``value`` as
+    ``str(choice)`` (a checklist value must be a string), so the export ``State``
+    returns the **stringified** subset. Only the knob's own ``domain.choices``
+    knows the real types, so recover them here: build ``{str(c): c}`` over the
+    original members and map each selected string back through it, dropping any
+    value not present (a stale / unknown selection). This preserves the member
+    types — ``"True"`` → ``True``, ``"1.0"`` → ``1.0`` — AND handles subset
+    narrowing, so the exported ``Categorical`` is semantically faithful and
+    ``build_pipeline`` applies the override correctly.
+
+    Args:
+        domain: The knob's original ``Categorical`` domain (the type source).
+        selected: The stringified subset the checklist returned.
+
+    Returns:
+        The selected original members, typed, in the domain's declaration order.
+    """
+    selected_strings = {str(value) for value in selected}
+    # Iterate the original choices to keep the domain's declaration order and
+    # drop any stale / unknown selection (a value not in the original set).
+    return tuple(
+        choice for choice in domain.choices if str(choice) in selected_strings
+    )
 
 
 def _build_search_space(
