@@ -10,9 +10,11 @@ from __future__ import annotations
 from dash import html
 
 from phenotypic.gui._operation_registry import OperationRegistry
+from phenotypic.gui.builder import _ids as ids
 from phenotypic.gui.builder._callbacks import _dispatch_state_update
 from phenotypic.gui.builder._app import create_app
 from phenotypic.gui.builder._state import (
+    _DagBuilderState,
     _LegacyBuilderScope as BuilderScope,
     _LegacyBuilderState as BuilderState,
     StepNode,
@@ -33,6 +35,18 @@ def _seed_state() -> dict:
         ),
     )
     return state_to_json(state)
+
+
+def _walk_components(component):
+    if isinstance(component, (list, tuple)):
+        for child in component:
+            yield from _walk_components(child)
+        return
+    yield component
+    children = getattr(component, "children", None)
+    if children is None:
+        return
+    yield from _walk_components(children)
 
 
 def test_render_views_returns_breadcrumb_children_not_nested_nav() -> None:
@@ -85,6 +99,25 @@ def test_render_views_drilled_in_breadcrumb_returns_button_children() -> None:
     assert not any(isinstance(child, html.Nav) for child in breadcrumb_children)
     # Two-segment path → ancestor button + " / " separator + active span (3 children).
     assert len(breadcrumb_children) >= 3
+
+
+def test_render_views_returns_side_loader_children_not_nested_container() -> None:
+    """Inspector callback payload must not nest ``#inspector`` in itself."""
+
+    from phenotypic.gui.builder._callbacks import _render_views
+
+    registry = OperationRegistry()
+    registry.discover()
+    app = create_app(registry=registry)
+
+    with app.server.app_context():
+        _breadcrumb, _canvas, inspector_children = _render_views(_DagBuilderState())
+
+    assert isinstance(inspector_children, list)
+    assert not any(
+        getattr(child, "id", None) == ids.INSPECTOR_CONTAINER
+        for child in _walk_components(inspector_children)
+    )
 
 
 def test_add_node_appends_and_selects() -> None:

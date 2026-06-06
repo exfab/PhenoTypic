@@ -252,7 +252,7 @@ def derive_linear_scope(
         return _unsupported_model(
             scope,
             path,
-            "image_fork",
+            "image_join",
             "image input receives more than one upstream output",
             join_target,
         )

@@ -25,6 +25,8 @@ from typing import Any, Dict, Optional
 
 import pytest
 
+from phenotypic.abc_ import ImageOperation
+from phenotypic import ImagePipeline
 from phenotypic.gui._operation_registry import OperationInfo, ParamInfo
 
 
@@ -36,6 +38,15 @@ class _FakeRegistry:
 
     def get(self, name: str) -> Optional[OperationInfo]:
         return self.ops.get(name)
+
+    def get_categories(self) -> list[str]:
+        return sorted({info.category for info in self.ops.values()})
+
+    def get_by_category(self, category: str) -> list[OperationInfo]:
+        return [
+            info for info in self.ops.values()
+            if info.category == category
+        ]
 
 
 def _make_param(
@@ -64,9 +75,15 @@ def _make_param(
         Fully-populated :class:`ParamInfo` instance.
     """
 
+    type_hint = Any
+    if is_operation:
+        type_hint = ImageOperation
+    elif is_pipeline:
+        type_hint = ImagePipeline
+
     return ParamInfo(
         name=name,
-        type_hint=Any,
+        type_hint=type_hint,
         default=default,
         has_default=has_default,
         is_operation=is_operation,

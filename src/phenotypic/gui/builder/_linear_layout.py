@@ -581,6 +581,7 @@ def _block_card(
             "linear-node-card",
             "is-selected-node" if state.selected_block_id == block.block_id else None,
             "is-input-node" if block.class_name == INPUT_IMAGE_CLASS_NAME else None,
+            "is-unknown-node" if unknown else None,
         ),
     )
 
@@ -590,7 +591,42 @@ def _unsupported_panel(reason: str, detail: str) -> html.Div:
         [
             html.H6("Unsupported DAG shape", className="mb-2"),
             html.Div(reason, className="linear-unsupported-reason"),
-            html.P(detail, className="mb-0 text-muted"),
+            html.P(detail, className="mb-2 text-muted"),
+            html.P(
+                "Linear editing is paused. Use the toolbar to load another "
+                "pipeline, or export this raw state before replacing it.",
+                className="mb-2 text-muted",
+            ),
+            html.Button(
+                "Export raw state",
+                id=ids.linear_node_action_id(
+                    action="export_raw_state",
+                    scope_path=[],
+                    block_id=None,
+                    surface="unsupported",
+                ),
+                type="button",
+                n_clicks=0,
+                className=(
+                    "linear-port-menu-action "
+                    "linear-unsupported-export-action"
+                ),
+            ),
+            html.Button(
+                "Start new pipeline",
+                id=ids.linear_node_action_id(
+                    action="start_new_state",
+                    scope_path=[],
+                    block_id=None,
+                    surface="unsupported",
+                ),
+                type="button",
+                n_clicks=0,
+                className=(
+                    "linear-port-menu-action "
+                    "linear-unsupported-reset-action"
+                ),
+            ),
         ],
         className="linear-unsupported-panel",
     )

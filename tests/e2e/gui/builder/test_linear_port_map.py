@@ -133,6 +133,7 @@ def test_mobile_limited_mode_disables_edit_controls(page: Page, hub_url: str) ->
                 paletteDisabled: palette ? palette.disabled : null,
                 paletteAria: palette ? palette.getAttribute('aria-disabled') : null,
                 portDisabled: port ? port.disabled : null,
+                portAria: port ? port.getAttribute('aria-disabled') : null,
                 saveDisabled: save ? save.disabled : null,
                 helpDisabled: help ? help.disabled : null,
                 helpAria: help ? help.getAttribute('aria-disabled') : null,
@@ -146,7 +147,8 @@ def test_mobile_limited_mode_disables_edit_controls(page: Page, hub_url: str) ->
     assert state == {
         "paletteDisabled": True,
         "paletteAria": "true",
-        "portDisabled": True,
+        "portDisabled": False,
+        "portAria": None,
         "saveDisabled": True,
         "helpDisabled": False,
         "helpAria": None,
@@ -161,6 +163,7 @@ def test_mobile_limited_mode_allows_pipeline_inspection_not_editing(
 ) -> None:
     """Mobile can drill into embedded pipelines while edit controls stay disabled."""
 
+    page.set_viewport_size({"width": 1280, "height": 720})
     _open_builder(page, hub_url)
     _click_palette_button(page, "FilamentousFungiDetector")
     page.locator(
@@ -183,7 +186,7 @@ def test_mobile_limited_mode_allows_pipeline_inspection_not_editing(
             const save = document.querySelector('#btn-save');
             const port = document.querySelector('.linear-port-button');
             return drill && save && port && !drill.disabled && save.disabled
-                && port.disabled;
+                && !port.disabled;
         }"""
     )
     state = page.evaluate(
@@ -198,6 +201,7 @@ def test_mobile_limited_mode_allows_pipeline_inspection_not_editing(
                 drillAria: drill.getAttribute('aria-disabled'),
                 paletteDisabled: palette.disabled,
                 portDisabled: port.disabled,
+                portAria: port.getAttribute('aria-disabled'),
                 saveDisabled: save.disabled,
                 labelReadOnly: label.readOnly,
             };
@@ -208,7 +212,8 @@ def test_mobile_limited_mode_allows_pipeline_inspection_not_editing(
         "drillDisabled": False,
         "drillAria": None,
         "paletteDisabled": True,
-        "portDisabled": True,
+        "portDisabled": False,
+        "portAria": None,
         "saveDisabled": True,
         "labelReadOnly": True,
     }

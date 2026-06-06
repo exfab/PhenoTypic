@@ -1064,19 +1064,18 @@ def _resolve_dag_accepts(
         # Couldn't resolve a class — empty accepts so all sources dim.
         return []
 
-    for category in registry.get_categories():
-        for op_info in registry.get_by_category(category):
-            cls = op_info.cls
-            if not isinstance(cls, type):
+    for op_info in _iter_registry_operation_infos(registry):
+        cls = op_info.cls
+        if not isinstance(cls, type):
+            continue
+        for target in target_classes:
+            try:
+                if issubclass(cls, target):
+                    names.append(op_info.name)
+                    break
+            except TypeError:
+                # Defensive: cls may not be a type (e.g. metaclass)
                 continue
-            for target in target_classes:
-                try:
-                    if issubclass(cls, target):
-                        names.append(op_info.name)
-                        break
-                except TypeError:
-                    # Defensive: cls may not be a type (e.g. metaclass)
-                    continue
     # ImagePipeline IS an ImageOperation so include it when the target is
     # ImageOperation or a base it satisfies.
     for target in target_classes:
@@ -1087,6 +1086,22 @@ def _resolve_dag_accepts(
         except TypeError:
             pass
     return sorted(set(names))
+
+
+def _iter_registry_operation_infos(registry: "OperationRegistry") -> List[Any]:
+    """Return operation metadata from the real registry or a tiny test fake."""
+
+    get_categories = getattr(registry, "get_categories", None)
+    get_by_category = getattr(registry, "get_by_category", None)
+    if callable(get_categories) and callable(get_by_category):
+        infos: List[Any] = []
+        for category in get_categories():
+            infos.extend(get_by_category(category))
+        return infos
+    ops = getattr(registry, "ops", None)
+    if isinstance(ops, dict):
+        return list(ops.values())
+    return []
 
 
 def _unwrap_to_classes(hint: Any) -> List[Any]:
@@ -1153,7 +1168,7 @@ def _dag_block_classes(
 
     * 1px stage-coloured border for main-flow ops (default).
     * 1.5px purple border for aux-consumed blocks.
-    * 1.5px yellow border for advisory issues (stage_order_hint / unknown).
+    * 1.5px yellow border for advisory stage-order hints.
     * 2.5px solid red border for blocking issues (Rules 1-6).
     * 2.5px dashed red border for the stub case of Rule 2 (unreachable
       from Input Image).
@@ -2103,6 +2118,7 @@ _ISSUE_RULE_SHORT_NAMES: Dict[str, str] = {
     "duplicate_input": "Extra Input Image",
     "stage_order_hint": "Stage order",
     "unknown_class": "Unknown class",
+    "unsupported_linear": "Unsupported shape",
 }
 
 
@@ -4223,10 +4239,9 @@ def build_app_layout(
         },
     )
 
-    # Inspector now sits under the canvas in the middle column. Its wrapper
-    # uses ``flex: 1`` so it fills whatever flex slot the middle column
-    # allocates (the 70% slice — see ``middle_column`` below). Internal
-    # overflow scrolls when the param form is taller than the slot.
+    # The accepted linear builder surface is a three-column app: palette,
+    # fixed map, side loader. The side loader stays beside the map on desktop
+    # so parameter ports visually line up with the map's side-port model.
     inspector_inner = html.Div(
         build_linear_side_loader(state, registry),
         className="pheno-scroll pe-2",
@@ -4243,13 +4258,7 @@ def build_app_layout(
         },
     )
 
-    # Right portion of the body is itself a 50 / 50 vertical split:
-    #   Top half    = Fixed linear port map.
-    #   Bottom half = Side loader (full width).
-    # The two halves both use ``flex: 1 1 0`` so the split is exact regardless
-    # of content size; ``min-height: 0`` lets each half shrink without the
-    # inspector content forcing growth.
-    top_half = html.Div(
+    map_column = html.Div(
         build_linear_map_section(state, registry),
         style={
             "flex": "1 1 0",
@@ -4257,9 +4266,9 @@ def build_app_layout(
             "display": "flex",
             "flexDirection": "column",
         },
+        className="linear-builder-map-column",
     )
-
-    bottom_half = html.Div(
+    side_column = html.Div(
         inspector_wrap,
         style={
             "flex": "1 1 0",
@@ -4267,26 +4276,7 @@ def build_app_layout(
             "display": "flex",
             "flexDirection": "column",
         },
-    )
-
-    # ``html.Hr`` between halves gives a clear visual separator without
-    # competing with the flex sizing. ``flex-shrink: 0`` keeps the rule from
-    # being absorbed when the row gets short; ``my-2`` collapses Bootstrap's
-    # default ``Hr`` margins to a single tidy gap.
-    divider = html.Hr(
-        className="my-2",
-        style={"flexShrink": 0, "width": "100%"},
-    )
-
-    right_section = html.Div(
-        [top_half, divider, bottom_half],
-        style={
-            "display": "flex",
-            "flexDirection": "column",
-            "height": "100%",
-            "minHeight": 0,
-            "width": "100%",
-        },
+        className="linear-builder-side-column",
     )
 
     body_row = dbc.Row(
@@ -4301,9 +4291,14 @@ def build_app_layout(
                 className="border-end pe-3 d-flex flex-column",
             ),
             dbc.Col(
-                right_section,
-                md=9,
-                className="ps-3 d-flex flex-column",
+                map_column,
+                md=6,
+                className="ps-3 pe-3 d-flex flex-column",
+            ),
+            dbc.Col(
+                side_column,
+                md=3,
+                className="border-start ps-3 d-flex flex-column",
             ),
         ],
         className="g-3",
@@ -4396,6 +4391,7 @@ def build_app_layout(
                 children=[],
                 style={"display": "none"},
             ),
+            dcc.Download(id=ids.DOWNLOAD_RAW_STATE),
             # Retired Cytoscape viewport controls remain mounted as hidden
             # inert callback anchors so legacy clientside callbacks resolve
             # cleanly while the default builder renders the fixed map.

@@ -9,9 +9,8 @@ without loss, including:
   ``ImagePipeline`` equal to ``ImagePipeline.from_json`` of the original.
 * Shared-instance auxes → cloned into independent ``BlockNode``s; a
   toast is queued listing the rewrite.
-* Unknown classes (registry drift) → block renders with a yellow border
-  + label ``(unknown: ClassName)``; advisory issue surfaces but no
-  hard error.
+* Unknown classes (registry drift) → block remains visible with a recovery
+  badge, and validation surfaces a blocking issue so Run / Save stay gated.
 * No canvas-layout payload → dagre lays out cleanly; save round-trips
   through ``to_pipeline_dag`` byte-stably (positions are not persisted
   per spec §4.7).
@@ -151,17 +150,18 @@ def test_load_shared_instance_clones(page: Page, hub_url: str) -> None:
     assert "shared" in text, f"toast missing 'shared' hint: {text!r}"
 
 
-def test_load_unknown_class_yellow_border(page: Page, hub_url: str) -> None:
-    """A legacy pipeline with an unknown class renders advisory-yellow.
+def test_load_unknown_class_blocks_with_recovery_badge(
+    page: Page, hub_url: str
+) -> None:
+    """A legacy pipeline with an unknown class renders as blocking.
 
     Spec §4.10 — when a block references a registry class missing from
     the current build (e.g. the legacy file was saved before a class
-    was renamed), the DAG path renders the block with a yellow advisory
-    border and label ``(unknown: ClassName)``.  The advisory issue
-    surfaces in the toolbar badge but does not block Run / Save.
+    was renamed), the fixed map keeps the block visible for recovery and
+    emits a blocking ``unknown_class`` issue.
 
     Canonical unit test:
-    ``tests/unit/gui/builder/test_validation.py::test_unknown_class_advisory_not_blocking``.
+    ``tests/unit/gui/builder/test_validation.py::test_unknown_class_blocks_save_preview_without_crashing``.
     """
 
     _open_builder(page, hub_url)
@@ -169,7 +169,7 @@ def test_load_unknown_class_yellow_border(page: Page, hub_url: str) -> None:
         pytest.skip(
             "window.phenoSetState helper not exposed; canonical coverage in "
             "tests/unit/gui/builder/test_validation.py::"
-            "test_unknown_class_advisory_not_blocking"
+            "test_unknown_class_blocks_save_preview_without_crashing"
         )
 
     # Inject a synthetic state with a block whose class_name is unknown.
@@ -201,14 +201,15 @@ def test_load_unknown_class_yellow_border(page: Page, hub_url: str) -> None:
         }"""
     )
 
-    # The unknown-class block should carry an advisory border / label.
-    unknown = page.locator(".dag-block").nth(1)
+    # The unknown-class block should stay visible with a recovery badge.
+    unknown = page.locator(".linear-node-card.is-unknown-node")
     expect(unknown).to_be_visible(timeout=3_000)
-    # Issue badge should reflect the advisory (1 hint).
+    expect(unknown.locator(".linear-node-badge-warning")).to_have_text("UNKNOWN")
+    # Issue badge should reflect one blocking issue, not an advisory hint.
     badge = page.locator('[data-testid="issue-badge"]')
     text = (badge.text_content() or "").lower()
-    assert "hint" in text or "1" in text, (
-        f"issue badge should reflect unknown_class advisory: {text!r}"
+    assert "1 issue" in text, (
+        f"issue badge should reflect unknown_class blocking issue: {text!r}"
     )
 
 

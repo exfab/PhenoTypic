@@ -3,10 +3,12 @@
 Spec §5.6 specifies that ``request_run_preview`` and
 ``request_save_pipeline`` must pre-check :func:`validate` and abort
 when any blocking-severity issue (``severity == "error"``) exists.
-Advisory hints (``severity == "advisory"`` — ``stage_order_hint`` and
-``unknown_class``) NEVER block these actions; they decorate the
+Advisory hints (``severity == "advisory"`` — currently
+``stage_order_hint``) NEVER block these actions; they decorate the
 canvas with yellow borders and surface in the issue badge tooltip
-but the user can still preview / save through.
+but the user can still preview / save through. Unknown classes and
+unsupported linear DAG shapes block because the runtime cannot safely
+materialize them.
 
 The tests exercise the pure-Python gate helper
 :func:`phenotypic.gui.builder._callbacks._filter_blocking_issues`
@@ -91,6 +93,19 @@ def _state_with_blocking_stub() -> Dict[str, Any]:
     scope = _DagBuilderScope()
     orphan = _new_block("GaussianBlur")
     scope.blocks.append(orphan)
+    state = _DagBuilderState(root=scope)
+    return state_to_json(state)
+
+
+def _state_with_unsupported_linear_fork() -> Dict[str, Any]:
+    """Build a state the defensive linear map cannot safely edit."""
+
+    scope = _DagBuilderScope()
+    a = _new_block("GaussianBlur")
+    b = _new_block("GaussianBlur")
+    scope.blocks.extend([a, b])
+    scope.edges.append(_image_edge(scope.blocks[0].block_id, a.block_id))
+    scope.edges.append(_image_edge(scope.blocks[0].block_id, b.block_id))
     state = _DagBuilderState(root=scope)
     return state_to_json(state)
 
@@ -217,6 +232,12 @@ class TestRunPreviewGating:
         state_data = _state_with_clean_scope()
         errors = _filter_blocking_issues(state_data)
         assert errors == []
+
+    def test_run_preview_blocks_unsupported_linear_shape(self) -> None:
+        """The fixed linear map's unsupported state gates preview."""
+
+        errors = _filter_blocking_issues(_state_with_unsupported_linear_fork())
+        assert any(i.kind == "unsupported_linear" for i in errors)
 
 
 # ---------------------------------------------------------------------------

@@ -310,6 +310,20 @@ def test_linear_map_unsupported_state_renders_panel():
     tree = build_linear_map_section(state, _registry())
 
     assert _find_by_class(tree, "linear-unsupported-panel")
+    export_buttons = [
+        button
+        for button in _find_by_type(tree, ids.LINEAR_NODE_ACTION)
+        if button.id.get("action") == "export_raw_state"
+    ]
+    assert export_buttons
+    assert "linear-unsupported-export-action" in export_buttons[0].className
+    reset_buttons = [
+        button
+        for button in _find_by_type(tree, ids.LINEAR_NODE_ACTION)
+        if button.id.get("action") == "start_new_state"
+    ]
+    assert reset_buttons
+    assert "linear-unsupported-reset-action" in reset_buttons[0].className
 
 
 def test_side_loader_badge_precedes_title_and_port_is_left_aligned():
@@ -373,6 +387,15 @@ def test_app_layout_mounts_linear_map_instead_of_cytoscape():
     assert not _find_by_id(tree, ids.CANVAS_CYTOSCAPE)
 
 
+def test_app_layout_uses_desktop_three_column_linear_builder():
+    from phenotypic.gui.builder._layout import build_app_layout
+
+    tree = build_app_layout(BuilderState(), _registry(), image_root=None)
+
+    assert _find_by_class(tree, "linear-builder-map-column")
+    assert _find_by_class(tree, "linear-builder-side-column")
+
+
 def test_app_layout_keeps_retired_viewport_controls_hidden_and_inert():
     from phenotypic.gui.builder._layout import build_app_layout
 
@@ -384,6 +407,7 @@ def test_app_layout_keeps_retired_viewport_controls_hidden_and_inert():
     assert len(banner) == 1
     assert len(relayout) == 1
     assert len(reanchor) == 1
+    assert _find_by_id(tree, ids.DOWNLOAD_RAW_STATE)
     assert banner[0].style == {"display": "none"}
     assert relayout[0].disabled is True
     assert reanchor[0].disabled is True
@@ -441,15 +465,20 @@ def test_mobile_limited_mode_css_keeps_help_and_drill_available():
 
     assert "@media (max-width: 768px)" in css
     assert ".linear-port-button" in css
+    assert ".palette-button,\n    .linear-port-button" not in css
     assert ".linear-port-menu-action:not(.linear-port-menu-close)" in css
     assert ".linear-side-action:not(.linear-side-drill-action)" in css
     assert "#btn-save" in css
     assert ".linear-help-button" in css
+    assert ".linear-unsupported-export-action" in css
     assert ".linear-port-menu-close" in css
     assert ".linear-map-zoom-control" in css
     assert ".linear-map-lucide-icon" in css
     assert ".linear-map-track" in css
     assert "gap: 0;" in css
+    assert "width: 24px;" in css
+    assert "height: 24px;" in css
+    assert "grid-template-columns: 18px" not in css
     assert ".linear-side-drill-action" in css
 
 
@@ -462,8 +491,12 @@ def test_mobile_limited_mode_js_applies_real_disabled_and_readonly_attributes():
 
     assert 'const MOBILE_LIMITED_QUERY = "(max-width: 768px)"' in js
     assert '".linear-port-button"' in js
+    assert '".palette-button",\n        ".linear-port-button"' not in js
     assert '".linear-port-menu-action:not(.linear-port-menu-close)"' in js
     assert '".linear-map-zoom-control"' in js
+    assert '".linear-unsupported-export-action"' in js
+    assert '".linear-unsupported-reset-action"' not in js
+    assert "phenoLinearMapMounted" in js
     assert "el.disabled = limited" in js
     assert "el.readOnly = limited" in js
     assert 'el.setAttribute("aria-disabled", limited ? "true" : "false")' in js

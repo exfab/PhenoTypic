@@ -878,7 +878,7 @@ code, pre, .text-monospace, .font-monospace {
 
 .linear-map-header h6,
 .linear-side-loader h6 {
-    font-family: var(--font-mono);
+    font-family: var(--font-sans);
     font-size: var(--text-xs);
     letter-spacing: 0.1em;
     text-transform: uppercase;
@@ -1004,7 +1004,7 @@ code, pre, .text-monospace, .font-monospace {
     flex: 0 0 220px;
     min-height: 132px;
     display: grid;
-    grid-template-columns: 18px minmax(0, 1fr) 18px;
+    grid-template-columns: 24px minmax(0, 1fr) 24px;
     align-items: center;
     gap: var(--sp-2);
 }
@@ -1094,7 +1094,7 @@ code, pre, .text-monospace, .font-monospace {
 
 .linear-node-param-row {
     display: grid;
-    grid-template-columns: 18px minmax(0, 1fr) 24px;
+    grid-template-columns: 24px minmax(0, 1fr) 24px;
     align-items: center;
     gap: var(--sp-2);
     color: var(--color-muted);
@@ -1124,8 +1124,8 @@ code, pre, .text-monospace, .font-monospace {
 }
 
 .linear-port-button {
-    width: 18px;
-    height: 18px;
+    width: 24px;
+    height: 24px;
     padding: 0;
     border: 2px solid var(--color-blue);
     background: var(--color-white);
@@ -1227,9 +1227,14 @@ code, pre, .text-monospace, .font-monospace {
 }
 
 .linear-help-button {
+    flex: 0 0 24px;
     width: 24px;
+    min-width: 24px;
     height: 24px;
     padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     font-family: var(--font-mono);
     font-weight: 700;
 }
@@ -1380,7 +1385,6 @@ code, pre, .text-monospace, .font-monospace {
 
 @media (max-width: 768px) {
     .palette-button,
-    .linear-port-button,
     .linear-port-menu-action:not(.linear-port-menu-close),
     .linear-side-action:not(.linear-side-drill-action),
     #btn-save,
@@ -1399,6 +1403,8 @@ code, pre, .text-monospace, .font-monospace {
         opacity: 0.72;
     }
 
+    .linear-port-button,
+    .linear-unsupported-export-action,
     .linear-help-button,
     .linear-map-zoom-control,
     .linear-port-menu-close,

@@ -62,6 +62,13 @@
         return null;
     };
 
+    window.phenoLinearMapMounted = function phenoLinearMapMounted() {
+        return Boolean(
+            document.getElementById("linear-map-container") &&
+                !document.getElementById("canvas-cytoscape"),
+        );
+    };
+
     /** Poll ``window.phenoGetCy`` every 100ms and invoke ``cb(cy)`` once
      *  the cytoscape instance has mounted.  Shared by every asset that
      *  binds clientside handlers but doesn't know whether the canvas
@@ -74,6 +81,9 @@
         const cy = window.phenoGetCy && window.phenoGetCy();
         if (cy) {
             cb(cy);
+            return;
+        }
+        if (window.phenoLinearMapMounted && window.phenoLinearMapMounted()) {
             return;
         }
         setTimeout(function () {
@@ -379,7 +389,6 @@
 
     const DISABLED_SELECTORS = [
         ".palette-button",
-        ".linear-port-button",
         ".linear-port-menu-action:not(.linear-port-menu-close)",
         ".linear-side-action:not(.linear-side-drill-action)",
         "#btn-save",
@@ -395,6 +404,8 @@
     ];
 
     const ENABLED_SELECTORS = [
+        ".linear-port-button",
+        ".linear-unsupported-export-action",
         ".linear-help-button",
         ".linear-map-zoom-control",
         ".linear-port-menu-close",

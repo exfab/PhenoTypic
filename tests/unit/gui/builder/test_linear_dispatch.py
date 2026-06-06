@@ -7,11 +7,12 @@ from typing import Any, Dict, List
 import pytest
 
 from phenotypic.abc_ import ImageOperation
-from phenotypic.gui._operation_registry import OperationInfo
+from phenotypic.gui._operation_registry import OperationInfo, ParamInfo
 from phenotypic.gui.builder._callbacks import (
     _dispatch_state_update,
     _linear_prefix_state_for_preview,
     _linear_state_with_preview_selection,
+    _state_with_issue_focus,
 )
 from phenotypic.gui.builder._linear_model import (
     ROOT_SCOPE_KEY,
@@ -40,15 +41,20 @@ class _LinearFakeImageOperation(ImageOperation):
         return image
 
 
+class _LinearSpecificImageOperation(_LinearFakeImageOperation):
+    """Specific operation base used for narrow parameter accept tests."""
+
+
 def _make_linear_op_info(
     cls_name: str,
     parameters: Dict[str, Any] | None = None,
     *,
     category: str = "Enhancer",
+    base_cls: type[ImageOperation] = _LinearFakeImageOperation,
 ) -> OperationInfo:
     cls = type(
         cls_name,
-        (_LinearFakeImageOperation,),
+        (base_cls,),
         {
             "__module__": "tests.fake",
             "_operate": _LinearFakeImageOperation._operate,
@@ -87,7 +93,21 @@ def linear_registry(empty_registry, monkeypatch):
                     "pipe": _make_param(
                         "pipe", has_default=True, is_pipeline=True
                     ),
+                    "specific_detector": ParamInfo(
+                        name="specific_detector",
+                        type_hint=_LinearSpecificImageOperation,
+                        default=None,
+                        has_default=True,
+                        is_operation=True,
+                        is_pipeline=False,
+                        is_optional=False,
+                        is_list=False,
+                    ),
                 },
+            ),
+            "SpecificSourceOp": _make_linear_op_info(
+                "SpecificSourceOp",
+                base_cls=_LinearSpecificImageOperation,
             ),
             "AnalysisThing": _make_op_info("AnalysisThing", category="Filter"),
         }
@@ -199,6 +219,18 @@ def _aux_edge_dict(
         "target_port": param,
         "target_slot": slot,
         "kind": "aux",
+    }
+
+
+def _image_edge_dict(source_id: str, target_id: str) -> Dict[str, Any]:
+    return {
+        "edge_id": _new_block_id(),
+        "source_block_id": source_id,
+        "source_port": "out",
+        "target_block_id": target_id,
+        "target_port": "in",
+        "target_slot": None,
+        "kind": "image",
     }
 
 
@@ -357,6 +389,39 @@ def test_linear_palette_add_rejects_non_operation_source(linear_registry):
     assert out["toast_queue"][-1]["kind"] == "warning"
 
 
+def test_linear_palette_add_rejects_operation_outside_specific_param_type(
+    linear_registry,
+):
+    state = _state_with_chain("ConsumerOp")
+    consumer = _block_by_class(state, "ConsumerOp")
+    selected_target = _target(
+        "parameter", block_id=consumer["block_id"], param="specific_detector"
+    )
+    state["selected_targets_by_scope"] = {ROOT_SCOPE_KEY: selected_target}
+
+    rejected = _dispatch_state_update(
+        state,
+        "linear_palette_add",
+        {"class_name": "OtherOp"},
+    )
+
+    assert len(_edges(rejected, kind="aux")) == 0
+    assert all(
+        block["class_name"] != "OtherOp"
+        for block in rejected["root"]["blocks"]
+        if block["block_id"] != consumer["block_id"]
+    )
+    assert rejected["toast_queue"][-1]["kind"] == "warning"
+
+    accepted = _dispatch_state_update(
+        state,
+        "linear_palette_add",
+        {"class_name": "SpecificSourceOp"},
+    )
+    assert _block_by_class(accepted, "SpecificSourceOp")
+    assert len(_edges(accepted, kind="aux")) == 1
+
+
 def test_linear_palette_add_rejects_unknown_parameter_source(linear_registry):
     state = _state_with_chain("ConsumerOp")
     consumer = _block_by_class(state, "ConsumerOp")
@@ -375,6 +440,62 @@ def test_linear_palette_add_rejects_unknown_parameter_source(linear_registry):
     assert len(_edges(out, kind="aux")) == 0
     assert all(block["class_name"] != "UnknownOp" for block in out["root"]["blocks"])
     assert out["toast_queue"][-1]["kind"] == "warning"
+
+
+def test_linear_palette_add_blocks_unsupported_non_linear_scope(linear_registry):
+    state = _state_with_chain("SourceOp")
+    input_id = _input_block(state)["block_id"]
+    fork = _block_dict("OtherOp")
+    state["root"]["blocks"].append(fork)
+    state["root"]["edges"].append(_image_edge_dict(input_id, fork["block_id"]))
+    before_blocks = [block["block_id"] for block in state["root"]["blocks"]]
+
+    out = _dispatch_state_update(
+        state,
+        "linear_palette_add",
+        {"class_name": "ConsumerOp"},
+    )
+
+    assert [block["block_id"] for block in out["root"]["blocks"]] == before_blocks
+    assert out["toast_queue"][-1]["kind"] == "warning"
+    assert "Linear editing is paused" in out["toast_queue"][-1]["text"]
+
+
+def test_linear_palette_add_blocks_when_nested_scope_is_unsupported(
+    linear_registry,
+):
+    state = _state_with_chain("ConsumerOp")
+    consumer = _block_by_class(state, "ConsumerOp")
+    pipeline = _block_dict(PIPELINE_CLASS_NAME)
+    nested_input = _block_dict(INPUT_IMAGE_CLASS_NAME)
+    nested_a = _block_dict("SourceOp")
+    nested_b = _block_dict("OtherOp")
+    pipeline["nested"] = {
+        "blocks": [nested_input, nested_a, nested_b],
+        "edges": [
+            _image_edge_dict(nested_input["block_id"], nested_a["block_id"]),
+            _image_edge_dict(nested_input["block_id"], nested_b["block_id"]),
+        ],
+        "name": "Pipeline",
+        "desc": "",
+        "nrows": None,
+        "ncols": None,
+    }
+    state["root"]["blocks"].append(pipeline)
+    state["root"]["edges"].append(
+        _aux_edge_dict(pipeline["block_id"], consumer["block_id"], "pipe")
+    )
+    before_root_blocks = [block["block_id"] for block in state["root"]["blocks"]]
+
+    out = _dispatch_state_update(
+        state,
+        "linear_palette_add",
+        {"class_name": "SourceOp"},
+    )
+
+    assert [block["block_id"] for block in out["root"]["blocks"]] == before_root_blocks
+    assert out["toast_queue"][-1]["kind"] == "warning"
+    assert "Linear editing is paused" in out["toast_queue"][-1]["text"]
 
 
 def test_linear_palette_add_replaces_scalar_param_and_deletes_old_value(
@@ -543,6 +664,44 @@ def test_linear_drill_param_pipeline_opens_existing_aux_pipeline(linear_registry
     ) | {"scope_path": [pipeline["block_id"]]}
 
 
+def test_issue_focus_drills_to_nested_scope_and_selects_block(linear_registry):
+    state = _state_with_chain("ConsumerOp")
+    consumer = _block_by_class(state, "ConsumerOp")
+    pipeline = _block_dict(PIPELINE_CLASS_NAME)
+    nested_input = _block_dict(INPUT_IMAGE_CLASS_NAME)
+    nested_source = _block_dict("SourceOp")
+    pipeline["nested"] = {
+        "blocks": [nested_input, nested_source],
+        "edges": [
+            _image_edge_dict(
+                nested_input["block_id"],
+                nested_source["block_id"],
+            )
+        ],
+        "name": "Pipeline",
+        "desc": "",
+        "nrows": None,
+        "ncols": None,
+    }
+    state["root"]["blocks"].append(pipeline)
+    state["root"]["edges"].append(
+        _aux_edge_dict(pipeline["block_id"], consumer["block_id"], "pipe")
+    )
+
+    out = _state_with_issue_focus(
+        state,
+        {
+            "kind": "issue_focus",
+            "block_id": nested_source["block_id"],
+            "target_breadcrumb": [pipeline["block_id"]],
+        },
+    )
+
+    assert out["breadcrumb"] == [pipeline["block_id"]]
+    assert out["selected_block_id"] == nested_source["block_id"]
+    assert out["selected_edge_id"] is None
+
+
 def test_linear_select_aux_value_selects_source_block(linear_registry):
     state = _state_with_chain("ConsumerOp")
     consumer = _block_by_class(state, "ConsumerOp")
@@ -657,7 +816,7 @@ def test_linear_clear_malformed_list_slot_is_noop(linear_registry):
     assert len(_edges(out, kind="aux")) == 2
 
 
-def test_linear_clear_shared_aux_source_removes_edge_not_shared_block(
+def test_linear_clear_shared_aux_source_is_paused_as_unsupported(
     linear_registry,
 ):
     state = _state_with_chain("ConsumerOp", "OtherOp")
@@ -684,8 +843,8 @@ def test_linear_clear_shared_aux_source_removes_edge_not_shared_block(
 
     assert shared["block_id"] in {block["block_id"] for block in out["root"]["blocks"]}
     remaining_aux = _edges(out, kind="aux")
-    assert len(remaining_aux) == 1
-    assert remaining_aux[0]["target_block_id"] == other["block_id"]
+    assert len(remaining_aux) == 2
+    assert out["toast_queue"][-1]["kind"] == "warning"
 
 
 def test_linear_node_move_right_swaps_adjacent_spine_nodes(linear_registry):
@@ -749,7 +908,7 @@ def test_linear_delete_node_confirm_reconnects_spine_and_deletes_side_values(
     assert out["selected_block_id"] is None
 
 
-def test_linear_delete_node_request_delegates_to_confirm(linear_registry):
+def test_linear_delete_node_request_sets_pending_confirmation(linear_registry):
     state = _state_with_chain("SourceOp", "ConsumerOp")
     source = _block_by_class(state, "SourceOp")
     consumer = _block_by_class(state, "ConsumerOp")
@@ -760,10 +919,54 @@ def test_linear_delete_node_request_delegates_to_confirm(linear_registry):
         {"block_id": source["block_id"]},
     )
 
-    assert source["block_id"] not in {
+    assert source["block_id"] in {
         block["block_id"] for block in out["root"]["blocks"]
     }
-    assert (_input_block(state)["block_id"], consumer["block_id"]) in _image_pairs(out)
+    assert out["pending_delete_block_id"] == f"linear_node:{source['block_id']}"
+    assert (_input_block(state)["block_id"], source["block_id"]) in _image_pairs(out)
+    assert (source["block_id"], consumer["block_id"]) in _image_pairs(out)
+
+
+def test_linear_clear_pipeline_parameter_requires_confirm(linear_registry):
+    state = _state_with_chain("ConsumerOp")
+    consumer = _block_by_class(state, "ConsumerOp")
+    pipeline = _block_dict(PIPELINE_CLASS_NAME)
+    pipeline["nested"] = {
+        "blocks": [],
+        "edges": [],
+        "name": "Pipeline",
+        "desc": "",
+        "nrows": None,
+        "ncols": None,
+    }
+    state["root"]["blocks"].append(pipeline)
+    state["root"]["edges"].append(
+        _aux_edge_dict(pipeline["block_id"], consumer["block_id"], "pipe")
+    )
+    target = _target("parameter", block_id=consumer["block_id"], param="pipe")
+
+    pending = _dispatch_state_update(
+        state,
+        "linear_clear_param",
+        {"target": target},
+    )
+
+    assert pipeline["block_id"] in {
+        block["block_id"] for block in pending["root"]["blocks"]
+    }
+    assert pending["pending_delete_block_id"].startswith("linear_clear:")
+
+    confirmed = _dispatch_state_update(
+        pending,
+        "linear_clear_param_confirm",
+        {"target": target},
+    )
+
+    assert pipeline["block_id"] not in {
+        block["block_id"] for block in confirmed["root"]["blocks"]
+    }
+    assert len(_edges(confirmed, kind="aux")) == 0
+    assert confirmed["pending_delete_block_id"] is None
 
 
 def test_linear_prefix_preview_state_keeps_prefix_and_aux_dependency(

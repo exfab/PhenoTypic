@@ -487,6 +487,7 @@ def test_rule_short_names_cover_every_kind() -> None:
         "duplicate_input",
         "stage_order_hint",
         "unknown_class",
+        "unsupported_linear",
     }
     assert set(_ISSUE_RULE_SHORT_NAMES.keys()) == expected_kinds
 
@@ -503,10 +504,11 @@ def test_rule_short_names_spec_examples() -> None:
     assert _ISSUE_RULE_SHORT_NAMES["duplicate_input"] == "Extra Input Image"
     assert _ISSUE_RULE_SHORT_NAMES["stage_order_hint"] == "Stage order"
     assert _ISSUE_RULE_SHORT_NAMES["unknown_class"] == "Unknown class"
+    assert _ISSUE_RULE_SHORT_NAMES["unsupported_linear"] == "Unsupported shape"
 
 
 # ---------------------------------------------------------------------------
-# Row click → scroll_to dispatch payload (server-side fan-in is wired by
+# Row click → issue_focus dispatch payload (server-side fan-in is wired by
 # ``register_callbacks``; here we exercise the pure payload shape).
 # ---------------------------------------------------------------------------
 
@@ -544,15 +546,15 @@ def _compute_dispatch_payload(
     issue = sorted_issues[row_idx]
     scope_path = list(issue.get("scope_path") or [])
     return {
-        "kind": "scroll_to",
+        "kind": "issue_focus",
         "block_id": issue.get("block_id"),
         "scope_path": scope_path,
         "target_breadcrumb": list(scope_path),
     }
 
 
-def test_dispatch_payload_kind_is_scroll_to() -> None:
-    """Click payload always sets ``kind="scroll_to"`` (spec §5.6)."""
+def test_dispatch_payload_kind_is_issue_focus() -> None:
+    """Click payload sets ``kind="issue_focus"`` for the fixed map."""
 
     issues = [
         {
@@ -565,7 +567,7 @@ def test_dispatch_payload_kind_is_scroll_to() -> None:
     ]
     sorted_issues = _sort_issues_for_badge(issues)
     payload = _compute_dispatch_payload(sorted_issues, 0)
-    assert payload["kind"] == "scroll_to"
+    assert payload["kind"] == "issue_focus"
 
 
 def test_dispatch_payload_block_id_matches_clicked_issue() -> None:

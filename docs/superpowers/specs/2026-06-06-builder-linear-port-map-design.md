@@ -628,6 +628,7 @@ Unsupported-state panel:
 - lists the offending condition, such as fork, orphan, cycle, shared aux source, or cross-scope edge
 - blocks editing, preview, and save from that state
 - offers only safe exits: load another pipeline, start a new pipeline, or export the raw JSON for debugging
+- at mobile widths, the destructive start-new action is disabled; raw JSON export and read-only inspection remain available
 
 ---
 

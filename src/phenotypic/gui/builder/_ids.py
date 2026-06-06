@@ -279,6 +279,9 @@ LINEAR_ZOOM_IN = "linear-zoom-in"
 LINEAR_ZOOM_RESET = "linear-zoom-reset"
 LINEAR_ZOOM_FIT = "linear-zoom-fit"
 
+#: ``dcc.Download`` sink for unsupported-state raw builder JSON export.
+DOWNLOAD_RAW_STATE = "download-raw-state"
+
 #: Pattern-match ``type`` key for every clickable fixed-map / side-loader port.
 LINEAR_PORT = "linear-port"
 
@@ -1119,6 +1122,7 @@ __all__ = [
     "LINEAR_ZOOM_IN",
     "LINEAR_ZOOM_RESET",
     "LINEAR_ZOOM_FIT",
+    "DOWNLOAD_RAW_STATE",
     "LINEAR_PORT",
     "LINEAR_PORT_MENU",
     "LINEAR_NODE_ACTION",
