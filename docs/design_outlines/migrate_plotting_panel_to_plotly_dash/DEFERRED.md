@@ -60,3 +60,34 @@ Pick these up when: (a) a surface needs `Control`-driven recompute it can't get
 from plotly-native interactivity, (b) a GUI page wants the multi-figure
 dashboard form, or (c) a focused cleanup pass consolidates styling. Track each
 conversion as its own small change; do **not** bundle with unrelated work.
+
+---
+
+## D. Scope reductions recorded post-review
+
+These were shipped intentionally but were not originally logged here; the
+review (REVIEW.md) flagged the design/code divergence. Each is additive to
+converge later, none is a regression in numeric output.
+
+- **Diagnostics `scales` control (design.md §9).** Listed as a diagnostics
+  control, but `ridge_scales` is list-valued and does not map to any
+  `Control` kind (float/select/bool/text). Shipped without it; the figure
+  uses a fixed scale set. Converge if a multi-select `Control` kind is added.
+- **Color-correction ROI selector (design.md §9, D11).** `ColorCorrectionReport`
+  ships control-free (`.dash()` → composed `go.Figure`) rather than with an
+  ROI `select` Control + shell. The ipywidgets path exists
+  (`FigureProvider.dash` → `build_notebook_dashboard`) so this is a pure
+  add-a-Control convergence when ROI-by-ROI recompute is wanted.
+- **Grid axis-occupancy image-pitch overlay (grid `_grid_fit_report.py`).**
+  `fig_axis_occupancy` shows fitted per-cell counts only; the old
+  `_plot_axis_occupancy` overlaid image-pitch counts when fit and image-pitch
+  disagreed. The disagreement is still surfaced numerically in the summary
+  `go.Table` (`fit_occupied` vs `ip_occupied`); restoring the visual overlay
+  needs `ip_counts`/`agree` plumbed into the per-axis stats dict.
+- **Dash web-GUI figure adapter (was `gui/_figure_dashboard.py`).** Removed as
+  a deferred stub. To restore: build a controls panel + `dbc.Accordion` of
+  per-figure `dcc.Graph`s from `provider.iter_figures()` / `figures(subject)`,
+  one Dash callback per control-bearing figure (controls deduped by identity,
+  figures seeded on load). Mirror `gui/analysis/_render.py` (renders
+  `node.dash() -> go.Figure` into `dcc.Graph`). Protocol:
+  `phenotypic.abc_._figure_provider`; design: design.md §7.

@@ -11,12 +11,15 @@ The four legacy ``show_*`` toggles become ``section`` tags (collapsible cards),
 per migration design decision D12 — they are *not* :class:`Control`\\ s. With no
 controls declared, :meth:`~phenotypic.abc_.FigureProvider.dash` composes the
 figures into a single stacked ``go.Figure`` rather than an ipywidgets shell.
+The interactive ROI-selector control specified in design.md §9 is deferred
+(see ``DEFERRED.md`` → "Scope reductions recorded post-review"); this report
+ships control-free for now.
 
 Sections
 --------
 * ``delta_e`` — Delta-E 2000 before/after per patch (``go.Bar``).
 * ``patches`` — matched reference/measured/corrected swatch strip
-  (``go.Heatmap``).
+  (``go.Image``).
 * ``pipeline`` — per-ROI preprocessing stages (``go.Image``); only when a
   source image + ROIs are available.
 * ``segmentation`` — preprocessed image + chip-mask overlay (``go.Image``);

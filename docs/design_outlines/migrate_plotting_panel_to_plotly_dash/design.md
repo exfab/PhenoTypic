@@ -291,7 +291,7 @@ Both shells funnel into `getattr(provider, spec.name)(*subject?, **kwargs)`.
 | diagnostics | `DiagnosticsPlotter` (+`FigureProvider`) | sigma, ridge_method, bg_sigma, scales | yes | **Dual** (D6): keep matplotlib `_plot_*`/static `diagnostics()`; add ~11 Plotly `@figure` methods reusing `ImageMetricsCalculator`/`PanelDescription`. |
 | detect_modes | new `DetectModesPlotter` | none | no | One faceted `go.Figure` (subplot per detection mode). Plotly-only. |
 | grid-finder | new transient `GridFitReport` | none | no | 6 `@figure` methods → composed subplot figure; markdown summary → `go.Table`. `finder.dashboard(image)` → `report.dash()`. |
-| color-correction | `ColorCorrectionReport` (was `ColorCorrectionDashboard`) | ROI selector (select) | yes | Drops `param.Parameterized`; `show_*` toggles → collapsible cards (D12). |
+| color-correction | `ColorCorrectionReport` (was `ColorCorrectionDashboard`) | none — ROI selector deferred (see DEFERRED.md) | no — composed `go.Figure` | Drops `param.Parameterized`; `show_*` toggles → collapsible cards (D12). |
 | **proof:** symmetric-zones inspect | `MeasureSymmetricZones` | base_layer (select) | yes | The D13 pydantic proof. |
 
 ---
