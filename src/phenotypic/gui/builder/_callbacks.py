@@ -82,9 +82,9 @@ from phenotypic.gui.builder._layout import (
     build_breadcrumb,
     build_canvas_elements,
     build_canvas_elements_dag,
-    build_inspector,
     build_issue_badge,
 )
+from phenotypic.gui.builder._linear_layout import build_linear_side_loader
 from phenotypic.gui.builder._modal_browser import (
     no_root_placeholder,
     render_load_picker_body,
@@ -3134,7 +3134,7 @@ def _render_views(state: BuilderState) -> Tuple[Any, str, Any]:
         canvas_elements = build_canvas_elements(
             scope, getattr(state, "selected_node_id", None),
         )
-    inspector = build_inspector(state, registry)
+    inspector = build_linear_side_loader(state, registry)
     breadcrumb = build_breadcrumb(state).children
     # JSON-serialise here so every caller writes the string straight to
     # ``CANVAS_ELEMENTS_BRIDGE.children`` — see this function's Returns.

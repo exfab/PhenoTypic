@@ -46,6 +46,10 @@ from phenotypic.gui._design import (
 from phenotypic.gui._shared import SHARED_LOGO_PATH
 from phenotypic.gui.builder import _ids as ids
 from phenotypic.gui.builder._ids import StageName
+from phenotypic.gui.builder._linear_layout import (
+    build_linear_map_section,
+    build_linear_side_loader,
+)
 from phenotypic.gui.builder._modal_browser import (
     load_image_modal,
     load_picker_modal,
@@ -4232,7 +4236,7 @@ def build_app_layout(
     # allocates (the 70% slice — see ``middle_column`` below). Internal
     # overflow scrolls when the param form is taller than the slot.
     inspector_inner = html.Div(
-        build_inspector(state, registry),
+        build_linear_side_loader(state, registry),
         className="pheno-scroll pe-2",
         style=_SCROLL_FILL_STYLE,
     )
@@ -4248,21 +4252,13 @@ def build_app_layout(
     )
 
     # Right portion of the body is itself a 50 / 50 vertical split:
-    #   Top half    = Canvas (full width — Pipeline I/O moved to the title bar,
-    #                 Delete + Pipeline relocated to the canvas / palette)
-    #   Bottom half = Inspector (full width)
+    #   Top half    = Fixed linear port map.
+    #   Bottom half = Side loader (full width).
     # The two halves both use ``flex: 1 1 0`` so the split is exact regardless
     # of content size; ``min-height: 0`` lets each half shrink without the
     # inspector content forcing growth.
-    # Duck-type the selection field: DAG state carries ``selected_block_id``;
-    # legacy state carries ``selected_node_id``.  Either works for the
-    # initial-paint preset positioning (both fall through to dagre on the
-    # next mutation anyway).
-    initial_selection = getattr(state, "selected_node_id", None) or getattr(
-        state, "selected_block_id", None
-    )
     top_half = html.Div(
-        build_canvas_section(state.root, initial_selection),
+        build_linear_map_section(state, registry),
         style={
             "flex": "1 1 0",
             "minHeight": 0,
