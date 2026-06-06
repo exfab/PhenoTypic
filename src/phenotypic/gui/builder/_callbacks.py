@@ -99,6 +99,7 @@ from phenotypic.gui.builder._session import PreviewRenderError, get_cache
 from phenotypic.gui.builder._state import (
     INPUT_IMAGE_CLASS_NAME,
     PIPELINE_CLASS_NAME,
+    BlockNode,
     BuilderState,
     _DagBuilderScope,
     _DagBuilderState,
@@ -1557,34 +1558,9 @@ def _linear_prefix_state_for_preview(
     a local inspection action.
     """
 
-    scope = scope_at_path(state.root, target.scope_path)
-    if scope is None:
-        raise ValueError("Cannot preview here: the selected scope is stale.")
-
-    model = derive_linear_scope(scope, scope_path=target.scope_path)
-    if model.unsupported is not None:
-        raise ValueError(
-            f"Cannot preview here: unsupported map shape ({model.unsupported.reason})."
-        )
-    if target.kind not in {"continuation", "image_output"}:
-        raise ValueError("Cannot preview here from that port.")
-
-    spine_blocks = list(model.spine_blocks)
-    if not spine_blocks:
-        raise ValueError("Cannot preview here: this scope has no image source.")
-
-    if target.kind == "image_output":
-        cutoff_idx = next(
-            (
-                idx
-                for idx, block in enumerate(spine_blocks)
-                if block.block_id == target.block_id
-            ),
-            None,
-        )
-        if cutoff_idx is None:
-            raise ValueError("Cannot preview here: the selected block is stale.")
-        spine_blocks = spine_blocks[: cutoff_idx + 1]
+    scope, spine_blocks, selected_block_id = _linear_preview_selection(
+        state, target
+    )
 
     keep_ids = {block.block_id for block in spine_blocks}
     changed = True
@@ -1615,12 +1591,63 @@ def _linear_prefix_state_for_preview(
         nrows=scope.nrows,
         ncols=scope.ncols,
     )
-    selected_block_id = (
-        target.block_id
-        if target.kind == "image_output"
-        else spine_blocks[-1].block_id
-    )
     return _DagBuilderState(root=prefix_scope, selected_block_id=selected_block_id)
+
+
+def _linear_preview_selection(
+    state: _DagBuilderState,
+    target: LinearTarget,
+) -> tuple[_DagBuilderScope, list[BlockNode], str]:
+    """Resolve the active scope, prefix spine, and selected block for preview."""
+
+    scope = scope_at_path(state.root, target.scope_path)
+    if scope is None:
+        raise ValueError("Cannot preview here: the selected scope is stale.")
+
+    model = derive_linear_scope(scope, scope_path=target.scope_path)
+    if model.unsupported is not None:
+        raise ValueError(
+            f"Cannot preview here: unsupported map shape ({model.unsupported.reason})."
+        )
+    if target.kind not in {"continuation", "image_output"}:
+        raise ValueError("Cannot preview here from that port.")
+
+    spine_blocks = list(model.spine_blocks)
+    if not spine_blocks:
+        raise ValueError("Cannot preview here: this scope has no image source.")
+
+    if target.kind == "continuation":
+        return scope, spine_blocks, spine_blocks[-1].block_id
+
+    selected_block_id = target.block_id
+    cutoff_idx = next(
+        (
+            idx
+            for idx, block in enumerate(spine_blocks)
+            if block.block_id == selected_block_id
+        ),
+        None,
+    )
+    if selected_block_id is None or cutoff_idx is None:
+        raise ValueError("Cannot preview here: the selected block is stale.")
+    return scope, spine_blocks[: cutoff_idx + 1], selected_block_id
+
+
+def _linear_state_with_preview_selection(
+    state_data: Dict[str, Any],
+    target_payload: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Close a preview menu and select the block whose output is being previewed."""
+
+    state = state_from_json(state_data)
+    if not isinstance(state, _DagBuilderState):
+        return state_data
+    target = target_from_dict(target_payload, state.breadcrumb)
+    _, _, selected_block_id = _linear_preview_selection(state, target)
+    state.selected_block_id = selected_block_id
+    state.selected_edge_id = None
+    state.open_port_menu = None
+    return state_to_json(state)
 
 
 def _scope_contains_block_id(
@@ -3542,13 +3569,12 @@ def register_callbacks(app: dash.Dash) -> None:
                             {"kind": "target_menu_close"},
                         )
                     elif action == "preview_here":
-                        # The dedicated preview callback handles runtime work.
-                        # Close the port menu here so the map returns to its
-                        # steady state after the click.
-                        new_state_dict = _dispatch_state_update(
+                        # The dedicated preview callback handles runtime work;
+                        # this branch keeps the visible inspector aligned with
+                        # the output block whose prefix cache will be baked.
+                        new_state_dict = _linear_state_with_preview_selection(
                             state_data,
-                            "target_menu_close",
-                            {"kind": "target_menu_close"},
+                            _linear_preview_target_payload_from_id(triggered),
                         )
                     elif action == "drill":
                         if block_id is None:

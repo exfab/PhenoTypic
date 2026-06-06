@@ -178,6 +178,7 @@ def test_linear_map_renders_port_menu_only_for_open_target():
     menus = _find_by_class(tree, "linear-port-menu")
     assert len(menus) == 1
     assert menus[0].id["block_id"] == block.block_id
+    assert _find_by_class(menus[0], "linear-port-menu-close")
 
 
 def test_linear_map_marks_selected_side_port_green():
@@ -345,7 +346,24 @@ def test_mobile_limited_mode_css_keeps_help_and_drill_available():
 
     assert "@media (max-width: 768px)" in css
     assert ".linear-port-button" in css
+    assert ".linear-port-menu-action:not(.linear-port-menu-close)" in css
     assert ".linear-side-action:not(.linear-side-drill-action)" in css
     assert "#btn-save" in css
     assert ".linear-help-button" in css
+    assert ".linear-port-menu-close" in css
     assert ".linear-side-drill-action" in css
+
+
+def test_mobile_limited_mode_js_applies_real_disabled_and_readonly_attributes():
+    js_path = (
+        Path(__file__).parents[4]
+        / "src/phenotypic/gui/builder/assets/builder.js"
+    )
+    js = js_path.read_text()
+
+    assert 'const MOBILE_LIMITED_QUERY = "(max-width: 768px)"' in js
+    assert '".linear-port-button"' in js
+    assert '".linear-port-menu-action:not(.linear-port-menu-close)"' in js
+    assert "el.disabled = limited" in js
+    assert "el.readOnly = limited" in js
+    assert 'el.setAttribute("aria-disabled", limited ? "true" : "false")' in js

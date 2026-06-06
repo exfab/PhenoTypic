@@ -253,6 +253,134 @@
 })();
 
 
+/* PhenoTypic Pipeline Builder — mobile limited-mode enforcement.
+ *
+ * CSS handles the visual treatment for narrow viewports, but edit affordances
+ * also need real DOM disabling so keyboard and assistive-tech activation cannot
+ * mutate the linear builder. Dash swaps large subtrees during normal rendering,
+ * so this observer reapplies the attributes whenever controls are replaced.
+ */
+
+(function () {
+    "use strict";
+
+    const MOBILE_LIMITED_QUERY = "(max-width: 768px)";
+
+    const DISABLED_SELECTORS = [
+        ".palette-button",
+        ".linear-port-button",
+        ".linear-port-menu-action:not(.linear-port-menu-close)",
+        ".linear-side-action:not(.linear-side-drill-action)",
+        "#btn-save",
+        "#btn-save-confirm",
+        "#btn-new-pipeline-node",
+    ];
+
+    const FIELD_SELECTORS = [
+        ".linear-side-param-form input",
+        ".linear-side-param-form textarea",
+        ".linear-side-param-form select",
+        "#input-node-label",
+    ];
+
+    const ENABLED_SELECTORS = [
+        ".linear-help-button",
+        ".linear-port-menu-close",
+        ".linear-side-drill-action",
+        ".breadcrumb button",
+        "#issue-badge",
+    ];
+
+    function setDisabled(el, limited) {
+        if ("disabled" in el) {
+            el.disabled = limited;
+        }
+        el.setAttribute("aria-disabled", limited ? "true" : "false");
+    }
+
+    function setFieldLimited(el, limited) {
+        const tag = el.tagName ? el.tagName.toLowerCase() : "";
+        const type = (el.getAttribute("type") || "").toLowerCase();
+        const mustDisable =
+            tag === "select" ||
+            type === "checkbox" ||
+            type === "radio" ||
+            type === "file";
+
+        if (mustDisable && "disabled" in el) {
+            el.disabled = limited;
+        } else if ("readOnly" in el) {
+            el.readOnly = limited;
+        } else if ("disabled" in el) {
+            el.disabled = limited;
+        }
+        el.setAttribute("aria-disabled", limited ? "true" : "false");
+    }
+
+    function enableAlwaysAvailable(el) {
+        if ("disabled" in el) {
+            el.disabled = false;
+        }
+        if ("readOnly" in el) {
+            el.readOnly = false;
+        }
+        el.removeAttribute("aria-disabled");
+    }
+
+    function applyMobileLimitedMode() {
+        const limited =
+            window.matchMedia &&
+            window.matchMedia(MOBILE_LIMITED_QUERY).matches;
+
+        DISABLED_SELECTORS.forEach((selector) => {
+            document.querySelectorAll(selector).forEach((el) => {
+                setDisabled(el, limited);
+            });
+        });
+
+        FIELD_SELECTORS.forEach((selector) => {
+            document.querySelectorAll(selector).forEach((el) => {
+                setFieldLimited(el, limited);
+            });
+        });
+
+        if (limited) {
+            ENABLED_SELECTORS.forEach((selector) => {
+                document.querySelectorAll(selector).forEach(enableAlwaysAvailable);
+            });
+        }
+    }
+
+    function scheduleApply() {
+        requestAnimationFrame(applyMobileLimitedMode);
+    }
+
+    function startMobileLimiter() {
+        scheduleApply();
+
+        if (window.matchMedia) {
+            const mq = window.matchMedia(MOBILE_LIMITED_QUERY);
+            if (typeof mq.addEventListener === "function") {
+                mq.addEventListener("change", scheduleApply);
+            } else if (typeof mq.addListener === "function") {
+                mq.addListener(scheduleApply);
+            }
+        }
+
+        new MutationObserver(scheduleApply).observe(document.body, {
+            childList: true,
+            subtree: true,
+        });
+    }
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", startMobileLimiter);
+    } else {
+        startMobileLimiter();
+    }
+})();
+
+
 /* PhenoTypic Pipeline Builder — asset-readiness poller (spec §5.5).
  *
  * Each new DAG-canvas JS asset writes a sentinel onto ``window`` when

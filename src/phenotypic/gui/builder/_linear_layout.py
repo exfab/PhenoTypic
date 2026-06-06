@@ -309,15 +309,15 @@ def _port_menu(target: LinearTarget) -> html.Div:
     actions.append(
         html.Button(
             "Close",
-                id=ids.linear_node_action_id(
-                    action="target_menu_close",
-                    scope_path=target.scope_path,
-                    block_id=target.block_id,
-                    surface="map",
-                ),
+            id=ids.linear_node_action_id(
+                action="target_menu_close",
+                scope_path=target.scope_path,
+                block_id=target.block_id,
+                surface="map",
+            ),
             type="button",
             n_clicks=0,
-            className="linear-port-menu-action",
+            className="linear-port-menu-action linear-port-menu-close",
         )
     )
     return html.Div(

@@ -11,6 +11,7 @@ from phenotypic.gui._operation_registry import OperationInfo
 from phenotypic.gui.builder._callbacks import (
     _dispatch_state_update,
     _linear_prefix_state_for_preview,
+    _linear_state_with_preview_selection,
 )
 from phenotypic.gui.builder._linear_model import (
     ROOT_SCOPE_KEY,
@@ -813,3 +814,39 @@ def test_linear_prefix_preview_state_continuation_uses_terminal(linear_registry)
         "SourceOp",
         "ConsumerOp",
     }
+
+
+def test_linear_preview_selection_updates_visible_selected_block(linear_registry):
+    state_dict = _state_with_chain("SourceOp", "ConsumerOp")
+    source = _block_by_class(state_dict, "SourceOp")
+    state_dict["selected_block_id"] = _block_by_class(state_dict, "ConsumerOp")[
+        "block_id"
+    ]
+    state_dict["open_port_menu"] = _target(
+        "image_output", block_id=source["block_id"]
+    )
+
+    out = _linear_state_with_preview_selection(
+        state_dict,
+        _target("image_output", block_id=source["block_id"]),
+    )
+
+    assert out["selected_block_id"] == source["block_id"]
+    assert out["selected_edge_id"] is None
+    assert out["open_port_menu"] is None
+
+
+def test_linear_preview_selection_continuation_selects_terminal(linear_registry):
+    state_dict = _state_with_chain("SourceOp", "ConsumerOp")
+    terminal = _block_by_class(state_dict, "ConsumerOp")
+    state_dict["selected_block_id"] = _input_block(state_dict)["block_id"]
+    state_dict["open_port_menu"] = _target("continuation")
+
+    out = _linear_state_with_preview_selection(
+        state_dict,
+        _target("continuation"),
+    )
+
+    assert out["selected_block_id"] == terminal["block_id"]
+    assert out["selected_edge_id"] is None
+    assert out["open_port_menu"] is None

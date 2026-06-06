@@ -1281,7 +1281,7 @@ code, pre, .text-monospace, .font-monospace {
 @media (max-width: 768px) {
     .palette-button,
     .linear-port-button,
-    .linear-port-menu-action,
+    .linear-port-menu-action:not(.linear-port-menu-close),
     .linear-side-action:not(.linear-side-drill-action),
     #btn-save,
     #btn-save-confirm,
@@ -1300,6 +1300,7 @@ code, pre, .text-monospace, .font-monospace {
     }
 
     .linear-help-button,
+    .linear-port-menu-close,
     .linear-side-drill-action,
     .breadcrumb button,
     #issue-badge {
