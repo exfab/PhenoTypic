@@ -16,10 +16,27 @@ surface (the engine reads a study only through the Protocol).
   the Pareto front, and every gap-flagged trial, de-duped and score-sorted.
 * :func:`is_multi_objective` — whether a run is a Pareto (≥2-axis) run, read off
   the :class:`TuneRunRoot`'s ``directions``.
+* :func:`build_objective_figure` — the optimization-progress figure (running-best
+  line + raw-score scatter), built headless for the Monitor view.
+* :func:`build_importance_figure` — one bar per param's importance.
+* :func:`monitor_pareto_visible` — whether the Monitor's Pareto card should show.
+
+The Monitor figure builders import ``plotly`` (a hard GUI dependency); they
+still never import ``optuna`` — the module stays in the package's optuna-free
+import surface, and ``plotly`` only loads when this module is first imported
+(lazily, inside the Monitor view / poll callback).
 """
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Optional, Protocol
+
+import plotly.graph_objects as go
+
+from phenotypic.gui._design import (
+    FONT_FAMILY_BODY,
+    OI_BLUE,
+    OI_ORANGE,
+)
 
 if TYPE_CHECKING:  # keep the module import-light + optuna-free
     from phenotypic.tune._study_store import Trial
@@ -173,3 +190,112 @@ def is_multi_objective(root: "TuneRunRoot") -> bool:
     """
     directions = root.directions
     return directions is not None and len(directions) > 1
+
+
+#: Plotly layout shared by the Monitor figures — body font, transparent paper
+#: so the surrounding card's background shows through, tight margins.
+def _monitor_layout(**overrides: object) -> dict[str, object]:
+    """The shared Monitor-figure layout dict (font + transparent paper)."""
+    base: dict[str, object] = {
+        "font": {"family": FONT_FAMILY_BODY},
+        "paper_bgcolor": "rgba(0,0,0,0)",
+        "plot_bgcolor": "rgba(0,0,0,0)",
+        "margin": {"l": 48, "r": 16, "t": 32, "b": 40},
+    }
+    base.update(overrides)
+    return base
+
+
+def build_objective_figure(trials: list["Trial"]) -> go.Figure:
+    """The optimization-progress figure: running-best line + raw-score scatter.
+
+    The classic tuning trace. Two series, fixed colors from the Okabe-Ito
+    data palette (never UI ``COLOR_*``): the raw per-trial scores as an orange
+    scatter, overlaid by the monotone running-best (:func:`running_best`) as a
+    blue line. An empty journal yields an empty (but valid) figure so the poll
+    callback can assign it without a special case.
+
+    Args:
+        trials: The journaled trials in order (e.g. ``store.trials``).
+
+    Returns:
+        A :class:`plotly.graph_objects.Figure` ready to assign to a
+        ``dcc.Graph``.
+    """
+    numbers = [t.number for t in trials]
+    scores = [t.score for t in trials]
+    best = running_best(trials)
+
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(
+            x=numbers,
+            y=scores,
+            mode="markers",
+            name="trial score",
+            marker={"color": OI_ORANGE, "size": 6},
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=numbers,
+            y=best,
+            mode="lines",
+            name="running best",
+            line={"color": OI_BLUE, "width": 2},
+        )
+    )
+    fig.update_layout(
+        **_monitor_layout(
+            xaxis={"title": "trial"},
+            yaxis={"title": "score"},
+            legend={"orientation": "h"},
+        )
+    )
+    return fig
+
+
+def build_importance_figure(importances: dict[str, float]) -> go.Figure:
+    """One bar per param's importance, descending.
+
+    A single bar trace whose ``x`` is the param names and ``y`` the importance
+    weights, sorted high-to-low so the dominant knobs read first. An empty map
+    yields an empty (but valid) figure.
+
+    Args:
+        importances: ``{param_name: importance_weight}`` (e.g. from Optuna's
+            ``get_param_importances`` on the live path; any mapping headless).
+
+    Returns:
+        A :class:`plotly.graph_objects.Figure` with one bar trace.
+    """
+    ordered = sorted(importances.items(), key=lambda kv: kv[1], reverse=True)
+    names = [name for name, _ in ordered]
+    weights = [weight for _, weight in ordered]
+
+    fig = go.Figure()
+    fig.add_trace(
+        go.Bar(x=names, y=weights, marker={"color": OI_BLUE}, name="importance")
+    )
+    fig.update_layout(
+        **_monitor_layout(
+            xaxis={"title": "parameter"},
+            yaxis={"title": "importance"},
+        )
+    )
+    return fig
+
+
+def monitor_pareto_visible(root: "TuneRunRoot") -> bool:
+    """Whether the Monitor's Pareto card should render for ``root``.
+
+    The Pareto front only exists for a multi-objective run, so the card is
+    shown exactly when :func:`is_multi_objective` is ``True``.
+
+    Args:
+        root: The validated tune output handle.
+
+    Returns:
+        ``True`` for a multi-objective run; ``False`` otherwise.
+    """
+    return is_multi_objective(root)

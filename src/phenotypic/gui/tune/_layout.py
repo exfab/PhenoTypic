@@ -162,7 +162,7 @@ def build_monitor_view(root: "TuneRunRoot") -> html.Div:
     Returns:
         The Monitor view body.
     """
-    from phenotypic.gui.tune._study_read import is_multi_objective
+    from phenotypic.gui.tune._study_read import monitor_pareto_visible
 
     children: list[Component] = [
         dcc.Interval(id=ids.TUNE_STUDY_POLL, interval=3000, n_intervals=0),
@@ -195,7 +195,7 @@ def build_monitor_view(root: "TuneRunRoot") -> html.Div:
         ),
     ]
 
-    pareto_style = {} if is_multi_objective(root) else {"display": "none"}
+    pareto_style = {} if monitor_pareto_visible(root) else {"display": "none"}
     children.append(
         html.Div(
             html.P("Pareto front (multi-objective run)."),
