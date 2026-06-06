@@ -31,84 +31,82 @@ class SinePeakDetector(GridInferenceMixin, ObjectDetector):
     growth. For a full comparison see
     :doc:`/explanation/detection_strategies_compared`.
 
+    Best For:
+        - Gridded plates (96-well, 384-well, pinned arrays) where colonies
+          are arranged in a regular periodic pattern.
+        - Plates with heterogeneous colony sizes or uneven growth where
+          rank-based correlation outperforms intensity-based peak finding.
+        - High-throughput batch processing of arrayed plates without
+          manual grid specification.
+        - Plates where a small number of empty or very faint wells would
+          mislead direct intensity peak detection.
+
+    Consider Also:
+        - :class:`RoundPeaksDetector` for a simpler grid detector when
+          colony intensities are uniform and direct peak finding suffices.
+        - :class:`OtsuDetector` when colonies are not gridded and a global
+          threshold is appropriate.
+        - :class:`RankOtsuDetector` when spatial illumination variation is
+          the primary challenge rather than grid localisation.
+
     Args:
         thresh_method: Thresholding method for binary mask creation.
-            Accepted values: ``'otsu'``, ``'mean'``, ``'local'``,
+            Accepted values: ``'otsu'`` (default), ``'mean'``, ``'local'``,
             ``'triangle'``, ``'minimum'``, ``'isodata'``, ``'li'``.
-            Default: ``'otsu'``.
-
-        subtract_background: Apply white tophat transform to remove
-            uneven illumination before thresholding. Default: True.
-
+            ``'otsu'`` works well for most standardised setups; ``'local'``
+            adapts to spatial illumination gradients. Default: ``'otsu'``.
+        subtract_background: Apply white tophat transform to remove uneven
+            illumination before thresholding. Default: True.
         remove_noise: Apply morphological opening to remove small noise
-            artifacts from the binary mask. Default: True.
-
+            artefacts from the binary mask. Default: True.
         footprint_width: Width in pixels for the background subtraction
             kernel. When a GridImage is provided, an adaptive kernel sized
-            to 1.5x colony spacing is used instead. Default: 6.
-
+            to 1.5x colony spacing is used instead, making this a fallback
+            for plain Image inputs. Typical range: 4--20. Default: 6.
         noise_radius: Radius of the diamond structuring element for
-            morphological noise removal. Default: 1.
-
-        smoothing_sigma: Standard deviation for Gaussian smoothing of
+            morphological noise removal. Typical range: 1--3. Default: 1.
+        smoothing_sigma: Gaussian standard deviation for smoothing
             row/column intensity profiles before cross-correlation. Higher
-            values smooth noise but may merge adjacent peaks. Set to 0 to
-            disable. Default: 2.0.
-
+            values suppress noise but may merge adjacent peaks. Set to 0 to
+            disable. Typical range: 0.0--5.0. Default: 2.0.
         min_peak_distance: Minimum pixel distance between detected peaks.
-            If ``None``, automatically estimated from grid dimensions.
+            When ``None``, automatically estimated from grid dimensions.
             Default: None.
-
-        peak_prominence: Minimum prominence for peak detection. If
-            ``None``, auto-calculated as 0.1 * signal range. Higher values
+        peak_prominence: Minimum prominence for peak detection. When
+            ``None``, auto-calculated as 0.1 × signal range. Higher values
             are more selective. Default: None.
-
         edge_refinement: Refine grid edges using weighted local intensity
             profiles for improved accuracy. Default: True.
-
-        correlation_threshold: Minimum normalised cross-correlation for a
-            peak to be valid. Lower values accept weaker matches; higher
-            values are more selective. Typical range: 0.1--0.5. Default:
-            0.3.
-
+        correlation_threshold: Minimum normalised cross-correlation score
+            for a sinusoidal template peak to be accepted as a valid grid
+            position. Lower values recover grid cells with weak colony
+            signal (sparse plates); higher values reject false grid
+            positions at the cost of missing faint wells. Typical range:
+            0.1--0.5. Default: 0.3.
         selection_mode: Strategy for choosing one object per grid cell.
             ``"dominant"`` keeps the largest object by pixel count.
-            ``"centered"`` keeps the object closest to the cell centre.
-            ``"regularized"`` fits a global regular-grid model from median
-            centroids, then re-selects per cell. Default: ``"dominant"``.
-
+            ``"centered"`` keeps the object whose centroid is closest to
+            the cell centre. ``"regularized"`` fits a global regular-grid
+            model from median centroids, then re-selects per cell — best
+            for pinned arrays. Default: ``"dominant"``.
         split_merged: Pre-split merged colonies spanning multiple grid
-            cells using EDT watershed before grid assignment. Default:
-            True.
+            cells using EDT watershed before grid assignment. Set to False
+            when colonies are well-separated. Default: True.
 
     Returns:
         Image: Input image with ``objmask`` set to binary mask and
-        ``objmap`` set to labeled connected components.
+        ``objmap`` set to labeled connected components with one label per
+        grid cell.
 
     Raises:
         ValueError: If ``thresh_method`` is not one of the accepted
             values.
 
-    Best For:
-        * Gridded plates (96-well, 384-well, pinned arrays) where colonies
-          are arranged in a regular periodic pattern.
-        * Plates with heterogeneous colony sizes or uneven growth where
-          rank-based correlation outperforms intensity-based peak finding.
-        * High-throughput batch processing of arrayed plates without
-          manual grid specification.
-
-    Consider Also:
-        * :class:`RoundPeaksDetector` for a simpler grid detector when
-          colony intensities are uniform and direct peak finding suffices.
-        * :class:`OtsuDetector` when colonies are not gridded and a global
-          threshold is appropriate.
-        * :class:`RankOtsuDetector` when spatial illumination variation is
-          the primary challenge rather than grid localisation.
-
     References:
         [1] O. Wagih and L. Parts, "gitter: a robust and accurate method
         for quantification of colony sizes from plate images,"
         *G3 (Bethesda)*, vol. 4, no. 3, pp. 547--552, 2014.
+        doi: 10.1534/g3.113.009431.
 
     See Also:
         :doc:`/tutorials/notebooks/02_detecting_colonies`

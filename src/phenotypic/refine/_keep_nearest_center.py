@@ -12,35 +12,42 @@ from phenotypic.schema import BBOX
 
 
 class KeepNearestCenter(ObjectRefiner):
-    """Retain only the object whose centroid is closest to the image center.
+    """Retain only the object whose bounding-box center lies closest to the image center.
 
-    Computes the Euclidean distance from each object's centroid to the image
-    center and keeps the single nearest object, removing all others. Useful
-    for per-cell crops where the intended colony sits near the center and
-    peripheral detections are artifacts.
+    Computes the Euclidean distance from each detected object's bounding-box
+    center to the image center and discards all objects except the single
+    nearest. The operation
+    produces an ``objmap`` with at most one labeled region. It is most effective on
+    per-cell crops where the intended colony occupies the center of the field and
+    peripheral detections are debris or bleed-through from adjacent wells.
 
-    Returns:
-        Image: Input image with ``objmap`` reduced to the single most centered
-        object.
+    For an overview of refinement approaches, see
+    :doc:`/explanation/refinement_strategies`.
 
     Best For:
-        - Single-colony crops from grid plates where debris appears near edges.
-        - Automated pipelines that assume one colony per field-of-view.
-        - Post-crop cleanup in conjunction with grid-based workflows.
+        - Single-colony crops produced by grid-based workflows where debris
+          and condensation appear near the crop boundary.
+        - Automated pipelines that assume exactly one colony per field of view
+          and need a robust single-object guarantee.
+        - Post-crop cleanup on images extracted from 96-well or 384-well grids
+          where bleed-through from neighbouring cells is visible at the edges.
 
     Consider Also:
         - :class:`KeepSectionLargest` when the largest object per grid cell is
-          more reliable than the most centered.
-        - :class:`SmallObjectRemover` when peripheral artifacts are simply
-          smaller than the true colony.
-        - :class:`ReduceSectionsByLine` for grid-aware multi-detection
-          reduction using positional regression.
+          a more reliable proxy for the true colony than spatial centrality.
+        - :class:`SmallObjectRemover` when peripheral artefacts are consistently
+          smaller than the genuine colony and size is the better discriminant.
+        - :class:`ReduceSectionsByLine` for grid-aware multi-detection reduction
+          using expected positional regression rather than centroid distance.
+
+    Returns:
+        Image: Input image with ``objmap`` reduced to the single object whose
+        bounding-box center is closest to the image center; all other objects
+        are set to background.
 
     See Also:
-        :doc:`/how_to/notebooks/refine_noisy_boundaries` for boundary cleanup
-        workflows.
-        :doc:`/explanation/refinement_strategies` for an overview of
-        refinement approaches.
+        :doc:`/how_to/notebooks/refine_noisy_boundaries` for single-object
+        cleanup workflows on cropped plate images.
     """
 
     def _operate(self, image: Image):

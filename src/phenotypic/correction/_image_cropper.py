@@ -12,36 +12,61 @@ from phenotypic.abc_ import ImageCorrector
 
 
 class ImageCropper(ImageCorrector):
-    """Remove pixels from image edges by specifying crop margins.
+    """Remove pixels from image edges by specifying per-edge crop margins.
 
     Crops all image components (rgb, gray, detect_mat, objmask, objmap)
-    together. When applied to a GridImage, the grid structure is preserved
-    and grid positions are recalculated for the cropped dimensions.
+    simultaneously using the same margins, so every layer remains spatially
+    synchronised. When applied to a GridImage, the grid structure and finder
+    are preserved and well positions are recalculated for the reduced
+    dimensions.
+
+    For usage context, see :doc:`/how_to/notebooks/crop_and_pad`.
+
+    Best For:
+        - Removing scanner margins or plate borders that lie outside the
+          agar surface before detection.
+        - Eliminating edge artefacts such as bent agar, labelling tape, or
+          moisture condensation that would generate false detections.
+        - Standardising image dimensions across a batch of plates captured
+          with slightly different positioning.
+        - Isolating a sub-region of a large plate image for focused
+          analysis.
+
+    Consider Also:
+        - :class:`ImagePadder` for extending image dimensions rather than
+          reducing them.
+        - :class:`RemoveBorderObjects` when the goal is to exclude
+          edge-touching colonies from analysis without altering image
+          dimensions.
+        - :class:`GridAligner` when rotation correction is needed alongside
+          cropping.
 
     Args:
-        left: Pixels to remove from the left edge. ``None`` means no
-            cropping. Default: ``None``.
-        right: Pixels to remove from the right edge. Default: ``None``.
-        top: Pixels to remove from the top edge. Default: ``None``.
-        bottom: Pixels to remove from the bottom edge. Default: ``None``.
+        left: Pixels to remove from the left edge. ``None`` applies no
+            cropping on this edge. Size to the off-agar margin you want to
+            discard. Default: ``None``.
+        right: Pixels to remove from the right edge. ``None`` applies no
+            cropping on this edge. Default: ``None``.
+        top: Pixels to remove from the top edge. ``None`` applies no
+            cropping on this edge. Default: ``None``.
+        bottom: Pixels to remove from the bottom edge. ``None`` applies no
+            cropping on this edge. Default: ``None``.
 
     Returns:
         Image: Input image with all components cropped to the specified
-        margins.
+        margins. GridImage grid positions are recalculated on the cropped
+        dimensions.
 
-    Best For:
-        - Removing scanner margins or borders outside the agar plate.
-        - Eliminating edge artifacts (bent agar, labeling, moisture).
-        - Standardizing image dimensions across a batch of plates.
-
-    Consider Also:
-        - :class:`ImagePadder` for adding pixels instead of removing them.
-        - :class:`RemoveBorderObjects` for removing edge-touching colonies
-          without changing image dimensions.
+    Raises:
+        ValueError: If any margin is negative.
+        ValueError: If opposite margins together exceed the image dimension
+            (e.g., ``top`` + ``bottom`` >= image height).
 
     See Also:
         :doc:`/how_to/notebooks/crop_and_pad` for a visual walkthrough of
-        cropping and padding operations.
+        cropping and padding operations on plate images.
+        :doc:`/how_to/notebooks/correct_grid_rotation` for combining
+        cropping with rotation correction.
     """
 
     left: int | None = None

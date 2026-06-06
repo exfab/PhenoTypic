@@ -14,50 +14,54 @@ from skimage.morphology import dilation, erosion
 
 
 class MaskGradient(ObjectRefiner, FootprintMixin):
-    """Extract object boundaries via morphological gradient (dilation minus erosion).
+    """Extract colony boundary outlines via morphological gradient.
 
-    Computes the difference between dilation and erosion of the binary mask,
-    producing a thin outline of each object's boundary pixels. Interior and
-    exterior pixels are removed, leaving only the colony perimeter for
-    edge-focused analysis or visualization.
+    Computes the morphological gradient (dilation minus erosion) of the binary
+    object mask, retaining only the pixels that lie on object boundaries. The
+    result is a thin perimeter outline of each colony with interior and exterior
+    pixels set to background. Boundary thickness scales with ``width``.
 
-    Args:
-        shape: Structuring element for gradient computation. ``"auto"``
-            selects a disk scaled to image size, ``"disk"``, ``"square"``,
-            or ``"diamond"`` use a named shape at the given width, a NumPy
-            array provides a custom element, and ``None`` uses the library
-            default. Default: None.
-        width: Footprint width in pixels when using named shapes or
-            auto-scaling. Larger values produce thicker boundaries.
-            Typical range: 1--5. Default: 1.
-
-    Returns:
-        Image: Input image with ``objmask`` replaced by the gradient
-        boundary mask.
-
-    Raises:
-        AttributeError: If an invalid ``shape`` type is provided.
+    For an overview of morphological refinement methods, see
+    :doc:`/explanation/refinement_strategies`.
 
     Best For:
         - Extracting colony perimeters for boundary roughness or circularity
-          measurements.
-        - Creating boundary masks for edge-specific color or texture analysis.
-        - Visualizing colony contours as QC overlays on raw images.
-        - Detecting spreading or filamentous edges extending from colony cores.
+          measurements that require edge-only pixel sets.
+        - Creating boundary masks for edge-specific color or texture sampling
+          to characterize colony rim pigmentation.
+        - Generating QC overlays that visualize detected colony contours on
+          top of the raw RGB image.
+        - Isolating spreading or filamentous edges extending from colony cores
+          as a precursor to morphological analysis.
 
     Consider Also:
-        - :class:`Skeletonize` when you need medial-axis topology rather
-          than boundary outlines.
-        - :class:`MaskErosion` for uniform inward shrinking without
-          extracting boundaries.
+        - :class:`Skeletonize` when medial-axis topology or branch structure
+          is needed rather than a boundary outline.
         - :class:`Thinning` for iterative boundary peeling that preserves
-          connectivity.
+          connectivity and produces a thinner skeleton-like result.
+        - :class:`MaskErosion` for uniform inward shrinking of the full mask
+          without reducing the result to boundary pixels only.
+
+    Args:
+        shape: Structuring element shape for gradient computation. ``"auto"``
+            scales a disk to the image size; ``"disk"``, ``"square"``, and
+            ``"diamond"`` use named shapes at the given ``width``; a NumPy
+            array provides a custom element; ``None`` uses the skimage library
+            default. Default: ``None``.
+        width: Footprint width in pixels when using a named shape or auto
+            scaling. Larger values produce thicker boundary outlines. Typical
+            range: 1--5. Default: 1.
+
+    Returns:
+        Image: Input image with ``objmask`` replaced by the gradient boundary
+        mask; interior and exterior pixels are set to background.
+
+    Raises:
+        AttributeError: If an unrecognised ``shape`` value is provided.
 
     See Also:
         :doc:`/how_to/notebooks/refine_noisy_boundaries` for boundary
-        extraction workflows.
-        :doc:`/explanation/refinement_strategies` for a comparison of
-        morphological refinement methods.
+        extraction workflows on real plate images.
     """
 
     shape: Literal["auto", "square", "diamond", "disk"] | NdArrayField | None = None

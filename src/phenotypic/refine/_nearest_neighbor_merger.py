@@ -15,42 +15,59 @@ from ..abc_ import ObjectRefiner
 
 
 class NearestNeighborMerger(ObjectRefiner):
-    """Merge small fragments into their nearest neighboring colony.
+    """Absorb small colony fragments into their nearest neighboring detection.
 
-    Each object below ``min_size`` is absorbed into its single closest
-    neighbor within ``distance_threshold``. Unlike transitive merging, this
-    is one-directional and conservative — it cleans up debris without
-    cascading merges across the plate.
+    For each object whose area is below ``min_size``, finds the single
+    nearest centroid within ``distance_threshold`` and reassigns the
+    fragment's label to that neighbor. The merge is one-directional and
+    non-transitive: large anchor colonies are never themselves merged,
+    which avoids cascading chains across the plate.
 
-    Args:
-        distance_threshold: Maximum centroid distance (pixels) for merging.
-            Objects beyond this distance remain independent. Typical range:
-            15--40. Default: 25.
-        min_size: Only objects with area below this threshold are merge
-            candidates. Larger objects serve as anchor targets. ``None``
-            merges all objects (rarely desired). Default: 50.
-
-    Returns:
-        Image: Input image with ``objmask`` and ``objmap`` updated after
-        merging small objects into their nearest neighbors.
+    For a comparison of merging strategies, see
+    :doc:`/explanation/refinement_strategies`.
 
     Best For:
-        - Absorbing dust or noise fragments near real colonies.
-        - Cleaning up small detection artifacts without risking cascading merges.
-        - Size-selective cleanup where only fragments below a threshold merge.
+        - Absorbing dust or debris fragments that appear near genuine
+          colonies after thresholding or edge detection.
+        - Size-selective cleanup where only small artefacts below an area
+          threshold need merging while large colonies remain independent.
+        - Plates with scattered micro-colonies or satellite spots that
+          should count as part of the nearest parent colony.
 
     Consider Also:
-        - :class:`MergeFragmentChains` for chained merging of all nearby
-          objects regardless of size.
-        - :class:`SmallToLargeMerger` for merging small objects into the
-          largest nearby colony.
-        - :class:`MaskClosing` for bridging narrow gaps morphologically.
+        - :class:`MergeFragmentChains` when transitive closure is needed
+          so that chains of nearby fragments (A near B near C) merge into
+          one detection even if the endpoints are far apart.
+        - :class:`SmallToLargeMerger` when small fragments should
+          specifically merge into the largest nearby colony rather than
+          the geometrically closest one.
+        - :class:`MaskClosing` for morphological bridging of narrow gaps
+          without relabeling objects.
+
+    Args:
+        distance_threshold: Maximum centroid-to-centroid distance in pixels
+            within which a small fragment is eligible to merge with its
+            nearest neighbor. Fragments beyond this distance remain
+            independent. Typical range: 10--50. Default: 20.0.
+        min_size: Area threshold in pixels. Objects with area strictly below
+            this value are merge candidates; objects at or above serve as
+            immovable anchors. Set to ``None`` to make all objects eligible
+            for merging. Typical range: 20--200. Default: 50.
+
+    Returns:
+        Image: Input image with ``objmap`` updated after absorbing small
+        fragments into their nearest neighbors. ``objmask``, ``rgb``,
+        ``gray``, and ``detect_mat`` are unchanged.
+
+    Raises:
+        ValueError: If ``distance_threshold`` is not positive.
+        ValueError: If ``min_size`` is provided and not positive.
 
     See Also:
         :doc:`/how_to/notebooks/merge_fragmented_detections` for fragment
-        merging strategies.
+        merging workflows on real plate images.
         :doc:`/explanation/refinement_strategies` for choosing the right
-        refinement approach.
+        merging approach.
     """
 
     distance_threshold: float = 20.0

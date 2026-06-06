@@ -11,38 +11,38 @@ from ..abc_ import ThresholdDetector
 class TriangleDetector(ThresholdDetector):
     """Detect colonies by triangle thresholding on skewed, background-dominant plate histograms.
 
-    Compute a threshold at the base of the triangle formed by the histogram
-    peak, minimum, and maximum. This method excels when colonies occupy a
-    small fraction of the plate so that the intensity histogram is strongly
-    skewed toward background. The resulting binary mask captures sparse or
-    faint colonies that Otsu may miss. For a full comparison see
-    :doc:`/explanation/detection_strategies_compared`.
-
-    Returns:
-        Image: Input image with ``objmask`` set to the thresholded binary
-        mask and ``objmap`` set to labeled connected components.
-
-    Raises:
-        ValueError: If threshold computation fails (e.g., degenerate
-            histogram with insufficient intensity variation).
+    Compute a threshold at the base of the triangle formed between the
+    histogram peak, the minimum, and the maximum. This method excels when
+    colonies occupy a small fraction of the plate so that the intensity
+    histogram is strongly skewed toward background, capturing faint colonies
+    that variance-based methods may miss. For a full comparison of detection
+    strategies see :doc:`/explanation/detection_strategies_compared`.
 
     Best For:
-        * Plates where colonies are sparse and background dominates the
-          intensity histogram.
-        * Faintly pigmented or translucent colonies that produce a small
+        - Plates where colonies are sparse and the agar background dominates
+          the intensity histogram.
+        - Faintly pigmented or translucent colonies that produce a small
           foreground peak relative to the background tail.
-        * Early time-point images where colony growth is minimal and most
-          pixels belong to the agar background.
-        * Drop-out screens with many empty grid positions and few visible
+        - Early time-point images where colony growth is minimal and most
+          pixels represent agar background.
+        - Drop-out screens with many empty grid positions and few visible
           colonies.
 
     Consider Also:
-        * :class:`OtsuDetector` when colonies and background occupy roughly
-          equal histogram areas (balanced bimodal distribution).
-        * :class:`HysteresisDetector` when colony brightness varies across
+        - :class:`OtsuDetector` when colonies and background occupy roughly
+          equal histogram areas, giving a balanced bimodal distribution.
+        - :class:`HysteresisDetector` when colony brightness varies across
           the plate and a single threshold under-segments faint regions.
-        * :class:`UserThreshold` when an empirically determined threshold is
+        - :class:`UserThreshold` when an empirically determined threshold is
           known to outperform automatic methods for your plate type.
+
+    Returns:
+        Image: Input image with ``objmask`` set to the binary colony mask and
+        ``objmap`` set to labeled connected components.
+
+    Raises:
+        ValueError: If threshold computation fails due to a degenerate
+            histogram with insufficient intensity variation.
 
     References:
         [1] G. W. Zack, W. E. Rogers, and S. A. Latt, "Automatic
@@ -50,12 +50,12 @@ class TriangleDetector(ThresholdDetector):
         Cytochem.*, vol. 25, no. 7, pp. 741--753, 1977.
 
     See Also:
-        :doc:`/tutorials/notebooks/02_detecting_colonies`
-            Step-by-step tutorial for basic colony detection.
-        :doc:`/how_to/notebooks/choose_detection_algorithm`
-            Guide for selecting the right detector for your plate images.
-        :doc:`/explanation/detection_strategies_compared`
-            In-depth comparison of all detection strategies.
+        :doc:`/tutorials/notebooks/02_detecting_colonies` for a step-by-step
+        tutorial on basic colony detection.
+        :doc:`/how_to/notebooks/choose_detection_algorithm` for guidance on
+        selecting the right detector for your plate images.
+        :doc:`/explanation/detection_strategies_compared` for an in-depth
+        comparison of all thresholding strategies.
     """
 
     def _operate(self, image: Image) -> Image:

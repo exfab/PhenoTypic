@@ -14,45 +14,56 @@ from phenotypic.tools_.typing_ import NdArrayField
 
 
 class MaskWhiteTophat(ObjectRefiner, FootprintMixin):
-    """Remove small bright mask structures using white tophat subtraction.
+    """Remove bright protrusions and thin bridges from the detection mask using white tophat subtraction.
 
-    Applies a white tophat transform to the binary mask to detect small
-    bright features (glare bridges, dust speckles, thin connections) and
-    subtracts them. Produces cleaner, more compact masks that better match
-    colony boundaries under uneven illumination.
+    Computes the white tophat transform of the binary mask (mask minus its
+    morphological opening) and subtracts the result, isolating and eliminating
+    small bright structures that are narrower than the structuring element.
+    Glare-induced bridges, dust speckles, and thin connections are suppressed
+    while the main colony body is preserved.
 
-    Args:
-        shape: Structuring element shape. ``"disk"`` preserves round
-            features, ``"square"`` is more aggressive along axes,
-            ``"diamond"`` provides a compromise. A NumPy array provides
-            a custom element. Default: ``"disk"``.
-        width: Footprint width in pixels. Larger values remove broader
-            bright features but risk shrinking thin colony appendages.
-            ``None`` auto-scales to ~0.4% of the smallest image
-            dimension. Default: None.
-
-    Returns:
-        Image: Input image with ``objmask`` updated by subtracting the
-        white tophat result.
+    For an overview of morphological refinement strategies, see
+    :doc:`/explanation/refinement_strategies`.
 
     Best For:
-        - Reducing glare-induced bridges between neighboring colonies.
-        - Removing bright speckles or dust embedded in masks after
-          thresholding.
-        - Cleaning up thin bright connections that inflate colony
-          perimeters.
+        - Plates with specular glare that creates bright bridges between
+          adjacent colony masks after thresholding.
+        - Detection masks with small bright dust or condensation speckles
+          that survived the detector.
+        - Colonies whose perimeter measurements are inflated by thin
+          protruding artefacts.
+        - Images where illumination hot-spots produce narrow mask
+          connections narrower than the structuring element width.
 
     Consider Also:
         - :class:`MaskOpening` for general morphological opening that
-          removes thin protrusions without tophat detection.
-        - :class:`SmallObjectRemover` when small artifacts are entire
-          disconnected objects rather than thin bridges.
+          removes thin protrusions and breaks bridges without the tophat
+          detection step.
+        - :class:`SmallObjectRemover` when small artefacts are fully
+          disconnected objects better targeted by an area threshold.
         - :class:`ExtractColonyCore` for intensity-based core extraction
-          when halos are the primary artifact.
+          when diffuse halos rather than thin bridges are the primary
+          artefact.
+
+    Args:
+        shape: Structuring element geometry. ``"disk"`` (default) best
+            preserves round colony boundaries; ``"square"`` is more
+            aggressive along cardinal axes; ``"diamond"`` is a compromise.
+            A NumPy array supplies a custom footprint. Default: ``"disk"``.
+        width: Footprint radius in pixels. Structures narrower than this
+            value are candidates for removal. Larger values eliminate
+            broader protrusions but risk eroding genuine thin appendages.
+            ``None`` auto-scales to approximately 0.4% of the smaller image
+            dimension. Typical range: 3--10. Default: ``None``.
+
+    Returns:
+        Image: Input image with ``objmask`` updated by subtracting the
+        white tophat result. ``objmap``, ``rgb``, ``gray``, and
+        ``detect_mat`` are unchanged.
 
     See Also:
         :doc:`/how_to/notebooks/refine_noisy_boundaries` for tophat-based
-        cleanup workflows.
+        cleanup workflows on real plate images.
         :doc:`/explanation/refinement_strategies` for a comparison of
         morphological refinement methods.
     """

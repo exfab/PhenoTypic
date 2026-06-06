@@ -11,38 +11,52 @@ from phenotypic.abc_ import ObjectRefiner
 
 
 class RemoveBorderObjects(ObjectRefiner):
-    """Remove colonies that touch the image border within a configurable margin.
+    """Remove colonies that touch or overlap the image border within a configurable margin.
 
-    Zeroes any labeled objects in ``objmap`` whose pixels fall within a
-    border band, ensuring only fully contained colonies are analyzed.
-    Partial edge colonies bias size and shape measurements.
+    Identifies all labeled objects whose pixels fall within the exclusion
+    band along any edge, then zeros those labels from ``objmap``. Colonies
+    that are fully interior are unaffected. Partial border colonies bias
+    area, perimeter, and shape measurements and should be excluded before
+    phenotyping.
 
-    Args:
-        border_size: Width of the exclusion border. ``None`` uses 1% of
-            the smaller dimension. Float in (0, 1) is a fraction of the
-            image size. Int or float >= 1 is absolute pixels. Default: 1.
-
-    Returns:
-        Image: Input image with ``objmask`` and ``objmap`` updated to
-        exclude border-touching objects.
-
-    Raises:
-        TypeError: If ``border_size`` type is invalid.
+    For an overview of refinement strategies, see
+    :doc:`/explanation/refinement_strategies`.
 
     Best For:
-        - Plates where the plate rim or image crop truncates edge colonies.
-        - Grid assays where border wells are partially visible.
-        - Automated crops that shift between frames.
+        - Plates where the plate rim or scanner shadow truncates edge
+          colonies, making size measurements unreliable.
+        - Grid assays where border wells are only partially visible within
+          the image crop.
+        - Time-lapse or batch workflows where automated crops may shift
+          between frames, intermittently clipping the same edge colonies.
 
     Consider Also:
-        - :class:`SmallObjectRemover` for removing noise fragments that are
-          not necessarily at the border.
-        - :class:`GridOversizedObjectRemover` for removing abnormally large
-          objects that span multiple grid sections.
+        - :class:`SmallObjectRemover` when the target artefacts are small
+          noise fragments scattered across the plate, not limited to the
+          border region.
+        - :class:`GridOversizedObjectRemover` when the problem is objects
+          that span multiple grid sections rather than partial border
+          colonies.
+
+    Args:
+        border_size: Width of the exclusion band along each image edge.
+            ``None`` defaults to 1% of the smaller image dimension.
+            A float in ``(0, 1)`` is interpreted as a fraction of the
+            smaller image dimension. An integer or float ``>= 1`` is
+            treated as an absolute pixel count. Typical range: 1--30 px.
+            Default: 1.
+
+    Returns:
+        Image: Input image with ``objmap`` and ``objmask`` updated to
+        exclude all labeled objects that touch the exclusion border.
+        ``rgb``, ``gray``, and ``detect_mat`` are unchanged.
+
+    Raises:
+        TypeError: If ``border_size`` is not an integer, float, or ``None``.
 
     See Also:
         :doc:`/how_to/notebooks/refine_noisy_boundaries` for a walkthrough
-        of refinement operations.
+        of border and edge refinement on real plate images.
         :doc:`/explanation/refinement_strategies` for choosing the right
         refinement sequence.
     """

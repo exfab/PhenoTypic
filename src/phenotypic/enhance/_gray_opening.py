@@ -12,46 +12,52 @@ from phenotypic.tools_.mixin import FootprintMixin
 
 
 class GrayOpening(MorphologicalFiltering, FootprintMixin):
-    """Remove small bright artifacts from ``detect_mat`` via morphological opening.
+    """Remove small bright artefacts from ``detect_mat`` via morphological opening.
 
     Applies erosion followed by dilation with a structuring element, removing
-    bright features smaller than the element while preserving the shape of
-    larger structures. Effectively suppresses dust particles, small noise
-    speckles, and tiny satellite colonies.
+    bright features whose spatial extent is smaller than the element while
+    preserving larger colony structures. Effectively suppresses dust particles,
+    small noise speckles, and tiny satellite colonies that would otherwise
+    generate false detections.
 
     For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 
+    Best For:
+        - Removing dust particles and small bright noise from plate scans
+          before thresholding.
+        - Suppressing tiny satellite colonies or debris that would be counted
+          as false positives by downstream detectors.
+        - Smoothing the detection surface before background subtraction to
+          reduce artefact interference.
+
+    Consider Also:
+        - :class:`WhiteTophatEnhance` when the goal is to isolate and enhance
+          small bright structures rather than suppress them.
+        - :class:`SubtractWhiteTophat` for subtracting small bright artefacts
+          from the image while retaining the broader background.
+        - :class:`LocalEdgeDenoise` for noise reduction that preserves colony
+          edges without assuming a specific feature size.
+
     Args:
-        shape: Structuring element geometry. ``'square'`` (default) preserves
-            edges; ``'diamond'`` is more rounded at diagonals; ``'disk'``
-            provides uniform circular operations.
-        width: Diameter of the structuring element in pixels. Larger values
-            remove larger features. Typical range: 3--15. Default: 5.
-        n_iter: Number of times to apply the opening. Repeated opening with
-            a small element produces smoother results than a single pass
-            with a larger element. Default: 1.
+        shape: Structuring element geometry. Accepted values: ``'square'``
+            (default, preserves axis-aligned edges), ``'diamond'`` (rounded
+            at diagonals), ``'disk'`` (uniform circular neighbourhood).
+            Default: ``'square'``.
+        width: Diameter of the structuring element in pixels. Features smaller
+            than ``width`` are removed. Typical range: 3--15. Default: 5.
+        n_iter: Number of times to apply the opening in sequence. Repeated
+            opening with a small element produces smoother suppression than a
+            single pass with a larger element. Default: 1.
 
     Returns:
         Image: Input image with ``detect_mat`` morphologically opened.
         ``rgb`` and ``gray`` are unchanged.
 
-    Best For:
-        - Removing dust particles and small bright noise from plate scans.
-        - Suppressing tiny satellite colonies that interfere with detection
-          of larger colonies.
-        - Smoothing the detection surface before background subtraction.
-
-    Consider Also:
-        - :class:`WhiteTophatEnhance` when you want to isolate (not remove)
-          small bright structures.
-        - :class:`SubtractWhiteTophat` for subtracting small bright artifacts
-          while retaining the background.
-        - :class:`LocalEdgeDenoise` for noise reduction that preserves edges
-          without morphological assumptions.
-
     See Also:
-        :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a
-        visual walkthrough of enhancement pipelines on plate images.
+        :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a visual
+        walkthrough of enhancement pipelines on plate images.
+        :doc:`/explanation/what_enhancement_does` for how morphological
+        filtering fits into the pipeline model.
     """
 
     shape: Literal["square", "diamond", "disk"] = "square"

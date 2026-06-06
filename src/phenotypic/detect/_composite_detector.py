@@ -23,49 +23,49 @@ class CompositeDetector(ObjectDetector):
     reliably. For a full comparison see
     :doc:`/explanation/detection_strategies_compared`.
 
+    Best For:
+        - Plates where different colony sub-populations respond to different
+          detection algorithms (e.g., bright colonies via Otsu, faint
+          colonies via triangle thresholding).
+        - Consensus-based quality control that accepts only colonies
+          confirmed by all methods.
+        - Ensemble strategies that maximise recall by unioning masks from
+          complementary algorithms.
+        - Benchmarking workflows that compare detector agreement across
+          methods.
+
+    Consider Also:
+        - :class:`OtsuDetector` or :class:`HysteresisDetector` when a
+          single detector already captures all colonies reliably.
+        - :class:`WatershedDetector` when the primary challenge is
+          separating touching colonies rather than combining detection
+          strategies.
+
     Args:
         detectors: List of :class:`~phenotypic.abc_.ObjectDetector` or
             :class:`~phenotypic.ImagePipeline` instances to combine.
             Pipelines allow preprocessing steps before detection. Defaults
             to ``[OtsuDetector(), RoundPeaksDetector()]`` when not
             specified.
-
         mode: Combination strategy. ``'union'`` marks a pixel as colony if
             any detector flags it (logical OR, maximises sensitivity).
             ``'intersection'`` requires all detectors to agree (logical AND,
             maximises specificity). ``'overlap'`` retains whole objects that
             have mutual spatial overlap across masks (balances sensitivity
-            and specificity). Default ``'overlap'``.
-
+            and specificity). Default: ``'overlap'``.
         min_overlap_ratio: For ``'overlap'`` mode, minimum fraction of
-            object pixels that must overlap with all other masks. Range:
-            0.0--1.0. Default 0.0. Higher values produce more conservative
-            filtering. Typical range: 0.0--0.5.
+            object pixels that must overlap with another mask before an
+            object is retained. At the default 0.0 any mutually overlapping
+            object is kept; larger values bias towards objects confirmed by
+            more than one detector. Typical range: 0.0--0.5. Default: 0.0.
 
     Returns:
         Image: Input image with ``objmask`` set to the combined binary
         colony mask and ``objmap`` derived from the merged mask.
 
     Raises:
-        ValueError: If *detectors* list is empty or *mode* is not one of
+        ValueError: If ``detectors`` is empty or ``mode`` is not one of
             ``'union'``, ``'intersection'``, or ``'overlap'``.
-
-    Best For:
-        * Plates where different colony sub-populations respond to different
-          detection algorithms (e.g., bright colonies via Otsu, faint
-          colonies via triangle thresholding).
-        * Consensus-based quality control that accepts only colonies
-          confirmed by all methods.
-        * Ensemble strategies that maximise recall by unioning masks from
-          complementary algorithms.
-        * Benchmarking workflows that compare detector agreement.
-
-    Consider Also:
-        * :class:`OtsuDetector` or :class:`HysteresisDetector` when a
-          single detector already captures all colonies reliably.
-        * :class:`WatershedDetector` when the primary challenge is
-          separating touching colonies rather than combining detection
-          strategies.
 
     See Also:
         :doc:`/tutorials/notebooks/02_detecting_colonies`

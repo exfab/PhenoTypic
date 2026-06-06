@@ -17,43 +17,51 @@ class SharpenEdgeGauss(ContrastAdjustment):
     Subtracts a Gaussian-blurred copy from the original and scales the
     difference to emphasize high-contrast boundaries. Makes soft or
     indistinct colony edges more pronounced, improving thresholding and
-    edge-detection accuracy.
+    edge-detection accuracy downstream.
 
     For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 
+    Best For:
+        - Colonies with soft, gradual edges caused by translucent growth
+          or slight scanner blur.
+        - Dense plates where colony boundaries blend gradually into the
+          agar background.
+        - Pre-threshold sharpening to improve segmentation accuracy on
+          mildly blurred images.
+        - Plates with slight lens or scanner defocus that softens colony
+          boundaries.
+
+    Consider Also:
+        - :class:`LocalEdgeDenoise` for denoising before sharpening on
+          grainy images, to avoid amplifying noise alongside edges.
+        - :class:`FocusEdgeLaplace` for second-derivative edge detection
+          that replaces rather than enhances the intensity profile.
+        - :class:`FocusEdgePhase` for contrast-invariant edge detection
+          under uneven illumination.
+
     Args:
-        radius: Standard deviation of the Gaussian blur in pixels.
-            Controls the scale of features enhanced. Small values
-            (0.5--2.0) sharpen fine details; larger values (5--15)
-            enhance broader features. Default: 2.0.
-        amount: Multiplier for the sharpening effect. Low values
-            (0.3--0.7) produce subtle enhancement; standard values
-            (1.0--1.5) give moderate sharpening; high values (2.0+)
-            create aggressive enhancement with risk of halo artifacts.
-            Default: 1.0.
-        preserve_range: Preserve the original pixel value range.
-            Default: ``False``.
-        n_iter: Number of successive sharpening passes. Multiple passes
-            compound the effect. Typical range: 1--3. Default: 1.
+        radius: Standard deviation of the Gaussian blur kernel in pixels.
+            Controls the spatial scale of features enhanced. Typical
+            range: 0.5--5.0 for fine colony edges; up to 15 for broader
+            low-frequency enhancement. Default: 2.0.
+        amount: Strength multiplier for the sharpening effect. Values
+            below 1.0 produce subtle enhancement; 1.0--1.5 gives
+            moderate sharpening; values above 2.0 risk halo artifacts
+            along high-contrast edges. Default: 1.0.
+        preserve_range: Preserve the input pixel value range during
+            filtering. Set ``True`` when the downstream operation
+            requires values within the original bounds. Default:
+            ``False``.
+        n_iter: Number of successive sharpening passes. Each pass
+            compounds the effect. Typical range: 1--3. Default: 1.
 
     Returns:
         Image: Input image with ``detect_mat`` sharpened via unsharp
         masking. ``rgb`` and ``gray`` are unchanged.
 
-    Best For:
-        - Low-contrast colonies with soft, gradual edges (translucent
-          growth).
-        - Dense plates where colonies blend into background.
-        - Pre-threshold sharpening to improve segmentation accuracy.
-        - Slight scanner or lens blur that softens colony boundaries.
-
-    Consider Also:
-        - :class:`LocalEdgeDenoise` for denoising before sharpening on
-          grainy images to avoid amplifying noise.
-        - :class:`FocusEdgeLaplace` for second-derivative edge detection
-          that replaces rather than enhances the intensity profile.
-        - :class:`FocusEdgePhase` for contrast-invariant edge
-          detection under uneven illumination.
+    Raises:
+        ValueError: If ``radius`` is not positive.
+        ValueError: If ``n_iter`` is less than 1.
 
     See Also:
         :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a

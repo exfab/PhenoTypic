@@ -46,64 +46,121 @@ class _PhaseCong3Result:
 
 
 class FocusEdgePhase(FocusEdge):
-    """Enhance colony edges in ``detect_mat`` with contrast-invariant phase congruency.
+    """Enhance colony edges in ``detect_mat`` using contrast-invariant phase congruency.
 
-    Detects features where Fourier components are maximally in phase,
-    regardless of amplitude. This makes the response invariant to image
-    contrast and illumination changes, making it ideal for plates with
-    uneven lighting, scanner vignetting, or varying colony opacity.
+    Detects features where log-Gabor Fourier components are maximally in
+    phase, producing an edge response that depends on phase agreement rather
+    than amplitude. The result is invariant to local illumination level and
+    scanner vignetting, making faint or translucent colony boundaries visible
+    even where intensity-gradient methods fail. For algorithm details see
+    :doc:`/explanation/what_enhancement_does`.
 
-    For algorithm details, see :doc:`/explanation/what_enhancement_does`.
+    Best For:
+        - Colony boundaries that vary in opacity or contrast across the plate
+          due to pigmentation differences, agar depth variation, or colony age.
+        - Plates with scanner vignetting or uneven illumination where
+          gradient-based filters produce inconsistent edge strength.
+        - Faint, translucent colonies on bright agar where the amplitude
+          signal is weak but phase coherence is preserved.
+        - Filamentous fungi plates where edges span a wide range of
+          orientations and ``n_orient=8`` captures all hyphal angles.
+
+    Consider Also:
+        - :class:`FocusEdgeFrangi` for elongated hyphae when vesselness
+          selectivity for ridge shape is more important than illumination
+          invariance.
+        - :class:`FocusEdgeHessian` for multi-scale ridge and edge detection
+          with explicit blob-sensitivity control.
+        - :class:`SharpenEdgeGauss` for edge sharpening that preserves the
+          original intensity profile on uniformly illuminated plates.
 
     Args:
-        n_scale: Number of wavelet scales. Typical range: 3--6. More
-            scales capture a wider range of feature sizes. Default: 4.
-        n_orient: Number of filter orientations. 6 gives 30-degree
-            angular spacing. Default: 6.
-        min_wavelength: Wavelength of smallest scale filter in pixels.
-            Match to minimum expected colony edge width. Default: 3.0.
-        mult: Scaling factor between successive wavelengths. Controls
-            spectral overlap. Default: 2.1.
-        sigma_onf: Log-Gabor bandwidth parameter. 0.55 gives ~2 octave
-            bandwidth; 0.75 gives ~1 octave. Default: 0.55.
-        k: Noise threshold multiplier. Higher values (5--20) increase
-            noise rejection but may miss faint edges. Default: 2.0.
-        cutoff: Frequency spread penalty threshold. Default: 0.5.
-        g: Sigmoid sharpness for frequency spread weighting. Default: 10.
-        noise_method: Noise estimation method. ``-1`` (default) uses
-            median-based estimation; ``-2`` uses mode-based (Rayleigh);
-            values >= 0 set a fixed noise threshold.
-        output: Result to store in ``detect_mat``. ``'pc_sum'`` (default)
-            for scalar phase congruency, ``'M'`` for edge strength,
-            ``'m'`` for corner strength.
+        n_scale: Number of log-Gabor octave scales. More scales integrate
+            phase evidence over a wider spatial frequency range, giving a
+            smoother but spatially broader response. Typical range: 3--6.
+            Default: 4.
+        n_orient: Number of oriented filter lobes. 6 gives 30-degree angular
+            spacing (suitable for circular yeast colony edges); 8 gives
+            22.5-degree spacing and better sensitivity to hyphae at arbitrary
+            angles. Typical range: 4--8. Default: 6.
+        min_wavelength: Center wavelength (pixels) of the finest log-Gabor
+            scale. Should be matched to the narrowest expected colony edge
+            width; must be >= 2 (Nyquist limit enforced by validator). Smaller
+            values detect finer high-frequency features; larger values focus on
+            broader edges. Default: 3.0.
+        mult: Ratio between successive scale wavelengths. Together with
+            ``sigma_onf`` it determines inter-scale spectral coverage. ``2.1``
+            is the upstream default. For even coverage of the spectrum Kovesi
+            recommends pairing ``mult`` and ``sigma_onf`` together; e.g.
+            ``sigma_onf=0.55`` / ``mult=3`` gives roughly 2-octave bandwidth
+            and ``sigma_onf=0.75`` / ``mult=1.6`` gives roughly 1-octave
+            bandwidth. Re-tune both whenever either changes. Must be > 1.
+            Default: 2.1.
+        sigma_onf: Log-Gabor bandwidth ratio (standard deviation of the
+            Gaussian transfer function divided by the filter center frequency).
+            Smaller values give wider bandwidth (more octaves per scale,
+            broadband, suited for plates with a wide range of colony sizes);
+            larger values give narrower, more frequency-selective bandwidth.
+            For even spectral coverage pair with ``mult`` per the upstream
+            table (``0.55`` with ``mult=3``, ``0.75`` with ``mult=1.6``).
+            Valid range: 0.1--1.0. Default: 0.55.
+        k: Noise threshold multiplier in units of the estimated Rayleigh
+            noise standard deviation. Higher values (5--20) suppress more
+            noise at the cost of missing faint colony edges; lower values
+            (1--3) maximise edge recall on clean images. Value 0 disables
+            noise thresholding entirely. Default: 2.0.
+        cutoff: Frequency spread penalty threshold. Phase congruency values
+            are penalised via a sigmoid when the multi-scale amplitude spread
+            falls below this fraction, discouraging single-scale responses.
+            Valid range: (0, 1) exclusive. Default: 0.5.
+        g: Sigmoid sharpness controlling the transition from penalised to
+            unpenalised frequency spread. Higher values create a near-binary
+            gate; lower values create a gradual blend. Must be > 0.
+            Default: 10.0.
+        noise_method: Noise threshold estimation strategy. ``-1.0`` (default)
+            estimates from the median of the smallest-scale filter amplitude
+            (robust, recommended for heterogeneous plate populations). ``-2.0``
+            uses the Rayleigh histogram mode (more robust on images with
+            strong background gradients). Any value >= 0 bypasses estimation
+            and uses that value as a fixed threshold, enabling fully
+            deterministic pipelines. Default: -1.0.
+        output: Which phase congruency quantity to store in ``detect_mat``.
+            ``'pc_sum'`` (default) is the mean phase congruency across all
+            orientations, normalised to [0, 1]; best general-purpose edge map
+            for downstream thresholding. ``'M'`` is the maximum eigenvalue of
+            the phase congruency covariance tensor (edge strength along
+            continuous curves). ``'m'`` is the minimum eigenvalue (corner and
+            junction strength). Accepted values: ``'pc_sum'``, ``'M'``,
+            ``'m'``. Default: ``'pc_sum'``.
 
     Returns:
         Image: Input image with ``detect_mat`` replaced by the phase
-        congruency map (clipped to [0, 1]). ``rgb`` and ``gray`` are
-        unchanged.
+        congruency map, clipped to [0, 1]. ``rgb`` and ``gray`` are unchanged.
 
-    Best For:
-        - Colony boundaries independent of colony color or opacity.
-        - Images with uneven illumination or scanner vignetting.
-        - Faint colony edges that gradient-based methods miss.
-        - Translucent or low-contrast colonies on agar.
-
-    Consider Also:
-        - :class:`FocusEdgeLaplace` for simpler edge detection when
-          illumination is uniform.
-        - :class:`FocusEdgeHessian` for multi-scale ridge and edge detection
-          with blob sensitivity control.
-        - :class:`SharpenEdgeGauss` for edge sharpening that preserves the
-          original intensity profile.
+    Raises:
+        ValueError: If ``n_scale`` < 1, ``n_orient`` < 1,
+            ``min_wavelength`` < 2, ``mult`` <= 1, ``sigma_onf`` outside
+            [0.1, 1.0], ``k`` < 0, ``cutoff`` outside (0, 1), or ``g`` <= 0.
 
     References:
-        [1] P. Kovesi, "Image features from phase congruency," *Videre:
-        J. Comput. Vis. Res.*, vol. 1, no. 3, pp. 1--26, 1999.
+        [1] P. Morrone and R. A. Owens, "Feature detection from local
+        energy," *Pattern Recognit. Lett.*, vol. 6, no. 5, pp. 303--313,
+        Dec. 1987.
+
+        [2] M. C. Morrone and D. C. Burr, "Feature detection in human
+        vision: A phase-dependent energy model," *Proc. R. Soc. London,
+        Ser. B*, vol. 235, no. 1280, pp. 221--245, Dec. 1988.
+
+        [3] P. Kovesi, "Phase congruency: A low-level image invariant,"
+        *Psychol. Res.*, vol. 64, no. 2, pp. 136--148, Aug. 2000.
+
+        [4] D. J. Field, "Relations between the statistics of natural images
+        and the response properties of cortical cells," *J. Opt. Soc. Am.
+        A*, vol. 4, no. 12, pp. 2379--2394, Dec. 1987.
 
     See Also:
         :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a
-        visual walkthrough of contrast-invariant enhancement on plate
-        images.
+        visual walkthrough of contrast-invariant enhancement on plate images.
         :doc:`/explanation/what_enhancement_does` for background on
         phase congruency and the Local Energy Model.
     """

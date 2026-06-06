@@ -21,18 +21,32 @@ class RankOtsuDetector(ObjectDetector, FootprintMixin):
     under-segment parts of the plate. For a full comparison see
     :doc:`/explanation/detection_strategies_compared`.
 
-    Args:
-        shape: Footprint shape for the local neighbourhood. Accepted
-            values: ``'square'``, ``'diamond'``, ``'disk'``. Disk and
-            diamond are rotationally symmetric; square is faster. Default:
-            ``'square'``.
+    Best For:
+        - Plates with vignetting, hot-spots, or centre-to-edge illumination
+          gradients.
+        - Large-format plates (384-well or larger) where lighting uniformity
+          is difficult to achieve.
+        - Images with spatially varying agar colour or reflectance that
+          shifts across the plate surface.
 
+    Consider Also:
+        - :class:`OtsuDetector` when illumination is uniform and a fast
+          global threshold suffices.
+        - :class:`HysteresisDetector` when colony brightness varies but
+          spatial illumination is reasonably even.
+        - :class:`ChanVeseDetector` when colonies have diffuse edges and
+          region-based segmentation is more appropriate.
+
+    Args:
+        shape: Footprint shape for the local neighbourhood. Disk and
+            diamond are rotationally symmetric; square is faster. Accepted
+            values: ``'square'``, ``'diamond'``, ``'disk'``. Default:
+            ``'square'``.
         width: Footprint width (or radius for disk/diamond) in pixels.
-            If ``None``, auto-scales to ``min(height, width) // 8``.
             Larger values smooth the threshold spatially (less local
             adaptation); smaller values track finer illumination changes
-            but may over-segment. Default: None.
-
+            but may over-segment. When ``None``, auto-scales to
+            ``min(height, width) // 8``. Default: None.
         ignore_zeros: Exclude zero-intensity pixels from the local
             threshold computation. Enable for plates with black borders
             or masked regions. Default: False.
@@ -44,21 +58,6 @@ class RankOtsuDetector(ObjectDetector, FootprintMixin):
     Raises:
         ValueError: If ``shape`` is not one of the accepted values or
             ``width`` is not positive.
-
-    Best For:
-        * Plates with vignetting, hot-spots, or centre-to-edge illumination
-          gradients.
-        * Large-format plates (384-well or larger) where lighting uniformity
-          is difficult to achieve.
-        * Images with spatially varying agar colour or reflectance.
-
-    Consider Also:
-        * :class:`OtsuDetector` when illumination is uniform and a fast
-          global threshold suffices.
-        * :class:`HysteresisDetector` when colony brightness varies but
-          spatial illumination is reasonably even.
-        * :class:`ChanVeseDetector` when colonies have diffuse edges and
-          region-based segmentation is more appropriate.
 
     See Also:
         :doc:`/tutorials/notebooks/02_detecting_colonies`

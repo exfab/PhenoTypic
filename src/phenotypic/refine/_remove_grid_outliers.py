@@ -13,43 +13,56 @@ from phenotypic.schema import GRID_LINREG_STATS, GRID
 
 
 class RemoveGridOutliers(GridObjectRefiner):
-    """Remove objects with large positional residuals in noisy grid rows or columns.
+    """Remove positional outliers from noisy grid rows or columns using IQR-based residual pruning.
 
     Fits linear-regression trends to colony centroids along each row and
-    column, identifies rows/columns with high variability (coefficient of
-    variance above threshold), and removes objects whose residual error
-    exceeds an IQR-based cutoff within those noisy lines.
+    column, identifies lines whose residual coefficient of variance exceeds
+    ``max_coeff_variance``, then removes objects whose residual error exceeds
+    the mean plus ``cutoff_multiplier`` times the IQR within those noisy
+    lines. Rows and columns with low variance are left untouched.
 
-    Args:
-        axis: Axis to analyze. ``None`` analyzes both rows and columns,
-            ``0`` rows only, ``1`` columns only. Restricting the axis
-            speeds processing and targets known problem directions.
-            Default: None.
-        stddev_multiplier: IQR-based cutoff multiplier for outlier removal.
-            Lower values prune more aggressively; higher values are
-            conservative. Typical range: 1.0--3.0. Default: 1.5.
-        max_coeff_variance: Maximum coefficient of variance (std/mean)
-            allowed before a row/column is considered noisy and eligible
-            for outlier pruning. Typical range: 1--5. Default: 1.
+    Requires a ``GridImage`` with grid metadata already populated.
 
-    Returns:
-        Image: Input image with ``objmap`` and ``objmask`` updated to exclude
-        positional outliers from noisy grid rows/columns.
+    For a comparison of grid refinement approaches, see
+    :doc:`/explanation/refinement_strategies`.
 
     Best For:
-        - Cleaning rows or columns with off-grid detections from condensation,
-          glare, or debris before measuring growth.
-        - Stabilizing grid registration when a subset of positions is noisy.
-        - Plates where most grid lines are well-aligned but a few contain
-          spurious artifacts.
+        - Plates where most rows and columns are well-aligned but a few
+          contain off-grid detections from condensation, glare, or debris.
+        - Stabilizing grid registration before size or intensity measurement
+          when a subset of row or column positions is noisy.
+        - Batch runs where individual plates occasionally have edge rows
+          with aberrant detections that should not propagate to measurements.
 
     Consider Also:
-        - :class:`ReduceSectionsByLine` for reducing multi-detections to
-          one per cell rather than pruning outliers within rows/columns.
+        - :class:`ReduceSectionsByLine` when the goal is reducing each cell
+          to one detection rather than pruning outliers within lines.
         - :class:`GridAlignmentRefiner` for full grid-aware filtering using
-          dominant-object-per-cell selection.
-        - :class:`GridOversizedObjectRemover` when the problem is oversized
-          detections rather than positional outliers.
+          dominant-object-per-cell selection without variance-based gating.
+        - :class:`GridOversizedObjectRemover` when the problem is objects
+          spanning multiple grid sections rather than positional outliers.
+
+    Args:
+        axis: Grid axis to analyze. ``None`` processes both rows and
+            columns; ``0`` restricts to rows; ``1`` restricts to columns.
+            Restricting the axis speeds processing when the problem
+            direction is known. Default: ``None``.
+        cutoff_multiplier: IQR-based residual cutoff multiplier. Objects
+            whose residual exceeds ``mean + cutoff_multiplier × IQR``
+            within a noisy line are removed. Lower values prune more
+            aggressively; higher values are conservative. Also accepted
+            as ``stddev_multiplier`` for backwards compatibility. Typical
+            range: 1.0--3.0. Default: 1.5.
+        max_coeff_variance: Maximum coefficient of variance (std / mean
+            of residuals) allowed for a row or column before it is
+            considered noisy and subjected to outlier pruning. Lines below
+            this threshold are left untouched. Typical range: 1--5.
+            Default: 1.
+
+    Returns:
+        Image: Input image with ``objmap`` and ``objmask`` updated to
+        exclude positional outliers from noisy grid rows and columns.
+        ``rgb``, ``gray``, and ``detect_mat`` are unchanged.
 
     See Also:
         :doc:`/how_to/notebooks/refine_noisy_boundaries` for grid-based

@@ -13,61 +13,67 @@ from ..abc_ import ObjectRefiner
 
 
 class ExtractColonyCore(ObjectRefiner):
-    """Extract compact bright cores from labeled colonies using Gaussian mixture modeling.
+    """Extract the bright inoculum core from each colony using Gaussian mixture modeling.
 
-    Fits a two-component GMM to each colony's intensity histogram, separating
-    the bright inoculum core from the dimmer surrounding halo. Regions with
-    insufficient intensity contrast are left unchanged. Morphological
-    opening and closing refine the extracted core shape.
+    Fits a two-component Gaussian mixture model to each labeled colony's intensity
+    histogram, separating the bright inoculum core from the dimmer surrounding halo.
+    Regions with insufficient intensity contrast are left unchanged; morphological
+    opening and closing refine the extracted core shape. Returns an image whose
+    ``objmap`` contains core-only masks rather than full colony footprints.
 
-    For algorithm details, see :doc:`/explanation/refinement_strategies`.
+    For an overview of refinement strategies, see
+    :doc:`/explanation/refinement_strategies`.
+
+    Best For:
+        - Rich-media plates (YPD, LB) where pinned inocula develop dense bright
+          centers surrounded by a dimmer outgrowth halo.
+        - High-density 96-well or 384-well arrays where core isolation reduces
+          measurement spillover between adjacent wells.
+        - Time-course experiments where inoculum mass is the feature of interest,
+          so size and intensity reflect the growth core rather than diffusion halos.
+
+    Consider Also:
+        - :class:`MaskErosion` for uniform inward shrinking when inoculum cores
+          are not intensity-distinct from the surrounding halo.
+        - :class:`InoculumDetector` when core detection is needed as a standalone
+          detection step rather than a post-detection refinement.
+        - :class:`RemoveNonCircular` for shape-based filtering when halos distort
+          circularity measurements without requiring intensity separation.
 
     Args:
-        n_components: Number of Gaussian components per region. Keep at 2
-            for canonical core-vs-surround splitting; higher values risk
-            over-segmentation. Default: 2.
-        separation_threshold: Normalized mean separation below which the
-            original region is left unchanged. Typical range: 0.5--1.2.
-            Higher values extract only high-confidence cores. Default: 0.8.
-        min_core_area: Minimum core area in pixels. Regions or extracted
-            cores smaller than this are kept as-is. Typical range: 10--500,
-            scale with resolution. Default: 30.
-        morph_open_radius: Radius of elliptical opening kernel. Removes
-            thin protrusions; 0 disables. Typical range: 0--5. Default: 1.
-        morph_close_radius: Radius of elliptical closing kernel. Fills
-            small gaps within cores; 0 disables. Typical range: 0--5.
+        n_components: Number of Gaussian mixture components fitted per colony.
+            Use 2 for the canonical bright-core versus dim-halo split; higher
+            values add intermediate intensity modes but increase fitting cost and
+            risk over-segmentation. Default: 2.
+        separation_threshold: Normalized mean separation (|mu_1 - mu_0| /
+            (sigma_0 + sigma_1)) below which a colony is left unchanged. Typical
+            range: 0.5--1.2. Higher values require a more bimodal histogram before
+            any core is extracted; lower values extract cores from subtler intensity
+            gradients. Default: 0.8.
+        min_core_area: Minimum extracted core area in pixels. Colonies smaller than
+            this are kept as-is without attempting GMM fitting; extracted cores
+            smaller than this fall back to the original mask. Scale proportionally
+            with image resolution. Typical range: 10--500. Default: 30.
+        morph_open_radius: Radius of the elliptical structuring element for
+            morphological opening applied after GMM classification. Removes thin
+            protrusions and isolated noise specks from the core mask. Set to 0 to
+            disable. Typical range: 0--5. Default: 1.
+        morph_close_radius: Radius of the elliptical structuring element for
+            morphological closing applied after opening. Fills small gaps and
+            holes within the core mask. Set to 0 to disable. Typical range: 0--5.
             Default: 2.
 
     Returns:
-        Image: Input image with ``objmap`` refined to bright-core masks.
+        Image: Input image with ``objmap`` updated so each labeled region
+        contains only the bright core pixels; ``objmask`` is unchanged.
 
     Raises:
-        ValueError: If ``n_components`` is not a positive integer or if
-            ``separation_threshold`` is negative.
-
-    Best For:
-        - Rich media plates (YPD, LB) where colonies develop dense bright
-          centers with obvious halos.
-        - Pinned-array inoculation where sharp bright cores need to be
-          isolated from thin outgrowth.
-        - High-density plates (96-well, 384-well) where core extraction
-          reduces inter-well spillover.
-        - Pre-measurement cleanup to ensure features reflect the primary
-          growth mass rather than diffusion halos.
-
-    Consider Also:
-        - :class:`MaskErosion` for uniform inward shrinking when cores are
-          not intensity-distinct from halos.
-        - :class:`MaskWhiteTophat` for removing small bright artifacts without
-          full core extraction.
-        - :class:`RemoveNonCircular` for shape-based filtering when
-          halos distort circularity measurements.
+        pydantic.ValidationError: If a parameter is given a value of the wrong
+            type (e.g. a non-numeric ``separation_threshold``).
 
     See Also:
-        :doc:`/how_to/notebooks/refine_noisy_boundaries` for core
-        extraction workflows.
-        :doc:`/explanation/refinement_strategies` for a comparison of
-        refinement approaches including GMM-based extraction.
+        :doc:`/how_to/notebooks/refine_noisy_boundaries` for core extraction
+        workflows on real plate images.
     """
 
     n_components: int = 2
