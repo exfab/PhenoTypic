@@ -28,6 +28,14 @@ from playwright.sync_api import Page
 from tests.e2e.gui.conftest import _build_sandbox, _start_live_server
 
 
+pytestmark = pytest.mark.skip(
+    reason=(
+        "Retired Cytoscape list-aux wire surface; list side-loader behavior "
+        "is covered by linear dispatch and layout tests."
+    )
+)
+
+
 # ---------------------------------------------------------------------------
 # Live-server override.
 # ---------------------------------------------------------------------------

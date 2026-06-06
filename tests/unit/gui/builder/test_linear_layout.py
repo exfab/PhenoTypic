@@ -9,11 +9,13 @@ from typing import Any, Optional
 
 from phenotypic.gui._operation_registry import OperationInfo, ParamInfo
 from phenotypic.gui.builder import _ids as ids
+from phenotypic.gui.builder import _linear_layout as linear_layout
 from phenotypic.gui.builder._state import (
     BlockNode,
     BuilderScope,
     BuilderState,
     Edge,
+    PIPELINE_CLASS_NAME,
     _new_block_id,
 )
 
@@ -160,6 +162,72 @@ def test_linear_map_empty_scope_renders_container_and_floating_port():
     assert not _find_by_class(tree, "linear-port-menu")
 
 
+def test_input_image_card_reserves_left_port_grid_cell():
+    """The source card keeps its body in the center grid column."""
+
+    from phenotypic.gui.builder._linear_layout import build_linear_map_section
+
+    tree = build_linear_map_section(BuilderState(), _registry())
+    input_cards = [
+        card
+        for card in _find_by_class(tree, "linear-node-card")
+        if "is-input-node" in str(getattr(card, "className", ""))
+    ]
+
+    assert len(input_cards) == 1
+    child_classes = [
+        str(getattr(child, "className", ""))
+        for child in input_cards[0].children
+    ]
+    assert child_classes == [
+        "linear-node-port-left linear-node-port-placeholder",
+        "linear-node-body",
+        "linear-node-port-right",
+    ]
+
+
+def test_linear_map_renders_view_only_zoom_controls():
+    from phenotypic.gui.builder._linear_layout import build_linear_map_section
+
+    tree = build_linear_map_section(BuilderState(), _registry())
+
+    zoom_out = _find_by_id(tree, ids.LINEAR_ZOOM_OUT)
+    zoom_in = _find_by_id(tree, ids.LINEAR_ZOOM_IN)
+    zoom_reset = _find_by_id(tree, ids.LINEAR_ZOOM_RESET)
+    zoom_fit = _find_by_id(tree, ids.LINEAR_ZOOM_FIT)
+    assert len(zoom_out) == 1
+    assert len(zoom_in) == 1
+    assert len(zoom_reset) == 1
+    assert len(zoom_fit) == 1
+    assert zoom_out[0].to_plotly_json()["props"]["aria-label"] == "Zoom out"
+    assert zoom_in[0].to_plotly_json()["props"]["aria-label"] == "Zoom in"
+    assert (
+        zoom_reset[0].to_plotly_json()["props"]["aria-label"]
+        == "Reset zoom to 100%"
+    )
+    assert zoom_fit[0].to_plotly_json()["props"]["aria-label"] == "Fit full pipeline"
+    assert _find_by_class(tree, "linear-map-zoom-controls")
+    assert _find_by_class(tree, "linear-map-lucide-icon")
+
+
+def test_linear_fit_icon_falls_back_when_scan_is_unavailable(monkeypatch):
+    """The fit button uses Maximize2 when Scan is missing from lucide data."""
+
+    called: list[str] = []
+
+    def fake_lucide_icon(icon_name: str, **_: Any) -> str:
+        called.append(icon_name)
+        return f'<svg class="lucide lucide-{icon_name}"></svg>'
+
+    monkeypatch.setattr(linear_layout, "get_icon_list", lambda: ["maximize-2"])
+    monkeypatch.setattr(linear_layout, "lucide_icon", fake_lucide_icon)
+
+    icon = linear_layout._fit_icon()
+
+    assert called == ["maximize-2"]
+    assert "linear-map-lucide-icon" in str(icon.className)
+
+
 def test_linear_map_renders_port_menu_only_for_open_target():
     from phenotypic.gui.builder._linear_layout import build_linear_map_section
 
@@ -258,6 +326,29 @@ def test_side_loader_badge_precedes_title_and_port_is_left_aligned():
     assert row.children[0].id["type"] == ids.LINEAR_PORT
 
 
+def test_breadcrumb_renders_dag_nested_scope_labels():
+    """DAG string breadcrumbs resolve through blocks, not legacy nodes."""
+
+    from phenotypic.gui.builder._layout import build_breadcrumb
+
+    nested = BuilderScope(name="Inoculum detector")
+    container = BlockNode(
+        block_id=_new_block_id(),
+        class_name=PIPELINE_CLASS_NAME,
+        params={},
+        label="Embedded pipeline",
+        nested=nested,
+    )
+    root = BuilderScope()
+    root.blocks.append(container)
+    state = BuilderState(root=root, breadcrumb=[container.block_id])
+
+    breadcrumb = build_breadcrumb(state)
+
+    assert breadcrumb.children[0].children == "Pipeline"
+    assert breadcrumb.children[-1].children == "Embedded pipeline"
+
+
 def test_side_loader_renders_linear_move_and_delete_actions():
     from phenotypic.gui.builder._linear_layout import build_linear_side_loader
 
@@ -335,6 +426,10 @@ def test_linear_ids_are_exported():
     assert "LINEAR_MAP_CONTAINER" in ids.__all__
     assert "linear_port_id" in ids.__all__
     assert "linear_param_action_id" in ids.__all__
+    assert "LINEAR_ZOOM_OUT" in ids.__all__
+    assert "LINEAR_ZOOM_IN" in ids.__all__
+    assert "LINEAR_ZOOM_RESET" in ids.__all__
+    assert "LINEAR_ZOOM_FIT" in ids.__all__
 
 
 def test_mobile_limited_mode_css_keeps_help_and_drill_available():
@@ -351,6 +446,10 @@ def test_mobile_limited_mode_css_keeps_help_and_drill_available():
     assert "#btn-save" in css
     assert ".linear-help-button" in css
     assert ".linear-port-menu-close" in css
+    assert ".linear-map-zoom-control" in css
+    assert ".linear-map-lucide-icon" in css
+    assert ".linear-map-track" in css
+    assert "gap: 0;" in css
     assert ".linear-side-drill-action" in css
 
 
@@ -364,6 +463,21 @@ def test_mobile_limited_mode_js_applies_real_disabled_and_readonly_attributes():
     assert 'const MOBILE_LIMITED_QUERY = "(max-width: 768px)"' in js
     assert '".linear-port-button"' in js
     assert '".linear-port-menu-action:not(.linear-port-menu-close)"' in js
+    assert '".linear-map-zoom-control"' in js
     assert "el.disabled = limited" in js
     assert "el.readOnly = limited" in js
     assert 'el.setAttribute("aria-disabled", limited ? "true" : "false")' in js
+
+
+def test_linear_zoom_js_is_ui_only_and_preserves_clickable_ports():
+    js_path = (
+        Path(__file__).parents[4]
+        / "src/phenotypic/gui/builder/assets/builder.js"
+    )
+    js = js_path.read_text()
+
+    assert "linear-map-zoom-viewport" in js
+    assert "linear-map-zoom-content" in js
+    assert "transformOrigin = \"left center\"" in js
+    assert "scrollIntoView" not in js
+    assert "store-builder-state" not in js[js.find("linear-map zoom") :]

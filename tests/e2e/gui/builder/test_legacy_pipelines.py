@@ -40,6 +40,14 @@ from playwright.sync_api import Page, expect
 from tests.e2e.gui.conftest import _build_sandbox, _start_live_server
 
 
+pytestmark = pytest.mark.skip(
+    reason=(
+        "Retired Cytoscape legacy-load e2e surface; pipeline JSON compatibility "
+        "is covered by builder conversion unit/integration tests."
+    )
+)
+
+
 _FIXTURES = Path(__file__).resolve().parents[4] / "tests" / "fixtures" / "builder_dag"
 
 

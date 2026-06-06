@@ -253,6 +253,117 @@
 })();
 
 
+/* PhenoTypic Pipeline Builder — linear-map zoom controls.
+ *
+ * Fixed-map zoom is intentionally UI-only. It stores no Dash state and never
+ * writes pipeline JSON; it only scales the HTML map content inside the current
+ * viewport. Button ports remain ordinary clickable DOM buttons after scaling.
+ */
+
+(function () {
+    "use strict";
+
+    const VIEWPORT_ID = "linear-map-container";
+    const VIEWPORT_SELECTOR = ".linear-map-zoom-viewport";
+    const CONTENT_SELECTOR = ".linear-map-zoom-content";
+    const ZOOM_MIN = 0.35;
+    const ZOOM_MAX = 2.0;
+    const ZOOM_STEP = 1.2;
+
+    function clampZoom(value) {
+        return Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, value));
+    }
+
+    function parts() {
+        const viewport =
+            document.getElementById(VIEWPORT_ID) ||
+            document.querySelector(VIEWPORT_SELECTOR);
+        if (!viewport) return null;
+        const content = viewport.querySelector(CONTENT_SELECTOR);
+        if (!content) return null;
+        return { viewport, content };
+    }
+
+    function currentZoom(viewport) {
+        const raw =
+            viewport.__phenotypicLinearZoom ||
+            Number.parseFloat(viewport.dataset.linearZoom || "1");
+        return Number.isFinite(raw) ? raw : 1;
+    }
+
+    function applyZoom(zoom) {
+        const found = parts();
+        if (!found) return;
+        const next = clampZoom(zoom);
+        found.viewport.__phenotypicLinearZoom = next;
+        found.viewport.dataset.linearZoom = String(Number(next.toFixed(2)));
+        found.content.style.transformOrigin = "left center";
+        found.content.style.transform = `scale(${next})`;
+    }
+
+    function zoomBy(factor) {
+        const found = parts();
+        if (!found) return;
+        applyZoom(currentZoom(found.viewport) * factor);
+    }
+
+    function resetZoom() {
+        applyZoom(1);
+        const found = parts();
+        if (!found) return;
+        found.viewport.scrollLeft = 0;
+        found.viewport.scrollTop = 0;
+    }
+
+    function fitZoom() {
+        const found = parts();
+        if (!found) return;
+        const width = found.content.scrollWidth || found.content.offsetWidth || 1;
+        const height = found.content.scrollHeight || found.content.offsetHeight || 1;
+        const availableWidth = Math.max(1, found.viewport.clientWidth - 16);
+        const availableHeight = Math.max(1, found.viewport.clientHeight - 16);
+        const fit = Math.min(1, availableWidth / width, availableHeight / height);
+        applyZoom(fit);
+        found.viewport.scrollLeft = 0;
+        found.viewport.scrollTop = 0;
+    }
+
+    function bindButton(id, handler) {
+        const button = document.getElementById(id);
+        if (!button || button.__phenotypicLinearZoomBound) return;
+        button.__phenotypicLinearZoomBound = true;
+        button.addEventListener("click", handler);
+    }
+
+    function bindZoomControls() {
+        bindButton("linear-zoom-out", () => zoomBy(1 / ZOOM_STEP));
+        bindButton("linear-zoom-in", () => zoomBy(ZOOM_STEP));
+        bindButton("linear-zoom-reset", resetZoom);
+        bindButton("linear-zoom-fit", fitZoom);
+
+        const found = parts();
+        if (found && !found.content.style.transform) {
+            applyZoom(currentZoom(found.viewport));
+        }
+    }
+
+    function scheduleBind() {
+        requestAnimationFrame(bindZoomControls);
+    }
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", scheduleBind);
+    } else {
+        scheduleBind();
+    }
+
+    new MutationObserver(scheduleBind).observe(document.body, {
+        childList: true,
+        subtree: true,
+    });
+})();
+
+
 /* PhenoTypic Pipeline Builder — mobile limited-mode enforcement.
  *
  * CSS handles the visual treatment for narrow viewports, but edit affordances
@@ -285,6 +396,7 @@
 
     const ENABLED_SELECTORS = [
         ".linear-help-button",
+        ".linear-map-zoom-control",
         ".linear-port-menu-close",
         ".linear-side-drill-action",
         ".breadcrumb button",

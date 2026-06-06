@@ -131,17 +131,42 @@ Each active scope renders:
 - blue image input/output ports
 - gold side parameter ports for operation-valued and pipeline-valued params
 - a floating continuation port connected to the last output by a short line
+- compact view-only zoom controls for zoom out, zoom in, reset to 100%, and fit/view all
 
 Nodes are not draggable. Layout is computed from spine order and stable dimensions.
+Zoom controls affect only the rendered HTML map viewport. They do not pan or
+drag nodes, they do not write DAG state, and they do not serialize into
+pipeline JSON.
 
 Production alignment requirements:
 
 - The main spine must fit the desktop builder viewport without accidental clipping at common desktop sizes.
-- Port buttons must remain clickable when popovers are open.
+- Port buttons must remain clickable when popovers are open and after map zoom changes.
 - Menus must not cover the port that opened them or adjacent parameter ports.
 - Long operation names and parameter names must wrap or ellipsize without resizing nodes.
 - Node width, port size, menu width, and side-loader field height must be stable.
 - Browser checks must cover at least 1280x720, 1440x900, and one tablet-width layout.
+
+### 6.2.1 Map zoom controls
+
+The linear map keeps compact viewport controls in the map header:
+
+- minus icon button: zoom out
+- plus icon button: zoom in
+- reset zoom button: restore 100%
+- fit/view all button: fit the full linear pipeline into the visible map viewport
+
+Use lucide `Scan` for Fit when the icon set is available; otherwise use
+`Maximize2` or an equivalent compact maximize glyph. The controls follow the
+builder-local `--radius-sm` button treatment and the `DESIGN.md` chrome tokens.
+
+Zoom is UI-only state:
+
+- it may live in browser DOM/client asset state
+- it must not mutate `_DagBuilderState`
+- it must not write to any Dash store that serializes with the pipeline
+- it must not change `ImagePipeline` JSON
+- it must not re-enable Cytoscape pan, drag, or viewport behavior
 
 ### 6.3 Node anatomy
 
@@ -660,6 +685,7 @@ At mobile widths:
 - mobile is read-only or limited inspection
 - side loader stacks below map
 - breadcrumbs, port selection, docstring help, validation issue inspection, and raw JSON/export affordances may remain available
+- zoom, reset zoom, and fit/view all controls may remain available
 - selected ports may still turn green for inspection, but palette-driven mutation remains disabled
 - palette insertion, parameter editing, delete, reorder, replace, and save are disabled
 - no text overlaps or clipped buttons are allowed
@@ -700,6 +726,8 @@ Rendering tests:
 - class help button renders for selected class/parameter rows
 - side-loader badge renders before title
 - buttons use the approved compact radius in builder-local controls
+- map zoom controls render for zoom out, zoom in, reset to 100%, and fit/view all
+- zoom state is UI-only and absent from DAG/pipeline serialization
 
 Browser verification:
 
@@ -712,8 +740,9 @@ Browser verification:
 - aux port click switches side loader to parameter mode
 - continuation port click switches side loader to insertion mode
 - class help icon opens the expected docstring popover
+- zoom in/out/reset/fit does not mutate the pipeline and ports remain clickable
 - nested pipeline breadcrumb drill-in and back
-- mobile disables editing affordances while preserving inspection controls
+- mobile disables editing affordances while preserving inspection and zoom controls
 
 Screenshot workflow:
 

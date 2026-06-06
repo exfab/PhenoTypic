@@ -9,9 +9,11 @@ from __future__ import annotations
 
 from dataclasses import replace
 from typing import TYPE_CHECKING, Any, Iterable, List, Optional
+from urllib.parse import quote
 
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 from dash import html
+from lucide import get_icon_list, lucide_icon  # type: ignore[import-untyped]
 
 from phenotypic.gui._operation_registry import OperationInfo
 from phenotypic.gui.builder import _ids as ids
@@ -38,6 +40,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 _HIDDEN_STYLE = {"display": "none"}
+_LINEAR_ZOOM_ICON_SIZE = 15
 
 
 def _target_matches(a: LinearTarget, b: LinearTarget) -> bool:
@@ -46,6 +49,96 @@ def _target_matches(a: LinearTarget, b: LinearTarget) -> bool:
 
 def _class_names(*parts: Optional[str]) -> str:
     return " ".join(part for part in parts if part)
+
+
+def _zoom_button(
+    *,
+    button_id: str,
+    label: Any,
+    aria_label: str,
+    class_name: str = "",
+) -> html.Button:
+    """Render one compact fixed-map zoom control."""
+
+    return html.Button(
+        label,
+        id=button_id,
+        type="button",
+        n_clicks=0,
+        title=aria_label,
+        className=_class_names("linear-map-zoom-control", class_name),
+        **{"aria-label": aria_label},  # type: ignore[arg-type]
+    )
+
+
+def _fit_icon() -> html.Span:
+    """Render the Lucide Scan icon, falling back to Maximize2-style chrome."""
+
+    available_icons = set(get_icon_list())
+    for icon_name in ("scan", "maximize-2"):
+        if available_icons and icon_name not in available_icons:
+            continue
+        try:
+            svg = lucide_icon(
+                icon_name,
+                width=_LINEAR_ZOOM_ICON_SIZE,
+                height=_LINEAR_ZOOM_ICON_SIZE,
+                stroke="currentColor",
+            )
+        except LookupError:
+            continue
+        if "data-missing-icon" in svg:
+            continue
+        return html.Span(
+            className="linear-map-zoom-icon linear-map-lucide-icon",
+            style={
+                "--linear-lucide-icon": (
+                    f"url('data:image/svg+xml,{quote(svg, safe='')}')"
+                )
+            },
+            **{"aria-hidden": "true"},  # type: ignore[arg-type]
+        )
+
+    return html.Span(
+        [
+            html.Span(className="linear-map-fit-corner linear-map-fit-corner-top"),
+            html.Span(className="linear-map-fit-corner linear-map-fit-corner-bottom"),
+        ],
+        className="linear-map-zoom-icon",
+        **{"aria-hidden": "true"},  # type: ignore[arg-type]
+    )
+
+
+def _zoom_controls() -> html.Div:
+    """Render view-only zoom controls for the fixed HTML map."""
+
+    return html.Div(
+        [
+            _zoom_button(
+                button_id=ids.LINEAR_ZOOM_OUT,
+                label=html.Span("-", className="linear-map-zoom-symbol"),
+                aria_label="Zoom out",
+            ),
+            _zoom_button(
+                button_id=ids.LINEAR_ZOOM_IN,
+                label=html.Span("+", className="linear-map-zoom-symbol"),
+                aria_label="Zoom in",
+            ),
+            _zoom_button(
+                button_id=ids.LINEAR_ZOOM_RESET,
+                label=html.Span("100%", className="linear-map-zoom-reset-label"),
+                aria_label="Reset zoom to 100%",
+                class_name="linear-map-zoom-reset",
+            ),
+            _zoom_button(
+                button_id=ids.LINEAR_ZOOM_FIT,
+                label=_fit_icon(),
+                aria_label="Fit full pipeline",
+            ),
+        ],
+        className="linear-map-zoom-controls",
+        **{"aria-label": "Pipeline map zoom controls"},  # type: ignore[arg-type]
+    )
 
 
 def _port_label(target: LinearTarget) -> str:
@@ -352,6 +445,15 @@ def _image_connector() -> html.Div:
     )
 
 
+def _port_placeholder(position: str) -> html.Div:
+    """Reserve a grid cell where a source/sink has no visible image port."""
+
+    return html.Div(
+        className=f"linear-node-port-{position} linear-node-port-placeholder",
+        **{"aria-hidden": "true"},  # type: ignore[arg-type]
+    )
+
+
 def _block_card(
     *,
     state: BuilderState,
@@ -383,6 +485,8 @@ def _block_card(
             ],
             className="linear-node-port-left",
         )
+    else:
+        left_port = _port_placeholder("left")
 
     output_target = LinearTarget(
         kind="image_output",
@@ -503,8 +607,14 @@ def build_linear_map_section(
 
     header = html.Div(
         [
-            html.H6("Pipeline map", className="mb-0"),
-            html.Div("Fixed linear view", className="linear-map-kicker"),
+            html.Div(
+                [
+                    html.H6("Pipeline map", className="mb-0"),
+                    html.Div("Fixed linear view", className="linear-map-kicker"),
+                ],
+                className="linear-map-title-group",
+            ),
+            _zoom_controls(),
         ],
         className="linear-map-header",
     )
@@ -557,7 +667,15 @@ def build_linear_map_section(
             body = html.Div(track_children, className="linear-map-track")
 
     return html.Div(
-        [header, html.Div(body, id=ids.LINEAR_MAP_CONTAINER, className="linear-map")],
+        [
+            header,
+            html.Div(
+                html.Div(body, className="linear-map-zoom-content"),
+                id=ids.LINEAR_MAP_CONTAINER,
+                className="linear-map linear-map-zoom-viewport",
+                **{"data-linear-zoom": "1"},  # type: ignore[arg-type]
+            ),
+        ],
         className="linear-map-section",
     )
 
@@ -623,7 +741,7 @@ def _value_row(
     if source is not None and source.class_name == PIPELINE_CLASS_NAME:
         actions.append(
             html.Button(
-                "Edit",
+                "Open",
                 id=ids.linear_param_action_id(
                     action="drill",
                     scope_path=scope_path,
@@ -810,7 +928,7 @@ def build_linear_side_loader(
     elif block.class_name == PIPELINE_CLASS_NAME:
         body.append(
             dbc.Button(
-                "Edit pipeline",
+                "Open pipeline",
                 id=ids.linear_node_action_id(
                     action="drill",
                     scope_path=state.breadcrumb,

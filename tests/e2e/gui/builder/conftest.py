@@ -1,11 +1,8 @@
-"""Shared helpers for the builder-canvas Playwright E2E tests.
+"""Shared helpers for the builder Playwright E2E tests.
 
-``test_wire_drawing.py``, ``test_palette_drag.py`` and ``test_containers.py``
-all drive the same ``/builder/`` page through the same handful of
-primitives — navigating to the canvas, locating palette buttons,
-synthesising drags, and publishing ``set_props`` payloads into the
-clientside stores. They previously each carried near-identical private
-copies; this module is the single hardened home so a fix lands once.
+The default builder surface is now the fixed linear port map. Retired
+Cytoscape helpers remain below for explicitly skipped legacy modules, but new
+E2E coverage should use the linear helpers first.
 
 It lives as ``conftest.py`` (rather than a plain ``_helpers.py``) to
 mirror ``tests/e2e/gui/conftest.py``, which already hosts the shared
@@ -33,6 +30,7 @@ of a prior Dash callback:
 """
 from __future__ import annotations
 
+import re
 import tempfile
 from pathlib import Path
 
@@ -124,24 +122,13 @@ def _builder_failure_diagnostics(request, page: Page):  # noqa: ANN001, ANN201
 
 
 def _open_builder(page: Page, hub_url: str) -> None:
-    """Navigate to ``/builder/`` and wait for the full clientside surface.
-
-    Waits for the canvas wrapper, *both* builder JS readiness sentinels
-    (``palette_dnd`` + ``wire_drawing``), ``window.phenoGetCy`` returning
-    a live cytoscape instance, and ``dash_clientside.set_props`` — every
-    primitive the builder-canvas tests touch — then expands the palette
-    accordions so buttons in any category are draggable.
-    """
+    """Navigate to ``/builder/`` and wait for the linear map + palette."""
 
     page.goto(hub_url + "/builder/")
-    page.wait_for_selector("#canvas-cytoscape", timeout=15_000)
+    page.wait_for_selector("#linear-map-container", timeout=15_000)
     page.wait_for_function(
         """() => (
-            window.phenotypic_palette_dnd_ready === true
-            && window.phenotypic_wire_drawing_ready === true
-            && typeof window.phenoGetCy === 'function'
-            && window.phenoGetCy() != null
-            && window.dash_clientside != null
+            window.dash_clientside != null
             && typeof window.dash_clientside.set_props === 'function'
         )""",
         timeout=15_000,
@@ -149,6 +136,40 @@ def _open_builder(page: Page, hub_url: str) -> None:
     # Palette categories past the first start collapsed; expand them so
     # buttons like ``GaussianBlur`` (Enhancer) are visible + draggable.
     expand_palette_accordions(page)
+
+
+def _click_palette_button(page: Page, class_name: str) -> None:
+    """Click a linear builder palette button by visible operation name."""
+
+    button = page.locator("button.palette-button").filter(
+        has_text=re.compile(rf"^\s*{re.escape(class_name)}\s*$")
+    )
+    expect_count = button.count()
+    assert expect_count == 1, f"expected one {class_name} button, saw {expect_count}"
+    button.click()
+
+
+def _linear_node_titles(page: Page) -> list[str]:
+    """Return visible linear node titles in map order."""
+
+    return page.locator(".linear-node-title-button").all_text_contents()
+
+
+def _publish_retired_store(page: Page, store_id: str, payload: dict) -> None:
+    """Publish to a retired drag/wire store through Dash's set_props hook."""
+
+    page.evaluate(
+        """([storeId, payload]) => {
+            if (
+                !window.dash_clientside
+                || typeof window.dash_clientside.set_props !== 'function'
+            ) {
+                throw new Error('dash_clientside.set_props unavailable');
+            }
+            window.dash_clientside.set_props(storeId, { data: payload });
+        }""",
+        [store_id, payload],
+    )
 
 
 def _palette_button(page: Page, class_name: str):

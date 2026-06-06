@@ -272,6 +272,13 @@ STORE_INSPECTOR_LIST_REORDER = "store-inspector-list-reorder"
 #: update this element's ``children`` directly from state mutations.
 LINEAR_MAP_CONTAINER = "linear-map-container"
 
+#: UI-only fixed-map zoom controls. These do not write builder state and are
+#: intentionally distinct from the retired Cytoscape canvas zoom ids.
+LINEAR_ZOOM_OUT = "linear-zoom-out"
+LINEAR_ZOOM_IN = "linear-zoom-in"
+LINEAR_ZOOM_RESET = "linear-zoom-reset"
+LINEAR_ZOOM_FIT = "linear-zoom-fit"
+
 #: Pattern-match ``type`` key for every clickable fixed-map / side-loader port.
 LINEAR_PORT = "linear-port"
 
@@ -1108,6 +1115,10 @@ __all__ = [
     "inspector_list_reorder_store_id",
     # Linear port-map additions
     "LINEAR_MAP_CONTAINER",
+    "LINEAR_ZOOM_OUT",
+    "LINEAR_ZOOM_IN",
+    "LINEAR_ZOOM_RESET",
+    "LINEAR_ZOOM_FIT",
     "LINEAR_PORT",
     "LINEAR_PORT_MENU",
     "LINEAR_NODE_ACTION",

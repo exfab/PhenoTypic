@@ -3825,6 +3825,7 @@ dependencies = [
     { name = "pydantic" },
     { name = "pympler", version = "1.0.1", source = { registry = "https://pypi.org/simple" }, marker = "platform_machine == 'x86_64' and sys_platform == 'win32'" },
     { name = "pympler", version = "1.1", source = { registry = "https://pypi.org/simple" }, marker = "platform_machine != 'x86_64' or sys_platform != 'win32'" },
+    { name = "python-lucide" },
     { name = "rawpy", marker = "sys_platform != 'win32'" },
     { name = "rich" },
     { name = "ruptures" },
@@ -3942,6 +3943,7 @@ requires-dist = [
     { name = "pyarrow", specifier = ">=23.0.1" },
     { name = "pydantic", specifier = ">=2.12.5" },
     { name = "pympler", specifier = ">=1.0.1" },
+    { name = "python-lucide", specifier = ">=0.2.24" },
     { name = "pyvips", marker = "extra == 'gui'", specifier = ">=2.2" },
     { name = "rawpy", marker = "sys_platform != 'win32'" },
     { name = "rich", specifier = ">=14.2.0" },
@@ -4945,6 +4947,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/29/bf/eca6a3d43db1dae7070f70e160ab20b807627ba953663ba07928cdd3dc58/python_json_logger-4.0.0.tar.gz", hash = "sha256:f58e68eb46e1faed27e0f574a55a0455eecd7b8a5b88b85a784519ba3cff047f", size = 17683, upload-time = "2025-10-06T04:15:18.984Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/51/e5/fecf13f06e5e5f67e8837d777d1bc43fac0ed2b77a676804df5c34744727/python_json_logger-4.0.0-py3-none-any.whl", hash = "sha256:af09c9daf6a813aa4cc7180395f50f2a9e5fa056034c9953aec92e381c5ba1e2", size = 15548, upload-time = "2025-10-06T04:15:17.553Z" },
+]
+
+[[package]]
+name = "python-lucide"
+version = "0.2.24"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/92/d5/6b1e02cfd44b835d925cc0792ef83405c3625ec92b121d1d787f07bb65cb/python_lucide-0.2.24.tar.gz", hash = "sha256:b3490601beae87d9a0c8c845e11bf90dbc1b29ea42bd88682a0d5ae6202bc54c", size = 162977, upload-time = "2026-03-29T15:51:47.505Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/4a/44/ff862ad1c85f15c265a78d732137cea032e93773dff079425ac0d3d355a1/python_lucide-0.2.24-py3-none-any.whl", hash = "sha256:fc8c7d4ddd045d112490956f7c17db3e5c68013b023c0055eb5a65cc0520caee", size = 157366, upload-time = "2026-03-29T15:51:46.538Z" },
 ]
 
 [[package]]

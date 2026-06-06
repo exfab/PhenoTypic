@@ -140,14 +140,17 @@ def _scope_path_labels(state: BuilderState) -> List[str]:
     """
 
     labels: List[str] = [state.root.name or "Pipeline"]
-    scope: BuilderScope = state.root
+    scope: Any = state.root
     for raw in state.breadcrumb:
         if isinstance(raw, str):
             node_id, param = raw, None
         else:
             node_id = raw.get("node_id")
             param = raw.get("param")
-        node = next((n for n in scope.nodes if n.node_id == node_id), None)
+        if hasattr(scope, "blocks"):
+            node = next((n for n in scope.blocks if n.block_id == node_id), None)
+        else:
+            node = next((n for n in scope.nodes if n.node_id == node_id), None)
         if node is None:
             # Stale breadcrumb: bail gracefully.
             labels.append("?")
