@@ -174,6 +174,33 @@ TUNE_BTN_SET_WINNER = "tune-btn-set-winner"
 #: The winner-status note (which trial is pinned / written).
 TUNE_WINNER_NOTE = "tune-winner-note"
 
+# ---------------------------------------------------------------------------
+# Launch view (Chunk C-i, Task C1)
+# ---------------------------------------------------------------------------
+
+#: The strategy dropdown (grid / random / tpe / cmaes / gp / nsga2).
+TUNE_LAUNCH_STRATEGY = "tune-launch-strategy"
+
+#: The trial-budget numeric input (``--n-trials``; blank → omit the flag).
+TUNE_LAUNCH_N_TRIALS = "tune-launch-n-trials"
+
+#: The Optuna storage-URL text input (``--storage-url``; blank → omit the flag).
+TUNE_LAUNCH_STORAGE_URL = "tune-launch-storage-url"
+
+#: The ``--screen`` two-round-freeze toggle (a checklist with one option).
+TUNE_LAUNCH_SCREEN = "tune-launch-screen"
+
+#: The ``--slurm`` distributed-fleet toggle (a checklist with one option).
+TUNE_LAUNCH_SLURM = "tune-launch-slurm"
+
+#: A hidden store carrying the bound run's spec / input / output paths, so the
+#: clientside command mirror reads them without re-deriving from the layout.
+TUNE_LAUNCH_PATHS_STORE = "tune-launch-paths-store"
+
+#: The live command card — a ``<code>`` block showing the rendered invocation
+#: the clientside callback keeps in sync with the form.
+TUNE_LAUNCH_COMMAND = "tune-launch-command"
+
 
 __all__ = [
     "SubTabName",
@@ -218,4 +245,11 @@ __all__ = [
     "TUNE_SESSION_ID",
     "TUNE_BTN_SET_WINNER",
     "TUNE_WINNER_NOTE",
+    "TUNE_LAUNCH_STRATEGY",
+    "TUNE_LAUNCH_N_TRIALS",
+    "TUNE_LAUNCH_STORAGE_URL",
+    "TUNE_LAUNCH_SCREEN",
+    "TUNE_LAUNCH_SLURM",
+    "TUNE_LAUNCH_PATHS_STORE",
+    "TUNE_LAUNCH_COMMAND",
 ]

@@ -31,10 +31,9 @@ if TYPE_CHECKING:
 #: The default active sub-tab when a run is first opened.
 _DEFAULT_VIEW: ids.SubTabName = "monitor"
 
-#: Placeholder copy for the not-yet-built views (Chunk C fills these in).
+#: Placeholder copy for the not-yet-built views (Chunk C-ii fills Space in).
 _PLACEHOLDER_COPY: dict[ids.SubTabName, str] = {
-    "space": "Space — search-space view (coming in Chunk C).",
-    "launch": "Launch — apply the tuned winner (coming in Chunk C).",
+    "space": "Space — search-space view (coming in Chunk C-ii).",
 }
 
 
@@ -162,6 +161,10 @@ def _build_view_body(
         from phenotypic.gui.tune._curate import build_curate_view
 
         return build_curate_view(root, sandbox=sandbox)
+    if name == "launch":
+        from phenotypic.gui.tune._launch import build_launch_view
+
+        return build_launch_view(root)
     return html.P(_PLACEHOLDER_COPY[name])
 
 

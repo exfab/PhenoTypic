@@ -224,3 +224,60 @@
     font-size: var(--font-size-caption);
     color: var(--color-muted);
 }
+
+/* ---- Launch view ------------------------------------------------------- */
+
+.tune-launch {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-4);
+}
+
+.tune-launch-intro {
+    font-size: var(--font-size-body);
+    color: var(--color-muted);
+    margin: 0;
+}
+
+.tune-launch-form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: var(--sp-4);
+}
+
+.tune-launch-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-1);
+    min-width: 10rem;
+}
+
+.tune-launch-field-wide {
+    flex: 1 1 24rem;
+}
+
+.tune-launch-label {
+    font-size: var(--font-size-label);
+    font-weight: 600;
+    color: var(--color-heading);
+}
+
+.tune-launch-toggles {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+}
+
+.tune-launch-command {
+    display: block;
+    padding: var(--sp-3) var(--sp-4);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    background: var(--color-bg);
+    color: var(--color-body);
+    font-family: var(--font-mono);
+    font-size: var(--font-size-caption);
+    white-space: pre-wrap;
+    word-break: break-all;
+}

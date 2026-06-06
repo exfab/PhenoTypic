@@ -404,8 +404,40 @@ def register_callbacks(app, *, sandbox=None) -> None:  # type: ignore[no-untyped
         table = _build_trials_table(store)
         return objective_fig, importance_fig, badge_label, badge_class, table, note
 
+    # The Launch command mirror is sandbox-independent (it only renders a
+    # string, never spawns) so it registers unconditionally — even in the
+    # standalone-without-sandbox path the Launch card stays live.
+    _register_launch_command_mirror(app)
+
     if sandbox is not None:
         _register_curate_callbacks(app, sandbox)
+
+
+def _register_launch_command_mirror(app) -> None:  # type: ignore[no-untyped-def]
+    """Wire the clientside Launch-command mirror (Task C1).
+
+    A single clientside callback re-renders the live command card from the
+    Launch form (strategy / trials / storage-URL / screen / slurm) plus the
+    hidden paths store, mirroring the pure
+    :func:`~phenotypic.gui.tune._command.render_launch_command` (the unit-tested
+    source-of-truth) in the browser. The mirror only builds a string — it never
+    spawns a process (the no-re-optimize lock).
+    """
+    from dash import Input, Output, State
+
+    app.clientside_callback(
+        "function(strategy, nTrials, storageUrl, screen, slurm, paths) { "
+        "return window.dash_clientside.tune_launch.renderCommand("
+        "strategy, nTrials, storageUrl, screen, slurm, paths); }",
+        Output(ids.TUNE_LAUNCH_COMMAND, "children"),
+        Input(ids.TUNE_LAUNCH_STRATEGY, "value"),
+        Input(ids.TUNE_LAUNCH_N_TRIALS, "value"),
+        Input(ids.TUNE_LAUNCH_STORAGE_URL, "value"),
+        Input(ids.TUNE_LAUNCH_SCREEN, "value"),
+        Input(ids.TUNE_LAUNCH_SLURM, "value"),
+        State(ids.TUNE_LAUNCH_PATHS_STORE, "data"),
+        prevent_initial_call=True,
+    )
 
 
 def _param_importances(store: "Optional[_ReadableStore]") -> dict[str, float]:
