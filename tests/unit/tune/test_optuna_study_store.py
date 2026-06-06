@@ -3,7 +3,7 @@
 Hermetic: every test uses a SQLite ``study.db`` under ``tmp_path``. Covers WAL
 mode, best/trials/completed_count reads from the study, in-place resumability,
 re-opening by name+URL restoring persisted trials, Protocol conformance by
-calling, and the ``study_db_path`` helper. ``skipif`` when the extra is absent.
+calling, and the ``tune_cache_study_db_path`` helper. ``skipif`` when the extra is absent.
 """
 from __future__ import annotations
 
@@ -122,11 +122,11 @@ def test_satisfies_study_store_protocol_by_calling(tmp_path):
     assert store.best().number == 0
 
 
-def test_study_db_path_resolves_to_output_root(tmp_path):
+def test_study_db_path_resolves_to_tune_cache(tmp_path):
     from phenotypic.tools_ import _io_constants as io
 
-    p = io.study_db_path(tmp_path)
-    assert p == tmp_path / "study.db"
+    p = io.tune_cache_study_db_path(tmp_path)
+    assert p == tmp_path / ".pht-tune-cache" / "study.db"
     assert p.name == io.STUDY_DB
 
 

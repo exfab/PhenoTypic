@@ -961,3 +961,121 @@ def test_phenotypic_cache_pipeline_json_path(tmp_path: Path) -> None:
         phenotypic_cache_pipeline_json_path(tmp_path)
         == tmp_path / ".phenotypic" / PIPELINE_JSON
     )
+
+
+# ---------------------------------------------------------------------------
+# Tune machine-state cache (.pht-tune-cache/) — the tune-run's hidden state root
+# ---------------------------------------------------------------------------
+
+
+class TestTuneCachePaths:
+    """The ``.pht-tune-cache/`` family relocates the tune run's machine-state.
+
+    Mirrors the forward run's ``.phenotypic/`` cache: ``study.db`` (+ WAL),
+    the held-out ``split.json``, and the GUI-discovery ``run.json`` marker live
+    under a hidden cache root so they don't clutter the user-facing output and
+    survive a fresh ``deliverables/`` rewrite. ``trials.parquet`` deliberately
+    stays at the output root (it is the user-facing journal + Optuna resume).
+    """
+
+    @pytest.fixture
+    def output(self) -> Path:
+        return Path("/tmp/pht_tune_run")
+
+    def test_dir_pht_tune_cache_constant(self) -> None:
+        from phenotypic.tools_ import DIR_PHT_TUNE_CACHE
+
+        assert DIR_PHT_TUNE_CACHE == ".pht-tune-cache"
+
+    def test_run_marker_filename_constant(self) -> None:
+        from phenotypic.tools_ import RUN_MARKER_JSON
+
+        assert RUN_MARKER_JSON == "run.json"
+
+    def test_tune_cache_dir(self, output: Path) -> None:
+        from phenotypic.tools_ import tune_cache_dir
+
+        assert tune_cache_dir(output) == output / ".pht-tune-cache"
+
+    def test_tune_cache_run_marker_path(self, output: Path) -> None:
+        from phenotypic.tools_ import tune_cache_run_marker_path
+
+        assert tune_cache_run_marker_path(output) == (
+            output / ".pht-tune-cache" / "run.json"
+        )
+
+    def test_tune_cache_study_db_path(self, output: Path) -> None:
+        from phenotypic.tools_ import tune_cache_study_db_path
+        from phenotypic.tools_._io_constants import STUDY_DB
+
+        assert tune_cache_study_db_path(output) == (
+            output / ".pht-tune-cache" / STUDY_DB
+        )
+
+    def test_tune_cache_splits_dir(self, output: Path) -> None:
+        from phenotypic.tools_ import tune_cache_splits_dir
+        from phenotypic.tools_._io_constants import DIR_SPLITS
+
+        assert tune_cache_splits_dir(output) == (
+            output / ".pht-tune-cache" / DIR_SPLITS
+        )
+
+    def test_tune_cache_split_assignment_path(self, output: Path) -> None:
+        from phenotypic.tools_ import tune_cache_split_assignment_path
+        from phenotypic.tools_._io_constants import (
+            DIR_SPLITS,
+            SPLIT_ASSIGNMENT_JSON,
+        )
+
+        assert tune_cache_split_assignment_path(output) == (
+            output / ".pht-tune-cache" / DIR_SPLITS / SPLIT_ASSIGNMENT_JSON
+        )
+
+    def test_trials_parquet_stays_at_output_root(self, output: Path) -> None:
+        """The journal is user-facing + the Optuna resume source — NOT relocated."""
+        from phenotypic.tools_._io_constants import (
+            TRIALS_PARQUET,
+            trials_parquet_path,
+        )
+
+        assert trials_parquet_path(output) == output / TRIALS_PARQUET
+
+    def test_resolve_study_db_prefers_cache_then_legacy(self, tmp_path: Path) -> None:
+        """Read-fallback: cache location wins; a legacy-root study.db is found."""
+        from phenotypic.tools_ import (
+            resolve_study_db_path,
+            tune_cache_study_db_path,
+        )
+        from phenotypic.tools_._io_constants import _legacy_study_db_path
+
+        # Neither present → defaults to the new cache location.
+        assert resolve_study_db_path(tmp_path) == tune_cache_study_db_path(tmp_path)
+        # Only the legacy root copy present → resolver finds it (no migration).
+        legacy = _legacy_study_db_path(tmp_path)
+        legacy.write_bytes(b"sqlite")
+        assert resolve_study_db_path(tmp_path) == legacy
+        # Cache copy present → it wins over the legacy copy.
+        cache = tune_cache_study_db_path(tmp_path)
+        cache.parent.mkdir(parents=True, exist_ok=True)
+        cache.write_bytes(b"sqlite")
+        assert resolve_study_db_path(tmp_path) == cache
+
+    def test_resolve_split_prefers_cache_then_legacy(self, tmp_path: Path) -> None:
+        """A missing split silently re-derives — so resume must find legacy-root."""
+        from phenotypic.tools_ import (
+            resolve_split_assignment_path,
+            tune_cache_split_assignment_path,
+        )
+        from phenotypic.tools_._io_constants import _legacy_split_assignment_path
+
+        assert resolve_split_assignment_path(tmp_path) == (
+            tune_cache_split_assignment_path(tmp_path)
+        )
+        legacy = _legacy_split_assignment_path(tmp_path)
+        legacy.parent.mkdir(parents=True, exist_ok=True)
+        legacy.write_text("{}", encoding="utf-8")
+        assert resolve_split_assignment_path(tmp_path) == legacy
+        cache = tune_cache_split_assignment_path(tmp_path)
+        cache.parent.mkdir(parents=True, exist_ok=True)
+        cache.write_text("{}", encoding="utf-8")
+        assert resolve_split_assignment_path(tmp_path) == cache

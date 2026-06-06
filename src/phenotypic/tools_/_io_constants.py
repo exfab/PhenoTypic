@@ -157,16 +157,26 @@ PARAM_IMPORTANCE_JSON: Final[str] = "param_importance.json"
 #: (powers CLI resume), not under :data:`DIR_DELIVERABLES`.
 TRIALS_PARQUET: Final[str] = "trials.parquet"
 
-#: The canonical Optuna study database ``study.db`` (SQLite WAL) written at the
-#: output-dir root, a sibling to :data:`TRIALS_PARQUET`. Holds the Optuna-backed
+#: The canonical Optuna study database ``study.db`` (SQLite WAL) written inside
+#: the hidden tune cache (:data:`DIR_PHT_TUNE_CACHE`). Holds the Optuna-backed
 #: store's persistent, resumable sampler state when the ``tune`` extra is used.
+#: A legacy run wrote it at the output root; :func:`resolve_study_db_path` reads
+#: either location (no migration).
 STUDY_DB: Final[str] = "study.db"
 
 #: The robust-eval held-out split assignment ``split.json`` written inside
-#: :data:`DIR_SPLITS` (output-dir root). A machine-state sidecar — it must
-#: survive a fresh-master rewrite and gate resume — so it lives at the root, not
-#: under :data:`DIR_DELIVERABLES`. See :func:`split_assignment_path`.
+#: :data:`DIR_SPLITS`. A machine-state sidecar — it must survive a
+#: fresh-master rewrite and gate resume — so it lives in the hidden tune cache
+#: (:data:`DIR_PHT_TUNE_CACHE`), not under :data:`DIR_DELIVERABLES`. See
+#: :func:`tune_cache_split_assignment_path`.
 SPLIT_ASSIGNMENT_JSON: Final[str] = "split.json"
+
+#: The tune-run marker ``run.json`` written into :data:`DIR_PHT_TUNE_CACHE` at
+#: run START (before any deliverable exists), so the GUI shell classifier can
+#: recognise a live or finished tune output even before ``deliverables/`` lands.
+#: Carries the study identity + storage URL + run policy. See
+#: :func:`tune_cache_run_marker_path`.
+RUN_MARKER_JSON: Final[str] = "run.json"
 
 #: The robust-eval generalization report ``generalization.json`` written into
 #: :data:`DIR_DELIVERABLES` — a user-facing deliverable (the winner's held-out
@@ -355,11 +365,11 @@ DIR_QC: Final[str] = "qc"
 #: roots at :func:`deliverables_dir`.
 DIR_DELIVERABLES: Final[str] = "deliverables"
 
-#: ``<output>/splits/`` — the robust-eval held-out **split assignment** sidecar
-#: folder (holds :data:`SPLIT_ASSIGNMENT_JSON`). Rooted at the output dir (a
-#: sibling to :data:`TRIALS_PARQUET` / :data:`STUDY_DB`), **not** under
-#: :data:`DIR_DELIVERABLES`: the split is machine state that must survive a
-#: fresh-master rewrite and gate resume. See :func:`splits_dir`.
+#: ``splits/`` — the robust-eval held-out **split assignment** sidecar folder
+#: (holds :data:`SPLIT_ASSIGNMENT_JSON`). Lives inside the hidden tune cache
+#: (:data:`DIR_PHT_TUNE_CACHE`), **not** under :data:`DIR_DELIVERABLES`: the
+#: split is machine state that must survive a fresh-master rewrite and gate
+#: resume. See :func:`tune_cache_splits_dir`.
 DIR_SPLITS: Final[str] = "splits"
 
 #: ``<output>/deliverables/pareto/`` — the **multi-objective** sub-folder holding
@@ -376,6 +386,17 @@ DIR_PARETO: Final[str] = "pareto"
 #: ``.phenotypic-gui`` sandbox dir (presets/state) — different root, different
 #: purpose.
 DIR_PHENOTYPIC: Final[str] = ".phenotypic"
+
+#: ``<output>/.pht-tune-cache/`` — hidden machine-state cache root for a **tune**
+#: run, the sibling of :data:`DIR_PHENOTYPIC` for the forward CLI. Holds the
+#: Optuna ``study.db`` (+ WAL), the held-out ``splits/split.json``, and the
+#: GUI-discovery ``run.json`` marker. Hidden so it does not clutter the
+#: user-facing output and is skipped by the GUI candidate scan; the tune cache
+#: is kept distinct from ``.phenotypic`` so a directory that hosts both a
+#: forward run and a tune run never collides their machine-state. Note that
+#: ``trials.parquet`` is NOT relocated here — it stays at the output root as the
+#: dual-purpose Optuna-resume + user-facing trial journal.
+DIR_PHT_TUNE_CACHE: Final[str] = ".pht-tune-cache"
 
 
 # ---------------------------------------------------------------------------
@@ -706,47 +727,143 @@ def trials_parquet_path(output_dir: Path) -> Path:
     return Path(output_dir) / TRIALS_PARQUET
 
 
-def study_db_path(output_dir: Path) -> Path:
-    """Return ``<output>/study.db`` (the Optuna study DB; output-dir root).
+def tune_cache_dir(output_dir: Path) -> Path:
+    """Return ``<output>/.pht-tune-cache/`` — the tune run's machine-state root.
 
-    A sibling to :func:`trials_parquet_path`; the canonical SQLite-WAL storage
-    for the Optuna-backed :class:`OptunaStudyStore` when the ``tune`` extra is
-    installed.
-    """
-    return Path(output_dir) / STUDY_DB
-
-
-def splits_dir(output_dir: Path) -> Path:
-    """Return ``<output>/splits/`` — the robust-eval split-assignment folder.
-
-    Rooted at the output dir (a sibling to :func:`trials_parquet_path` /
-    :func:`study_db_path`), **not** under :func:`deliverables_dir`: the held-out
-    split is machine state that must survive a fresh-master rewrite and gate
-    resume. Pure path expression; callers ``mkdir`` when they intend to write.
+    The tune-side sibling of :func:`phenotypic_cache_dir`. Pure path expression;
+    callers ``mkdir`` when they intend to write.
 
     Args:
         output_dir: The run output directory.
 
     Returns:
-        ``<output_dir>/splits/``.
+        ``<output_dir>/.pht-tune-cache/``.
     """
-    return Path(output_dir) / DIR_SPLITS
+    return Path(output_dir) / DIR_PHT_TUNE_CACHE
 
 
-def split_assignment_path(output_dir: Path) -> Path:
-    """Return ``<output>/splits/split.json`` — the held-out split assignment.
+def tune_cache_run_marker_path(output_dir: Path) -> Path:
+    """Return ``<output>/.pht-tune-cache/run.json`` — the tune-run marker.
+
+    Written at run START (before any deliverable lands) so a live or finished
+    tune output is GUI-discoverable. See :data:`RUN_MARKER_JSON`.
+
+    Args:
+        output_dir: The run output directory.
+
+    Returns:
+        ``<output_dir>/.pht-tune-cache/run.json``.
+    """
+    return tune_cache_dir(output_dir) / RUN_MARKER_JSON
+
+
+def tune_cache_study_db_path(output_dir: Path) -> Path:
+    """Return ``<output>/.pht-tune-cache/study.db`` (the Optuna study DB).
+
+    The canonical SQLite-WAL storage for the Optuna-backed
+    :class:`OptunaStudyStore` when the ``tune`` extra is installed, relocated
+    into the hidden tune cache. A legacy run wrote it at the output root; use
+    :func:`resolve_study_db_path` to read either location.
+
+    Args:
+        output_dir: The run output directory.
+
+    Returns:
+        ``<output_dir>/.pht-tune-cache/study.db``.
+    """
+    return tune_cache_dir(output_dir) / STUDY_DB
+
+
+def tune_cache_splits_dir(output_dir: Path) -> Path:
+    """Return ``<output>/.pht-tune-cache/splits/`` — the held-out split folder.
+
+    Machine state that must survive a fresh-master rewrite and gate resume, so
+    it lives in the hidden tune cache, **not** under :func:`deliverables_dir`.
+    Pure path expression; callers ``mkdir`` when they intend to write.
+
+    Args:
+        output_dir: The run output directory.
+
+    Returns:
+        ``<output_dir>/.pht-tune-cache/splits/``.
+    """
+    return tune_cache_dir(output_dir) / DIR_SPLITS
+
+
+def tune_cache_split_assignment_path(output_dir: Path) -> Path:
+    """Return ``<output>/.pht-tune-cache/splits/split.json`` — the held-out split.
 
     The persisted calibration / held-out partition (plate names + split kind +
     dataset identity + seed entropy). Read-if-exists-else-derive on resume, so
-    a re-run reuses the original partition regardless of the new master seed.
+    a re-run reuses the original partition regardless of the new master seed. A
+    legacy run wrote it under ``<output>/splits/``; use
+    :func:`resolve_split_assignment_path` to read either location.
 
     Args:
         output_dir: The run output directory.
 
     Returns:
-        ``<output_dir>/splits/split.json``.
+        ``<output_dir>/.pht-tune-cache/splits/split.json``.
     """
-    return splits_dir(output_dir) / SPLIT_ASSIGNMENT_JSON
+    return tune_cache_splits_dir(output_dir) / SPLIT_ASSIGNMENT_JSON
+
+
+def _legacy_study_db_path(output_dir: Path) -> Path:
+    """Pre-relocation location: ``<output>/study.db``."""
+    return Path(output_dir) / STUDY_DB
+
+
+def _legacy_split_assignment_path(output_dir: Path) -> Path:
+    """Pre-relocation location: ``<output>/splits/split.json``."""
+    return Path(output_dir) / DIR_SPLITS / SPLIT_ASSIGNMENT_JSON
+
+
+def resolve_study_db_path(output_dir: Path) -> Path:
+    """Return the study DB that exists, preferring ``.pht-tune-cache/``.
+
+    Read-only resolver: a relocated run keeps ``study.db`` under the hidden tune
+    cache; a legacy run kept it at the output root. Falls back to the new
+    location when neither exists (so a cold sampler restart from a missing
+    ``study.db`` is harmless — no migration is performed).
+
+    Args:
+        output_dir: The run output directory.
+
+    Returns:
+        The study DB path that exists, else the new cache location.
+    """
+    new = tune_cache_study_db_path(output_dir)
+    if new.exists():
+        return new
+    legacy = _legacy_study_db_path(output_dir)
+    if legacy.exists():
+        return legacy
+    return new
+
+
+def resolve_split_assignment_path(output_dir: Path) -> Path:
+    """Return the split assignment that exists, preferring ``.pht-tune-cache/``.
+
+    Read-only resolver mirroring :func:`resolve_progress_dir`. The held-out
+    split is checked in the hidden tune cache FIRST, THEN at the legacy output
+    root — a missing split silently RE-DERIVES a fresh held-out partition on
+    resume (a reproducibility / held-out-leak bug), so resume MUST find a
+    legacy-root ``split.json``. Falls back to the new location when neither
+    exists (the default for a fresh derive-and-write).
+
+    Args:
+        output_dir: The run output directory.
+
+    Returns:
+        The split-assignment path that exists, else the new cache location.
+    """
+    new = tune_cache_split_assignment_path(output_dir)
+    if new.exists():
+        return new
+    legacy = _legacy_split_assignment_path(output_dir)
+    if legacy.exists():
+        return legacy
+    return new
 
 
 def generalization_path(output_dir: Path) -> Path:

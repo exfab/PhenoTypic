@@ -124,7 +124,7 @@ def test_supervised_composite_pareto_end_to_end(tmp_path):
     from phenotypic.tune._study._optuna_store import OptunaStudyStore
 
     store = OptunaStudyStore(
-        storage_url=f"sqlite:///{io.study_db_path(out)}",
+        storage_url=f"sqlite:///{io.tune_cache_study_db_path(out)}",
         study_name="tune",
         directions=["maximize", "maximize"],
     )

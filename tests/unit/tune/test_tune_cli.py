@@ -127,8 +127,8 @@ def test_optuna_strategy_run_writes_trials_parquet(tmp_path):
         strategy="tpe",
         n_trials=4,
     )
-    assert io.study_db_path(out).exists()  # the Optuna study DB
-    assert io.trials_parquet_path(out).exists()  # exported beside study.db
+    assert io.tune_cache_study_db_path(out).exists()  # the Optuna study DB
+    assert io.trials_parquet_path(out).exists()  # exported at the output root
     assert io.best_pipeline_path(out).exists()
     assert best is not None
 

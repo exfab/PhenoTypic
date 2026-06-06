@@ -16,6 +16,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Final, Optional
 
@@ -32,6 +33,7 @@ from .._evaluation import (
     run_held_out,
 )
 from .._multi_objective import (
+    is_multi_objective,
     objective_directions,
     reject_grid_random_multi_objective,
 )
@@ -54,6 +56,106 @@ _IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".h5"}
 #: Default trial budget when ``--n-trials`` is omitted for a ``random`` or Optuna
 #: strategy (grid is exhaustive and ignores it).
 _DEFAULT_N_TRIALS: Final[int] = 50
+
+#: Schema version of the ``.pht-tune-cache/run.json`` marker (bump on any key
+#: change so a reader can branch on the contract).
+_RUN_MARKER_VERSION: Final[int] = 1
+
+#: The study name every tune run uses (the Optuna ``study_name`` + the marker's
+#: ``study_name`` field). A single constant keeps the store, the SLURM fleet, and
+#: the marker in lockstep.
+_STUDY_NAME: Final[str] = "tune"
+
+
+def _default_study_db_url(output_dir: Path) -> str:
+    """SQLite URL for the run's ``study.db``, resuming a legacy-root copy.
+
+    Resolves the study-DB location via :func:`resolve_study_db_path` (the hidden
+    tune cache, falling back to a legacy output-root ``study.db`` so an
+    in-flight legacy run resumes in place). A fresh run gets the new cache
+    location (the resolver's no-file default).
+    """
+    return f"sqlite:///{io.resolve_study_db_path(output_dir)}"
+
+
+def _resolve_storage_url(storage_url: Optional[str], output_dir: Path) -> str:
+    """Resolve the Optuna storage URL with the canonical 3-way fallback.
+
+    ``storage_url`` (the explicit ``--storage-url`` / param) wins; otherwise the
+    ``$PHENOTYPIC_TUNE_STORAGE_URL`` env var (a shared distributed Postgres);
+    otherwise the run's local ``study.db`` (resolved via
+    :func:`_default_study_db_url`). Single-sourced so the SLURM fleet submission
+    and the ``run.json`` marker agree on the URL a worker will actually open —
+    a null URL in the marker would silently force the GUI Monitor into
+    parquet-only mode for the env-driven distributed case.
+
+    Args:
+        storage_url: The explicit storage URL, or ``None``.
+        output_dir: The run output directory (for the ``study.db`` fallback).
+
+    Returns:
+        The resolved, non-null storage URL.
+    """
+    return (
+        storage_url
+        or os.environ.get(PHENOTYPIC_TUNE_STORAGE_URL_ENV)
+        or _default_study_db_url(output_dir)
+    )
+
+
+def _strategy_marker_name(strategy: StrategyConfig) -> str:
+    """The marker's ``strategy`` label for ``strategy``.
+
+    An Optuna strategy reports its ``sampler`` (``"tpe"`` / ``"cmaes"`` /
+    ``"gp"`` / ``"nsga2"``) — the user-facing name; grid/random report their
+    ``kind`` discriminator. Falls back to ``kind`` for any other config.
+    """
+    sampler = getattr(strategy, "sampler", None)
+    if sampler is not None:
+        return str(sampler)
+    return str(getattr(strategy, "kind", ""))
+
+
+def _write_run_marker(
+    output_dir: Path,
+    spec: TuningSpec,
+    *,
+    storage_url: Optional[str],
+    images_dir: Optional[Path],
+    slurm: bool,
+) -> None:
+    """Write the ``.pht-tune-cache/run.json`` marker at run START.
+
+    Emitted right after the ``deliverables/`` mkdir and BEFORE the engine/SLURM
+    branch, so a live run is marked before any deliverable lands and the GUI
+    shell classifier can recognise the output. The ``storage_url`` is resolved
+    through the SAME 3-way fallback the SLURM fleet uses
+    (:func:`_resolve_storage_url`), so the recorded URL is the one a worker will
+    actually open — never null — keeping the GUI Monitor out of parquet-only
+    mode for the env-var-driven distributed-Postgres case.
+
+    Args:
+        output_dir: The run output directory.
+        spec: The RESOLVED tuning spec (its ``strategy`` + ``scorer`` populate
+            the marker).
+        storage_url: The explicit storage URL, or ``None`` (resolved here).
+        images_dir: The calibration image directory (the ``-i`` arg), or ``None``.
+        slurm: Whether this run submits a distributed worker fleet.
+    """
+    marker = {
+        "version": _RUN_MARKER_VERSION,
+        "study_name": _STUDY_NAME,
+        "storage_url": _resolve_storage_url(storage_url, output_dir),
+        "images_dir": str(images_dir) if images_dir is not None else None,
+        "strategy": _strategy_marker_name(spec.strategy),
+        "n_trials": getattr(spec.strategy, "n_trials", None),
+        "is_multi_objective": is_multi_objective(spec.scorer),
+        "slurm": slurm,
+        "start_time": datetime.now(timezone.utc).isoformat(),
+    }
+    marker_path = io.tune_cache_run_marker_path(output_dir)
+    marker_path.parent.mkdir(parents=True, exist_ok=True)
+    marker_path.write_text(json.dumps(marker, indent=2))
 
 
 def _load_images(input_dir: Path) -> list:
@@ -170,9 +272,9 @@ def _open_store(
     if _is_optuna_strategy(strategy):
         from .._study._optuna_store import OptunaStudyStore
 
-        url = storage_url or f"sqlite:///{io.study_db_path(output_dir)}"
+        url = storage_url or _default_study_db_url(output_dir)
         return OptunaStudyStore(
-            storage_url=url, study_name="tune", directions=directions
+            storage_url=url, study_name=_STUDY_NAME, directions=directions
         )
     if resume_path.exists():
         return JournalStudyStore.from_parquet(resume_path)
@@ -259,6 +361,18 @@ def run_tuning(
     # Always echo the resolved spec so the deliverable is re-runnable.
     io.tuning_spec_path(output_dir).write_text(
         resolved_spec.model_dump_json(indent=2)
+    )
+
+    # Mark the run as a tune output at START — before the engine/SLURM branch, so
+    # a live run (and a fire-and-forget SLURM submission) is GUI-discoverable
+    # before any deliverable lands. The resolved (non-null) storage URL keeps the
+    # GUI Monitor off parquet-only mode for an env-driven distributed-Postgres run.
+    _write_run_marker(
+        output_dir,
+        resolved_spec,
+        storage_url=storage_url,
+        images_dir=images_dir,
+        slurm=slurm,
     )
 
     if slurm:
@@ -361,11 +475,7 @@ def _submit_slurm_fleet(
             "--slurm requires the on-disk spec path and image directory "
             "(each worker reloads them)"
         )
-    url = (
-        storage_url
-        or os.environ.get(PHENOTYPIC_TUNE_STORAGE_URL_ENV)
-        or f"sqlite:///{io.study_db_path(output_dir)}"
-    )
+    url = _resolve_storage_url(storage_url, output_dir)
     n_trials = getattr(spec.strategy, "n_trials", None)
     n_workers = min(8, n_trials) if isinstance(n_trials, int) and n_trials > 0 else 4
     # Pre-create the shared study (and its RDB schema) in THIS process BEFORE the
@@ -379,7 +489,7 @@ def _submit_slurm_fleet(
     from .._study._optuna_store import OptunaStudyStore
 
     directions = objective_directions(spec.scorer)
-    OptunaStudyStore(storage_url=url, study_name="tune", directions=directions)
+    OptunaStudyStore(storage_url=url, study_name=_STUDY_NAME, directions=directions)
     # Each worker launches with the submitting process's own venv interpreter
     # (the absolute sys.executable, shared across the cluster filesystem) — bare
     # ``python`` on a fresh compute node would not resolve phenotypic/optuna. This
@@ -396,7 +506,7 @@ def _submit_slurm_fleet(
         output_dir=output_dir,
         spec_path=io.tuning_spec_path(output_dir),
         images_dir=Path(images_dir),
-        study_name="tune",
+        study_name=_STUDY_NAME,
         n_workers=n_workers,
         slurm_args={"slurm_partition": "batch"},
         storage_url=url,

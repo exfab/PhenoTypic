@@ -236,7 +236,11 @@ def derive_split(
 
 
 def write_split(output_dir: Path, split: Split) -> Path:
-    """Persist ``split`` to ``<output>/splits/split.json`` (creating ``splits/``).
+    """Persist ``split`` to the tune cache's ``splits/split.json``.
+
+    Writes under ``<output>/.pht-tune-cache/splits/`` (creating it), the hidden
+    machine-state location — the split must survive a fresh-master rewrite and
+    gate resume.
 
     Args:
         output_dir: The run output directory.
@@ -245,7 +249,7 @@ def write_split(output_dir: Path, split: Split) -> Path:
     Returns:
         The path the split was written to.
     """
-    path = _io.split_assignment_path(Path(output_dir))
+    path = _io.tune_cache_split_assignment_path(Path(output_dir))
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(asdict(split), sort_keys=True, indent=2))
     return path
@@ -254,14 +258,20 @@ def write_split(output_dir: Path, split: Split) -> Path:
 def read_split(output_dir: Path) -> Optional[Split]:
     """Reload a persisted :class:`Split`, or ``None`` when none exists.
 
+    Checks BOTH the hidden tune cache (``.pht-tune-cache/splits/split.json``)
+    AND, for a legacy run, the output root (``splits/split.json``) via
+    :func:`resolve_split_assignment_path` — a missing split silently re-derives
+    a fresh held-out partition on resume (a held-out-leak bug), so a legacy-root
+    split must still be found.
+
     Args:
         output_dir: The run output directory.
 
     Returns:
-        The reconstructed :class:`Split`, or ``None`` when
-        ``<output>/splits/split.json`` is absent.
+        The reconstructed :class:`Split`, or ``None`` when no ``split.json``
+        exists in either location.
     """
-    path = _io.split_assignment_path(Path(output_dir))
+    path = _io.resolve_split_assignment_path(Path(output_dir))
     if not path.exists():
         return None
     payload = json.loads(path.read_text())
