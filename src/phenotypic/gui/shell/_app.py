@@ -45,6 +45,7 @@ from phenotypic.gui._config import (
     MOUNT_BUILDER,
     MOUNT_HOME,
     MOUNT_RUN,
+    MOUNT_TUNE,
     MOUNT_VIEWER,
     TITLE_HUB,
 )
@@ -54,6 +55,7 @@ from phenotypic.gui.shell._ids import (
     SHELL_TAB_BUILDER,
     SHELL_TAB_HOME,
     SHELL_TAB_RUN,
+    SHELL_TAB_TUNE,
     SHELL_TAB_VIEWER,
 )
 from phenotypic.gui.shell._layout import wrap_in_chrome
@@ -192,7 +194,7 @@ def compose_hub(
             so they don't leak background threads.
     """
     # Local imports to keep boot-time cycles minimal.
-    from phenotypic.gui import analysis, builder, results_viewer, run_console
+    from phenotypic.gui import analysis, builder, results_viewer, run_console, tune
     from phenotypic.gui.results_viewer._output_root import OutputRoot
 
     # Mutable handoff slot so the sidebar can hand a CLI output path to the
@@ -289,6 +291,14 @@ def compose_hub(
     )
     wrap_in_chrome(run_app, active_tab=SHELL_TAB_RUN, sandbox=sandbox)
 
+    # 4b. Tune co-pilot Dash (eager). Read-only and lightweight — no heavy
+    #     parquet load, so no ToolSession is needed. Mounted empty-state: the
+    #     user binds a tune run from the sidebar (Chunk C), at which point the
+    #     page re-reads the bound run. The factory stays optuna-free; the live
+    #     study is opened lazily inside the Monitor poll callback only.
+    tune_app = tune.create_app(root=None, url_prefix=MOUNT_TUNE)
+    wrap_in_chrome(tune_app, active_tab=SHELL_TAB_TUNE, sandbox=sandbox)
+
     # Stash on the shell server too so any future cross-tool callback
     # (e.g. the sidebar's "open in run console" hand-off) can reach the
     # same singletons.
@@ -311,16 +321,18 @@ def compose_hub(
             MOUNT_BUILDER.rstrip("/"): builder_app.server,
             MOUNT_VIEWER.rstrip("/"): viewer_proxy,
             MOUNT_RUN.rstrip("/"): run_app.server,
+            MOUNT_TUNE.rstrip("/"): tune_app.server,
             MOUNT_ANALYSIS.rstrip("/"): analysis_proxy,
         },
     )
 
     logger.info(
-        "GUI hub composed: sandbox=%s mounts=%s, %s, %s, %s",
+        "GUI hub composed: sandbox=%s mounts=%s, %s, %s, %s, %s",
         sandbox.root,
         MOUNT_BUILDER,
         MOUNT_VIEWER,
         MOUNT_RUN,
+        MOUNT_TUNE,
         MOUNT_ANALYSIS,
     )
 

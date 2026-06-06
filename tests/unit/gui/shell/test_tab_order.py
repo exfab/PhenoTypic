@@ -14,17 +14,19 @@ from phenotypic.gui.shell._ids import (
     SHELL_TAB_BUILDER,
     SHELL_TAB_HOME,
     SHELL_TAB_RUN,
+    SHELL_TAB_TUNE,
     SHELL_TAB_VIEWER,
 )
 from phenotypic.gui.shell._layout import TAB_DISPLAY_ORDER, _TAB_HREFS, _TAB_LABELS
 
 
 def test_tab_display_order_matches_workflow() -> None:
-    """Tabs render in workflow order: Home, Builder, Run, Viewer, Analysis."""
+    """Tabs render in workflow order: Home, Builder, Run, Tune, Viewer, Analysis."""
     assert TAB_DISPLAY_ORDER == (
         SHELL_TAB_HOME,
         SHELL_TAB_BUILDER,
         SHELL_TAB_RUN,
+        SHELL_TAB_TUNE,
         SHELL_TAB_VIEWER,
         SHELL_TAB_ANALYSIS,
     )

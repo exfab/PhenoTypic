@@ -1,0 +1,124 @@
+/* Tune co-pilot styles.
+ *
+ * NO :root {} block here -- the design tokens (--color-*, --font-*, --sp-*,
+ * --radius*, --shadow*) are spliced into every Dash page by
+ * phenotypic.gui._design.inject_design_tokens(). This file only consumes
+ * them; it never redefines a shared value.
+ */
+
+.tune-page {
+    padding: var(--sp-4);
+    font-family: var(--font-body);
+    color: var(--color-body);
+    background: var(--color-bg);
+}
+
+.tune-run-header {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    padding: var(--sp-3) var(--sp-4);
+    margin-bottom: var(--sp-4);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+    font-size: var(--font-size-header-2);
+    color: var(--color-heading);
+}
+
+/* ---- Sub-tab button row ------------------------------------------------ */
+
+.tune-subtab-row {
+    display: flex;
+    gap: var(--sp-2);
+    margin-bottom: var(--sp-4);
+    border-bottom: 1px solid var(--color-rule);
+}
+
+.tune-subtab {
+    appearance: none;
+    border: none;
+    background: transparent;
+    color: var(--color-muted);
+    font-family: var(--font-body);
+    font-size: var(--font-size-label);
+    font-weight: 600;
+    padding: var(--sp-2) var(--sp-4);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: var(--transition);
+}
+
+.tune-subtab:hover {
+    color: var(--color-body);
+}
+
+.tune-subtab-active {
+    color: var(--color-blue);
+    border-bottom-color: var(--color-blue);
+}
+
+/* ---- View containers --------------------------------------------------- */
+
+.tune-view {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+    padding: var(--sp-4);
+}
+
+.tune-view-hidden {
+    display: none;
+}
+
+/* ---- Monitor view ------------------------------------------------------ */
+
+.tune-monitor-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--sp-4);
+}
+
+.tune-monitor-full {
+    grid-column: 1 / -1;
+}
+
+.tune-gap-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-1);
+    padding: var(--sp-1) var(--sp-3);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-label);
+    font-weight: 600;
+}
+
+.tune-gap-badge-stable {
+    background: var(--color-surface);
+    color: var(--color-body);
+    border: 1px solid var(--color-border);
+}
+
+.tune-gap-badge-unstable {
+    background: var(--color-gold);
+    color: var(--color-navy);
+    border: 1px solid var(--color-gold);
+}
+
+.tune-monitor-note {
+    margin-top: var(--sp-3);
+    font-size: var(--font-size-caption);
+    color: var(--color-muted);
+}
+
+.tune-empty-state {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+    padding: var(--sp-8);
+    text-align: center;
+    color: var(--color-muted);
+    font-size: var(--font-size-body);
+}
