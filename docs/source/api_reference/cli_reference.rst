@@ -108,3 +108,93 @@ Output Options
 
 ``--skip-validation``
    Skip pipeline validation before processing.
+
+Tuning CLI
+==========
+
+PhenoTypic also ships a hyperparameter-tuning engine, ``python -m phenotypic.tune``,
+which searches an ``ImagePipeline``'s parameters to maximize a scorer. It has two
+subcommands: ``run`` (the search engine) and ``auto-space`` (infer a reviewable search
+space from a pipeline). The ``tpe``, ``cmaes``, ``gp``, and ``nsga2`` strategies require
+the optional ``tune`` extra (``uv sync --extras tune``); ``grid`` and ``random`` work out
+of the box.
+
+See the :doc:`tuning how-to </how_to/pages/tuning>` for an end-to-end walkthrough and
+the :doc:`distributed HPCC guide </how_to/pages/tune_distributed_hpcc>` for SLURM and
+Postgres fan-out.
+
+``run`` — run a tuning spec
+---------------------------
+
+.. code-block:: bash
+
+   python -m phenotypic.tune run SPEC_JSON -i INPUT_DIR [OPTIONS]
+
+Path Options
+~~~~~~~~~~~~
+
+``SPEC_JSON``
+   Positional. Path to a ``tuning_spec.json`` describing the search space, scorer,
+   and budget.
+
+``-i, --input INPUT_DIR``
+   Directory of plate images to tune against. Required.
+
+``-o, --output OUTPUT_DIR``
+   Directory where tuning results are written.
+
+Search Options
+~~~~~~~~~~~~~~
+
+``--strategy {grid,random,tpe,cmaes,gp,nsga2}``
+   Override the spec's strategy. ``grid``/``random`` use the built-in configs;
+   ``tpe``/``cmaes``/``gp``/``nsga2`` build an ``OptunaConfig`` (needs the ``tune``
+   extra).
+
+``--n-trials N``
+   Trial-budget override.
+
+``--screen`` / ``--no-screen``
+   Enable or disable the two-round screening freeze. Default: ``--no-screen``.
+
+Storage Options
+~~~~~~~~~~~~~~~
+
+``--storage-url URL``
+   Optuna storage URL: ``sqlite:///…`` (local single node) or a password-less
+   ``postgresql+psycopg://USER@HOST:PORT/DB`` (distributed; libpq reads the password
+   from ``~/.pgpass`` or ``$PGPASSWORD``, so it never enters argv or the worker script).
+   Falls back to ``$PHENOTYPIC_TUNE_STORAGE_URL``.
+
+Distributed Options
+~~~~~~~~~~~~~~~~~~~
+
+``--slurm``
+   Submit a distributed worker fleet over SLURM instead of running locally.
+
+Robust-Eval Options
+~~~~~~~~~~~~~~~~~~~
+
+``--held-out-fraction F``
+   Override the spec's held-out fraction: the target share of plates reserved for the
+   generalization pass.
+
+``--cv-group COL``
+   Override the held-out grouping column. When unset, the spec value (then the count
+   scorer's ``groupby[0]``) is inferred.
+
+``auto-space`` — infer a search space
+-------------------------------------
+
+.. code-block:: bash
+
+   python -m phenotypic.tune auto-space PIPELINE_JSON [OPTIONS]
+
+``PIPELINE_JSON``
+   Positional. Path to a pipeline JSON created with ``pipeline.to_json()``.
+
+``-o, --output OUTPUT_DIR``
+   Directory where the inferred search space is written.
+
+``--unattended``
+   Reserved: skip the interactive review prompt (currently a no-op).

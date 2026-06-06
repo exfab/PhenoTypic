@@ -25,7 +25,8 @@
   `objmap` 16-bit raw-label PNG), mirroring the input tree. Skips
   measurement/deliverables/QC/dashboard; machine-state lives under `.phenotypic/`.
   Full local + SLURM + resume reuse.
-- `uv run python -m phenotypic.sweep` — parameter sweeps across pipeline variants
+- `uv run python -m phenotypic.tune run spec.json -i <images> -o <out>` —
+  hyperparameter tuning (grid/random + Optuna), distributed via `--slurm`/`--storage-url`
 
 ### GUI hub
 
