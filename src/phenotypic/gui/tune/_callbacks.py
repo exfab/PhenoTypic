@@ -107,22 +107,6 @@ def active_view(trigger_id: str | None) -> ids.SubTabName:
     return _BUTTON_ID_TO_VIEW.get(trigger_id, _DEFAULT_VIEW)
 
 
-def _view_container_class(name: ids.SubTabName, active: ids.SubTabName) -> str:
-    """The class string for a view container (non-active gets the hidden class)."""
-    classes = ["tune-view"]
-    if name != active:
-        classes.append("tune-view-hidden")
-    return " ".join(classes)
-
-
-def _subtab_button_class(name: ids.SubTabName, active: ids.SubTabName) -> str:
-    """The class string for a sub-tab button (active gets the highlight class)."""
-    classes = ["tune-subtab"]
-    if name == active:
-        classes.append("tune-subtab-active")
-    return " ".join(classes)
-
-
 # ---------------------------------------------------------------------------
 # Monitor — graceful live read (OQ4)
 # ---------------------------------------------------------------------------
@@ -359,10 +343,10 @@ def register_callbacks(app, *, sandbox=None) -> None:  # type: ignore[no-untyped
     def _switch_subtab(*_n_clicks: int) -> tuple[str, ...]:
         active = active_view(ctx.triggered_id)
         container_classes = [
-            _view_container_class(name, active) for name in ids.SUBTAB_ORDER
+            ids.view_container_class(name, active) for name in ids.SUBTAB_ORDER
         ]
         button_classes = [
-            _subtab_button_class(name, active) for name in ids.SUBTAB_ORDER
+            ids.subtab_button_class(name, active) for name in ids.SUBTAB_ORDER
         ]
         return (active, *container_classes, *button_classes)
 
@@ -519,9 +503,9 @@ def write_space_spec(
             atomic ``os.replace`` cannot complete. Re-raised so the caller can
             surface it in a note.
     """
-    import os
-    import tempfile
+    from pathlib import Path
 
+    from phenotypic._cli._cli_output_manager import _atomic_write
     from phenotypic.gui.tune._space import _load_space_source, space_to_spec
     from phenotypic.tools_ import tuning_spec_path
 
@@ -535,20 +519,14 @@ def write_space_spec(
     payload = spec.model_dump_json(indent=2)
 
     target = tuning_spec_path(root.path)
-    target.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp_name = tempfile.mkstemp(
-        dir=str(target.parent), prefix=".tuning_spec.", suffix=".json.tmp"
-    )
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as handle:
-            handle.write(payload)
-        os.replace(tmp_name, target)
-    except BaseException:
-        try:
-            os.unlink(tmp_name)
-        except OSError:
-            pass
-        raise
+
+    def _write(tmp: str) -> None:
+        Path(tmp).write_text(payload, encoding="utf-8")
+
+    # Atomic write (shared CLI helper): temp file + ``os.replace`` so a reader
+    # never sees a half-written spec. A read-only output dir (HPCC) raises
+    # PermissionError, re-raised so the caller can surface it in the Space note.
+    _atomic_write(target, _write)
     return target
 
 
@@ -1162,7 +1140,7 @@ def _submit_one_candidate(  # type: ignore[no-untyped-def]
     trial = trials.get(trial_number)
     if trial is None:
         return curate.placeholder_figure(f"trial {trial_number} not in journal")
-    key = (session, int(trial_number), str(plate), "candidate")
+    key = ov.candidate_key(session, trial_number, plate)
 
     def _render():  # type: ignore[no-untyped-def]
         from phenotypic.gui.tune._overlays import render_candidate_overlay
@@ -1187,7 +1165,7 @@ def _submit_difference(  # type: ignore[no-untyped-def]
     trial_b = trials.get(b_trial)
     if trial_a is None or trial_b is None:
         return curate.placeholder_figure("a pinned trial is not in the journal")
-    key = (session, int(a_trial), f"{plate}|{b_trial}", "difference")
+    key = ov.difference_key(session, a_trial, b_trial, plate)
 
     def _render():  # type: ignore[no-untyped-def]
         from phenotypic.gui.tune._overlays import OVERLAY_MAX_DIM, render_difference
@@ -1225,10 +1203,10 @@ def _poll_curate_overlays(  # type: ignore[no-untyped-def]
         array = ov.take_overlay(key)
         return ov.overlay_figure(array) if array is not None else error_fig
 
-    key_a = (session, int(a_trial), str(plate), "candidate") if a_trial is not None and plate else None
-    key_b = (session, int(b_trial), str(plate), "candidate") if b_trial is not None and plate else None
+    key_a = ov.candidate_key(session, a_trial, plate) if a_trial is not None and plate else None
+    key_b = ov.candidate_key(session, b_trial, plate) if b_trial is not None and plate else None
     key_diff = (
-        (session, int(a_trial), f"{plate}|{b_trial}", "difference")
+        ov.difference_key(session, a_trial, b_trial, plate)
         if a_trial is not None and b_trial is not None and plate
         else None
     )

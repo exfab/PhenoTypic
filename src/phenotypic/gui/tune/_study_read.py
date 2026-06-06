@@ -33,10 +33,10 @@ from typing import TYPE_CHECKING, Optional, Protocol
 import plotly.graph_objects as go
 
 from phenotypic.gui._design import (
-    FONT_FAMILY_BODY,
     OI_BLUE,
     OI_ORANGE,
 )
+from phenotypic.gui.tune._figures import transparent_layout
 
 if TYPE_CHECKING:  # keep the module import-light + optuna-free
     from phenotypic.tune._study_store import Trial
@@ -192,18 +192,16 @@ def is_multi_objective(root: "TuneRunRoot") -> bool:
     return directions is not None and len(directions) > 1
 
 
-#: Plotly layout shared by the Monitor figures — body font, transparent paper
-#: so the surrounding card's background shows through, tight margins.
 def _monitor_layout(**overrides: object) -> dict[str, object]:
-    """The shared Monitor-figure layout dict (font + transparent paper)."""
-    base: dict[str, object] = {
-        "font": {"family": FONT_FAMILY_BODY},
-        "paper_bgcolor": "rgba(0,0,0,0)",
-        "plot_bgcolor": "rgba(0,0,0,0)",
-        "margin": {"l": 48, "r": 16, "t": 32, "b": 40},
-    }
-    base.update(overrides)
-    return base
+    """The shared Monitor-figure layout dict (transparent base + axis margins).
+
+    Layers the Monitor's roomier margins (room for axis titles + a legend) over
+    the tune-wide transparent base (:func:`~phenotypic.gui.tune._figures.\
+transparent_layout`); per-figure axes / legend are passed through ``overrides``.
+    """
+    return transparent_layout(
+        margin={"l": 48, "r": 16, "t": 32, "b": 40}, **overrides
+    )
 
 
 def build_objective_figure(trials: list["Trial"]) -> go.Figure:

@@ -30,7 +30,7 @@ from typing import TYPE_CHECKING, Any, Optional
 import numpy as np
 import plotly.graph_objects as go
 
-from phenotypic.gui._design import FONT_FAMILY_BODY
+from phenotypic.gui.tune._figures import transparent_layout
 
 if TYPE_CHECKING:  # pragma: no cover - type-only
     from phenotypic import ImagePipeline
@@ -41,6 +41,28 @@ logger = logging.getLogger(__name__)
 #: A pending-overlay key — ``(session_id, trial_number, plate_name, mode)``. The
 #: ``session_id`` namespaces a browser tab so two users never share a future.
 PendingKey = tuple[str, int, str, str]
+
+
+def candidate_key(session: str, trial: int, plate: str) -> PendingKey:
+    """The pending key for a candidate overlay (``mode == "candidate"``).
+
+    Single-sources the submit/poll handshake: the render path
+    (:mod:`._callbacks`) submits under this key and the readiness poll fetches
+    under the same one, so the two can never drift on the key shape.
+    """
+    return (session, int(trial), str(plate), "candidate")
+
+
+def difference_key(
+    session: str, a_trial: int, b_trial: int, plate: str
+) -> PendingKey:
+    """The pending key for an A-vs-B difference overlay (``mode == "difference"``).
+
+    The plate slot encodes ``"<plate>|<b_trial>"`` so the same A trial diffed
+    against a different B (or on a different plate) is a distinct cache entry.
+    Submit and poll both build the key here so they can't disagree.
+    """
+    return (session, int(a_trial), f"{plate}|{b_trial}", "difference")
 
 #: Hard cap on the module-level pending-future registry. ``_PENDING`` only needs
 #: to bridge IN-FLIGHT renders — the rendered array is already memoized in the
@@ -199,11 +221,10 @@ def overlay_figure(array: "np.ndarray") -> go.Figure:
     """
     fig = go.Figure(go.Image(z=np.asarray(array)))
     fig.update_layout(
-        font={"family": FONT_FAMILY_BODY},
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-        margin={"l": 8, "r": 8, "t": 8, "b": 8},
-        dragmode="zoom",
+        **transparent_layout(
+            margin={"l": 8, "r": 8, "t": 8, "b": 8},
+            dragmode="zoom",
+        )
     )
     fig.update_xaxes(constrain="domain")
     fig.update_yaxes(scaleanchor="x", constrain="domain")
@@ -257,6 +278,8 @@ def load_plate_grid(image_source: str, plate_name: str, *, sandbox: Any = None):
 
 __all__ = [
     "PendingKey",
+    "candidate_key",
+    "difference_key",
     "read_base_pipeline",
     "request_overlay",
     "overlay_ready",

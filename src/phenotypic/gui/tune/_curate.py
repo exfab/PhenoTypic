@@ -34,8 +34,8 @@ import plotly.graph_objects as go
 from dash import dcc, html
 from dash.development.base_component import Component
 
-from phenotypic.gui._design import FONT_FAMILY_BODY
 from phenotypic.gui.tune import _ids as ids
+from phenotypic.gui.tune._figures import transparent_layout
 
 if TYPE_CHECKING:
     from phenotypic.gui.shell._sandbox import SandboxRoot
@@ -71,22 +71,21 @@ def placeholder_figure(message: str) -> go.Figure:
     """
     fig = go.Figure()
     fig.update_layout(
-        font={"family": FONT_FAMILY_BODY},
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-        margin={"l": 8, "r": 8, "t": 8, "b": 8},
-        xaxis={"visible": False},
-        yaxis={"visible": False},
-        annotations=[
-            {
-                "text": message,
-                "xref": "paper",
-                "yref": "paper",
-                "x": 0.5,
-                "y": 0.5,
-                "showarrow": False,
-            }
-        ],
+        **transparent_layout(
+            margin={"l": 8, "r": 8, "t": 8, "b": 8},
+            xaxis={"visible": False},
+            yaxis={"visible": False},
+            annotations=[
+                {
+                    "text": message,
+                    "xref": "paper",
+                    "yref": "paper",
+                    "x": 0.5,
+                    "y": 0.5,
+                    "showarrow": False,
+                }
+            ],
+        )
     )
     return fig
 

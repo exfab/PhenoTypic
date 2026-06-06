@@ -42,6 +42,32 @@ def view_container_id(name: SubTabName) -> str:
     return f"tune-view-{name}"
 
 
+def subtab_button_class(name: SubTabName, active: "SubTabName | None") -> str:
+    """The CSS class string for a sub-tab button (active gets the highlight).
+
+    Single source of truth for both the initial render (``_layout``, where
+    ``active`` may be ``None``) and the switch callback (``_callbacks``), so the
+    two can never disagree on which class marks the active sub-tab.
+    """
+    classes = ["tune-subtab"]
+    if name == active:
+        classes.append("tune-subtab-active")
+    return " ".join(classes)
+
+
+def view_container_class(name: SubTabName, active: "SubTabName | None") -> str:
+    """The CSS class string for a view container (non-active is hidden).
+
+    Single source of truth for both the initial render (``_layout``) and the
+    switch callback (``_callbacks``); a container that is not the active view
+    carries the ``tune-view-hidden`` class.
+    """
+    classes = ["tune-view"]
+    if name != active:
+        classes.append("tune-view-hidden")
+    return " ".join(classes)
+
+
 # ---------------------------------------------------------------------------
 # Page chrome
 # ---------------------------------------------------------------------------
@@ -236,6 +262,8 @@ __all__ = [
     "SUBTAB_LABELS",
     "subtab_button_id",
     "view_container_id",
+    "subtab_button_class",
+    "view_container_class",
     "TUNE_PAGE",
     "TUNE_RUN_HEADER",
     "TUNE_ACTIVE_VIEW_STORE",

@@ -116,7 +116,7 @@ def _build_subtab_row(active: ids.SubTabName | None = None) -> html.Div:
                 ids.SUBTAB_LABELS[name],
                 id=ids.subtab_button_id(name),
                 n_clicks=0,
-                className=_subtab_class(name, active),
+                className=ids.subtab_button_class(name, active),
             )
             for name in ids.SUBTAB_ORDER
         ],
@@ -124,25 +124,14 @@ def _build_subtab_row(active: ids.SubTabName | None = None) -> html.Div:
     )
 
 
-def _subtab_class(name: ids.SubTabName, active: ids.SubTabName | None) -> str:
-    """The class string for a sub-tab button (active gets the highlight)."""
-    classes = ["tune-subtab"]
-    if name == active:
-        classes.append("tune-subtab-active")
-    return " ".join(classes)
-
-
 def _build_view_container(
     name: ids.SubTabName, root: "TuneRunRoot", *, sandbox: "Optional[SandboxRoot]"
 ) -> html.Div:
     """Render one view container; non-active containers start hidden."""
-    classes = ["tune-view"]
-    if name != _DEFAULT_VIEW:
-        classes.append("tune-view-hidden")
     return html.Div(
         _build_view_body(name, root, sandbox=sandbox),
         id=ids.view_container_id(name),
-        className=" ".join(classes),
+        className=ids.view_container_class(name, _DEFAULT_VIEW),
     )
 
 
