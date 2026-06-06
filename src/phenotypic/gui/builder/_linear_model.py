@@ -14,11 +14,11 @@ from typing import Any, Dict, Iterable, List, Literal, Optional
 
 from phenotypic.gui.builder._state import (
     INPUT_IMAGE_CLASS_NAME,
+    PIPELINE_CLASS_NAME,
     BlockNode,
     Edge,
     _DagBuilderScope,
     _DagBuilderState,
-    current_scope,
 )
 
 
@@ -71,6 +71,7 @@ class LinearScopeModel:
     spine_blocks: List[BlockNode]
     terminal_block: Optional[BlockNode]
     aux_owned_block_ids: set[str]
+    unknown_block_ids: set[str]
     unsupported: Optional[UnsupportedLinearState] = None
 
 
@@ -134,13 +135,33 @@ def resolve_selected_target(state: _DagBuilderState) -> LinearTarget:
     key = scope_key(scope_path)
     raw_target = getattr(state, "selected_targets_by_scope", {}).get(key)
     target = target_from_dict(raw_target, scope_path)
-    try:
-        scope = current_scope(state)
-    except KeyError:
+    scope = scope_at_path(state.root, scope_path)
+    if scope is None:
         return default_continuation_target(scope_path)
     if is_target_valid(target, scope):
         return target
     return default_continuation_target(scope_path)
+
+
+def scope_at_path(
+    root_scope: _DagBuilderScope, scope_path: Iterable[str]
+) -> Optional[_DagBuilderScope]:
+    """Resolve a DAG breadcrumb path to a scope."""
+
+    scope = root_scope
+    for block_id in scope_path:
+        block = next(
+            (candidate for candidate in scope.blocks if candidate.block_id == block_id),
+            None,
+        )
+        if (
+            block is None
+            or block.class_name != PIPELINE_CLASS_NAME
+            or block.nested is None
+        ):
+            return None
+        scope = block.nested
+    return scope
 
 
 def is_target_valid(target: LinearTarget, scope: _DagBuilderScope) -> bool:
@@ -259,6 +280,15 @@ def derive_linear_scope(
     aux_edges = [edge for edge in scope.edges if edge.kind == "aux"]
     aux_out_by_source: dict[str, list[Edge]] = defaultdict(list)
     for edge in aux_edges:
+        target_block = blocks_by_id.get(edge.target_block_id)
+        if target_block is not None and target_block.class_name == INPUT_IMAGE_CLASS_NAME:
+            return _unsupported_model(
+                scope,
+                path,
+                "input_as_aux_target",
+                "Input Image cannot receive aux parameter values",
+                edge.target_block_id,
+            )
         aux_out_by_source[edge.source_block_id].append(edge)
     for source_id, edges in aux_out_by_source.items():
         if source_id == input_block.block_id:
@@ -307,6 +337,7 @@ def derive_linear_scope(
         spine_blocks=spine,
         terminal_block=spine[-1],
         aux_owned_block_ids=aux_owned,
+        unknown_block_ids=_unknown_block_ids(scope, visible_ids),
         unsupported=None,
     )
 
@@ -383,6 +414,25 @@ def _collect_aux_owned_block_ids(
     return owned
 
 
+def _unknown_block_ids(
+    scope: _DagBuilderScope, visible_ids: set[str]
+) -> set[str]:
+    """Return visible operation blocks missing from the operation registry."""
+
+    from phenotypic.gui import _operation_registry
+
+    registry = _operation_registry.get_registry()
+    unknown: set[str] = set()
+    for block in scope.blocks:
+        if block.block_id not in visible_ids:
+            continue
+        if block.class_name in (INPUT_IMAGE_CLASS_NAME, PIPELINE_CLASS_NAME):
+            continue
+        if registry.get(block.class_name) is None:
+            unknown.add(block.block_id)
+    return unknown
+
+
 def _unsupported_model(
     scope: _DagBuilderScope,
     scope_path: List[str],
@@ -404,6 +454,7 @@ def _unsupported_model(
         spine_blocks=spine,
         terminal_block=input_block,
         aux_owned_block_ids=set(),
+        unknown_block_ids=set(),
         unsupported=UnsupportedLinearState(
             reason=reason,
             detail=detail,
@@ -422,6 +473,7 @@ __all__ = [
     "derive_linear_scope",
     "is_target_valid",
     "resolve_selected_target",
+    "scope_at_path",
     "scope_key",
     "target_from_dict",
     "target_to_dict",

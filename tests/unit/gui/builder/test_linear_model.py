@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from phenotypic.gui.builder._state import (
+    PIPELINE_CLASS_NAME,
     BlockNode,
     Edge,
     _DagBuilderScope,
@@ -100,6 +101,46 @@ def test_invalid_target_falls_back_to_current_scope_continuation() -> None:
     assert resolved.scope_path == []
 
 
+def test_nested_scope_target_resolves_without_legacy_current_scope() -> None:
+    """Target fallback works inside DAG breadcrumbs."""
+
+    from phenotypic.gui.builder._linear_model import (
+        resolve_selected_target,
+        scope_key,
+    )
+
+    nested = _DagBuilderScope()
+    nested_input = nested.blocks[0]
+    nested_blur = _block("GaussianBlur")
+    nested.blocks.append(nested_blur)
+    nested.edges.append(_image_edge(nested_input, nested_blur))
+    container = BlockNode(
+        block_id=_new_block_id(),
+        class_name=PIPELINE_CLASS_NAME,
+        params={},
+        nested=nested,
+    )
+    state = _DagBuilderState(
+        root=_DagBuilderScope(blocks=[container]),
+        breadcrumb=[container.block_id],
+        selected_targets_by_scope={
+            scope_key([container.block_id]): {
+                "kind": "image_output",
+                "scope_path": [container.block_id],
+                "block_id": nested_blur.block_id,
+                "param": None,
+                "slot": None,
+            }
+        },
+    )
+
+    resolved = resolve_selected_target(state)
+
+    assert resolved.kind == "image_output"
+    assert resolved.block_id == nested_blur.block_id
+    assert resolved.scope_path == [container.block_id]
+
+
 def test_linear_scope_derives_unique_spine_and_ignores_owned_aux_blocks() -> None:
     """A clean DAG with side-loaded aux blocks derives one visible spine."""
 
@@ -148,6 +189,51 @@ def test_linear_scope_classifies_image_fork_as_unsupported() -> None:
     assert model.unsupported.reason == "image_fork"
 
 
+def test_linear_scope_classifies_aux_edge_into_input_as_unsupported() -> None:
+    """InputImage may not be the consumer for an aux side value."""
+
+    from phenotypic.gui.builder._linear_model import derive_linear_scope
+
+    scope = _DagBuilderScope()
+    input_block = scope.blocks[0]
+    aux = _block("OtsuDetector")
+    scope.blocks.append(aux)
+    scope.edges.append(_aux_edge(aux, input_block, "inoculum_detector"))
+
+    model = derive_linear_scope(scope, scope_path=[])
+
+    assert model.unsupported is not None
+    assert model.unsupported.reason == "input_as_aux_target"
+
+
+def test_linear_scope_tracks_unknown_classes_without_dropping_renderable_nodes(
+    empty_registry: Any,
+    monkeypatch: Any,
+) -> None:
+    """Unknown classes stay renderable but are tracked for limited editing."""
+
+    from phenotypic.gui.builder._linear_model import derive_linear_scope
+
+    monkeypatch.setattr(
+        "phenotypic.gui._operation_registry.get_registry",
+        lambda: empty_registry,
+    )
+    scope = _DagBuilderScope()
+    input_block = scope.blocks[0]
+    unknown = _block("RemovedOperation")
+    scope.blocks.append(unknown)
+    scope.edges.append(_image_edge(input_block, unknown))
+
+    model = derive_linear_scope(scope, scope_path=[])
+
+    assert model.unsupported is None
+    assert model.unknown_block_ids == {unknown.block_id}
+    assert [block.class_name for block in model.spine_blocks] == [
+        "InputImage",
+        "RemovedOperation",
+    ]
+
+
 def test_compact_list_aux_slots_removes_empty_gaps() -> None:
     """List aux slots are renumbered contiguously after a removal."""
 
@@ -186,15 +272,11 @@ def test_state_replacement_payload_uses_dag_conversion(monkeypatch: Any) -> None
         assert seen_pipeline is pipeline
         return dag_state
 
-    def legacy_from_pipeline_must_not_run(seen_pipeline: object) -> None:
-        raise AssertionError("legacy from_pipeline should not handle loaded pipelines")
-
     def fake_render_views(seen_state: _DagBuilderState) -> tuple[list[Any], str, str]:
         assert seen_state is dag_state
         return [], "[]", "inspector"
 
     monkeypatch.setattr(callbacks, "from_pipeline_dag", fake_from_pipeline_dag, raising=False)
-    monkeypatch.setattr(callbacks, "from_pipeline", legacy_from_pipeline_must_not_run)
     monkeypatch.setattr(callbacks, "_render_views", fake_render_views)
 
     state_dict, breadcrumb, canvas_elements, inspector = callbacks._state_replacement_payload(
