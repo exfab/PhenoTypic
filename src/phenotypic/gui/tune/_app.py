@@ -19,12 +19,15 @@ from typing import Optional
 import dash
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 
-from phenotypic.gui._config import MOUNT_HOME, TITLE_TUNE
+from phenotypic.gui._config import CFG_SANDBOX_ROOT, MOUNT_HOME, TITLE_TUNE
 from phenotypic.gui._design import inject_design_tokens
 from phenotypic.gui._shared import register_shared_static
 from phenotypic.gui.tune._callbacks import register_callbacks
 from phenotypic.gui.tune._layout import build_empty_state_layout, build_layout
 from phenotypic.gui.tune._run_root import TuneRunRoot
+
+if False:  # TYPE_CHECKING guard kept lightweight (avoid eager sandbox import cost)
+    from phenotypic.gui.shell._sandbox import SandboxRoot
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +36,7 @@ def create_app(
     root: Optional[TuneRunRoot] = None,
     *,
     url_prefix: str = MOUNT_HOME,
+    sandbox: "Optional[SandboxRoot]" = None,
 ) -> dash.Dash:
     """Build a configured Dash instance for the tune co-pilot.
 
@@ -46,6 +50,11 @@ def create_app(
             ``MOUNT_HOME`` so the DispatcherMiddleware-stripped path matches.
             Standalone launches collapse to ``MOUNT_HOME`` ("/");
             :func:`phenotypic.gui.shell._app.compose_hub` passes ``MOUNT_TUNE``.
+        sandbox: The frozen-at-launch sandbox root. The Curate view's
+            sandbox-bounded Image Source picker (Chunk B-ii) needs it to bound
+            plate loads on a shared SSH tunnel; the hub composer passes it. When
+            ``None`` the Curate view degrades to a "no Image Source picker"
+            note (the empty-state / standalone-without-sandbox path).
 
     Returns:
         A configured :class:`dash.Dash`; ``app.run(...)`` is the caller's
@@ -66,14 +75,16 @@ def create_app(
     )
     inject_design_tokens(app)
     register_shared_static(app.server)
+    if sandbox is not None:
+        app.server.config[CFG_SANDBOX_ROOT] = str(sandbox.root)
 
     if root is None:
         app.layout = build_empty_state_layout()
         logger.debug("Tune co-pilot built in empty-state mode (url_prefix=%s)", url_prefix)
         return app
 
-    app.layout = build_layout(root)
-    register_callbacks(app)
+    app.layout = build_layout(root, sandbox=sandbox)
+    register_callbacks(app, sandbox=sandbox)
     logger.info("Tune co-pilot ready: run=%s", root.path)
     return app
 

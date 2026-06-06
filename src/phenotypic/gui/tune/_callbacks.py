@@ -315,10 +315,10 @@ def _gap_badge_outputs(store: "Optional[_ReadableStore]") -> tuple[str, str]:
     return label, f"tune-gap-badge tune-gap-badge-{variant}"
 
 
-def register_callbacks(app) -> None:  # type: ignore[no-untyped-def]
+def register_callbacks(app, *, sandbox=None) -> None:  # type: ignore[no-untyped-def]
     """Register the tune sub-app's Dash callbacks on ``app``.
 
-    Wires two callbacks:
+    Wires:
 
     * **Sub-tab switch** — a click on any of the four sub-tab buttons re-resolves
       the active view via :func:`active_view`, toggles each view container's
@@ -327,9 +327,14 @@ def register_callbacks(app) -> None:  # type: ignore[no-untyped-def]
     * **Monitor poll** — every 3 s the poll re-reads the study
       (:func:`read_study_for_monitor`) and re-renders the objective / importance
       figures, the gap badge, the trials table, and the degrade note.
+    * **Curate** (when ``sandbox`` is bound) — the sandbox-bounded Image Source
+      picker, the A/B pin + overlay render/poll, the mode toggle, and the
+      "Set as winner" write (see :func:`_register_curate_callbacks`).
 
     Args:
         app: The :class:`dash.Dash` instance whose layout is assigned.
+        sandbox: The frozen-at-launch sandbox root. When ``None`` the Curate
+            callbacks are skipped (the Curate view degrades to a note).
     """
     from dash import Input, Output, State
 
@@ -399,6 +404,9 @@ def register_callbacks(app) -> None:  # type: ignore[no-untyped-def]
         table = _build_trials_table(store)
         return objective_fig, importance_fig, badge_label, badge_class, table, note
 
+    if sandbox is not None:
+        _register_curate_callbacks(app, sandbox)
+
 
 def _param_importances(store: "Optional[_ReadableStore]") -> dict[str, float]:
     """The study's param importances, or ``{}`` when unavailable.
@@ -418,6 +426,111 @@ def _param_importances(store: "Optional[_ReadableStore]") -> dict[str, float]:
         logger.warning("param_importances read failed", exc_info=True)
         return {}
     return dict(importances) if importances else {}
+
+
+# ---------------------------------------------------------------------------
+# Curate — sandbox-bounded Image Source picker (B-IMG)
+# ---------------------------------------------------------------------------
+
+#: The pre-selection prompt shown above the (empty) overlay area until an
+#: Image Source is bound.
+_IMAGE_SOURCE_PLACEHOLDER: str = "no Image Source selected"
+
+
+def _register_curate_callbacks(app, sandbox) -> None:  # type: ignore[no-untyped-def]
+    """Register the Curate-view callbacks (Image Source picker; B-IMG).
+
+    Args:
+        app: The :class:`dash.Dash` instance.
+        sandbox: The frozen-at-launch sandbox bounding plate loads.
+    """
+    from dash import ALL, Input, Output, State, no_update
+
+    from phenotypic.gui.tune._image_source import (
+        render_image_source_tree,
+        resolve_image_source,
+    )
+
+    # --- Open / cancel the picker modal -----------------------------------
+    @app.callback(
+        Output(ids.TUNE_IMAGE_SOURCE_MODAL, "is_open", allow_duplicate=True),
+        Input(ids.TUNE_BTN_PICK_IMAGE_SOURCE, "n_clicks"),
+        Input(ids.TUNE_BTN_IMAGE_SOURCE_CANCEL, "n_clicks"),
+        prevent_initial_call=True,
+    )
+    def _toggle_image_source_modal(open_clicks, cancel_clicks):  # type: ignore[no-untyped-def]
+        # The open button opens; cancel closes. Dispatch on the trigger id.
+        if ctx.triggered_id == ids.TUNE_BTN_PICK_IMAGE_SOURCE and open_clicks:
+            return True
+        if ctx.triggered_id == ids.TUNE_BTN_IMAGE_SOURCE_CANCEL and cancel_clicks:
+            return False
+        return no_update
+
+    # --- Navigate the tree (folder click → browse-dir store) --------------
+    @app.callback(
+        Output(ids.TUNE_IMAGE_SOURCE_BROWSE_DIR, "data", allow_duplicate=True),
+        Input(
+            {"type": ids.TUNE_DIR_ENTRY_IMAGE_SOURCE, "kind": ALL, "path": ALL},
+            "n_clicks",
+        ),
+        prevent_initial_call=True,
+    )
+    def _navigate_image_source_tree(_clicks):  # type: ignore[no-untyped-def]
+        triggered = ctx.triggered_id
+        if not isinstance(triggered, dict):
+            return no_update
+        if triggered.get("type") != ids.TUNE_DIR_ENTRY_IMAGE_SOURCE:
+            return no_update
+        if not ctx.triggered or not ctx.triggered[0].get("value"):
+            return no_update
+        path = triggered.get("path")
+        return path if isinstance(path, str) else no_update
+
+    # --- Re-render the tree body on browse-dir change ---------------------
+    @app.callback(
+        Output(ids.TUNE_IMAGE_SOURCE_MODAL_BODY, "children"),
+        Input(ids.TUNE_IMAGE_SOURCE_BROWSE_DIR, "data"),
+        prevent_initial_call=True,
+    )
+    def _render_image_source_body(dir_value):  # type: ignore[no-untyped-def]
+        from pathlib import Path
+
+        current = Path(dir_value) if dir_value else None
+        return render_image_source_tree(sandbox, current)
+
+    # --- Confirm → resolve + commit the Image Source ----------------------
+    @app.callback(
+        Output(ids.TUNE_IMAGE_SOURCE_STORE, "data", allow_duplicate=True),
+        Output(ids.TUNE_IMAGE_SOURCE_LABEL, "children", allow_duplicate=True),
+        Output(ids.TUNE_IMAGE_SOURCE_MODAL, "is_open", allow_duplicate=True),
+        Output(ids.TUNE_CURATE_TOAST, "is_open", allow_duplicate=True),
+        Output(ids.TUNE_CURATE_TOAST, "children", allow_duplicate=True),
+        Input(ids.TUNE_BTN_IMAGE_SOURCE_CONFIRM, "n_clicks"),
+        State(ids.TUNE_IMAGE_SOURCE_BROWSE_DIR, "data"),
+        prevent_initial_call=True,
+    )
+    def _confirm_image_source(n_clicks, browsed):  # type: ignore[no-untyped-def]
+        if not n_clicks or not browsed:
+            return no_update, no_update, no_update, no_update, no_update
+        resolved = resolve_image_source(sandbox, browsed)
+        if resolved is None:
+            return (
+                no_update,
+                no_update,
+                no_update,
+                True,
+                f"Refused: {browsed} escapes the sandbox or is not a directory.",
+            )
+        return str(resolved), str(resolved), False, no_update, no_update
+
+    # --- Mirror the Image Source store → prompt visibility ----------------
+    @app.callback(
+        Output(ids.TUNE_CURATE_PROMPT, "style"),
+        Input(ids.TUNE_IMAGE_SOURCE_STORE, "data"),
+        prevent_initial_call=True,
+    )
+    def _toggle_curate_prompt(image_source):  # type: ignore[no-untyped-def]
+        return {"display": "none"} if image_source else {}
 
 
 __all__ = ["active_view", "read_study_for_monitor", "register_callbacks"]

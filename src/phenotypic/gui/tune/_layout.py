@@ -17,7 +17,7 @@ CSS custom properties); this module hard-codes none.
 """
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from dash import dcc, html
 from dash.development.base_component import Component
@@ -25,14 +25,14 @@ from dash.development.base_component import Component
 from phenotypic.gui.tune import _ids as ids
 
 if TYPE_CHECKING:
+    from phenotypic.gui.shell._sandbox import SandboxRoot
     from phenotypic.gui.tune._run_root import TuneRunRoot
 
 #: The default active sub-tab when a run is first opened.
 _DEFAULT_VIEW: ids.SubTabName = "monitor"
 
-#: Placeholder copy for the not-yet-built views (Chunks B/C fill these in).
+#: Placeholder copy for the not-yet-built views (Chunk C fills these in).
 _PLACEHOLDER_COPY: dict[ids.SubTabName, str] = {
-    "curate": "Curate — shortlist + overlays (coming in Chunk B).",
     "space": "Space — search-space view (coming in Chunk C).",
     "launch": "Launch — apply the tuned winner (coming in Chunk C).",
 }
@@ -75,11 +75,16 @@ def build_empty_state_layout() -> html.Div:
     )
 
 
-def build_layout(root: "TuneRunRoot") -> html.Div:
+def build_layout(
+    root: "TuneRunRoot", *, sandbox: "Optional[SandboxRoot]" = None
+) -> html.Div:
     """Render the full tune page for the bound run ``root``.
 
     Args:
         root: The validated tune output handle the page reads from.
+        sandbox: The frozen-at-launch sandbox root; threaded into the Curate
+            view's sandbox-bounded Image Source picker. ``None`` degrades the
+            Curate picker to a note.
 
     Returns:
         The page body: header, sub-tab button row, the four view containers
@@ -97,7 +102,10 @@ def build_layout(root: "TuneRunRoot") -> html.Div:
             ),
             _build_subtab_row(active=_DEFAULT_VIEW),
             html.Div(
-                [_build_view_container(name, root) for name in ids.SUBTAB_ORDER],
+                [
+                    _build_view_container(name, root, sandbox=sandbox)
+                    for name in ids.SUBTAB_ORDER
+                ],
                 className="tune-views",
             ),
         ],
@@ -130,22 +138,30 @@ def _subtab_class(name: ids.SubTabName, active: ids.SubTabName | None) -> str:
     return " ".join(classes)
 
 
-def _build_view_container(name: ids.SubTabName, root: "TuneRunRoot") -> html.Div:
+def _build_view_container(
+    name: ids.SubTabName, root: "TuneRunRoot", *, sandbox: "Optional[SandboxRoot]"
+) -> html.Div:
     """Render one view container; non-active containers start hidden."""
     classes = ["tune-view"]
     if name != _DEFAULT_VIEW:
         classes.append("tune-view-hidden")
     return html.Div(
-        _build_view_body(name, root),
+        _build_view_body(name, root, sandbox=sandbox),
         id=ids.view_container_id(name),
         className=" ".join(classes),
     )
 
 
-def _build_view_body(name: ids.SubTabName, root: "TuneRunRoot") -> Component:
-    """Dispatch to the per-view body builder (placeholders for B/C views)."""
+def _build_view_body(
+    name: ids.SubTabName, root: "TuneRunRoot", *, sandbox: "Optional[SandboxRoot]"
+) -> Component:
+    """Dispatch to the per-view body builder (placeholders for Space/Launch)."""
     if name == "monitor":
         return build_monitor_view(root)
+    if name == "curate":
+        from phenotypic.gui.tune._curate import build_curate_view
+
+        return build_curate_view(root, sandbox=sandbox)
     return html.P(_PLACEHOLDER_COPY[name])
 
 
@@ -213,3 +229,4 @@ __all__ = [
     "build_layout",
     "build_monitor_view",
 ]
+
