@@ -62,6 +62,7 @@ def test_empty_directory(tmp_path: Path) -> None:
         is_cli_output=False,
         has_dashboard=False,
         is_process_only_output=False,
+        is_tune_output=False,
         image_count=None,
         bad_perms=False,
     )
