@@ -6,6 +6,8 @@ from typing import Any, Dict, List
 
 import pytest
 
+from phenotypic.abc_ import ImageOperation
+from phenotypic.gui._operation_registry import OperationInfo
 from phenotypic.gui.builder._callbacks import _dispatch_state_update
 from phenotypic.gui.builder._linear_model import ROOT_SCOPE_KEY, scope_key
 from phenotypic.gui.builder._state import (
@@ -22,15 +24,46 @@ from phenotypic.gui.builder._state import (
 from .conftest import _make_op_info, _make_param
 
 
+class _LinearFakeImageOperation(ImageOperation):
+    """Concrete ImageOperation shell for dispatcher compatibility tests."""
+
+    def _operate(self, image):
+        return image
+
+
+def _make_linear_op_info(
+    cls_name: str,
+    parameters: Dict[str, Any] | None = None,
+    *,
+    category: str = "Enhancer",
+) -> OperationInfo:
+    cls = type(
+        cls_name,
+        (_LinearFakeImageOperation,),
+        {
+            "__module__": "tests.fake",
+            "_operate": _LinearFakeImageOperation._operate,
+        },
+    )
+    return OperationInfo(
+        cls=cls,
+        name=cls_name,
+        category=category,
+        module="tests.fake",
+        docstring="",
+        parameters=parameters or {},
+    )
+
+
 @pytest.fixture
 def linear_registry(empty_registry, monkeypatch):
     """Seed a tiny registry for linear-dispatch compatibility checks."""
 
     empty_registry.ops.update(
         {
-            "SourceOp": _make_op_info("SourceOp"),
-            "OtherOp": _make_op_info("OtherOp"),
-            "ConsumerOp": _make_op_info(
+            "SourceOp": _make_linear_op_info("SourceOp"),
+            "OtherOp": _make_linear_op_info("OtherOp"),
+            "ConsumerOp": _make_linear_op_info(
                 "ConsumerOp",
                 parameters={
                     "detector": _make_param(
@@ -47,6 +80,7 @@ def linear_registry(empty_registry, monkeypatch):
                     ),
                 },
             ),
+            "AnalysisThing": _make_op_info("AnalysisThing", category="Filter"),
         }
     )
     monkeypatch.setattr(
@@ -129,6 +163,36 @@ def _target(
     }
 
 
+def _block_dict(class_name: str) -> Dict[str, Any]:
+    return {
+        "block_id": _new_block_id(),
+        "class_name": class_name,
+        "params": {},
+        "label": None,
+        "nested": None,
+        "collapsed": False,
+        "list_slot_counts": {},
+    }
+
+
+def _aux_edge_dict(
+    source_id: str,
+    target_id: str,
+    param: str,
+    *,
+    slot: int | None = None,
+) -> Dict[str, Any]:
+    return {
+        "edge_id": _new_block_id(),
+        "source_block_id": source_id,
+        "source_port": "out",
+        "target_block_id": target_id,
+        "target_port": param,
+        "target_slot": slot,
+        "kind": "aux",
+    }
+
+
 def test_target_select_stores_green_target_and_open_menu(linear_registry):
     state = _state_with_chain()
     input_id = _input_block(state)["block_id"]
@@ -143,6 +207,22 @@ def test_target_select_stores_green_target_and_open_menu(linear_registry):
         "image_output", block_id=input_id
     )
     assert out["open_port_menu"] == _target("image_output", block_id=input_id)
+
+
+def test_target_menu_close_preserves_selected_target(linear_registry):
+    state = _state_with_chain()
+    input_id = _input_block(state)["block_id"]
+    state["selected_targets_by_scope"] = {
+        ROOT_SCOPE_KEY: _target("image_output", block_id=input_id)
+    }
+    state["open_port_menu"] = _target("image_output", block_id=input_id)
+
+    out = _dispatch_state_update(state, "target_menu_close", {})
+
+    assert out["open_port_menu"] is None
+    assert out["selected_targets_by_scope"][ROOT_SCOPE_KEY] == _target(
+        "image_output", block_id=input_id
+    )
 
 
 def test_linear_palette_add_continuation_appends_after_terminal(linear_registry):
@@ -249,6 +329,157 @@ def test_linear_palette_add_rejects_incompatible_parameter_fill(linear_registry)
     assert out["toast_queue"][-1]["kind"] == "warning"
 
 
+def test_linear_palette_add_rejects_non_operation_source(linear_registry):
+    state = _state_with_chain("ConsumerOp")
+    consumer = _block_by_class(state, "ConsumerOp")
+    selected_target = _target(
+        "parameter", block_id=consumer["block_id"], param="detector"
+    )
+    state["selected_targets_by_scope"] = {ROOT_SCOPE_KEY: selected_target}
+
+    out = _dispatch_state_update(
+        state,
+        "linear_palette_add",
+        {"class_name": "AnalysisThing"},
+    )
+
+    assert len(_edges(out, kind="aux")) == 0
+    assert all(block["class_name"] != "AnalysisThing" for block in out["root"]["blocks"])
+    assert out["toast_queue"][-1]["kind"] == "warning"
+
+
+def test_linear_palette_add_rejects_unknown_parameter_source(linear_registry):
+    state = _state_with_chain("ConsumerOp")
+    consumer = _block_by_class(state, "ConsumerOp")
+    state["selected_targets_by_scope"] = {
+        ROOT_SCOPE_KEY: _target(
+            "parameter", block_id=consumer["block_id"], param="detector"
+        )
+    }
+
+    out = _dispatch_state_update(
+        state,
+        "linear_palette_add",
+        {"class_name": "UnknownOp"},
+    )
+
+    assert len(_edges(out, kind="aux")) == 0
+    assert all(block["class_name"] != "UnknownOp" for block in out["root"]["blocks"])
+    assert out["toast_queue"][-1]["kind"] == "warning"
+
+
+def test_linear_palette_add_replaces_scalar_param_and_deletes_old_value(
+    linear_registry,
+):
+    state = _state_with_chain("ConsumerOp")
+    consumer = _block_by_class(state, "ConsumerOp")
+    old_source = _block_dict("OtherOp")
+    state["root"]["blocks"].append(old_source)
+    state["root"]["edges"].append(
+        _aux_edge_dict(old_source["block_id"], consumer["block_id"], "detector")
+    )
+    state["selected_targets_by_scope"] = {
+        ROOT_SCOPE_KEY: _target(
+            "parameter", block_id=consumer["block_id"], param="detector"
+        )
+    }
+
+    out = _dispatch_state_update(
+        state,
+        "linear_palette_add",
+        {"class_name": "SourceOp"},
+    )
+
+    block_ids = {block["block_id"] for block in out["root"]["blocks"]}
+    assert old_source["block_id"] not in block_ids
+    aux_edges = [
+        edge
+        for edge in _edges(out, kind="aux")
+        if edge["target_block_id"] == consumer["block_id"]
+        and edge["target_port"] == "detector"
+    ]
+    assert len(aux_edges) == 1
+    new_source = next(
+        block
+        for block in out["root"]["blocks"]
+        if block["block_id"] == aux_edges[0]["source_block_id"]
+    )
+    assert new_source["class_name"] == "SourceOp"
+
+
+def test_linear_clear_scalar_param_deletes_value(linear_registry):
+    state = _state_with_chain("ConsumerOp")
+    consumer = _block_by_class(state, "ConsumerOp")
+    source = _block_dict("SourceOp")
+    state["root"]["blocks"].append(source)
+    state["root"]["edges"].append(
+        _aux_edge_dict(source["block_id"], consumer["block_id"], "detector")
+    )
+
+    out = _dispatch_state_update(
+        state,
+        "linear_clear_param",
+        {
+            "target": _target(
+                "parameter", block_id=consumer["block_id"], param="detector"
+            )
+        },
+    )
+
+    assert source["block_id"] not in {block["block_id"] for block in out["root"]["blocks"]}
+    assert len(_edges(out, kind="aux")) == 0
+
+
+def test_linear_palette_add_replaces_list_slot_without_gaps(linear_registry):
+    state = _state_with_chain("ConsumerOp")
+    consumer = _block_by_class(state, "ConsumerOp")
+    old_source = _block_dict("OtherOp")
+    keep_source = _block_dict("SourceOp")
+    state["root"]["blocks"].extend([old_source, keep_source])
+    consumer["list_slot_counts"]["detectors"] = 2
+    state["root"]["edges"].extend(
+        [
+            _aux_edge_dict(
+                old_source["block_id"],
+                consumer["block_id"],
+                "detectors",
+                slot=0,
+            ),
+            _aux_edge_dict(
+                keep_source["block_id"],
+                consumer["block_id"],
+                "detectors",
+                slot=1,
+            ),
+        ]
+    )
+    state["selected_targets_by_scope"] = {
+        ROOT_SCOPE_KEY: _target(
+            "parameter_slot",
+            block_id=consumer["block_id"],
+            param="detectors",
+            slot=0,
+        )
+    }
+
+    out = _dispatch_state_update(
+        state,
+        "linear_palette_add",
+        {"class_name": "SourceOp"},
+    )
+
+    assert old_source["block_id"] not in {
+        block["block_id"] for block in out["root"]["blocks"]
+    }
+    list_edges = [
+        edge
+        for edge in _edges(out, kind="aux")
+        if edge["target_block_id"] == consumer["block_id"]
+        and edge["target_port"] == "detectors"
+    ]
+    assert sorted(edge["target_slot"] for edge in list_edges) == [0, 1]
+
+
 def test_linear_palette_add_pipeline_parameter_drills_into_nested_scope(
     linear_registry,
 ):
@@ -274,67 +505,77 @@ def test_linear_palette_add_pipeline_parameter_drills_into_nested_scope(
     ) | {"scope_path": [pipeline["block_id"]]}
 
 
+def test_linear_drill_param_pipeline_opens_existing_aux_pipeline(linear_registry):
+    state = _state_with_chain("ConsumerOp")
+    consumer = _block_by_class(state, "ConsumerOp")
+    pipeline = _block_dict(PIPELINE_CLASS_NAME)
+    pipeline["nested"] = {
+        "blocks": [],
+        "edges": [],
+        "name": "Pipeline",
+        "desc": "",
+        "nrows": None,
+        "ncols": None,
+    }
+    state["root"]["blocks"].append(pipeline)
+    state["root"]["edges"].append(
+        _aux_edge_dict(pipeline["block_id"], consumer["block_id"], "pipe")
+    )
+
+    out = _dispatch_state_update(
+        state,
+        "linear_drill_param_pipeline",
+        {"source_block_id": pipeline["block_id"]},
+    )
+
+    assert out["breadcrumb"] == [pipeline["block_id"]]
+    assert out["selected_targets_by_scope"][scope_key(out["breadcrumb"])] == _target(
+        "continuation"
+    ) | {"scope_path": [pipeline["block_id"]]}
+
+
+def test_linear_select_aux_value_selects_source_block(linear_registry):
+    state = _state_with_chain("ConsumerOp")
+    consumer = _block_by_class(state, "ConsumerOp")
+    source = _block_dict("SourceOp")
+    state["root"]["blocks"].append(source)
+    state["root"]["edges"].append(
+        _aux_edge_dict(source["block_id"], consumer["block_id"], "detector")
+    )
+
+    out = _dispatch_state_update(
+        state,
+        "linear_select_aux_value",
+        {"source_block_id": source["block_id"]},
+    )
+
+    assert out["selected_block_id"] == source["block_id"]
+    assert out["selected_edge_id"] is None
+
+
 def test_linear_clear_list_param_deletes_aux_subtree_and_compacts(linear_registry):
     state = _state_with_chain("ConsumerOp")
     consumer = _block_by_class(state, "ConsumerOp")
-    source_a = {
-        "block_id": _new_block_id(),
-        "class_name": "SourceOp",
-        "params": {},
-        "label": None,
-        "nested": None,
-        "collapsed": False,
-        "list_slot_counts": {},
-    }
-    source_b = {
-        "block_id": _new_block_id(),
-        "class_name": "OtherOp",
-        "params": {},
-        "label": None,
-        "nested": None,
-        "collapsed": False,
-        "list_slot_counts": {},
-    }
-    nested_dep = {
-        "block_id": _new_block_id(),
-        "class_name": "SourceOp",
-        "params": {},
-        "label": None,
-        "nested": None,
-        "collapsed": False,
-        "list_slot_counts": {},
-    }
+    source_a = _block_dict("SourceOp")
+    source_b = _block_dict("OtherOp")
+    nested_dep = _block_dict("SourceOp")
     state["root"]["blocks"].extend([source_a, source_b, nested_dep])
     consumer["list_slot_counts"]["detectors"] = 2
     state["root"]["edges"].extend(
         [
-            {
-                "edge_id": _new_block_id(),
-                "source_block_id": source_a["block_id"],
-                "source_port": "out",
-                "target_block_id": consumer["block_id"],
-                "target_port": "detectors",
-                "target_slot": 0,
-                "kind": "aux",
-            },
-            {
-                "edge_id": _new_block_id(),
-                "source_block_id": source_b["block_id"],
-                "source_port": "out",
-                "target_block_id": consumer["block_id"],
-                "target_port": "detectors",
-                "target_slot": 1,
-                "kind": "aux",
-            },
-            {
-                "edge_id": _new_block_id(),
-                "source_block_id": nested_dep["block_id"],
-                "source_port": "out",
-                "target_block_id": source_b["block_id"],
-                "target_port": "detector",
-                "target_slot": None,
-                "kind": "aux",
-            },
+            _aux_edge_dict(
+                source_a["block_id"],
+                consumer["block_id"],
+                "detectors",
+                slot=0,
+            ),
+            _aux_edge_dict(
+                source_b["block_id"],
+                consumer["block_id"],
+                "detectors",
+                slot=1,
+            ),
+            _aux_edge_dict(nested_dep["block_id"], source_b["block_id"], "detector"),
         ]
     )
 
@@ -364,6 +605,80 @@ def test_linear_clear_list_param_deletes_aux_subtree_and_compacts(linear_registr
     assert _block_by_class(out, "ConsumerOp")["list_slot_counts"]["detectors"] == 1
 
 
+def test_linear_clear_malformed_list_slot_is_noop(linear_registry):
+    state = _state_with_chain("ConsumerOp")
+    consumer = _block_by_class(state, "ConsumerOp")
+    source_a = _block_dict("SourceOp")
+    source_b = _block_dict("OtherOp")
+    state["root"]["blocks"].extend([source_a, source_b])
+    consumer["list_slot_counts"]["detectors"] = 2
+    state["root"]["edges"].extend(
+        [
+            _aux_edge_dict(
+                source_a["block_id"],
+                consumer["block_id"],
+                "detectors",
+                slot=0,
+            ),
+            _aux_edge_dict(
+                source_b["block_id"],
+                consumer["block_id"],
+                "detectors",
+                slot=1,
+            ),
+        ]
+    )
+
+    out = _dispatch_state_update(
+        state,
+        "linear_clear_param",
+        {
+            "target": {
+                "kind": "parameter_slot",
+                "scope_path": [],
+                "block_id": consumer["block_id"],
+                "param": "detectors",
+            }
+        },
+    )
+
+    assert {source_a["block_id"], source_b["block_id"]} <= {
+        block["block_id"] for block in out["root"]["blocks"]
+    }
+    assert len(_edges(out, kind="aux")) == 2
+
+
+def test_linear_clear_shared_aux_source_removes_edge_not_shared_block(
+    linear_registry,
+):
+    state = _state_with_chain("ConsumerOp", "OtherOp")
+    consumer = _block_by_class(state, "ConsumerOp")
+    other = _block_by_class(state, "OtherOp")
+    shared = _block_dict("SourceOp")
+    state["root"]["blocks"].append(shared)
+    state["root"]["edges"].extend(
+        [
+            _aux_edge_dict(shared["block_id"], consumer["block_id"], "detector"),
+            _aux_edge_dict(shared["block_id"], other["block_id"], "detector"),
+        ]
+    )
+
+    out = _dispatch_state_update(
+        state,
+        "linear_clear_param",
+        {
+            "target": _target(
+                "parameter", block_id=consumer["block_id"], param="detector"
+            )
+        },
+    )
+
+    assert shared["block_id"] in {block["block_id"] for block in out["root"]["blocks"]}
+    remaining_aux = _edges(out, kind="aux")
+    assert len(remaining_aux) == 1
+    assert remaining_aux[0]["target_block_id"] == other["block_id"]
+
+
 def test_linear_node_move_right_swaps_adjacent_spine_nodes(linear_registry):
     state = _state_with_chain("SourceOp", "ConsumerOp", "OtherOp")
     source = _block_by_class(state, "SourceOp")
@@ -380,6 +695,24 @@ def test_linear_node_move_right_swaps_adjacent_spine_nodes(linear_registry):
     assert (other["block_id"], consumer["block_id"]) in _image_pairs(out)
 
 
+def test_linear_node_move_left_swaps_adjacent_spine_nodes(linear_registry):
+    state = _state_with_chain("SourceOp", "ConsumerOp", "OtherOp")
+    source = _block_by_class(state, "SourceOp")
+    consumer = _block_by_class(state, "ConsumerOp")
+    other = _block_by_class(state, "OtherOp")
+
+    out = _dispatch_state_update(
+        state,
+        "linear_node_move",
+        {"block_id": consumer["block_id"], "direction": "left"},
+    )
+
+    input_id = _input_block(state)["block_id"]
+    assert (input_id, consumer["block_id"]) in _image_pairs(out)
+    assert (consumer["block_id"], source["block_id"]) in _image_pairs(out)
+    assert (source["block_id"], other["block_id"]) in _image_pairs(out)
+
+
 def test_linear_delete_node_confirm_reconnects_spine_and_deletes_side_values(
     linear_registry,
 ):
@@ -387,26 +720,10 @@ def test_linear_delete_node_confirm_reconnects_spine_and_deletes_side_values(
     source = _block_by_class(state, "SourceOp")
     consumer = _block_by_class(state, "ConsumerOp")
     other = _block_by_class(state, "OtherOp")
-    aux = {
-        "block_id": _new_block_id(),
-        "class_name": "SourceOp",
-        "params": {},
-        "label": None,
-        "nested": None,
-        "collapsed": False,
-        "list_slot_counts": {},
-    }
+    aux = _block_dict("SourceOp")
     state["root"]["blocks"].append(aux)
     state["root"]["edges"].append(
-        {
-            "edge_id": _new_block_id(),
-            "source_block_id": aux["block_id"],
-            "source_port": "out",
-            "target_block_id": consumer["block_id"],
-            "target_port": "detector",
-            "target_slot": None,
-            "kind": "aux",
-        }
+        _aux_edge_dict(aux["block_id"], consumer["block_id"], "detector")
     )
     state["selected_block_id"] = consumer["block_id"]
 
@@ -421,3 +738,20 @@ def test_linear_delete_node_confirm_reconnects_spine_and_deletes_side_values(
     assert aux["block_id"] not in block_ids
     assert (source["block_id"], other["block_id"]) in _image_pairs(out)
     assert out["selected_block_id"] is None
+
+
+def test_linear_delete_node_request_delegates_to_confirm(linear_registry):
+    state = _state_with_chain("SourceOp", "ConsumerOp")
+    source = _block_by_class(state, "SourceOp")
+    consumer = _block_by_class(state, "ConsumerOp")
+
+    out = _dispatch_state_update(
+        state,
+        "linear_delete_node_request",
+        {"block_id": source["block_id"]},
+    )
+
+    assert source["block_id"] not in {
+        block["block_id"] for block in out["root"]["blocks"]
+    }
+    assert (_input_block(state)["block_id"], consumer["block_id"]) in _image_pairs(out)

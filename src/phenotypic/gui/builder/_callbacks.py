@@ -1049,18 +1049,13 @@ def _linear_aux_subtree_ids(
 ) -> set[str]:
     """Collect an aux source and its upstream aux dependencies."""
 
-    image_incident = any(
-        edge.get("kind") == "image"
-        and (
-            edge.get("source_block_id") == source_block_id
-            or edge.get("target_block_id") == source_block_id
-        )
-        for edge in scope_dict.get("edges", []) or []
-    )
-    if image_incident:
+    if _linear_block_is_image_incident(scope_dict, source_block_id):
         return set()
 
     to_delete = {source_block_id}
+    if _linear_has_external_aux_output(scope_dict, source_block_id, to_delete):
+        return set()
+
     changed = True
     while changed:
         changed = False
@@ -1070,10 +1065,46 @@ def _linear_aux_subtree_ids(
             if edge.get("target_block_id") not in to_delete:
                 continue
             source_id = edge.get("source_block_id")
-            if isinstance(source_id, str) and source_id not in to_delete:
-                to_delete.add(source_id)
-                changed = True
+            if not isinstance(source_id, str) or source_id in to_delete:
+                continue
+            candidate_delete_ids = to_delete | {source_id}
+            if _linear_block_is_image_incident(scope_dict, source_id):
+                continue
+            if _linear_has_external_aux_output(
+                scope_dict, source_id, candidate_delete_ids
+            ):
+                continue
+            to_delete.add(source_id)
+            changed = True
     return to_delete
+
+
+def _linear_block_is_image_incident(
+    scope_dict: Dict[str, Any], block_id: str
+) -> bool:
+    """Return whether ``block_id`` participates in image flow."""
+
+    return any(
+        edge.get("kind") == "image"
+        and (
+            edge.get("source_block_id") == block_id
+            or edge.get("target_block_id") == block_id
+        )
+        for edge in scope_dict.get("edges", []) or []
+    )
+
+
+def _linear_has_external_aux_output(
+    scope_dict: Dict[str, Any], block_id: str, owned_ids: set[str]
+) -> bool:
+    """Return whether ``block_id`` feeds an aux target outside ``owned_ids``."""
+
+    return any(
+        edge.get("kind") == "aux"
+        and edge.get("source_block_id") == block_id
+        and edge.get("target_block_id") not in owned_ids
+        for edge in scope_dict.get("edges", []) or []
+    )
 
 
 def _linear_delete_aux_sources(
@@ -1176,7 +1207,18 @@ def _linear_class_can_fill_param(class_name: str, param_info: Any) -> bool:
 
     if class_name == PIPELINE_CLASS_NAME:
         return bool(getattr(param_info, "is_pipeline", False))
-    return bool(getattr(param_info, "is_operation", False))
+
+    from phenotypic.abc_ import ImageOperation
+    from phenotypic.gui._operation_registry import get_registry
+
+    source_info = get_registry().get(class_name)
+    if source_info is None:
+        return False
+    try:
+        source_is_operation = issubclass(source_info.cls, ImageOperation)
+    except TypeError:
+        source_is_operation = False
+    return bool(getattr(param_info, "is_operation", False)) and source_is_operation
 
 
 def _linear_fill_parameter(
@@ -1188,6 +1230,8 @@ def _linear_fill_parameter(
     """Create or replace a side-loaded parameter value."""
 
     if target.block_id is None or target.param is None:
+        return None
+    if target.kind == "parameter_slot" and target.slot is None:
         return None
     consumer = _linear_block(scope_dict, target.block_id)
     if consumer is None:
@@ -1267,6 +1311,8 @@ def _linear_clear_param(
     """Clear a scalar parameter value or one list slot."""
 
     if target.block_id is None or target.param is None:
+        return
+    if target.kind == "parameter_slot" and target.slot is None:
         return
     consumer = _linear_block(scope_dict, target.block_id)
     if consumer is None:
@@ -1386,13 +1432,19 @@ def _linear_delete_spine_node(
         and edge.get("target_block_id") == block_id
         and isinstance(edge.get("source_block_id"), str)
     ]
-    removed_aux_ids = _linear_delete_aux_sources(scope_dict, aux_sources)
-
     removed_edge_ids = {
         edge.get("edge_id") for edge in scope_dict.get("edges", []) or []
         if edge.get("source_block_id") == block_id
         or edge.get("target_block_id") == block_id
     }
+    scope_dict["edges"] = [
+        edge for edge in scope_dict.get("edges", []) or []
+        if not (
+            edge.get("kind") == "aux"
+            and edge.get("target_block_id") == block_id
+        )
+    ]
+    removed_aux_ids = _linear_delete_aux_sources(scope_dict, aux_sources)
     scope_dict["blocks"] = [
         candidate for candidate in scope_dict.get("blocks", []) or []
         if candidate.get("block_id") != block_id
