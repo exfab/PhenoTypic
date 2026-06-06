@@ -20,6 +20,14 @@ import pytest
 from playwright.sync_api import Page
 
 
+pytestmark = pytest.mark.skip(
+    reason=(
+        "Retired Cytoscape/dagre canvas smoke; default builder renders "
+        "#linear-map-container instead."
+    )
+)
+
+
 def test_builder_canvas_mounts(page: Page, hub_url: str) -> None:
     """The cytoscape canvas mounts under ``/builder/`` (DOM presence smoke)."""
 

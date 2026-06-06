@@ -1,104 +1,62 @@
-# Wire a Pipeline container as aux
+# Open an embedded Pipeline aux
 
-Some aux slots want more than a single detector — you might need a
-preprocessing step before the detector, or a refinement step after
-it. The DAG redesign exposes the `Pipeline` block as a **container**:
-drop one on the canvas, drag a chain of ops into its nested scope,
-then wire the container itself into a consumer's aux port. The
-container serialises as a nested `ImagePipeline` inside the
-consumer's `aux_ports`.
+Some side parameters need more than one operation. Instead of filling the slot
+with a single detector, fill it with a nested `ImagePipeline`, drill into that
+pipeline, and build a fixed linear chain inside it.
 
-This tutorial walks through wiring a 3-step preprocessing chain
-(`GaussianBlur → OtsuDetector`) into a
-`FilamentousFungiDetector.inoculum_detector` slot.
+This tutorial fills `FilamentousFungiDetector.inoculum_detector` with a nested
+pipeline containing `GaussianBlur -> OtsuDetector`.
 
-## Step 1 — Create an empty container
+## Step 1 - Create the embedded pipeline
 
-Click `+ New Pipeline` in the toolbar's Structure card. An empty
-`Pipeline` container appears on the canvas — its inner scope already
-holds the auto-seeded `Input Image` sentinel block (so the container
-has somewhere for its first wire to start).
+Add `FilamentousFungiDetector` to the main map, select it, and click the gold
+port beside `inoculum_detector`. With that side target selected, click
+`+ New Pipeline`.
 
-![Empty Pipeline container on the canvas — outer frame with the Input Image sentinel visible inside.](../../_static/gui_images/wire-pipeline-as-aux/01_empty_container.png)
+![Embedded pipeline scope opened with only its InputImage source and floating continuation target.](../../_static/gui_images/wire-pipeline-as-aux/01_empty_container.png)
 
-The container has two outward-facing ports: a **right-edge
-output port** for connecting its overall result to the outer scope,
-and a **bottom-edge aux input** for accepting an aux feed from a
-parent. The inner-left **consumer-fed dot** lights up when the
-container is wired as aux (telling you the nested `Input Image`
-sentinel is being fed by the parent consumer rather than the outer
-ribbon).
+The builder creates a hidden `ImagePipeline` side value and immediately drills
+into its nested scope. The breadcrumb shows that you are inspecting the side
+value rather than the root pipeline.
 
-## Step 2 — Drop a chain inside the container
+## Step 2 - Build the nested chain
 
-Double-click the container (or click its `Drill in →` button) to
-descend into its nested scope. Drop `GaussianBlur → OtsuDetector →
-OtsuDetector` and wire them left-to-right starting from the
-`Input Image` sentinel. The breadcrumb at the top of the builder
-shows the drill path (e.g. `Pipeline / nested_pipeline_xyz`).
+Inside the embedded scope, click `GaussianBlur`, then `OtsuDetector`:
 
-![Container drilled in; nested scope holds GaussianBlur → OtsuDetector wired left-to-right.](../../_static/gui_images/wire-pipeline-as-aux/02_chain_in_container.png)
+![Nested pipeline scope with GaussianBlur and OtsuDetector in a fixed linear chain.](../../_static/gui_images/wire-pipeline-as-aux/02_chain_in_container.png)
 
-Operations inside a container behave exactly like operations in the
-outer scope: they have I/O ports, can themselves carry aux slots, and
-validate against the same DAG rules. Drill back out by clicking the
-first breadcrumb crumb.
+The nested scope has the same controls as the root: fixed node cards, visible
+ports, docstring help, side-loader parameters, and view-only zoom/fit controls.
 
-## Step 3 — Wire the container as aux
+## Step 3 - Return to the parent
 
-Outside the container, drop a `FilamentousFungiDetector` and drag a
-wire from the container's **right-edge output port** to the FFD's
-**bottom-edge aux port**. The wire is purple (aux), the container's
-consumer-fed dot lights up, and the FFD's aux port flips from hollow
-to filled-purple.
+Click the root breadcrumb segment to return to the parent pipeline, then select
+`FilamentousFungiDetector`:
 
-![Pipeline container wired as aux to FilamentousFungiDetector; purple aux wire runs from the container's right edge to the FFD's bottom-edge aux port; container's consumer-fed dot is lit.](../../_static/gui_images/wire-pipeline-as-aux/03_pipeline_wired_as_aux.png)
+![Parent side loader showing an ImagePipeline value for inoculum_detector.](../../_static/gui_images/wire-pipeline-as-aux/03_pipeline_wired_as_aux.png)
 
-When the pipeline saves, the wired container serialises as a nested
-`ImagePipeline` inside the consumer's `aux_ports`:
+The side value row shows `ImagePipeline` with an `Open` action. Click `Open` to
+drill back into the nested pipeline later.
 
-```json
-{
-  "FilamentousFungiDetector": {
-    "class": "FilamentousFungiDetector",
-    "aux_ports": {
-      "inoculum_detector": {
-        "class": "ImagePipeline",
-        "params": {
-          "pipe_cfgs": {
-            "GaussianBlur": {"class": "GaussianBlur", "params": {"sigma": 2}},
-            "OtsuDetector": {"class": "OtsuDetector", "params": {}},
-            "OtsuDetector": {"class": "OtsuDetector", "params": {}}
-          }
-        }
-      }
-    }
-  }
-}
-```
-
-The JSON round-trips byte-identically — loading it back into the
-builder recreates the container + chain + wire.
+When the pipeline saves, the side value serializes as a nested public
+`ImagePipeline` value inside the consumer parameter. Builder-only UI state such
+as selected targets, open menus, breadcrumbs, and zoom does not become pipeline
+JSON.
 
 ## Reference
 
-- **Containers vs. blocks** — a container *contains* its own scope;
-  a block does not. Either can be wired as aux.
-- **Drag-in adoption** — dragging a block over a container's bounds
-  and releasing causes the container to *adopt* the block (move it
-  from the outer scope into the inner scope). Useful for refactoring
-  a long ribbon into a reusable sub-pipeline.
-- **Drag-out snap-back** — dragging a block from inside a container
-  to outside its bounds moves the block back to the outer scope.
-  Wires reroute automatically.
-- **Consumer-fed dot** — purple = aux mode; grey = image-flow mode.
-  Only one wire can target the container's aux input at a time.
+- **Create** - select a side target, then click `+ New Pipeline`.
+- **Open** - click `Open` on the filled side value row.
+- **Breadcrumbs** - use the root crumb to drill back out.
+- **Validation** - the parent pipeline remains invalid until the required side
+  value exists; the embedded pipeline must also be valid before save.
+- **Read-only mobile mode** - breadcrumbs, help, zoom, and inspection remain
+  available; insertion/edit/delete/save are disabled.
 
 ## Where to next
 
-- [Wire an aux in the DAG](12_aux_wire_in_dag.md) — the simpler
-  single-block aux flow.
-- [Fix validation issues](14_fix_validation_issues.md) — when the
-  toolbar issue badge lights up because a container is mis-wired.
-- [Build a Pipeline](03_build_pipeline.md) — the main image-flow
-  basics.
+- [Fill a scalar aux target](12_aux_wire_in_dag.md) - the single-operation side
+  value flow.
+- [Fix validation issues](14_fix_validation_issues.md) - required side-value
+  validation and issue badge behavior.
+- [Build a Pipeline](03_build_pipeline.md) - the main image-flow basics.

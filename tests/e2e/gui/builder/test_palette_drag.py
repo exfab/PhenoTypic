@@ -42,6 +42,14 @@ from tests.e2e.gui.builder.conftest import (
 from tests.e2e.gui.conftest import _build_sandbox, _start_live_server
 
 
+pytestmark = pytest.mark.skip(
+    reason=(
+        "Retired palette drag/drop surface; default builder uses click-only "
+        "linear palette insertion."
+    )
+)
+
+
 # ---------------------------------------------------------------------------
 # Live-server override: the module needs its own function-scoped
 # sandbox (``palette_dnd_sandbox``), so we override the parent

@@ -50,6 +50,14 @@ from tests.e2e.gui.builder.conftest import (
 from tests.e2e.gui.conftest import _build_sandbox, _start_live_server
 
 
+pytestmark = pytest.mark.skip(
+    reason=(
+        "Retired Cytoscape container drag/reparent surface; embedded pipelines "
+        "now drill through the fixed linear side loader."
+    )
+)
+
+
 # ---------------------------------------------------------------------------
 # Live-server override (mirrors test_palette_drag.py / test_wire_drawing.py).
 # ---------------------------------------------------------------------------
