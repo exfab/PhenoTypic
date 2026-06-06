@@ -1079,3 +1079,63 @@ class TestTuneCachePaths:
         cache.parent.mkdir(parents=True, exist_ok=True)
         cache.write_text("{}", encoding="utf-8")
         assert resolve_split_assignment_path(tmp_path) == cache
+
+
+# ---------------------------------------------------------------------------
+# Tune deliverable-path helpers + constants are re-exported at package level
+# ---------------------------------------------------------------------------
+
+
+class TestTuneReExports:
+    """``from phenotypic.tools_ import <tune helper>`` must NOT AttributeError.
+
+    Several tune deliverable-path helpers + filename/dir constants live in
+    ``_io_constants.py`` but were missing from the ``tools_/__init__`` re-export
+    surface, so a GUI reader using the conventional ``from phenotypic.tools_
+    import …`` would crash. This guards the package-level re-export contract
+    (and that each re-export is the SAME object as its ``_io_constants`` source).
+    """
+
+    _PATH_HELPERS = (
+        "trials_parquet_path",
+        "tuning_spec_path",
+        "best_pipeline_path",
+        "param_importance_path",
+        "generalization_path",
+        "pareto_dir",
+        "pareto_front_parquet_path",
+        "pareto_best_pipeline_path",
+        "pareto_importance_path",
+    )
+    _CONSTANTS = (
+        "STUDY_DB",
+        "SPLIT_ASSIGNMENT_JSON",
+        "TRIALS_PARQUET",
+        "BEST_PIPELINE_JSON",
+        "TUNING_SPEC_JSON",
+        "PARAM_IMPORTANCE_JSON",
+        "GENERALIZATION_JSON",
+        "PARETO_FRONT_PARQUET",
+        "RUN_MARKER_JSON",
+        "DIR_SPLITS",
+        "DIR_PARETO",
+        "DIR_PHT_TUNE_CACHE",
+    )
+
+    def test_path_helpers_reexported_and_identical(self) -> None:
+        import phenotypic.tools_ as tools
+        from phenotypic.tools_ import _io_constants as io
+
+        for name in self._PATH_HELPERS:
+            assert hasattr(tools, name), f"{name} missing from tools_ re-exports"
+            assert name in tools.__all__, f"{name} missing from tools_.__all__"
+            assert getattr(tools, name) is getattr(io, name)
+
+    def test_constants_reexported_and_identical(self) -> None:
+        import phenotypic.tools_ as tools
+        from phenotypic.tools_ import _io_constants as io
+
+        for name in self._CONSTANTS:
+            assert hasattr(tools, name), f"{name} missing from tools_ re-exports"
+            assert name in tools.__all__, f"{name} missing from tools_.__all__"
+            assert getattr(tools, name) == getattr(io, name)

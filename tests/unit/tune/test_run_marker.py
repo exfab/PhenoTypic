@@ -128,3 +128,50 @@ def test_run_marker_written_before_slurm_branch(tmp_path, monkeypatch):
     assert marker["n_trials"] == 4
     # The explicit URL wins the 3-way fallback.
     assert marker["storage_url"] == f"sqlite:///{out / 'explicit.db'}"
+
+
+def test_run_proceeds_when_marker_write_fails(tmp_path, monkeypatch, caplog):
+    """A read-only / over-quota output FS raises OSError on the marker write.
+
+    The marker is a sidecar, not a deliverable — its failure must NOT abort the
+    run (HPCC robustness). ``run_tuning`` catches the OSError, logs a warning,
+    and proceeds to write the real deliverables.
+    """
+    import logging
+
+    from phenotypic.tune._tune_cli import _run as run_mod
+
+    original_marker_path = run_mod.io.tune_cache_run_marker_path
+
+    class _ExplodingPath(type(tmp_path)):
+        """A marker path whose write_text raises, like a read-only FS."""
+
+        def write_text(self, *args, **kwargs):  # type: ignore[override]
+            raise OSError("Read-only file system")
+
+    def _exploding_marker_path(output_dir):
+        real = original_marker_path(output_dir)
+        return _ExplodingPath(real)
+
+    monkeypatch.setattr(
+        run_mod.io, "tune_cache_run_marker_path", _exploding_marker_path
+    )
+
+    out = tmp_path / "run"
+    with caplog.at_level(logging.WARNING):
+        best = run_tuning(
+            _spec(tmp_path),
+            [load_synth_yeast_plate()],
+            out,
+            images_dir=tmp_path / "images",
+        )
+
+    # The run proceeded past the marker step: deliverables were written.
+    assert io.best_pipeline_path(out).exists()
+    assert io.tuning_spec_path(out).exists()
+    assert best is not None
+    # And the marker failure was logged, not swallowed silently.
+    assert any(
+        record.levelno == logging.WARNING and "run.json" in record.getMessage()
+        for record in caplog.records
+    )

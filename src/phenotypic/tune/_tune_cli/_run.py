@@ -154,8 +154,20 @@ def _write_run_marker(
         "start_time": datetime.now(timezone.utc).isoformat(),
     }
     marker_path = io.tune_cache_run_marker_path(output_dir)
-    marker_path.parent.mkdir(parents=True, exist_ok=True)
-    marker_path.write_text(json.dumps(marker, indent=2))
+    # The marker is a GUI-discovery SIDECAR, not a deliverable: a read-only /
+    # over-quota output FS (the HPCC reality) raising OSError here must NOT abort
+    # the run before it starts. Catch-and-warn and proceed — mirrors the lost-race
+    # tolerance in ``migrate_legacy_machine_state``.
+    try:
+        marker_path.parent.mkdir(parents=True, exist_ok=True)
+        marker_path.write_text(json.dumps(marker, indent=2))
+    except OSError:
+        logging.getLogger(__name__).warning(
+            "could not write the tune run.json marker at %s; the run proceeds "
+            "but the GUI may not auto-discover it",
+            marker_path,
+            exc_info=True,
+        )
 
 
 def _load_images(input_dir: Path) -> list:
@@ -261,7 +273,9 @@ def _open_store(
     Args:
         strategy: The resolved strategy config.
         output_dir: The run directory (for ``study.db`` placement).
-        storage_url: An explicit Optuna storage URL; ``None`` → ``study.db``.
+        storage_url: An explicit Optuna storage URL; ``None`` resolves via the
+            3-way fallback (env var > local ``study.db``) in
+            :func:`_resolve_storage_url`.
         resume_path: The ``trials.parquet`` path the journal resumes from.
         directions: Per-objective ``["maximize"] * n`` for a multi-objective run
             (Optuna store only); ``None`` → single-objective.
@@ -272,7 +286,11 @@ def _open_store(
     if _is_optuna_strategy(strategy):
         from .._study._optuna_store import OptunaStudyStore
 
-        url = storage_url or _default_study_db_url(output_dir)
+        # Resolve via the SAME 3-way fallback the run.json marker + SLURM fleet
+        # use (explicit > $PHENOTYPIC_TUNE_STORAGE_URL > local study.db), so the
+        # engine opens exactly the URL the marker records — no marker-vs-engine
+        # divergence for an env-var-driven local run.
+        url = _resolve_storage_url(storage_url, output_dir)
         return OptunaStudyStore(
             storage_url=url, study_name=_STUDY_NAME, directions=directions
         )

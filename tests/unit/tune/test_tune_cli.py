@@ -158,6 +158,43 @@ def test_cli_storage_url_env_fallback(tmp_path, monkeypatch):
     assert captured["storage_url"] == "sqlite:///env.db"
 
 
+def test_open_store_uses_env_url_for_local_run(tmp_path, monkeypatch):
+    # An env-var-driven LOCAL run (storage_url=None, slurm=False, env set): the
+    # engine MUST open the env Postgres URL, not the local sqlite study.db. This
+    # guards the marker-vs-engine divergence — _open_store and the run.json
+    # marker must agree on the URL via the single _resolve_storage_url fallback.
+    import phenotypic.tune._study._optuna_store as store_mod
+    from phenotypic.tune import OptunaConfig
+    from phenotypic.tune._strategies._config import PHENOTYPIC_TUNE_STORAGE_URL_ENV
+    from phenotypic.tune._tune_cli._run import _open_store, _resolve_storage_url
+
+    env_url = "postgresql://host:5432/tune"
+    monkeypatch.setenv(PHENOTYPIC_TUNE_STORAGE_URL_ENV, env_url)
+
+    opened = {}
+
+    class _FakeOptunaStudyStore:
+        def __init__(self, *, storage_url, study_name, directions=None):
+            opened["url"] = storage_url
+
+    monkeypatch.setattr(store_mod, "OptunaStudyStore", _FakeOptunaStudyStore)
+
+    out = tmp_path / "run"
+    strategy = OptunaConfig(sampler="tpe", n_trials=3)
+    _open_store(
+        strategy,
+        out,
+        storage_url=None,
+        resume_path=out / "trials.parquet",
+        directions=None,
+    )
+
+    # The engine opened the env URL (NOT sqlite:///…study.db).
+    assert opened["url"] == env_url
+    # …and the marker's resolver agrees — single source of truth.
+    assert _resolve_storage_url(None, out) == env_url
+
+
 def test_cli_screen_flag_toggles_screening(tmp_path, monkeypatch):
     from phenotypic.tune import __main__ as cli
 
