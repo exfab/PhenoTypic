@@ -104,14 +104,14 @@ _TAB_LABELS = {
 }
 
 #: Display order for the top-bar tab nav. The sequence follows the user
-#: workflow: land on Home, compose a pipeline in Builder, execute it from
-#: Run, tune its parameters in Tune, inspect the output in Viewer, and run
-#: downstream stats in Analysis.
+#: workflow: land on Home, compose a pipeline in Builder, tune its
+#: parameters in Tune, execute it from Run, inspect the output in Viewer,
+#: and run downstream stats in Analysis.
 TAB_DISPLAY_ORDER: tuple[str, ...] = (
     SHELL_TAB_HOME,
     SHELL_TAB_BUILDER,
-    SHELL_TAB_RUN,
     SHELL_TAB_TUNE,
+    SHELL_TAB_RUN,
     SHELL_TAB_VIEWER,
     SHELL_TAB_ANALYSIS,
 )
