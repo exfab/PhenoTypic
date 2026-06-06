@@ -3848,11 +3848,13 @@ gui = [
     { name = "jinja2" },
     { name = "jupyter" },
     { name = "jupyter-bokeh" },
-    { name = "napari", version = "0.4.16", source = { registry = "https://pypi.org/simple" }, extra = ["optional"], marker = "platform_machine == 'x86_64' and sys_platform == 'win32'" },
-    { name = "napari", version = "0.6.6", source = { registry = "https://pypi.org/simple" }, extra = ["optional", "pyqt6"], marker = "platform_machine != 'x86_64' or sys_platform != 'win32'" },
     { name = "panel" },
     { name = "param" },
     { name = "pyvips" },
+]
+napari = [
+    { name = "napari", version = "0.4.16", source = { registry = "https://pypi.org/simple" }, extra = ["optional"], marker = "platform_machine == 'x86_64' and sys_platform == 'win32'" },
+    { name = "napari", version = "0.6.6", source = { registry = "https://pypi.org/simple" }, extra = ["optional", "pyqt6"], marker = "platform_machine != 'x86_64' or sys_platform != 'win32'" },
 ]
 torch = [
     { name = "sam2", marker = "sys_platform != 'win32'" },
@@ -3872,13 +3874,10 @@ dev = [
     { name = "playwright", marker = "sys_platform != 'win32'" },
     { name = "pre-commit" },
     { name = "pympler", version = "1.1", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'win32'" },
-    { name = "pyqt6", version = "6.9.1", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform == 'linux'" },
-    { name = "pyqt6", version = "6.11.0", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux'" },
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "pytest-memray", marker = "sys_platform != 'win32'" },
     { name = "pytest-playwright", marker = "sys_platform != 'win32'" },
-    { name = "pytest-qt" },
     { name = "pytest-testmon" },
     { name = "pytest-xdist" },
     { name = "ruff" },
@@ -3906,6 +3905,11 @@ docs = [
     { name = "sphinxawesome-theme" },
     { name = "sphinxcontrib-napoleon" },
 ]
+qt-test = [
+    { name = "pyqt6", version = "6.9.1", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform == 'linux'" },
+    { name = "pyqt6", version = "6.11.0", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux'" },
+    { name = "pytest-qt" },
+]
 
 [package.metadata]
 requires-dist = [
@@ -3929,7 +3933,7 @@ requires-dist = [
     { name = "kaleido", specifier = ">=1.2.0" },
     { name = "mahotas" },
     { name = "mmh3" },
-    { name = "napari", extras = ["optional", "pyqt6"], marker = "extra == 'gui'" },
+    { name = "napari", extras = ["optional", "pyqt6"], marker = "extra == 'napari'" },
     { name = "numba", specifier = ">=0.62.1" },
     { name = "numpy" },
     { name = "opencv-python" },
@@ -3961,7 +3965,7 @@ requires-dist = [
     { name = "typing-extensions", specifier = ">=4.0.0" },
     { name = "wand", specifier = ">=0.6.13" },
 ]
-provides-extras = ["gui", "torch"]
+provides-extras = ["gui", "napari", "torch"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -3974,12 +3978,10 @@ dev = [
     { name = "playwright", marker = "sys_platform != 'win32'", specifier = ">=1.45.0" },
     { name = "pre-commit", specifier = ">=3.7.0" },
     { name = "pympler", marker = "sys_platform != 'win32'", specifier = ">=1.0.1" },
-    { name = "pyqt6", specifier = ">=6.9.1" },
     { name = "pytest", specifier = ">=8.4.0" },
     { name = "pytest-cov" },
     { name = "pytest-memray", marker = "sys_platform != 'win32'", specifier = ">=1.7.0" },
     { name = "pytest-playwright", marker = "sys_platform != 'win32'", specifier = ">=0.5.0" },
-    { name = "pytest-qt", specifier = ">=4.5.0" },
     { name = "pytest-testmon", specifier = ">=2.2.0" },
     { name = "pytest-xdist", specifier = ">=3.8.0" },
     { name = "ruff", specifier = ">=0.14.7" },
@@ -4002,6 +4004,10 @@ docs = [
     { name = "sphinx-togglebutton", specifier = ">=0.3.2" },
     { name = "sphinxawesome-theme" },
     { name = "sphinxcontrib-napoleon" },
+]
+qt-test = [
+    { name = "pyqt6", specifier = ">=6.9.1" },
+    { name = "pytest-qt", specifier = ">=4.5.0" },
 ]
 
 [[package]]

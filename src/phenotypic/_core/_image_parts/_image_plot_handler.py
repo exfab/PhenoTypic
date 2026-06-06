@@ -62,7 +62,7 @@ class ImagePlotHandler(ImageObjectsHandler):
         if not _HAS_NAPARI:
             raise ImportError(
                     "napari is required for interactive visualization. "
-                    "Install with: pip install phenotypic[gui]"
+                    "Install with: pip install phenotypic[napari]"
             )
 
         first = True

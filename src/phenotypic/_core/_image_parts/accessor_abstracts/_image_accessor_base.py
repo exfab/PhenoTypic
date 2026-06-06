@@ -98,7 +98,7 @@ class ImageAccessorBase(AccessorDashHandler):
 
         Raises:
             ImportError: If napari is not installed. Install with
-                ``pip install phenotypic[gui]``.
+                ``pip install phenotypic[napari]``.
 
         Examples:
             View multiple image transformations in one viewer:
@@ -132,7 +132,7 @@ class ImageAccessorBase(AccessorDashHandler):
         if not _HAS_NAPARI:
             raise ImportError(
                 "napari is required for interactive visualization. "
-                "Install with: pip install phenotypic[gui]"
+                "Install with: pip install phenotypic[napari]"
             )
         import napari as _napari
 
