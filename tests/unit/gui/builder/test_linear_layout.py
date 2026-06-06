@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 import json
+from pathlib import Path
 from typing import Any, Optional
 
 from phenotypic.gui._operation_registry import OperationInfo, ParamInfo
@@ -156,6 +157,27 @@ def test_linear_map_empty_scope_renders_container_and_floating_port():
     assert _find_by_id(tree, ids.LINEAR_MAP_CONTAINER)
     assert _find_by_class(tree, "linear-floating-port")
     assert _find_by_type(tree, ids.LINEAR_PORT)
+    assert not _find_by_class(tree, "linear-port-menu")
+
+
+def test_linear_map_renders_port_menu_only_for_open_target():
+    from phenotypic.gui.builder._linear_layout import build_linear_map_section
+
+    state = _state_with_consumer()
+    block = state.root.blocks[1]
+    state.open_port_menu = {
+        "kind": "image_output",
+        "scope_path": [],
+        "block_id": block.block_id,
+        "param": None,
+        "slot": None,
+    }
+
+    tree = build_linear_map_section(state, _registry())
+
+    menus = _find_by_class(tree, "linear-port-menu")
+    assert len(menus) == 1
+    assert menus[0].id["block_id"] == block.block_id
 
 
 def test_linear_map_marks_selected_side_port_green():
@@ -235,6 +257,21 @@ def test_side_loader_badge_precedes_title_and_port_is_left_aligned():
     assert row.children[0].id["type"] == ids.LINEAR_PORT
 
 
+def test_side_loader_renders_linear_move_and_delete_actions():
+    from phenotypic.gui.builder._linear_layout import build_linear_side_loader
+
+    tree = build_linear_side_loader(_state_with_consumer(), _registry())
+
+    actions = [
+        component.id
+        for component in _find_by_type(tree, ids.LINEAR_NODE_ACTION)
+        if component.id.get("surface") == "side"
+    ]
+    assert {"move_left", "move_right", "delete"} <= {
+        action["action"] for action in actions
+    }
+
+
 def test_app_layout_mounts_linear_map_instead_of_cytoscape():
     from phenotypic.gui.builder._layout import build_app_layout
 
@@ -242,6 +279,37 @@ def test_app_layout_mounts_linear_map_instead_of_cytoscape():
 
     assert _find_by_id(tree, ids.LINEAR_MAP_CONTAINER)
     assert not _find_by_id(tree, ids.CANVAS_CYTOSCAPE)
+
+
+def test_app_layout_keeps_retired_viewport_controls_hidden_and_inert():
+    from phenotypic.gui.builder._layout import build_app_layout
+
+    tree = build_app_layout(BuilderState(), _registry(), image_root=None)
+
+    banner = _find_by_id(tree, ids.BANNER_ASSET_STATUS)
+    relayout = _find_by_id(tree, ids.BTN_RELAYOUT)
+    reanchor = _find_by_id(tree, ids.BTN_REANCHOR)
+    assert len(banner) == 1
+    assert len(relayout) == 1
+    assert len(reanchor) == 1
+    assert banner[0].style == {"display": "none"}
+    assert relayout[0].disabled is True
+    assert reanchor[0].disabled is True
+    assert relayout[0].style == {"display": "none"}
+    assert reanchor[0].style == {"display": "none"}
+
+
+def test_app_layout_palette_is_click_only_not_draggable():
+    from phenotypic.gui.builder._layout import build_app_layout
+
+    tree = build_app_layout(BuilderState(), _registry(), image_root=None)
+
+    assert not any(getattr(component, "draggable", None) == "true" for component in _walk(tree))
+    assert any(getattr(component, "draggable", None) == "false" for component in _walk(tree))
+    assert not any(
+        "data-palette-class" in getattr(component, "__dict__", {})
+        for component in _walk(tree)
+    )
 
 
 def test_app_layout_has_no_duplicate_ids_with_selected_block():
@@ -266,3 +334,18 @@ def test_linear_ids_are_exported():
     assert "LINEAR_MAP_CONTAINER" in ids.__all__
     assert "linear_port_id" in ids.__all__
     assert "linear_param_action_id" in ids.__all__
+
+
+def test_mobile_limited_mode_css_keeps_help_and_drill_available():
+    css_path = (
+        Path(__file__).parents[4]
+        / "src/phenotypic/gui/builder/assets/builder.css"
+    )
+    css = css_path.read_text()
+
+    assert "@media (max-width: 768px)" in css
+    assert ".linear-port-button" in css
+    assert ".linear-side-action:not(.linear-side-drill-action)" in css
+    assert "#btn-save" in css
+    assert ".linear-help-button" in css
+    assert ".linear-side-drill-action" in css

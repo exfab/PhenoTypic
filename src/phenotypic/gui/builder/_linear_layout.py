@@ -240,6 +240,55 @@ def _active_target_strip(target: LinearTarget) -> html.Div:
     )
 
 
+def _side_node_actions(state: BuilderState, block: BlockNode) -> Optional[html.Div]:
+    """Render selected-node reorder/delete actions for the side loader."""
+
+    if block.class_name == INPUT_IMAGE_CLASS_NAME:
+        return None
+    scope_path = list(state.breadcrumb)
+    return html.Div(
+        [
+            html.Button(
+                "Left",
+                id=ids.linear_node_action_id(
+                    action="move_left",
+                    scope_path=scope_path,
+                    block_id=block.block_id,
+                    surface="side",
+                ),
+                type="button",
+                n_clicks=0,
+                className="linear-side-action",
+            ),
+            html.Button(
+                "Right",
+                id=ids.linear_node_action_id(
+                    action="move_right",
+                    scope_path=scope_path,
+                    block_id=block.block_id,
+                    surface="side",
+                ),
+                type="button",
+                n_clicks=0,
+                className="linear-side-action",
+            ),
+            html.Button(
+                "Delete",
+                id=ids.linear_node_action_id(
+                    action="delete",
+                    scope_path=scope_path,
+                    block_id=block.block_id,
+                    surface="side",
+                ),
+                type="button",
+                n_clicks=0,
+                className="linear-side-action linear-side-action-danger",
+            ),
+        ],
+        className="linear-side-node-actions",
+    )
+
+
 def _port_menu(target: LinearTarget) -> html.Div:
     actions: List[Any] = []
     if target.kind in {"continuation", "image_output"}:
@@ -288,6 +337,8 @@ def _port_menu(target: LinearTarget) -> html.Div:
 def _maybe_port_menu(
     state: BuilderState, target: LinearTarget
 ) -> Optional[html.Div]:
+    if not isinstance(state.open_port_menu, dict):
+        return None
     open_target = target_from_dict(state.open_port_menu, target.scope_path)
     if _target_matches(open_target, target):
         return _port_menu(target)
@@ -584,7 +635,7 @@ def _value_row(
                 ),
                 type="button",
                 n_clicks=0,
-                className="linear-side-action",
+                className="linear-side-action linear-side-drill-action",
             )
         )
     actions.extend(
@@ -745,6 +796,9 @@ def build_linear_side_loader(
     )
 
     body: List[Any] = [_active_target_strip(active_target), header, label_input]
+    node_actions = _side_node_actions(state, block)
+    if node_actions is not None:
+        body.append(node_actions)
 
     if block.class_name == INPUT_IMAGE_CLASS_NAME:
         body.append(
@@ -767,6 +821,7 @@ def build_linear_side_loader(
                 outline=True,
                 size="sm",
                 n_clicks=0,
+                className="linear-side-action linear-side-drill-action",
             )
         )
     else:

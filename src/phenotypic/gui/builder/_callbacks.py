@@ -72,6 +72,7 @@ from phenotypic.gui.builder._image_renderer import (
 from phenotypic.gui.builder._linear_model import (
     LinearTarget,
     default_continuation_target,
+    derive_linear_scope,
     resolve_selected_target,
     scope_at_path,
     scope_key,
@@ -99,6 +100,8 @@ from phenotypic.gui.builder._state import (
     INPUT_IMAGE_CLASS_NAME,
     PIPELINE_CLASS_NAME,
     BuilderState,
+    _DagBuilderScope,
+    _DagBuilderState,
     StepNode,
     _new_block_id,
     _new_node_id,
@@ -745,6 +748,73 @@ def _linear_current_scope(
         if isinstance(segment, str)
     ]
     return breadcrumb, _dag_scope_at_breadcrumb(state_dict, breadcrumb)
+
+
+def _decode_linear_scope_path(encoded: Any) -> List[str]:
+    """Decode a Dash-safe linear id scope path into breadcrumb segments."""
+
+    if not isinstance(encoded, str) or encoded == "__root__":
+        return []
+    return [part for part in encoded.split("/") if part]
+
+
+def _decode_linear_optional(value: Any) -> Optional[str]:
+    """Decode a Dash-safe optional id field."""
+
+    return value if isinstance(value, str) and value != "__none__" else None
+
+
+def _decode_linear_slot(value: Any) -> Optional[int]:
+    """Decode a Dash-safe optional slot field."""
+
+    return value if isinstance(value, int) and value >= 0 else None
+
+
+def _linear_target_payload_from_id(triggered: Dict[str, Any]) -> Dict[str, Any]:
+    """Build a store target payload from a linear pattern id."""
+
+    return {
+        "kind": triggered.get("kind"),
+        "scope_path": _decode_linear_scope_path(triggered.get("scope_path")),
+        "block_id": _decode_linear_optional(triggered.get("block_id")),
+        "param": _decode_linear_optional(triggered.get("param")),
+        "slot": _decode_linear_slot(triggered.get("slot")),
+    }
+
+
+def _linear_param_target_payload_from_id(
+    triggered: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Build a parameter target payload from a side-loader action id."""
+
+    target = _linear_target_payload_from_id(triggered)
+    target["kind"] = (
+        "parameter_slot" if target.get("slot") is not None else "parameter"
+    )
+    return target
+
+
+def _linear_preview_target_payload_from_id(
+    triggered: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Build an image-prefix preview target from a node-action id."""
+
+    block_id = _decode_linear_optional(triggered.get("block_id"))
+    return {
+        "kind": "image_output" if block_id is not None else "continuation",
+        "scope_path": _decode_linear_scope_path(triggered.get("scope_path")),
+        "block_id": block_id,
+        "param": None,
+        "slot": None,
+    }
+
+
+def _linear_source_block_id_from_action_id(
+    triggered: Dict[str, Any],
+) -> Optional[str]:
+    """Decode the source block carried by a linear value action id."""
+
+    return _decode_linear_optional(triggered.get("source_block_id"))
 
 
 def _linear_selected_target(state_dict: Dict[str, Any]) -> LinearTarget:
@@ -1472,6 +1542,85 @@ def _linear_delete_spine_node(
     _linear_reset_target_to_continuation(
         state_dict, list(state_dict.get("breadcrumb", []) or [])
     )
+
+
+def _linear_prefix_state_for_preview(
+    state: _DagBuilderState,
+    target: LinearTarget,
+) -> _DagBuilderState:
+    """Return a temporary DAG state containing only ``target``'s prefix.
+
+    ``Preview here`` intentionally previews the active scope only. The
+    returned state has a fresh root scope made from the visible prefix spine
+    plus any side-loaded aux dependencies required by those prefix blocks;
+    downstream blocks are omitted so global pipeline validation does not gate
+    a local inspection action.
+    """
+
+    scope = scope_at_path(state.root, target.scope_path)
+    if scope is None:
+        raise ValueError("Cannot preview here: the selected scope is stale.")
+
+    model = derive_linear_scope(scope, scope_path=target.scope_path)
+    if model.unsupported is not None:
+        raise ValueError(
+            f"Cannot preview here: unsupported map shape ({model.unsupported.reason})."
+        )
+    if target.kind not in {"continuation", "image_output"}:
+        raise ValueError("Cannot preview here from that port.")
+
+    spine_blocks = list(model.spine_blocks)
+    if not spine_blocks:
+        raise ValueError("Cannot preview here: this scope has no image source.")
+
+    if target.kind == "image_output":
+        cutoff_idx = next(
+            (
+                idx
+                for idx, block in enumerate(spine_blocks)
+                if block.block_id == target.block_id
+            ),
+            None,
+        )
+        if cutoff_idx is None:
+            raise ValueError("Cannot preview here: the selected block is stale.")
+        spine_blocks = spine_blocks[: cutoff_idx + 1]
+
+    keep_ids = {block.block_id for block in spine_blocks}
+    changed = True
+    while changed:
+        changed = False
+        for edge in scope.edges:
+            if edge.kind != "aux" or edge.target_block_id not in keep_ids:
+                continue
+            if edge.source_block_id not in keep_ids:
+                keep_ids.add(edge.source_block_id)
+                changed = True
+
+    prefix_blocks = [
+        deepcopy(block)
+        for block in scope.blocks
+        if block.block_id in keep_ids
+    ]
+    prefix_edges = [
+        deepcopy(edge)
+        for edge in scope.edges
+        if edge.source_block_id in keep_ids and edge.target_block_id in keep_ids
+    ]
+    prefix_scope = _DagBuilderScope(
+        blocks=prefix_blocks,
+        edges=prefix_edges,
+        name=scope.name,
+        desc=scope.desc,
+        nrows=scope.nrows,
+        ncols=scope.ncols,
+    )
+    selected_block_id = (
+        target.block_id
+        if target.kind == "image_output"
+        else spine_blocks[-1].block_id
+    )
+    return _DagBuilderState(root=prefix_scope, selected_block_id=selected_block_id)
 
 
 def _scope_contains_block_id(
@@ -3229,23 +3378,52 @@ def register_callbacks(app: dash.Dash) -> None:
         # palette
         Input({"type": "palette-add", "class_name": ALL}, "n_clicks"),
         Input(ids.BTN_NEW_PIPELINE_NODE, "n_clicks"),
-        # Palette drag-and-drop: the clientside ``palette_dnd.js``
-        # writes a ``block_create`` payload here on drop / keyboard fallback.
+        # Linear map / side-loader actions. ``surface`` disambiguates map
+        # and side-loader instances that otherwise point at the same
+        # logical target.
+        Input(
+            {
+                "type": ids.LINEAR_PORT,
+                "surface": ALL,
+                "kind": ALL,
+                "scope_path": ALL,
+                "block_id": ALL,
+                "param": ALL,
+                "slot": ALL,
+            },
+            "n_clicks",
+        ),
+        Input(
+            {
+                "type": ids.LINEAR_NODE_ACTION,
+                "surface": ALL,
+                "action": ALL,
+                "scope_path": ALL,
+                "block_id": ALL,
+            },
+            "n_clicks",
+        ),
+        Input(
+            {
+                "type": ids.LINEAR_PARAM_ACTION,
+                "surface": ALL,
+                "action": ALL,
+                "scope_path": ALL,
+                "block_id": ALL,
+                "param": ALL,
+                "slot": ALL,
+                "source_block_id": ALL,
+            },
+            "n_clicks",
+        ),
+        # Retired DAG drag/drop channels remain subscribed as safe no-ops so
+        # loaded assets cannot mutate the fixed linear builder by accident.
         Input(ids.STORE_PALETTE_DROP, "data"),
-        # Wire-drawing + edge mutations: the clientside
-        # ``wire_drawing.js`` writes here on drag-drop; the inspector
-        # writes here for keyboard / button-driven mutations.
-        # Payload is a discriminated union routed on
-        # ``payload["kind"]`` (see ``ids.STORE_EDGE_EVENT`` docstring).
         Input(ids.STORE_EDGE_EVENT, "data"),
-        # selection
-        Input(ids.CANVAS_CYTOSCAPE, "tapNodeData"),
         # drill in (visible button on pipeline-node inspector); drill-out is
         # done via breadcrumb-link clicks, not a dedicated button.
         Input(ids.BTN_DRILL_IN, "n_clicks"),
         Input({"type": "breadcrumb-link", "depth": ALL}, "n_clicks"),
-        # delete
-        Input(ids.BTN_DELETE_NODE, "n_clicks"),
         # Cytoscape element feedback is no longer subscribed in the
         # default builder; visible state redraws target the fixed linear
         # map container directly.
@@ -3278,12 +3456,13 @@ def register_callbacks(app: dash.Dash) -> None:
     def fan_in_state_mutation(  # noqa: C901, PLR0912, PLR0913, PLR0915
         _palette_clicks: List[int],
         _new_pipe_clicks: Optional[int],
+        _linear_port_clicks: List[int],
+        _linear_node_action_clicks: List[int],
+        _linear_param_action_clicks: List[int],
         palette_drop: Optional[Dict[str, Any]],
         edge_event: Optional[Dict[str, Any]],
-        tap_node_data: Optional[Dict[str, Any]],
         _drill_out_clicks: Optional[int],
         _crumb_clicks: List[int],
-        _delete_clicks: Optional[int],
         bool_vals: List[Any],
         _num_blurs: List[Any],
         _str_blurs: List[Any],
@@ -3308,20 +3487,6 @@ def register_callbacks(app: dash.Dash) -> None:
         See module docstring for the dispatch table.
         """
 
-        # TEMP DIAGNOSTIC (PR #95 cluster-2 E2E flake): log every invocation's
-        # trigger + store payloads so the CI GUI server log reveals whether a
-        # test's ``set_props`` publish reached this callback and with what
-        # ``triggered_id`` (coalescing with the ``elements`` self-Input is the
-        # leading hypothesis). Remove once the builder-canvas flake is fixed.
-        logger.warning(
-            "fan_in_state_mutation: triggered_id=%r all_triggered=%r "
-            "palette_drop=%r edge_event=%r",
-            ctx.triggered_id,
-            [t.get("prop_id") for t in (ctx.triggered or [])],
-            palette_drop,
-            edge_event,
-        )
-
         if state_data is None or ctx.triggered_id is None:
             return _NOOP_FAN_IN
 
@@ -3337,54 +3502,136 @@ def register_callbacks(app: dash.Dash) -> None:
                     # render of the palette button group).
                     if not ctx.triggered[0]["value"]:
                         return _NOOP_FAN_IN
-                    # Keyboard-fallback for the DAG palette: clicks land
-                    # in the current scope's root.  The drag-and-drop path
-                    # writes a richer ``block_create`` payload through
-                    # ``STORE_PALETTE_DROP``; clicks just need
-                    # ``class_name`` because the dispatcher treats a None
-                    # ``container_block_id`` as the root scope.  We also
-                    # auto-wire the new block to the previous tail of the
-                    # scope so the keyboard flow produces a valid linear
-                    # chain — drag-drop leaves wiring to the user since
-                    # they pick the drop position explicitly.
-                    root_scope = state_data.get("root", {}) if isinstance(
-                        state_data, dict
-                    ) else {}
-                    prev_blocks = list(root_scope.get("blocks", []) or [])
-                    prev_edges = list(root_scope.get("edges", []) or [])
-                    sources_with_outgoing = {
-                        e.get("source_block_id")
-                        for e in prev_edges
-                        if e.get("kind") == "image"
-                    }
-                    prev_tail_id: Optional[str] = None
-                    for blk in reversed(prev_blocks):
-                        bid = blk.get("block_id")
-                        if bid and bid not in sources_with_outgoing:
-                            prev_tail_id = bid
-                            break
                     new_state_dict = _dispatch_state_update(
                         state_data,
-                        "block_create",
+                        "linear_palette_add",
                         {
-                            "kind": "block_create",
+                            "kind": "linear_palette_add",
                             "class_name": triggered["class_name"],
-                            "container_block_id": None,
                         },
                     )
-                    new_block_id = new_state_dict.get("selected_block_id")
-                    if prev_tail_id and new_block_id:
+                elif t_type == ids.LINEAR_PORT:
+                    if not ctx.triggered[0]["value"]:
+                        return _NOOP_FAN_IN
+                    new_state_dict = _dispatch_state_update(
+                        state_data,
+                        "target_select",
+                        {
+                            "kind": "target_select",
+                            "target": _linear_target_payload_from_id(triggered),
+                            "open_menu": True,
+                        },
+                    )
+                elif t_type == ids.LINEAR_NODE_ACTION:
+                    if not ctx.triggered[0]["value"]:
+                        return _NOOP_FAN_IN
+                    action = triggered.get("action")
+                    block_id = _decode_linear_optional(triggered.get("block_id"))
+                    if action == "select":
+                        if block_id is None:
+                            return _NOOP_FAN_IN
                         new_state_dict = _dispatch_state_update(
-                            new_state_dict,
-                            "edge_create",
+                            state_data,
+                            "block_select",
+                            {"kind": "block_select", "block_id": block_id},
+                        )
+                    elif action == "target_menu_close":
+                        new_state_dict = _dispatch_state_update(
+                            state_data,
+                            "target_menu_close",
+                            {"kind": "target_menu_close"},
+                        )
+                    elif action == "preview_here":
+                        # The dedicated preview callback handles runtime work.
+                        # Close the port menu here so the map returns to its
+                        # steady state after the click.
+                        new_state_dict = _dispatch_state_update(
+                            state_data,
+                            "target_menu_close",
+                            {"kind": "target_menu_close"},
+                        )
+                    elif action == "drill":
+                        if block_id is None:
+                            return _NOOP_FAN_IN
+                        new_state_dict = _dispatch_state_update(
+                            state_data,
+                            "drill_into_container",
                             {
-                                "kind": "edge_create",
-                                "source_block_id": prev_tail_id,
-                                "target_block_id": new_block_id,
-                                "target_port": "in",
-                                "edge_kind": "image",
+                                "kind": "drill_into_container",
+                                "block_id": block_id,
                             },
                         )
+                    elif action == "delete":
+                        if block_id is None:
+                            return _NOOP_FAN_IN
+                        new_state_dict = _dispatch_state_update(
+                            state_data,
+                            "linear_delete_node_request",
+                            {
+                                "kind": "linear_delete_node_request",
+                                "block_id": block_id,
+                            },
+                        )
+                    elif action in {"move_left", "move_right"}:
+                        if block_id is None:
+                            return _NOOP_FAN_IN
+                        new_state_dict = _dispatch_state_update(
+                            state_data,
+                            "linear_node_move",
+                            {
+                                "kind": "linear_node_move",
+                                "block_id": block_id,
+                                "direction": (
+                                    "left"
+                                    if action == "move_left"
+                                    else "right"
+                                ),
+                            },
+                        )
+                    else:
+                        return _NOOP_FAN_IN
+                elif t_type == ids.LINEAR_PARAM_ACTION:
+                    if not ctx.triggered[0]["value"]:
+                        return _NOOP_FAN_IN
+                    action = triggered.get("action")
+                    target_payload = _linear_param_target_payload_from_id(
+                        triggered
+                    )
+                    if action == "replace":
+                        new_state_dict = _dispatch_state_update(
+                            state_data,
+                            "target_select",
+                            {
+                                "kind": "target_select",
+                                "target": target_payload,
+                                "open_menu": False,
+                            },
+                        )
+                    elif action == "clear":
+                        new_state_dict = _dispatch_state_update(
+                            state_data,
+                            "linear_clear_param",
+                            {
+                                "kind": "linear_clear_param",
+                                "target": target_payload,
+                            },
+                        )
+                    elif action == "drill":
+                        new_state_dict = _dispatch_state_update(
+                            state_data,
+                            "linear_drill_param_pipeline",
+                            {
+                                "kind": "linear_drill_param_pipeline",
+                                "target": target_payload,
+                                "source_block_id": (
+                                    _linear_source_block_id_from_action_id(
+                                        triggered
+                                    )
+                                ),
+                            },
+                        )
+                    else:
+                        return _NOOP_FAN_IN
                 elif t_type == "breadcrumb-link":
                     # Pattern-matched Inputs fire on initial render of newly
                     # added matching components — e.g. drilling pushes a new
@@ -3440,85 +3687,23 @@ def register_callbacks(app: dash.Dash) -> None:
 
             # --- Plain string ids -------------------------------------
             elif triggered == ids.STORE_PALETTE_DROP:
-                # ``palette_dnd.js`` writes a ``block_create`` payload here;
-                # the dispatcher enforces InputImage rejection + stale
-                # container id short-circuit (JS already did the hit-test).
-                if not isinstance(palette_drop, dict):
-                    return _NOOP_FAN_IN
-                if palette_drop.get("kind") != "block_create":
-                    return _NOOP_FAN_IN
-                new_state_dict = _dispatch_state_update(
-                    state_data, "block_create", palette_drop
-                )
+                # The fixed linear builder retired palette drag/drop. Keep
+                # the store subscribed so stale asset writes are harmless.
+                return _NOOP_FAN_IN
             elif triggered == ids.STORE_EDGE_EVENT:
-                # Wire-drawing + edge-mutation channel.  The clientside
-                # ``wire_drawing.js`` writes ``edge_create`` /
-                # ``edge_delete`` payloads here on drop / right-click;
-                # the inspector wire / aux cards write ``list_aux_*`` /
-                # ``wire_select`` / ``block_select`` payloads through
-                # the same channel.  Route on ``payload["kind"]`` to
-                # keep the JS surface tiny.
-                if not isinstance(edge_event, dict):
-                    return _NOOP_FAN_IN
-                event_kind = edge_event.get("kind")
-                if event_kind not in {
-                    "edge_create",
-                    "edge_delete",
-                    "list_aux_reorder",
-                    "list_aux_add_empty_slot",
-                    "wire_select",
-                    "block_select",
-                }:
-                    return _NOOP_FAN_IN
-                # TEMP DIAGNOSTIC (PR #95 cluster-2 flake): for edge_create,
-                # log whether the payload's endpoints resolve against the
-                # *current* root-scope blocks. If a test's set_props publish
-                # races ahead of STORE_BUILDER_STATE being updated with the
-                # just-seeded blocks, the endpoints won't be found and the
-                # dispatch silently produces no edge — confirm or refute that.
-                if event_kind == "edge_create" and isinstance(state_data, dict):
-                    _root = state_data.get("root", {}) or {}
-                    _block_ids = {
-                        b.get("block_id") for b in _root.get("blocks", []) or []
-                    }
-                    logger.warning(
-                        "fan_in edge_create: source=%r target=%r "
-                        "root_block_ids=%r src_found=%s tgt_found=%s",
-                        edge_event.get("source_block_id"),
-                        edge_event.get("target_block_id"),
-                        sorted(b for b in _block_ids if b),
-                        edge_event.get("source_block_id") in _block_ids,
-                        edge_event.get("target_block_id") in _block_ids,
-                    )
-                new_state_dict = _dispatch_state_update(
-                    state_data, event_kind, edge_event
-                )
+                # Drag-to-wire and old inspector aux-wire emitters are not
+                # user-facing in the fixed map. Linear side-loader buttons use
+                # their own pattern ids above.
+                return _NOOP_FAN_IN
             elif triggered == ids.BTN_NEW_PIPELINE_NODE:
                 new_state_dict = _dispatch_state_update(
-                    state_data, "add_pipeline", {}
+                    state_data,
+                    "linear_palette_add",
+                    {
+                        "kind": "linear_palette_add",
+                        "class_name": PIPELINE_CLASS_NAME,
+                    },
                 )
-            elif triggered == ids.CANVAS_CYTOSCAPE:
-                # Only ``tapNodeData`` (node selection) feeds this branch.
-                # ``Input(CANVAS_CYTOSCAPE, "elements")`` was removed — see
-                # the decorator comment — so the elements-driven reorder
-                # path is gone (it was a no-op for DAG state anyway).
-                trigger_prop = ctx.triggered[0]["prop_id"].split(".")[-1]
-                if trigger_prop == "tapNodeData":
-                    if not tap_node_data:
-                        return _NOOP_FAN_IN
-                    tapped_id = tap_node_data.get("id")
-                    if not isinstance(tapped_id, str):
-                        return _NOOP_FAN_IN
-                    if ids._decode_main_port_id(tapped_id) is not None:
-                        # Main I/O port taps are cosmetic; ignore.
-                        return _NOOP_FAN_IN
-                    new_state_dict = _dispatch_state_update(
-                        state_data,
-                        "select_node",
-                        {"node_id": tapped_id},
-                    )
-                else:
-                    return _NOOP_FAN_IN
             elif triggered == ids.BTN_DRILL_IN:
                 # The inspector renders a visible "Drill in ▸" button only on
                 # ImagePipeline nodes; for any other selection the button is a
@@ -3526,10 +3711,6 @@ def register_callbacks(app: dash.Dash) -> None:
                 # the canonical action here is drill-in.
                 new_state_dict = _dispatch_state_update(
                     state_data, "drill_in", {}
-                )
-            elif triggered == ids.BTN_DELETE_NODE:
-                new_state_dict = _dispatch_state_update(
-                    state_data, "delete_node", {}
                 )
             elif triggered == ids.INPUT_NODE_LABEL:
                 state = state_from_json(state_data)
@@ -4861,66 +5042,100 @@ def register_callbacks(app: dash.Dash) -> None:
     def new_pipeline_palette_click_dag(
         n_clicks: Optional[int], state_data: Dict[str, Any]
     ) -> Tuple[Any, ...]:
-        """``+ New Pipeline`` palette-button keyboard fallback (DAG).
-
-        ``palette_dnd.js`` handles the drag-and-drop path via
-        ``STORE_PALETTE_DROP``.  When the user clicks the button
-        (keyboard fallback / no drag), this callback dispatches
-        ``block_create`` against the current scope with
-        ``class_name="ImagePipeline"`` so a fresh container container
-        appears at the active breadcrumb depth.
-
-        Short-circuits to ``no_update`` for legacy state — the legacy
-        fan-in already handles ``BTN_NEW_PIPELINE_NODE`` via the
-        ``add_pipeline`` dispatch kind.
-        """
+        """Retired DAG palette fallback kept inert for callback compatibility."""
 
         noop = (no_update,) * 8
-        if not n_clicks or state_data is None:
-            return noop
-        if not isinstance(state_data.get("root"), dict):
-            return noop
-        if "blocks" not in (state_data.get("root") or {}):
-            return noop
-        try:
-            # Look up the container we're currently viewing — the new
-            # block lands in the same scope by passing the parent
-            # container's block_id (or ``None`` for the root scope).
-            breadcrumb_list = list(state_data.get("breadcrumb", []) or [])
-            container_block_id = breadcrumb_list[-1] if breadcrumb_list else None
-            new_state_dict = _dispatch_state_update(
-                state_data,
-                "block_create",
-                {
-                    "kind": "block_create",
-                    "class_name": PIPELINE_CLASS_NAME,
-                    "x": 0.0,
-                    "y": 0.0,
-                    "container_block_id": container_block_id,
-                    "ts": int(time.time() * 1000),
-                },
-            )
-            if new_state_dict == state_data:
-                return noop
-            new_state = state_from_json(new_state_dict)
-            breadcrumb, canvas_elements, inspector = _render_views(new_state)
-            return (
-                new_state_dict,
-                breadcrumb,
-                canvas_elements,
-                inspector,
-                no_update,
-                no_update,
-                no_update,
-                no_update,
-            )
-        except Exception:  # noqa: BLE001
-            logger.exception("new_pipeline_palette_click_dag failed")
-            return noop
+        _ = (n_clicks, state_data)
+        return noop
 
     # ----------------------------------------------------------------------
-    # 3. Run preview
+    # 3. Prefix preview / Run preview
     # ----------------------------------------------------------------------
+
+    @app.callback(
+        Output(ids.STORE_INTERMEDIATE_KEYS, "data", allow_duplicate=True),
+        Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
+        Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
+        Output(ids.TOAST_NOTIFICATION, "icon", allow_duplicate=True),
+        Output(ids.TOAST_NOTIFICATION, "header", allow_duplicate=True),
+        Input(
+            {
+                "type": ids.LINEAR_NODE_ACTION,
+                "surface": ALL,
+                "action": ALL,
+                "scope_path": ALL,
+                "block_id": ALL,
+            },
+            "n_clicks",
+        ),
+        State(ids.STORE_BUILDER_STATE, "data"),
+        State(ids.STORE_SESSION_ID, "data"),
+        State(STORE_IMAGE_PATH, "data"),
+        State(ids.INPUT_NROWS, "value"),
+        State(ids.INPUT_NCOLS, "value"),
+        prevent_initial_call=True,
+    )
+    def run_linear_prefix_preview(
+        _node_action_clicks: List[int],
+        state_data: Dict[str, Any],
+        session_id: Optional[str],
+        image_path: Optional[str],
+        nrows: Optional[Any],
+        ncols: Optional[Any],
+    ) -> Tuple[Any, bool, str, str, str]:
+        """Run ``Preview here`` for a linear map prefix only."""
+
+        if not isinstance(ctx.triggered_id, dict):
+            return no_update, no_update, no_update, no_update, no_update
+        triggered = ctx.triggered_id
+        if triggered.get("type") != ids.LINEAR_NODE_ACTION:
+            return no_update, no_update, no_update, no_update, no_update
+        if triggered.get("action") != "preview_here":
+            return no_update, no_update, no_update, no_update, no_update
+        if not ctx.triggered or not ctx.triggered[0].get("value"):
+            return no_update, no_update, no_update, no_update, no_update
+        if state_data is None:
+            return no_update, *_toast("No state to preview", ok=False)
+        if not session_id:
+            session_id = uuid.uuid4().hex
+
+        try:
+            from phenotypic.abc_ import GridOperation
+
+            t0 = time.time()
+            state = state_from_json(state_data)
+            if not hasattr(state, "selected_block_id"):
+                return no_update, *_toast(
+                    "Preview here is only available in the linear builder.",
+                    ok=False,
+                )
+            target = target_from_dict(
+                _linear_preview_target_payload_from_id(triggered),
+                state.breadcrumb,
+            )
+            prefix_state = _linear_prefix_state_for_preview(state, target)
+            pipeline = to_pipeline_dag(prefix_state)
+            uses_grid = _pipeline_uses_grid(pipeline, GridOperation)
+
+            image = _load_preview_image(image_path, uses_grid, nrows, ncols)
+            cache = get_cache()
+            cache.set_image(session_id, image, str(image_path) if image_path else None)
+
+            result = pipeline.apply_with_intermediates(image)
+            _bake_preview_cache(prefix_state, pipeline, result, session_id, cache)
+
+            duration = time.time() - t0
+            keys = cache.known_intermediate_keys(session_id)
+            return (
+                keys,
+                *_toast(f"Prefix preview ran in {duration:.2f}s", ok=True),
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("Prefix preview failed")
+            return (
+                no_update,
+                *_toast(_format_exception(exc), ok=False),
+            )
 
     @app.callback(
         Output(ids.STORE_INTERMEDIATE_KEYS, "data"),
@@ -5939,25 +6154,15 @@ def register_callbacks(app: dash.Dash) -> None:
         return not is_open
 
     # ----------------------------------------------------------------------
-    # 11. Asset-status disable wiring (spec §6).
+    # 11. Asset-status banner wiring.
     # ----------------------------------------------------------------------
     # Subscribes to ``STORE_ASSET_STATUS`` (written by ``assets/builder.js``'s
     # readiness-poll loop with shape
     # ``{"wire_drawing": bool, "palette_dnd": bool, "viewport_ops": bool,
-    # "dagre_missing": bool}``).  When a JS file fails to load:
-    #
-    # * ``viewport_ops`` missing or ``dagre_missing`` True →
-    #   ``BTN_RELAYOUT`` becomes ``disabled``.
-    # * ``palette_dnd`` missing → the palette container receives a CSS
-    #   style toggling ``pointer-events: none`` so users see the palette
-    #   but cannot start an HTML5 drag.
-    # * ``wire_drawing`` missing → no server-side gate (the JS isn't there
-    #   to handle a port mousedown anyway); the banner above the canvas
-    #   surfaces the failure text.
-    #
-    # The visible elements (``BTN_RELAYOUT``, ``PALETTE_CONTAINER``,
-    # ``BANNER_ASSET_STATUS``) are guaranteed to exist on every render
-    # path so the callback inputs always resolve.
+    # "dagre_missing": bool}``).  These assets now power retired Cytoscape
+    # affordances, so missing readiness must not disable the click-only
+    # palette or show irrelevant drag/wire warnings in the linear builder.
+    # The hidden relayout button remains mounted only as a callback anchor.
     @app.callback(
         Output(ids.BTN_RELAYOUT, "disabled"),
         Output(ids.PALETTE_CONTAINER, "style", allow_duplicate=True),
@@ -5967,9 +6172,9 @@ def register_callbacks(app: dash.Dash) -> None:
         prevent_initial_call=True,
     )
     def asset_status_disables(
-        status: Optional[Dict[str, Any]],
+        _status: Optional[Dict[str, Any]],
     ) -> Tuple[bool, Dict[str, Any], List[Any], Dict[str, Any]]:
-        """Gate the relayout button + palette on missing JS assets.
+        """Keep retired asset readiness signals inert in the linear builder.
 
         Args:
             status: Dict written by the clientside readiness poll —
@@ -5979,52 +6184,12 @@ def register_callbacks(app: dash.Dash) -> None:
                 completes).
 
         Returns:
-            Tuple of (relayout disabled, palette style override, banner
-            children, banner style) so the relayout button and palette
-            stay in lock-step with the asset readiness signal.
+            Tuple of (hidden relayout disabled, palette style override,
+            banner children, banner style).  The hidden relayout anchor
+            stays disabled and the click palette remains server-routed.
         """
 
-        status = status or {}
-        # Compute layout / palette gates.
-        viewport_ready = bool(status.get("viewport_ops", True))
-        dagre_missing = bool(status.get("dagre_missing", False))
-        palette_ready = bool(status.get("palette_dnd", True))
-        wire_ready = bool(status.get("wire_drawing", True))
-
-        relayout_disabled = (not viewport_ready) or dagre_missing
-        palette_style: Dict[str, Any]
-        if palette_ready:
-            # Default: let the palette accept HTML5 drag events again.
-            palette_style = {}
-        else:
-            # Palette JS missing: disable HTML5 drag without hiding the
-            # palette itself (the user can still focus + read buttons).
-            palette_style = {
-                "pointerEvents": "none",
-                "opacity": 0.6,
-            }
-
-        # Build the banner rows for any missing assets.
-        rows: List[Any] = []
-        if not wire_ready:
-            rows.append(html.Div("Wire drawing offline"))
-        if not palette_ready:
-            rows.append(
-                html.Div(
-                    "Block creation offline — drag from the palette is "
-                    "unavailable"
-                )
-            )
-        if not viewport_ready:
-            rows.append(html.Div("Layout offline"))
-        if dagre_missing:
-            rows.append(html.Div("Layout extension missing"))
-
-        if rows:
-            banner_style = {"display": "block"}
-            return relayout_disabled, palette_style, rows, banner_style
-
-        return relayout_disabled, palette_style, [], {"display": "none"}
+        return True, {}, [], {"display": "none"}
 
     # ----------------------------------------------------------------------
     # 12. Toolbar Re-layout / Inspector Re-anchor → STORE_VIEWPORT_OP

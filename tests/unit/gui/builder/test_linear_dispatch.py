@@ -8,8 +8,15 @@ import pytest
 
 from phenotypic.abc_ import ImageOperation
 from phenotypic.gui._operation_registry import OperationInfo
-from phenotypic.gui.builder._callbacks import _dispatch_state_update
-from phenotypic.gui.builder._linear_model import ROOT_SCOPE_KEY, scope_key
+from phenotypic.gui.builder._callbacks import (
+    _dispatch_state_update,
+    _linear_prefix_state_for_preview,
+)
+from phenotypic.gui.builder._linear_model import (
+    ROOT_SCOPE_KEY,
+    LinearTarget,
+    scope_key,
+)
 from phenotypic.gui.builder._state import (
     INPUT_IMAGE_CLASS_NAME,
     PIPELINE_CLASS_NAME,
@@ -18,6 +25,7 @@ from phenotypic.gui.builder._state import (
     BuilderState,
     Edge,
     _new_block_id,
+    state_from_json,
     state_to_json,
 )
 
@@ -755,3 +763,53 @@ def test_linear_delete_node_request_delegates_to_confirm(linear_registry):
         block["block_id"] for block in out["root"]["blocks"]
     }
     assert (_input_block(state)["block_id"], consumer["block_id"]) in _image_pairs(out)
+
+
+def test_linear_prefix_preview_state_keeps_prefix_and_aux_dependency(
+    linear_registry,
+):
+    state_dict = _state_with_chain("ConsumerOp", "OtherOp")
+    consumer = _block_by_class(state_dict, "ConsumerOp")
+    other = _block_by_class(state_dict, "OtherOp")
+    aux = _block_dict("SourceOp")
+    state_dict["root"]["blocks"].append(aux)
+    state_dict["root"]["edges"].append(
+        _aux_edge_dict(aux["block_id"], consumer["block_id"], "detector")
+    )
+    state = state_from_json(state_dict)
+
+    prefix = _linear_prefix_state_for_preview(
+        state,
+        LinearTarget(
+            kind="image_output",
+            scope_path=[],
+            block_id=consumer["block_id"],
+        ),
+    )
+
+    block_ids = {block.block_id for block in prefix.root.blocks}
+    assert consumer["block_id"] in block_ids
+    assert aux["block_id"] in block_ids
+    assert other["block_id"] not in block_ids
+    assert all(
+        edge.source_block_id in block_ids and edge.target_block_id in block_ids
+        for edge in prefix.root.edges
+    )
+
+
+def test_linear_prefix_preview_state_continuation_uses_terminal(linear_registry):
+    state_dict = _state_with_chain("SourceOp", "ConsumerOp")
+    terminal = _block_by_class(state_dict, "ConsumerOp")
+    state = state_from_json(state_dict)
+
+    prefix = _linear_prefix_state_for_preview(
+        state,
+        LinearTarget(kind="continuation", scope_path=[]),
+    )
+
+    assert prefix.selected_block_id == terminal["block_id"]
+    assert {block.class_name for block in prefix.root.blocks} == {
+        INPUT_IMAGE_CLASS_NAME,
+        "SourceOp",
+        "ConsumerOp",
+    }

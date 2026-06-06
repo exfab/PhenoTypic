@@ -227,12 +227,9 @@ def _palette_for_categories(
                     )
                 )
                 button_class = f"{button_class} builder-op-pickable"
-            # ``draggable`` + ``data-palette-class`` enable the HTML5
-            # drag-and-drop bridge in ``assets/palette_dnd.js``.  dbc
-            # components reject unknown kwargs, so the HTML attributes
-            # live on an ``html.Div`` wrapper; ``palette_dnd.js`` uses
-            # ``closest("[data-palette-class]")`` so the ancestor lookup
-            # finds the wrapper from any descendant element.
+            # The fixed linear builder is click-to-add/fill only.  Keep
+            # the wrapper so spacing stays stable, but do not advertise
+            # draggable palette targets to the retired drag/drop asset.
             buttons.append(
                 html.Div(
                     dbc.Button(
@@ -244,8 +241,7 @@ def _palette_for_categories(
                         n_clicks=0,
                         className=button_class,
                     ),
-                    draggable="true",
-                    **{"data-palette-class": op_info.name},
+                    draggable="false",
                 )
             )
 
@@ -295,11 +291,8 @@ def build_new_pipeline_palette_button() -> dbc.Button:
 
     The button is rendered above the per-category palette accordions and
     serves as the palette entry for the ``ImagePipeline`` container
-    sentinel class.  It carries the same ``draggable="true"`` +
-    ``data-palette-class="ImagePipeline"`` attributes as the regular
-    palette buttons so the clientside ``palette_dnd.js`` glue (Phase 3)
-    handles the drag → ``STORE_PALETTE_DROP`` write → ``block_create``
-    dispatch end-to-end with no extra wiring.
+    sentinel class.  The fixed linear builder treats it as a click-only
+    add/fill action; palette drag/drop is retired in the default surface.
 
     The button intentionally REUSES :data:`BTN_NEW_PIPELINE_NODE` as its
     Dash id so the existing keyboard-fallback callback (``add_pipeline``
@@ -312,11 +305,8 @@ def build_new_pipeline_palette_button() -> dbc.Button:
         accordion in the palette column.
     """
 
-    # ``draggable="true"`` + ``data-palette-class="ImagePipeline"`` are
-    # read by ``assets/palette_dnd.js`` via ``closest("[data-palette-
-    # class]")`` so the wrapping ``html.Div`` is the ancestor the event
-    # delegate finds.  dbc components reject unknown kwargs, hence the
-    # wrapper (matches the per-op palette buttons above).
+    # Keep the wrapping Div to match per-op palette spacing, but do not
+    # expose ``data-palette-class`` to the retired drag/drop bridge.
     return html.Div(
         dbc.Button(
             [html.Span("⛓"), html.Span(" + New Pipeline", className="ms-1")],
@@ -327,12 +317,11 @@ def build_new_pipeline_palette_button() -> dbc.Button:
             n_clicks=0,
             className="w-100 mb-2 palette-button palette-button--pipeline",
             title=(
-                "Drag onto the canvas to add a nested ImagePipeline "
-                "container (or click to drop in the current scope)."
+                "Click to add or fill a nested ImagePipeline at the selected "
+                "green target."
             ),
         ),
-        draggable="true",
-        **{"data-palette-class": PIPELINE_CLASS_NAME},
+        draggable="false",
     )
 
 
@@ -4398,6 +4387,26 @@ def build_app_layout(
             html.Div(
                 id=ids.CANVAS_ELEMENTS_BRIDGE,
                 style={"display": "none"},
+            ),
+            html.Div(
+                id=ids.BANNER_ASSET_STATUS,
+                children=[],
+                style={"display": "none"},
+            ),
+            # Retired Cytoscape viewport controls remain mounted as hidden
+            # inert callback anchors so legacy clientside callbacks resolve
+            # cleanly while the default builder renders the fixed map.
+            html.Button(
+                id=ids.BTN_RELAYOUT,
+                disabled=True,
+                style={"display": "none"},
+                type="button",
+            ),
+            html.Button(
+                id=ids.BTN_REANCHOR,
+                disabled=True,
+                style={"display": "none"},
+                type="button",
             ),
         ]
     )
