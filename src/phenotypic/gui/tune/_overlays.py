@@ -19,11 +19,17 @@ imports optuna, so the lock holds.
 """
 from __future__ import annotations
 
+import hashlib
+import threading
+from collections import OrderedDict
+from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Callable
 
 import numpy as np
 
+from phenotypic.gui._config import THREAD_NAME_PREFIX
 from phenotypic.gui._design import OI_GREY, OI_ORANGE, OI_SKY
 from phenotypic.gui.builder._image_renderer import to_overlay_rgb_array
 from phenotypic.tune._evaluation._builder import build_pipeline
@@ -33,6 +39,10 @@ if TYPE_CHECKING:  # pragma: no cover - type-only imports
     import numpy.typing as npt
 
     from phenotypic import Image, ImagePipeline
+
+#: An overlay-cache key: ``(trial_number, plate_name, mode)``. ``mode`` is the
+#: overlay flavour (e.g. ``"candidate"`` / ``"difference"``).
+OverlayKey = tuple[int, str, str]
 
 
 def _hex_to_rgb(hex_color: str) -> tuple[int, int, int]:
@@ -290,10 +300,204 @@ def cell_disagreement(grid_a: Any, grid_b: Any) -> int:
     return int((aligned_a != aligned_b).sum())
 
 
+# ---------------------------------------------------------------------------
+# Background overlay worker + disk-LRU cache
+# ---------------------------------------------------------------------------
+
+
+class OverlayCache:
+    """A bounded disk-LRU cache of overlay arrays rendered on a worker pool.
+
+    The Curate Dash surface (B-ii) submits overlay renders here and polls for
+    readiness rather than blocking a callback on a heavy ``apply``. Each render
+    runs on a :class:`~concurrent.futures.ThreadPoolExecutor` worker (named
+    ``f"{THREAD_NAME_PREFIX}-overlay"`` for log/trace attribution), and the
+    resulting array is memoized **both** in a bounded in-memory LRU and on disk
+    as a ``.npy`` file under ``cache_dir`` — so a fresh ``OverlayCache`` over
+    the same directory (e.g. after a process restart) reuses prior renders
+    without re-running the pipeline.
+
+    The LRU ordering dict is guarded by a :class:`threading.RLock`: Werkzeug
+    serves Dash callbacks from multiple threads, so concurrent submits and
+    cache reads race on the ordering and eviction without it.
+
+    Args:
+        cache_dir: Directory for the persisted ``.npy`` overlay arrays. Created
+            if absent.
+        capacity: Maximum number of distinct keys retained in the in-memory
+            LRU; the least-recently-used entry is evicted past this. The
+            on-disk ``.npy`` for an evicted key is removed too, so the disk
+            cache and the memory LRU stay bounded together. Defaults to ``64``.
+
+    Examples:
+        >>> import numpy as np, tempfile
+        >>> d = tempfile.mkdtemp()
+        >>> cache = OverlayCache(d, capacity=4)
+        >>> calls = []
+        >>> def render():
+        ...     calls.append(1)
+        ...     return np.zeros((2, 2, 3), dtype=np.uint8)
+        >>> a = cache.get_or_render((0, "plate", "candidate"), render)
+        >>> b = cache.get_or_render((0, "plate", "candidate"), render)  # cache hit
+        >>> len(calls)  # rendered once
+        1
+        >>> np.array_equal(a, b)
+        True
+    """
+
+    def __init__(self, cache_dir: str | Path, capacity: int = 64) -> None:
+        self._cache_dir = Path(cache_dir)
+        self._cache_dir.mkdir(parents=True, exist_ok=True)
+        self._capacity = capacity
+        # MRU-ordered; value is the in-memory overlay array. Guarded by _lock.
+        self._mem: "OrderedDict[OverlayKey, np.ndarray]" = OrderedDict()
+        self._lock = threading.RLock()
+        self._pool = ThreadPoolExecutor(
+            max_workers=2,
+            thread_name_prefix=f"{THREAD_NAME_PREFIX}-overlay",
+        )
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    def _disk_path(self, key: OverlayKey) -> Path:
+        """Return the ``.npy`` path for *key* (stable hash of the key tuple)."""
+        digest = hashlib.sha1(repr(key).encode("utf-8")).hexdigest()
+        return self._cache_dir / f"{digest}.npy"
+
+    def _remember(self, key: OverlayKey, array: np.ndarray) -> None:
+        """Insert/refresh *key* in the LRU and evict the oldest past capacity.
+
+        Caller must NOT hold ``self._lock`` (this method takes it).
+        """
+        with self._lock:
+            if key in self._mem:
+                self._mem.pop(key)
+            self._mem[key] = array
+            while len(self._mem) > self._capacity:
+                old_key, _ = self._mem.popitem(last=False)
+                self._disk_path(old_key).unlink(missing_ok=True)
+
+    def _lookup(self, key: OverlayKey) -> np.ndarray | None:
+        """Return the cached array for *key* (mem or disk), or ``None``.
+
+        A memory hit bumps the key to MRU. A disk hit (memory miss) re-populates
+        the in-memory LRU. ``render_fn`` is never called from here.
+        """
+        with self._lock:
+            cached = self._mem.get(key)
+            if cached is not None:
+                self._mem.move_to_end(key)
+                return cached
+        # Memory miss — try the persisted .npy outside the lock (disk I/O).
+        path = self._disk_path(key)
+        if path.exists():
+            array = np.load(path)
+            self._remember(key, array)
+            return array
+        return None
+
+    def _render_and_store(
+        self, key: OverlayKey, render_fn: Callable[[], np.ndarray]
+    ) -> np.ndarray:
+        """Run *render_fn*, persist the array to disk, and seed the LRU.
+
+        Re-checks the cache first so a concurrent submit of the same key renders
+        only once. Executed on a pool worker.
+        """
+        existing = self._lookup(key)
+        if existing is not None:
+            return existing
+        array = np.asarray(render_fn())
+        np.save(self._disk_path(key), array)
+        self._remember(key, array)
+        return array
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
+
+    def submit(
+        self, key: OverlayKey, render_fn: Callable[[], np.ndarray]
+    ) -> "Future[np.ndarray]":
+        """Schedule (or short-circuit) the overlay render for *key*.
+
+        On a cache hit (memory or disk) returns an already-resolved
+        :class:`~concurrent.futures.Future` and never calls ``render_fn``.
+        Otherwise the render runs on a background pool worker; poll the returned
+        future, or use :meth:`is_ready` / :meth:`result`.
+
+        Args:
+            key: The ``(trial_number, plate_name, mode)`` cache key.
+            render_fn: A zero-arg callable returning the overlay array. Invoked
+                at most once per key (until eviction); not called on a cache hit.
+
+        Returns:
+            A :class:`~concurrent.futures.Future` resolving to the overlay array.
+        """
+        cached = self._lookup(key)
+        if cached is not None:
+            done: "Future[np.ndarray]" = Future()
+            done.set_result(cached)
+            return done
+        return self._pool.submit(self._render_and_store, key, render_fn)
+
+    def get_or_render(
+        self, key: OverlayKey, render_fn: Callable[[], np.ndarray]
+    ) -> np.ndarray:
+        """Return the overlay for *key*, rendering on a worker thread if absent.
+
+        Synchronous convenience over :meth:`submit` — blocks until the render
+        (which runs on a background pool worker) completes. ``render_fn`` is
+        invoked at most once per key; a second call for the same key is served
+        from the cache.
+
+        Args:
+            key: The ``(trial_number, plate_name, mode)`` cache key.
+            render_fn: A zero-arg callable returning the overlay array.
+
+        Returns:
+            The overlay array for *key*.
+        """
+        return self.submit(key, render_fn).result()
+
+    def is_ready(self, key: OverlayKey) -> bool:
+        """Return ``True`` when *key*'s overlay is cached (memory or disk).
+
+        Args:
+            key: The cache key to probe.
+
+        Returns:
+            Whether a rendered array is available without re-running
+            ``render_fn``.
+        """
+        with self._lock:
+            if key in self._mem:
+                return True
+        return self._disk_path(key).exists()
+
+    def result(self, key: OverlayKey) -> np.ndarray | None:
+        """Return *key*'s cached overlay array, or ``None`` if not ready.
+
+        Does not render. Use after :meth:`is_ready` (or a resolved
+        :meth:`submit` future) to fetch the array.
+
+        Args:
+            key: The cache key to fetch.
+
+        Returns:
+            The cached overlay array, or ``None`` when nothing is cached yet.
+        """
+        return self._lookup(key)
+
+
 __all__ = [
     "render_candidate_overlay",
     "DiffResult",
     "difference_objects",
     "render_difference",
     "cell_disagreement",
+    "OverlayKey",
+    "OverlayCache",
 ]
