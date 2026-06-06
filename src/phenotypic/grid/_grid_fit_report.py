@@ -151,11 +151,17 @@ class GridFitReport(FigureProvider):
             specs=row_specs,
             vertical_spacing=0.05,
         )
+        # ``xy_row`` counts cartesian (non-table) panels. A ``table`` cell
+        # creates no x/y axis, so the Nth xy panel owns axis number N
+        # regardless of where table rows fall; the layout index ``row`` only
+        # coincides with the axis number while every table sits last.
+        xy_row = 0
         for row, (sub, tbl) in enumerate(zip(rendered, is_table), start=1):
             for trace in sub.data:
                 composed.add_trace(trace, row=row, col=1)
             if tbl:
                 continue
+            xy_row += 1
             # Carry axis titles / ranges for the chart (xy) rows.
             composed.update_xaxes(
                 title_text=sub.layout.xaxis.title.text,
@@ -179,7 +185,7 @@ class GridFitReport(FigureProvider):
             # annotations (not shapes); the empty-state placeholder is a
             # paper-anchored annotation. Retarget each ref to THIS subplot's
             # axes, preserving any " domain" suffix and re-centering paper ones.
-            axis_suffix = "" if row == 1 else str(row)
+            axis_suffix = "" if xy_row == 1 else str(xy_row)
             for ann in sub.layout.annotations:
                 payload = ann.to_plotly_json()
                 for key, axis in (("xref", "x"), ("yref", "y")):
