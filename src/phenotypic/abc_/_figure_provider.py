@@ -383,16 +383,16 @@ class FigureProvider:
         """
         spec = self._primary_spec()
         method = getattr(self, spec.name)
-        valid = set(inspect.signature(method).parameters)
-        unknown = set(overrides) - valid
+        valid_params = set(inspect.signature(method).parameters)
+        unknown = set(overrides) - set(spec.controls)
         if unknown:
             raise ValueError(
                 f"inspect(): unknown override(s) {sorted(unknown)} for figure "
-                f"{spec.name!r}"
+                f"{spec.name!r}; valid controls: {sorted(spec.controls)}"
             )
         kwargs: dict[str, Any] = {kw: c.default for kw, c in spec.controls.items()}
         kwargs.update(overrides)
-        if "for_save" in valid:
+        if "for_save" in valid_params:
             kwargs["for_save"] = for_save
         if spec.wants_subject:
             return method(self._resolve_subject(subject), **kwargs)

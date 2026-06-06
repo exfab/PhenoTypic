@@ -180,6 +180,21 @@ class TestFigureProvider:
         with pytest.raises(RuntimeError, match="primary"):
             Two().inspect()
 
+    def test_inspect_rejects_non_control_overrides(self):
+        """inspect() overrides must be declared controls; a stray kwarg (incl.
+        the subject param name) raises ValueError, not a cryptic TypeError."""
+
+        class Prov(FigureProvider):
+            @figure(title="Main", primary=True)
+            def fig_main(self, image=None) -> go.Figure:  # image == subject param
+                return go.Figure()
+
+        prov = Prov()
+        with pytest.raises(ValueError, match="unknown override"):
+            prov.inspect(not_a_control=1)
+        with pytest.raises(ValueError, match="unknown override"):
+            prov.inspect(image="passing the subject by keyword is not an override")
+
     def test_dash_control_free_returns_composed_figure(self):
         fig = _MultiHelper().dash()
         assert isinstance(fig, go.Figure)
