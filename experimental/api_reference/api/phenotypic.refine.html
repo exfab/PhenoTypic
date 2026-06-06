@@ -732,7 +732,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.ExtractColonyCore.html">phenotypic.refine.ExtractColonyCore</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.GridAlignmentRefiner.html">phenotypic.refine.GridAlignmentRefiner</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.GridOversizedObjectRemover.html">phenotypic.refine.GridOversizedObjectRemover</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.RemoveNonCircular.html">phenotypic.refine.RemoveNonCircular</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.RemoveLowCircularity.html">phenotypic.refine.RemoveLowCircularity</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.ManualRefine.html">phenotypic.refine.ManualRefine</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.MaskClosing.html">phenotypic.refine.MaskClosing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.MaskDilation.html">phenotypic.refine.MaskDilation</a></li>
@@ -1038,7 +1038,7 @@ by merging nearby detections based on spatial proximity and size thresholds.</p>
 <tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.refine.html#phenotypic.refine.GridOversizedObjectRemover" title="phenotypic.refine.GridOversizedObjectRemover"><code class="xref py py-obj docutils literal notranslate"><span class="pre">GridOversizedObjectRemover</span></code></a></p></td>
 <td><p>Remove objects whose bounding box exceeds the maximum grid cell dimension.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.refine.html#phenotypic.refine.RemoveNonCircular" title="phenotypic.refine.RemoveNonCircular"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RemoveNonCircular</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.refine.html#phenotypic.refine.RemoveLowCircularity" title="phenotypic.refine.RemoveLowCircularity"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RemoveLowCircularity</span></code></a></p></td>
 <td><p>Remove objects whose Polsby-Popper circularity falls below a cutoff.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.refine.html#phenotypic.refine.ManualRefine" title="phenotypic.refine.ManualRefine"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ManualRefine</span></code></a></p></td>
@@ -1158,7 +1158,7 @@ growth mass rather than diffusion halos.</p></li>
 not intensity-distinct from halos.</p></li>
 <li><p><a class="reference internal" href="../phenotypic.refine.html#phenotypic.refine.MaskWhiteTophat" title="phenotypic.refine.MaskWhiteTophat"><code class="xref py py-class docutils literal notranslate"><span class="pre">MaskWhiteTophat</span></code></a> for removing small bright artifacts without
 full core extraction.</p></li>
-<li><p><a class="reference internal" href="../phenotypic.refine.html#phenotypic.refine.RemoveNonCircular" title="phenotypic.refine.RemoveNonCircular"><code class="xref py py-class docutils literal notranslate"><span class="pre">RemoveNonCircular</span></code></a> for shape-based filtering when
+<li><p><a class="reference internal" href="../phenotypic.refine.html#phenotypic.refine.RemoveLowCircularity" title="phenotypic.refine.RemoveLowCircularity"><code class="xref py py-class docutils literal notranslate"><span class="pre">RemoveLowCircularity</span></code></a> for shape-based filtering when
 halos distort circularity measurements.</p></li>
 </ul>
 </dd>
@@ -5910,7 +5910,7 @@ identifiers that existed before refinement.</p>
 scratch at picked coordinates, <code class="docutils literal notranslate"><span class="pre">ManualSelector</span></code> <em>filters</em> the output of
 an earlier detector. It is the manual-curation counterpart to automated
 refiners such as <a class="reference internal" href="../phenotypic.refine.html#phenotypic.refine.SmallObjectRemover" title="phenotypic.refine.SmallObjectRemover"><code class="xref py py-class docutils literal notranslate"><span class="pre">SmallObjectRemover</span></code></a> or
-<a class="reference internal" href="../phenotypic.refine.html#phenotypic.refine.RemoveNonCircular" title="phenotypic.refine.RemoveNonCircular"><code class="xref py py-class docutils literal notranslate"><span class="pre">RemoveNonCircular</span></code></a>, and is suitable for ground-truth
+<a class="reference internal" href="../phenotypic.refine.html#phenotypic.refine.RemoveLowCircularity" title="phenotypic.refine.RemoveLowCircularity"><code class="xref py py-class docutils literal notranslate"><span class="pre">RemoveLowCircularity</span></code></a>, and is suitable for ground-truth
 curation, interactive review, and correcting systematic detector misses
 on a handful of colonies.</p>
 <dl class="field-list simple">
@@ -19451,7 +19451,7 @@ round-trips keep working.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.refine.</span></span><span class="sig-name descname"><span class="pre">RemoveNonCircular</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">cutoff</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.785</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/refine/_remove_non_circular.html#RemoveNonCircular"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.refine.</span></span><span class="sig-name descname"><span class="pre">RemoveLowCircularity</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">cutoff</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.785</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/refine/_remove_low_circularity.html#RemoveLowCircularity"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
 <dd><p>Bases: <a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.ObjectRefiner" title="phenotypic.abc_._object_refiner.ObjectRefiner"><code class="xref py py-class docutils literal notranslate"><span class="pre">ObjectRefiner</span></code></a></p>
 <p>Remove objects whose Polsby-Popper circularity falls below a cutoff.</p>
 <p>Computes circularity as <code class="docutils literal notranslate"><span class="pre">4</span> <span class="pre">*</span> <span class="pre">pi</span> <span class="pre">*</span> <span class="pre">area</span> <span class="pre">/</span> <span class="pre">perimeter^2</span></code> for each labeled
@@ -19584,7 +19584,7 @@ In that case, it will be called later, when the model is rebuilt automatically o
 <dl class="py method">
 <dt class="sig sig-object py">
 <em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">json_data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.BaseOperation" title="phenotypic.abc_._base_operation.BaseOperation"><span class="pre">BaseOperation</span></a></span></span></dt>
-<dd><p>Reconstruct an operation from JSON written by <a class="reference internal" href="../phenotypic.refine.html#phenotypic.refine.RemoveNonCircular.to_json" title="phenotypic.refine.RemoveNonCircular.to_json"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_json()</span></code></a>.</p>
+<dd><p>Reconstruct an operation from JSON written by <a class="reference internal" href="../phenotypic.refine.html#phenotypic.refine.RemoveLowCircularity.to_json" title="phenotypic.refine.RemoveLowCircularity.to_json"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_json()</span></code></a>.</p>
 <p>Accepts a JSON string, a path to a JSON file, or a pre-parsed envelope
 dict (same input handling as <code class="xref py py-meth docutils literal notranslate"><span class="pre">ImagePipeline.from_json()</span></code>).
 Polymorphic: <code class="docutils literal notranslate"><span class="pre">ImageOperation.from_json(path)</span></code> returns whatever concrete
@@ -20299,7 +20299,7 @@ logged.</p>
 is <code class="docutils literal notranslate"><span class="pre">model_dump(mode=&quot;json&quot;)</span></code> (every declared field, including nested
 operations and raw arrays; <code class="docutils literal notranslate"><span class="pre">PrivateAttr</span></code> state such as loggers and
 timing is excluded automatically), and <code class="docutils literal notranslate"><span class="pre">class</span></code> records the concrete
-class name so <a class="reference internal" href="../phenotypic.refine.html#phenotypic.refine.RemoveNonCircular.from_json" title="phenotypic.refine.RemoveNonCircular.from_json"><code class="xref py py-meth docutils literal notranslate"><span class="pre">from_json()</span></code></a> can rebuild the right subclass. This
+class name so <a class="reference internal" href="../phenotypic.refine.html#phenotypic.refine.RemoveLowCircularity.from_json" title="phenotypic.refine.RemoveLowCircularity.from_json"><code class="xref py py-meth docutils literal notranslate"><span class="pre">from_json()</span></code></a> can rebuild the right subclass. This
 mirrors <code class="xref py py-meth docutils literal notranslate"><span class="pre">ImagePipeline.to_json()</span></code>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -22347,7 +22347,7 @@ exclude small objects.</p>
 <dt>Consider Also:</dt><dd><ul class="simple">
 <li><p><a class="reference internal" href="../phenotypic.refine.html#phenotypic.refine.RemoveBorderObjects" title="phenotypic.refine.RemoveBorderObjects"><code class="xref py py-class docutils literal notranslate"><span class="pre">RemoveBorderObjects</span></code></a> for removing partial colonies at
 image edges (size-independent).</p></li>
-<li><p><a class="reference internal" href="../phenotypic.refine.html#phenotypic.refine.RemoveNonCircular" title="phenotypic.refine.RemoveNonCircular"><code class="xref py py-class docutils literal notranslate"><span class="pre">RemoveNonCircular</span></code></a> for removing non-circular artifacts
+<li><p><a class="reference internal" href="../phenotypic.refine.html#phenotypic.refine.RemoveLowCircularity" title="phenotypic.refine.RemoveLowCircularity"><code class="xref py py-class docutils literal notranslate"><span class="pre">RemoveLowCircularity</span></code></a> for removing non-circular artifacts
 regardless of size.</p></li>
 </ul>
 </dd>
@@ -25253,7 +25253,7 @@ structures while legitimate hyphae remain linear.</p></li>
 <dt>Consider Also:</dt><dd><ul class="simple">
 <li><p><a class="reference internal" href="../phenotypic.refine.html#phenotypic.refine.SmallObjectRemover" title="phenotypic.refine.SmallObjectRemover"><code class="xref py py-class docutils literal notranslate"><span class="pre">SmallObjectRemover</span></code></a> for spurious noise distinguished by
 size alone rather than spatial relationship to the colony body.</p></li>
-<li><p><a class="reference internal" href="../phenotypic.refine.html#phenotypic.refine.RemoveNonCircular" title="phenotypic.refine.RemoveNonCircular"><code class="xref py py-class docutils literal notranslate"><span class="pre">RemoveNonCircular</span></code></a> when the whole colony should be
+<li><p><a class="reference internal" href="../phenotypic.refine.html#phenotypic.refine.RemoveLowCircularity" title="phenotypic.refine.RemoveLowCircularity"><code class="xref py py-class docutils literal notranslate"><span class="pre">RemoveLowCircularity</span></code></a> when the whole colony should be
 judged by shape, not just its outer extent.</p></li>
 </ul>
 </dd>

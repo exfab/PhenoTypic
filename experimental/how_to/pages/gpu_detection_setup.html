@@ -680,7 +680,7 @@ pixi<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </
 with <code class="docutils literal notranslate"><span class="pre">Sam2Detector</span></code>’s CUDA wheels in the same environment requires extra
 care (the conda torch will typically win). Keep SAM2 and micro-sam work
 in separate environments if you need both with GPU acceleration.</p>
-<p><code class="docutils literal notranslate"><span class="pre">MicroSamDetector</span></code> is importable from <code class="docutils literal notranslate"><span class="pre">phenotypic.nn</span></code> even when
+<p><code class="docutils literal notranslate"><span class="pre">MicroSamDetector</span></code> is importable from <code class="docutils literal notranslate"><span class="pre">phenotypic.detect.nn</span></code> even when
 <code class="docutils literal notranslate"><span class="pre">micro_sam</span></code> is missing; the <code class="docutils literal notranslate"><span class="pre">ImportError</span></code> is deferred to the first
 <code class="docutils literal notranslate"><span class="pre">apply()</span></code> call and points back at these instructions.</p>
 </section>
@@ -701,16 +701,16 @@ you should pre-download checkpoints on a login node before submitting jobs.</p>
 <section id="sam2-checkpoints">
 <h3>SAM2 checkpoints<a class="headerlink" href="#sam2-checkpoints" title="Link to this heading">#</a></h3>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Download the default (tiny) SAM2 checkpoint</span>
-python<span class="w"> </span>-m<span class="w"> </span>phenotypic.nn<span class="w"> </span>download
+python<span class="w"> </span>-m<span class="w"> </span>phenotypic.detect.nn<span class="w"> </span>download
 
 <span class="c1"># Download a specific size</span>
-python<span class="w"> </span>-m<span class="w"> </span>phenotypic.nn<span class="w"> </span>download<span class="w"> </span>--model-type<span class="w"> </span>sam2<span class="w"> </span>--model-size<span class="w"> </span>large
+python<span class="w"> </span>-m<span class="w"> </span>phenotypic.detect.nn<span class="w"> </span>download<span class="w"> </span>--model-type<span class="w"> </span>sam2<span class="w"> </span>--model-size<span class="w"> </span>large
 
 <span class="c1"># Download all SAM2 sizes at once</span>
-python<span class="w"> </span>-m<span class="w"> </span>phenotypic.nn<span class="w"> </span>download<span class="w"> </span>--model-type<span class="w"> </span>sam2<span class="w"> </span>--all
+python<span class="w"> </span>-m<span class="w"> </span>phenotypic.detect.nn<span class="w"> </span>download<span class="w"> </span>--model-type<span class="w"> </span>sam2<span class="w"> </span>--all
 
 <span class="c1"># Force re-download even if cached</span>
-python<span class="w"> </span>-m<span class="w"> </span>phenotypic.nn<span class="w"> </span>download<span class="w"> </span>--model-type<span class="w"> </span>sam2<span class="w"> </span>--model-size<span class="w"> </span>tiny<span class="w"> </span>--force
+python<span class="w"> </span>-m<span class="w"> </span>phenotypic.detect.nn<span class="w"> </span>download<span class="w"> </span>--model-type<span class="w"> </span>sam2<span class="w"> </span>--model-size<span class="w"> </span>tiny<span class="w"> </span>--force
 </pre></div>
 </div>
 <p>SAM2 checkpoints are stored in the <code class="docutils literal notranslate"><span class="pre">torch.hub</span></code> cache directory
@@ -721,13 +721,13 @@ environment variable to change this location.</p>
 <section id="micro-sam-checkpoints">
 <h3>micro-sam checkpoints<a class="headerlink" href="#micro-sam-checkpoints" title="Link to this heading">#</a></h3>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Download the default (vit_b_lm) micro-sam model</span>
-python<span class="w"> </span>-m<span class="w"> </span>phenotypic.nn<span class="w"> </span>download<span class="w"> </span>--model-type<span class="w"> </span>microsam
+python<span class="w"> </span>-m<span class="w"> </span>phenotypic.detect.nn<span class="w"> </span>download<span class="w"> </span>--model-type<span class="w"> </span>microsam
 
 <span class="c1"># Download a specific model</span>
-python<span class="w"> </span>-m<span class="w"> </span>phenotypic.nn<span class="w"> </span>download<span class="w"> </span>--model-type<span class="w"> </span>microsam<span class="w"> </span>--model-name<span class="w"> </span>vit_l_lm
+python<span class="w"> </span>-m<span class="w"> </span>phenotypic.detect.nn<span class="w"> </span>download<span class="w"> </span>--model-type<span class="w"> </span>microsam<span class="w"> </span>--model-name<span class="w"> </span>vit_l_lm
 
 <span class="c1"># Download all micro-sam models</span>
-python<span class="w"> </span>-m<span class="w"> </span>phenotypic.nn<span class="w"> </span>download<span class="w"> </span>--model-type<span class="w"> </span>microsam<span class="w"> </span>--all
+python<span class="w"> </span>-m<span class="w"> </span>phenotypic.detect.nn<span class="w"> </span>download<span class="w"> </span>--model-type<span class="w"> </span>microsam<span class="w"> </span>--all
 </pre></div>
 </div>
 <p>micro-sam stores checkpoints via <code class="docutils literal notranslate"><span class="pre">platformdirs</span></code>. Set <code class="docutils literal notranslate"><span class="pre">MICROSAM_CACHEDIR</span></code> to
@@ -737,11 +737,11 @@ override the cache location.</p>
 <h3>SLURM pre-caching workflow<a class="headerlink" href="#slurm-pre-caching-workflow" title="Link to this heading">#</a></h3>
 <p>On a cluster, download models on the login node first:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># On the login node (has internet access)</span>
-python<span class="w"> </span>-m<span class="w"> </span>phenotypic.nn<span class="w"> </span>download<span class="w"> </span>--model-type<span class="w"> </span>sam2<span class="w"> </span>--model-size<span class="w"> </span>tiny
-python<span class="w"> </span>-m<span class="w"> </span>phenotypic.nn<span class="w"> </span>download<span class="w"> </span>--model-type<span class="w"> </span>microsam<span class="w"> </span>--model-name<span class="w"> </span>vit_b_lm
+python<span class="w"> </span>-m<span class="w"> </span>phenotypic.detect.nn<span class="w"> </span>download<span class="w"> </span>--model-type<span class="w"> </span>sam2<span class="w"> </span>--model-size<span class="w"> </span>tiny
+python<span class="w"> </span>-m<span class="w"> </span>phenotypic.detect.nn<span class="w"> </span>download<span class="w"> </span>--model-type<span class="w"> </span>microsam<span class="w"> </span>--model-name<span class="w"> </span>vit_b_lm
 
 <span class="c1"># Verify they are cached</span>
-python<span class="w"> </span>-m<span class="w"> </span>phenotypic.nn<span class="w"> </span>list
+python<span class="w"> </span>-m<span class="w"> </span>phenotypic.detect.nn<span class="w"> </span>list
 
 <span class="c1"># Now submit SLURM jobs -- compute nodes will use the cached checkpoints</span>
 python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w"> </span>--pipeline<span class="w"> </span>pipeline.json<span class="w"> </span>--input<span class="w"> </span>/plates/<span class="w"> </span>-o<span class="w"> </span>/output/
@@ -754,7 +754,7 @@ python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w
 <p><code class="docutils literal notranslate"><span class="pre">Sam2Detector</span></code> wraps Meta’s SAM2 automatic mask generator. It lays a grid of
 prompt points over the RGB image, predicts masks at each point, filters by
 quality, and assembles a labelled object map.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.nn</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sam2Detector</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect.nn</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sam2Detector</span>
 
 <span class="c1"># Basic usage with default parameters</span>
 <span class="n">detector</span> <span class="o">=</span> <span class="n">Sam2Detector</span><span class="p">()</span>
@@ -799,7 +799,7 @@ publication figures.</p></li>
 <p><code class="docutils literal notranslate"><span class="pre">MicroSamDetector</span></code> uses SAM models finetuned on large-scale microscopy
 datasets. It is particularly effective for brightfield and darkfield
 microscopy images of agar plates.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.nn</span><span class="w"> </span><span class="kn">import</span> <span class="n">MicroSamDetector</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect.nn</span><span class="w"> </span><span class="kn">import</span> <span class="n">MicroSamDetector</span>
 
 <span class="c1"># Default: ViT-Base light microscopy model</span>
 <span class="n">detector</span> <span class="o">=</span> <span class="n">MicroSamDetector</span><span class="p">()</span>
@@ -833,7 +833,7 @@ microscopy images of agar plates.</p>
 <h2>Pipeline Integration<a class="headerlink" href="#pipeline-integration" title="Link to this heading">#</a></h2>
 <p>GPU detectors work like any other PhenoTypic operation in a pipeline:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pht</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.nn</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sam2Detector</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect.nn</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sam2Detector</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.measure</span><span class="w"> </span><span class="kn">import</span> <span class="n">SizeMeasurer</span>
 
 <span class="n">pipeline</span> <span class="o">=</span> <span class="n">pht</span><span class="o">.</span><span class="n">ImagePipeline</span><span class="p">(</span>
@@ -915,7 +915,7 @@ is raised with a descriptive message.</p>
 <h3><code class="docutils literal notranslate"><span class="pre">resolve_device()</span></code> utility<a class="headerlink" href="#resolve-device-utility" title="Link to this heading">#</a></h3>
 <p>The device resolution logic is available as a standalone function for custom
 workflows:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.nn._checkpoint_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">resolve_device</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect.nn._checkpoint_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">resolve_device</span>
 
 <span class="n">device</span> <span class="o">=</span> <span class="n">resolve_device</span><span class="p">(</span><span class="s2">&quot;auto&quot;</span><span class="p">)</span>           <span class="c1"># raises if no accelerator</span>
 <span class="n">device</span> <span class="o">=</span> <span class="n">resolve_device</span><span class="p">(</span><span class="s2">&quot;auto&quot;</span><span class="p">,</span> <span class="n">allow_cpu</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  <span class="c1"># falls back to CPU with warning</span>
@@ -927,7 +927,7 @@ workflows:</p>
 <h2>Listing and Clearing Models<a class="headerlink" href="#listing-and-clearing-models" title="Link to this heading">#</a></h2>
 <section id="list-cached-checkpoints">
 <h3>List cached checkpoints<a class="headerlink" href="#list-cached-checkpoints" title="Link to this heading">#</a></h3>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic.nn<span class="w"> </span>list
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic.detect.nn<span class="w"> </span>list
 </pre></div>
 </div>
 <p>This prints a table showing all cached SAM2 and micro-sam checkpoints with
@@ -936,13 +936,13 @@ their file sizes and paths.</p>
 <section id="clear-cached-checkpoints">
 <h3>Clear cached checkpoints<a class="headerlink" href="#clear-cached-checkpoints" title="Link to this heading">#</a></h3>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Clear all cached checkpoints (prompts for confirmation)</span>
-python<span class="w"> </span>-m<span class="w"> </span>phenotypic.nn<span class="w"> </span>clear
+python<span class="w"> </span>-m<span class="w"> </span>phenotypic.detect.nn<span class="w"> </span>clear
 
 <span class="c1"># Clear only SAM2 checkpoints</span>
-python<span class="w"> </span>-m<span class="w"> </span>phenotypic.nn<span class="w"> </span>clear<span class="w"> </span>--model-type<span class="w"> </span>sam2
+python<span class="w"> </span>-m<span class="w"> </span>phenotypic.detect.nn<span class="w"> </span>clear<span class="w"> </span>--model-type<span class="w"> </span>sam2
 
 <span class="c1"># Clear only micro-sam checkpoints</span>
-python<span class="w"> </span>-m<span class="w"> </span>phenotypic.nn<span class="w"> </span>clear<span class="w"> </span>--model-type<span class="w"> </span>microsam
+python<span class="w"> </span>-m<span class="w"> </span>phenotypic.detect.nn<span class="w"> </span>clear<span class="w"> </span>--model-type<span class="w"> </span>microsam
 </pre></div>
 </div>
 </section>
@@ -1001,9 +1001,9 @@ candidate masks.</p></li>
 <h3>Checkpoint not found on SLURM compute nodes<a class="headerlink" href="#checkpoint-not-found-on-slurm-compute-nodes" title="Link to this heading">#</a></h3>
 <p>Compute nodes often lack internet access. Pre-download checkpoints on the
 login node:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic.nn<span class="w"> </span>download<span class="w"> </span>--model-type<span class="w"> </span>sam2<span class="w"> </span>--model-size<span class="w"> </span>tiny
-python<span class="w"> </span>-m<span class="w"> </span>phenotypic.nn<span class="w"> </span>download<span class="w"> </span>--model-type<span class="w"> </span>microsam<span class="w"> </span>--model-name<span class="w"> </span>vit_b_lm
-python<span class="w"> </span>-m<span class="w"> </span>phenotypic.nn<span class="w"> </span>list<span class="w">  </span><span class="c1"># verify</span>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic.detect.nn<span class="w"> </span>download<span class="w"> </span>--model-type<span class="w"> </span>sam2<span class="w"> </span>--model-size<span class="w"> </span>tiny
+python<span class="w"> </span>-m<span class="w"> </span>phenotypic.detect.nn<span class="w"> </span>download<span class="w"> </span>--model-type<span class="w"> </span>microsam<span class="w"> </span>--model-name<span class="w"> </span>vit_b_lm
+python<span class="w"> </span>-m<span class="w"> </span>phenotypic.detect.nn<span class="w"> </span>list<span class="w">  </span><span class="c1"># verify</span>
 </pre></div>
 </div>
 <p>Ensure <code class="docutils literal notranslate"><span class="pre">TORCH_HOME</span></code> and <code class="docutils literal notranslate"><span class="pre">MICROSAM_CACHEDIR</span></code> (if customised) point to a

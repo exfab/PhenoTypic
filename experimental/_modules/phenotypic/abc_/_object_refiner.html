@@ -890,13 +890,13 @@
 <span class="sd">    .. code-block:: python</span>
 
 <span class="sd">        from phenotypic import Image, ImagePipeline</span>
-<span class="sd">        from phenotypic.refine import SmallObjectRemover, MaskFill, RemoveNonCircular</span>
+<span class="sd">        from phenotypic.refine import SmallObjectRemover, MaskFill, RemoveLowCircularity</span>
 
 <span class="sd">        # Build a refinement pipeline</span>
 <span class="sd">        pipeline = ImagePipeline()</span>
 <span class="sd">        pipeline.add(SmallObjectRemover(min_size=100))          # Remove dust/noise</span>
 <span class="sd">        pipeline.add(MaskFill())                                 # Fill holes in colonies</span>
-<span class="sd">        pipeline.add(RemoveNonCircular(cutoff=0.75))        # Remove elongated artifacts</span>
+<span class="sd">        pipeline.add(RemoveLowCircularity(cutoff=0.75))        # Remove elongated artifacts</span>
 
 <span class="sd">        # Apply to detected image</span>
 <span class="sd">        image = Image.imread(&#39;plate.jpg&#39;)</span>
@@ -1136,7 +1136,7 @@
 <span class="sd">        &gt;&gt;&gt; from phenotypic.enhance import GaussianBlur</span>
 <span class="sd">        &gt;&gt;&gt; from phenotypic.detect import OtsuDetector</span>
 <span class="sd">        &gt;&gt;&gt; from phenotypic.refine import (</span>
-<span class="sd">        ...     SmallObjectRemover, MaskFill, RemoveNonCircular</span>
+<span class="sd">        ...     SmallObjectRemover, MaskFill, RemoveLowCircularity</span>
 <span class="sd">        ... )</span>
 <span class="sd">        &gt;&gt;&gt; from phenotypic.measure import MeasureColor</span>
 <span class="sd">        &gt;&gt;&gt; # Build complete processing pipeline with enhancement, detection, and refinement</span>
@@ -1148,7 +1148,7 @@
 <span class="sd">        &gt;&gt;&gt; # Refinement (chain multiple cleanup operations)</span>
 <span class="sd">        &gt;&gt;&gt; pipeline.add(SmallObjectRemover(min_size=100))          # Remove dust</span>
 <span class="sd">        &gt;&gt;&gt; pipeline.add(MaskFill())                                 # Fill internal holes</span>
-<span class="sd">        &gt;&gt;&gt; pipeline.add(RemoveNonCircular(cutoff=0.75))        # Remove merged/irregular</span>
+<span class="sd">        &gt;&gt;&gt; pipeline.add(RemoveLowCircularity(cutoff=0.75))        # Remove merged/irregular</span>
 <span class="sd">        &gt;&gt;&gt; # Measurement</span>
 <span class="sd">        &gt;&gt;&gt; pipeline.add(MeasureColor())</span>
 <span class="sd">        &gt;&gt;&gt; # Load images and process</span>

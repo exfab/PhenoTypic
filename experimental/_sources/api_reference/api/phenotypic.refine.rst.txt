@@ -27,7 +27,7 @@
       ExtractColonyCore
       GridAlignmentRefiner
       GridOversizedObjectRemover
-      RemoveNonCircular
+      RemoveLowCircularity
       ManualRefine
       MaskClosing
       MaskDilation

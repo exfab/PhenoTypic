@@ -732,7 +732,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.ExtractColonyCore.html">phenotypic.refine.ExtractColonyCore</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.GridAlignmentRefiner.html">phenotypic.refine.GridAlignmentRefiner</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.GridOversizedObjectRemover.html">phenotypic.refine.GridOversizedObjectRemover</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.RemoveNonCircular.html">phenotypic.refine.RemoveNonCircular</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.RemoveLowCircularity.html">phenotypic.refine.RemoveLowCircularity</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.ManualRefine.html">phenotypic.refine.ManualRefine</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.MaskClosing.html">phenotypic.refine.MaskClosing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.MaskDilation.html">phenotypic.refine.MaskDilation</a></li>
@@ -22465,13 +22465,13 @@ to avoid creating false merges.</p>
 <p><strong>Chaining Multiple Refinements</strong></p>
 <p>Refinement operations are typically chained to address multiple issues in sequence:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span><span class="p">,</span> <span class="n">ImagePipeline</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.refine</span><span class="w"> </span><span class="kn">import</span> <span class="n">SmallObjectRemover</span><span class="p">,</span> <span class="n">MaskFill</span><span class="p">,</span> <span class="n">RemoveNonCircular</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.refine</span><span class="w"> </span><span class="kn">import</span> <span class="n">SmallObjectRemover</span><span class="p">,</span> <span class="n">MaskFill</span><span class="p">,</span> <span class="n">RemoveLowCircularity</span>
 
 <span class="c1"># Build a refinement pipeline</span>
 <span class="n">pipeline</span> <span class="o">=</span> <span class="n">ImagePipeline</span><span class="p">()</span>
 <span class="n">pipeline</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">SmallObjectRemover</span><span class="p">(</span><span class="n">min_size</span><span class="o">=</span><span class="mi">100</span><span class="p">))</span>          <span class="c1"># Remove dust/noise</span>
 <span class="n">pipeline</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">MaskFill</span><span class="p">())</span>                                 <span class="c1"># Fill holes in colonies</span>
-<span class="n">pipeline</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">RemoveNonCircular</span><span class="p">(</span><span class="n">cutoff</span><span class="o">=</span><span class="mf">0.75</span><span class="p">))</span>        <span class="c1"># Remove elongated artifacts</span>
+<span class="n">pipeline</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">RemoveLowCircularity</span><span class="p">(</span><span class="n">cutoff</span><span class="o">=</span><span class="mf">0.75</span><span class="p">))</span>        <span class="c1"># Remove elongated artifacts</span>
 
 <span class="c1"># Apply to detected image</span>
 <span class="n">image</span> <span class="o">=</span> <span class="n">Image</span><span class="o">.</span><span class="n">imread</span><span class="p">(</span><span class="s1">&#39;plate.jpg&#39;</span><span class="p">)</span>
@@ -22734,7 +22734,7 @@ via connected-component labeling.</p></li>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.enhance</span><span class="w"> </span><span class="kn">import</span> <span class="n">GaussianBlur</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect</span><span class="w"> </span><span class="kn">import</span> <span class="n">OtsuDetector</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.refine</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-<span class="gp">... </span>    <span class="n">SmallObjectRemover</span><span class="p">,</span> <span class="n">MaskFill</span><span class="p">,</span> <span class="n">RemoveNonCircular</span>
+<span class="gp">... </span>    <span class="n">SmallObjectRemover</span><span class="p">,</span> <span class="n">MaskFill</span><span class="p">,</span> <span class="n">RemoveLowCircularity</span>
 <span class="gp">... </span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.measure</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasureColor</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="c1"># Build complete processing pipeline with enhancement, detection, and refinement</span>
@@ -22746,7 +22746,7 @@ via connected-component labeling.</p></li>
 <span class="gp">&gt;&gt;&gt; </span><span class="c1"># Refinement (chain multiple cleanup operations)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">pipeline</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">SmallObjectRemover</span><span class="p">(</span><span class="n">min_size</span><span class="o">=</span><span class="mi">100</span><span class="p">))</span>          <span class="c1"># Remove dust</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">pipeline</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">MaskFill</span><span class="p">())</span>                                 <span class="c1"># Fill internal holes</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">pipeline</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">RemoveNonCircular</span><span class="p">(</span><span class="n">cutoff</span><span class="o">=</span><span class="mf">0.75</span><span class="p">))</span>        <span class="c1"># Remove merged/irregular</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">pipeline</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">RemoveLowCircularity</span><span class="p">(</span><span class="n">cutoff</span><span class="o">=</span><span class="mf">0.75</span><span class="p">))</span>        <span class="c1"># Remove merged/irregular</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="c1"># Measurement</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">pipeline</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">MeasureColor</span><span class="p">())</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="c1"># Load images and process</span>
