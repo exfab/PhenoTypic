@@ -87,6 +87,7 @@ __all__ = [
     "MOUNT_VIEWER",
     "MOUNT_RUN",
     "MOUNT_ANALYSIS",
+    "MOUNT_TUNE",
     "SANDBOX_API_PREFIX",
     "RUNS_BLUEPRINT_PREFIX",
     # Flask app.server.config keys
@@ -159,6 +160,7 @@ __all__ = [
     "TITLE_VIEWER",
     "TITLE_RUN",
     "TITLE_ANALYSIS",
+    "TITLE_TUNE",
     "SSH_TUNNEL_HINT",
     # Thread name prefix
     "THREAD_NAME_PREFIX",
@@ -185,6 +187,7 @@ MOUNT_BUILDER: str = "/builder/"
 MOUNT_VIEWER: str = "/results/"
 MOUNT_RUN: str = "/run/"
 MOUNT_ANALYSIS: str = "/analysis/"
+MOUNT_TUNE: str = "/tune/"
 
 #: Flask blueprint prefix for the sandbox JSON API (sidebar tree, capability
 #: probe, viewer hand-off, etc.). Mounted on the shell's Flask server in
@@ -509,6 +512,7 @@ TITLE_BUILDER: str = "PhenoTypic Pipeline Builder"
 TITLE_VIEWER: str = "PhenoTypic Results Viewer"
 TITLE_RUN: str = "PhenoTypic Run Console"
 TITLE_ANALYSIS: str = "PhenoTypic Analysis"
+TITLE_TUNE: str = "PhenoTypic Tune Co-Pilot"
 
 #: One-line SSH-tunnel hint reused by every launcher banner, argparse
 #: epilogue, and help-modal body. Constructed from :data:`DEFAULT_PORT`
