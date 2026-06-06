@@ -73,6 +73,7 @@ from phenotypic.gui.builder._linear_model import (
     LinearTarget,
     default_continuation_target,
     resolve_selected_target,
+    scope_at_path,
     scope_key,
     target_from_dict,
     target_to_dict,
@@ -81,10 +82,13 @@ from phenotypic.gui.builder._layout import (
     _sort_issues_for_badge,
     build_breadcrumb,
     build_canvas_elements,
-    build_canvas_elements_dag,
+    build_inspector,
     build_issue_badge,
 )
-from phenotypic.gui.builder._linear_layout import build_linear_side_loader
+from phenotypic.gui.builder._linear_layout import (
+    build_linear_map_section,
+    build_linear_side_loader,
+)
 from phenotypic.gui.builder._modal_browser import (
     no_root_placeholder,
     render_load_picker_body,
@@ -3066,8 +3070,8 @@ def _render_tree_body(
     )
 
 
-def _render_views(state: BuilderState) -> Tuple[Any, str, Any]:
-    """Re-render breadcrumb, canvas, and inspector for a given state.
+def _render_views(state: BuilderState) -> Tuple[Any, Any, Any]:
+    """Re-render breadcrumb, linear map, and side loader for a given state.
 
     Args:
         state: Live :class:`BuilderState` object.  Post-Phase-8 ``BuilderState``
@@ -3078,34 +3082,31 @@ def _render_views(state: BuilderState) -> Tuple[Any, str, Any]:
             migration-test suite.
 
     Returns:
-        Tuple ``(breadcrumb_children, canvas_elements_json, inspector)``.
-        ``canvas_elements_json`` is the cytoscape elements list
-        **JSON-serialised to a string** — callers wire it to
-        ``Output(ids.CANVAS_ELEMENTS_BRIDGE, "children",
-        allow_duplicate=True)``.  A ``MutationObserver`` in
-        ``viewport_ops.js`` watches that hidden element and reconciles
-        the live cytoscape.js graph (mounted once by
-        :func:`build_canvas_section`).  The ``CANVAS_CYTOSCAPE``
-        ``elements`` prop is never written by a callback —
-        dash-cytoscape's diff drops edges on a wholly-new list
-        (plotly/dash-cytoscape#106) — and the bridge is a DOM element
-        rather than a ``dcc.Store`` because dash-renderer coalesces
-        rapid store-update -> downstream-callback chains and drops
-        updates, whereas ``MutationObserver`` delivers every DOM
-        mutation.  The breadcrumb callback target is the existing nav's
-        ``children`` property, so returning a full nav here would nest
-        the breadcrumb inside itself on every update.
+        Tuple ``(breadcrumb_children, linear_map_children, side_loader)``.
+        The map callback target is the mounted
+        :data:`ids.LINEAR_MAP_CONTAINER` ``children`` property, so this
+        function returns the *children* of the section's map container
+        rather than a full section wrapper. The breadcrumb callback
+        target is the existing nav's ``children`` property, so returning
+        a full nav here would nest the breadcrumb inside itself on every
+        update.
     """
 
     registry = _registry()
     is_dag = hasattr(state, "selected_block_id")
-    try:
-        scope = current_scope(state)
-    except KeyError:
+    stale_scope = False
+    if is_dag:
+        stale_scope = scope_at_path(state.root, state.breadcrumb) is None
+    else:
+        try:
+            current_scope(state)
+        except KeyError:
+            stale_scope = True
+    if stale_scope:
         # Stale breadcrumb — fall back to the root.  Rebuild the state
         # under the right schema so subsequent attribute lookups don't
         # cross legacy/DAG boundaries.
-        if is_dag:
+        if hasattr(state, "selected_block_id"):
             from phenotypic.gui.builder._state import _DagBuilderState
 
             state = _DagBuilderState(
@@ -3117,33 +3118,37 @@ def _render_views(state: BuilderState) -> Tuple[Any, str, Any]:
                 toast_queue=[],
             )
         else:
-            state = BuilderState(
+            from phenotypic.gui.builder._state import _LegacyBuilderState
+
+            state = _LegacyBuilderState(
                 root=state.root,
                 breadcrumb=[],
                 selected_node_id=None,
             )
-        scope = state.root
-
     if is_dag:
-        canvas_elements = build_canvas_elements_dag(
-            scope,
-            selected_block_id=getattr(state, "selected_block_id", None),
-            selected_edge_id=getattr(state, "selected_edge_id", None),
+        map_section = build_linear_map_section(state, registry)
+        map_container = next(
+            (
+                child for child in map_section.children
+                if getattr(child, "id", None) == ids.LINEAR_MAP_CONTAINER
+            ),
+            None,
         )
+        map_children = getattr(map_container, "children", None)
+        inspector = build_linear_side_loader(state, registry)
     else:
-        canvas_elements = build_canvas_elements(
-            scope, getattr(state, "selected_node_id", None),
+        scope = current_scope(state)
+        map_children = json.dumps(
+            build_canvas_elements(scope, getattr(state, "selected_node_id", None))
         )
-    inspector = build_linear_side_loader(state, registry)
+        inspector = build_inspector(state, registry)
     breadcrumb = build_breadcrumb(state).children
-    # JSON-serialise here so every caller writes the string straight to
-    # ``CANVAS_ELEMENTS_BRIDGE.children`` — see this function's Returns.
-    return breadcrumb, json.dumps(canvas_elements), inspector
+    return breadcrumb, map_children, inspector
 
 
 def _state_replacement_payload(
     pipeline: Any,
-) -> Tuple[Dict[str, Any], Any, str, Any]:
+) -> Tuple[Dict[str, Any], Any, Any, Any]:
     """Build the re-render tuple for a freshly-loaded pipeline.
 
     Both the JSON-load and prefab-load callbacks blow away the current
@@ -3152,11 +3157,8 @@ def _state_replacement_payload(
     this helper centralises the conversion + view rendering.
 
     Returns:
-        Tuple ``(state_dict, breadcrumb, canvas_elements_json,
-        inspector)``.  ``canvas_elements_json`` is the JSON-serialised
-        cytoscape elements list applied via
-        ``Output(ids.CANVAS_ELEMENTS_BRIDGE, "children")`` — see
-        :func:`_render_views`.
+        Tuple ``(state_dict, breadcrumb, linear_map_children,
+        inspector)`` — see :func:`_render_views`.
     """
 
     new_state = from_pipeline_dag(pipeline)
@@ -3216,7 +3218,7 @@ def register_callbacks(app: dash.Dash) -> None:
     @app.callback(
         Output(ids.STORE_BUILDER_STATE, "data"),
         Output(ids.BREADCRUMB_CONTAINER, "children"),
-        Output(ids.CANVAS_ELEMENTS_BRIDGE, "children", allow_duplicate=True),
+        Output(ids.LINEAR_MAP_CONTAINER, "children", allow_duplicate=True),
         Output(ids.INSPECTOR_CONTAINER, "children"),
         # Toast outputs surface mutation errors to the user; success path leaves
         # them as ``no_update`` so they don't clobber other callbacks' toasts.
@@ -3244,16 +3246,9 @@ def register_callbacks(app: dash.Dash) -> None:
         Input({"type": "breadcrumb-link", "depth": ALL}, "n_clicks"),
         # delete
         Input(ids.BTN_DELETE_NODE, "n_clicks"),
-        # NB: ``Input(CANVAS_CYTOSCAPE, "elements")`` was deliberately
-        # removed. The DAG canvas is driven by the
-        # ``CANVAS_ELEMENTS_BRIDGE`` + MutationObserver path (see section
-        # 2a-0); dash-cytoscape still reports ``elements`` back up when
-        # that observer's ``cy.add`` / ``cy.remove`` mutates the graph,
-        # and re-triggering ``fan_in`` from that report made Dash
-        # supersede (drop) the in-flight mutation invocation's
-        # ``CANVAS_ELEMENTS_BRIDGE`` write — silently losing edges. The
-        # branch it fed (``_maybe_reorder_from_elements``) is a no-op for
-        # DAG state anyway.
+        # Cytoscape element feedback is no longer subscribed in the
+        # default builder; visible state redraws target the fixed linear
+        # map container directly.
         # parameter edits (one input per widget kind)
         Input({"type": "param-bool", "prefix": ALL, "name": ALL}, "value"),
         Input({"type": "param-num", "prefix": ALL, "name": ALL}, "n_blur"),
@@ -3590,31 +3585,15 @@ def register_callbacks(app: dash.Dash) -> None:
             )
 
     # ----------------------------------------------------------------------
-    # 2a-0. Canvas redraw — dash-cytoscape #106 workaround
+    # 2a-0. Linear map redraw
     # ----------------------------------------------------------------------
     #
-    # dash-cytoscape's ``elements``-prop diff retains stale element state
-    # (to animate position changes) and, on a wholly-new list, re-adds
-    # edges before their endpoint nodes — silently dropping the edges
-    # (plotly/dash-cytoscape#106, still open).  So no callback ever writes
-    # the ``CANVAS_CYTOSCAPE`` ``elements`` prop after the initial layout.
-    #
-    # Instead every mutation callback writes its freshly-rendered
-    # elements — JSON-serialised by :func:`_render_views` — straight into
-    # the hidden ``CANVAS_ELEMENTS_BRIDGE`` element's ``children``.  A
-    # ``MutationObserver`` in ``viewport_ops.js`` watches that element and
-    # reconciles the live cytoscape graph with an explicit ``cy.remove``
-    # / ``cy.add`` / data-update diff.
-    #
-    # Why the callbacks write the DOM element *directly* (no intermediate
-    # ``dcc.Store`` + a single mirror callback): dash-renderer coalesces
-    # rapid store-update -> downstream-callback chains — verified in CI, a
-    # store fed by four rapid ``fan_in`` outputs fired the downstream
-    # callback only three times, dropping the edge_create update (this
-    # held for both a clientside *and* a server downstream callback).
-    # The mutation callbacks themselves *do* fire for every trigger, and
-    # ``MutationObserver`` delivers every DOM mutation, so writing the
-    # bridge straight from each mutation callback loses nothing.
+    # The default builder surface is a fixed HTML/Dash linear port map.
+    # Each state mutation returns fresh ``LINEAR_MAP_CONTAINER.children``
+    # from :func:`_render_views`, so the visible map redraws directly with
+    # normal Dash component diffing. Cytoscape helpers remain importable
+    # for legacy tests and transition cleanup, but are no longer mounted
+    # or updated by this default path.
 
     # ----------------------------------------------------------------------
     # 2a. Validation pipeline (spec §5.6 + §5.3)
@@ -4193,7 +4172,7 @@ def register_callbacks(app: dash.Dash) -> None:
     @app.callback(
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
         Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
-        Output(ids.CANVAS_ELEMENTS_BRIDGE, "children", allow_duplicate=True),
+        Output(ids.LINEAR_MAP_CONTAINER, "children", allow_duplicate=True),
         Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
@@ -4317,7 +4296,7 @@ def register_callbacks(app: dash.Dash) -> None:
     @app.callback(
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
         Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
-        Output(ids.CANVAS_ELEMENTS_BRIDGE, "children", allow_duplicate=True),
+        Output(ids.LINEAR_MAP_CONTAINER, "children", allow_duplicate=True),
         Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
@@ -4581,7 +4560,7 @@ def register_callbacks(app: dash.Dash) -> None:
     @app.callback(
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
         Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
-        Output(ids.CANVAS_ELEMENTS_BRIDGE, "children", allow_duplicate=True),
+        Output(ids.LINEAR_MAP_CONTAINER, "children", allow_duplicate=True),
         Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
         Input(ids.BTN_CONFIRM_DELETE, "n_clicks"),
         State(ids.STORE_BUILDER_STATE, "data"),
@@ -4658,7 +4637,7 @@ def register_callbacks(app: dash.Dash) -> None:
     @app.callback(
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
         Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
-        Output(ids.CANVAS_ELEMENTS_BRIDGE, "children", allow_duplicate=True),
+        Output(ids.LINEAR_MAP_CONTAINER, "children", allow_duplicate=True),
         Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
@@ -4737,7 +4716,7 @@ def register_callbacks(app: dash.Dash) -> None:
     @app.callback(
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
         Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
-        Output(ids.CANVAS_ELEMENTS_BRIDGE, "children", allow_duplicate=True),
+        Output(ids.LINEAR_MAP_CONTAINER, "children", allow_duplicate=True),
         Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
@@ -4802,7 +4781,7 @@ def register_callbacks(app: dash.Dash) -> None:
     @app.callback(
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
         Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
-        Output(ids.CANVAS_ELEMENTS_BRIDGE, "children", allow_duplicate=True),
+        Output(ids.LINEAR_MAP_CONTAINER, "children", allow_duplicate=True),
         Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
@@ -4869,7 +4848,7 @@ def register_callbacks(app: dash.Dash) -> None:
     @app.callback(
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
         Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
-        Output(ids.CANVAS_ELEMENTS_BRIDGE, "children", allow_duplicate=True),
+        Output(ids.LINEAR_MAP_CONTAINER, "children", allow_duplicate=True),
         Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
@@ -5486,7 +5465,7 @@ def register_callbacks(app: dash.Dash) -> None:
         Output(ids.STORE_BROWSE_DIR_JSON, "data", allow_duplicate=True),
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
         Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
-        Output(ids.CANVAS_ELEMENTS_BRIDGE, "children", allow_duplicate=True),
+        Output(ids.LINEAR_MAP_CONTAINER, "children", allow_duplicate=True),
         Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
         Output(ids.MODAL_LOAD_PICKER, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
@@ -5557,7 +5536,7 @@ def register_callbacks(app: dash.Dash) -> None:
     @app.callback(
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
         Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
-        Output(ids.CANVAS_ELEMENTS_BRIDGE, "children", allow_duplicate=True),
+        Output(ids.LINEAR_MAP_CONTAINER, "children", allow_duplicate=True),
         Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
         Output(ids.MODAL_LOAD_PICKER, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
@@ -5849,15 +5828,11 @@ def register_callbacks(app: dash.Dash) -> None:
     )
 
     # ----------------------------------------------------------------------
-    # 8b. Canvas element application
+    # 8b. Retired canvas element application
     # ----------------------------------------------------------------------
-    # Canvas elements are applied by the ``MutationObserver`` in
-    # ``viewport_ops.js``: every mutation callback writes the
-    # JSON-serialised elements list (from :func:`_render_views`) straight
-    # into the ``CANVAS_ELEMENTS_BRIDGE`` hidden element's ``children``
-    # (see section 2a-0), and the observer reconciles the cytoscape
-    # graph.  The ``CANVAS_CYTOSCAPE`` ``elements`` prop is never written
-    # post-init, so dash-cytoscape's buggy diff never runs.
+    # The legacy Cytoscape bridge remains mounted for transition safety,
+    # but default builder mutation callbacks now redraw the HTML linear
+    # map directly via ``LINEAR_MAP_CONTAINER.children``.
 
     # ----------------------------------------------------------------------
     # 9. Point picker — clientside lifecycle callbacks

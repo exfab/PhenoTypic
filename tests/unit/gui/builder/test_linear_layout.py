@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import json
 from typing import Any, Optional
 
 from phenotypic.gui._operation_registry import OperationInfo, ParamInfo
@@ -100,6 +101,12 @@ def _find_by_type(component: Any, type_key: str) -> list[Any]:
     ]
 
 
+def _component_id_key(component_id: Any) -> str:
+    if isinstance(component_id, dict):
+        return json.dumps(component_id, sort_keys=True)
+    return str(component_id)
+
+
 def _state_with_consumer() -> BuilderState:
     scope = BuilderScope()
     input_block = scope.blocks[0]
@@ -186,6 +193,7 @@ def test_linear_map_renders_doc_help_buttons():
     ]
     assert help_buttons
     assert any("documentation" in str(getattr(button, "title", "")).lower() for button in help_buttons)
+    assert _find_by_class(tree, "linear-help-popover")
 
 
 def test_linear_map_unsupported_state_renders_panel():
@@ -234,3 +242,27 @@ def test_app_layout_mounts_linear_map_instead_of_cytoscape():
 
     assert _find_by_id(tree, ids.LINEAR_MAP_CONTAINER)
     assert not _find_by_id(tree, ids.CANVAS_CYTOSCAPE)
+
+
+def test_app_layout_has_no_duplicate_ids_with_selected_block():
+    from phenotypic.gui.builder._layout import build_app_layout
+
+    tree = build_app_layout(_state_with_consumer(), _registry(), image_root=None)
+
+    seen: set[str] = set()
+    duplicates: list[Any] = []
+    for component in _walk(tree):
+        component_id = getattr(component, "id", None)
+        if component_id is None:
+            continue
+        key = _component_id_key(component_id)
+        if key in seen:
+            duplicates.append(component_id)
+        seen.add(key)
+    assert duplicates == []
+
+
+def test_linear_ids_are_exported():
+    assert "LINEAR_MAP_CONTAINER" in ids.__all__
+    assert "linear_port_id" in ids.__all__
+    assert "linear_param_action_id" in ids.__all__

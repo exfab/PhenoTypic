@@ -306,11 +306,13 @@ def linear_port_id(
     block_id: Optional[str] = None,
     param: Optional[str] = None,
     slot: Optional[int] = None,
+    surface: str = "map",
 ) -> Dict[str, Any]:
     """Build the pattern id for a clickable linear port button."""
 
     return {
         "type": LINEAR_PORT,
+        "surface": surface,
         "kind": kind,
         "scope_path": _linear_scope_id_value(scope_path),
         "block_id": _linear_optional_id_value(block_id),
@@ -326,11 +328,13 @@ def linear_port_menu_id(
     block_id: Optional[str] = None,
     param: Optional[str] = None,
     slot: Optional[int] = None,
+    surface: str = "map",
 ) -> Dict[str, Any]:
     """Build the pattern id for a linear port popup menu."""
 
     return {
         "type": LINEAR_PORT_MENU,
+        "surface": surface,
         "kind": kind,
         "scope_path": _linear_scope_id_value(scope_path),
         "block_id": _linear_optional_id_value(block_id),
@@ -344,11 +348,13 @@ def linear_node_action_id(
     action: str,
     scope_path: Optional[list[str]] = None,
     block_id: Optional[str] = None,
+    surface: str = "map",
 ) -> Dict[str, Any]:
     """Build the pattern id for a linear node action button."""
 
     return {
         "type": LINEAR_NODE_ACTION,
+        "surface": surface,
         "action": action,
         "scope_path": _linear_scope_id_value(scope_path),
         "block_id": _linear_optional_id_value(block_id),
@@ -363,11 +369,13 @@ def linear_param_action_id(
     param: Optional[str] = None,
     slot: Optional[int] = None,
     source_block_id: Optional[str] = None,
+    surface: str = "map",
 ) -> Dict[str, Any]:
     """Build the pattern id for a linear parameter/value action button."""
 
     return {
         "type": LINEAR_PARAM_ACTION,
+        "surface": surface,
         "action": action,
         "scope_path": _linear_scope_id_value(scope_path),
         "block_id": _linear_optional_id_value(block_id),
@@ -1098,4 +1106,14 @@ __all__ = [
     "inspector_add_empty_slot_id",
     "inspector_list_move_id",
     "inspector_list_reorder_store_id",
+    # Linear port-map additions
+    "LINEAR_MAP_CONTAINER",
+    "LINEAR_PORT",
+    "LINEAR_PORT_MENU",
+    "LINEAR_NODE_ACTION",
+    "LINEAR_PARAM_ACTION",
+    "linear_port_id",
+    "linear_port_menu_id",
+    "linear_node_action_id",
+    "linear_param_action_id",
 ]

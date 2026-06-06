@@ -24,6 +24,7 @@
 :root {
     /* Semantic accents -- interactive ops (point-picker mixin) */
     --color-interactive: var(--oi-purple);
+    --builder-selected-target: var(--oi-green);
 }
 
 /* ===========================================================================
@@ -1076,10 +1077,10 @@ code, pre, .text-monospace, .font-monospace {
 }
 
 .linear-port-button.is-selected-target {
-    border-color: #0f7f5f;
-    background: #0f7f5f;
+    border-color: var(--builder-selected-target);
+    background: var(--builder-selected-target);
     color: var(--color-white);
-    box-shadow: 0 0 0 4px rgba(15, 127, 95, 0.16);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--builder-selected-target) 16%, transparent);
 }
 
 .linear-connector,
@@ -1139,6 +1140,17 @@ code, pre, .text-monospace, .font-monospace {
     padding: 0;
     font-family: var(--font-mono);
     font-weight: 700;
+}
+
+.linear-help-popover-body {
+    max-width: 360px;
+    max-height: 280px;
+    overflow: auto;
+    margin: 0;
+    white-space: pre-wrap;
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    color: var(--color-body);
 }
 
 .linear-unsupported-panel {

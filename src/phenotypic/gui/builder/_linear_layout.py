@@ -68,6 +68,7 @@ def _port_button(
     className: str,
     children: Any = "",
     title: Optional[str] = None,
+    surface: str = "map",
 ) -> html.Button:
     selected = _target_matches(target, selected_target)
     return html.Button(
@@ -78,6 +79,7 @@ def _port_button(
             block_id=target.block_id,
             param=target.param,
             slot=target.slot,
+            surface=surface,
         ),
         type="button",
         n_clicks=0,
@@ -91,6 +93,23 @@ def _port_button(
     )
 
 
+def _help_popover(target_id: dict[str, Any], content: str) -> dbc.Popover:
+    """Render the docstring popover attached to a help button."""
+
+    return dbc.Popover(
+        dbc.PopoverBody(
+            html.Pre(
+                content,
+                className="linear-help-popover-body",
+            )
+        ),
+        target=target_id,
+        trigger="click",
+        placement="auto",
+        className="linear-help-popover",
+    )
+
+
 def _help_button(
     *,
     action_scope: str,
@@ -99,7 +118,8 @@ def _help_button(
     title: str,
     param: Optional[str] = None,
     source_block_id: Optional[str] = None,
-) -> html.Button:
+    surface: str = "map",
+) -> List[Any]:
     """Render a compact docstring help button."""
 
     if action_scope == "node":
@@ -107,6 +127,7 @@ def _help_button(
             action="help",
             scope_path=list(scope_path),
             block_id=block_id,
+            surface=surface,
         )
     else:
         button_id = ids.linear_param_action_id(
@@ -115,16 +136,20 @@ def _help_button(
             block_id=block_id,
             param=param,
             source_block_id=source_block_id,
+            surface=surface,
         )
-    return html.Button(
-        "?",
-        id=button_id,
-        type="button",
-        n_clicks=0,
-        title=title,
-        className="linear-help-button",
-        **{"aria-label": "Show documentation"},  # type: ignore[arg-type]
-    )
+    return [
+        html.Button(
+            "?",
+            id=button_id,
+            type="button",
+            n_clicks=0,
+            title="Show documentation",
+            className="linear-help-button",
+            **{"aria-label": "Show documentation"},  # type: ignore[arg-type]
+        ),
+        _help_popover(button_id, title),
+    ]
 
 
 def _hidden_inspector_widgets() -> List[Any]:
@@ -225,6 +250,7 @@ def _port_menu(target: LinearTarget) -> html.Div:
                     action="preview_here",
                     scope_path=target.scope_path,
                     block_id=target.block_id,
+                    surface="map",
                 ),
                 type="button",
                 n_clicks=0,
@@ -234,11 +260,12 @@ def _port_menu(target: LinearTarget) -> html.Div:
     actions.append(
         html.Button(
             "Close",
-            id=ids.linear_node_action_id(
-                action="target_menu_close",
-                scope_path=target.scope_path,
-                block_id=target.block_id,
-            ),
+                id=ids.linear_node_action_id(
+                    action="target_menu_close",
+                    scope_path=target.scope_path,
+                    block_id=target.block_id,
+                    surface="map",
+                ),
             type="button",
             n_clicks=0,
             className="linear-port-menu-action",
@@ -252,6 +279,7 @@ def _port_menu(target: LinearTarget) -> html.Div:
             block_id=target.block_id,
             param=target.param,
             slot=target.slot,
+            surface="map",
         ),
         className="linear-port-menu",
     )
@@ -341,7 +369,7 @@ def _block_card(
                         title=f"Fill {param_name}",
                     ),
                     html.Span(param_name, className="linear-node-param-name"),
-                    _help_button(
+                    *_help_button(
                         action_scope="param",
                         scope_path=scope_path,
                         block_id=block.block_id,
@@ -379,7 +407,7 @@ def _block_card(
                                 n_clicks=0,
                                 className="linear-node-title-button",
                             ),
-                            _help_button(
+                            *_help_button(
                                 action_scope="node",
                                 scope_path=scope_path,
                                 block_id=block.block_id,
@@ -512,28 +540,30 @@ def _value_row(
     actions: List[Any] = [
         html.Button(
             "Replace",
-            id=ids.linear_param_action_id(
-                action="replace",
-                scope_path=scope_path,
-                block_id=block.block_id,
-                param=param_name,
-                slot=slot,
-                source_block_id=source_block_id,
-            ),
+                id=ids.linear_param_action_id(
+                    action="replace",
+                    scope_path=scope_path,
+                    block_id=block.block_id,
+                    param=param_name,
+                    slot=slot,
+                    source_block_id=source_block_id,
+                    surface="side",
+                ),
             type="button",
             n_clicks=0,
             className="linear-side-action",
         ),
         html.Button(
             "Clear",
-            id=ids.linear_param_action_id(
-                action="clear",
-                scope_path=scope_path,
-                block_id=block.block_id,
-                param=param_name,
-                slot=slot,
-                source_block_id=source_block_id,
-            ),
+                id=ids.linear_param_action_id(
+                    action="clear",
+                    scope_path=scope_path,
+                    block_id=block.block_id,
+                    param=param_name,
+                    slot=slot,
+                    source_block_id=source_block_id,
+                    surface="side",
+                ),
             type="button",
             n_clicks=0,
             className="linear-side-action",
@@ -550,13 +580,14 @@ def _value_row(
                     param=param_name,
                     slot=slot,
                     source_block_id=source_block_id,
+                    surface="side",
                 ),
                 type="button",
                 n_clicks=0,
                 className="linear-side-action",
             )
         )
-    actions.append(
+    actions.extend(
         _help_button(
             action_scope="param",
             scope_path=scope_path,
@@ -564,6 +595,7 @@ def _value_row(
             param=param_name,
             source_block_id=source_block_id,
             title=_op_doc(registry, source.class_name) if source is not None else "",
+            surface="side",
         )
     )
     return html.Div(
@@ -621,6 +653,7 @@ def _side_param_row(
                 selected_target,
                 className="linear-port-param linear-side-param-port",
                 title=f"Fill {param_name}",
+                surface="side",
             ),
             html.Div(
                 [
@@ -631,12 +664,13 @@ def _side_param_row(
                                 "required" if not param_info.has_default else "optional",
                                 className="linear-side-param-meta",
                             ),
-                            _help_button(
+                            *_help_button(
                                 action_scope="param",
                                 scope_path=scope_path,
                                 block_id=block.block_id,
                                 param=param_name,
                                 title=_param_doc(param_info),
+                                surface="side",
                             ),
                         ],
                         className="linear-side-param-heading",
@@ -686,11 +720,12 @@ def build_linear_side_loader(
         [
             html.Div(_stage_badge_label(block), className="linear-side-badge"),
             html.H5(title, className="linear-side-title"),
-            _help_button(
+            *_help_button(
                 action_scope="node",
                 scope_path=state.breadcrumb,
                 block_id=block.block_id,
                 title=_op_doc(registry, block.class_name),
+                surface="side",
             ),
         ],
         className="linear-side-header",
@@ -726,6 +761,7 @@ def build_linear_side_loader(
                     action="drill",
                     scope_path=state.breadcrumb,
                     block_id=block.block_id,
+                    surface="side",
                 ),
                 color="primary",
                 outline=True,
