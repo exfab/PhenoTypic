@@ -380,7 +380,9 @@ class ColorCorrectionReport(FigureProvider):
         # one patch label per cell so hover shows the patch name (not the pixel
         # row index that ``%{y}`` would give); shape (max(n,1), 3) matches z.
         hover_labels = row_labels if n > 0 else [""]
-        customdata = np.array([[lbl] * 3 for lbl in hover_labels], dtype=object)
+        customdata = np.array(
+            [[lbl] * 3 for lbl in hover_labels], dtype=object
+        )
         fig = go.Figure(
             go.Image(
                 z=np.round(swatches * 255).astype(np.uint8),
@@ -526,7 +528,9 @@ class ColorCorrectionReport(FigureProvider):
                 col=1,
             )
             fig.add_trace(
-                go.Image(z=np.round(np.clip(overlay, 0, 1) * 255).astype(np.uint8)),
+                go.Image(
+                    z=np.round(np.clip(overlay, 0, 1) * 255).astype(np.uint8)
+                ),
                 row=roi_idx + 1,
                 col=2,
             )

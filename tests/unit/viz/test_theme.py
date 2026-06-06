@@ -1,4 +1,5 @@
 """Unit tests for the centralized PhenoTypic Plotly theme."""
+
 from __future__ import annotations
 
 import importlib

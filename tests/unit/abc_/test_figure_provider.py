@@ -32,7 +32,9 @@ class TestControl:
 
     def test_float_default_within_bounds(self):
         with pytest.raises(ValueError, match="outside bounds"):
-            Control(label="sigma", kind="float", default=9.0, bounds=(0.0, 5.0))
+            Control(
+                label="sigma", kind="float", default=9.0, bounds=(0.0, 5.0)
+            )
         # valid
         Control(label="sigma", kind="float", default=1.0, bounds=(0.0, 5.0))
 
@@ -61,7 +63,9 @@ class TestControl:
 
 
 SIGMA = Control(label="Sigma", kind="float", default=1.0, bounds=(0.0, 5.0))
-METHOD = Control(label="Method", kind="select", default="a", options=("a", "b"))
+METHOD = Control(
+    label="Method", kind="select", default="a", options=("a", "b")
+)
 
 
 class TestFigureDecorator:
@@ -75,7 +79,9 @@ class TestFigureDecorator:
 
     def test_wants_subject_detection_operation_shape(self):
         @figure(title="overlay", controls={"base_layer": METHOD})
-        def inspect(self, image=None, *, base_layer="a", for_save=False) -> go.Figure:
+        def inspect(
+            self, image=None, *, base_layer="a", for_save=False
+        ) -> go.Figure:
             return go.Figure()
 
         spec = inspect.__figure_spec__
@@ -186,14 +192,18 @@ class TestFigureProvider:
 
         class Prov(FigureProvider):
             @figure(title="Main", primary=True)
-            def fig_main(self, image=None) -> go.Figure:  # image == subject param
+            def fig_main(
+                self, image=None
+            ) -> go.Figure:  # image == subject param
                 return go.Figure()
 
         prov = Prov()
         with pytest.raises(ValueError, match="unknown override"):
             prov.inspect(not_a_control=1)
         with pytest.raises(ValueError, match="unknown override"):
-            prov.inspect(image="passing the subject by keyword is not an override")
+            prov.inspect(
+                image="passing the subject by keyword is not an override"
+            )
 
     def test_dash_control_free_returns_composed_figure(self):
         fig = _MultiHelper().dash()
@@ -228,7 +238,9 @@ class TestFigureProvider:
 
 class TestControlIdentity:
     def test_shared_instance_is_one_control(self):
-        shared = Control(label="S", kind="float", default=1.0, bounds=(0.0, 2.0))
+        shared = Control(
+            label="S", kind="float", default=1.0, bounds=(0.0, 2.0)
+        )
 
         class P(FigureProvider):
             @figure(title="a", controls={"sigma": shared})

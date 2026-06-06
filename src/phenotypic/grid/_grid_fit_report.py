@@ -137,9 +137,12 @@ class GridFitReport(FigureProvider):
 
         specs = self.iter_figures()
         rendered = [self._render_spec(spec) for spec in specs]
-        is_table = [bool(fig.data) and fig.data[0].type == "table" for fig in rendered]
+        is_table = [
+            bool(fig.data) and fig.data[0].type == "table" for fig in rendered
+        ]
         row_specs = [
-            [{"type": "table"}] if tbl else [{"type": "xy"}] for tbl in is_table
+            [{"type": "table"}] if tbl else [{"type": "xy"}]
+            for tbl in is_table
         ]
         composed = make_subplots(
             rows=len(specs),
@@ -199,7 +202,9 @@ class GridFitReport(FigureProvider):
     # -- empty-state helper -------------------------------------------------
 
     @staticmethod
-    def _empty_figure(title: str, message: str = "No objects detected") -> go.Figure:
+    def _empty_figure(
+        title: str, message: str = "No objects detected"
+    ) -> go.Figure:
         """Return a titled figure with a centered placeholder annotation."""
         fig = go.Figure()
         fig.add_annotation(
@@ -365,9 +370,13 @@ class GridFitReport(FigureProvider):
             fig.update_layout(title="Centroids with Grid Overlay")
 
         for edge in row_edges:
-            fig.add_hline(y=float(edge), line=dict(color=_VERMILION, width=0.8))
+            fig.add_hline(
+                y=float(edge), line=dict(color=_VERMILION, width=0.8)
+            )
         for edge in col_edges:
-            fig.add_vline(x=float(edge), line=dict(color=_VERMILION, width=0.8))
+            fig.add_vline(
+                x=float(edge), line=dict(color=_VERMILION, width=0.8)
+            )
 
         fig.update_layout(
             xaxis_title="Column (px)",
@@ -487,9 +496,7 @@ class GridFitReport(FigureProvider):
             label = stats["label"]
             n_expected = stats["n_expected"]
             fit_counts = stats["fit_counts"]
-            colors = [
-                _VERMILION if c == 0 else _NAVY for c in fit_counts
-            ]
+            colors = [_VERMILION if c == 0 else _NAVY for c in fit_counts]
             fig.add_trace(
                 go.Bar(
                     x=list(range(n_expected)),
@@ -550,7 +557,9 @@ class GridFitReport(FigureProvider):
 
         # Oversized objects.
         if not info_table.empty:
-            n_oversized = int((self._bbox_areas() > self._expected_cell_area()).sum())
+            n_oversized = int(
+                (self._bbox_areas() > self._expected_cell_area()).sum()
+            )
         else:
             n_oversized = 0
 

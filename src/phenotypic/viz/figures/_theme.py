@@ -24,6 +24,7 @@ This module imports only ``plotly`` and the stdlib. It is deliberately
 free of ``dash`` / project imports so the theme stays cheap to import
 from any layer (CLI, GUI, notebooks, tests).
 """
+
 from __future__ import annotations
 
 import plotly.graph_objects as go

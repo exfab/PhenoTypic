@@ -91,7 +91,9 @@ class Control:
     def __post_init__(self) -> None:
         if self.kind == "float":
             if self.bounds is None:
-                raise ValueError(f"Control({self.label!r}): float requires bounds")
+                raise ValueError(
+                    f"Control({self.label!r}): float requires bounds"
+                )
             low, high = self.bounds
             if not (low <= self.default <= high):
                 raise ValueError(
@@ -119,7 +121,9 @@ class Control:
                     f"Control({self.label!r}): text default must be a str"
                 )
         else:  # pragma: no cover - guarded by the Literal type, defensive only
-            raise ValueError(f"Control({self.label!r}): unknown kind {self.kind!r}")
+            raise ValueError(
+                f"Control({self.label!r}): unknown kind {self.kind!r}"
+            )
 
 
 @dataclass(frozen=True)
@@ -194,7 +198,9 @@ def figure(
     """
     controls = dict(controls) if controls else {}
 
-    def decorator(fn: Callable[..., "go.Figure"]) -> Callable[..., "go.Figure"]:
+    def decorator(
+        fn: Callable[..., "go.Figure"],
+    ) -> Callable[..., "go.Figure"]:
         sig = inspect.signature(fn)
         params = [p for name, p in sig.parameters.items() if name != "self"]
         param_names = {p.name for p in params}
@@ -331,7 +337,9 @@ class FigureProvider:
                     continue
                 if name not in specs:  # first hit = most-derived definition
                     specs[name] = spec
-                first_order[name] = min(first_order.get(name, spec.order), spec.order)
+                first_order[name] = min(
+                    first_order.get(name, spec.order), spec.order
+                )
         return sorted(specs.values(), key=lambda s: first_order[s.name])
 
     def _primary_spec(self) -> FigureSpec:
@@ -390,7 +398,9 @@ class FigureProvider:
                 f"inspect(): unknown override(s) {sorted(unknown)} for figure "
                 f"{spec.name!r}; valid controls: {sorted(spec.controls)}"
             )
-        kwargs: dict[str, Any] = {kw: c.default for kw, c in spec.controls.items()}
+        kwargs: dict[str, Any] = {
+            kw: c.default for kw, c in spec.controls.items()
+        }
         kwargs.update(overrides)
         if "for_save" in valid_params:
             kwargs["for_save"] = for_save
@@ -417,7 +427,9 @@ class FigureProvider:
                 f"{type(self).__name__} declares no @figure methods"
             )
         if any(s.controls for s in specs):
-            from phenotypic.viz.notebook._adapter import build_notebook_dashboard
+            from phenotypic.viz.notebook._adapter import (
+                build_notebook_dashboard,
+            )
 
             return build_notebook_dashboard(self, subject)
         return self._compose_control_free_figure(subject)
@@ -450,7 +462,9 @@ class FigureProvider:
             # single figure → return it directly so its layout/faceting survives
             return self._render_spec(specs[0], subject)
         titles = [s.title for s in specs]
-        composed = make_subplots(rows=len(specs), cols=1, subplot_titles=titles)
+        composed = make_subplots(
+            rows=len(specs), cols=1, subplot_titles=titles
+        )
         for row, spec in enumerate(specs, start=1):
             sub = self._render_spec(spec, subject)
             for trace in sub.data:

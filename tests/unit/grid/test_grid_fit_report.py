@@ -31,12 +31,18 @@ def report(detected_image):
     finder = AutoGridFinder(nrows=8, ncols=12)
     result = finder._run_timed_pipeline(detected_image, show_progress=False)
     row_stats = finder._compute_axis_dashboard_stats(
-        result["info_table"], axis=0, n_expected=finder.nrows,
-        image_dim=detected_image.shape[0], edges=result["row_edges"],
+        result["info_table"],
+        axis=0,
+        n_expected=finder.nrows,
+        image_dim=detected_image.shape[0],
+        edges=result["row_edges"],
     )
     col_stats = finder._compute_axis_dashboard_stats(
-        result["info_table"], axis=1, n_expected=finder.ncols,
-        image_dim=detected_image.shape[1], edges=result["col_edges"],
+        result["info_table"],
+        axis=1,
+        n_expected=finder.ncols,
+        image_dim=detected_image.shape[1],
+        edges=result["col_edges"],
     )
     return GridFitReport(
         result,
@@ -55,7 +61,6 @@ def report(detected_image):
 
 
 class TestDashboardReturnsGoFigure:
-
     def test_dashboard_returns_go_figure(self, detected_image):
         finder = AutoGridFinder(nrows=8, ncols=12)
         fig = finder.dashboard(detected_image, show_progress=False)
@@ -88,7 +93,6 @@ class TestDashboardReturnsGoFigure:
 
 
 class TestGridFitReportFigures:
-
     EXPECTED_FIGURES = [
         "fig_timing_waterfall",
         "fig_object_size_dist",
@@ -152,7 +156,9 @@ class TestGridFitReportFigures:
         """add_vline annotation labels survive composition (F5)."""
         fig = report.dash()
         labels = [a.text for a in fig.layout.annotations if a.text]
-        assert any("fit (" in t for t in labels), "pitch-fit label lost in compose"
+        assert any("fit (" in t for t in labels), (
+            "pitch-fit label lost in compose"
+        )
 
     def test_successive_diffs_has_2x_3x_pitch_markers(self, report):
         """fig_successive_diffs draws 2x and 3x image-pitch reference lines (F6)."""
@@ -168,7 +174,6 @@ class TestGridFitReportFigures:
 
 
 class TestGridFitReportEmptyState:
-
     @pytest.fixture
     def empty_report(self):
         """A report over an image with zero detected objects."""
@@ -177,12 +182,18 @@ class TestGridFitReportEmptyState:
         finder = AutoGridFinder(nrows=8, ncols=12)
         result = finder._run_timed_pipeline(image, show_progress=False)
         row_stats = finder._compute_axis_dashboard_stats(
-            result["info_table"], axis=0, n_expected=finder.nrows,
-            image_dim=image.shape[0], edges=result["row_edges"],
+            result["info_table"],
+            axis=0,
+            n_expected=finder.nrows,
+            image_dim=image.shape[0],
+            edges=result["row_edges"],
         )
         col_stats = finder._compute_axis_dashboard_stats(
-            result["info_table"], axis=1, n_expected=finder.ncols,
-            image_dim=image.shape[1], edges=result["col_edges"],
+            result["info_table"],
+            axis=1,
+            n_expected=finder.ncols,
+            image_dim=image.shape[1],
+            edges=result["col_edges"],
         )
         return GridFitReport(
             result,
