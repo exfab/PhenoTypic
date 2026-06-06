@@ -600,7 +600,7 @@ def _register_curate_callbacks(app, sandbox) -> None:  # type: ignore[no-untyped
     def _toggle_curate_prompt(image_source):  # type: ignore[no-untyped-def]
         return {"display": "none"} if image_source else {}
 
-    _register_curate_overlay_callbacks(app)
+    _register_curate_overlay_callbacks(app, sandbox)
 
 
 # ---------------------------------------------------------------------------
@@ -647,7 +647,7 @@ def _shortlist_card_class(trial: "Optional[int]", pinned: dict) -> str:
     return " ".join(classes)
 
 
-def _register_curate_overlay_callbacks(app) -> None:  # type: ignore[no-untyped-def]
+def _register_curate_overlay_callbacks(app, sandbox=None) -> None:  # type: ignore[no-untyped-def]
     """Register the pin + render/poll + mode + winner Curate callbacks.
 
     Split out from the Image Source picker so the picker can register even when
@@ -655,6 +655,11 @@ def _register_curate_overlay_callbacks(app) -> None:  # type: ignore[no-untyped-
     overlays **on demand** and stay non-blocking: the render callback submits to
     the :class:`OverlayCache` singleton and returns a spinner immediately; the
     ``dcc.Interval`` poll swaps in the real figure once the future resolves.
+
+    Args:
+        app: The :class:`dash.Dash` instance.
+        sandbox: The frozen-at-launch sandbox, threaded into the overlay loader
+            so the final plate-load path is re-confined to the sandbox.
     """
     import uuid
 
@@ -749,6 +754,7 @@ def _register_curate_overlay_callbacks(app) -> None:  # type: ignore[no-untyped-
             session_id=session_id,
             image_source=image_source,
             run_root_data=run_root_data,
+            sandbox=sandbox,
         )
 
     # --- Overlay-readiness poll: swap spinners for resolved figures -------
@@ -882,12 +888,14 @@ def _submit_curate_overlays(  # type: ignore[no-untyped-def]
     session_id,
     image_source,
     run_root_data,
+    sandbox=None,
 ):
     """Submit the needed overlays (non-blocking) and return spinner figures.
 
     Pure orchestration over the overlay module ``ov`` so it is testable without
     Dash: resolves the run + base pipeline, and for each needed slot submits a
     render future (or returns a guidance figure when prerequisites are missing).
+    ``sandbox`` is threaded into the loader so the plate-load path is re-confined.
     """
     from pathlib import Path
 
@@ -926,14 +934,16 @@ def _submit_curate_overlays(  # type: ignore[no-untyped-def]
     trials = _trials_by_number(root)
 
     fig_a = _submit_one_candidate(
-        ov, cache, base, trials, session, a_trial, plate, image_source, spinner
+        ov, cache, base, trials, session, a_trial, plate, image_source, spinner,
+        sandbox,
     )
     fig_b = _submit_one_candidate(
-        ov, cache, base, trials, session, b_trial, plate, image_source, spinner
+        ov, cache, base, trials, session, b_trial, plate, image_source, spinner,
+        sandbox,
     )
     fig_diff = _submit_difference(
         ov, cache, base, trials, session, a_trial, b_trial, plate, image_source,
-        spinner,
+        spinner, sandbox,
     )
     return fig_a, fig_b, fig_diff
 
@@ -954,7 +964,8 @@ def _trials_by_number(root: "TuneRunRoot") -> "dict[int, object]":
 
 
 def _submit_one_candidate(  # type: ignore[no-untyped-def]
-    ov, cache, base, trials, session, trial_number, plate, image_source, spinner
+    ov, cache, base, trials, session, trial_number, plate, image_source, spinner,
+    sandbox=None,
 ):
     """Submit one candidate overlay; return its spinner / guidance figure."""
     from phenotypic.gui.tune import _curate as curate
@@ -969,7 +980,7 @@ def _submit_one_candidate(  # type: ignore[no-untyped-def]
     def _render():  # type: ignore[no-untyped-def]
         from phenotypic.gui.tune._overlays import render_candidate_overlay
 
-        grid = ov.load_plate_grid(image_source, plate)
+        grid = ov.load_plate_grid(image_source, plate, sandbox=sandbox)
         return render_candidate_overlay(base, trial.params, grid)
 
     ov.request_overlay(cache, key, _render)
@@ -977,7 +988,8 @@ def _submit_one_candidate(  # type: ignore[no-untyped-def]
 
 
 def _submit_difference(  # type: ignore[no-untyped-def]
-    ov, cache, base, trials, session, a_trial, b_trial, plate, image_source, spinner
+    ov, cache, base, trials, session, a_trial, b_trial, plate, image_source, spinner,
+    sandbox=None,
 ):
     """Submit the A-vs-B difference overlay; return its spinner / guidance."""
     from phenotypic.gui.tune import _curate as curate
@@ -991,14 +1003,16 @@ def _submit_difference(  # type: ignore[no-untyped-def]
     key = (session, int(a_trial), f"{plate}|{b_trial}", "difference")
 
     def _render():  # type: ignore[no-untyped-def]
-        from phenotypic.gui.tune._overlays import render_difference
+        from phenotypic.gui.tune._overlays import OVERLAY_MAX_DIM, render_difference
         from phenotypic.tune._evaluation._builder import build_pipeline
 
-        grid = ov.load_plate_grid(image_source, plate)
+        grid = ov.load_plate_grid(image_source, plate, sandbox=sandbox)
         seg_a = build_pipeline(base, trial_a.params).apply(grid.copy())
         seg_b = build_pipeline(base, trial_b.params).apply(grid.copy())
+        # Clamp to the same max_dim as the candidate overlay so the full-res
+        # plate is never serialized to the browser or cached at full res.
         return render_difference(
-            grid.rgb[:], seg_a.objmap[:], seg_b.objmap[:]
+            grid.rgb[:], seg_a.objmap[:], seg_b.objmap[:], max_dim=OVERLAY_MAX_DIM
         )
 
     ov.request_overlay(cache, key, _render)

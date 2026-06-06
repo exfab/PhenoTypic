@@ -91,7 +91,10 @@ def write_winner(
     # front by pinning). A future pass could persist the chosen Pareto point's
     # objectives alongside the pipeline for traceability.
     pipeline = build_pipeline(base, winner.params)
-    payload = str(pipeline.to_json())
+    # to_json() returns the JSON string when no filepath is given (it returns
+    # None only in the write-to-file overload); assert for the type-checker.
+    payload = pipeline.to_json()
+    assert payload is not None
 
     target = Path(root.best_pipeline_path)
     target.parent.mkdir(parents=True, exist_ok=True)

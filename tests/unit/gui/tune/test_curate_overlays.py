@@ -83,6 +83,32 @@ def test_take_overlay_swallows_render_failure(tmp_path: Path) -> None:
     ov.clear_pending_for_session("sess")
 
 
+def test_pending_dict_stays_bounded(tmp_path: Path) -> None:
+    # The module-level _PENDING dict bridges only in-flight renders (the array
+    # is already memoized in OverlayCache). A user changing plate / re-pinning /
+    # toggling A/B leaves stale keys whose Futures hold rendered arrays — over a
+    # session that is an unbounded leak. request_overlay must cap _PENDING and
+    # evict LRU so it can never grow without bound.
+    from phenotypic.gui.tune import _curate_overlays as ov
+    from phenotypic.gui.tune._curate_overlays import _PENDING, _PENDING_CAP
+    from phenotypic.gui.tune._overlays import get_overlay_cache
+
+    cache = get_overlay_cache(tmp_path / "bounded_run")
+
+    def _trivial() -> np.ndarray:
+        return np.zeros((1, 1, 3), dtype=np.uint8)
+
+    n = _PENDING_CAP * 3
+    for i in range(n):
+        # Distinct keys (distinct trial), never drained.
+        ov.request_overlay(cache, ("sess", i, "plate.tif", "candidate"), _trivial)
+
+    assert len(_PENDING) <= _PENDING_CAP, (
+        f"_PENDING grew to {len(_PENDING)} > cap {_PENDING_CAP}"
+    )
+    ov.clear_pending_for_session("sess")
+
+
 def test_overlay_figure_wraps_rgb_array() -> None:
     from phenotypic.gui.tune._curate_overlays import overlay_figure
 
@@ -92,3 +118,18 @@ def test_overlay_figure_wraps_rgb_array() -> None:
     assert len(fig.data) == 1
     assert fig.data[0].type == "image"
     assert fig.layout.yaxis.scaleanchor == "x"
+
+
+def test_load_plate_grid_rejects_out_of_sandbox(tmp_path: Path) -> None:
+    # Defense-in-depth: even though plate names come from iterdir() today, the
+    # final load path is re-confined through the sandbox so a future caller
+    # sourcing plate_name from less-trusted input can't escape via traversal.
+    from phenotypic.gui.shell import SandboxRoot
+    from phenotypic.gui.tune._curate_overlays import load_plate_grid
+
+    sandbox = SandboxRoot.from_path(tmp_path)
+    # A ``..`` traversal in the plate name escapes the image source / sandbox.
+    import pytest
+
+    with pytest.raises(ValueError):
+        load_plate_grid(str(tmp_path), "../../etc/passwd", sandbox=sandbox)

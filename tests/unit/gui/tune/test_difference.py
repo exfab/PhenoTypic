@@ -81,6 +81,37 @@ def test_render_difference_uses_okabe_ito_tokens() -> None:
     assert _rgb(OI_ORANGE) in present  # only-B
 
 
+def test_render_difference_bounds_output_to_max_dim() -> None:
+    # Full-res difference arrays are a browser memory/perf hazard (a 4000x6000
+    # plate is ~72 MB per go.Image, cached at full res in the LRU). The caller
+    # passes max_dim to clamp the longest side; the plate is anti-aliased and
+    # BOTH objmaps are downscaled label-aware (nearest-neighbor) and
+    # consistently, so the diff still matches on the downscaled maps.
+    big_a = np.zeros((1200, 1600), dtype=int)
+    big_a[100:300, 100:300] = 1
+    big_a[100:300, 900:1100] = 2
+    big_b = np.zeros((1200, 1600), dtype=int)
+    big_b[100:300, 100:300] = 1  # agrees with A.1
+    plate = np.zeros((1200, 1600, 3), dtype=np.uint8)
+
+    out = render_difference(plate, big_a, big_b, tau=0.5, max_dim=640)
+    assert out.ndim == 3 and out.shape[2] in (3, 4)
+    # The longest spatial side is clamped to max_dim.
+    assert max(out.shape[:2]) <= 640
+    # Aspect ratio is roughly preserved (1600x1200 -> ~640x480).
+    assert out.shape[0] < out.shape[1]
+
+
+def test_render_difference_max_dim_none_is_full_res() -> None:
+    # max_dim=None keeps the legacy full-resolution behaviour (B-i contract:
+    # un-downscaled for outline correctness when the caller wants full res).
+    a = _three_blob_objmap_a()
+    b = _two_blob_plus_extra_objmap_b()
+    plate = np.zeros((6, 12, 3), dtype=np.uint8)
+    out = render_difference(plate, a, b, tau=0.5, max_dim=None)
+    assert out.shape[:2] == a.shape
+
+
 def test_cell_disagreement_counts_differing_cells() -> None:
     # Two real segmentations of the synthetic plate disagree on some grid cells
     # once a heavy blur merges neighbouring colonies.

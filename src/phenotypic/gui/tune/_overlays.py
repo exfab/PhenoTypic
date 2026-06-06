@@ -31,7 +31,7 @@ import numpy as np
 
 from phenotypic.gui._config import THREAD_NAME_PREFIX
 from phenotypic.gui._design import OI_GREY, OI_ORANGE, OI_SKY
-from phenotypic.gui.builder._image_renderer import to_overlay_rgb_array
+from phenotypic.gui.builder._image_renderer import _downscale, to_overlay_rgb_array
 from phenotypic.tune._evaluation._builder import build_pipeline
 from phenotypic.tune._scoring._matching import match_iou_greedy
 
@@ -43,6 +43,11 @@ if TYPE_CHECKING:  # pragma: no cover - type-only imports
 #: An overlay-cache key: ``(trial_number, plate_name, mode)``. ``mode`` is the
 #: overlay flavour (e.g. ``"candidate"`` / ``"difference"``).
 OverlayKey = tuple[int, str, str]
+
+#: The default longest-spatial-side clamp (px) for BOTH overlay flavours
+#: (candidate + difference). Bounds the array serialized to the browser per
+#: ``go.Image`` and cached in the LRU — a full-res plate is ~tens of MB each.
+OVERLAY_MAX_DIM: int = 640
 
 
 def _hex_to_rgb(hex_color: str) -> tuple[int, int, int]:
@@ -65,7 +70,7 @@ def render_candidate_overlay(
     params: dict[str, Any],
     plate_image: "Image",
     *,
-    max_dim: int = 640,
+    max_dim: int = OVERLAY_MAX_DIM,
 ) -> np.ndarray:
     """Render a tuning candidate's segmentation as an RGB overlay array.
 
@@ -227,12 +232,50 @@ def _paint_outlines(
     canvas[edges] = color
 
 
+def _target_shape(h: int, w: int, max_dim: int) -> tuple[int, int]:
+    """Return ``(new_h, new_w)`` shrinking the longer side to ``max_dim``.
+
+    Returns the input shape unchanged when it already fits (never up-scales).
+    """
+    longer = max(h, w)
+    if longer <= max_dim:
+        return h, w
+    scale = max_dim / float(longer)
+    return max(1, int(round(h * scale))), max(1, int(round(w * scale)))
+
+
+def _downscale_labels_nn(objmap: np.ndarray, target_hw: tuple[int, int]) -> np.ndarray:
+    """Nearest-neighbor (label-preserving) resize of ``objmap`` to ``target_hw``.
+
+    Object/label maps must be resampled with ``order=0`` (nearest-neighbor) so
+    integer label IDs survive the resize — an averaging interpolation would
+    blend neighbouring labels at boundaries and invent spurious IDs. Returns
+    ``objmap`` unchanged when it already matches ``target_hw``.
+
+    Args:
+        objmap: An integer ``(H, W)`` label array (``0`` is background).
+        target_hw: The desired ``(height, width)``.
+
+    Returns:
+        The nearest-neighbor-resized label array, same dtype as ``objmap``.
+    """
+    new_h, new_w = target_hw
+    if objmap.shape[:2] == (new_h, new_w):
+        return objmap
+    rows = (np.arange(new_h) * (objmap.shape[0] / new_h)).astype(np.intp)
+    cols = (np.arange(new_w) * (objmap.shape[1] / new_w)).astype(np.intp)
+    rows = np.clip(rows, 0, objmap.shape[0] - 1)
+    cols = np.clip(cols, 0, objmap.shape[1] - 1)
+    return objmap[np.ix_(rows, cols)]
+
+
 def render_difference(
     plate: "npt.ArrayLike",
     objmap_a: "npt.ArrayLike",
     objmap_b: "npt.ArrayLike",
     *,
     tau: float = 0.5,
+    max_dim: int | None = None,
 ) -> np.ndarray:
     """Render A-vs-B object outlines colored by agreement over the plate.
 
@@ -249,14 +292,23 @@ def render_difference(
         objmap_b: The B-side objmap, the same shape as ``objmap_a``.
         tau: The IoU threshold for the underlying matching (see
             :func:`difference_objects`). Defaults to ``0.5``.
+        max_dim: When set, clamp the output's longer spatial side to this many
+            pixels. The plate is anti-aliased-shrunk (``cv2.INTER_AREA``, the
+            same path the candidate overlay uses) and **both** objmaps are
+            downscaled label-aware (nearest-neighbor) to the **same** target
+            shape, so the diff is computed consistently on the downscaled maps.
+            This is the memory/perf guard the Curate render path needs: a full
+            ``(4000, 6000, 3)`` difference is ~72 MB per ``go.Image`` and would
+            be cached at full res. ``None`` (default) keeps the full-resolution
+            behaviour (B-i's un-downscaled contract for outline correctness).
 
     Returns:
-        An ``(H, W, 3)`` uint8 RGB array with the difference outlines drawn,
-        ready for a Plotly ``go.Image`` trace.
+        An ``(H', W', 3)`` uint8 RGB array with the difference outlines drawn,
+        ready for a Plotly ``go.Image`` trace. ``H'``/``W'`` are bounded by
+        ``max_dim`` when set, else the input plate's dimensions.
     """
     a = np.asarray(objmap_a)
     b = np.asarray(objmap_b)
-    diff = difference_objects(a, b, tau=tau)
 
     base = np.asarray(plate)
     if base.ndim == 2:
@@ -264,6 +316,20 @@ def render_difference(
     elif base.shape[-1] == 4:
         base = base[..., :3]
     canvas = np.ascontiguousarray(base[..., :3]).astype(np.uint8)
+
+    if max_dim is not None:
+        # Downscale the plate (anti-aliased) and BOTH objmaps (label-aware NN)
+        # to the SAME target shape so the diff stays consistent. Anchor the
+        # target on the plate's spatial size (what the user sees).
+        target_hw = _target_shape(canvas.shape[0], canvas.shape[1], max_dim)
+        if target_hw != canvas.shape[:2]:
+            canvas = np.ascontiguousarray(_downscale(canvas, max_dim)).astype(
+                np.uint8
+            )
+        a = _downscale_labels_nn(a, canvas.shape[:2])
+        b = _downscale_labels_nn(b, canvas.shape[:2])
+
+    diff = difference_objects(a, b, tau=tau)
 
     # Order matters only where outlines overlap; both/only-A/only-B are disjoint
     # object sets so the draw order is cosmetic, but keep agreement on top.
@@ -558,6 +624,7 @@ __all__ = [
     "cell_disagreement",
     "OverlayKey",
     "OverlayCache",
+    "OVERLAY_MAX_DIM",
     "overlay_cache_dir",
     "get_overlay_cache",
 ]

@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import logging
 import threading
+from collections import OrderedDict
 from concurrent.futures import Future
 from typing import TYPE_CHECKING, Any, Optional
 
@@ -41,9 +42,18 @@ logger = logging.getLogger(__name__)
 #: ``session_id`` namespaces a browser tab so two users never share a future.
 PendingKey = tuple[str, int, str, str]
 
-#: Module-level pending-future registry. Guarded by :data:`_PENDING_LOCK`
-#: because Werkzeug serves Dash callbacks from many threads.
-_PENDING: "dict[PendingKey, Future[np.ndarray]]" = {}
+#: Hard cap on the module-level pending-future registry. ``_PENDING`` only needs
+#: to bridge IN-FLIGHT renders — the rendered array is already memoized in the
+#: per-run :class:`OverlayCache` (mem + disk LRU), so a key dropped here is not a
+#: lost render, just a future the readiness poll won't re-resolve. Without a cap
+#: every plate change / re-pin / A-B toggle (× a fresh ``session_id`` per tab)
+#: leaks a future holding an overlay array forever. Sized like the overlay LRU.
+_PENDING_CAP: int = 64
+
+#: Module-level pending-future registry, MRU-ordered and bounded to
+#: :data:`_PENDING_CAP`. Guarded by :data:`_PENDING_LOCK` because Werkzeug
+#: serves Dash callbacks from many threads.
+_PENDING: "OrderedDict[PendingKey, Future[np.ndarray]]" = OrderedDict()
 _PENDING_LOCK = threading.Lock()
 
 #: Cached base pipelines, keyed by run path (read once from tuning_spec.json).
@@ -106,6 +116,12 @@ def request_overlay(
     poll can fetch it. **Never** blocks on the result. Re-submitting an
     in-flight key is a no-op (the existing future is kept).
 
+    The registry is bounded to :data:`_PENDING_CAP`: before inserting, every
+    already-resolved future for the SAME ``(session_id, plate)`` prefix is
+    dropped (the readiness poll will refetch them from the
+    :class:`OverlayCache`), then the LRU entry is evicted if still over cap. A
+    dropped future never loses a render — the array lives in the cache.
+
     Args:
         cache: The process-wide :class:`OverlayCache`.
         key: The ``(session_id, trial, plate, mode)`` pending key.
@@ -115,14 +131,30 @@ def request_overlay(
     with _PENDING_LOCK:
         existing = _PENDING.get(key)
         if existing is not None and not existing.done():
+            _PENDING.move_to_end(key)  # keep the in-flight key fresh
             return
+        # Opportunistically drop resolved stale futures for this (session, plate)
+        # so a user flipping A/B on one plate doesn't accrete done futures.
+        session_id, _trial, plate, _mode = key
+        for stale in [
+            k
+            for k, fut in _PENDING.items()
+            if k != key and k[0] == session_id and k[2] == plate and fut.done()
+        ]:
+            _PENDING.pop(stale, None)
         _PENDING[key] = cache.submit(cache_key, render_fn)
+        _PENDING.move_to_end(key)
+        # Hard LRU cap: evict the oldest until bounded.
+        while len(_PENDING) > _PENDING_CAP:
+            _PENDING.popitem(last=False)
 
 
 def overlay_ready(key: PendingKey) -> bool:
     """Return ``True`` when ``key``'s overlay future has resolved."""
     with _PENDING_LOCK:
         future = _PENDING.get(key)
+        if future is not None:
+            _PENDING.move_to_end(key)  # touch → MRU so the poll can't evict it
     return future is not None and future.done()
 
 
@@ -185,24 +217,42 @@ def clear_pending_for_session(session_id: str) -> None:
             _PENDING.pop(key, None)
 
 
-def load_plate_grid(image_source: str, plate_name: str):  # type: ignore[no-untyped-def]
+def load_plate_grid(image_source: str, plate_name: str, *, sandbox: Any = None):  # type: ignore[no-untyped-def]
     """Load ``<image_source>/<plate_name>`` as a :class:`GridImage`.
 
     Imported lazily (heavy) and kept here so the render closure built by the
     callback stays small. Raises on a missing file — the caller's render future
     captures the exception and the poll shows the error figure.
 
+    Defense-in-depth: when ``sandbox`` is given the final load path is
+    re-confined through :meth:`SandboxRoot.resolve`, so even a ``plate_name``
+    from a less-trusted source can't escape the sandbox via ``..`` traversal or
+    an absolute path. (Today the plate names come from ``iterdir()`` of an
+    already-resolved in-sandbox directory, so this is belt-and-suspenders — but
+    it keeps the load path safe for any future caller.) An out-of-sandbox path
+    raises ``ValueError`` (from ``sandbox.resolve``), which the render future
+    captures → the poll shows the error figure.
+
     Args:
         image_source: The selected Image Source directory.
         plate_name: The plate file name under it.
+        sandbox: Optional :class:`~phenotypic.gui.shell._sandbox.SandboxRoot`
+            used to re-confine the resolved load path.
 
     Returns:
         A :class:`~phenotypic.GridImage` for the plate.
+
+    Raises:
+        ValueError: When ``sandbox`` is given and the resolved path escapes it.
     """
     from phenotypic import GridImage
     from phenotypic.gui.tune._image_source import plate_image_path
 
-    return GridImage(str(plate_image_path(image_source, plate_name)))
+    path = plate_image_path(image_source, plate_name)
+    if sandbox is not None:
+        # Re-confine through the sandbox boundary (raises ValueError on escape).
+        path = sandbox.resolve(str(path))
+    return GridImage(str(path))
 
 
 __all__ = [
