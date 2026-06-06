@@ -22,11 +22,12 @@ from __future__ import annotations
 
 import importlib.util
 import logging
-from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeout
+from concurrent.futures import Future, ThreadPoolExecutor, TimeoutError as FutureTimeout
 from typing import TYPE_CHECKING, Optional
 
 from dash import ctx
 
+from phenotypic.gui._config import THREAD_NAME_PREFIX
 from phenotypic.gui.tune import _ids as ids
 
 if TYPE_CHECKING:
@@ -40,10 +41,29 @@ _DEFAULT_VIEW: ids.SubTabName = "monitor"
 
 #: Hard cap on how long a live-study open may block the 3-second poll. An
 #: unreachable Postgres would otherwise stall the constructor for ~30 s
-#: (psycopg's default connect retry), starving every other poll. We open the
-#: live store on a worker thread and abandon it past this deadline, degrading
-#: to the finished ``trials.parquet`` (OQ4).
+#: (libpq's default connect timeout), starving every other poll. The bound is
+#: enforced at TWO levels (see :func:`read_study_for_monitor` and
+#: :func:`_ensure_connect_timeout`): a libpq ``connect_timeout`` merged into the
+#: storage URL so the constructor itself returns fast, AND a non-re-blocking
+#: worker-thread wait so even a slow connect can't freeze the poll.
 _LIVE_CONNECT_TIMEOUT_S: float = 3.0
+
+#: Schemes (SQLAlchemy backend names) whose driver honors a libpq-style
+#: ``connect_timeout`` query param. SQLite is local (no network hang), so it is
+#: deliberately absent — :func:`_ensure_connect_timeout` no-ops on it.
+_CONNECT_TIMEOUT_BACKENDS: frozenset[str] = frozenset({"postgresql"})
+
+#: A process-wide, single-worker pool for the live-study open. Shared (not a
+#: per-call ``with`` block) so a still-connecting worker is NEVER re-joined:
+#: when :func:`read_study_for_monitor` times out it returns the parquet
+#: fallback immediately and leaves the orphaned worker to finish (and be
+#: discarded) on its own. The single worker naturally coalesces — a poll tick
+#: that arrives while a previous open is still in flight simply queues behind
+#: it and will itself time out, falling back to parquet, rather than spawning
+#: an unbounded fan of connect attempts against a dead host.
+_LIVE_OPEN_POOL: ThreadPoolExecutor = ThreadPoolExecutor(
+    max_workers=1, thread_name_prefix=f"{THREAD_NAME_PREFIX}-tune-live-open"
+)
 
 #: The degrade note shown when a live read was attempted but the storage could
 #: not be reached in time — points the user at the usual culprits.
@@ -124,17 +144,63 @@ def _load_journal(root: "TuneRunRoot") -> "Optional[_ReadableStore]":
         return None
 
 
+def _ensure_connect_timeout(storage_url: str) -> str:
+    """Merge a libpq ``connect_timeout`` into a postgres storage URL.
+
+    The real fix for the OQ4 stall: the live ``OptunaStudyStore`` constructor
+    connects eagerly, and libpq's default connect timeout is ~30 s (or never,
+    on a black-holed host). Merging ``connect_timeout=<N>`` (N =
+    :data:`_LIVE_CONNECT_TIMEOUT_S`) into the URL makes the *constructor itself*
+    return fast — SQLAlchemy's psycopg dialect passes URL query params straight
+    through to the driver, and libpq honors ``connect_timeout``.
+
+    Only ``postgresql*`` schemes are touched (the backend name covers
+    ``postgresql``, ``postgresql+psycopg``, ``postgresql+psycopg2``, …); SQLite
+    is local and never network-hangs, so it is returned unchanged. A
+    user-supplied ``connect_timeout`` is preserved (never overwritten), so an
+    operator who deliberately set a longer bound keeps it. ``connect_timeout``
+    is not a secret, so this respects the password-in-``.pgpass`` rule.
+
+    Args:
+        storage_url: The run's resolved Optuna storage URL.
+
+    Returns:
+        The URL with ``connect_timeout`` ensured for a postgres backend, or the
+        original URL unchanged for any other backend (or an unparseable URL).
+    """
+    from sqlalchemy.engine import make_url
+    from sqlalchemy.exc import ArgumentError
+
+    try:
+        url = make_url(storage_url)
+    except (ArgumentError, ValueError):
+        # An unparseable URL: leave it alone and let the constructor surface the
+        # real error (still bounded by the non-re-blocking worker wait).
+        return storage_url
+
+    if url.get_backend_name() not in _CONNECT_TIMEOUT_BACKENDS:
+        return storage_url
+    if "connect_timeout" in url.query:
+        return storage_url
+
+    bounded = url.update_query_dict(
+        {"connect_timeout": str(int(_LIVE_CONNECT_TIMEOUT_S))}, append=False
+    )
+    return bounded.render_as_string(hide_password=False)
+
+
 def _open_live_study(root: "TuneRunRoot") -> "_ReadableStore":
     """Open the live ``OptunaStudyStore`` for ``root`` (called on a worker thread).
 
     Imports optuna lazily HERE (never at module import). The constructor opens
-    the RDB study eagerly, so this is the call the connect-timeout guards.
+    the RDB study eagerly, so the storage URL is first passed through
+    :func:`_ensure_connect_timeout` to bound the connect at the source.
     """
     from phenotypic.tune._study._optuna_store import OptunaStudyStore
 
     assert root.storage_url is not None  # guarded by the caller
     return OptunaStudyStore(
-        storage_url=root.storage_url,
+        storage_url=_ensure_connect_timeout(root.storage_url),
         study_name=root.study_name,
         directions=root.directions,
     )
@@ -176,29 +242,34 @@ def read_study_for_monitor(
     if importlib.util.find_spec("optuna") is None:
         return _load_journal(root), _NOTE_MISSING_EXTRA
 
-    # 3. Live run, extra present — open with a short connect timeout so an
-    #    unreachable storage can't stall the poll. The constructor opens the
-    #    RDB study eagerly, so we run it on a worker thread and abandon it past
-    #    the deadline.
-    with ThreadPoolExecutor(max_workers=1) as pool:
-        future = pool.submit(_open_live_study, root)
-        try:
-            return future.result(timeout=_LIVE_CONNECT_TIMEOUT_S), ""
-        except FutureTimeout:
-            logger.warning(
-                "Live tune study open timed out after %.1fs (url=%s); "
-                "degrading to journal.",
-                _LIVE_CONNECT_TIMEOUT_S,
-                root.storage_url,
-            )
-            return _load_journal(root), _NOTE_LIVE_UNREACHABLE
-        except Exception:  # noqa: BLE001 - any open/connect error degrades
-            logger.warning(
-                "Live tune study open failed (url=%s); degrading to journal.",
-                root.storage_url,
-                exc_info=True,
-            )
-            return _load_journal(root), _NOTE_LIVE_UNREACHABLE
+    # 3. Live run, extra present — open with a bounded, non-re-blocking wait so
+    #    an unreachable storage can't stall the poll. The connect is bounded at
+    #    the source (``_ensure_connect_timeout`` merges a libpq
+    #    ``connect_timeout`` into the URL), and the wait here NEVER re-joins a
+    #    still-connecting worker: we submit to the shared single-worker pool and,
+    #    on timeout, return the parquet fallback immediately, leaving the
+    #    orphaned future to finish (and be discarded) on its own. Using a
+    #    ``with``-managed pool here would re-introduce the bug — its ``__exit__``
+    #    calls ``shutdown(wait=True)``, re-joining the stuck worker and blocking
+    #    the full connect duration regardless of the ``result`` timeout.
+    future: "Future[_ReadableStore]" = _LIVE_OPEN_POOL.submit(_open_live_study, root)
+    try:
+        return future.result(timeout=_LIVE_CONNECT_TIMEOUT_S), ""
+    except FutureTimeout:
+        logger.warning(
+            "Live tune study open timed out after %.1fs (url=%s); "
+            "degrading to journal.",
+            _LIVE_CONNECT_TIMEOUT_S,
+            root.storage_url,
+        )
+        return _load_journal(root), _NOTE_LIVE_UNREACHABLE
+    except Exception:  # noqa: BLE001 - any open/connect error degrades
+        logger.warning(
+            "Live tune study open failed (url=%s); degrading to journal.",
+            root.storage_url,
+            exc_info=True,
+        )
+        return _load_journal(root), _NOTE_LIVE_UNREACHABLE
 
 
 # ---------------------------------------------------------------------------

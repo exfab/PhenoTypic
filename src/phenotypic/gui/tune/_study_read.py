@@ -108,6 +108,11 @@ def running_best(trials: list["Trial"]) -> list[float]:
     return curve
 
 
+def _is_gap_flagged(trial: "Trial") -> bool:
+    """Whether ``trial``'s ``gap`` exceeds :data:`GAP_FLAG_THRESHOLD`."""
+    return trial.gap is not None and trial.gap > GAP_FLAG_THRESHOLD
+
+
 def gap_badge(store: _ReadableStore) -> tuple[str, bool]:
     """The winner's stability badge — ``(label, is_flagged)``.
 
@@ -115,7 +120,8 @@ def gap_badge(store: _ReadableStore) -> tuple[str, bool]:
     term's relative across-plate dispersion — and flags it when it exceeds
     :data:`GAP_FLAG_THRESHOLD`. A flagged winner is a cheap "this best may be
     unstable / overfit to a lucky plate split" signal the Monitor surfaces before
-    the user trusts the tuned pipeline.
+    the user trusts the tuned pipeline. The flag predicate is single-sourced with
+    :func:`shortlist` via :func:`_is_gap_flagged`, so the two can't drift.
 
     Args:
         store: The study to read (``best()`` must be available).
@@ -126,15 +132,9 @@ def gap_badge(store: _ReadableStore) -> tuple[str, bool]:
         the threshold all yield ``(_GAP_LABEL_STABLE, False)``.
     """
     best = store.best()
-    gap = None if best is None else best.gap
-    if gap is not None and gap > GAP_FLAG_THRESHOLD:
+    if best is not None and _is_gap_flagged(best):
         return _GAP_LABEL_UNSTABLE, True
     return _GAP_LABEL_STABLE, False
-
-
-def _is_gap_flagged(trial: "Trial") -> bool:
-    """Whether ``trial``'s ``gap`` exceeds :data:`GAP_FLAG_THRESHOLD`."""
-    return trial.gap is not None and trial.gap > GAP_FLAG_THRESHOLD
 
 
 def shortlist(store: _ReadableStore, k: int = 5) -> list["Trial"]:
