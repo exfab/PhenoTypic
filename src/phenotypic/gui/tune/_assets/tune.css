@@ -1,7 +1,7 @@
 /* Tune co-pilot styles.
  *
- * NO :root {} block here -- the design tokens (--color-*, --font-*, --sp-*,
- * --radius*, --shadow*) are spliced into every Dash page by
+ * This file declares no token block -- the design tokens (--color-*,
+ * --font-*, --sp-*, --radius*, --shadow*) are spliced into every Dash page by
  * phenotypic.gui._design.inject_design_tokens(). This file only consumes
  * them; it never redefines a shared value.
  */
