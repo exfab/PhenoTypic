@@ -43,6 +43,14 @@ METADATA_CSV = DATASET_DIR / "metadata.csv"
 PIPELINE_JSON = DATASET_DIR / "pipeline.json"
 OUTPUT_DIR = DATASET_DIR / "results"
 
+# The hermetic tune run output (a real ``python -m phenotypic.tune`` grid run
+# over the synthetic plates). It lives INSIDE ``DATASET_DIR`` so a tune app
+# rooted at the dataset can sandbox-reach both the run dir and the plate images
+# (``PLATES_DIR``) for the Curate overlays. ``TUNE_LAYOUT_CSV`` is the expected
+# colony-count layout the QC scorer compares against.
+TUNE_OUTPUT_DIR = DATASET_DIR / "tune_run"
+TUNE_LAYOUT_CSV = DATASET_DIR / "tune_layout.csv"
+
 VIEWPORT = {"width": 1280, "height": 900}
 
 # ---------------------------------------------------------------------------
@@ -183,6 +191,132 @@ def run_cli_once() -> None:
     print(f"[cli]   {' '.join(cmd)}")
     subprocess.run(cmd, check=True, cwd=REPO_ROOT)
     print("[cli]   done")
+
+
+def run_tune_once() -> None:
+    """Produce a hermetic ``python -m phenotypic.tune`` output for the co-pilot.
+
+    A SHORT, optuna-free **grid** tune over the synthetic plates: a base
+    ``GaussianBlur → OtsuDetector`` pipeline searched over a 3-value ``sigma`` ×
+    2-value ``ignore_zeros`` grid (6 trials, so the Curate shortlist populates).
+    The run goes through the real :func:`~phenotypic.tune._tune_cli._run.run_tuning`
+    path, so it writes the full marker set the GUI reads:
+
+    * ``.pht-tune-cache/run.json`` — the discovery marker (written at run START);
+    * ``trials.parquet`` (6 trials) + the local ``study.db``;
+    * ``deliverables/tuning_spec.json`` — the resolved recipe (drives the Space view).
+
+    The scorer is a :class:`~phenotypic.tune.QCScorer` over a layout CSV that
+    declares the synthetic plates' nominal 96-colony count, so its
+    ``ExpectedVsDetectedCount`` check round-trips from JSON (a path-backed
+    metadata source). ``images_dir`` is recorded as ``PLATES_DIR`` so the Curate
+    Image Source pre-fills and overlays render ``build_pipeline(...).apply(plate)``.
+
+    Grid (not Optuna) keeps the import surface optuna-free and the run sub-second.
+    Skips when the marker already exists (re-running is cheap but avoidable).
+    """
+    from phenotypic.tools_ import _io_constants as io
+
+    if io.tune_cache_run_marker_path(TUNE_OUTPUT_DIR).exists():
+        print(
+            f"[tune] reusing existing tune output at "
+            f"{TUNE_OUTPUT_DIR.relative_to(REPO_ROOT)}"
+        )
+        return
+
+    import pandas as pd
+
+    from phenotypic import ImagePipeline
+    from phenotypic.analysis import ExpectedVsDetectedCount
+    from phenotypic.detect import OtsuDetector
+    from phenotypic.enhance import GaussianBlur
+    from phenotypic.tune import (
+        Budget,
+        Categorical,
+        Evaluator,
+        GridConfig,
+        Knob,
+        QCScorer,
+        SearchSpace,
+        TuningSpec,
+    )
+    from phenotypic.tune._tune_cli._run import _load_images, run_tuning
+
+    print("[tune] running a 6-trial grid tune over the synthetic plates")
+    images = _load_images(PLATES_DIR)
+    if not images:
+        raise RuntimeError(
+            f"no grid images loaded from {PLATES_DIR}; build the dataset first"
+        )
+
+    # The layout: every loaded plate declares its nominal 96-colony (8x12) count
+    # so the QC count scorer has a path-backed metadata source that round-trips.
+    layout_rows = [
+        {"Metadata_ImageName": im.name, "Object_Label": label}
+        for im in images
+        for label in range(96)
+    ]
+    pd.DataFrame(layout_rows).to_csv(TUNE_LAYOUT_CSV, index=False)
+
+    pipeline = ImagePipeline(ops=[GaussianBlur(sigma=2.0), OtsuDetector()])
+    # A 3x2 categorical grid = 6 enumerated trials (>= 5 for the shortlist).
+    space = SearchSpace(
+        knobs=(
+            Knob(key="0.sigma", domain=Categorical(choices=(1.0, 1.5, 2.0))),
+            Knob(key="1.ignore_zeros", domain=Categorical(choices=(True, False))),
+        )
+    )
+    spec = TuningSpec(
+        pipeline=pipeline,
+        search_space=space,
+        scorer=QCScorer(
+            check=ExpectedVsDetectedCount(
+                metadata=str(TUNE_LAYOUT_CSV), groupby=["Metadata_ImageName"]
+            )
+        ),
+        evaluator=Evaluator(),
+        strategy=GridConfig(),
+        budget=Budget(),
+    )
+    run_tuning(spec, images, TUNE_OUTPUT_DIR, spec_path=None, images_dir=PLATES_DIR)
+    n_trials = len(pd.read_parquet(io.trials_parquet_path(TUNE_OUTPUT_DIR)))
+
+    # Present the run as a FINISHED, parquet-only run for the Monitor screenshot.
+    # A grid run journals its trials to ``trials.parquet`` but leaves an EMPTY
+    # SQLite ``study.db`` (the Optuna study schema with no trials — grid never
+    # populates it). The Monitor prefers a live store when the marker carries a
+    # ``storage_url``, so it would show that empty study instead of the 6-trial
+    # journal. Null the marker's ``storage_url`` and drop the empty study.db so
+    # discovery resolves a parquet-only run and the Monitor reads the journal —
+    # exactly the finished-run shape the tutorial depicts.
+    _finalize_tune_run_as_parquet_only()
+    print(f"[tune]   done — {n_trials} trials at "
+          f"{TUNE_OUTPUT_DIR.relative_to(REPO_ROOT)}")
+
+
+def _finalize_tune_run_as_parquet_only() -> None:
+    """Null the tune marker's ``storage_url`` + drop the empty grid study.db.
+
+    Rewrites ``.pht-tune-cache/run.json`` with ``storage_url=None`` (so
+    ``TuneRunRoot.discover`` resolves a parquet-only finished run and the
+    Monitor reads ``trials.parquet`` directly) and removes the empty SQLite
+    ``study.db`` a grid run leaves behind. Both are file-only fixups on the
+    capture's own hermetic output — no source behaviour changes.
+    """
+    import json as _json
+
+    from phenotypic.tools_ import _io_constants as io
+
+    marker_path = io.tune_cache_run_marker_path(TUNE_OUTPUT_DIR)
+    marker = _json.loads(marker_path.read_text())
+    marker["storage_url"] = None
+    marker_path.write_text(_json.dumps(marker, indent=2))
+
+    study_db = io.resolve_study_db_path(TUNE_OUTPUT_DIR)
+    try:
+        Path(study_db).unlink()
+    except OSError:
+        pass
 
 
 # ---------------------------------------------------------------------------
@@ -1537,6 +1671,39 @@ def capture_standalone_viewer_screenshots(headed: bool = False) -> None:
             proc.kill()
             proc.wait(timeout=5.0)
 
+    # The loaded Tune co-pilot rides on this standalone-capture pass too: the
+    # hub mounts ``/tune/`` run-unbound (sidebar binding is a later chunk), so a
+    # LOADED co-pilot needs its own run-bound + sandbox-bound app — booted here
+    # over the hermetic ``TUNE_OUTPUT_DIR``. Dispatched from this function (one
+    # of the two WORKFLOWS.md dispatch entry points) so the round-trip gate sees
+    # ``_capture_tune_copilot`` wired in. A missing tune marker skips it.
+    from phenotypic.tools_ import _io_constants as io
+
+    if not io.tune_cache_run_marker_path(TUNE_OUTPUT_DIR).exists():
+        print("[shot]   tune_copilot: no tune output marker — capture skipped")
+        return
+
+    print("[shot] workflow=tune_copilot (loaded co-pilot over a real tune run)")
+    tune_port = _free_port()
+    tune_proc = _boot_standalone_tune(tune_port)
+    tune_url = f"http://127.0.0.1:{tune_port}"
+    try:
+        _wait_for_http_200(tune_url + "/", timeout=30.0)
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(headless=not headed)
+            try:
+                context = browser.new_context(viewport=VIEWPORT)
+                _capture_tune_copilot(context, tune_url)
+            finally:
+                browser.close()
+    finally:
+        tune_proc.terminate()
+        try:
+            tune_proc.wait(timeout=5.0)
+        except subprocess.TimeoutExpired:
+            tune_proc.kill()
+            tune_proc.wait(timeout=5.0)
+
 
 def _qc_curation_loop_loaded_shots(page) -> None:
     """Capture loaded-state QC tab screenshots inside the standalone viewer.
@@ -1620,6 +1787,127 @@ def _heatmap_exploration_loaded_shots(page) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Tune co-pilot (standalone loaded app over a real tune output)
+# ---------------------------------------------------------------------------
+#
+# The hub mounts ``/tune/`` in its empty (run-unbound) state — sidebar binding
+# of a tune run is a later chunk — so a LOADED co-pilot is captured by booting a
+# standalone tune app against the hermetic ``TUNE_OUTPUT_DIR``, mirroring
+# ``capture_standalone_viewer_screenshots``. The app is constructed in a child
+# process via an inline snippet (there is no ``python -m phenotypic.gui.tune``
+# launcher) that discovers the run, binds the dataset sandbox (so the Curate
+# Image Source can reach ``PLATES_DIR``), and serves ``create_app`` on a port.
+
+#: The inline child-process program that boots the loaded tune app. Reads the
+#: run dir / sandbox root / port from argv and serves ``create_app`` forever.
+_TUNE_STANDALONE_BOOT = """\
+import sys
+from pathlib import Path
+from phenotypic.gui.shell import SandboxRoot
+from phenotypic.gui.tune import create_app
+from phenotypic.gui.tune._run_root import TuneRunRoot
+
+run_dir, sandbox_root, port = sys.argv[1], sys.argv[2], int(sys.argv[3])
+root = TuneRunRoot.discover(Path(run_dir))
+sandbox = SandboxRoot.from_path(sandbox_root)
+app = create_app(root=root, url_prefix="/", sandbox=sandbox)
+app.run(host="127.0.0.1", port=port, debug=False)
+"""
+
+
+def _boot_standalone_tune(port: int) -> subprocess.Popen[str]:
+    """Spawn the loaded tune co-pilot child process on ``port``.
+
+    The child runs :data:`_TUNE_STANDALONE_BOOT` over ``TUNE_OUTPUT_DIR`` with
+    the dataset sandbox, so the run binds and the Curate Image Source can reach
+    ``PLATES_DIR``. The caller owns the returned process's teardown.
+    """
+    cmd = [
+        sys.executable,
+        "-c",
+        _TUNE_STANDALONE_BOOT,
+        str(TUNE_OUTPUT_DIR),
+        str(DATASET_DIR),
+        str(port),
+    ]
+    log_path = _gui_log_sink(port)
+    print(f"[shot]   standalone tune logs -> {log_path}")
+    with log_path.open("w", encoding="utf-8") as gui_log:
+        return subprocess.Popen(
+                cmd, stdout=gui_log, stderr=subprocess.STDOUT, text=True,
+        )
+
+
+def _show_tune_subtab(page, name: str) -> None:
+    """Click the ``tune-subtab-<name>`` button and let the view swap settle."""
+    button = page.locator(f"#tune-subtab-{name}")
+    if button.count() > 0:
+        try:
+            button.click(timeout=4000)
+            page.wait_for_timeout(800)
+        except Exception as exc:  # pragma: no cover - best-effort
+            print(f"[shot]   tune_copilot: sub-tab {name} click skipped: {exc!r}")
+
+
+def _capture_tune_copilot(context, base_url: str) -> None:
+    """Drive the loaded tune co-pilot and screenshot each sub-tab.
+
+    Monitor is the default view (its 3-second poll fills the objective +
+    importance figures + the trials table). Curate pins the first two shortlist
+    cards into A / B and picks a plate so the overlays render. Space and Launch
+    are captured as-mounted (their forms render from the bound run's spec).
+    """
+    page = context.new_page()
+    page.goto(base_url + "/")
+    page.wait_for_load_state("networkidle")
+    # The Monitor poll fires every 3s, and its first ticks spend ~3s each
+    # timing out the live SQLite study open before degrading to the finished
+    # ``trials.parquet`` journal. Wait several cycles so a journal-backed tick
+    # has rendered the objective scatter + trials table before the screenshot.
+    page.wait_for_timeout(10_000)
+    _save(page, "tune_copilot", "01_monitor.png")
+
+    # --- Curate: pin two shortlist cards (A then B) + pick a plate ------------
+    _show_tune_subtab(page, "curate")
+    cards = page.locator("[id*='tune-shortlist-card']")
+    try:
+        n_cards = cards.count()
+        for index in range(min(2, n_cards)):
+            cards.nth(index).click(timeout=3000)
+            page.wait_for_timeout(700)
+    except Exception as exc:  # pragma: no cover - best-effort
+        print(f"[shot]   tune_copilot: shortlist pin skipped: {exc!r}")
+
+    # Pick the first plate so the overlay render futures are submitted.
+    plate_picker = page.locator("#tune-plate-picker")
+    if plate_picker.count() > 0:
+        try:
+            plate_picker.click(timeout=3000)
+            page.wait_for_timeout(400)
+            option = page.locator(
+                ".Select-option, div[class*='option']"
+            ).first
+            if option.count() > 0:
+                option.click(timeout=3000)
+        except Exception as exc:  # pragma: no cover - best-effort
+            print(f"[shot]   tune_copilot: plate pick skipped: {exc!r}")
+    # The overlays render on a background pool and a poll swaps the figure in;
+    # wait a couple of poll cycles so the colony overlay is visible.
+    page.wait_for_timeout(3500)
+    _save(page, "tune_copilot", "02_curate.png")
+
+    # --- Space: the inferred search-space knob rows --------------------------
+    _show_tune_subtab(page, "space")
+    _save(page, "tune_copilot", "03_space.png")
+
+    # --- Launch: the strategy form + the live command card -------------------
+    _show_tune_subtab(page, "launch")
+    _save(page, "tune_copilot", "04_launch.png")
+
+    page.close()
+
+
+# ---------------------------------------------------------------------------
 # Entrypoint
 # ---------------------------------------------------------------------------
 
@@ -1655,6 +1943,18 @@ def main(argv: list[str] | None = None) -> int:
                     "an empty sandbox).",
                     file=sys.stderr,
             )
+
+    # Build the hermetic tune output the loaded co-pilot capture reads. A
+    # failure here is non-fatal: the standalone-tune capture skips (no marker)
+    # rather than aborting the whole screenshot run.
+    try:
+        run_tune_once()
+    except Exception as exc:  # noqa: BLE001 - capture run must not abort here
+        print(
+                f"[tune] FAILED ({exc!r}); continuing — the Tune co-pilot "
+                "screenshots will be skipped.",
+                file=sys.stderr,
+        )
 
     proc, base_url = boot_gui(DATASET_DIR)
     try:
