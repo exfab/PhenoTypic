@@ -1,11 +1,11 @@
 """Layout builders for the ``/tune/`` co-pilot.
 
 The tune page is a four-view sub-tab stack — Monitor (live read), Curate
-(shortlist + overlays), Space (search-space view), and Launch (apply the
-tuned winner). Only the active view is shown; the switch callback
+(shortlist + overlays), Space (search-space inference + export), and Launch
+(render the ``run`` command). Only the active view is shown; the switch callback
 (:mod:`._callbacks`) toggles which container carries the ``tune-view-hidden``
-class. Chunk A ships the Monitor view; the other three render placeholders the
-later chunks fill in.
+class. Each view dispatches to its own builder module (:func:`build_monitor_view`
+here; ``_curate`` / ``_space`` / ``_launch`` for the rest).
 
 ``build_layout(root)`` renders the full page (header + sub-tab button row +
 the four view containers + the supporting stores/poll). ``build_empty_state_layout``
@@ -30,11 +30,6 @@ if TYPE_CHECKING:
 
 #: The default active sub-tab when a run is first opened.
 _DEFAULT_VIEW: ids.SubTabName = "monitor"
-
-#: Placeholder copy for the not-yet-built views (Chunk C-ii fills Space in).
-_PLACEHOLDER_COPY: dict[ids.SubTabName, str] = {
-    "space": "Space — search-space view (coming in Chunk C-ii).",
-}
 
 
 def build_empty_state_layout() -> html.Div:
@@ -165,7 +160,13 @@ def _build_view_body(
         from phenotypic.gui.tune._launch import build_launch_view
 
         return build_launch_view(root)
-    return html.P(_PLACEHOLDER_COPY[name])
+    if name == "space":
+        from phenotypic.gui.tune._space import build_space_view
+
+        return build_space_view(root)
+    # Defensive: every SUBTAB_ORDER name now has a builder; an unknown name
+    # (a future sub-tab added to ids without a view) renders a stub.
+    return html.P(f"{name} — view not yet implemented.")
 
 
 def build_monitor_view(root: "TuneRunRoot") -> html.Div:

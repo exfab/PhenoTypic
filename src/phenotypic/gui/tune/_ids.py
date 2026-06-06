@@ -201,6 +201,34 @@ TUNE_LAUNCH_PATHS_STORE = "tune-launch-paths-store"
 #: the clientside callback keeps in sync with the form.
 TUNE_LAUNCH_COMMAND = "tune-launch-command"
 
+# ---------------------------------------------------------------------------
+# Space view (Chunk C-i, Task C2)
+# ---------------------------------------------------------------------------
+
+#: A per-knob editor row (pattern-matching ``{"type": …, "key": "0.sigma"}``).
+TUNE_SPACE_KNOB_ROW = "tune-space-knob-row"
+
+#: A range knob's low-bound numeric input (pattern-matching, keyed by knob key).
+TUNE_SPACE_LOW = "tune-space-low"
+
+#: A range knob's high-bound numeric input (pattern-matching, keyed by knob key).
+TUNE_SPACE_HIGH = "tune-space-high"
+
+#: A range knob's log-scale switch (pattern-matching, keyed by knob key).
+TUNE_SPACE_LOG = "tune-space-log"
+
+#: A categorical knob's choice checklist (pattern-matching, keyed by knob key).
+TUNE_SPACE_CHOICES = "tune-space-choices"
+
+#: A per-knob ``tunable`` on/off switch (pattern-matching, keyed by knob key).
+TUNE_SPACE_TUNABLE = "tune-space-tunable"
+
+#: The "Export tuning_spec.json" button.
+TUNE_BTN_SPACE_EXPORT = "tune-btn-space-export"
+
+#: The Space-view status note (export result / "review in Launch" hint).
+TUNE_SPACE_NOTE = "tune-space-note"
+
 
 __all__ = [
     "SubTabName",
@@ -252,4 +280,12 @@ __all__ = [
     "TUNE_LAUNCH_SLURM",
     "TUNE_LAUNCH_PATHS_STORE",
     "TUNE_LAUNCH_COMMAND",
+    "TUNE_SPACE_KNOB_ROW",
+    "TUNE_SPACE_LOW",
+    "TUNE_SPACE_HIGH",
+    "TUNE_SPACE_LOG",
+    "TUNE_SPACE_CHOICES",
+    "TUNE_SPACE_TUNABLE",
+    "TUNE_BTN_SPACE_EXPORT",
+    "TUNE_SPACE_NOTE",
 ]

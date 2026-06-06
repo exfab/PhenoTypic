@@ -31,6 +31,8 @@ from phenotypic.gui._config import THREAD_NAME_PREFIX
 from phenotypic.gui.tune import _ids as ids
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from phenotypic.gui.tune._study_read import _ReadableStore
     from phenotypic.gui.tune._run_root import TuneRunRoot
 
@@ -404,10 +406,11 @@ def register_callbacks(app, *, sandbox=None) -> None:  # type: ignore[no-untyped
         table = _build_trials_table(store)
         return objective_fig, importance_fig, badge_label, badge_class, table, note
 
-    # The Launch command mirror is sandbox-independent (it only renders a
-    # string, never spawns) so it registers unconditionally — even in the
-    # standalone-without-sandbox path the Launch card stays live.
+    # The Launch command mirror and the Space export are sandbox-independent
+    # (Launch only renders a string; Space only reads a pipeline and writes
+    # tuning_spec.json — neither re-optimizes) so both register unconditionally.
     _register_launch_command_mirror(app)
+    _register_space_export(app)
 
     if sandbox is not None:
         _register_curate_callbacks(app, sandbox)
@@ -438,6 +441,158 @@ def _register_launch_command_mirror(app) -> None:  # type: ignore[no-untyped-def
         State(ids.TUNE_LAUNCH_PATHS_STORE, "data"),
         prevent_initial_call=True,
     )
+
+
+# ---------------------------------------------------------------------------
+# Space — export the edited search space to tuning_spec.json (Task C2)
+# ---------------------------------------------------------------------------
+
+def _collect_space_edits(
+    keys, lows, highs, logs, choices, tunables  # type: ignore[no-untyped-def]
+) -> "dict[str, dict]":
+    """Zip the pattern-matching Space inputs into a per-key edit map.
+
+    Dash hands pattern-matching ``State`` values back as positional lists aligned
+    by their component ``id`` order; the matching ``ctx.states_list`` carries each
+    id so we recover the knob key. Each edit dict carries the populated subset of
+    ``{low, high, log, choices, tunable}`` — a knob whose widget was untouched
+    yields an empty dict, which :func:`~phenotypic.gui.tune._space._apply_edits`
+    treats as "use the inferred default".
+
+    Args:
+        keys: The per-knob keys (in widget order), recovered from the ids.
+        lows / highs: The range low / high numeric input values.
+        logs / tunables: The log / tunable switch value lists (``["on"]`` or ``[]``).
+        choices: The categorical checklist value lists.
+
+    Returns:
+        ``{knob_key: {"low": …, "tunable": bool, …}}`` for every knob.
+    """
+    edits: "dict[str, dict]" = {}
+    for index, key in enumerate(keys):
+        if key is None:
+            continue
+        edit: dict = {}
+        low = lows[index] if index < len(lows) else None
+        high = highs[index] if index < len(highs) else None
+        log = logs[index] if index < len(logs) else None
+        choice = choices[index] if index < len(choices) else None
+        tunable = tunables[index] if index < len(tunables) else None
+        if low is not None:
+            edit["low"] = low
+        if high is not None:
+            edit["high"] = high
+        if log is not None:
+            edit["log"] = "on" in (log or [])
+        if choice is not None:
+            edit["choices"] = list(choice)
+        if tunable is not None:
+            edit["tunable"] = "on" in (tunable or [])
+        edits[key] = edit
+    return edits
+
+
+def write_space_spec(
+    root: "TuneRunRoot", edits: "dict[str, dict]"
+) -> "Path":
+    """Build the edited search space and write it to ``tuning_spec.json``.
+
+    Loads the run's existing spec (preferred) or base pipeline, rebuilds the
+    :class:`~phenotypic.tune.TuningSpec` via the pure
+    :func:`~phenotypic.gui.tune._space.space_to_spec` (preserving the run's
+    scorer / strategy / budget when a spec already exists — OQ8), and writes the
+    result **atomically** (temp file + ``os.replace``) to
+    ``deliverables/tuning_spec.json``. Never spawns a run — it only persists the
+    recipe (the no-re-optimize lock).
+
+    Args:
+        root: The validated tune output handle.
+        edits: The per-knob edit map (empty → the inferred defaults).
+
+    Returns:
+        The path written (``deliverables/tuning_spec.json`` under the run dir).
+
+    Raises:
+        ValueError: When the run dir holds neither a spec nor a pipeline to infer
+            a search space from.
+        PermissionError: When the output directory is read-only (HPCC) and the
+            atomic ``os.replace`` cannot complete. Re-raised so the caller can
+            surface it in a note.
+    """
+    import os
+    import tempfile
+
+    from phenotypic.gui.tune._space import _load_space_source, space_to_spec
+    from phenotypic.tools_ import tuning_spec_path
+
+    source = _load_space_source(root)
+    if source is None:
+        raise ValueError(
+            "no tuning_spec.json or pipeline.json found for this run; "
+            "cannot infer a search space to export"
+        )
+    spec = space_to_spec(source, edits=edits)
+    payload = spec.model_dump_json(indent=2)
+
+    target = tuning_spec_path(root.path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp_name = tempfile.mkstemp(
+        dir=str(target.parent), prefix=".tuning_spec.", suffix=".json.tmp"
+    )
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(payload)
+        os.replace(tmp_name, target)
+    except BaseException:
+        try:
+            os.unlink(tmp_name)
+        except OSError:
+            pass
+        raise
+    return target
+
+
+def _register_space_export(app) -> None:  # type: ignore[no-untyped-def]
+    """Wire the Space "Export tuning_spec.json" button (Task C2).
+
+    Collects the per-knob edits from the pattern-matching Space inputs, rebuilds
+    + writes the spec via :func:`write_space_spec`, and reports the outcome in the
+    Space note. The write is the only side effect — no run is spawned.
+    """
+    from dash import ALL, Input, Output, State
+
+    @app.callback(
+        Output(ids.TUNE_SPACE_NOTE, "children"),
+        Input(ids.TUNE_BTN_SPACE_EXPORT, "n_clicks"),
+        State({"type": ids.TUNE_SPACE_TUNABLE, "key": ALL}, "id"),
+        State({"type": ids.TUNE_SPACE_LOW, "key": ALL}, "value"),
+        State({"type": ids.TUNE_SPACE_HIGH, "key": ALL}, "value"),
+        State({"type": ids.TUNE_SPACE_LOG, "key": ALL}, "value"),
+        State({"type": ids.TUNE_SPACE_CHOICES, "key": ALL}, "value"),
+        State({"type": ids.TUNE_SPACE_TUNABLE, "key": ALL}, "value"),
+        State(ids.TUNE_RUN_ROOT_STORE, "data"),
+        prevent_initial_call=True,
+    )
+    def _export_space(  # type: ignore[no-untyped-def]
+        n_clicks, tunable_ids, lows, highs, logs, choices, tunables, run_root_data
+    ):
+        from pathlib import Path
+
+        from phenotypic.gui.tune._run_root import TuneRunRoot
+
+        if not run_root_data or not run_root_data.get("path"):
+            return "No run is bound — cannot export."
+        keys = [entry.get("key") for entry in (tunable_ids or [])]
+        edits = _collect_space_edits(keys, lows, highs, logs, choices, tunables)
+        try:
+            root = TuneRunRoot.discover(Path(run_root_data["path"]))
+            written = write_space_spec(root, edits)
+        except PermissionError:
+            return "Export failed: the output directory is read-only."
+        except Exception:  # noqa: BLE001 - surface the failure in the note
+            logger.warning("Space export failed", exc_info=True)
+            return "Export failed — see the server log."
+        return f"Exported {written}"
 
 
 def _param_importances(store: "Optional[_ReadableStore]") -> dict[str, float]:
