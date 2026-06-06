@@ -7,6 +7,8 @@ import plotly.graph_objects as go
 import plotly.io as pio
 
 from phenotypic.viz.figures._theme import (
+    BG,
+    FONT_FAMILY,
     OKABE_ITO,
     PHENOTYPIC_TEMPLATE_NAME,
     apply_theme,
@@ -90,3 +92,17 @@ def test_okabe_ito_matches_design_md_series_order() -> None:
         "#D55E00",
         "#000000",
     )
+
+
+def test_paper_bgcolor_matches_design_bg() -> None:
+    """Figure background is BG (#f5f7fa, DESIGN.md figure.facecolor), not white."""
+    register_phenotypic_template()
+    template = pio.templates[PHENOTYPIC_TEMPLATE_NAME]
+    assert template.layout.paper_bgcolor == BG
+
+
+def test_font_family_does_not_drift_from_gui_design() -> None:
+    """The theme font stack mirrors ``gui/_design.FONT_FAMILY_BODY`` (no drift)."""
+    from phenotypic.gui._design import FONT_FAMILY_BODY
+
+    assert FONT_FAMILY == FONT_FAMILY_BODY

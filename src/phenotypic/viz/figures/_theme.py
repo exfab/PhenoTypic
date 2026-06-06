@@ -107,7 +107,10 @@ OKABE_ITO: tuple[str, ...] = (
 
 #: Roboto-based font stack matching the active GUI font in
 #: ``phenotypic.gui._design``.
-FONT_FAMILY: str = "Roboto, sans-serif"
+FONT_FAMILY: str = (
+    "'Roboto', -apple-system, BlinkMacSystemFont, "
+    '"Segoe UI", "Helvetica Neue", Arial, sans-serif'
+)
 
 
 def register_phenotypic_template() -> None:
@@ -133,7 +136,7 @@ def register_phenotypic_template() -> None:
         layout=dict(
             colorway=list(OKABE_ITO),
             font=dict(family=FONT_FAMILY, color=BODY),
-            paper_bgcolor=WHITE,
+            paper_bgcolor=BG,
             plot_bgcolor=WHITE,
             title=dict(font=dict(family=FONT_FAMILY, color=NAVY)),
             xaxis=dict(
