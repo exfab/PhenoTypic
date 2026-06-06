@@ -46,10 +46,16 @@ to integrate new tools.
 uv add phenotypic
 ```
 
-**Interactive / GUI Install** (napari viewer, Panel dashboards, Jupyter)
+**Interactive / GUI Install** (Panel dashboards, Jupyter, Dash hub)
 
 ```bash
 uv add phenotypic --extra gui
+```
+
+**napari Desktop Viewer Install** (for `image.*.napari()`, point picker, sweep viewer)
+
+```bash
+uv add phenotypic --extra napari
 ```
 
 ## Pip
@@ -64,6 +70,12 @@ pip install phenotypic
 
 ```bash
 pip install "phenotypic[gui]"
+```
+
+**napari Desktop Viewer Install**
+
+```bash
+pip install "phenotypic[napari]"
 ```
 
 Note: may not always be the latest version. Install from repo when latest update is
