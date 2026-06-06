@@ -172,6 +172,22 @@ class GridFitReport(FigureProvider):
             # passing ``row``/``col`` remaps them to this subplot's axes.
             for shape in sub.layout.shapes:
                 composed.add_shape(shape.to_plotly_json(), row=row, col=1)
+            # Carry annotations too. add_vline(annotation_text=...) labels are
+            # annotations (not shapes); the empty-state placeholder is a
+            # paper-anchored annotation. Retarget each ref to THIS subplot's
+            # axes, preserving any " domain" suffix and re-centering paper ones.
+            axis_suffix = "" if row == 1 else str(row)
+            for ann in sub.layout.annotations:
+                payload = ann.to_plotly_json()
+                for key, axis in (("xref", "x"), ("yref", "y")):
+                    ref = payload.get(key, "")
+                    if ref == "paper":
+                        payload[key] = f"{axis}{axis_suffix} domain"
+                        payload["x" if axis == "x" else "y"] = 0.5
+                    elif ref.startswith(axis):
+                        suffix = " domain" if ref.endswith(" domain") else ""
+                        payload[key] = f"{axis}{axis_suffix}{suffix}"
+                composed.add_annotation(payload)
 
         composed.update_layout(
             height=320 * len(specs),
@@ -370,7 +386,8 @@ class GridFitReport(FigureProvider):
         Ports :meth:`AutoGridFinder._plot_successive_diffs`: positive
         differences between adjacent sorted centers, one overlaid
         ``go.Histogram`` per axis (row = navy, col = orange), with a green
-        fitted-pitch reference line and a vermilion 1x image-pitch line.
+        fitted-pitch reference line, a vermilion 1x image-pitch line, and
+        grey 2x/3x image-pitch markers for spotting sparse-coverage peaks.
 
         Returns:
             A ``go.Figure`` with up to two ``go.Histogram`` traces plus
@@ -382,6 +399,7 @@ class GridFitReport(FigureProvider):
 
         fig = go.Figure()
         any_data = False
+        max_pitch = 0.0
         for stats, color in (
             (self._row_stats, _NAVY),
             (self._col_stats, _ORANGE),
@@ -415,6 +433,19 @@ class GridFitReport(FigureProvider):
                 line=dict(color=_VERMILION, width=1.2, dash="dash"),
                 annotation_text=f"{label} 1x ip ({image_pitch:.0f})",
             )
+            # Grey 2x/3x image-pitch markers help spot sparse-coverage peaks
+            # (adjacent-center diffs that skipped one or two grid cells).
+            max_pitch = max(max_pitch, image_pitch)
+            fig.add_vline(
+                x=2 * image_pitch,
+                line=dict(color=_GREY, width=1.0, dash="dot"),
+                annotation_text=f"{label} 2x ip ({2 * image_pitch:.0f})",
+            )
+            fig.add_vline(
+                x=3 * image_pitch,
+                line=dict(color=_GREY, width=1.0, dash="dot"),
+                annotation_text=f"{label} 3x ip ({3 * image_pitch:.0f})",
+            )
 
         if not any_data:
             return self._empty_figure(
@@ -427,16 +458,22 @@ class GridFitReport(FigureProvider):
             yaxis_title="Count",
             barmode="overlay",
         )
+        if max_pitch > 0:
+            # Keep the 3x marker in view even when no diff reaches it.
+            fig.update_xaxes(range=[0, 3.5 * max_pitch])
         return fig
 
     @figure(title="Axis Occupancy", section=_SECTION_AXIS)
     def fig_axis_occupancy(self) -> go.Figure:
         """Per-cell detection counts per axis with empty-cell highlighting.
 
-        Ports :meth:`AutoGridFinder._plot_axis_occupancy`: the fitted
+        Adapted from :meth:`AutoGridFinder._plot_axis_occupancy`: the fitted
         per-index detection counts as grouped bars (row vs. col); cells
         with zero detections are colored vermilion to flag gaps. The title
-        reports occupied/expected cells per axis.
+        reports occupied/expected cells per axis. The image-pitch-count
+        overlay the legacy plot showed on fit/image-pitch disagreement is
+        intentionally dropped here — that comparison is reported numerically
+        in the summary table (see DEFERRED.md).
 
         Returns:
             A ``go.Figure`` with one ``go.Bar`` trace per axis; an

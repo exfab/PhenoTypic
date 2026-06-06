@@ -148,6 +148,19 @@ class TestGridFitReportFigures:
         assert isinstance(fig, go.Figure)
         assert len(fig.data) > 1
 
+    def test_dash_carries_reference_line_labels(self, report):
+        """add_vline annotation labels survive composition (F5)."""
+        fig = report.dash()
+        labels = [a.text for a in fig.layout.annotations if a.text]
+        assert any("fit (" in t for t in labels), "pitch-fit label lost in compose"
+
+    def test_successive_diffs_has_2x_3x_pitch_markers(self, report):
+        """fig_successive_diffs draws 2x and 3x image-pitch reference lines (F6)."""
+        fig = report.fig_successive_diffs()
+        labels = [a.text for a in fig.layout.annotations if a.text]
+        assert any("2x ip" in t for t in labels)
+        assert any("3x ip" in t for t in labels)
+
 
 # ---------------------------------------------------------------------------
 # Empty-state handling (no detected objects)
