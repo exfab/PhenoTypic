@@ -52,15 +52,21 @@ window.dash_clientside = window.dash_clientside || {};
             var spec = p.spec || "<spec>";
             var input = p.input || "<images>";
             var output = p.output || "<output>";
+            var resolvedStrategy = String(strategy || "tpe");
             var tokens = [
                 "python", "-m", "phenotypic.tune", "run",
                 spec,
                 "-i", input,
                 "-o", output,
-                "--strategy", String(strategy || "tpe"),
+                "--strategy", resolvedStrategy,
             ];
-            // --n-trials only when a positive budget is given (grid ignores it).
-            if (nTrials !== null && nTrials !== undefined && nTrials !== "") {
+            // --n-trials only when a budget is given AND the strategy is not
+            // grid (grid is exhaustive and ignores it — emitting it would be
+            // misleading). Keep this equivalent to render_launch_command.
+            if (
+                nTrials !== null && nTrials !== undefined && nTrials !== "" &&
+                resolvedStrategy !== "grid"
+            ) {
                 tokens.push("--n-trials", String(nTrials));
             }
             // --storage-url only when non-empty (local run resolves study.db).

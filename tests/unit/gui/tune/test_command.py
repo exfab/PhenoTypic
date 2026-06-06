@@ -63,6 +63,24 @@ def test_render_local_grid_omits_storage_screen_and_slurm() -> None:
     assert "--slurm" not in command
 
 
+def test_render_grid_suppresses_n_trials_even_when_set() -> None:
+    """Grid is exhaustive and ignores ``--n-trials`` — never emit it for grid."""
+    from phenotypic.gui.tune._command import render_launch_command
+
+    command = render_launch_command(
+        "spec.json",
+        "imgs",
+        "run",
+        strategy="grid",
+        n_trials=50,  # a stale budget left in the form must NOT leak into grid
+        storage_url=None,
+        screen=False,
+        slurm=False,
+    )
+    assert "--strategy grid" in command
+    assert "--n-trials" not in command
+
+
 def test_render_appends_screen_and_slurm_when_toggled() -> None:
     from phenotypic.gui.tune._command import render_launch_command
 
@@ -102,9 +120,17 @@ def test_render_quotes_paths_with_spaces() -> None:
     assert "out dir" in tokens
 
 
-def test_render_uses_real_cli_subcommand_and_flag_names() -> None:
-    """The rendered tokens match the real argparse CLI (defence against drift)."""
+def test_render_parses_through_the_real_cli_parser() -> None:
+    """The rendered command parses cleanly through the REAL argparse CLI.
+
+    Drift defence: instead of asserting flag spellings against a hand-copied
+    list (which a CLI rename would silently outpace), feed the rendered tokens
+    (minus the ``python -m phenotypic.tune`` prefix) through the actual
+    ``phenotypic.tune.__main__._build_parser()`` and assert the parsed namespace
+    carries every value. A future flag rename breaks this test.
+    """
     from phenotypic.gui.tune._command import render_launch_command
+    from phenotypic.tune.__main__ import _build_parser, _normalize_argv
 
     command = render_launch_command(
         "spec.json",
@@ -117,13 +143,42 @@ def test_render_uses_real_cli_subcommand_and_flag_names() -> None:
         slurm=True,
     )
     tokens = shlex.split(command)
-    # The subcommand is ``run`` and the spec is the bare positional after it.
-    run_index = tokens.index("run")
-    assert tokens[run_index + 1] == "spec.json"
-    # The exact long-flag spellings the CLI parser declares.
-    for flag in ("-i", "-o", "--strategy", "--n-trials", "--storage-url",
-                 "--screen", "--slurm"):
-        assert flag in tokens
+    # The base invocation is exactly ``python -m phenotypic.tune`` — drop it and
+    # hand the remainder (starting at the ``run`` subcommand) to the real parser.
+    assert tokens[:4] == ["python", "-m", "phenotypic.tune", "run"]
+    namespace = _build_parser().parse_args(_normalize_argv(tokens[3:]))
+
+    assert namespace.command == "run"
+    assert namespace.spec == "spec.json"
+    assert namespace.input == "imgs"
+    assert namespace.output == "out"
+    assert namespace.strategy == "tpe"
+    assert namespace.n_trials == 50
+    assert namespace.storage_url == "sqlite:///out/study.db"
+    assert namespace.screen is True
+    assert namespace.slurm is True
+
+
+def test_render_grid_command_parses_without_n_trials() -> None:
+    """A grid command (no ``--n-trials``) still parses; the budget defaults None."""
+    from phenotypic.gui.tune._command import render_launch_command
+    from phenotypic.tune.__main__ import _build_parser, _normalize_argv
+
+    command = render_launch_command(
+        "spec.json",
+        "imgs",
+        "out",
+        strategy="grid",
+        n_trials=50,
+        storage_url=None,
+        screen=False,
+        slurm=False,
+    )
+    tokens = shlex.split(command)
+    namespace = _build_parser().parse_args(_normalize_argv(tokens[3:]))
+    assert namespace.strategy == "grid"
+    # Grid suppresses --n-trials, so the parser falls back to its default (None).
+    assert namespace.n_trials is None
 
 
 def test_render_launch_command_does_not_import_optuna() -> None:

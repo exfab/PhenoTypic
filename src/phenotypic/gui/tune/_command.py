@@ -39,6 +39,10 @@ _FLAG_STORAGE_URL: Final[str] = "--storage-url"
 _FLAG_SCREEN: Final[str] = "--screen"
 _FLAG_SLURM: Final[str] = "--slurm"
 
+#: The exhaustive strategy that ignores ``--n-trials`` (the CLI covers the whole
+#: grid regardless of the budget), so the renderer never emits the flag for it.
+_GRID_STRATEGY: Final[str] = "grid"
+
 
 def render_launch_command(
     spec_path: str,
@@ -58,8 +62,9 @@ def render_launch_command(
     ``shlex.quote``-escaped so a path with spaces round-trips through
     ``shlex.split``. Optional flags are appended only when set:
 
-    * ``--n-trials`` only when ``n_trials`` is not ``None`` (grid is exhaustive
-      and ignores it, so an omitted budget renders no flag);
+    * ``--n-trials`` only when ``n_trials`` is set **and** the strategy is not
+      ``grid`` (grid is exhaustive and ignores the budget, so the flag would be
+      misleading — it is suppressed for grid even when a budget is present);
     * ``--storage-url`` only when ``storage_url`` is a non-empty string (a local
       run resolves the storage URL to the run's ``study.db`` and needs no flag);
     * ``--screen`` / ``--slurm`` only when the respective toggle is ``True``
@@ -88,7 +93,9 @@ def render_launch_command(
         _FLAG_STRATEGY,
         strategy,
     ]
-    if n_trials is not None:
+    # Grid is exhaustive and ignores --n-trials, so never emit it for grid (even
+    # when a stale budget lingers in the Launch form).
+    if n_trials is not None and strategy != _GRID_STRATEGY:
         tokens += [_FLAG_N_TRIALS, str(n_trials)]
     if storage_url:
         tokens += [_FLAG_STORAGE_URL, storage_url]
