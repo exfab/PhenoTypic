@@ -91,13 +91,12 @@ from phenotypic.gui.builder._state import (
     _new_block_id,
     _new_node_id,
     current_scope,
-    from_pipeline,
     stage_of,
     state_from_json,
     state_to_json,
     to_pipeline,
 )
-from phenotypic.gui.builder._conversion_dag import to_pipeline_dag
+from phenotypic.gui.builder._conversion_dag import from_pipeline_dag, to_pipeline_dag
 from phenotypic.gui.builder._validation import validate
 
 logger = logging.getLogger(__name__)
@@ -2292,12 +2291,7 @@ def _state_replacement_payload(
         :func:`_render_views`.
     """
 
-    scope = from_pipeline(pipeline)
-    new_state = BuilderState(
-        root=scope,
-        breadcrumb=[],
-        selected_node_id=None,
-    )
+    new_state = from_pipeline_dag(pipeline)
     breadcrumb, canvas_elements, inspector = _render_views(new_state)
     return (
         state_to_json(new_state),

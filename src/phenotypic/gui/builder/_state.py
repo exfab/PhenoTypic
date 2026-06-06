@@ -247,6 +247,10 @@ class _DagBuilderState:
     breadcrumb: List[str] = field(default_factory=list)
     selected_block_id: Optional[str] = None
     selected_edge_id: Optional[str] = None
+    selected_targets_by_scope: Dict[str, Dict[str, Any]] = field(
+        default_factory=dict
+    )
+    open_port_menu: Optional[Dict[str, Any]] = None
     pending_delete_block_id: Optional[str] = None
     toast_queue: List[Dict[str, Any]] = field(default_factory=list)
 
@@ -1544,6 +1548,10 @@ def state_to_json(state: Any) -> Dict[str, Any]:
             "breadcrumb": list(state.breadcrumb),
             "selected_block_id": state.selected_block_id,
             "selected_edge_id": state.selected_edge_id,
+            "selected_targets_by_scope": dict(
+                getattr(state, "selected_targets_by_scope", {}) or {}
+            ),
+            "open_port_menu": getattr(state, "open_port_menu", None),
             "pending_delete_block_id": state.pending_delete_block_id,
             "toast_queue": list(state.toast_queue),
         }
@@ -1641,6 +1649,8 @@ def _state_from_json_dag(data: Dict[str, Any]) -> _DagBuilderState:
         breadcrumb=list(data.get("breadcrumb") or []),
         selected_block_id=data.get("selected_block_id"),
         selected_edge_id=data.get("selected_edge_id"),
+        selected_targets_by_scope=dict(data.get("selected_targets_by_scope") or {}),
+        open_port_menu=data.get("open_port_menu"),
         pending_delete_block_id=data.get("pending_delete_block_id"),
         toast_queue=list(data.get("toast_queue") or []),
     )
