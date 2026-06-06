@@ -252,7 +252,7 @@ def load_plate_grid(image_source: str, plate_name: str, *, sandbox: Any = None):
     if sandbox is not None:
         # Re-confine through the sandbox boundary (raises ValueError on escape).
         path = sandbox.resolve(str(path))
-    return GridImage(str(path))
+    return GridImage.imread(path)
 
 
 __all__ = [

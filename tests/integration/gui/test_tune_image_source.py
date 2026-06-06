@@ -83,6 +83,33 @@ def test_plate_image_path_joins_source_and_plate() -> None:
     assert plate_image_path(str(src), "plate_01.tif") == src / "plate_01.tif"
 
 
+def test_load_plate_grid_reads_a_real_plate(sandbox: SandboxRoot) -> None:
+    """A successful overlay load returns a ``GridImage``.
+
+    Regression: the loader must call ``GridImage.imread(path)``, not
+    ``GridImage(str(path))`` — the constructor rejects a path string
+    (``ValueError: Input must be a NumPy array``), which silently broke every
+    Curate A/B overlay render. The prior B-IMG tests only exercised the
+    sandbox-rejection path, never a successful load, so this slipped through.
+    """
+    import numpy as np
+    from skimage.io import imsave
+
+    from phenotypic import GridImage
+    from phenotypic.data import load_synth_yeast_plate
+    from phenotypic.gui.tune._curate_overlays import load_plate_grid
+
+    plates = sandbox.root / "plates"
+    plates.mkdir()
+    rgb = np.asarray(load_synth_yeast_plate().rgb[:])
+    if rgb.dtype != np.uint8:
+        rgb = np.clip(rgb if rgb.max() > 1 else rgb * 255, 0, 255).astype(np.uint8)
+    imsave(str(plates / "plate.tif"), rgb)
+
+    grid = load_plate_grid(str(plates), "plate.tif", sandbox=sandbox)
+    assert isinstance(grid, GridImage)
+
+
 def test_curate_view_exposes_picker_ids(tmp_path: Path) -> None:
     from phenotypic.gui.tune import create_app
     from phenotypic.gui.tune._run_root import TuneRunRoot
