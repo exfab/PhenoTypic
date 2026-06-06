@@ -22,6 +22,7 @@ import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 from phenotypic.gui._config import MOUNT_HOME, TITLE_TUNE
 from phenotypic.gui._design import inject_design_tokens
 from phenotypic.gui._shared import register_shared_static
+from phenotypic.gui.tune._callbacks import register_callbacks
 from phenotypic.gui.tune._layout import build_empty_state_layout, build_layout
 from phenotypic.gui.tune._run_root import TuneRunRoot
 
@@ -72,6 +73,7 @@ def create_app(
         return app
 
     app.layout = build_layout(root)
+    register_callbacks(app)
     logger.info("Tune co-pilot ready: run=%s", root.path)
     return app
 
