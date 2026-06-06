@@ -429,6 +429,74 @@ def _param_importances(store: "Optional[_ReadableStore]") -> dict[str, float]:
 
 
 # ---------------------------------------------------------------------------
+# Curate — pure pin / mode helpers (no Dash; unit-tested headless)
+# ---------------------------------------------------------------------------
+
+#: The A/B pin store slot names, in fill order.
+_AB_SLOTS: tuple[str, str] = ("a", "b")
+
+
+def pinned_pair(clicked_trial: int, store: "Optional[dict]") -> dict:
+    """Pin ``clicked_trial`` into the A/B pair, assign-A-then-B-then-re-pin.
+
+    The pure pin logic, unit-testable without Dash. Given the clicked trial
+    number and the current ``{"a": <n|None>, "b": <n|None>}`` store:
+
+    * an empty slot A takes the trial;
+    * else an empty slot B takes it;
+    * else (both full) the trial re-pins into slot A — the oldest pin cycles
+      out so the user can keep comparing against a held B side.
+
+    Clicking the trial already pinned in a slot is idempotent (it does not
+    duplicate the trial into the other slot).
+
+    Args:
+        clicked_trial: The shortlist-card trial number the user clicked.
+        store: The current pin store (``{"a", "b"}``), or ``None`` / partial on
+            first render — missing keys are treated as empty slots.
+
+    Returns:
+        The updated pin store ``{"a": <n|None>, "b": <n|None>}``.
+    """
+    base = store if isinstance(store, dict) else {}
+    a = base.get("a")
+    b = base.get("b")
+    # Idempotent: clicking an already-pinned trial leaves the pair unchanged.
+    if clicked_trial in (a, b):
+        return {"a": a, "b": b}
+    if a is None:
+        return {"a": clicked_trial, "b": b}
+    if b is None:
+        return {"a": a, "b": clicked_trial}
+    return {"a": clicked_trial, "b": b}
+
+
+#: The valid Curate overlay modes (side-by-side ↔ difference).
+_CURATE_MODES: frozenset[str] = frozenset({"side", "difference"})
+
+#: The default Curate mode when the trigger is unknown / absent.
+_DEFAULT_CURATE_MODE: str = "side"
+
+
+def curate_mode(trigger: "Optional[str]") -> str:
+    """Resolve the Curate overlay mode from the toggle's value.
+
+    Pure, unit-testable: a known mode (``"side"`` / ``"difference"``) passes
+    through; any unknown / absent value falls back to ``"side"`` so a stray
+    trigger lands on the side-by-side default.
+
+    Args:
+        trigger: The mode toggle's value.
+
+    Returns:
+        One of ``"side"`` / ``"difference"``.
+    """
+    if trigger in _CURATE_MODES:
+        return trigger  # type: ignore[return-value]
+    return _DEFAULT_CURATE_MODE
+
+
+# ---------------------------------------------------------------------------
 # Curate — sandbox-bounded Image Source picker (B-IMG)
 # ---------------------------------------------------------------------------
 
@@ -531,6 +599,372 @@ def _register_curate_callbacks(app, sandbox) -> None:  # type: ignore[no-untyped
     )
     def _toggle_curate_prompt(image_source):  # type: ignore[no-untyped-def]
         return {"display": "none"} if image_source else {}
+
+    _register_curate_overlay_callbacks(app)
+
+
+# ---------------------------------------------------------------------------
+# Curate — shortlist pin + non-blocking overlay render/poll (B4)
+# ---------------------------------------------------------------------------
+
+
+#: Image extensions the plate picker surfaces (mirrors the builder image picker).
+_PLATE_EXTS: frozenset[str] = frozenset(
+    {".png", ".tif", ".tiff", ".jpg", ".jpeg", ".nef", ".cr2", ".arw", ".dng"}
+)
+
+
+def _list_plate_names(image_source: "Optional[str]") -> list[str]:
+    """List image file names directly under ``image_source`` (sorted).
+
+    Returns ``[]`` for an unset / unreadable source so the picker degrades to
+    empty rather than raising. Only depth-1 files with a known image extension
+    are surfaced.
+    """
+    if not image_source:
+        return []
+    from pathlib import Path
+
+    directory = Path(image_source)
+    try:
+        names = [
+            entry.name
+            for entry in directory.iterdir()
+            if entry.is_file() and entry.suffix.lower() in _PLATE_EXTS
+        ]
+    except OSError:
+        return []
+    return sorted(names)
+
+
+def _shortlist_card_class(trial: "Optional[int]", pinned: dict) -> str:
+    """The class string for a shortlist card (highlight its A / B pin slot)."""
+    classes = ["tune-shortlist-card"]
+    if trial is not None and trial == pinned.get("a"):
+        classes.append("tune-shortlist-card-a")
+    elif trial is not None and trial == pinned.get("b"):
+        classes.append("tune-shortlist-card-b")
+    return " ".join(classes)
+
+
+def _register_curate_overlay_callbacks(app) -> None:  # type: ignore[no-untyped-def]
+    """Register the pin + render/poll + mode + winner Curate callbacks.
+
+    Split out from the Image Source picker so the picker can register even when
+    no shortlist exists yet (a brand-new live run). These callbacks render
+    overlays **on demand** and stay non-blocking: the render callback submits to
+    the :class:`OverlayCache` singleton and returns a spinner immediately; the
+    ``dcc.Interval`` poll swaps in the real figure once the future resolves.
+    """
+    import uuid
+
+    from dash import ALL, Input, Output, State, no_update
+
+    from phenotypic.gui.tune import _curate_overlays as ov
+
+    # --- Session id: a fresh uuid on first paint --------------------------
+    @app.callback(
+        Output(ids.TUNE_SESSION_ID, "data"),
+        Input(ids.TUNE_SESSION_ID, "data"),
+        prevent_initial_call=False,
+    )
+    def _init_session_id(current):  # type: ignore[no-untyped-def]
+        return current if current else uuid.uuid4().hex
+
+    # --- Populate the plate picker from the Image Source directory --------
+    @app.callback(
+        Output(ids.TUNE_PLATE_PICKER, "options"),
+        Output(ids.TUNE_PLATE_PICKER, "value"),
+        Input(ids.TUNE_IMAGE_SOURCE_STORE, "data"),
+        State(ids.TUNE_PLATE_PICKER, "value"),
+        prevent_initial_call=False,
+    )
+    def _populate_plates(image_source, current):  # type: ignore[no-untyped-def]
+        names = _list_plate_names(image_source)
+        options = [{"label": n, "value": n} for n in names]
+        value = current if current in names else (names[0] if names else None)
+        return options, value
+
+    # --- Pin a shortlist card into the A/B pair ---------------------------
+    @app.callback(
+        Output(ids.TUNE_AB_STORE, "data"),
+        Output({"type": ids.TUNE_SHORTLIST_CARD, "trial": ALL}, "className"),
+        Input({"type": ids.TUNE_SHORTLIST_CARD, "trial": ALL}, "n_clicks"),
+        State(ids.TUNE_AB_STORE, "data"),
+        State({"type": ids.TUNE_SHORTLIST_CARD, "trial": ALL}, "id"),
+        prevent_initial_call=True,
+    )
+    def _pin_card(_clicks, store, ids_list):  # type: ignore[no-untyped-def]
+        triggered = ctx.triggered_id
+        if not isinstance(triggered, dict) or "trial" not in triggered:
+            return no_update, no_update
+        if not ctx.triggered or not ctx.triggered[0].get("value"):
+            return no_update, no_update
+        pinned = pinned_pair(int(triggered["trial"]), store)
+        classes = [
+            _shortlist_card_class(card_id.get("trial"), pinned)
+            for card_id in ids_list
+        ]
+        return pinned, classes
+
+    # --- Mode toggle → mode store + container visibility ------------------
+    @app.callback(
+        Output(ids.TUNE_CURATE_MODE_STORE, "data"),
+        Output(ids.TUNE_SIDE_BY_SIDE, "className"),
+        Output(ids.TUNE_DIFFERENCE, "className"),
+        Input(ids.TUNE_CURATE_MODE_TOGGLE, "value"),
+        prevent_initial_call=True,
+    )
+    def _switch_curate_mode(value):  # type: ignore[no-untyped-def]
+        mode = curate_mode(value)
+        side_cls = "tune-curate-sidebyside"
+        diff_cls = "tune-curate-difference"
+        if mode == "difference":
+            side_cls += " tune-view-hidden"
+        else:
+            diff_cls += " tune-view-hidden"
+        return mode, side_cls, diff_cls
+
+    # --- Render (NON-BLOCKING): submit overlays, return spinners ----------
+    @app.callback(
+        Output(ids.TUNE_GRAPH_A, "figure", allow_duplicate=True),
+        Output(ids.TUNE_GRAPH_B, "figure", allow_duplicate=True),
+        Output(ids.TUNE_GRAPH_DIFF, "figure", allow_duplicate=True),
+        Input(ids.TUNE_AB_STORE, "data"),
+        Input(ids.TUNE_PLATE_PICKER, "value"),
+        Input(ids.TUNE_CURATE_MODE_STORE, "data"),
+        State(ids.TUNE_SESSION_ID, "data"),
+        State(ids.TUNE_IMAGE_SOURCE_STORE, "data"),
+        State(ids.TUNE_RUN_ROOT_STORE, "data"),
+        prevent_initial_call=True,
+    )
+    def _render_overlays(  # type: ignore[no-untyped-def]
+        pinned, plate, mode, session_id, image_source, run_root_data
+    ):
+        return _submit_curate_overlays(
+            ov,
+            pinned=pinned,
+            plate=plate,
+            mode=mode,
+            session_id=session_id,
+            image_source=image_source,
+            run_root_data=run_root_data,
+        )
+
+    # --- Overlay-readiness poll: swap spinners for resolved figures -------
+    @app.callback(
+        Output(ids.TUNE_GRAPH_A, "figure", allow_duplicate=True),
+        Output(ids.TUNE_GRAPH_B, "figure", allow_duplicate=True),
+        Output(ids.TUNE_GRAPH_DIFF, "figure", allow_duplicate=True),
+        Input(ids.TUNE_OVERLAY_POLL, "n_intervals"),
+        State(ids.TUNE_AB_STORE, "data"),
+        State(ids.TUNE_PLATE_PICKER, "value"),
+        State(ids.TUNE_CURATE_MODE_STORE, "data"),
+        State(ids.TUNE_SESSION_ID, "data"),
+        prevent_initial_call=True,
+    )
+    def _poll_overlays(  # type: ignore[no-untyped-def]
+        _n, pinned, plate, mode, session_id
+    ):
+        return _poll_curate_overlays(
+            ov,
+            pinned=pinned,
+            plate=plate,
+            mode=mode,
+            session_id=session_id,
+        )
+
+    _register_linked_zoom(app)
+
+
+def _register_linked_zoom(app) -> None:  # type: ignore[no-untyped-def]
+    """Wire the clientside A<->B linked-zoom mirror (Task B4).
+
+    Two clientside callbacks (A->B and B->A), each passing its OWN graph's
+    relayout prop-id as the third arg so the JS ``mirrorRange`` propagates only
+    from the user-driven graph (the triggered-prop guard that stops the
+    A->B->A infinite relayout). The partner graph's current ``figure`` is a
+    ``State`` so the JS can clone it with the synced axis range.
+    """
+    from dash import Input, Output, State
+
+    app.clientside_callback(
+        f"function(r, fig) {{ return window.dash_clientside.tune_sync.mirrorRange("
+        f"r, fig, '{ids.TUNE_GRAPH_A}.relayoutData'); }}",
+        Output(ids.TUNE_GRAPH_B, "figure", allow_duplicate=True),
+        Input(ids.TUNE_GRAPH_A, "relayoutData"),
+        State(ids.TUNE_GRAPH_B, "figure"),
+        prevent_initial_call=True,
+    )
+    app.clientside_callback(
+        f"function(r, fig) {{ return window.dash_clientside.tune_sync.mirrorRange("
+        f"r, fig, '{ids.TUNE_GRAPH_B}.relayoutData'); }}",
+        Output(ids.TUNE_GRAPH_A, "figure", allow_duplicate=True),
+        Input(ids.TUNE_GRAPH_B, "relayoutData"),
+        State(ids.TUNE_GRAPH_A, "figure"),
+        prevent_initial_call=True,
+    )
+
+
+def _submit_curate_overlays(  # type: ignore[no-untyped-def]
+    ov,
+    *,
+    pinned,
+    plate,
+    mode,
+    session_id,
+    image_source,
+    run_root_data,
+):
+    """Submit the needed overlays (non-blocking) and return spinner figures.
+
+    Pure orchestration over the overlay module ``ov`` so it is testable without
+    Dash: resolves the run + base pipeline, and for each needed slot submits a
+    render future (or returns a guidance figure when prerequisites are missing).
+    """
+    from pathlib import Path
+
+    from phenotypic.gui.tune import _curate as curate
+    from phenotypic.gui.tune._overlays import get_overlay_cache
+    from phenotypic.gui.tune._run_root import TuneRunRoot
+
+    spinner = curate.placeholder_figure("rendering…")
+    no_source = curate.placeholder_figure("pick an Image Source")
+    no_plate = curate.placeholder_figure("pick a plate")
+
+    if not image_source:
+        return no_source, no_source, no_source
+    if not plate:
+        return no_plate, no_plate, no_plate
+    if not (run_root_data and run_root_data.get("path")):
+        return no_update_triple()
+
+    pinned = pinned if isinstance(pinned, dict) else {}
+    a_trial, b_trial = pinned.get("a"), pinned.get("b")
+    mode = curate_mode(mode)
+    session = session_id or "default"
+
+    try:
+        root = TuneRunRoot.discover(Path(run_root_data["path"]))
+    except Exception:  # noqa: BLE001 - render must degrade, never raise
+        logger.warning("Curate render re-discovery failed", exc_info=True)
+        return no_update_triple()
+
+    base = ov.read_base_pipeline(root)
+    if base is None:
+        unavailable = curate.placeholder_figure("base pipeline unavailable")
+        return unavailable, unavailable, unavailable
+
+    cache = get_overlay_cache(root.path)
+    trials = _trials_by_number(root)
+
+    fig_a = _submit_one_candidate(
+        ov, cache, base, trials, session, a_trial, plate, image_source, spinner
+    )
+    fig_b = _submit_one_candidate(
+        ov, cache, base, trials, session, b_trial, plate, image_source, spinner
+    )
+    fig_diff = _submit_difference(
+        ov, cache, base, trials, session, a_trial, b_trial, plate, image_source,
+        spinner,
+    )
+    return fig_a, fig_b, fig_diff
+
+
+def no_update_triple():  # type: ignore[no-untyped-def]
+    """Three ``no_update`` sentinels for the three Curate graph outputs."""
+    from dash import no_update
+
+    return no_update, no_update, no_update
+
+
+def _trials_by_number(root: "TuneRunRoot") -> "dict[int, object]":
+    """Map ``trial.number -> Trial`` from the run's journal (``{}`` when none)."""
+    store = _load_journal(root)
+    if store is None:
+        return {}
+    return {t.number: t for t in store.trials}
+
+
+def _submit_one_candidate(  # type: ignore[no-untyped-def]
+    ov, cache, base, trials, session, trial_number, plate, image_source, spinner
+):
+    """Submit one candidate overlay; return its spinner / guidance figure."""
+    from phenotypic.gui.tune import _curate as curate
+
+    if trial_number is None:
+        return curate.placeholder_figure("pin a candidate")
+    trial = trials.get(trial_number)
+    if trial is None:
+        return curate.placeholder_figure(f"trial {trial_number} not in journal")
+    key = (session, int(trial_number), str(plate), "candidate")
+
+    def _render():  # type: ignore[no-untyped-def]
+        from phenotypic.gui.tune._overlays import render_candidate_overlay
+
+        grid = ov.load_plate_grid(image_source, plate)
+        return render_candidate_overlay(base, trial.params, grid)
+
+    ov.request_overlay(cache, key, _render)
+    return spinner
+
+
+def _submit_difference(  # type: ignore[no-untyped-def]
+    ov, cache, base, trials, session, a_trial, b_trial, plate, image_source, spinner
+):
+    """Submit the A-vs-B difference overlay; return its spinner / guidance."""
+    from phenotypic.gui.tune import _curate as curate
+
+    if a_trial is None or b_trial is None:
+        return curate.placeholder_figure("pin A and B to diff")
+    trial_a = trials.get(a_trial)
+    trial_b = trials.get(b_trial)
+    if trial_a is None or trial_b is None:
+        return curate.placeholder_figure("a pinned trial is not in the journal")
+    key = (session, int(a_trial), f"{plate}|{b_trial}", "difference")
+
+    def _render():  # type: ignore[no-untyped-def]
+        from phenotypic.gui.tune._overlays import render_difference
+        from phenotypic.tune._evaluation._builder import build_pipeline
+
+        grid = ov.load_plate_grid(image_source, plate)
+        seg_a = build_pipeline(base, trial_a.params).apply(grid.copy())
+        seg_b = build_pipeline(base, trial_b.params).apply(grid.copy())
+        return render_difference(
+            grid.rgb[:], seg_a.objmap[:], seg_b.objmap[:]
+        )
+
+    ov.request_overlay(cache, key, _render)
+    return spinner
+
+
+def _poll_curate_overlays(  # type: ignore[no-untyped-def]
+    ov, *, pinned, plate, mode, session_id
+):
+    """Swap any resolved overlay future into its figure; else ``no_update``."""
+    from phenotypic.gui.tune import _curate as curate
+
+    pinned = pinned if isinstance(pinned, dict) else {}
+    a_trial, b_trial = pinned.get("a"), pinned.get("b")
+    session = session_id or "default"
+    error_fig = curate.placeholder_figure("render failed — see logs")
+
+    def _swap(key):  # type: ignore[no-untyped-def]
+        from dash import no_update
+
+        if key is None or not ov.overlay_ready(key):
+            return no_update
+        array = ov.take_overlay(key)
+        return ov.overlay_figure(array) if array is not None else error_fig
+
+    key_a = (session, int(a_trial), str(plate), "candidate") if a_trial is not None and plate else None
+    key_b = (session, int(b_trial), str(plate), "candidate") if b_trial is not None and plate else None
+    key_diff = (
+        (session, int(a_trial), f"{plate}|{b_trial}", "difference")
+        if a_trial is not None and b_trial is not None and plate
+        else None
+    )
+    return _swap(key_a), _swap(key_b), _swap(key_diff)
 
 
 __all__ = ["active_view", "read_study_for_monitor", "register_callbacks"]

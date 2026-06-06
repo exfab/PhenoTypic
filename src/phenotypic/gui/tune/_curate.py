@@ -257,6 +257,7 @@ def build_curate_view(
     initial_source = str(root.images_dir) if root.images_dir is not None else None
 
     children: list[Component] = [
+        dcc.Store(id=ids.TUNE_SESSION_ID, storage_type="session"),
         dcc.Store(id=ids.TUNE_IMAGE_SOURCE_STORE, data=initial_source),
         dcc.Store(
             id=ids.TUNE_AB_STORE, data={"a": None, "b": None}

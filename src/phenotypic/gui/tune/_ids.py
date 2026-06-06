@@ -164,6 +164,10 @@ TUNE_DIFFERENCE = "tune-difference"
 #: once the background render future resolves.
 TUNE_OVERLAY_POLL = "tune-overlay-poll"
 
+#: Per-tab session id (``storage_type="session"``) namespacing the pending
+#: overlay futures so two browser tabs never share a render.
+TUNE_SESSION_ID = "tune-session-id"
+
 #: The winner bar's "Set as winner" button.
 TUNE_BTN_SET_WINNER = "tune-btn-set-winner"
 
@@ -211,6 +215,7 @@ __all__ = [
     "TUNE_SIDE_BY_SIDE",
     "TUNE_DIFFERENCE",
     "TUNE_OVERLAY_POLL",
+    "TUNE_SESSION_ID",
     "TUNE_BTN_SET_WINNER",
     "TUNE_WINNER_NOTE",
 ]

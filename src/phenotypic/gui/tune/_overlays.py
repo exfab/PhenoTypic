@@ -492,6 +492,64 @@ class OverlayCache:
         return self._lookup(key)
 
 
+# ---------------------------------------------------------------------------
+# Process-wide OverlayCache singleton (one per run's machine-state tree)
+# ---------------------------------------------------------------------------
+
+#: The overlay-cache subdirectory under a run's ``.pht-tune-cache/`` tree.
+_OVERLAY_CACHE_SUBDIR: str = "overlays"
+
+#: Process-wide ``OverlayCache`` instances, keyed by their resolved cache dir.
+#: Mirrors ``builder/_session.get_cache()`` — Werkzeug serves callbacks from
+#: many threads, so the registry + its lazy init are guarded by a lock.
+_OVERLAY_CACHES: "dict[str, OverlayCache]" = {}
+_OVERLAY_CACHES_LOCK = threading.Lock()
+
+
+def overlay_cache_dir(run_path: "str | Path") -> Path:
+    """Return the overlay-cache directory under a run's machine-state tree.
+
+    The ``.npy`` overlay memo lives under
+    ``<output>/.pht-tune-cache/overlays/`` — the tune-side sibling of the
+    builder's preview cache, scoped to the run's own sandbox tree (never the
+    process temp dir) so a re-opened run reuses prior renders. Pure path
+    expression; :class:`OverlayCache` ``mkdir``s it.
+
+    Args:
+        run_path: The tune run output directory (``TuneRunRoot.path``).
+
+    Returns:
+        ``<run_path>/.pht-tune-cache/overlays/``.
+    """
+    from phenotypic.tools_ import tune_cache_dir
+
+    return tune_cache_dir(Path(run_path)) / _OVERLAY_CACHE_SUBDIR
+
+
+def get_overlay_cache(run_path: "str | Path") -> "OverlayCache":
+    """Return the process-wide :class:`OverlayCache` for a run.
+
+    Lazily creates (and memoizes) one cache per run, keyed by its resolved
+    overlay-cache directory (:func:`overlay_cache_dir`). Thread-safe — all
+    Curate callbacks route through this rather than constructing their own
+    instance, so concurrent renders share the LRU + disk memo.
+
+    Args:
+        run_path: The tune run output directory (``TuneRunRoot.path``).
+
+    Returns:
+        The shared :class:`OverlayCache` for that run.
+    """
+    cache_dir = overlay_cache_dir(run_path)
+    key = str(cache_dir)
+    with _OVERLAY_CACHES_LOCK:
+        cache = _OVERLAY_CACHES.get(key)
+        if cache is None:
+            cache = OverlayCache(cache_dir)
+            _OVERLAY_CACHES[key] = cache
+        return cache
+
+
 __all__ = [
     "render_candidate_overlay",
     "DiffResult",
@@ -500,4 +558,6 @@ __all__ = [
     "cell_disagreement",
     "OverlayKey",
     "OverlayCache",
+    "overlay_cache_dir",
+    "get_overlay_cache",
 ]
