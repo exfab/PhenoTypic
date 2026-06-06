@@ -1,6 +1,6 @@
 """CLI for managing neural network model checkpoints.
 
-Invoked via ``python -m phenotypic.nn``. Provides ``download``, ``list``,
+Invoked via ``python -m phenotypic.detect.nn``. Provides ``download``, ``list``,
 and ``clear`` subcommands for SAM2 and micro-sam checkpoints.
 """
 

@@ -65,7 +65,7 @@ with `Sam2Detector`'s CUDA wheels in the same environment requires extra
 care (the conda torch will typically win). Keep SAM2 and micro-sam work
 in separate environments if you need both with GPU acceleration.
 
-`MicroSamDetector` is importable from `phenotypic.nn` even when
+`MicroSamDetector` is importable from `phenotypic.detect.nn` even when
 `micro_sam` is missing; the `ImportError` is deferred to the first
 `apply()` call and points back at these instructions.
 
@@ -88,16 +88,16 @@ you should pre-download checkpoints on a login node before submitting jobs.
 
 ```bash
 # Download the default (tiny) SAM2 checkpoint
-python -m phenotypic.nn download
+python -m phenotypic.detect.nn download
 
 # Download a specific size
-python -m phenotypic.nn download --model-type sam2 --model-size large
+python -m phenotypic.detect.nn download --model-type sam2 --model-size large
 
 # Download all SAM2 sizes at once
-python -m phenotypic.nn download --model-type sam2 --all
+python -m phenotypic.detect.nn download --model-type sam2 --all
 
 # Force re-download even if cached
-python -m phenotypic.nn download --model-type sam2 --model-size tiny --force
+python -m phenotypic.detect.nn download --model-type sam2 --model-size tiny --force
 ```
 
 SAM2 checkpoints are stored in the `torch.hub` cache directory
@@ -110,13 +110,13 @@ Available SAM2 sizes: `tiny` (~39 MB), `small`, `base_plus`, `large` (~900 MB).
 
 ```bash
 # Download the default (vit_b_lm) micro-sam model
-python -m phenotypic.nn download --model-type microsam
+python -m phenotypic.detect.nn download --model-type microsam
 
 # Download a specific model
-python -m phenotypic.nn download --model-type microsam --model-name vit_l_lm
+python -m phenotypic.detect.nn download --model-type microsam --model-name vit_l_lm
 
 # Download all micro-sam models
-python -m phenotypic.nn download --model-type microsam --all
+python -m phenotypic.detect.nn download --model-type microsam --all
 ```
 
 micro-sam stores checkpoints via `platformdirs`. Set `MICROSAM_CACHEDIR` to
@@ -128,11 +128,11 @@ On a cluster, download models on the login node first:
 
 ```bash
 # On the login node (has internet access)
-python -m phenotypic.nn download --model-type sam2 --model-size tiny
-python -m phenotypic.nn download --model-type microsam --model-name vit_b_lm
+python -m phenotypic.detect.nn download --model-type sam2 --model-size tiny
+python -m phenotypic.detect.nn download --model-type microsam --model-name vit_b_lm
 
 # Verify they are cached
-python -m phenotypic.nn list
+python -m phenotypic.detect.nn list
 
 # Now submit SLURM jobs -- compute nodes will use the cached checkpoints
 python -m phenotypic --pipeline pipeline.json --input /plates/ -o /output/
@@ -145,7 +145,7 @@ prompt points over the RGB image, predicts masks at each point, filters by
 quality, and assembles a labelled object map.
 
 ```python
-from phenotypic.nn import Sam2Detector
+from phenotypic.detect.nn import Sam2Detector
 
 # Basic usage with default parameters
 detector = Sam2Detector()
@@ -189,7 +189,7 @@ datasets. It is particularly effective for brightfield and darkfield
 microscopy images of agar plates.
 
 ```python
-from phenotypic.nn import MicroSamDetector
+from phenotypic.detect.nn import MicroSamDetector
 
 # Default: ViT-Base light microscopy model
 detector = MicroSamDetector()
@@ -223,7 +223,7 @@ GPU detectors work like any other PhenoTypic operation in a pipeline:
 
 ```python
 import phenotypic as pht
-from phenotypic.nn import Sam2Detector
+from phenotypic.detect.nn import Sam2Detector
 from phenotypic.measure import SizeMeasurer
 
 pipeline = pht.ImagePipeline(
@@ -314,7 +314,7 @@ The device resolution logic is available as a standalone function for custom
 workflows:
 
 ```python
-from phenotypic.nn._checkpoint_manager import resolve_device
+from phenotypic.detect.nn._checkpoint_manager import resolve_device
 
 device = resolve_device("auto")           # raises if no accelerator
 device = resolve_device("auto", allow_cpu=True)  # falls back to CPU with warning
@@ -325,7 +325,7 @@ device = resolve_device("auto", allow_cpu=True)  # falls back to CPU with warnin
 ### List cached checkpoints
 
 ```bash
-python -m phenotypic.nn list
+python -m phenotypic.detect.nn list
 ```
 
 This prints a table showing all cached SAM2 and micro-sam checkpoints with
@@ -335,13 +335,13 @@ their file sizes and paths.
 
 ```bash
 # Clear all cached checkpoints (prompts for confirmation)
-python -m phenotypic.nn clear
+python -m phenotypic.detect.nn clear
 
 # Clear only SAM2 checkpoints
-python -m phenotypic.nn clear --model-type sam2
+python -m phenotypic.detect.nn clear --model-type sam2
 
 # Clear only micro-sam checkpoints
-python -m phenotypic.nn clear --model-type microsam
+python -m phenotypic.detect.nn clear --model-type microsam
 ```
 
 ## Troubleshooting
@@ -400,9 +400,9 @@ Compute nodes often lack internet access. Pre-download checkpoints on the
 login node:
 
 ```bash
-python -m phenotypic.nn download --model-type sam2 --model-size tiny
-python -m phenotypic.nn download --model-type microsam --model-name vit_b_lm
-python -m phenotypic.nn list  # verify
+python -m phenotypic.detect.nn download --model-type sam2 --model-size tiny
+python -m phenotypic.detect.nn download --model-type microsam --model-name vit_b_lm
+python -m phenotypic.detect.nn list  # verify
 ```
 
 Ensure `TORCH_HOME` and `MICROSAM_CACHEDIR` (if customised) point to a

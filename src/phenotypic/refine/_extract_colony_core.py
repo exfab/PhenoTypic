@@ -60,7 +60,7 @@ class ExtractColonyCore(ObjectRefiner):
           not intensity-distinct from halos.
         - :class:`MaskWhiteTophat` for removing small bright artifacts without
           full core extraction.
-        - :class:`RemoveNonCircular` for shape-based filtering when
+        - :class:`RemoveLowCircularity` for shape-based filtering when
           halos distort circularity measurements.
 
     See Also:
