@@ -774,7 +774,74 @@ def _register_curate_overlay_callbacks(app) -> None:  # type: ignore[no-untyped-
             session_id=session_id,
         )
 
+    # --- Set as winner: write deliverables/best_pipeline.json (atomic) ----
+    @app.callback(
+        Output(ids.TUNE_WINNER_NOTE, "children"),
+        Output(ids.TUNE_CURATE_TOAST, "is_open", allow_duplicate=True),
+        Output(ids.TUNE_CURATE_TOAST, "children", allow_duplicate=True),
+        Input(ids.TUNE_BTN_SET_WINNER, "n_clicks"),
+        State(ids.TUNE_AB_STORE, "data"),
+        State(ids.TUNE_RUN_ROOT_STORE, "data"),
+        prevent_initial_call=True,
+    )
+    def _set_winner(n_clicks, pinned, run_root_data):  # type: ignore[no-untyped-def]
+        return _write_curate_winner(ov, n_clicks, pinned, run_root_data)
+
     _register_linked_zoom(app)
+
+
+def _write_curate_winner(ov, n_clicks, pinned, run_root_data):  # type: ignore[no-untyped-def]
+    """Write the A-pinned candidate as the winner; surface errors in a toast.
+
+    The winner is slot A (the primary pin). Re-discovers the run + base
+    pipeline, builds + atomically writes ``deliverables/best_pipeline.json`` via
+    :func:`~phenotypic.gui.tune._winner.write_winner`, and catches
+    ``PermissionError`` (OQ7 — HPCC read-only dirs) → a danger toast.
+    """
+    from pathlib import Path
+
+    from dash import no_update
+
+    from phenotypic.gui.tune._run_root import TuneRunRoot
+    from phenotypic.gui.tune._winner import write_winner
+
+    if not n_clicks:
+        return no_update, no_update, no_update
+    pinned = pinned if isinstance(pinned, dict) else {}
+    a_trial = pinned.get("a")
+    if a_trial is None:
+        return no_update, True, "Pin a candidate to slot A first."
+    if not (run_root_data and run_root_data.get("path")):
+        return no_update, True, "No bound run."
+
+    try:
+        root = TuneRunRoot.discover(Path(run_root_data["path"]))
+    except Exception:  # noqa: BLE001 - surface a friendly message, never raise
+        logger.warning("Set-winner re-discovery failed", exc_info=True)
+        return no_update, True, "Could not re-read the run."
+
+    base = ov.read_base_pipeline(root)
+    if base is None:
+        return no_update, True, "Base pipeline unavailable — cannot build winner."
+    trials = _trials_by_number(root)
+    winner = trials.get(a_trial)
+    if winner is None:
+        return no_update, True, f"Trial {a_trial} not in the journal."
+
+    try:
+        written = write_winner(root, base, winner)
+    except PermissionError:
+        logger.warning("Winner write refused (read-only output dir)", exc_info=True)
+        return (
+            no_update,
+            True,
+            "Could not write best_pipeline.json — output directory is read-only.",
+        )
+    except Exception:  # noqa: BLE001 - any write error surfaces, never raises
+        logger.warning("Winner write failed", exc_info=True)
+        return no_update, True, "Could not write best_pipeline.json (see logs)."
+
+    return f"Winner: trial {a_trial} → {written.name}", no_update, no_update
 
 
 def _register_linked_zoom(app) -> None:  # type: ignore[no-untyped-def]
