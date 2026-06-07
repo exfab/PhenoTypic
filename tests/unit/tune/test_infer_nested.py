@@ -11,6 +11,8 @@ from __future__ import annotations
 from phenotypic import ImagePipeline
 from phenotypic.detect import (
     CompositeDetector,
+    FilamentousFungiDetector,
+    InoculumDetector,
     OtsuDetector,
     RoundPeaksDetector,
 )
@@ -106,3 +108,16 @@ def test_none_slot_is_skipped_in_recursion():
     assert "0.detectors[0].ignore_zeros" in keys
     # the None slot produces no knobs
     assert not any(k.startswith("0.detectors[1]") for k in keys)
+
+
+def test_single_operation_field_is_excluded_not_emitted_as_unparsable_key():
+    pipe = ImagePipeline(
+        ops=[FilamentousFungiDetector(inoculum_detector=InoculumDetector())]
+    )
+
+    space = infer_search_space(pipe)
+    keys = _keys(space)
+
+    assert not any(key.startswith("0.inoculum_detector.") for key in keys)
+    excluded = {e.key: e.reason for e in space.excluded}
+    assert excluded["0.inoculum_detector"] == "unsupported_type"

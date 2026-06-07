@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from phenotypic import ImagePipeline
-from phenotypic.detect import OtsuDetector
+from phenotypic.detect import FilamentousFungiDetector, OtsuDetector
 from phenotypic.enhance import GaussianBlur
 from phenotypic.tune._evaluation._builder import build_pipeline
 
@@ -68,3 +68,29 @@ def test_nested_key_on_non_list_field_raises():
     base = _base()
     with pytest.raises(ValueError, match="detectors"):
         build_pipeline(base, {"1.detectors[0].ignore_zeros": True})
+
+
+def test_filamentous_scene_parent_tuning_recomputes_auto_derived_fields():
+    base = ImagePipeline(ops=[FilamentousFungiDetector(max_colony_radius_px=250.0)])
+
+    candidate = build_pipeline(base, {"0.max_colony_radius_px": 500.0})
+    tuned = next(iter(candidate.get_ops().values()))
+
+    assert tuned.max_colony_radius_px == 500.0
+    assert tuned.gauss_sigma == 600.0
+
+
+def test_filamentous_explicit_derived_fields_are_preserved_when_parent_tuned():
+    base = ImagePipeline(
+        ops=[
+            FilamentousFungiDetector(
+                max_colony_radius_px=250.0,
+                gauss_sigma=123.0,
+            )
+        ]
+    )
+
+    candidate = build_pipeline(base, {"0.max_colony_radius_px": 500.0})
+    tuned = next(iter(candidate.get_ops().values()))
+
+    assert tuned.gauss_sigma == 123.0

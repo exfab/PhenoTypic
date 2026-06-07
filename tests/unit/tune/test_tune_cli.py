@@ -15,6 +15,7 @@ from phenotypic.tune import (
     Evaluator,
     GridConfig,
     Knob,
+    ReferenceFreeScorer,
     QCScorer,
     SearchSpace,
 )
@@ -194,6 +195,176 @@ def test_open_store_uses_env_url_for_local_run(tmp_path, monkeypatch):
     assert opened["url"] == env_url
     # …and the marker's resolver agrees — single source of truth.
     assert _resolve_storage_url(None, out) == env_url
+
+
+@pytest.mark.skipif(not _OPTUNA, reason="optuna extra not installed")
+def test_spec_storage_url_wins_over_env_without_cli_url(tmp_path, monkeypatch):
+    import phenotypic.tune._study._optuna_store as store_mod
+    from phenotypic.tune._strategies._config import PHENOTYPIC_TUNE_STORAGE_URL_ENV
+
+    env_url = "sqlite:///env.db"
+    spec_url = f"sqlite:///{tmp_path / 'spec.db'}"
+    monkeypatch.setenv(PHENOTYPIC_TUNE_STORAGE_URL_ENV, env_url)
+
+    opened = {}
+
+    class _FakeOptunaStudyStore:
+        def __init__(self, *, storage_url, study_name, directions=None):
+            opened["url"] = storage_url
+            self.trials = []
+
+        def is_resumable_in_place(self):
+            return True
+
+        def pareto_front(self):
+            return []
+
+        def best(self):
+            return None
+
+        def param_importances(self):
+            return None
+
+        def to_parquet(self, _path):
+            pass
+
+    class _FakeEngine:
+        def __init__(self, spec, store):
+            pass
+
+        def optimize(self, images):
+            return None
+
+        def best_pipeline(self):
+            return None
+
+    monkeypatch.setattr(store_mod, "OptunaStudyStore", _FakeOptunaStudyStore)
+    monkeypatch.setattr(
+        "phenotypic.tune._tune_cli._run.TuningEngine", _FakeEngine
+    )
+    spec = _spec(tmp_path).model_copy(
+        update={
+            "strategy": OptunaConfig(
+                sampler="tpe", n_trials=1, storage_url=spec_url
+            )
+        }
+    )
+
+    run_tuning(spec, [load_synth_yeast_plate()], tmp_path / "out")
+    assert opened["url"] == spec_url
+
+
+@pytest.mark.skipif(not _OPTUNA, reason="optuna extra not installed")
+def test_cli_storage_url_wins_over_spec_url(tmp_path, monkeypatch):
+    import phenotypic.tune._study._optuna_store as store_mod
+
+    spec_url = f"sqlite:///{tmp_path / 'spec.db'}"
+    cli_url = f"sqlite:///{tmp_path / 'cli.db'}"
+    opened = {}
+
+    class _FakeOptunaStudyStore:
+        def __init__(self, *, storage_url, study_name, directions=None):
+            opened["url"] = storage_url
+            self.trials = []
+
+        def is_resumable_in_place(self):
+            return True
+
+        def pareto_front(self):
+            return []
+
+        def best(self):
+            return None
+
+        def param_importances(self):
+            return None
+
+    class _FakeEngine:
+        def __init__(self, spec, store):
+            pass
+
+        def optimize(self, images):
+            return None
+
+        def best_pipeline(self):
+            return None
+
+    monkeypatch.setattr(store_mod, "OptunaStudyStore", _FakeOptunaStudyStore)
+    monkeypatch.setattr(
+        "phenotypic.tune._tune_cli._run.TuningEngine", _FakeEngine
+    )
+    spec = _spec(tmp_path).model_copy(
+        update={
+            "strategy": OptunaConfig(
+                sampler="tpe", n_trials=1, storage_url=spec_url
+            )
+        }
+    )
+
+    run_tuning(
+        spec,
+        [load_synth_yeast_plate()],
+        tmp_path / "out",
+        storage_url=cli_url,
+    )
+
+    assert opened["url"] == cli_url
+
+
+def test_n_trials_overrides_existing_random_strategy(tmp_path, monkeypatch):
+    captured = {}
+
+    class _FakeEngine:
+        def __init__(self, spec, store):
+            captured["n_trials"] = spec.strategy.n_trials
+
+        def optimize(self, images):
+            return None
+
+        def best_pipeline(self):
+            return None
+
+    monkeypatch.setattr(
+        "phenotypic.tune._tune_cli._run.TuningEngine", _FakeEngine
+    )
+    spec = _spec(tmp_path).model_copy(
+        update={"strategy": RandomConfig(n_trials=100)}
+    )
+
+    run_tuning(spec, [load_synth_yeast_plate()], tmp_path / "out", n_trials=5)
+
+    assert captured["n_trials"] == 5
+
+
+def test_n_trials_override_rejects_grid_strategy(tmp_path):
+    with pytest.raises(ValueError, match="--n-trials"):
+        run_tuning(
+            _spec(tmp_path),
+            [load_synth_yeast_plate()],
+            tmp_path / "out",
+            n_trials=5,
+        )
+
+
+def test_n_trials_rejects_explicit_grid_strategy(tmp_path):
+    with pytest.raises(ValueError, match="--n-trials"):
+        run_tuning(
+            _spec(tmp_path),
+            [load_synth_yeast_plate()],
+            tmp_path / "out",
+            strategy="grid",
+            n_trials=5,
+        )
+
+
+def test_unavailable_reference_free_scorer_fails_before_artifacts(tmp_path):
+    out = tmp_path / "out"
+    spec = _spec(tmp_path).model_copy(update={"scorer": ReferenceFreeScorer()})
+
+    with pytest.raises(ValueError, match="ReferenceFreeScorer"):
+        run_tuning(spec, [load_synth_yeast_plate()], out)
+
+    assert not io.tuning_spec_path(out).exists()
 
 
 def test_cli_screen_flag_toggles_screening(tmp_path, monkeypatch):

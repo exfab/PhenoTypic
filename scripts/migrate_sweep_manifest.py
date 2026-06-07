@@ -25,8 +25,10 @@ from phenotypic.tune import (
     QCScorer,
     SearchSpace,
 )
+from phenotypic.tune._evaluation import build_pipeline
 from phenotypic.tune._scoring import Scorer
 from phenotypic.tune._spec import Budget, TuningSpec
+from phenotypic.tune._strategies._enumerate import enumerate_grid
 
 
 def _pipelines(manifest: dict) -> list[ImagePipeline]:
@@ -48,6 +50,34 @@ def _hashable(value: Any) -> Any:
         ) from exc
 
 
+def _pipe_signature(pipe: ImagePipeline) -> tuple[tuple[str, str], ...]:
+    """Stable operation signature for exact manifest reproduction checks."""
+    return tuple(
+        (
+            type(op).__name__,
+            json.dumps(op.model_dump(mode="json"), sort_keys=True, default=str),
+        )
+        for op in pipe.get_ops().values()
+    )
+
+
+def _assert_exact_reproduction(spec: TuningSpec, pipes: list[ImagePipeline]) -> None:
+    """Fail loudly when independent grid knobs over-generate legacy variants."""
+    expected = {_pipe_signature(pipe) for pipe in pipes}
+    migrated = {
+        _pipe_signature(build_pipeline(spec.pipeline, combo))
+        for combo in enumerate_grid(spec.search_space)
+    }
+    if migrated != expected:
+        raise NotImplementedError(
+            "cannot migrate this sweep manifest exactly: the new independent "
+            "grid knobs would generate pipeline combinations that were not in "
+            "the legacy manifest. This usually means duplicate-class or "
+            "position-shifted operations have correlated parameter values; "
+            "write the tuning_spec.json manually for this case."
+        )
+
+
 def migrate_manifest_to_spec(manifest: dict, *, scorer: Scorer) -> TuningSpec:
     """Convert a legacy manifest into a ``TuningSpec`` (see module docstring).
 
@@ -66,20 +96,49 @@ def migrate_manifest_to_spec(manifest: dict, *, scorer: Scorer) -> TuningSpec:
     if not pipes:
         raise ValueError("manifest has no pipelines")
 
-    # ops keyed by class name, in first-seen order; the op-richest variant is base.
+    # The op-richest variant is the base. Unique operation classes can be matched
+    # by class across variants where optional earlier ops shift positions. When a
+    # class appears multiple times, migration must be position-based to avoid
+    # conflating duplicate slots.
     base_pipe = max(pipes, key=lambda p: len(p.get_ops()))
     base_ops = list(base_pipe.get_ops().values())
     base_classes = [type(op).__name__ for op in base_ops]
+    base_class_counts = {
+        cls_name: base_classes.count(cls_name) for cls_name in set(base_classes)
+    }
 
     knobs: list[Knob] = []
-    for position, op in enumerate(base_ops):
+    for position, _op in enumerate(base_ops):
         cls = base_classes[position]
-        # which variants contain this position's class?
-        present = [
-            p for p in pipes
-            if cls in {type(o).__name__ for o in p.get_ops().values()}
-        ]
-        optional = len(present) < len(pipes)
+        # Which variants contain this slot? Unique classes match by class because
+        # optional preceding operations can shift positions in legacy manifests.
+        # Duplicate classes match by position or fail loudly if insertion/deletion
+        # makes the slot ambiguous.
+        present_ops: list[Any] = []
+        for pipe_index, pipe in enumerate(pipes):
+            pipe_ops = list(pipe.get_ops().values())
+            if base_class_counts[cls] == 1:
+                matches = [
+                    candidate
+                    for candidate in pipe_ops
+                    if type(candidate).__name__ == cls
+                ]
+                if matches:
+                    present_ops.append(matches[0])
+                continue
+            if position < len(pipe_ops):
+                candidate = pipe_ops[position]
+                if type(candidate).__name__ == cls:
+                    present_ops.append(candidate)
+                    continue
+            if cls in {type(candidate_op).__name__ for candidate_op in pipe_ops}:
+                raise NotImplementedError(
+                    "cannot migrate sweep manifest with inserted/deleted "
+                    f"duplicate-class operations around position {position} "
+                    f"({cls!r}) in pipeline {pipe_index}; migration is "
+                    "position-based and this manifest is ambiguous"
+                )
+        optional = len(present_ops) < len(pipes)
         enabled_key = f"{position}.{cls}.__enabled__"
         if optional:
             knobs.append(Knob(
@@ -89,10 +148,7 @@ def migrate_manifest_to_spec(manifest: dict, *, scorer: Scorer) -> TuningSpec:
             ))
         # per-field varying values across the present variants
         fields: dict[str, set] = {}
-        for p in present:
-            op_i = next(
-                o for o in p.get_ops().values() if type(o).__name__ == cls
-            )
+        for op_i in present_ops:
             for fname in type(op_i).model_fields:
                 fields.setdefault(fname, set()).add(
                     _hashable(getattr(op_i, fname))
@@ -111,7 +167,7 @@ def migrate_manifest_to_spec(manifest: dict, *, scorer: Scorer) -> TuningSpec:
                 knob_kwargs["conditional_on"] = ((enabled_key, True),)
             knobs.append(Knob(**knob_kwargs))
 
-    return TuningSpec(
+    spec = TuningSpec(
         pipeline=base_pipe,
         search_space=SearchSpace(knobs=tuple(knobs)),
         scorer=scorer,
@@ -119,6 +175,8 @@ def migrate_manifest_to_spec(manifest: dict, *, scorer: Scorer) -> TuningSpec:
         strategy=GridConfig(),
         budget=Budget(),
     )
+    _assert_exact_reproduction(spec, pipes)
+    return spec
 
 
 def _build_cli() -> argparse.ArgumentParser:

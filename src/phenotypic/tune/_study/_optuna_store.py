@@ -32,7 +32,10 @@ from .._strategies._optuna_support import (
 from .._study_store import Trial
 
 if TYPE_CHECKING:  # pragma: no cover - typing only; never imports optuna at runtime
-    import optuna
+    import optuna  # type: ignore[import-not-found]
+
+_HEARTBEAT_INTERVAL_S = 60
+_GRACE_PERIOD_S = 180
 
 
 class OptunaStudyStore:
@@ -46,6 +49,9 @@ class OptunaStudyStore:
             the persisted trials and sampler state.
         directions: Per-objective directions for a multi-objective study; ``None``
             → a single-objective ``maximize`` study.
+        create: When ``True`` (the engine path), create the study if it is
+            missing. When ``False`` (read-only monitor path), load only an
+            existing study.
     """
 
     def __init__(
@@ -54,6 +60,7 @@ class OptunaStudyStore:
         storage_url: str,
         study_name: str,
         directions: Optional[list[str]] = None,
+        create: bool = True,
     ) -> None:
         import optuna
 
@@ -61,16 +68,27 @@ class OptunaStudyStore:
         self._study_name = study_name
         self._multi_objective = is_multi_objective_directions(directions)
 
-        if storage_url.startswith("sqlite"):
-            self._enable_sqlite_wal(optuna, storage_url)
+        if create:
+            storage = optuna.storages.RDBStorage(
+                url=storage_url,
+                heartbeat_interval=_HEARTBEAT_INTERVAL_S,
+                grace_period=_GRACE_PERIOD_S,
+            )
+            if storage_url.startswith("sqlite"):
+                self._enable_sqlite_wal(storage)
 
-        create_kwargs: dict[str, Any] = {
-            "storage": storage_url,
-            "study_name": study_name,
-            "load_if_exists": True,
-            **study_objective_kwargs(directions),
-        }
-        self._study = optuna.create_study(**create_kwargs)
+            create_kwargs: dict[str, Any] = {
+                "storage": storage,
+                "study_name": study_name,
+                "load_if_exists": True,
+                **study_objective_kwargs(directions),
+            }
+            self._study = optuna.create_study(**create_kwargs)
+        else:
+            self._study = optuna.load_study(
+                storage=storage_url,
+                study_name=study_name,
+            )
 
     @property
     def study(self) -> "optuna.Study":
@@ -97,7 +115,7 @@ class OptunaStudyStore:
         return self._storage_url
 
     @staticmethod
-    def _enable_sqlite_wal(optuna: Any, storage_url: str) -> None:
+    def _enable_sqlite_wal(storage: Any) -> None:
         """Switch the SQLite database to WAL journal mode (persistent property).
 
         WAL lets the distributed ask-and-tell workers read and write the shared
@@ -106,7 +124,6 @@ class OptunaStudyStore:
         """
         from sqlalchemy import text
 
-        storage = optuna.storages.RDBStorage(url=storage_url)
         with storage.engine.begin() as conn:
             conn.execute(text("PRAGMA journal_mode=WAL"))
 

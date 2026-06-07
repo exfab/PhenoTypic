@@ -37,6 +37,7 @@ def test_worker_script_sanitizes_study_name_in_job_name_and_comment(tmp_path):
         output_dir=tmp_path,
         spec_path=tmp_path / "tuning_spec.json",
         images_dir=tmp_path / "images",
+        split_path=tmp_path / ".pht-tune-cache" / "splits" / "split.json",
         study_name="bad name/v2",
         storage_url=f"sqlite:///{tmp_path / 'study.db'}",
         n_workers=2,
@@ -107,6 +108,7 @@ def _patched_fleet_call(tmp_path, monkeypatch, **fleet_kwargs):
         storage_url=f"sqlite:///{tmp_path / 'study.db'}",
         spec_path=tmp_path / "spec.json",
         images_dir=tmp_path / "images",
+        split_path=tmp_path / ".pht-tune-cache" / "splits" / "split.json",
         **fleet_kwargs,
     )
     return captured

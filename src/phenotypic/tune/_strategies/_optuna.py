@@ -14,6 +14,7 @@ rung ladder so the two cannot disagree (§6).
 from __future__ import annotations
 
 import logging
+import threading
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Optional
 
@@ -35,9 +36,94 @@ from ._optuna_support import (
 from ._pruning import NoOpChannel, PruningChannel
 
 if TYPE_CHECKING:  # pragma: no cover - typing only, never imports optuna at runtime
-    import optuna
+    import optuna  # type: ignore[import-not-found]
 
 _logger = logging.getLogger(__name__)
+
+
+class _HeartbeatHandle:
+    """A small stop handle for an Optuna ask/tell heartbeat thread."""
+
+    def __init__(self, stop_event: threading.Event, thread: threading.Thread) -> None:
+        self._stop_event = stop_event
+        self._thread = thread
+
+    def stop(self) -> None:
+        """Stop the background heartbeat thread without blocking indefinitely."""
+        self._stop_event.set()
+        self._thread.join(timeout=1.0)
+
+
+def _heartbeat_interval(storage: Any) -> Optional[int]:
+    """Return the storage heartbeat interval when heartbeat is enabled."""
+    getter = getattr(storage, "get_heartbeat_interval", None)
+    interval = getter() if callable(getter) else getattr(storage, "heartbeat_interval", None)
+    return int(interval) if isinstance(interval, int) and interval > 0 else None
+
+
+def _record_heartbeat(storage: Any, trial_id: int) -> None:
+    """Record one heartbeat if the storage exposes the Optuna heartbeat API."""
+    recorder = getattr(storage, "record_heartbeat", None)
+    if not callable(recorder):
+        return
+    recorder(trial_id)
+
+
+def _start_heartbeat(study: Any, trial: Any) -> Optional[_HeartbeatHandle]:
+    """Start manual heartbeat recording for an ask/tell trial.
+
+    Optuna's RDBStorage heartbeat thread is tied to ``Study.optimize()``. The
+    tune engine uses ``ask()``/``tell()``, so it must record heartbeats itself
+    while image evaluation is running.
+    """
+    storage = getattr(study, "_storage", None)
+    trial_id = getattr(trial, "_trial_id", None)
+    if storage is None or not isinstance(trial_id, int):
+        return None
+    interval = _heartbeat_interval(storage)
+    if interval is None:
+        return None
+
+    stop_event = threading.Event()
+
+    def _loop() -> None:
+        while not stop_event.wait(timeout=interval):
+            try:
+                _record_heartbeat(storage, trial_id)
+            except Exception:  # noqa: BLE001 - heartbeat is best-effort
+                _logger.warning(
+                    "could not record Optuna heartbeat for trial %d",
+                    getattr(trial, "number", trial_id),
+                    exc_info=True,
+                )
+
+    try:
+        _record_heartbeat(storage, trial_id)
+    except Exception:  # noqa: BLE001 - a missed first beat should not abort
+        _logger.warning(
+            "could not record initial Optuna heartbeat for trial %d",
+            getattr(trial, "number", trial_id),
+            exc_info=True,
+        )
+    thread = threading.Thread(
+        target=_loop,
+        name=f"pht-optuna-heartbeat-{getattr(trial, 'number', trial_id)}",
+        daemon=True,
+    )
+    thread.start()
+    return _HeartbeatHandle(stop_event, thread)
+
+
+def _fail_stale_trials(study: Any) -> None:
+    """Ask Optuna to fail heartbeat-stale trials before taking a new trial."""
+    try:
+        import optuna
+
+        fail_stale = getattr(optuna.storages, "fail_stale_trials", None)
+        if callable(fail_stale):
+            fail_stale(study)
+    except Exception:  # noqa: BLE001 - stale reconciliation must not block work
+        _logger.warning("could not reconcile Optuna stale trials", exc_info=True)
 
 
 class OptunaPruningChannel:
@@ -126,6 +212,7 @@ class OptunaStrategy:
         self._rung_floor = rung_floor
         self._rung_factor = rung_factor
         self._stashed: Optional["optuna.trial.Trial"] = None
+        self._heartbeat: Optional[_HeartbeatHandle] = None
 
         sampler_obj = self._make_sampler(optuna)
         pruner = optuna.pruners.SuccessiveHalvingPruner(
@@ -195,17 +282,31 @@ class OptunaStrategy:
             :class:`OptunaPruningChannel` when pruning is active for this trial,
             else a :class:`NoOpChannel`.
         """
+        _fail_stale_trials(self._study)
         # Bounded retry on a transient DB error (a lock timeout / dropped
         # connection against the shared SQLite-WAL / Postgres study); a
         # non-transient error propagates immediately (Change 5).
         trial = retry_on_transient_db_error(self._study.ask)
         self._stashed = trial
-        params = self._materialize(trial)
+        self._heartbeat = _start_heartbeat(self._study, trial)
+        try:
+            params = self._materialize(trial)
+        except Exception:
+            self._stop_heartbeat()
+            self._stashed = None
+            raise
         prune_active = self._prune and not explore and not self._multi_objective
         channel: PruningChannel = (
             OptunaPruningChannel(trial) if prune_active else NoOpChannel()
         )
         return params, channel
+
+    def _stop_heartbeat(self) -> None:
+        """Stop the current trial heartbeat thread, if one is active."""
+        heartbeat = self._heartbeat
+        self._heartbeat = None
+        if heartbeat is not None:
+            heartbeat.stop()
 
     def _materialize(self, trial: "optuna.trial.Trial") -> dict[str, Any]:
         """Walk knobs in order; suggest active ones; inject ``Fixed`` constants.
@@ -273,50 +374,53 @@ class OptunaStrategy:
         self._stashed = None
         trial_number = trial.number
 
-        # Stamp our off-model Trial fields onto the in-flight trial BEFORE telling
-        # so the strategy's native ask/tell trial IS the full persisted record
-        # (one shared study, no add_trial mirror): the store's _to_trial reads
-        # these back. Set regardless of terminal state — a FAIL/PRUNED trial still
-        # carries its params/terms for the journal export. Each DB-touching call
-        # (the user-attr stamp + the tell) is wrapped in the bounded transient-DB
-        # retry (Change 5): a lock timeout / dropped connection is retried, a
-        # non-transient error propagates immediately.
-        retry_on_transient_db_error(
-            lambda: set_trial_user_attrs(trial, params=params, result=result),
-            trial_number=trial_number,
-        )
+        try:
+            # Stamp our off-model Trial fields onto the in-flight trial BEFORE telling
+            # so the strategy's native ask/tell trial IS the full persisted record
+            # (one shared study, no add_trial mirror): the store's _to_trial reads
+            # these back. Set regardless of terminal state — a FAIL/PRUNED trial still
+            # carries its params/terms for the journal export. Each DB-touching call
+            # (the user-attr stamp + the tell) is wrapped in the bounded transient-DB
+            # retry (Change 5): a lock timeout / dropped connection is retried, a
+            # non-transient error propagates immediately.
+            retry_on_transient_db_error(
+                lambda: set_trial_user_attrs(trial, params=params, result=result),
+                trial_number=trial_number,
+            )
 
-        if getattr(result, "failed", False):
+            if getattr(result, "failed", False):
+                retry_on_transient_db_error(
+                    lambda: self._study.tell(
+                        trial, state=optuna.trial.TrialState.FAIL
+                    ),
+                    trial_number=trial_number,
+                )
+                return
+            if pruned or getattr(result, "pruned", False):
+                retry_on_transient_db_error(
+                    lambda: self._study.tell(
+                        trial, state=optuna.trial.TrialState.PRUNED
+                    ),
+                    trial_number=trial_number,
+                )
+                return
+            if self._multi_objective:
+                # Tell the per-objective vector (emission order == directions order)
+                # so NSGA-II ranks the Pareto front natively.
+                objectives = getattr(result, "objectives", None) or {}
+                values = [float(v) for v in objectives.values()]
+                retry_on_transient_db_error(
+                    lambda: self._study.tell(trial, values),
+                    trial_number=trial_number,
+                )
+                return
+            score = float(result.score)
             retry_on_transient_db_error(
-                lambda: self._study.tell(
-                    trial, state=optuna.trial.TrialState.FAIL
-                ),
+                lambda: self._study.tell(trial, score),
                 trial_number=trial_number,
             )
-            return
-        if pruned or getattr(result, "pruned", False):
-            retry_on_transient_db_error(
-                lambda: self._study.tell(
-                    trial, state=optuna.trial.TrialState.PRUNED
-                ),
-                trial_number=trial_number,
-            )
-            return
-        if self._multi_objective:
-            # Tell the per-objective vector (emission order == directions order)
-            # so NSGA-II ranks the Pareto front natively.
-            objectives = getattr(result, "objectives", None) or {}
-            values = [float(v) for v in objectives.values()]
-            retry_on_transient_db_error(
-                lambda: self._study.tell(trial, values),
-                trial_number=trial_number,
-            )
-            return
-        score = float(result.score)
-        retry_on_transient_db_error(
-            lambda: self._study.tell(trial, score),
-            trial_number=trial_number,
-        )
+        finally:
+            self._stop_heartbeat()
 
     # -- budget ---------------------------------------------------------------
 

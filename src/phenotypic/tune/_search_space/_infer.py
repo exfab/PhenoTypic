@@ -3,10 +3,11 @@
 This module implements the **flat, single-op** Tier-2 dispatch (the §4 heuristic
 table of ``search-space-inference.md``) plus the Tier-1 ``TuneSpec`` override
 (§3), and **one-level nested-op recursion** (§6): when ``recurse_nested=True``
-(the default), an ``OperationField`` field — a single nested op or a list of
-them — is recursed exactly one level, emitting ``"<pos>.<field>[<i>].<leaf>"``
-(or ``"<pos>.<field>.<leaf>"`` for a single op) knobs. The recursion is strictly
-additive; ``recurse_nested=False`` yields the flat-only proposal.
+(the default), a list-valued ``OperationField`` is recursed exactly one level,
+emitting ``"<pos>.<field>[<i>].<leaf>"`` knobs. Single operation-valued fields
+are recorded as excluded because their bare dotted keys are not parseable by the
+runtime key grammar. The recursion is strictly additive; ``recurse_nested=False``
+yields the flat-only proposal.
 
 The inference core, :func:`_infer_field`, maps one operation field to either a
 :class:`~phenotypic.tune.Knob` (a tunable domain) or an
@@ -623,10 +624,9 @@ def _infer_nested_field(
 ) -> tuple[list[Knob], list[Excluded]]:
     """Recurse one level into an operation-valued field's live value.
 
-    Reads ``op.<field_name>`` (a single nested op or a ``list`` of them) and
-    recurses via :func:`_recurse_into_op`. List members are indexed
-    (``<field>[<i>]``) and ``None`` slots / nested pipelines are skipped; a
-    single op recurses under the bare field path (``<field>``).
+    Reads ``op.<field_name>``. List members are indexed (``<field>[<i>]``) and
+    recursed via :func:`_recurse_into_op`; ``None`` slots, nested pipelines, and
+    single operation-valued fields are skipped.
 
     ``conditional_on`` ties a nested knob to the parent's ``__enabled__`` **only
     when the parent op is presence-wrapped** (``type(op)._tune_optional`` is
@@ -658,13 +658,6 @@ def _infer_nested_field(
             )
             knobs.extend(k)
             excluded.extend(e)
-    elif _is_recursable_op(value):
-        prefix = f"{position}.{field_name}"
-        k, e = _recurse_into_op(
-            value, prefix, factor=factor, conditional_on=conditional_on
-        )
-        knobs.extend(k)
-        excluded.extend(e)
     return knobs, excluded
 
 

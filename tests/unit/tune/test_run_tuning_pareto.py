@@ -35,6 +35,7 @@ from phenotypic.tune import (
     TuningSpec,
 )
 from phenotypic.tune._tune_cli._run import run_tuning
+from phenotypic.tune._study_store import Trial
 
 _OPTUNA = importlib.util.find_spec("optuna") is not None
 
@@ -139,3 +140,37 @@ def test_multi_objective_per_objective_param_importance(tmp_path):
     run_tuning(_multi_objective_spec(tmp_path), [load_synth_yeast_plate()], out)
     assert io.param_importance_path(out).exists()
     assert io.pareto_dir(out).exists()
+
+
+def test_headline_winner_prefers_pareto_knee_over_scalar_best():
+    from phenotypic.tune._tune_cli._run import _headline_winner
+
+    scalar_best = Trial(
+        number=0,
+        params={"0.sigma": 1.0},
+        score=0.95,
+        terms={},
+        n_images=1,
+        objectives={"s0": 0.95, "s1": 0.10},
+    )
+    knee = Trial(
+        number=1,
+        params={"0.sigma": 2.0},
+        score=0.80,
+        terms={},
+        n_images=1,
+        objectives={"s0": 0.80, "s1": 0.80},
+    )
+
+    class _Store:
+        def best(self):
+            return scalar_best
+
+        def pareto_front(self):
+            return [scalar_best, knee]
+
+        def knee_point(self, front):
+            assert front == [scalar_best, knee]
+            return knee
+
+    assert _headline_winner(_Store()) is knee

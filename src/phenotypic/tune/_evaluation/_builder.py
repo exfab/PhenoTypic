@@ -64,6 +64,18 @@ class NestedKey:
 #: The union of typed parse results ``_parse_key`` may return.
 ParsedKey = Union[FlatKey, PresenceKey, NestedKey]
 
+_FILAMENTOUS_SCENE_PARENTS = {"max_colony_radius_px", "min_branch_width_px"}
+_FILAMENTOUS_DERIVED_FIELDS = {
+    "gauss_sigma",
+    "tile_size",
+    "tile_overlap",
+    "pct_min_wavelength",
+    "mad_window",
+    "path_dilation_radius",
+    "snr_margin",
+    "coherence_window_radius",
+}
+
 
 def _parse_key(key: str, ordered_ops: list) -> ParsedKey:
     """Resolve a combo key to a typed ``FlatKey`` / ``PresenceKey`` / ``NestedKey``.
@@ -198,6 +210,44 @@ def _rebuild_op(op: Any, overrides: dict[str, Any]) -> Any:
     fields = {name: getattr(op, name) for name in type(op).model_fields}
     fields.update(overrides)
     return type(op)(**fields)
+
+
+def _filamentous_auto_values(op: Any) -> dict[str, Any]:
+    """Return old auto-derived values for a ``FilamentousFungiDetector``."""
+    r = op.max_colony_radius_px
+    w = op.min_branch_width_px
+    mad_window = int(round(op._MAD_WINDOW_PER_W * w)) + 1
+    if mad_window % 2 == 0:
+        mad_window += 1
+    return {
+        "gauss_sigma": op._GAUSS_SIGMA_PER_R * r,
+        "tile_size": int(round(op._TILE_SIZE_PER_R * r)),
+        "tile_overlap": int(round(op._TILE_OVERLAP_PER_R * r)),
+        "pct_min_wavelength": op._WAVELENGTH_PER_W * w,
+        "mad_window": mad_window,
+        "path_dilation_radius": max(1, int(round(op._PATH_DILATION_PER_W * w))),
+        "snr_margin": max(2, int(round(op._SNR_MARGIN_PER_W * w))),
+        "coherence_window_radius": int(round(op._COHERENCE_RADIUS_PER_W * w)),
+    }
+
+
+def _reset_filamentous_auto_derived_fields(
+    op: Any, overrides: dict[str, Any]
+) -> dict[str, Any]:
+    """Reset auto-derived detector fields when their scene parent is tuned."""
+    if type(op).__name__ != "FilamentousFungiDetector":
+        return overrides
+    if not (_FILAMENTOUS_SCENE_PARENTS & set(overrides)):
+        return overrides
+
+    auto_values = _filamentous_auto_values(op)
+    updated = dict(overrides)
+    for field in _FILAMENTOUS_DERIVED_FIELDS:
+        if field in updated:
+            continue
+        if getattr(op, field) == auto_values[field]:
+            updated[field] = None
+    return updated
 
 
 def _rebuild_op_or_raise_with_keys(
@@ -364,6 +414,7 @@ def build_pipeline(base: ImagePipeline, params: dict[str, Any]) -> ImagePipeline
             op_overrides[field] = _rebuild_nested_field(
                 op, position, field, slot_map
             )
+        op_overrides = _reset_filamentous_auto_derived_fields(op, op_overrides)
         if not op_overrides:
             # un-overridden ops come from `candidate` (the deep copy), never `base`
             new_ops.append(op)

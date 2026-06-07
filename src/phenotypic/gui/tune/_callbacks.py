@@ -186,13 +186,31 @@ def _open_live_study(root: "TuneRunRoot") -> "_ReadableStore":
     the RDB study eagerly, so the storage URL is first passed through
     :func:`_ensure_connect_timeout` to bound the connect at the source.
     """
+    from pathlib import Path
+
+    from sqlalchemy.engine import make_url
+    from sqlalchemy.exc import ArgumentError
+
     from phenotypic.tune._study._optuna_store import OptunaStudyStore
 
     assert root.storage_url is not None  # guarded by the caller
+    try:
+        url = make_url(root.storage_url)
+    except (ArgumentError, ValueError):
+        url = None
+    if (
+        url is not None
+        and url.get_backend_name() == "sqlite"
+        and url.database
+        and url.database != ":memory:"
+        and not Path(url.database).exists()
+    ):
+        raise FileNotFoundError(url.database)
     return OptunaStudyStore(
         storage_url=_ensure_connect_timeout(root.storage_url),
         study_name=root.study_name,
         directions=root.directions,
+        create=False,
     )
 
 
@@ -895,18 +913,29 @@ _PLATE_EXTS: frozenset[str] = frozenset(
 )
 
 
-def _list_plate_names(image_source: "Optional[str]") -> list[str]:
+def _list_plate_names(
+    image_source: "Optional[str]", *, sandbox=None
+) -> list[str]:
     """List image file names directly under ``image_source`` (sorted).
 
     Returns ``[]`` for an unset / unreadable source so the picker degrades to
-    empty rather than raising. Only depth-1 files with a known image extension
+    empty rather than raising. When ``sandbox`` is provided, the directory is
+    re-confined before listing. Only depth-1 files with a known image extension
     are surfaced.
     """
     if not image_source:
         return []
     from pathlib import Path
 
-    directory = Path(image_source)
+    if sandbox is not None:
+        from phenotypic.gui.tune._image_source import resolve_image_source
+
+        resolved = resolve_image_source(sandbox, image_source)
+        if resolved is None:
+            return []
+        directory = resolved
+    else:
+        directory = Path(image_source)
     try:
         names = [
             entry.name
@@ -966,7 +995,7 @@ def _register_curate_overlay_callbacks(app, sandbox=None) -> None:  # type: igno
         prevent_initial_call=False,
     )
     def _populate_plates(image_source, current):  # type: ignore[no-untyped-def]
-        names = _list_plate_names(image_source)
+        names = _list_plate_names(image_source, sandbox=sandbox)
         options = [{"label": n, "value": n} for n in names]
         value = current if current in names else (names[0] if names else None)
         return options, value
