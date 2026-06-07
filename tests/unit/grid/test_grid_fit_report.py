@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import numpy as np
+import pandas as pd
 import plotly.graph_objects as go
 import pytest
 
@@ -166,6 +168,37 @@ class TestGridFitReportFigures:
         labels = [a.text for a in fig.layout.annotations if a.text]
         assert any("2x ip" in t for t in labels)
         assert any("3x ip" in t for t in labels)
+
+    def test_successive_diffs_range_includes_observed_sparse_peak(self):
+        """Observed diffs beyond the 3x marker should remain visible."""
+        result = {
+            "info_table": pd.DataFrame({"label": [1]}),
+        }
+        row_stats = {
+            "label": "row",
+            "centers": np.asarray([0.0, 10.0, 100.0]),
+            "image_pitch": 10.0,
+            "fit_pitch": 10.0,
+        }
+        col_stats = {
+            "label": "col",
+            "centers": np.asarray([0.0]),
+            "image_pitch": 10.0,
+            "fit_pitch": 10.0,
+        }
+        sparse_report = GridFitReport(
+            result,
+            row_stats=row_stats,
+            col_stats=col_stats,
+            nrows=8,
+            ncols=12,
+            image_shape=(120, 180),
+            num_objects=1,
+        )
+
+        fig = sparse_report.fig_successive_diffs()
+
+        assert fig.layout.xaxis.range[1] >= 90.0
 
 
 # ---------------------------------------------------------------------------

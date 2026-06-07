@@ -323,24 +323,46 @@ class FigureProvider:
     def iter_figures(self) -> list[FigureSpec]:
         """All ``@figure`` specs on this instance's class, in definition order.
 
-        Walks the MRO so inherited figures are included; the most-derived
-        definition of a given method name wins, but keeps the *earliest*
-        definition's position so a subclass override stays in its original slot
-        instead of jumping to the end of the list.
+        Walks the MRO so inherited figures are included. Normal Python
+        override semantics apply: a subclass method without ``@figure`` shadows
+        and removes the inherited figure, while a redecorated override keeps
+        the inherited figure's original position.
         """
         specs: dict[str, FigureSpec] = {}
-        first_order: dict[str, int] = {}
-        for klass in type(self).__mro__:  # MRO runs derived → base
+        orders: dict[str, int] = {}
+        shadowed: set[str] = set()
+        for index, klass in enumerate(type(self).__mro__):  # derived → base
             for name, attr in vars(klass).items():
-                spec = getattr(attr, "__figure_spec__", None)
-                if spec is None:
+                if name in shadowed:
                     continue
-                if name not in specs:  # first hit = most-derived definition
+                shadowed.add(name)
+                spec = getattr(attr, "__figure_spec__", None)
+                if spec is not None:
                     specs[name] = spec
-                first_order[name] = min(
-                    first_order.get(name, spec.order), spec.order
-                )
-        return sorted(specs.values(), key=lambda s: first_order[s.name])
+                    orders[name] = self._inherited_figure_order(
+                        name, spec.order, klass, index
+                    )
+        return sorted(specs.values(), key=lambda s: orders.get(s.name, s.order))
+
+    def _inherited_figure_order(
+        self,
+        name: str,
+        fallback: int,
+        selected_class: type,
+        selected_index: int,
+    ) -> int:
+        """Return the inherited slot for a selected figure implementation."""
+        if selected_class is type(self):
+            ancestors = type(self).__mro__[selected_index + 1 :]
+        else:
+            ancestors = selected_class.__mro__[1:]
+
+        for klass in ancestors:
+            if name not in vars(klass):
+                continue
+            ancestor_spec = getattr(vars(klass)[name], "__figure_spec__", None)
+            return ancestor_spec.order if ancestor_spec is not None else fallback
+        return fallback
 
     def _primary_spec(self) -> FigureSpec:
         """The figure ``inspect()`` returns: ``primary=True``, or the sole one."""

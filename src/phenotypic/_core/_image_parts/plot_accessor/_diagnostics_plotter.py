@@ -164,8 +164,13 @@ class DiagnosticsPlotter(BasePlotter, FigureProvider):
             (``go.Scatter`` fill) plus the Gaussian fit overlay.
         """
         detect_mat = self._root_image.detect_mat[:]
-        calculator = self._get_calculator()
-        sigma_mad = calculator.compute_noise_metrics()["sigma_mad"]
+        if min(detect_mat.shape[:2]) >= 4:
+            calculator = self._get_calculator()
+            sigma_mad: float | None = calculator.compute_noise_metrics()[
+                "sigma_mad"
+            ]
+        else:
+            sigma_mad = None
 
         bins = 256
         counts, bin_edges = np.histogram(
@@ -177,7 +182,6 @@ class DiagnosticsPlotter(BasePlotter, FigureProvider):
         mean_val = float(np.mean(detect_mat))
         std_val = float(np.std(detect_mat))
         x_fit = np.linspace(0, self._max_intensity, 500)
-        gaussian_fit = norm.pdf(x_fit, mean_val, std_val)
 
         fig = go.Figure()
         fig.add_trace(
@@ -190,15 +194,25 @@ class DiagnosticsPlotter(BasePlotter, FigureProvider):
                 name="Data",
             )
         )
-        fig.add_trace(
-            go.Scatter(
-                x=x_fit,
-                y=gaussian_fit,
-                mode="lines",
-                line=dict(color=OKABE_ITO[6], width=2, dash="dash"),
-                name="Gaussian fit",
+        if std_val > np.finfo(float).eps:
+            gaussian_fit = norm.pdf(x_fit, mean_val, std_val)
+            fig.add_trace(
+                go.Scatter(
+                    x=x_fit,
+                    y=gaussian_fit,
+                    mode="lines",
+                    line=dict(color=OKABE_ITO[6], width=2, dash="dash"),
+                    name="Gaussian fit",
+                )
             )
-        )
+            fit_note = ""
+        else:
+            fig.add_vline(
+                x=mean_val,
+                line=dict(color=OKABE_ITO[6], width=2, dash="dash"),
+                annotation_text="Mean intensity",
+            )
+            fit_note = "<br>Gaussian fit omitted"
         fig.update_layout(
             title="A: Intensity Histogram",
             xaxis_title="Intensity",
@@ -210,13 +224,39 @@ class DiagnosticsPlotter(BasePlotter, FigureProvider):
             yref="paper",
             x=0.98,
             y=0.98,
-            text=f"μ={mean_val:.1f}<br>σ={std_val:.1f}<br>MAD={sigma_mad:.2f}",
+            text=(
+                f"μ={mean_val:.1f}<br>σ={std_val:.1f}<br>MAD={sigma_mad:.2f}"
+                if sigma_mad is not None
+                else f"μ={mean_val:.1f}<br>σ={std_val:.1f}<br>MAD=N/A"
+            ),
             showarrow=False,
             align="right",
             bgcolor="rgba(255,255,255,0.8)",
             bordercolor=AXIS_ANNOTATION_BORDER,
             borderwidth=1,
         )
+        if fit_note:
+            fig.layout.annotations[-1].text = (
+                f"{fig.layout.annotations[-1].text}{fit_note}"
+            )
+        return fig
+
+    @staticmethod
+    def _empty_plotly_figure(title: str, message: str) -> go.Figure:
+        """Return an annotated empty Plotly figure for degenerate diagnostics."""
+        fig = go.Figure()
+        fig.add_annotation(
+            xref="paper",
+            yref="paper",
+            x=0.5,
+            y=0.5,
+            text=message,
+            showarrow=False,
+            font=dict(color=NAVY, size=12),
+        )
+        fig.update_layout(title=title)
+        fig.update_xaxes(visible=False)
+        fig.update_yaxes(visible=False)
         return fig
 
     @figure(
@@ -293,32 +333,37 @@ class DiagnosticsPlotter(BasePlotter, FigureProvider):
         freqs_valid = freqs[valid]
         psd_valid = psd[valid]
 
+        if len(freqs_valid) == 0:
+            return self._empty_plotly_figure(
+                "C: Power Spectral Density",
+                "No positive PSD bins to display.",
+            )
+
         fig = go.Figure()
-        if len(freqs_valid) > 0:
+        fig.add_trace(
+            go.Scatter(
+                x=freqs_valid,
+                y=psd_valid,
+                mode="lines",
+                line=dict(color=NAVY, width=1.5),
+                name="PSD",
+            )
+        )
+        if len(freqs_valid) > 10:
+            log_f = np.log10(freqs_valid)
+            log_p = np.log10(psd_valid)
+            coeffs = np.polyfit(log_f, log_p, 1)
+            slope = coeffs[0]
+            fit_line = 10 ** (coeffs[0] * log_f + coeffs[1])
             fig.add_trace(
                 go.Scatter(
                     x=freqs_valid,
-                    y=psd_valid,
+                    y=fit_line,
                     mode="lines",
-                    line=dict(color=NAVY, width=1.5),
-                    name="PSD",
+                    line=dict(color=OKABE_ITO[6], width=1, dash="dash"),
+                    name=f"slope={slope:.2f}",
                 )
             )
-            if len(freqs_valid) > 10:
-                log_f = np.log10(freqs_valid)
-                log_p = np.log10(psd_valid)
-                coeffs = np.polyfit(log_f, log_p, 1)
-                slope = coeffs[0]
-                fit_line = 10 ** (coeffs[0] * log_f + coeffs[1])
-                fig.add_trace(
-                    go.Scatter(
-                        x=freqs_valid,
-                        y=fit_line,
-                        mode="lines",
-                        line=dict(color=OKABE_ITO[6], width=1, dash="dash"),
-                        name=f"slope={slope:.2f}",
-                    )
-                )
         fig.update_layout(
             title="C: Power Spectral Density",
             xaxis_title="Spatial Frequency (normalized)",

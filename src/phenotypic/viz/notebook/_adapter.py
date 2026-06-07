@@ -13,6 +13,7 @@ reference that instance.
 
 from __future__ import annotations
 
+import json
 from typing import TYPE_CHECKING, Any
 
 from phenotypic.abc_._figure_provider import Control, FigureSpec
@@ -113,6 +114,22 @@ def _make_widget(control: Control, widgets: Any) -> Any:
     return widgets.Text(value=control.default, description=control.label)
 
 
+def _plotly_display_payload(fig: Any) -> dict[str, Any]:
+    """Return an Output-compatible display-data payload for a Plotly figure."""
+    from plotly.io import to_json
+
+    data = {
+        "application/vnd.plotly.v1+json": json.loads(
+            to_json(fig, validate=False)
+        )
+    }
+    return {
+        "output_type": "display_data",
+        "data": data,
+        "metadata": {},
+    }
+
+
 def build_notebook_dashboard(provider: "FigureProvider", subject: Any = None) -> Any:
     """Build an ipywidgets dashboard for ``provider``'s figures.
 
@@ -129,7 +146,7 @@ def build_notebook_dashboard(provider: "FigureProvider", subject: Any = None) ->
     """
     widgets = _require_ipywidgets()
     try:
-        from IPython.display import clear_output, display
+        __import__("IPython")
     except ImportError as exc:  # pragma: no cover - exercised only without IPython
         raise ImportError(
             "The interactive notebook dashboard requires IPython. Install the "
@@ -152,9 +169,7 @@ def build_notebook_dashboard(provider: "FigureProvider", subject: Any = None) ->
     def render_spec(spec: FigureSpec) -> None:
         fig = bound.render(spec, **spec_control_kwargs(spec, state))
         out = outputs[spec.name]
-        with out:
-            clear_output(wait=True)
-            display(fig)
+        out.outputs = (_plotly_display_payload(fig),)
 
     def on_change(control_id: int) -> Any:
         def handler(change: Any) -> None:

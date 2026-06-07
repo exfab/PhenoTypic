@@ -28,6 +28,7 @@ Sections
 
 from __future__ import annotations
 
+import copy
 from typing import TYPE_CHECKING, Any
 
 import colour
@@ -68,6 +69,18 @@ _REFERENCE_LINES: tuple[tuple[float, str], ...] = (
     (2.3, "Perceptible"),
     (5.0, "Significant"),
 )
+_DOMAIN_TRACE_TYPES = {
+    "funnelarea",
+    "icicle",
+    "indicator",
+    "parcats",
+    "parcoords",
+    "pie",
+    "sankey",
+    "sunburst",
+    "table",
+    "treemap",
+}
 
 
 def _lab_to_srgb(
@@ -124,6 +137,34 @@ def _normalize_display(arr: np.ndarray) -> np.ndarray:
     if peak > 1.0:
         display = display / peak
     return np.clip(display, 0.0, 1.0)
+
+
+def _axis_layout_key(axis_ref: str, axis: str) -> str:
+    """Return the layout key for a trace axis reference."""
+    return f"{axis}axis{axis_ref[len(axis):]}"
+
+
+def _axis_ref_from_layout_key(layout_key: str, axis: str) -> str:
+    """Return the trace reference for a layout axis key."""
+    return f"{axis}{layout_key[len(f'{axis}axis'):]}"
+
+
+def _axis_ref_order(axis_ref: str, axis: str) -> int:
+    """Sort Plotly refs as x, x2, x3... or y, y2, y3."""
+    suffix = axis_ref[len(axis):]
+    return 1 if suffix == "" else int(suffix)
+
+
+def _next_axis_ref(counts: dict[str, int], axis: str) -> str:
+    """Allocate the next axis reference for a composed figure."""
+    counts[axis] += 1
+    return axis if counts[axis] == 1 else f"{axis}{counts[axis]}"
+
+
+def _remap_domain_value(value: float, y0: float, y1: float) -> float:
+    """Scale a child-domain coordinate into a parent domain, clamped for Plotly."""
+    remapped = y0 + value * (y1 - y0)
+    return min(1.0, max(0.0, remapped))
 
 
 class ColorCorrectionReport(FigureProvider):
@@ -215,6 +256,231 @@ class ColorCorrectionReport(FigureProvider):
             return specs
         image_only = {_SECTION_PIPELINE, _SECTION_SEGMENTATION}
         return [spec for spec in specs if spec.section not in image_only]
+
+    # -- composed dashboard -------------------------------------------------
+
+    def dash(self, subject: Any = None) -> go.Figure:
+        """Compose report figures while preserving child subplot layouts.
+
+        The base ``FigureProvider`` composer is intentionally trace-only. This
+        report renders nested subplot grids for the pipeline and segmentation
+        sections, so it needs to remap each child figure into its own vertical
+        domain instead of reassigning every trace to one subplot row.
+
+        Args:
+            subject: Unused; accepted for ``FigureProvider`` signature parity.
+
+        Returns:
+            A single themed ``plotly.graph_objects.Figure``.
+        """
+        from phenotypic.viz.figures._theme import apply_theme
+
+        specs = self.iter_figures()
+        if len(specs) == 1:
+            return self._render_spec(specs[0], subject)
+
+        rendered = [self._render_spec(spec, subject) for spec in specs]
+        weights = [self._figure_vertical_weight(fig) for fig in rendered]
+        domains = self._vertical_domains(weights)
+
+        composed = go.Figure()
+        axis_counts = {"x": 0, "y": 0}
+        for spec, subfig, (y0, y1) in zip(specs, rendered, domains):
+            self._append_figure_to_domain(
+                composed,
+                subfig,
+                y0=y0,
+                y1=y1,
+                axis_counts=axis_counts,
+            )
+            composed.add_annotation(
+                xref="paper",
+                yref="paper",
+                x=0.0,
+                y=min(1.0, y1 + 0.012),
+                text=f"<b>{spec.title}</b>",
+                showarrow=False,
+                xanchor="left",
+                yanchor="bottom",
+                font=dict(color=NAVY, size=14),
+            )
+
+        composed.update_layout(
+            title_text="Color Correction Diagnostics",
+            height=max(650, int(280 * sum(weights))),
+            barmode="group",
+            showlegend=True,
+        )
+        return apply_theme(composed)
+
+    @staticmethod
+    def _vertical_domains(
+        weights: list[float], *, gap: float = 0.055
+    ) -> list[tuple[float, float]]:
+        """Return top-to-bottom paper domains for stacked child figures."""
+        if not weights:
+            return []
+        usable_height = 1.0 - gap * (len(weights) - 1)
+        total_weight = float(sum(weights))
+        domains: list[tuple[float, float]] = []
+        top = 1.0
+        for weight in weights:
+            height = usable_height * weight / total_weight
+            bottom = top - height
+            domains.append((bottom, top))
+            top = bottom - gap
+        return domains
+
+    @staticmethod
+    def _figure_vertical_weight(fig: go.Figure) -> float:
+        """Estimate vertical space from the number of child y-axis domains."""
+        layout = fig.layout.to_plotly_json()
+        domains = {
+            tuple(axis.get("domain", [0.0, 1.0]))
+            for key, axis in layout.items()
+            if key.startswith("yaxis") and isinstance(axis, dict)
+        }
+        return max(1.0, float(len(domains)))
+
+    @classmethod
+    def _append_figure_to_domain(
+        cls,
+        composed: go.Figure,
+        source: go.Figure,
+        *,
+        y0: float,
+        y1: float,
+        axis_counts: dict[str, int],
+    ) -> None:
+        """Append ``source`` into a vertical paper-domain slice."""
+        layout = source.layout.to_plotly_json()
+        x_mapping = cls._axis_ref_mapping(source, layout, "x", axis_counts)
+        y_mapping = cls._axis_ref_mapping(source, layout, "y", axis_counts)
+
+        for axis_ref, target_ref in x_mapping.items():
+            axis_payload = copy.deepcopy(
+                layout.get(_axis_layout_key(axis_ref, "x"), {})
+            )
+            axis_payload.setdefault("domain", [0.0, 1.0])
+            cls._remap_axis_payload(axis_payload, x_mapping, y_mapping)
+            composed.update_layout(
+                {_axis_layout_key(target_ref, "x"): axis_payload}
+            )
+
+        for axis_ref, target_ref in y_mapping.items():
+            axis_payload = copy.deepcopy(
+                layout.get(_axis_layout_key(axis_ref, "y"), {})
+            )
+            domain = axis_payload.get("domain", [0.0, 1.0])
+            axis_payload["domain"] = [
+                _remap_domain_value(float(domain[0]), y0, y1),
+                _remap_domain_value(float(domain[1]), y0, y1),
+            ]
+            cls._remap_axis_payload(axis_payload, x_mapping, y_mapping)
+            composed.update_layout(
+                {_axis_layout_key(target_ref, "y"): axis_payload}
+            )
+
+        for trace in source.data:
+            payload = trace.to_plotly_json()
+            if payload.get("type") in _DOMAIN_TRACE_TYPES or "domain" in payload:
+                cls._remap_trace_domain(payload, y0=y0, y1=y1)
+            else:
+                payload["xaxis"] = x_mapping.get(payload.get("xaxis", "x"), "x")
+                payload["yaxis"] = y_mapping.get(payload.get("yaxis", "y"), "y")
+            composed.add_trace(payload)
+
+        for shape in source.layout.shapes:
+            payload = copy.deepcopy(shape.to_plotly_json())
+            cls._remap_layout_ref_payload(payload, "xref", "x", x_mapping)
+            cls._remap_layout_ref_payload(
+                payload, "yref", "y", y_mapping, y0=y0, y1=y1
+            )
+            composed.add_shape(payload)
+
+        for annotation in source.layout.annotations:
+            payload = copy.deepcopy(annotation.to_plotly_json())
+            cls._remap_layout_ref_payload(payload, "xref", "x", x_mapping)
+            cls._remap_layout_ref_payload(
+                payload, "yref", "y", y_mapping, y0=y0, y1=y1
+            )
+            composed.add_annotation(payload)
+
+    @classmethod
+    def _axis_ref_mapping(
+        cls,
+        source: go.Figure,
+        layout: dict[str, Any],
+        axis: str,
+        axis_counts: dict[str, int],
+    ) -> dict[str, str]:
+        """Map source axis refs to newly allocated composed axis refs."""
+        refs = {
+            _axis_ref_from_layout_key(key, axis)
+            for key in layout
+            if key.startswith(f"{axis}axis")
+        }
+        for trace in source.data:
+            refs.add(trace.to_plotly_json().get(f"{axis}axis", axis))
+        if not refs:
+            refs.add(axis)
+        ordered_refs = sorted(refs, key=lambda ref: _axis_ref_order(ref, axis))
+        return {ref: _next_axis_ref(axis_counts, axis) for ref in ordered_refs}
+
+    @staticmethod
+    def _remap_axis_payload(
+        payload: dict[str, Any],
+        x_mapping: dict[str, str],
+        y_mapping: dict[str, str],
+    ) -> None:
+        """Rewrite axis-linking fields such as anchor and scaleanchor."""
+        for key, value in list(payload.items()):
+            if not isinstance(value, str):
+                continue
+            if value in x_mapping:
+                payload[key] = x_mapping[value]
+            elif value in y_mapping:
+                payload[key] = y_mapping[value]
+
+    @staticmethod
+    def _remap_trace_domain(
+        payload: dict[str, Any], *, y0: float, y1: float
+    ) -> None:
+        """Scale a domain-based trace into the requested vertical slice."""
+        domain = copy.deepcopy(payload.get("domain", {}))
+        ydomain = domain.get("y", [0.0, 1.0])
+        domain["y"] = [
+            _remap_domain_value(float(ydomain[0]), y0, y1),
+            _remap_domain_value(float(ydomain[1]), y0, y1),
+        ]
+        payload["domain"] = domain
+
+    @staticmethod
+    def _remap_layout_ref_payload(
+        payload: dict[str, Any],
+        ref_key: str,
+        axis: str,
+        mapping: dict[str, str],
+        *,
+        y0: float | None = None,
+        y1: float | None = None,
+    ) -> None:
+        """Rewrite an annotation/shape xref or yref into the composed figure."""
+        ref = payload.get(ref_key, "paper")
+        coord_key = axis
+        if ref == "paper":
+            if axis == "y" and y0 is not None and y1 is not None:
+                for key in (coord_key, f"{coord_key}0", f"{coord_key}1"):
+                    if key in payload and isinstance(payload[key], (int, float)):
+                        payload[key] = _remap_domain_value(
+                            float(payload[key]), y0, y1
+                        )
+            return
+
+        suffix = " domain" if ref.endswith(" domain") else ""
+        base_ref = ref[: -len(" domain")] if suffix else ref
+        if base_ref in mapping:
+            payload[ref_key] = f"{mapping[base_ref]}{suffix}"
 
     # -- helpers ------------------------------------------------------------
 

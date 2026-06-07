@@ -46,7 +46,7 @@ to integrate new tools.
 uv add phenotypic
 ```
 
-**Interactive / GUI Install** (Panel dashboards, Jupyter, Dash hub)
+**Interactive / GUI Install** (Plotly dashboards, Jupyter, Dash hub)
 
 ```bash
 uv add phenotypic --extra gui

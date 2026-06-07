@@ -1475,6 +1475,13 @@ class MeasureSymmetricZones(MeasureFeatures, FigureProvider):
 
         import plotly.graph_objects as go
 
+        valid_base_layers = BASE_LAYER.options or ()
+        if base_layer not in valid_base_layers:
+            allowed = ", ".join(repr(value) for value in valid_base_layers)
+            raise ValueError(
+                f"base_layer must be one of {allowed}; got {base_layer!r}"
+            )
+
         if image is None:
             image = self._require_cache_image()
 

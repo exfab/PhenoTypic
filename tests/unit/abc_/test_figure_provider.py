@@ -159,6 +159,46 @@ class TestFigureProvider:
         by_name = {s.name: s for s in specs}
         assert by_name["b"].title == "B-override"  # most-derived wins
 
+    def test_undecorated_override_removes_base_figure(self):
+        class Base(FigureProvider):
+            @figure(title="A", controls={"method": METHOD})
+            def a(self, *, method) -> go.Figure:
+                return go.Figure(go.Scatter(name=method))
+
+        class Derived(Base):
+            def a(self) -> go.Figure:
+                return go.Figure(go.Scatter(name="plain override"))
+
+        derived = Derived()
+        assert derived.iter_figures() == []
+        with pytest.raises(RuntimeError, match="declares no @figure"):
+            derived.inspect()
+
+    def test_multiple_inheritance_order_uses_selected_base_slot(self):
+        class Left(FigureProvider):
+            @figure(title="left-plot")
+            def plot(self) -> go.Figure:
+                return go.Figure()
+
+            @figure(title="left-after")
+            def after(self) -> go.Figure:
+                return go.Figure()
+
+        class Right(FigureProvider):
+            @figure(title="right-plot")
+            def plot(self) -> go.Figure:
+                return go.Figure()
+
+        class Derived(Left, Right):
+            pass
+
+        specs = Derived().iter_figures()
+
+        assert [(spec.name, spec.title) for spec in specs] == [
+            ("plot", "left-plot"),
+            ("after", "left-after"),
+        ]
+
     def test_inspect_picks_primary(self):
         fig = _MultiHelper().inspect()
         assert isinstance(fig, go.Figure)

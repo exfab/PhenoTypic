@@ -165,6 +165,118 @@ class TestDashboardEntryPoints:
         result = fitted_profile_with_image.dashboard(show=False)
         assert isinstance(result, go.Figure)
 
+    def test_image_dashboard_preserves_nested_subplot_axes(
+        self, fitted_profile_with_image
+    ):
+        """Pipeline stage panels stay on separate axes in the composed dashboard."""
+        result = fitted_profile_with_image.dashboard(show=False)
+        layout = result.layout.to_plotly_json()
+        image_axes = []
+        for trace in result.data:
+            if trace.type != "image":
+                continue
+            xref = trace.xaxis or "x"
+            yref = trace.yaxis or "y"
+            image_axes.append(
+                (
+                    xref,
+                    yref,
+                    layout[f"xaxis{xref[1:]}"]["domain"],
+                    layout[f"yaxis{yref[1:]}"]["domain"],
+                )
+            )
+
+        stage_labels = [
+            "1. Original Crop",
+            "2. Background Trimmed",
+            "3. Median Filtered",
+            "4. Centered & Padded",
+            "5. Border Mask",
+        ]
+        stage_axes = set()
+        for label in stage_labels:
+            annotation = next(
+                item for item in result.layout.annotations if item.text == label
+            )
+            matches = [
+                (xref, yref, ydomain[1])
+                for xref, yref, xdomain, ydomain in image_axes
+                if xdomain[0] <= annotation.x <= xdomain[1]
+                and ydomain[1] <= annotation.y
+            ]
+            assert matches
+            xref, yref, _ = max(matches, key=lambda item: item[2])
+            stage_axes.add((xref, yref))
+
+        assert len(stage_axes) == len(stage_labels)
+
+    def test_patch_color_dashboard_preserves_shapes_and_swatch_hover(
+        self, fitted_profile
+    ):
+        """No-image dashboards keep Delta-E refs and swatch hover metadata."""
+        result = fitted_profile.dashboard(show=False)
+
+        assert len(result.layout.shapes) >= 3
+        labels = [annotation.text for annotation in result.layout.annotations]
+        assert "Just noticeable" in labels
+        assert "Perceptible" in labels
+        assert "Significant" in labels
+
+        swatch = next(trace for trace in result.data if trace.type == "image")
+        assert swatch.hovertemplate == "%{customdata}<extra></extra>"
+        assert swatch.customdata is not None
+
+    def test_image_dashboard_handles_multiple_rois(self):
+        """Composed dashboard domains stay valid for multiple image ROIs."""
+        card = make_synthetic_framed_checker_image()
+        gap = np.zeros((card.shape[0], 20, 3), dtype=card.dtype)
+        combined = np.concatenate([card, gap, card], axis=1)
+        profile = ColorCheckerProfile(degree=2).fit(Image(arr=card, bit_depth=8))
+        left = (slice(0, card.shape[0]), slice(0, card.shape[1]))
+        right_start = card.shape[1] + gap.shape[1]
+        right = (
+            slice(0, card.shape[0]),
+            slice(right_start, right_start + card.shape[1]),
+        )
+        report = ColorCorrectionReport(
+            profile,
+            image=Image(arr=combined, bit_depth=8),
+            rois=[left, right],
+        )
+
+        result = report.dash()
+
+        layout = result.layout.to_plotly_json()
+        y_domains = [
+            axis["domain"]
+            for name, axis in layout.items()
+            if name.startswith("yaxis") and "domain" in axis
+        ]
+        assert y_domains
+        for domain in y_domains:
+            assert 0.0 <= domain[0] <= domain[1] <= 1.0
+
+    def test_dashboard_composer_supports_domain_traces(self):
+        """Domain-based traces should stay domain-based when remapped."""
+        composed = go.Figure()
+        source = go.Figure(
+            go.Table(
+                header=dict(values=["metric"]),
+                cells=dict(values=[["value"]]),
+            )
+        )
+
+        ColorCorrectionReport._append_figure_to_domain(
+            composed,
+            source,
+            y0=0.2,
+            y1=0.6,
+            axis_counts={"x": 0, "y": 0},
+        )
+
+        assert composed.data[0].type == "table"
+        assert tuple(composed.data[0].domain.y) == (0.2, 0.6)
+
     def test_corrector_dashboard_delegates(self, fitted_profile):
         """ColorCorrector.dashboard delegates to the profile and returns a go.Figure."""
         corrector = ColorCorrector(profile=fitted_profile)

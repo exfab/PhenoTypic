@@ -7,6 +7,7 @@ without importing ipywidgets or a Jupyter kernel.
 from __future__ import annotations
 
 import plotly.graph_objects as go
+import pytest
 
 from phenotypic.abc_ import Control, FigureProvider, figure
 from phenotypic.viz.notebook._adapter import (
@@ -62,3 +63,28 @@ def test_spec_control_kwargs_resolves_current_values():
     state[id(METHOD)] = "sato"
     assert spec_control_kwargs(specs["ridge"], state) == {"sigma": 3.0, "method": "sato"}
     assert spec_control_kwargs(specs["smooth"], state) == {"sigma": 3.0}
+
+
+def test_build_notebook_dashboard_does_not_emit_plotly_repr(capsys):
+    pytest.importorskip("ipywidgets")
+    pytest.importorskip("IPython")
+
+    dashboard = _Provider().dash()
+
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err == ""
+
+    accordion = dashboard.children[1]
+    outputs = [
+        output
+        for section in accordion.children
+        for output in section.children
+    ]
+    assert outputs
+    for output in outputs:
+        assert output.outputs
+        assert any(
+            "application/vnd.plotly.v1+json" in entry.get("data", {})
+            for entry in output.outputs
+        )

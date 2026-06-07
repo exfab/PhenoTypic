@@ -13,6 +13,7 @@ import numpy as np
 import plotly.graph_objects as go
 import pytest
 
+from phenotypic import Image
 from phenotypic._core._image_parts.plot_accessor._diagnostics_plotter import (
     DiagnosticsPlotter,
 )
@@ -184,6 +185,48 @@ def test_inspect_override_changes_radar(plotter: DiagnosticsPlotter) -> None:
     # Uniformity score depends on background nonuniformity, which depends on
     # bg_sigma, so at least one component should move.
     assert not np.allclose(r_default, r_over)
+
+
+def test_flat_image_histogram_has_only_finite_trace_values() -> None:
+    """Flat images should not render a non-finite Gaussian overlay."""
+    image = Image(np.full((64, 64, 3), 128, dtype=np.uint8))
+    flat_plotter = DiagnosticsPlotter(image)
+
+    fig = flat_plotter.fig_intensity_histogram()
+
+    for trace in fig.data:
+        y = getattr(trace, "y", None)
+        if y is not None:
+            assert np.all(np.isfinite(np.asarray(y, dtype=float)))
+    labels = [annotation.text for annotation in fig.layout.annotations]
+    assert any("Gaussian fit omitted" in str(label) for label in labels)
+
+
+@pytest.mark.parametrize("side", [1, 2, 3, 4])
+def test_tiny_flat_image_histogram_returns_finite_figure(side: int) -> None:
+    """Tiny valid images should not crash while computing noise annotations."""
+    image = Image(np.zeros((side, side, 3), dtype=np.uint8))
+    flat_plotter = DiagnosticsPlotter(image)
+
+    fig = flat_plotter.fig_intensity_histogram()
+
+    assert isinstance(fig, go.Figure)
+    for trace in fig.data:
+        y = getattr(trace, "y", None)
+        if y is not None:
+            assert np.all(np.isfinite(np.asarray(y, dtype=float)))
+
+
+def test_flat_image_psd_returns_annotated_empty_state() -> None:
+    """A zero-power PSD should explain the empty state instead of going blank."""
+    image = Image(np.full((64, 64, 3), 128, dtype=np.uint8))
+    flat_plotter = DiagnosticsPlotter(image)
+
+    fig = flat_plotter.fig_power_spectral_density()
+
+    assert len(fig.data) == 0
+    labels = [annotation.text for annotation in fig.layout.annotations]
+    assert any("No positive PSD" in str(label) for label in labels)
 
 
 def test_matplotlib_diagnostics_regression() -> None:

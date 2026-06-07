@@ -415,6 +415,7 @@ class GridFitReport(FigureProvider):
         fig = go.Figure()
         any_data = False
         max_pitch = 0.0
+        max_observed_diff = 0.0
         for stats, color in (
             (self._row_stats, _NAVY),
             (self._col_stats, _ORANGE),
@@ -428,6 +429,7 @@ class GridFitReport(FigureProvider):
             if len(diffs) == 0:
                 continue
             any_data = True
+            max_observed_diff = max(max_observed_diff, float(diffs.max()))
             image_pitch = stats["image_pitch"]
             fit_pitch = stats["fit_pitch"]
             fig.add_trace(
@@ -474,8 +476,9 @@ class GridFitReport(FigureProvider):
             barmode="overlay",
         )
         if max_pitch > 0:
-            # Keep the 3x marker in view even when no diff reaches it.
-            fig.update_xaxes(range=[0, 3.5 * max_pitch])
+            # Keep the 3x marker in view without clipping sparse observed gaps.
+            upper = max(max_observed_diff, 3.5 * max_pitch)
+            fig.update_xaxes(range=[0, 1.05 * upper])
         return fig
 
     @figure(title="Axis Occupancy", section=_SECTION_AXIS)

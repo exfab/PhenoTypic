@@ -91,6 +91,13 @@ def test_base_layer_drives_recompute(measured):
     assert f_gray is not f_rgb  # recomputed for a different value
 
 
+def test_inspect_rejects_invalid_base_layer(measured):
+    op, image = measured
+
+    with pytest.raises(ValueError, match="base_layer"):
+        op.inspect(image, base_layer="bad")
+
+
 def test_pydantic_schema_and_serialization_unchanged():
     fields = set(MeasureSymmetricZones.model_fields)
     props = set(MeasureSymmetricZones.model_json_schema()["properties"])
