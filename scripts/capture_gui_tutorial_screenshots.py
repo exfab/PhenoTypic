@@ -472,146 +472,91 @@ def _emit_empty_state_shot(
 
 
 # ---------------------------------------------------------------------------
-# DAG builder interaction helpers
+# Linear builder interaction helpers
 # ---------------------------------------------------------------------------
 #
-# The post-redesign builder canvas is a dash-cytoscape graph driven by three
-# clientside ``dcc.Store`` components (spec §5.5 "Clientside event contract"):
-#
-#   * ``store-palette-drop``  — ``block_create`` payloads (palette → canvas).
-#   * ``store-edge-event``    — ``edge_create`` / ``edge_delete`` (wire draw).
-#   * ``store-builder-state`` — ``block_select`` / ``block_delete_request`` …
-#
-# ``palette_dnd.js`` / ``wire_drawing.js`` write to these stores via
-# ``window.dash_clientside.set_props`` in response to native drag-and-drop
-# and port-mousedown gestures.  Playwright cannot faithfully replay HTML5
-# drag-and-drop against a ``<canvas>``-backed graph, so the capture helpers
-# below dispatch the *same payloads* the JS would emit — exercising the real
-# server-side dispatcher (``_dispatch_state_update``) and clientside layout
-# path, just without synthesising raw pointer events.
+# The default builder surface is a fixed HTML port map. Tutorial capture drives
+# the same click targets a user sees: palette buttons append/fill the selected
+# green target, side-loader ports select parameter targets, and breadcrumbs
+# drill back out of embedded ImagePipeline scopes. Retired Cytoscape drag/drop
+# stores are intentionally not used here.
 
 
 def _new_builder_page(context, base_url: str):
-    """Open ``/builder/`` and block until the palette has mounted.
-
-    The shared opener for the DAG-builder capture helpers: a fresh page,
-    a wait on ``#palette`` (15s — the operation registry scan is slow on
-    a cold boot), then a short settle for the canvas's first dagre pass.
-    """
+    """Open ``/builder/`` and block until the linear map has mounted."""
     page = _new_page(context, base_url, "/builder/")
     page.wait_for_selector("#palette", timeout=15_000)
+    page.wait_for_selector("#linear-map-container", timeout=15_000)
     page.wait_for_timeout(500)
     return page
 
 
 def _relayout_canvas(page) -> None:
-    """Re-run the leaf-first dagre layout and wait for it to settle.
+    """Settle the builder map before taking a screenshot.
 
-    ``viewport_ops.js`` auto-relayouts on every mutation, but it debounces
-    behind dash-cytoscape's own ``breadthfirst`` pass; calling
-    ``phenotypicRelayout()`` explicitly before a screenshot guarantees the
-    canvas shows the final dagre layout + port placement deterministically.
+    Older tutorial captures called Cytoscape's dagre relayout here. The fixed
+    map has no graph layout pass, but keeping this helper as a short settle
+    makes the capture flow deterministic after Dash callback redraws.
     """
     page.evaluate(
             "() => window.phenotypicRelayout && window.phenotypicRelayout()"
     )
+    page.wait_for_timeout(700)
+
+
+def _wait_linear_node_count(page, count: int) -> None:
+    page.wait_for_function(
+            "expected => document.querySelectorAll('.linear-node-card').length === expected",
+            arg=count,
+            timeout=15_000,
+    )
+    page.wait_for_timeout(250)
+
+
+def _select_linear_node(page, class_name: str, which: str = "last") -> None:
+    locator = page.locator(
+            f'button.linear-node-title-button:has-text("{class_name}")'
+    )
+    if locator.count() == 0:
+        print(f"[shot]   linear node {class_name} not found")
+        return
+    target = locator.first if which == "first" else locator.last
+    target.click()
+    page.wait_for_timeout(500)
+
+
+def _select_side_param_target(page, param_name: str) -> None:
+    """Select a side-loader parameter port as the active fill target."""
+
+    locator = page.locator(
+            f'button.linear-side-param-port[aria-label="Fill {param_name}"]'
+    )
+    if locator.count() == 0:
+        locator = page.locator(
+                f'button.linear-port-param[aria-label="Fill {param_name}"]'
+        )
+    if locator.count() == 0:
+        print(f"[shot]   side param port {param_name} not found")
+        return
+    locator.first.click()
+    page.wait_for_timeout(600)
+
+
+def _click_new_pipeline_button(page) -> None:
+    button = page.locator("#btn-new-pipeline-node")
+    if button.count() == 0:
+        print("[shot]   + New Pipeline button not found")
+        return
+    button.first.click()
     page.wait_for_timeout(900)
 
 
-def _dispatch_block_create(
-        page, class_name: str, *, container_block_id: str | None = None
-) -> None:
-    """Mint a DAG block via ``store-palette-drop`` (``block_create``).
-
-    Mirrors the payload ``palette_dnd.js`` emits on a palette drop.  Unlike
-    the ``palette-add`` keyboard-fallback click (which auto-wires the new
-    block onto the current scope tail), a raw ``block_create`` lands the
-    block free-floating — exactly what the aux-producer / stranded-block
-    tutorials need.  ``container_block_id`` drops the block into that
-    container's nested scope.
-    """
-    page.evaluate(
-            """([cn, cbid]) => {
-                window.dash_clientside.set_props('store-palette-drop', {
-                    data: {
-                        kind: 'block_create',
-                        class_name: cn,
-                        x: 0, y: 0,
-                        container_block_id: cbid,
-                        ts: Date.now(),
-                    },
-                });
-            }""",
-            [class_name, container_block_id],
-    )
-    page.wait_for_timeout(900)
-
-
-def _dispatch_edge_create(
-        page,
-        source_block_id: str,
-        target_block_id: str,
-        target_port: str,
-        edge_kind: str,
-) -> None:
-    """Draw a wire via ``store-edge-event`` (``edge_create``).
-
-    ``edge_kind`` is ``"image"`` (blue image-flow wire into the ``"in"``
-    port) or ``"aux"`` (purple wire into a named aux port).  Mirrors the
-    payload ``wire_drawing.js`` emits on a compatible port drop.
-    """
-    page.evaluate(
-            """([s, t, port, ek]) => {
-                window.dash_clientside.set_props('store-edge-event', {
-                    data: {
-                        kind: 'edge_create',
-                        source_block_id: s,
-                        target_block_id: t,
-                        target_port: port,
-                        edge_kind: ek,
-                        ts: Date.now(),
-                    },
-                });
-            }""",
-            [source_block_id, target_block_id, target_port, edge_kind],
-    )
-    page.wait_for_timeout(900)
-
-
-def _block_id(page, class_name: str, which: str = "last") -> str:
-    """Resolve a block's cytoscape id by ``class_name`` (``"first"`` / ``"last"``).
-
-    DAG blocks get a fresh 8-char hex id at creation time, so capture
-    helpers resolve ids from the live cy instance rather than hardcoding.
-    """
-    return page.evaluate(
-            """([cn, which]) => {
-                const cy = window.phenoGetCy && window.phenoGetCy();
-                if (!cy) return '';
-                const ns = cy.nodes('[class_name = "' + cn + '"]');
-                if (!ns || ns.length === 0) return '';
-                return (which === 'first' ? ns.first() : ns.last()).id();
-            }""",
-            [class_name, which],
-    )
-
-
-def _tap_block(page, block_id: str) -> None:
-    """Select a block by emitting a ``tap`` on its cytoscape node.
-
-    dash-cytoscape mirrors cytoscape ``tap`` events onto its ``tapNodeData``
-    prop, which the builder's canvas-tap callback routes to a
-    ``block_select`` dispatch — the same path a real click takes.
-    """
-    page.evaluate(
-            """(bid) => {
-                const cy = window.phenoGetCy && window.phenoGetCy();
-                if (!cy) return;
-                const n = cy.getElementById(bid);
-                if (n && n.length) { cy.elements().unselect(); n.emit('tap'); }
-            }""",
-            block_id,
-    )
+def _click_root_breadcrumb(page) -> None:
+    root = page.locator("#breadcrumb button").first
+    if root.count() == 0:
+        print("[shot]   root breadcrumb button not found")
+        return
+    root.click()
     page.wait_for_timeout(700)
 
 
@@ -671,12 +616,19 @@ def _capture_file_explorer(context, base_url: str) -> None:
 
 def _capture_build_pipeline(context, base_url: str) -> None:
     print("[shot] workflow=build_pipeline")
-    page = _new_page(context, base_url, "/builder/")
-    page.wait_for_selector("#palette", timeout=15_000)
-    # Settle the dagre layout so the auto-seeded Input Image block sits
-    # cleanly centred rather than at the breadthfirst fallback origin.
+    page = _new_builder_page(context, base_url)
     _relayout_canvas(page)
     _save(page, "build_pipeline", "01_builder_empty.png")
+
+    _expand_palette_accordions(page)
+    for cls in ("GaussianBlur", "OtsuDetector", "MeasureShape", "MeasureSize"):
+        _add_palette_op(page, cls)
+    _wait_linear_node_count(page, 5)
+    fit = page.locator("#linear-zoom-fit")
+    if fit.count() > 0:
+        fit.first.click()
+        page.wait_for_timeout(400)
+    _save(page, "build_pipeline", "02_builder_chain.png")
     page.close()
 
 
@@ -811,18 +763,12 @@ def _capture_pick_points(context, base_url: str) -> None:
 
     for cls in ("GaussianBlur", "OtsuDetector", "ManualRefine"):
         _add_op(cls)
-    # Re-run the leaf-first dagre layout so the ribbon shows the settled
-    # left-to-right chain rather than dash-cytoscape's breadthfirst pass.
+    _wait_linear_node_count(page, 4)
     _relayout_canvas(page)
     _save(page, "pick_points", "02_pipeline_with_selector.png")
 
-    # 3) Inspector param form for ManualRefine. Tap the block so the
-    # canvas-tap callback dispatches ``block_select`` and the inspector
-    # re-renders against it (a clientside-only ``cy ... .select()`` would
-    # not update the server-side ``selected_block_id``).
-    selector_id = _block_id(page, "ManualRefine")
-    if selector_id:
-        _tap_block(page, selector_id)
+    # 3) Inspector param form for ManualRefine.
+    _select_linear_node(page, "ManualRefine")
     page.wait_for_timeout(600)
     _save(page, "pick_points", "03_param_form.png")
 
@@ -946,33 +892,22 @@ def _capture_pick_points(context, base_url: str) -> None:
 
 
 def _capture_aux_ports(context, base_url: str) -> None:
-    """Drive the aux-port wiring + inspector workflow and capture 4 PNGs.
+    """Drive the linear side-loader aux workflow and capture 4 PNGs.
 
-    Spec §4.2 / §4.5.  Phase 7 retired the canvas-anchored popover; in the
-    post-redesign builder an operation-typed parameter (e.g.
-    ``FilamentousFungiDetector.inoculum_detector``) is a bottom-edge aux
-    port, the aux producer is a first-class canvas block, and the wired
-    aux surfaces in the inspector's **Aux ports section** (where the
-    ``Disconnect`` action now lives — it moved off the popover).
+    Operation-typed parameters render as visible ports on the map and in the
+    side loader. Selecting the side-loader port marks it green; the next
+    compatible palette click fills that slot with a hidden aux source block.
 
     Steps exercised against the real dispatcher:
 
     1. ``01_initial.png`` — empty builder canvas + palette.
     2. ``02_main_pipeline.png`` — palette clicks build the ribbon
-       ``Input Image → GaussianBlur → FilamentousFungiDetector``; FFD's
-       required ``inoculum_detector`` aux port renders as an empty
-       red-ringed square (Rule 3) on its bottom edge.
-    3. ``03_aux_wired.png`` — an ``OtsuDetector`` block is minted
-       free-floating and an ``edge_create`` of kind ``aux`` wires it into
-       ``FilamentousFungiDetector.inoculum_detector``; the aux port flips
-       to filled purple and the producer block's border turns purple.
-    4. ``04_inspector_aux.png`` — the consumer block is selected; the
-       inspector's Aux ports section shows the wired ``OtsuDetector`` row
-       with its ``Disconnect`` action.
-
-    The capture dispatches the same ``store-palette-drop`` /
-    ``store-edge-event`` payloads ``palette_dnd.js`` / ``wire_drawing.js``
-    emit — see the "DAG builder interaction helpers" section above.
+       ``Input Image -> GaussianBlur -> FilamentousFungiDetector``; the
+       detector shows a required empty ``inoculum_detector`` side value.
+    3. ``03_aux_wired.png`` — selecting that side port and clicking
+       ``OtsuDetector`` fills the value row.
+    4. ``04_inspector_aux.png`` — the consumer's side loader shows Replace,
+       Clear, and docstring actions for the filled value.
     """
     print("[shot] workflow=aux_ports")
     page = _new_builder_page(context, base_url)
@@ -983,32 +918,23 @@ def _capture_aux_ports(context, base_url: str) -> None:
 
     _expand_palette_accordions(page)
 
-    # 2) Main ribbon with the aux-consuming op (FFD) on the tail.  FFD's
-    #    ``inoculum_detector`` is a required aux port — it renders empty
-    #    (red ring) until wired.
+    # 2) Main ribbon with the aux-consuming op (FFD) on the tail.
     for cls in ("GaussianBlur", "FilamentousFungiDetector"):
         _add_palette_op(page, cls)
+    _wait_linear_node_count(page, 3)
     _relayout_canvas(page)
     _save(page, "aux_ports", "02_main_pipeline.png")
 
-    # 3) Free-floating aux producer + the purple aux wire into the
-    #    consumer's bottom-edge port.
-    _dispatch_block_create(page, "OtsuDetector")
-    otsu_id = _block_id(page, "OtsuDetector")
-    ffd_id = _block_id(page, "FilamentousFungiDetector")
-    if otsu_id and ffd_id:
-        _dispatch_edge_create(page, otsu_id, ffd_id, "inoculum_detector", "aux")
-        _relayout_canvas(page)
-    else:  # pragma: no cover - best-effort
-        print("[shot]   aux_ports: could not resolve block ids")
+    # 3) Select the side-loader target, then fill it with a compatible
+    #    detector from the palette.
+    _select_linear_node(page, "FilamentousFungiDetector")
+    _select_side_param_target(page, "inoculum_detector")
+    _add_palette_op(page, "OtsuDetector")
+    _relayout_canvas(page)
     _save(page, "aux_ports", "03_aux_wired.png")
 
-    # 4) Select the consumer so the inspector's Aux ports section renders
-    #    the wired-row + Disconnect action (spec §4.5 — the popover's
-    #    wired-row moved here).
-    if ffd_id:
-        _tap_block(page, ffd_id)
-        page.wait_for_timeout(600)
+    # 4) Keep the consumer selected so the filled side value row is visible.
+    _select_linear_node(page, "FilamentousFungiDetector")
     _save(page, "aux_ports", "04_inspector_aux.png")
     page.close()
 
@@ -1236,12 +1162,10 @@ def _expand_palette_accordions(page) -> None:
 def _add_palette_op(page, class_name: str) -> None:
     """Add an op via its palette button (keyboard-fallback click path).
 
-    The ``palette-add`` click dispatches ``block_create`` *and* auto-wires
-    the new block onto the current scope's tail (handoff fix) — so a
-    sequence of ``_add_palette_op`` calls builds a connected main ribbon
-    ``Input Image → … → tail``.  For a *free-floating* block (an aux
-    producer, a stranded orphan) use :func:`_dispatch_block_create`
-    instead.
+    The fixed linear builder routes palette clicks through the selected
+    green target. The default target is the floating continuation, so a
+    sequence of calls builds ``Input Image -> ... -> tail``. If a side-loader
+    parameter port is selected first, the same click fills that parameter.
     """
     sel = (
         f'button[id*="\\"type\\":\\"palette-add\\""]'
@@ -1256,30 +1180,22 @@ def _add_palette_op(page, class_name: str) -> None:
 
 
 def _capture_aux_wire_in_dag(context, base_url: str) -> None:
-    """Drive the post-redesign aux-wiring DAG workflow and capture 3 PNGs.
+    """Drive the linear aux-fill workflow and capture 3 PNGs.
 
-    Mirrors the post-popover aux flow in
-    ``docs/source/tutorials/gui/12_aux_wire_in_dag.md`` (spec §4.2-§4.3):
-    every operation — including the aux producer — is a first-class block
-    on the canvas, and the aux assignment is a purple wire drawn from the
-    producer's output port to the consumer's bottom-edge aux port.  There
-    is no popover class palette in v2.
+    The folder name is kept for existing tutorial links, but the default
+    builder no longer exposes DAG wire drawing. The visible flow is: select a
+    gold parameter port, click a compatible palette operation, and manage the
+    filled value from the side loader.
 
     Steps exercised against the real dispatcher:
 
     1. ``01_main_with_consumer.png`` — palette clicks build the main
-       ribbon ``Input Image → GaussianBlur → ContrastStretching →
-       FilamentousFungiDetector``.  FFD's required ``inoculum_detector``
-       aux port renders as an empty red-ringed square and the toolbar
-       issue badge lights up (Rule 3).
-    2. ``02_detector_dropped.png`` — an ``OtsuDetector`` block is minted
-       free-floating via a raw ``block_create`` (no auto-wire), ready to
-       feed the aux port.
-    3. ``03_aux_wired.png`` — an ``edge_create`` of kind ``aux`` draws
-       the purple wire ``OtsuDetector → FilamentousFungiDetector
-       .inoculum_detector``; the aux port flips to filled purple, the
-       producer's border turns purple (aux-consumed), and the issue
-       badge clears.
+       ribbon ``Input Image -> GaussianBlur -> ContrastStretching ->
+       FilamentousFungiDetector``.
+    2. ``02_detector_dropped.png`` — the ``inoculum_detector`` side port is
+       selected green as the active fill target.
+    3. ``03_aux_wired.png`` — clicking ``OtsuDetector`` fills the side value
+       and returns the active target to the floating continuation.
     """
     print("[shot] workflow=aux-wire-in-dag")
     page = _new_builder_page(context, base_url)
@@ -1288,89 +1204,62 @@ def _capture_aux_wire_in_dag(context, base_url: str) -> None:
     # 1) Main ribbon + the consumer whose aux port we will feed.
     for cls in ("GaussianBlur", "ContrastStretching", "FilamentousFungiDetector"):
         _add_palette_op(page, cls)
+    _wait_linear_node_count(page, 4)
     _relayout_canvas(page)
     _save(page, "aux-wire-in-dag", "01_main_with_consumer.png")
 
-    # 2) Free-floating aux producer — a raw block_create, NOT a palette
-    #    click, so it is not auto-wired into the main ribbon.
-    _dispatch_block_create(page, "OtsuDetector")
+    # 2) Select the side parameter port so readers can see the green target.
+    _select_linear_node(page, "FilamentousFungiDetector")
+    _select_side_param_target(page, "inoculum_detector")
     _relayout_canvas(page)
     _save(page, "aux-wire-in-dag", "02_detector_dropped.png")
 
-    # 3) Draw the purple aux wire: OtsuDetector.output →
-    #    FilamentousFungiDetector.inoculum_detector.
-    otsu_id = _block_id(page, "OtsuDetector")
-    ffd_id = _block_id(page, "FilamentousFungiDetector")
-    if otsu_id and ffd_id:
-        _dispatch_edge_create(page, otsu_id, ffd_id, "inoculum_detector", "aux")
-        _relayout_canvas(page)
-    else:  # pragma: no cover - best-effort
-        print("[shot]   aux-wire-in-dag: could not resolve block ids")
+    # 3) Fill that target with a compatible detector.
+    _add_palette_op(page, "OtsuDetector")
+    _relayout_canvas(page)
     _save(page, "aux-wire-in-dag", "03_aux_wired.png")
     page.close()
 
 
 def _capture_wire_pipeline_as_aux(context, base_url: str) -> None:
-    """Drive the Pipeline-container-as-aux workflow and capture 3 PNGs.
+    """Drive the embedded ImagePipeline side-value workflow and capture 3 PNGs.
 
-    Mirrors ``docs/source/tutorials/gui/13_wire_pipeline_as_aux.md``
-    (spec §4.4): a ``Pipeline`` container holds a multi-step chain in its
-    nested scope, and the whole container is wired as a single aux
-    producer into a consumer outside it.
+    A side parameter target can be filled with ``+ New Pipeline``. The builder
+    immediately drills into that embedded scope; breadcrumbs return to the
+    consumer that owns the side value.
 
     Steps exercised against the real dispatcher:
 
-    1. ``01_empty_container.png`` — a ``block_create`` for the
-       ``ImagePipeline`` sentinel mints an empty container; its nested
-       scope is auto-seeded with a consumer-fed ``Input Image`` dot and
-       it renders the ``+ drop ops here`` placeholder.
-    2. ``02_chain_in_container.png`` — two ops are dropped into the
-       container's nested scope (``container_block_id`` set) and wired
-       ``Input Image → GaussianBlur → OtsuDetector`` inside it.
-    3. ``03_pipeline_wired_as_aux.png`` — a free-floating
-       ``FilamentousFungiDetector`` consumer is added at the root scope
-       and an ``edge_create`` of kind ``aux`` wires the *container* into
-       its ``inoculum_detector`` port.
+    1. ``01_empty_container.png`` — the embedded pipeline has just been
+       created and the active breadcrumb is inside its empty linear scope.
+    2. ``02_chain_in_container.png`` — palette clicks build
+       ``Input Image -> GaussianBlur -> OtsuDetector`` inside that scope.
+    3. ``03_pipeline_wired_as_aux.png`` — breadcrumb returns to root and the
+       consumer side loader shows the embedded ``ImagePipeline`` value.
     """
     print("[shot] workflow=wire-pipeline-as-aux")
     page = _new_builder_page(context, base_url)
+    _expand_palette_accordions(page)
 
-    # 1) Empty Pipeline container.  ``ImagePipeline`` is the container
-    #    sentinel class (builder/_state.PIPELINE_CLASS_NAME).
-    _dispatch_block_create(page, "ImagePipeline")
+    _add_palette_op(page, "FilamentousFungiDetector")
+    _wait_linear_node_count(page, 2)
+    _select_linear_node(page, "FilamentousFungiDetector")
+    _select_side_param_target(page, "inoculum_detector")
+    _click_new_pipeline_button(page)
     _relayout_canvas(page)
     _save(page, "wire-pipeline-as-aux", "01_empty_container.png")
 
-    container_id = _block_id(page, "ImagePipeline")
-    # The container's nested scope auto-seeds its own Input Image; it is
-    # the most-recently-created InputImage block (the root one predates it).
-    nested_input = _block_id(page, "InputImage", which="last")
-
-    # 2) Drop a 2-step chain into the container's nested scope and wire
-    #    it left-to-right inside the container.
-    if container_id:
-        _dispatch_block_create(page, "GaussianBlur", container_block_id=container_id)
-        _dispatch_block_create(page, "OtsuDetector", container_block_id=container_id)
-        gb_id = _block_id(page, "GaussianBlur")
-        od_id = _block_id(page, "OtsuDetector")
-        if nested_input and gb_id:
-            _dispatch_edge_create(page, nested_input, gb_id, "in", "image")
-        if gb_id and od_id:
-            _dispatch_edge_create(page, gb_id, od_id, "in", "image")
-        _relayout_canvas(page)
-    else:  # pragma: no cover - best-effort
-        print("[shot]   wire-pipeline-as-aux: container id unresolved")
+    # 2) Build the embedded linear chain.
+    for cls in ("GaussianBlur", "OtsuDetector"):
+        _add_palette_op(page, cls)
+    _wait_linear_node_count(page, 3)
+    _relayout_canvas(page)
     _save(page, "wire-pipeline-as-aux", "02_chain_in_container.png")
 
-    # 3) Add the consumer at root scope and wire the whole container into
-    #    its aux port.
-    _dispatch_block_create(page, "FilamentousFungiDetector")
-    ffd_id = _block_id(page, "FilamentousFungiDetector")
-    if container_id and ffd_id:
-        _dispatch_edge_create(
-                page, container_id, ffd_id, "inoculum_detector", "aux"
-        )
-        _relayout_canvas(page)
+    # 3) Drill back out and show the embedded pipeline value on the consumer.
+    _click_root_breadcrumb(page)
+    _select_linear_node(page, "FilamentousFungiDetector")
+    _relayout_canvas(page)
     _save(page, "wire-pipeline-as-aux", "03_pipeline_wired_as_aux.png")
     page.close()
 
@@ -1378,35 +1267,29 @@ def _capture_wire_pipeline_as_aux(context, base_url: str) -> None:
 def _capture_fix_validation_issues(context, base_url: str) -> None:
     """Drive the validation-issue triage workflow and capture 3 PNGs.
 
-    Mirrors ``docs/source/tutorials/gui/14_fix_validation_issues.md``
-    (spec §4.6): a stranded block trips a blocking validation rule, the
-    toolbar issue badge surfaces the count, and deleting the orphan
-    clears it and re-enables ``Run preview``.
+    Mirrors ``docs/source/tutorials/gui/14_fix_validation_issues.md``:
+    a missing required side value trips a blocking validation rule, the
+    toolbar issue badge surfaces the count, and filling the side value clears
+    the issue.
 
     Steps exercised against the real dispatcher:
 
-    1. ``01_issue_introduced.png`` — palette clicks build a clean ribbon
-       ``Input Image → GaussianBlur → OtsuDetector``; then a
-       ``SmallObjectRemover`` block is minted free-floating via a raw
-       ``block_create``.  With no incoming image wire it is unreachable
-       from ``Input Image`` (Rule 2) — it renders with a dashed red
-       border + ``!`` badge and the toolbar issue badge shows the count.
-    2. ``02_issue_focused.png`` — the toolbar issue badge is clicked,
-       surfacing the issue-row tooltip listing the offender.
-    3. ``03_issue_resolved.png`` — the stranded ``SmallObjectRemover``
-       block is selected and deleted via the toolbar ``Delete selected``
-       button; the issue badge returns to ``0 issues`` and the ribbon is
-       clean.
+    1. ``01_issue_introduced.png`` — ``FilamentousFungiDetector`` is on the
+       main spine with an empty required ``inoculum_detector`` value.
+    2. ``02_issue_focused.png`` — the issue badge popover lists the missing
+       required parameter.
+    3. ``03_issue_resolved.png`` — selecting that side target and clicking
+       ``OtsuDetector`` clears the issue.
     """
     print("[shot] workflow=fix-validation-issues")
     page = _new_builder_page(context, base_url)
     _expand_palette_accordions(page)
 
-    # 1) Clean ribbon, then a stranded orphan block (raw block_create,
-    #    so it is NOT auto-wired into the ribbon).
-    for cls in ("GaussianBlur", "OtsuDetector"):
+    # 1) Build a main spine with a consumer missing a required side value.
+    for cls in ("GaussianBlur", "FilamentousFungiDetector"):
         _add_palette_op(page, cls)
-    _dispatch_block_create(page, "SmallObjectRemover")
+    _wait_linear_node_count(page, 3)
+    _select_linear_node(page, "FilamentousFungiDetector")
     _relayout_canvas(page)
     _save(page, "fix-validation-issues", "01_issue_introduced.png")
 
@@ -1420,18 +1303,10 @@ def _capture_fix_validation_issues(context, base_url: str) -> None:
             pass
     _save(page, "fix-validation-issues", "02_issue_focused.png")
 
-    # 3) Select the orphan and delete it via the toolbar button; the
-    #    validator re-runs and the badge clears.
-    orphan_id = _block_id(page, "SmallObjectRemover")
-    if orphan_id:
-        _tap_block(page, orphan_id)
-        delete_btn = page.locator("#btn-delete-node")
-        if delete_btn.count() > 0:
-            try:
-                delete_btn.first.click()
-                page.wait_for_timeout(700)
-            except Exception:  # pragma: no cover - best-effort
-                pass
+    # 3) Fill the required side value.
+    _select_linear_node(page, "FilamentousFungiDetector")
+    _select_side_param_target(page, "inoculum_detector")
+    _add_palette_op(page, "OtsuDetector")
     _relayout_canvas(page)
     _save(page, "fix-validation-issues", "03_issue_resolved.png")
     page.close()

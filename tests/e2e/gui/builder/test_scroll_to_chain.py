@@ -45,6 +45,14 @@ from playwright.sync_api import Page
 from tests.e2e.gui.conftest import _build_sandbox, _start_live_server
 
 
+pytestmark = pytest.mark.skip(
+    reason=(
+        "Retired Cytoscape scroll/pan chain; default linear builder uses "
+        "defensive unsupported panels and breadcrumb drill-in."
+    )
+)
+
+
 # ---------------------------------------------------------------------------
 # Live-server override (mirrors test_palette_drag.py / test_containers.py).
 # ---------------------------------------------------------------------------

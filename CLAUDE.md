@@ -7,7 +7,8 @@
 - `uv run <cmd>` — run commands
 - `uv add <package>` (or `--group dev`) — add dependencies
 - `uv sync` — sync env (after checkout or in new worktrees)
-- `uv sync --group dev --group docs --extras gui` — full dev env
+- `uv sync --group dev --group qt-test --group docs --extra gui --extra napari` — full dev env
+  (`qt-test` + the `napari` extra are required for the napari/Qt widget tests)
 - `source .venv/bin/activate` — manual venv activation
 
 ### Linting & Type Checking

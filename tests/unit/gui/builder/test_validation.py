@@ -645,12 +645,12 @@ def test_recursion_into_container_aggregates_scope_path():
 
 
 # ---------------------------------------------------------------------------
-# unknown_class advisory + non-blocking.
+# unknown_class blocking + non-crashing.
 # ---------------------------------------------------------------------------
 
 
-def test_unknown_class_advisory_not_blocking(empty_registry):
-    """A block whose ``class_name`` is not in the registry yields an advisory.
+def test_unknown_class_blocks_save_preview_without_crashing(empty_registry):
+    """A block whose ``class_name`` is not in the registry yields an error.
 
     Rule 3 skips the block (no required-aux check possible) and no
     other rule fires for that block.
@@ -665,7 +665,7 @@ def test_unknown_class_advisory_not_blocking(empty_registry):
     unknown = [i for i in issues if i.kind == "unknown_class"]
     assert len(unknown) == 1
     assert unknown[0].block_id == ghost.block_id
-    assert unknown[0].severity == "advisory"
+    assert unknown[0].severity == "error"
     # No required_aux for the unknown class.
     assert not [
         i for i in issues

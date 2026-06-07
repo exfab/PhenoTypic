@@ -176,6 +176,9 @@
             cb(cy);
             return;
         }
+        if (window.phenoLinearMapMounted && window.phenoLinearMapMounted()) {
+            return;
+        }
         setTimeout(function () {
             whenCyReady(cb);
         }, 100);

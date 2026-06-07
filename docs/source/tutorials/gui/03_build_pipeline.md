@@ -1,15 +1,14 @@
 # Build a Pipeline
 
-The Builder is a node-graph editor for `ImagePipeline`. You compose a pipeline
-by dragging operations from the palette onto the canvas, wiring them up, and
-saving the result as JSON. The walkthrough's `pipeline.json` was hand-written;
-this page shows the workflow you'd use to make your own.
+The Builder authors `ImagePipeline` JSON through a fixed linear port map. The
+underlying state still round-trips through the DAG model, but the default UI is
+click-only: operations are added at the green target, node cards stay fixed in a
+left-to-right chain, and parameters that take operations or pipelines are filled
+from the side loader.
 
 ## Open the builder
 
-Click the `Builder` tab in the top bar (or navigate to `/builder/`). The
-chrome stays in place — same sidebar, same RSS readout — and the main pane
-swaps to the builder UI:
+Click the `Builder` tab in the top bar, or navigate to `/builder/`:
 
 ![Empty builder canvas.](../../_static/gui_images/build_pipeline/01_builder_empty.png)
 
@@ -17,65 +16,54 @@ The builder has four regions:
 
 | Region | Contents |
 |--------|----------|
-| **Palette** (left) | Operations grouped by role: `Corrector`, `Detector`, `Enhancer`, `Refiner`, `Measure`, and `Post`. Each group's count is visible in the section header. |
-| **Canvas** (center) | The pipeline graph. Empty by default; drag operations into it. |
-| **Inspector** (lower) | Parameters of the currently-selected node. Empty when nothing is selected. |
-| **Pipeline I/O** (top right) | `Save` writes the current graph to a pipeline JSON; `Load` reads one. |
-| **Structure** (top right, below Pipeline I/O) | `+ Pipeline` starts a new pipeline graph; `Delete selected` removes the currently-selected node. |
+| **Palette** (left) | Operations grouped by role. Clicking an item inserts it at the active green target. |
+| **Pipeline map** (center) | Fixed HTML node map with clickable image ports, parameter ports, a floating continuation port, and view-only zoom controls. |
+| **Side loader** (right) | Selected-node scalar parameters, side-value ports, filled side values, docstring help, reorder, delete, and embedded-pipeline edit actions. |
+| **Pipeline I/O** (top right) | `Save` writes the current valid pipeline JSON; `Load` reads one back into the builder. |
+
+Use the map zoom controls when a chain grows wider than the viewport:
+
+- `-` zooms out.
+- `+` zooms in.
+- `100%` resets the map scale.
+- The scan icon fits the full visible pipeline into the map viewport.
+
+Zoom is view-only. It does not change the pipeline, does not save to JSON, and
+ports remain normal clickable buttons at every zoom level.
 
 ## Compose a small pipeline
 
-The walkthrough's pipeline (`gui_tutorial`) consists of:
+The walkthrough pipeline consists of:
 
-1. `GaussianBlur` — smooths each plate before thresholding.
-2. `OtsuDetector` — produces the binary colony mask.
-3. `MeasureShape` and `MeasureSize` — extract per-colony shape and area
+1. `GaussianBlur` - smooths each plate before thresholding.
+2. `OtsuDetector` - produces the binary colony mask.
+3. `MeasureShape` and `MeasureSize` - extract per-colony shape and area
    measurements.
 
-To reproduce it in the builder:
+To build it:
 
-1. **Drag `GaussianBlur`** from the `Corrector` group onto the canvas. It
-   appears as a node. Click it; the inspector shows its `sigma` parameter.
-2. **Drag `OtsuDetector`** from the `Detector` group. Drop it next to the
-   blur node and connect the blur node's output socket to the detector's
-   input.
-3. **Add `MeasureShape` and `MeasureSize`** from the `Measure` palette.
-   Measurements consume the detector's labelled output map (objmap).
-4. **Click `Save`** in the Pipeline I/O card. A modal browser opens; pick
-   the directory you want to save to and confirm. The resulting JSON is
-   what the run console will execute.
+1. Start with the floating `+` continuation port selected. It is the green
+   target at the end of the map.
+2. Click `GaussianBlur` in the `Corrector` palette group. The node appears after
+   `InputImage`, becomes selected, and the green target moves to the new tail.
+3. Click `OtsuDetector`, then `MeasureShape`, then `MeasureSize`. Each click
+   appends to the current continuation target.
+4. Use the node title buttons to select a node and edit scalar parameters in the
+   side loader.
+5. Click `Save` once the issue badge is clear.
 
-## Save format
+![Builder chain with GaussianBlur, OtsuDetector, MeasureShape, and MeasureSize.](../../_static/gui_images/build_pipeline/02_builder_chain.png)
 
-The on-disk JSON is the same format the walkthrough used in
-[Setup](01_setup.md):
+## Ports and menus
 
-```json
-{
-  "version": "0.1.0",
-  "name": "gui_tutorial",
-  "pipe_cfgs": {
-    "GaussianBlur": {"class": "GaussianBlur", "params": {"sigma": 2}},
-    "OtsuDetector": {"class": "OtsuDetector", "params": {"ignore_zeros": true}}
-  },
-  "meas": {
-    "MeasureShape": {"class": "MeasureShape", "params": {}},
-    "MeasureSize": {"class": "MeasureSize", "params": {}}
-  },
-  "post": {},
-  "nrows": 8,
-  "ncols": 12
-}
-```
+Every visible port is a button. Image-output and continuation ports can open a
+small menu with local actions such as `Preview here`. A parameter port selects a
+side-value target; the next compatible palette click fills or replaces that
+target. A `?` button beside nodes and parameter rows opens the class or
+parameter docstring.
 
-`pipe_cfgs` are the operations that prepare the image (correctors,
-enhancers, detectors, refiners). `meas` are the measurements that read the
-detected objects. `post` is reserved for post-measurement transforms (e.g.
-edge correction, growth-curve fitting).
-
-The classifier picks up any JSON containing `"pipe_cfgs"` (or the legacy
-`"operations"` key) in its first 4 KB and stamps it with the `cfg` badge in
-the sidebar — that's why your saved pipeline appears as a `cfg`-badged
-file the next time the sidebar refreshes.
+The on-disk JSON is the same public `ImagePipeline` format used by the command
+line tools. The builder-only target selection, open menus, and zoom level are UI
+state only and are not written into pipeline JSON.
 
 Next: [Run Locally](04_run_local.md).

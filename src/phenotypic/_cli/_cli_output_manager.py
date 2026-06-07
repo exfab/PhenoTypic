@@ -26,6 +26,7 @@ if TYPE_CHECKING:
 
 from ._cli_types import Dataset
 from ._cli_duckdb_agg import duckdb_aggregate
+from phenotypic.util import split_measurements
 from phenotypic.tools_ import (
     DIR_RESULTS,
     DIR_MEASUREMENTS,
@@ -539,13 +540,15 @@ def finalize_post_master_outputs(
        is ``None`` or has no post ops, ``post_df`` equals the working
        frame unchanged.
     3. :func:`_seed_measurements` writes the post-applied frame.
-    4. When *pipeline* is provided: persist ``pipeline.json``, run
-       :func:`_emit_analysis_outputs` against ``post_df`` (so analysis
-       sees both post-applied and metadata-joined data), and split
-       ``post_df`` into per-feature spreadsheets so users see
+    4. Split ``post_df`` into per-feature spreadsheets based on the
+       ``MeasurementInfo`` columns present in the frame, so users see
        post-derived columns (e.g. ``Metadata_Strain`` from
        ``ExpandMetadata``) in
        ``measurements_by_feature/<feature>.{csv,parquet}``.
+    5. When *pipeline* is provided: persist ``pipeline.json``, run
+       :func:`_emit_analysis_outputs` against ``post_df`` (so analysis
+       sees both post-applied and metadata-joined data), and run QC when
+       configured.
 
     Failures inside metadata-join, split, or analysis are logged at WARNING
     and never raise; the master files remain authoritative regardless of
@@ -599,37 +602,36 @@ def finalize_post_master_outputs(
     post_df = _apply_post_to_master(working_df, pipeline)
     _seed_measurements(output_dir, post_df)
 
-    if pipeline is None:
+    if pipeline is not None:
+        _persist_pipeline_to_output_dir(output_dir, pipeline)
+        _emit_analysis_outputs(output_dir, post_df, pipeline)
+
+        # QC compute + review-progress reset. A fresh CLI run is "a different
+        # run", so the GUI-owned review_state.json is cleared regardless of
+        # whether QC then recomputes (so stale review progress never carries
+        # across a rerun). The ``qc/`` artifact is rewritten by ``run_qc`` only
+        # when QC is enabled and configured; failures are isolated so the
+        # authoritative master files are never affected.
+        _reset_qc_review_state(output_dir)
+        if not no_qc and pipeline.get_qc():
+            try:
+                # Import the submodule directly (not ``phenotypic.qc``) so QC
+                # compute is only pulled in on the path that needs it, keeping
+                # the qc package __init__ free of an eager _runner import.
+                from phenotypic.qc._runner import run_qc
+
+                run_qc(post_df.to_pandas(), pipeline, output_dir)
+            except Exception:
+                logger.warning(
+                    "QC compute failed (master/measurements still written)",
+                    exc_info=True,
+                )
+    else:
         logger.warning(
-            "Pipeline not available — skipping per-feature split, analysis, "
-            "and pipeline.json persistence (master files still written to %s)",
+            "Pipeline not available — skipping analysis, QC, and "
+            "pipeline.json persistence (master files still written to %s)",
             output_dir,
         )
-        return post_df
-
-    _persist_pipeline_to_output_dir(output_dir, pipeline)
-    _emit_analysis_outputs(output_dir, post_df, pipeline)
-
-    # QC compute + review-progress reset. A fresh CLI run is "a different
-    # run", so the GUI-owned review_state.json is cleared regardless of
-    # whether QC then recomputes (so stale review progress never carries
-    # across a rerun). The ``qc/`` artifact is rewritten by ``run_qc`` only
-    # when QC is enabled and configured; failures are isolated so the
-    # authoritative master files are never affected.
-    _reset_qc_review_state(output_dir)
-    if not no_qc and pipeline.get_qc():
-        try:
-            # Import the submodule directly (not ``phenotypic.qc``) so QC
-            # compute is only pulled in on the path that needs it, keeping
-            # the qc package __init__ free of an eager _runner import.
-            from phenotypic.qc._runner import run_qc
-
-            run_qc(post_df.to_pandas(), pipeline, output_dir)
-        except Exception:
-            logger.warning(
-                "QC compute failed (master/measurements still written)",
-                exc_info=True,
-            )
 
     try:
         # Splits operate on the post-applied frame so per-feature
@@ -678,52 +680,44 @@ def _reset_qc_review_state(output_dir: Path) -> None:
 def split_master_by_feature(
     master_df: "pl.DataFrame",
     output_dir: Path,
-    pipeline: "ImagePipeline",
+    pipeline: Optional["ImagePipeline"] = None,
 ) -> Dict[str, Path]:
-    """Write one CSV + Parquet per ``MeasureFeatures`` into *output_dir*.
+    """Write one CSV + Parquet per recognized feature into *output_dir*.
 
-    Creates ``output_dir/measurements_by_feature/`` and, for every
-    measurer key returned by :func:`_collect_feature_headers`, emits a
-    spreadsheet containing all non-feature columns (metadata, object
-    label, grid info, joined external metadata) alongside only that
-    measurer's columns. A feature whose expected columns are entirely
-    absent from the master (e.g. its operation failed for every image)
-    is skipped.
+    Creates ``output_dir/measurements_by_feature/`` and emits a spreadsheet
+    for every producer key returned by
+    :func:`phenotypic.util.split_measurements`. Each spreadsheet contains
+    all non-feature columns (metadata, object label, grid info, joined
+    external metadata) alongside only that producer's columns.
 
     Args:
         master_df: Aggregated master measurements.
         output_dir: Base output directory; the ``measurements_by_feature/``
             subdirectory is created if missing.
-        pipeline: Pipeline whose ``_meas`` dict defines the split.
+        pipeline: Retained for backward compatibility with legacy callers.
+            The split is now derived dynamically from ``MeasurementInfo``
+            columns in *master_df*.
 
     Returns:
-        Mapping of ``_meas`` key → path to the emitted CSV. Empty if
-        nothing could be split.
+        Mapping of producer key → path to the emitted CSV. Empty if nothing
+        could be split.
     """
-    headers_by_key = _collect_feature_headers(pipeline)
-    if not headers_by_key:
-        logger.info("No MeasureFeatures exposed headers -- skipping split")
+    del pipeline
+
+    split_frames = split_measurements(master_df)
+    if not split_frames:
+        logger.info("No recognized MeasurementInfo columns -- skipping split")
         return {}
-
-    all_feature_cols: set[str] = set()
-    for cols in headers_by_key.values():
-        all_feature_cols.update(cols)
-
-    non_feature_cols = [c for c in master_df.columns if c not in all_feature_cols]
 
     split_dir = measurements_by_feature_dir(output_dir)
     split_dir.mkdir(parents=True, exist_ok=True)
 
     written: Dict[str, Path] = {}
-    for key, headers in headers_by_key.items():
-        present = [c for c in headers if c in master_df.columns]
-        if not present:
-            logger.debug(
-                "Skipping split for %r: none of its columns are in master", key
-            )
-            continue
-
-        subset = master_df.select(non_feature_cols + present)
+    for key, subset_frame in split_frames.items():
+        if isinstance(subset_frame, pd.DataFrame):
+            subset = pl.from_pandas(subset_frame)
+        else:
+            subset = subset_frame
         csv_path = split_dir / f"{key}.csv"
         pq_path = split_dir / f"{key}.parquet"
 
@@ -791,13 +785,12 @@ def aggregate_measurements(
             provided, shared columns are used as join keys for an inner
             join with metadata on the left.  Only measurement rows that
             match the metadata are kept.
-        pipeline: Optional :class:`ImagePipeline` whose ``MeasureFeatures``
-            operations define how to split the aggregated master into
-            per-feature sub-spreadsheets.  When omitted, the pipeline is
+        pipeline: Optional :class:`ImagePipeline` used for post, analysis,
+            QC, and pipeline persistence.  When omitted, the pipeline is
             recovered from ``processing_state.json`` / the pipeline JSON
-            copy in *output_dir*; if it cannot be recovered, the split
-            step is skipped and a warning is logged (the master files are
-            still written).
+            copy in *output_dir*. Per-feature splits are derived from the
+            aggregated frame's ``MeasurementInfo`` columns even when the
+            pipeline cannot be recovered.
         no_qc: Forwarded to :func:`finalize_post_master_outputs` to skip
             the QC compute step. See that function for details.
 
@@ -808,11 +801,10 @@ def aggregate_measurements(
     Side effects:
         Delegates the post-master work to
         :func:`finalize_post_master_outputs`, which always seeds
-        ``measurements.{csv,parquet}`` and — when a pipeline is
-        available — persists ``pipeline.json``, runs the analysis chain
-        into ``analysis.{csv,parquet}``, and writes per-feature
-        sub-spreadsheets into ``output_dir/measurements_by_feature/``
-        (one file per :class:`MeasureFeatures` in ``pipeline._meas``).
+        ``measurements.{csv,parquet}``, writes per-feature sub-spreadsheets
+        into ``output_dir/measurements_by_feature/``, and — when a pipeline
+        is available — persists ``pipeline.json`` and runs the analysis chain
+        into ``analysis.{csv,parquet}``.
 
         ``master_measurements.{csv,parquet}`` are intentionally a clean
         (pre-post) archive of what the per-image runs measured, while

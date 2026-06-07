@@ -37,12 +37,12 @@ from . import (
     enhance,
     grid,
     measure,
-    nn,
     refine,
     schema,
     settings_,
     tools_,
     tune,
+    util,
     prefab,
 )
 
@@ -61,8 +61,8 @@ __all__ = [
     "prefab",
     "correction",
     "enhance",
-    "nn",
     "tools_",
+    "util",
     "settings_",
     "tune",
 ]

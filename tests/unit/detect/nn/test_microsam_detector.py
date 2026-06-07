@@ -11,7 +11,7 @@ import pytest
 
 from phenotypic import ImagePipeline
 from phenotypic.abc_ import GpuDetector, ObjectDetector
-from phenotypic.nn import MICROSAM_AVAILABLE, MicroSamDetector
+from phenotypic.detect.nn import MICROSAM_AVAILABLE, MicroSamDetector
 
 
 # ---------------------------------------------------------------------------
