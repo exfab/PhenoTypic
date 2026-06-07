@@ -315,7 +315,7 @@ class ScreeningController:
 
         # -- focused round (fresh study on the reduced space, warm-started) ---
         reduced = build_reduced_space(self._spec.search_space, frozen_values)
-        self.focused_store = self._warm_started_store(reduced)
+        self.focused_store = self._warm_started_store(reduced, images)
         self._warm_count = len(self.focused_store)
         focused_spec = self._spec.model_copy(update={"search_space": reduced})
         focused_engine = self._engine_factory(focused_spec, self.focused_store)
@@ -343,7 +343,7 @@ class ScreeningController:
                 continue
         return frozen
 
-    def _warm_started_store(self, reduced: SearchSpace) -> JournalStudyStore:
+    def _warm_started_store(self, reduced: SearchSpace, images: list) -> JournalStudyStore:
         """Seed a fresh focused store with the top-k explore configs (§3 warm-start).
 
         Each warm-start trial echoes a top explore config projected onto the
@@ -373,13 +373,27 @@ class ScreeningController:
                 key: (fixed_values[key] if key in frozen_keys else value)
                 for key, value in trial.params.items()
             }
+            if projected == trial.params:
+                store.append(trial.model_copy(update={"number": offset}))
+                continue
+            result = self._spec.evaluator.evaluate(
+                self._spec.pipeline,
+                self._spec.scorer,
+                projected,
+                images,
+            )
             store.append(
                 Trial(
                     number=offset,
                     params=projected,
-                    score=trial.score,
-                    terms=trial.terms,
-                    n_images=trial.n_images,
+                    score=result.score,
+                    terms=result.terms,
+                    n_images=result.n_images,
+                    objectives=result.objectives,
+                    failed=result.failed,
+                    pruned=result.pruned,
+                    gap=result.gap,
+                    suspicious=result.suspicious,
                 )
             )
         return store

@@ -113,6 +113,7 @@ def parse_job_id(sbatch_stdout: str) -> str:
 def submit_script(
     script_path: Path,
     dependency_job_id: Optional[str] = None,
+    array_index: Optional[int] = None,
 ) -> str:
     """Submit a script to SLURM via ``sbatch`` and return the job ID.
 
@@ -121,6 +122,8 @@ def submit_script(
         dependency_job_id: When set, adds
             ``--dependency=afterany:<id>`` so this job starts only
             after the dependency finishes.
+        array_index: When set, overrides any script array directive and submits
+            only this array index.
 
     Returns:
         SLURM job ID string.
@@ -133,6 +136,8 @@ def submit_script(
 
     if dependency_job_id:
         cmd.extend(["--dependency", f"afterany:{dependency_job_id}"])
+    if array_index is not None:
+        cmd.extend(["--array", str(array_index)])
 
     cmd.append(str(script_path))
 

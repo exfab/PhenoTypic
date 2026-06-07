@@ -144,3 +144,96 @@ def test_budget_no_longer_overshoots_after_reconciliation(tmp_path):
     assert len(completed) == n_trials
     assert len(failed) == 1
     assert running == []
+
+
+def test_worker_startup_does_not_fail_live_running_trials(tmp_path, monkeypatch):
+    """A second worker must not mark a peer's active trial failed at startup."""
+    import optuna
+
+    from phenotypic.tune._tune_cli import _worker
+
+    url = f"sqlite:///{tmp_path / 'study.db'}"
+    study = _make_study(url)
+    live = study.ask()
+    live.suggest_float("x", 0.0, 1.0)
+
+    from phenotypic.tune import OptunaConfig
+
+    from tests.unit.tune.test_run_tuning_slurm import _grid_input_spec
+
+    spec_path = tmp_path / "spec.json"
+    spec_path.write_text(
+        _grid_input_spec()
+        .model_copy(update={"strategy": OptunaConfig(n_trials=1, storage_url=url)})
+        .model_dump_json()
+    )
+    split_path = tmp_path / "split.json"
+    split_path.write_text(
+        '{"calibration":["cal"],"held_out":[],"kind":"none",'
+        '"group_key":null,"dataset_identity":"x",'
+        '"within_group_caveat":false,"seed_entropy":[]}'
+    )
+
+    class _FakeImage:
+        name = "cal"
+
+    class _FakeStore:
+        def __init__(self):
+            self.study = _make_study(url)
+
+    class _FakeEngine:
+        def __init__(self, spec, store):
+            pass
+
+        def optimize(self, images):
+            pass
+
+    monkeypatch.setattr(_worker, "_load_images", lambda _path: [_FakeImage()])
+    monkeypatch.setattr(_worker, "build_worker_store", lambda **_kw: _FakeStore())
+    monkeypatch.setattr("phenotypic.tune._engine.TuningEngine", _FakeEngine)
+
+    _worker.run_worker(
+        spec_path=spec_path,
+        images_dir=tmp_path,
+        storage_url=url,
+        study_name="tune",
+        split_path=split_path,
+    )
+
+    fresh = _make_study(url)
+    assert fresh.get_trials(
+        deepcopy=False, states=(optuna.trial.TrialState.RUNNING,)
+    )[0].number == live.number
+    assert fresh.get_trials(
+        deepcopy=False, states=(optuna.trial.TrialState.FAIL,)
+    ) == []
+
+
+def test_optuna_store_configures_rdb_heartbeat(monkeypatch):
+    """Persistent stores should use Optuna's heartbeat stale-trial mechanism."""
+    import phenotypic.tune._study._optuna_store as store_mod
+
+    captured = {}
+
+    class _FakeStorage:
+        def __init__(self, **kwargs):
+            captured.update(kwargs)
+
+    class _FakeOptuna:
+        class storages:
+            RDBStorage = _FakeStorage
+
+        @staticmethod
+        def create_study(**kwargs):
+            captured["create_storage"] = kwargs["storage"]
+            return object()
+
+    monkeypatch.setattr(store_mod.OptunaStudyStore, "_enable_sqlite_wal", lambda *a: None)
+    monkeypatch.setitem(__import__("sys").modules, "optuna", _FakeOptuna)
+
+    store_mod.OptunaStudyStore(storage_url="postgresql://host/db", study_name="tune")
+
+    assert captured["url"] == "postgresql://host/db"
+    assert captured["heartbeat_interval"] == 60
+    assert captured["grace_period"] == 180
+    assert isinstance(captured["create_storage"], _FakeStorage)

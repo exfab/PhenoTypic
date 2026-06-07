@@ -14,9 +14,6 @@ from unittest.mock import patch
 import pytest
 
 pytestmark = [
-    # Autoskipped by tests/conftest.py unless the SLURM client (sbatch) is on
-    # PATH — so CI and slurm-less local runs never fail on the fleet tests.
-    pytest.mark.slurm,
     pytest.mark.skipif(
         sys.platform == "win32", reason="SLURM not available on Windows"
     ),
@@ -31,6 +28,7 @@ def _executor(tmp_path, *, n_workers=4, storage_url=None):
         output_dir=tmp_path,
         spec_path=tmp_path / "tuning_spec.json",
         images_dir=tmp_path / "images",
+        split_path=tmp_path / ".pht-tune-cache" / "splits" / "split.json",
         study_name="study0",
         storage_url=storage_url or f"sqlite:///{tmp_path / 'study.db'}",
         n_workers=n_workers,
@@ -75,6 +73,8 @@ def test_worker_array_script_binds_to_shared_study_name_and_url(tmp_path):
     assert "study0" in content
     assert "--storage-url" in content
     assert url in content
+    assert "--split" in content
+    assert "split.json" in content
 
 
 def test_worker_array_script_carries_sbatch_directives(tmp_path):
@@ -112,9 +112,16 @@ def test_dead_worker_re_enqueued_once(tmp_path):
         first = ex.reenqueue_dead_worker(worker_index=2)
         assert first == "2002"
         submit.assert_called_once()
+        assert submit.call_args.kwargs["array_index"] == 2
         # A second re-enqueue of the same worker is a no-op (re-enqueue once).
         second = ex.reenqueue_dead_worker(worker_index=2)
     assert second is None
+
+
+def test_dead_worker_reenqueue_rejects_out_of_range_index(tmp_path):
+    ex = _executor(tmp_path, n_workers=4)
+    with pytest.raises(ValueError, match="worker_index"):
+        ex.reenqueue_dead_worker(worker_index=4)
 
 
 # --- worker entry binds to the shared study -----------------------------------

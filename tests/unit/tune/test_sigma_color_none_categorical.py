@@ -9,6 +9,10 @@ applies it through the op constructor (whose validator accepts ``None``).
 """
 from __future__ import annotations
 
+import importlib.util
+
+import pytest
+
 from phenotypic import ImagePipeline
 from phenotypic.detect import CannyDetector
 from phenotypic.enhance import LocalEdgeDenoise
@@ -40,6 +44,10 @@ def test_sigma_color_knob_source_is_tune_spec():
     assert knob.needs_review is False
 
 
+@pytest.mark.skipif(
+    importlib.util.find_spec("optuna") is None,
+    reason="optuna extra not installed",
+)
 def test_optuna_can_suggest_none_for_sigma_color():
     import optuna
 

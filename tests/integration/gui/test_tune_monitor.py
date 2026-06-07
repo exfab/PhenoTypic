@@ -98,3 +98,30 @@ def test_read_study_for_monitor_missing_parquet_is_safe(missing_path: str) -> No
     )
     store, note = read_study_for_monitor(root)
     assert store is None
+
+
+@pytest.mark.skipif(
+    __import__("importlib").util.find_spec("optuna") is None,
+    reason="live path is gated on the tune extra",
+)
+def test_read_study_for_monitor_does_not_create_missing_live_study(
+    tmp_path: Path,
+) -> None:
+    from phenotypic.gui.tune._callbacks import read_study_for_monitor
+
+    db = tmp_path / "missing.db"
+    root = TuneRunRoot(
+        path=tmp_path,
+        trials_path=None,
+        storage_url=f"sqlite:///{db}",
+        study_name="tune",
+        directions=None,
+        images_dir=None,
+        best_pipeline_path=tmp_path / "best_pipeline.json",
+    )
+
+    store, note = read_study_for_monitor(root)
+
+    assert store is None
+    assert note
+    assert not db.exists()

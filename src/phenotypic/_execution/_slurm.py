@@ -78,6 +78,7 @@ class SlurmExecutor:
             under ``logs/slurm/``).
         spec_path: Path to the ``tuning_spec.json`` each worker loads.
         images_dir: The calibration image directory each worker scans.
+        split_path: Path to the persisted held-out split each worker applies.
         study_name: The shared Optuna study name (same across the fleet).
         n_workers: The number of array tasks (workers) to launch.
         slurm_args: SLURM parameters (partition, mem, time, …) forwarded to
@@ -96,6 +97,7 @@ class SlurmExecutor:
         output_dir: Path,
         spec_path: Path,
         images_dir: Path,
+        split_path: Path,
         study_name: str,
         n_workers: int,
         slurm_args: dict[str, Any],
@@ -105,6 +107,7 @@ class SlurmExecutor:
         self.output_dir = Path(output_dir)
         self.spec_path = Path(spec_path)
         self.images_dir = Path(images_dir)
+        self.split_path = Path(split_path)
         self.study_name = study_name
         self.n_workers = int(n_workers)
         self.slurm_args = dict(slurm_args)
@@ -129,6 +132,8 @@ class SlurmExecutor:
             shlex.quote(str(self.spec_path.absolute())),
             "--images",
             shlex.quote(str(self.images_dir.absolute())),
+            "--split",
+            shlex.quote(str(self.split_path.absolute())),
             "--study-name",
             shlex.quote(self.study_name),
             "--storage-url",
@@ -253,10 +258,14 @@ exit $EXIT_CODE
             The new SLURM job ID on the first re-enqueue; ``None`` if this worker
             was already re-enqueued once.
         """
+        if not 0 <= worker_index < self.n_workers:
+            raise ValueError(
+                f"worker_index {worker_index} outside array range 0..{self.n_workers - 1}"
+            )
         if worker_index in self._reenqueued:
             return None
         self._reenqueued.add(worker_index)
         script_path = self.output_dir / DIR_SLURM_SCRIPTS / _WORKER_SCRIPT_NAME
         if not script_path.exists():
             script_path = self.generate_worker_array_script()
-        return submit_script(script_path)
+        return submit_script(script_path, array_index=worker_index)

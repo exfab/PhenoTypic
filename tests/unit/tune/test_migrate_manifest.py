@@ -5,9 +5,11 @@ import sys
 from pathlib import Path
 
 import pandas as pd
+import pytest
 
 from phenotypic import ImagePipeline
 from phenotypic.analysis import ExpectedVsDetectedCount
+from phenotypic.enhance import GaussianBlur
 from phenotypic.tune import QCScorer
 from phenotypic.tune._evaluation import build_pipeline
 from phenotypic.tune._strategies._enumerate import enumerate_grid
@@ -35,6 +37,27 @@ def _sig(pipe):
                  for o in pipe.get_ops().values())
 
 
+def _legacy_gaussian_pipeline(*sigmas: float) -> dict:
+    pipe_cfgs = {}
+    for index, sigma in enumerate(sigmas):
+        key = "GaussianBlur" if index == 0 else f"GaussianBlur_{index}"
+        pipe_cfgs[key] = {
+            "class": "GaussianBlur",
+            "params": GaussianBlur(sigma=sigma).model_dump(mode="json"),
+        }
+    return {
+        "desc": None,
+        "filters": {},
+        "meas": {},
+        "model": None,
+        "name": "p",
+        "pipe_cfgs": pipe_cfgs,
+        "post": {},
+        "reset": False,
+        "version": "0.16.0",
+    }
+
+
 def test_migrated_spec_grid_matches_manifest(tmp_path):
     manifest = json.loads(GOLDEN.read_text())
     spec = migrate_manifest_to_spec(manifest, scorer=_scorer(tmp_path))
@@ -46,3 +69,81 @@ def test_migrated_spec_grid_matches_manifest(tmp_path):
         for pd_ in cfg["pipelines"].values():
             golden.add(_sig(ImagePipeline.from_json(json.dumps(pd_))))
     assert migrated == golden
+
+
+def test_duplicate_operation_classes_migrate_by_position(tmp_path):
+    manifest = {
+        "configs": {
+            "a": {
+                "pipelines": {
+                    "p": _legacy_gaussian_pipeline(1.0, 2.0)
+                }
+            },
+            "b": {
+                "pipelines": {
+                    "p": _legacy_gaussian_pipeline(3.0, 2.0)
+                }
+            },
+            "c": {
+                "pipelines": {
+                    "p": _legacy_gaussian_pipeline(1.0, 4.0)
+                }
+            },
+            "d": {
+                "pipelines": {
+                    "p": _legacy_gaussian_pipeline(3.0, 4.0)
+                }
+            },
+        }
+    }
+
+    spec = migrate_manifest_to_spec(manifest, scorer=_scorer(tmp_path))
+    combos = enumerate_grid(spec.search_space)
+    migrated = {_sig(build_pipeline(spec.pipeline, c)) for c in combos}
+
+    golden = {
+        _sig(ImagePipeline.from_json(json.dumps(pd_)))
+        for cfg in manifest["configs"].values()
+        for pd_ in cfg["pipelines"].values()
+    }
+    assert migrated == golden
+
+
+def test_duplicate_operation_deletion_fails_loudly(tmp_path):
+    manifest = {
+        "configs": {
+            "a": {
+                "pipelines": {
+                    "p": _legacy_gaussian_pipeline(1.0, 2.0)
+                }
+            },
+            "b": {
+                "pipelines": {
+                    "p": _legacy_gaussian_pipeline(3.0)
+                }
+            },
+        }
+    }
+
+    with pytest.raises(NotImplementedError, match="ambiguous"):
+        migrate_manifest_to_spec(manifest, scorer=_scorer(tmp_path))
+
+
+def test_duplicate_operation_correlations_fail_loudly(tmp_path):
+    manifest = {
+        "configs": {
+            "a": {
+                "pipelines": {
+                    "p": _legacy_gaussian_pipeline(1.0, 2.0)
+                }
+            },
+            "b": {
+                "pipelines": {
+                    "p": _legacy_gaussian_pipeline(3.0, 4.0)
+                }
+            },
+        }
+    }
+
+    with pytest.raises(NotImplementedError, match="exactly"):
+        migrate_manifest_to_spec(manifest, scorer=_scorer(tmp_path))

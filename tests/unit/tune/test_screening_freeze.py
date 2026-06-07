@@ -18,6 +18,7 @@ from phenotypic.tune import (
     Budget,
     Categorical,
     Evaluator,
+    EvaluationResult,
     Fixed,
     FloatRange,
     GridConfig,
@@ -302,3 +303,70 @@ def test_bad_freeze_falls_back_to_explore_best():
         key=lambda t: t.score,
     )
     assert result.winner.score == explore_best.score
+
+
+class _WarmStartEvaluator(Evaluator):
+    def evaluate(self, pipeline, scorer, params, images, channel=None):
+        return EvaluationResult(
+            score=42.0,
+            terms={"rechecked": 42.0},
+            n_images=len(images),
+        )
+
+
+def test_changed_warm_start_projection_is_re_evaluated():
+    """Projected frozen params must not keep the original explore score."""
+
+    def _engine_factory(spec, store):
+        class _Engine:
+            def optimize(self, images):
+                if store is controller.explore_store:
+                    store.append(
+                        Trial(
+                            number=0,
+                            params={"0.sigma": 1.0, "1.ignore_zeros": True},
+                            score=10.0,
+                            terms={"old": 10.0},
+                            n_images=1,
+                        )
+                    )
+                    store.append(
+                        Trial(
+                            number=1,
+                            params={"0.sigma": 2.0, "1.ignore_zeros": False},
+                            score=9.0,
+                            terms={"old": 9.0},
+                            n_images=1,
+                        )
+                    )
+                    return store.trials[0]
+                return None
+
+        return _Engine()
+
+    spec = _spec(
+        RandomConfig(n_trials=2),
+        space=_random_space(),
+        budget=Budget(n_trials=2),
+    ).model_copy(update={"evaluator": _WarmStartEvaluator()})
+    forced = ImportanceReport(
+        importances={"0.sigma": 0.97, "1.ignore_zeros": 0.03},
+        method="fanova",
+        interactions_estimated=True,
+    )
+    controller = ScreeningController(
+        spec,
+        config=ScreeningConfig(
+            free_param_floor=0, warmup_floor=1, warmup_c=0, top_k=2
+        ),
+        importance_report_fn=lambda store: forced,
+        engine_factory=_engine_factory,
+    )
+
+    controller.run([load_synth_yeast_plate()])
+
+    assert controller.focused_store is not None
+    changed = controller.focused_store.trials[1]
+    assert changed.params == {"0.sigma": 2.0, "1.ignore_zeros": True}
+    assert changed.score == 42.0
+    assert changed.terms == {"rechecked": 42.0}

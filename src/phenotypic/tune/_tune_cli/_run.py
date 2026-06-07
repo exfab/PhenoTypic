@@ -16,6 +16,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Final, Optional
@@ -80,10 +81,25 @@ def _default_study_db_url(output_dir: Path) -> str:
     return f"sqlite:///{io.resolve_study_db_path(output_dir)}"
 
 
-def _resolve_storage_url(storage_url: Optional[str], output_dir: Path) -> str:
-    """Resolve the Optuna storage URL with the canonical 3-way fallback.
+@dataclass(frozen=True)
+class _ResolvedRunConfig:
+    """The side-effect-free runtime config resolved before any run writes."""
+
+    spec: TuningSpec
+    storage_url: Optional[str]
+    is_optuna: bool
+
+
+def _resolve_storage_url(
+    storage_url: Optional[str],
+    output_dir: Path,
+    *,
+    spec_storage_url: Optional[str] = None,
+) -> str:
+    """Resolve the Optuna storage URL with the canonical 4-way fallback.
 
     ``storage_url`` (the explicit ``--storage-url`` / param) wins; otherwise the
+    spec's ``OptunaConfig.storage_url`` wins; otherwise the
     ``$PHENOTYPIC_TUNE_STORAGE_URL`` env var (a shared distributed Postgres);
     otherwise the run's local ``study.db`` (resolved via
     :func:`_default_study_db_url`). Single-sourced so the SLURM fleet submission
@@ -112,6 +128,7 @@ def _resolve_storage_url(storage_url: Optional[str], output_dir: Path) -> str:
     """
     url = (
         storage_url
+        or spec_storage_url
         or os.environ.get(PHENOTYPIC_TUNE_STORAGE_URL_ENV)
         or _default_study_db_url(output_dir)
     )
@@ -171,24 +188,23 @@ def _write_run_marker(
 
     Emitted right after the ``deliverables/`` mkdir and BEFORE the engine/SLURM
     branch, so a live run is marked before any deliverable lands and the GUI
-    shell classifier can recognise the output. The ``storage_url`` is resolved
-    through the SAME 3-way fallback the SLURM fleet uses
-    (:func:`_resolve_storage_url`), so the recorded URL is the one a worker will
-    actually open — never null — keeping the GUI Monitor out of parquet-only
-    mode for the env-var-driven distributed-Postgres case.
+    shell classifier can recognise the output. The caller passes the already
+    resolved Optuna URL for Optuna runs and ``None`` for grid/random runs, so the
+    marker matches the backend the run actually uses.
 
     Args:
         output_dir: The run output directory.
         spec: The RESOLVED tuning spec (its ``strategy`` + ``scorer`` populate
             the marker).
-        storage_url: The explicit storage URL, or ``None`` (resolved here).
+        storage_url: The resolved Optuna storage URL, or ``None`` for
+            non-Optuna strategies.
         images_dir: The calibration image directory (the ``-i`` arg), or ``None``.
         slurm: Whether this run submits a distributed worker fleet.
     """
     marker = {
         "version": _RUN_MARKER_VERSION,
         "study_name": _STUDY_NAME,
-        "storage_url": _resolve_storage_url(storage_url, output_dir),
+        "storage_url": storage_url,
         "images_dir": str(images_dir) if images_dir is not None else None,
         "strategy": _strategy_marker_name(spec.strategy),
         "n_trials": getattr(spec.strategy, "n_trials", None),
@@ -272,6 +288,8 @@ def resolve_strategy(
             ``choices`` should reject it first).
     """
     if name == "grid":
+        if n_trials is not None:
+            raise ValueError("--n-trials requires a random or Optuna strategy, not grid")
         return GridConfig()
     if name == "random":
         return RandomConfig(
@@ -294,6 +312,104 @@ def resolve_strategy(
 def _is_optuna_strategy(strategy: StrategyConfig) -> bool:
     """Whether ``strategy`` drives an Optuna study backend."""
     return isinstance(strategy, OptunaConfig)
+
+
+def _strategy_with_n_trials(strategy: StrategyConfig, n_trials: int) -> StrategyConfig:
+    """Return ``strategy`` with a CLI ``--n-trials`` override applied.
+
+    Args:
+        strategy: The already-resolved strategy config.
+        n_trials: The CLI trial-budget override.
+
+    Returns:
+        A copied strategy with ``n_trials`` updated.
+
+    Raises:
+        ValueError: If the strategy has no trial-budget field.
+    """
+    if isinstance(strategy, GridConfig):
+        raise ValueError("--n-trials requires a random or Optuna strategy, not grid")
+    if isinstance(strategy, (RandomConfig, OptunaConfig)):
+        return strategy.model_copy(update={"n_trials": n_trials})
+    if hasattr(strategy, "n_trials"):
+        return strategy.model_copy(update={"n_trials": n_trials})
+    raise ValueError(
+        f"--n-trials is not supported for {type(strategy).__name__}"
+    )
+
+
+def _resolve_run_config(
+    spec: TuningSpec,
+    output_dir: Path,
+    *,
+    strategy: Optional[str],
+    n_trials: Optional[int],
+    storage_url: Optional[str],
+    held_out_fraction: Optional[float],
+    cv_group: Optional[str],
+) -> _ResolvedRunConfig:
+    """Resolve CLI overrides and storage policy before any run side effects."""
+    # Reject explicit secrets before an Optuna strategy override imports optuna.
+    if storage_url is not None:
+        _reject_password_in_url(storage_url)
+    spec_storage_url = getattr(spec.strategy, "storage_url", None)
+    if storage_url is None and spec_storage_url is not None:
+        _reject_password_in_url(spec_storage_url)
+
+    resolved_spec = spec
+    if strategy is not None:
+        resolved_strategy = resolve_strategy(
+            strategy,
+            n_trials=n_trials,
+            storage_url=storage_url or spec_storage_url,
+        )
+        resolved_spec = spec.model_copy(update={"strategy": resolved_strategy})
+    elif n_trials is not None:
+        resolved_spec = spec.model_copy(
+            update={"strategy": _strategy_with_n_trials(spec.strategy, n_trials)}
+        )
+
+    reject_grid_random_multi_objective(
+        resolved_spec.scorer, resolved_spec.strategy
+    )
+    resolved_spec = _apply_held_out_overrides(
+        resolved_spec, held_out_fraction=held_out_fraction, cv_group=cv_group
+    )
+
+    is_optuna = _is_optuna_strategy(resolved_spec.strategy)
+    effective_storage_url: Optional[str] = None
+    if is_optuna:
+        spec_storage_url = getattr(resolved_spec.strategy, "storage_url", None)
+        effective_storage_url = _resolve_storage_url(
+            storage_url, output_dir, spec_storage_url=spec_storage_url
+        )
+        resolved_spec = resolved_spec.model_copy(
+            update={
+                "strategy": resolved_spec.strategy.model_copy(
+                    update={"storage_url": effective_storage_url}
+                )
+            }
+        )
+
+    return _ResolvedRunConfig(
+        spec=resolved_spec,
+        storage_url=effective_storage_url,
+        is_optuna=is_optuna,
+    )
+
+
+def _assert_scorer_available(spec: TuningSpec) -> None:
+    """Fail before optimization when the scorer cannot safely run."""
+    if spec.scorer.availability():
+        return
+    cls_name = type(spec.scorer).__name__
+    extra = (
+        " Run ReferenceFreeScorer.meta_validate() successfully before "
+        "unattended reference-free tuning."
+        if cls_name == "ReferenceFreeScorer"
+        else ""
+    )
+    raise ValueError(f"{cls_name} is unavailable for tuning.{extra}")
 
 
 def _open_store(
@@ -333,7 +449,11 @@ def _open_store(
         # use (explicit > $PHENOTYPIC_TUNE_STORAGE_URL > local study.db), so the
         # engine opens exactly the URL the marker records — no marker-vs-engine
         # divergence for an env-var-driven local run.
-        url = _resolve_storage_url(storage_url, output_dir)
+        url = _resolve_storage_url(
+            storage_url,
+            output_dir,
+            spec_storage_url=getattr(strategy, "storage_url", None),
+        )
         return OptunaStudyStore(
             storage_url=url, study_name=_STUDY_NAME, directions=directions
         )
@@ -405,29 +525,29 @@ def run_tuning(
     """
     output_dir = Path(output_dir)
 
-    resolved_spec = spec
-    if strategy is not None:
-        resolved_spec = spec.model_copy(
-            update={
-                "strategy": resolve_strategy(
-                    strategy, n_trials=n_trials, storage_url=storage_url
-                )
-            }
-        )
-    # A ``--strategy grid``/``random`` override bypasses TuningSpec's
-    # construction-time guard (``model_copy`` skips validators), so re-assert it
-    # at run validation — before any output is written — so a multi-objective
-    # scorer without an Optuna strategy aborts cleanly with an actionable error.
-    reject_grid_random_multi_objective(
-        resolved_spec.scorer, resolved_spec.strategy
+    resolved = _resolve_run_config(
+        spec,
+        output_dir,
+        strategy=strategy,
+        n_trials=n_trials,
+        storage_url=storage_url,
+        held_out_fraction=held_out_fraction,
+        cv_group=cv_group,
     )
+    resolved_spec = resolved.spec
+    effective_storage_url = resolved.storage_url
+    _assert_scorer_available(resolved_spec)
 
-    # Held-out CLI overrides (robust-eval): --held-out-fraction / --cv-group take
-    # precedence over the spec's HeldOutConfig (CLI flag > spec value > inference)
-    # and are folded in BEFORE the resolved spec is persisted, so tuning_spec.json
-    # records the policy the run actually used. The gap margins stay spec-only.
-    resolved_spec = _apply_held_out_overrides(
-        resolved_spec, held_out_fraction=held_out_fraction, cv_group=cv_group
+    if slurm:
+        _validate_slurm_request(
+            resolved,
+            spec_path=spec_path,
+            images_dir=images_dir,
+            n_workers=n_workers,
+        )
+
+    split, images_by_name, cal_images = _resolve_calibration_images(
+        resolved_spec, images, output_dir
     )
 
     io.deliverables_dir(output_dir).mkdir(parents=True, exist_ok=True)
@@ -444,18 +564,20 @@ def run_tuning(
     _write_run_marker(
         output_dir,
         resolved_spec,
-        storage_url=storage_url,
+        storage_url=effective_storage_url,
         images_dir=images_dir,
         slurm=slurm,
     )
 
     if slurm:
+        assert effective_storage_url is not None
         return _submit_slurm_fleet(
             resolved_spec,
             output_dir,
-            storage_url=storage_url,
+            storage_url=effective_storage_url,
             spec_path=spec_path,
             images_dir=images_dir,
+            split_path=io.tune_cache_split_assignment_path(output_dir),
             n_workers=n_workers,
             slurm_partition=slurm_partition,
             slurm_mem=slurm_mem,
@@ -469,27 +591,18 @@ def run_tuning(
     store = _open_store(
         resolved_spec.strategy,
         output_dir,
-        storage_url=storage_url,
+        storage_url=effective_storage_url,
         resume_path=trials_path,
         directions=directions,
     )
 
-    # Robust-eval held-out split (4.5p2): resolve (read-if-exists-else-derive)
-    # the calibration / held-out partition, then run the search on the
-    # calibration plates ONLY — the held-out plates are reserved for the
-    # report-only generalization pass and never touch the optimizer. The split
-    # lives in the run layer; the engine stays a pure optimizer (RESOLVED design).
-    split, images_by_name, cal_images = _resolve_calibration_images(
-        resolved_spec, images, output_dir
-    )
-
     if screen:
         best = _run_screened(resolved_spec, cal_images, store)
-        winner_pipeline = _best_pipeline(resolved_spec, store)
     else:
         engine = TuningEngine(resolved_spec, store=store)
         best = engine.optimize(cal_images)
-        winner_pipeline = engine.best_pipeline()
+    headline = _headline_winner(store)
+    winner_pipeline = _pipeline_for_trial(resolved_spec, headline)
 
     _finalize_outputs(store, trials_path, output_dir, winner_pipeline)
     # Multi-objective runs additionally publish deliverables/pareto/ (front +
@@ -499,9 +612,9 @@ def run_tuning(
     _finalize_pareto_outputs(store, resolved_spec, output_dir)
     # Report-only held-out generalization verdict → deliverables/generalization.json.
     _finalize_generalization(
-        store, resolved_spec, output_dir, split, images, images_by_name
+        headline, resolved_spec, output_dir, split, images, images_by_name
     )
-    return best
+    return headline if headline is not None else best
 
 
 def _run_screened(
@@ -523,23 +636,50 @@ def _run_screened(
     return result.winner
 
 
-def _best_pipeline(spec: TuningSpec, store: StudyStore):
-    """Build the winning pipeline from the store's best trial (or ``None``)."""
+def _validate_slurm_request(
+    resolved: _ResolvedRunConfig,
+    *,
+    spec_path: Optional[Path],
+    images_dir: Optional[Path],
+    n_workers: Optional[int],
+) -> None:
+    """Reject unsupported SLURM combinations before any run artifact is written."""
+    if not resolved.is_optuna:
+        raise ValueError("--slurm requires an Optuna strategy")
+    if spec_path is None or images_dir is None:
+        raise ValueError(
+            "--slurm requires the on-disk spec path and image directory "
+            "(each worker reloads them)"
+        )
+    if n_workers is not None and n_workers <= 0:
+        raise ValueError("--n-workers must be a positive integer")
+
+
+def _headline_winner(store: StudyStore) -> Optional[Trial]:
+    """Return the run's single headline winner across scalar and Pareto runs."""
+    front = store.pareto_front()
+    if front:
+        return store.knee_point(front)
+    return store.best()
+
+
+def _pipeline_for_trial(spec: TuningSpec, trial: Optional[Trial]):
+    """Build a candidate pipeline for ``trial`` or ``None`` when no winner exists."""
     from .._evaluation import build_pipeline
 
-    best = store.best()
-    if best is None:
+    if trial is None:
         return None
-    return build_pipeline(spec.pipeline, best.params)
+    return build_pipeline(spec.pipeline, trial.params)
 
 
 def _submit_slurm_fleet(
     spec: TuningSpec,
     output_dir: Path,
     *,
-    storage_url: Optional[str],
+    storage_url: str,
     spec_path: Optional[Path],
     images_dir: Optional[Path],
+    split_path: Path,
     n_workers: Optional[int] = None,
     slurm_partition: Optional[str] = None,
     slurm_mem: Optional[str] = None,
@@ -547,16 +687,14 @@ def _submit_slurm_fleet(
 ) -> Optional[Trial]:
     """Submit a distributed worker fleet via :class:`SlurmExecutor`.
 
-    The shared study URL is the explicit ``storage_url``, the
-    ``$PHENOTYPIC_TUNE_STORAGE_URL`` env fallback, or the run's ``study.db``.
-    Fire-and-forget: the fleet writes into the shared study; the final
-    ``trials.parquet`` export happens on a later ``--recompile`` finalize.
+    The shared study URL is already resolved by run preflight. Fire-and-forget:
+    the fleet writes into the shared study; the final ``trials.parquet`` export
+    happens on a later ``--recompile`` finalize.
 
     Args:
         spec: The resolved tuning spec.
         output_dir: The run directory.
-        storage_url: The explicit Optuna storage URL, or ``None`` (resolved via
-            the 3-way fallback).
+        storage_url: The resolved Optuna storage URL.
         spec_path: The on-disk spec path (required; each worker reloads it).
         images_dir: The calibration image directory (required; each worker scans
             it).
@@ -573,12 +711,14 @@ def _submit_slurm_fleet(
             "--slurm requires the on-disk spec path and image directory "
             "(each worker reloads them)"
         )
-    url = _resolve_storage_url(storage_url, output_dir)
+    url = storage_url
     n_trials = getattr(spec.strategy, "n_trials", None)
     default_workers = (
         min(8, n_trials) if isinstance(n_trials, int) and n_trials > 0 else 4
     )
     resolved_workers = n_workers if n_workers is not None else default_workers
+    if resolved_workers <= 0:
+        raise ValueError("--n-workers must be a positive integer")
     # Pre-create the shared study (and its RDB schema) in THIS process BEFORE the
     # fleet starts. A cold Postgres DB has no Optuna schema, so N workers opening
     # it simultaneously race to CREATE TYPE studydirection / the trial tables and
@@ -618,6 +758,7 @@ def _submit_slurm_fleet(
         output_dir=output_dir,
         spec_path=io.tuning_spec_path(output_dir),
         images_dir=Path(images_dir),
+        split_path=Path(split_path),
         study_name=_STUDY_NAME,
         n_workers=resolved_workers,
         slurm_args=slurm_args,
@@ -708,7 +849,7 @@ def _resolve_calibration_images(
 
 
 def _finalize_generalization(
-    store: StudyStore,
+    winner: Optional[Trial],
     spec: TuningSpec,
     output_dir: Path,
     split: Split,
@@ -724,14 +865,13 @@ def _finalize_generalization(
     plates against the persisted ``split.dataset_identity``.
 
     Args:
-        store: The finished study store (its ``best()`` is the winner).
+        winner: The headline winner selected from the finished study.
         spec: The resolved tuning spec (its ``evaluator`` runs the held-out pass).
         output_dir: The run directory.
         split: The resolved held-out split.
         images: The loaded plates (for the current dataset identity).
         images_by_name: ``{name: image}`` of the loaded plates.
     """
-    winner = store.best()
     if winner is None:
         return  # no successful trial → no generalization verdict
     report = run_held_out(

@@ -166,6 +166,47 @@ def test_curate_store_prefilled_from_run_images_dir(tmp_path: Path) -> None:
     assert store.data == str(images)
 
 
+def test_curate_store_does_not_prefill_out_of_sandbox_marker_path(
+    tmp_path: Path,
+) -> None:
+    from phenotypic.gui.tune import create_app
+    from phenotypic.gui.tune import _ids as ids
+
+    outside = tmp_path.parent / "outside-plates"
+    outside.mkdir()
+    root = _run_with_images(tmp_path, outside)
+    sandbox = SandboxRoot.from_path(tmp_path)
+    app = create_app(root=root, url_prefix="/tune/", sandbox=sandbox)
+
+    def _find_store(node: object) -> object | None:
+        if getattr(node, "id", None) == ids.TUNE_IMAGE_SOURCE_STORE:
+            return node
+        children = getattr(node, "children", None)
+        if isinstance(children, (list, tuple)):
+            for child in children:
+                found = _find_store(child)
+                if found is not None:
+                    return found
+        elif children is not None:
+            return _find_store(children)
+        return None
+
+    store = _find_store(app.layout)
+    assert store is not None
+    assert store.data is None
+
+
+def test_plate_listing_rejects_out_of_sandbox_source(tmp_path: Path) -> None:
+    from phenotypic.gui.tune._callbacks import _list_plate_names
+
+    outside = tmp_path.parent / "outside-list"
+    outside.mkdir()
+    (outside / "secret.tif").write_bytes(b"not an image")
+    sandbox = SandboxRoot.from_path(tmp_path)
+
+    assert _list_plate_names(str(outside), sandbox=sandbox) == []
+
+
 def test_curate_prompt_when_image_source_unset(tmp_path: Path) -> None:
     """A run with no images_dir shows a 'point me at the plate images' prompt."""
     from phenotypic.gui.tune import create_app

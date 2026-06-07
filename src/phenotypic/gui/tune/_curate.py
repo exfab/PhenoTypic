@@ -253,7 +253,12 @@ def build_curate_view(
         overlay-readiness poll. When the Image Source is unset, a prompt is
         shown above the (empty) overlay area.
     """
-    initial_source = str(root.images_dir) if root.images_dir is not None else None
+    initial_path = None
+    if sandbox is not None and root.images_dir is not None:
+        from phenotypic.gui.tune._image_source import resolve_image_source
+
+        initial_path = resolve_image_source(sandbox, str(root.images_dir))
+    initial_source = str(initial_path) if initial_path is not None else None
 
     children: list[Component] = [
         dcc.Store(id=ids.TUNE_SESSION_ID, storage_type="session"),
@@ -302,7 +307,7 @@ def build_curate_view(
         from phenotypic.gui.tune._image_source import build_image_source_modal
 
         children.append(
-            build_image_source_modal(sandbox, initial_dir=root.images_dir)
+            build_image_source_modal(sandbox, initial_dir=initial_path)
         )
 
     return html.Div(children, className="tune-curate")

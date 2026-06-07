@@ -17,6 +17,7 @@ in the CLI's finalize step.
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 from typing import Optional, Sequence
 
@@ -55,6 +56,7 @@ def run_worker(
     *,
     spec_path: Path,
     images_dir: Path,
+    split_path: Path,
     storage_url: str,
     study_name: str,
 ) -> None:
@@ -69,17 +71,24 @@ def run_worker(
         spec_path: Path to the ``tuning_spec.json`` (the strategy must be an
             Optuna strategy so the engine binds to the shared study).
         images_dir: The calibration image directory.
+        split_path: Path to the persisted split; held-out images are filtered
+            before optimization.
         storage_url: The shared Optuna storage URL.
         study_name: The shared study name.
     """
     from .._engine import TuningEngine
     from .._multi_objective import objective_directions
-    from .._strategies._optuna_support import fail_stale_running_trials
+    from .._evaluation import Split
 
     spec = TuningSpec.model_validate_json(Path(spec_path).read_text())
     images = _load_images(Path(images_dir))
     if not images:
         raise SystemExit(f"no images found under {str(images_dir)!r}")
+    split = Split(**json.loads(Path(split_path).read_text()))
+    held_out = set(split.held_out)
+    images = [image for image in images if image.name not in held_out]
+    if not images:
+        raise SystemExit("no calibration images remain after applying held-out split")
 
     # Match the study's objective shape (single vs multi) so binding to the shared,
     # submitter-pre-created study never conflicts on directions.
@@ -87,14 +96,6 @@ def run_worker(
     store = build_worker_store(
         storage_url=storage_url, study_name=study_name, directions=directions
     )
-    # Reconcile stale RUNNING trials left by a previously-killed worker BEFORE
-    # entering the ask/tell loop and the budget check: a zombie trial stuck in
-    # RUNNING never reaches COMPLETE/PRUNED, so failing it keeps the shared
-    # budget accounting honest (the engine + strategy count only COMPLETE+PRUNED
-    # toward n_trials, so an un-failed zombie does not over-consume — but
-    # reconciling clears it from the study so it cannot skew sampler/pruner
-    # statistics, and a re-enqueued worker starts from a clean slate).
-    fail_stale_running_trials(store.study)
     TuningEngine(spec, store=store).optimize(images)
 
 
@@ -106,6 +107,9 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--spec", required=True, help="path to tuning_spec.json")
     parser.add_argument(
         "--images", required=True, help="calibration image directory"
+    )
+    parser.add_argument(
+        "--split", required=True, help="persisted held-out split.json"
     )
     parser.add_argument(
         "--study-name", required=True, help="the shared Optuna study name"
@@ -125,6 +129,7 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
     run_worker(
         spec_path=Path(args.spec),
         images_dir=Path(args.images),
+        split_path=Path(args.split),
         storage_url=args.storage_url,
         study_name=args.study_name,
     )

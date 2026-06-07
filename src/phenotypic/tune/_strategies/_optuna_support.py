@@ -15,7 +15,7 @@ from types import ModuleType
 from typing import TYPE_CHECKING, Any, Callable, Final, Optional, Sequence, TypeVar
 
 if TYPE_CHECKING:  # pragma: no cover - typing only; never imports optuna at runtime
-    import optuna
+    import optuna  # type: ignore[import-not-found]
 
 _logger = logging.getLogger(__name__)
 
@@ -169,12 +169,11 @@ def fail_stale_running_trials(study: "optuna.Study") -> int:
     worker enters the ask/tell loop keeps the budget accounting honest and the
     study clean.
 
-    Optuna's built-in :func:`optuna.storages.fail_stale_trials` is a **no-op**
-    unless heartbeat is configured on the ``RDBStorage`` (``grace_period`` /
-    ``heartbeat_interval``), which PhenoTypic does not enable — so we enumerate
-    the RUNNING trials and tell each ``FAIL`` by trial number ourselves
-    (``skip_if_finished=True`` tolerates a concurrent worker that finalized the
-    same trial first). ``import optuna`` stays lazy in the body.
+    This legacy reconciliation helper predates the ask/tell heartbeat wrapper in
+    :mod:`phenotypic.tune._strategies._optuna`. It enumerates the RUNNING trials
+    and tells each ``FAIL`` by trial number itself (``skip_if_finished=True``
+    tolerates a concurrent worker that finalized the same trial first).
+    ``import optuna`` stays lazy in the body.
 
     Args:
         study: The shared Optuna study to reconcile.
