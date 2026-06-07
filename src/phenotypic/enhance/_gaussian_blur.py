@@ -74,6 +74,6 @@ class GaussianBlur(Smoothing):
                 mode=self.mode,
                 truncate=self.truncate,
                 cval=self.cval,
-                channel_axis=-1,
+                channel_axis=None,
         )
         return image

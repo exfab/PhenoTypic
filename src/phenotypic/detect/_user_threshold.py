@@ -62,7 +62,8 @@ class UserThreshold(ThresholdDetector):
 
     Returns:
         Image: Input image with ``objmask`` set to a binary colony mask
-        (True = colony, False = background). ``objmap`` is not modified.
+        (True = colony, False = background). Assigning ``objmask`` rebuilds
+        ``objmap`` from the binary mask via the accessor.
 
     Raises:
         ValueError: If *threshold* is negative.

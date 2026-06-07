@@ -244,11 +244,12 @@ class WatershedDetector(ThresholdDetector):
 
         objmap = morphology.remove_small_objects(objmap, min_size=self.min_size)
         image.objmap[:] = objmap
-        image.objmap.relabel(connectivity=self.connectivity)
+        if self.relabel:
+            image.objmap.relabel(connectivity=self.connectivity)
 
         # Final comprehensive memory report
         self._log_memory_usage(
-                "final cleanup and relabeling",
+                "final cleanup and optional relabeling",
                 include_process=True,
                 include_tracemalloc=True,
         )

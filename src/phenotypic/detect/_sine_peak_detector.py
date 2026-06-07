@@ -305,12 +305,14 @@ class SinePeakDetector(GridInferenceMixin, ObjectDetector):
     def _estimate_edges(self, binary_image: np.ndarray, axis: int, n_bins: int, **kwargs: object) -> np.ndarray:  # type: ignore[override]
         """Estimate grid edges using sinusoidal cross-correlation.
 
-        Overrides GridInferenceMixin._estimate_edges with a gitter-faithful
+        Overrides GridInferenceMixin._estimate_edges with a projection-based
         approach: generates a sine template matching expected colony periodicity,
         computes FFT-based normalized cross-correlation against the projection
         signal, and selects peaks from the correlation output. Rank-based
-        (Spearman) correlation provides robustness to outliers and monotonic
-        intensity transformations.
+        (Spearman-style) correlation provides robustness to outliers and
+        monotonic intensity transformations. The sinusoidal template and
+        rank-transform steps are project-specific extensions rather than
+        steps from the gitter paper cited above.
 
         Args:
             binary_image: Binary mask of detected colonies.

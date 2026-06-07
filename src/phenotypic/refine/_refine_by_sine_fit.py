@@ -1,9 +1,9 @@
 """Grid-aligned object refinement using sinusoidal cross-correlation.
 
 Refines detected colonies by filtering to keep only the dominant object in each grid cell,
-using FFT-based sinusoidal cross-correlation (gitter-faithful, Wagih & Parts 2014) for
-grid edge estimation. More robust to outlier colonies than simple peak-finding because
-rank-based Spearman correlation is insensitive to monotonic intensity transformations.
+using FFT-based sinusoidal cross-correlation for grid edge estimation. This is inspired
+by projection-based grid quantification work such as gitter, but the sinusoidal template
+and rank-transform correlation are implementation-specific extensions.
 """
 
 from __future__ import annotations
@@ -180,12 +180,13 @@ class RefineBySineFit(GridInferenceMixin, ObjectRefiner):
                         **kwargs: object) -> np.ndarray:  # type: ignore[override]
         """Estimate grid edges using sinusoidal cross-correlation.
 
-        Overrides GridInferenceMixin._estimate_edges with a gitter-faithful
+        Overrides GridInferenceMixin._estimate_edges with a projection-based
         approach: generates a sine template matching expected colony periodicity,
         computes FFT-based normalized cross-correlation against the projection
         signal, and selects peaks from the correlation output. Rank-based
-        (Spearman) correlation provides robustness to outliers and monotonic
-        intensity transformations.
+        (Spearman-style) correlation provides robustness to outliers and
+        monotonic intensity transformations. The sinusoidal template and
+        rank-transform steps are not from the gitter paper cited above.
 
         Args:
             binary_image: Binary mask of detected colonies.

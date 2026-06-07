@@ -48,7 +48,8 @@ class Skeletonize(ObjectRefiner):
 
     Returns:
         Image: Input image with ``objmask`` replaced by the
-        single-pixel-wide medial-axis skeleton. ``objmap`` is unchanged.
+        single-pixel-wide medial-axis skeleton. Assigning ``objmask``
+        rebuilds ``objmap`` from the skeleton mask.
 
     Raises:
         ValueError: If ``method`` is not ``"zhang"``, ``"lee"``, or

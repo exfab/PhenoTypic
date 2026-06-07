@@ -332,6 +332,11 @@ class FilamentousFungiDetector(GridObjectDetector):
             self.tile_size = int(round(self._TILE_SIZE_PER_R * R))
         if self.tile_overlap is None:
             self.tile_overlap = int(round(self._TILE_OVERLAP_PER_R * R))
+        if self.tile_size <= self.tile_overlap:
+            raise ValueError(
+                    "tile_size must be greater than tile_overlap so "
+                    "sliding-window tiles advance by at least one pixel"
+            )
         if self.pct_min_wavelength is None:
             self.pct_min_wavelength = self._WAVELENGTH_PER_W * w
         if self.mad_window is None:

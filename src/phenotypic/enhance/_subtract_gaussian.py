@@ -26,8 +26,8 @@ class SubtractGaussian(BackgroundSubtraction):
     Best For:
         - Correcting uneven illumination gradients across the scan bed or
           plate.
-        - Flattening background intensity to enhance dark colonies on
-          bright agar.
+        - Flattening background intensity so bright colonies or bright
+          colony features stand out against local background.
         - Normalizing batches captured with varying scanner exposure or
           lamp profiles.
         - Plates where illumination varies smoothly and a Gaussian is a
@@ -41,6 +41,8 @@ class SubtractGaussian(BackgroundSubtraction):
           background subtraction in high-throughput pipelines.
         - :class:`FlattenIllumination` for homomorphic filtering that
           separates illumination from reflectance in the frequency domain.
+        - :class:`ImageInverter` before this operation when colonies are
+          dark on bright agar and should be made bright explicitly.
 
     Args:
         sigma: Standard deviation of the Gaussian background kernel in

@@ -25,8 +25,8 @@ class SubtractRollingBall(BackgroundSubtraction):
     Best For:
         - Scanner vignetting, lid glare, or agar thickness variations that
           produce non-Gaussian illumination gradients.
-        - Flattening backgrounds to improve segmentation of dark colonies
-          on bright agar.
+        - Flattening backgrounds so bright colonies or bright colony
+          features stand out against local background.
         - Images where Gaussian subtraction leaves residual background
           near plate edges or bright corners.
 
@@ -39,6 +39,8 @@ class SubtractRollingBall(BackgroundSubtraction):
         - :class:`WhiteTophatEnhance` for isolating small bright
           structures rather than producing a corrected background-free
           image.
+        - :class:`ImageInverter` before this operation when colonies are
+          dark on bright agar and should be made bright explicitly.
 
     Args:
         radius: Rolling-ball radius in pixels. Must exceed the largest

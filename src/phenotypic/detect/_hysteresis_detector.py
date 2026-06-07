@@ -82,7 +82,8 @@ class HysteresisDetector(ThresholdDetector):
     Returns:
         Image: Input image with ``objmask`` set to a binary colony mask
         where True pixels are colony foreground (including faint pixels
-        connected to strong seed regions). ``objmap`` is not modified.
+        connected to strong seed regions). Assigning ``objmask`` rebuilds
+        ``objmap`` from the binary mask via the accessor.
 
     Raises:
         ValueError: If the computed high threshold is less than the computed

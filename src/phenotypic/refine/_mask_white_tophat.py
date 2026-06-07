@@ -58,8 +58,9 @@ class MaskWhiteTophat(ObjectRefiner, FootprintMixin):
 
     Returns:
         Image: Input image with ``objmask`` updated by subtracting the
-        white tophat result. ``objmap``, ``rgb``, ``gray``, and
-        ``detect_mat`` are unchanged.
+        white tophat result. Assigning ``objmask`` rebuilds ``objmap``
+        from the binary mask; ``rgb``, ``gray``, and ``detect_mat`` are
+        unchanged.
 
     See Also:
         :doc:`/how_to/notebooks/refine_noisy_boundaries` for tophat-based

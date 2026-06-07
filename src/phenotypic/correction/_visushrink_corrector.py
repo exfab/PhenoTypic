@@ -5,11 +5,11 @@ from typing import TYPE_CHECKING, ClassVar, Literal
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
-import numpy as np
 from skimage.restoration import denoise_wavelet
 
 from ..abc_ import ImageCorrector
 from ..tools_.mixin import _GATSupportMixin
+from ._wavelet_rgb import restore_wavelet_rgb_dtype
 
 
 class VisuShrinkCorrector(_GATSupportMixin, ImageCorrector):
@@ -146,8 +146,9 @@ class VisuShrinkCorrector(_GATSupportMixin, ImageCorrector):
         return image
 
     def _denoise_rgb(self, image: Image) -> None:
+        original_rgb = image.rgb[:]
         denoised_rgb = denoise_wavelet(
-            image=image.rgb[:],
+            image=original_rgb,
             sigma=self.sigma,
             wavelet=self.wavelet,
             mode=self.mode,
@@ -157,7 +158,7 @@ class VisuShrinkCorrector(_GATSupportMixin, ImageCorrector):
             channel_axis=-1,
             rescale_sigma=self.rescale_sigma,
         )
-        image._data.rgb = denoised_rgb.clip(0, 255).astype(np.uint8)
+        image._data.rgb = restore_wavelet_rgb_dtype(denoised_rgb, original_rgb)
 
     def _denoise_gray(self, image: Image) -> None:
         denoised_gray = denoise_wavelet(

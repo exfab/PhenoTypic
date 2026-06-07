@@ -65,7 +65,8 @@ class ExtractColonyCore(ObjectRefiner):
 
     Returns:
         Image: Input image with ``objmap`` updated so each labeled region
-        contains only the bright core pixels; ``objmask`` is unchanged.
+        contains only the bright core pixels; ``objmask`` is updated from
+        the non-zero entries of the rebuilt object map.
 
     Raises:
         pydantic.ValidationError: If a parameter is given a value of the wrong

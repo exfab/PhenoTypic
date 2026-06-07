@@ -13,15 +13,18 @@ from phenotypic.abc_ import ThresholdDetector
 
 
 class CannyDetector(ThresholdDetector):
-    """Detect colonies by tracing edge contours and labelling enclosed regions.
+    """Detect colonies by tracing edges and labelling connected regions.
 
     Applies multi-stage Canny edge detection — Gaussian smoothing, gradient
     estimation, non-maximum suppression, and dual-threshold hysteresis — to
-    produce thin, closed boundary contours, then labels the enclosed interiors
-    as individual colonies. Because detection relies on boundary contrast rather
-    than absolute intensity, the resulting mask remains stable on plates with
-    uneven illumination or translucent colonies. For a full comparison of
-    detection strategies, see :doc:`/explanation/detection_strategies_compared`.
+    produce thin edge pixels, then labels connected components of either the
+    inverted edge map or the edge map itself. This does not explicitly close
+    contours or fill interiors; colony-sized regions are recovered only when
+    edges form useful barriers and size filtering removes background regions.
+    Because detection relies on boundary contrast rather than absolute
+    intensity, it can remain useful on plates with uneven illumination or
+    translucent colonies. For a full comparison of detection strategies, see
+    :doc:`/explanation/detection_strategies_compared`.
 
     Best For:
         - Well-separated colonies on solid media where colony edges are sharper
@@ -65,12 +68,12 @@ class CannyDetector(ThresholdDetector):
             image contrast across batches with variable scanner gain or
             illumination. When ``False``, thresholds are absolute gradient
             values for tightly controlled imaging conditions. Default: True.
-        min_size: Minimum enclosed-region area in pixels. Regions smaller than
+        min_size: Minimum connected-region area in pixels. Regions smaller than
             this are discarded as dust, debris, or condensation droplets after
             labelling. Typical range: 20--500 px, scaling with image
             resolution. Default: 50.
         invert_edges: When ``True`` (default), the binary edge map is inverted
-            before labelling so that enclosed interiors become colony objects.
+            before labelling so that non-edge regions can become colony objects.
             Set to ``False`` to label the edge pixels themselves, which is
             useful for inspecting edge closure and gap locations during
             parameter tuning. Default: True.
@@ -82,7 +85,7 @@ class CannyDetector(ThresholdDetector):
 
     Returns:
         Image: Input image with ``objmap`` set to a labelled colony map where
-        each enclosed region receives a unique integer label, and ``objmask``
+        each retained connected region receives a unique integer label, and ``objmask``
         derived from the non-zero entries of that map.
 
     Raises:

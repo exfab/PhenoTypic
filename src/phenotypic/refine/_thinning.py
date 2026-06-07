@@ -49,7 +49,8 @@ class Thinning(ObjectRefiner):
 
     Returns:
         Image: Input image with ``objmask`` thinned by up to
-        ``max_num_iter`` iterations. ``objmap`` is unchanged.
+        ``max_num_iter`` iterations. Assigning ``objmask`` rebuilds
+        ``objmap`` from the thinned mask.
 
     See Also:
         :doc:`/how_to/notebooks/refine_noisy_boundaries` for thinning-based
