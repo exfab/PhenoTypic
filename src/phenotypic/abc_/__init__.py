@@ -12,6 +12,14 @@ from ._measure_features import MeasureFeatures
 from ._image_operation import ImageOperation
 from ._image_enhancer import ImageEnhancer
 from ._image_denoiser import ImageDenoiser
+from ._enhance_markers import (
+    FocusEdge,
+    FocusBlob,
+    Smoothing,
+    BackgroundSubtraction,
+    MorphologicalFiltering,
+    ContrastAdjustment,
+)
 from ._image_corrector import ImageCorrector
 from ._object_detector import ObjectDetector
 from ._object_refiner import ObjectRefiner
@@ -43,6 +51,12 @@ __all__ = [
     "ImageOperation",
     "ImageEnhancer",
     "ImageDenoiser",
+    "FocusEdge",
+    "FocusBlob",
+    "Smoothing",
+    "BackgroundSubtraction",
+    "MorphologicalFiltering",
+    "ContrastAdjustment",
     "ImageCorrector",
     "ObjectDetector",
     "ObjectRefiner",

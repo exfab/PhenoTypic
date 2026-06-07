@@ -7,7 +7,7 @@ from phenotypic.enhance import (
     EnhanceLocalContrast,
     GaussianBlur,
     MedianFilter,
-    SobelFilter,
+    FocusEdgeSobel,
 )
 from phenotypic.detect import OtsuDetector
 from phenotypic.correction import GridAligner
@@ -36,7 +36,7 @@ class HeavyOtsuPipeline(PrefabPipeline):
         1. GaussianBlur — smooth noise
         2. EnhanceLocalContrast — boost local contrast
         3. MedianFilter — remove residual speckle
-        4. SobelFilter — enhance colony edges
+        4. FocusEdgeSobel — enhance colony edges
         5. OtsuDetector — threshold-based detection
         6. MaskOpening — smooth mask boundaries
         7. RemoveBorderObjects — remove partial edge colonies
@@ -113,7 +113,7 @@ class HeavyOtsuPipeline(PrefabPipeline):
             ),
             EnhanceLocalContrast(),
             MedianFilter(),
-            SobelFilter(),
+            FocusEdgeSobel(),
             OtsuDetector(
                     ignore_zeros=otsu_ignore_zeros, ignore_borders=otsu_ignore_borders
             ),

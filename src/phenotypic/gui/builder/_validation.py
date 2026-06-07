@@ -6,7 +6,7 @@ mutation through the dispatcher pipes the new state through
 the canvas's red/yellow border decoration plus the toolbar's
 preview/save enable state.
 
-The seven blocking rules + two advisory rules are enumerated in spec
+The blocking rules plus advisory stage-order hint are enumerated in spec
 ``2026-05-12-builder-dag-redesign-design.md`` §5.3. This module contains
 no side effects; it depends only on :mod:`phenotypic.gui.builder._state`
 (the dataclasses) and the operation registry (for required-aux
@@ -49,6 +49,7 @@ IssueKind = Literal[
     "duplicate_input",
     "stage_order_hint",
     "unknown_class",
+    "unsupported_linear",
 ]
 IssueSeverity = Literal["error", "advisory"]
 StageName = Literal["ops", "meas", "post", "pipeline"]
@@ -68,8 +69,10 @@ class Issue:
     Attributes:
         kind: One of the nine taxonomy entries (see :data:`IssueKind`).
             The first seven are blocking errors that disable preview/save;
-            ``stage_order_hint`` and ``unknown_class`` are advisories and
-            decorate with a yellow border instead of red.
+            ``stage_order_hint`` is advisory and decorates with a yellow
+            border instead of red. ``unknown_class`` and
+            ``unsupported_linear`` are blocking because the runtime cannot
+            safely materialize a pipeline from them.
         block_id: ``None`` for scope-level findings (the only one that
             actually uses ``None`` is ``missing_input``); otherwise the
             offender's block id.
@@ -80,9 +83,9 @@ class Issue:
             lives in the root scope. The UI consumes this to pan/zoom
             across container boundaries when a badge is clicked.
         severity: ``"error"`` for the seven blocking rules,
-            ``"advisory"`` for ``stage_order_hint`` and
-            ``unknown_class``. Populated by the rule that emits the
-            issue; callers gate Run/Save by filtering on this field.
+            ``"advisory"`` for ``stage_order_hint``. Populated by the rule
+            that emits the issue; callers gate Run/Save by filtering on this
+            field.
     """
 
     kind: IssueKind
@@ -312,7 +315,7 @@ def _validate_scope(scope: BuilderScope, scope_path: List[str]) -> List[Issue]:
     # top-of-function single-pass scan; reused here as-is.
     for block in scope.blocks:
         # The InputImage sentinel never has registered params; skip it
-        # so we don't emit a spurious ``unknown_class`` advisory.
+        # so we don't emit a spurious ``unknown_class`` issue.
         if block.class_name == INPUT_IMAGE_CLASS_NAME:
             continue
         # The Pipeline sentinel represents a container; its "params" are
@@ -329,7 +332,6 @@ def _validate_scope(scope: BuilderScope, scope_path: List[str]) -> List[Issue]:
                     block_id=block.block_id,
                     detail=f"class '{block.class_name}' not in registry",
                     scope_path=list(scope_path),
-                    severity="advisory",
                 )
             )
             continue

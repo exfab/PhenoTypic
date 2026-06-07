@@ -1,10 +1,18 @@
 <div style="background-color: white; display: inline-block; padding: 10px; border-radius: 0px;">
-  <img src="./docs/source/_static/assets/400x150/light_logo_exfab.svg" alt="Phenotypic Logo" style="width: 400px; height: auto;">
+  <img src="./src/phenotypic/_assets/logos/400x150/light_logo_exfab.svg" alt="Phenotypic Logo" style="width: 400px; height: auto;">
 </div>
 
 # PhenoTypic: A Python Framework for Bio-Image Analysis
 
 ![Development Stage](https://img.shields.io/badge/dev_stage-beta-orange)
+[![GUI checks](https://github.com/exfab/PhenoTypic/actions/workflows/gui-checks.yml/badge.svg)](https://github.com/exfab/PhenoTypic/actions/workflows/gui-checks.yml)
+[![Docs](https://github.com/exfab/PhenoTypic/actions/workflows/docs.yml/badge.svg)](https://github.com/exfab/PhenoTypic/actions/workflows/docs.yml)
+[![PyPI](https://img.shields.io/pypi/v/phenotypic)](https://pypi.org/project/phenotypic/)
+[![Python](https://img.shields.io/pypi/pyversions/phenotypic)](https://pypi.org/project/phenotypic/)
+[![License](https://img.shields.io/github/license/exfab/PhenoTypic)](https://github.com/exfab/PhenoTypic/blob/main/LICENSE)
+[![GitHub release](https://img.shields.io/github/v/release/exfab/PhenoTypic)](https://github.com/exfab/PhenoTypic/releases)
+[![Issues](https://img.shields.io/github/issues/exfab/PhenoTypic)](https://github.com/exfab/PhenoTypic/issues)
+[![Pull requests](https://img.shields.io/github/issues-pr/exfab/PhenoTypic)](https://github.com/exfab/PhenoTypic/pulls)
 
 A modular image processing framework developed at the NSF Ex-FAB BioFoundry, focused on
 arrayed colony phenotyping on solid media.
@@ -38,10 +46,16 @@ to integrate new tools.
 uv add phenotypic
 ```
 
-**Interactive / GUI Install** (napari viewer, Panel dashboards, Jupyter)
+**Interactive / GUI Install** (Panel dashboards, Jupyter, Dash hub)
 
 ```bash
 uv add phenotypic --extra gui
+```
+
+**napari Desktop Viewer Install** (for `image.*.napari()`, point picker, sweep viewer)
+
+```bash
+uv add phenotypic --extra napari
 ```
 
 ## Pip
@@ -56,6 +70,12 @@ pip install phenotypic
 
 ```bash
 pip install "phenotypic[gui]"
+```
+
+**napari Desktop Viewer Install**
+
+```bash
+pip install "phenotypic[napari]"
 ```
 
 Note: may not always be the latest version. Install from repo when latest update is
@@ -148,12 +168,12 @@ Note: `phenotypic gui` (no hyphen, as a subcommand) is **not supported**. Use
 | `phenotypic.enhance`    | Preprocessing tools that alter a copy of your image and can improve the results of the detection algorithms                                                          |
 | `phenotypic.grid`       | Modules that rely on grid and object information to function                                                                                                         |
 | `phenotypic.measure`    | The various measurements PhenoTypic is capable of extracting from objects                                                                                            |
-| `phenotypic.nn`         | GPU-accelerated detectors (SAM2, micro-sam) with checkpoint management — see [setup guide](https://exfab.github.io/PhenoTypic/how_to/pages/gpu_detection_setup.html) |
+| `phenotypic.detect.nn`  | GPU-accelerated detectors (SAM2, micro-sam) with checkpoint management — see [setup guide](https://exfab.github.io/PhenoTypic/how_to/pages/gpu_detection_setup.html) |
 | `phenotypic.refine`     | Different tools to edit the detected objects such as morphology, relabeling, joining, or removing                                                                    |
 | `phenotypic.prefab`     | Various premade image processing pipelines that are in use at ExFAB                                                                                                  |
 
 # Sponsors
 
 <div style="background-color: white; display: inline-block; padding: 10px; border-radius: 5px;">
-  <img src="./docs/source/_static/assets/ExFabLogo.svg" alt="Phenotypic Logo" style="width: 400px; height: auto;">
+  <img src="./src/phenotypic/_assets/logos/ExFabLogo.svg" alt="Phenotypic Logo" style="width: 400px; height: auto;">
 </div>

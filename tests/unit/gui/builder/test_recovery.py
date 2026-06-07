@@ -6,7 +6,7 @@ Three guards are covered here:
    self-heals on the next call to :func:`_seed_input_image` and
    subsequently validates clean.
 2. ``unknown_class`` never crashes validation — a block referencing a
-   class missing from the registry surfaces an advisory issue and
+   class missing from the registry surfaces a blocking issue and
    continues; no other rule blows up on the same block.
 3. Shared-instance clone behaviour delegated to
    :func:`from_pipeline_dag` (owned by Agent 1B) — when an ``ImagePipeline``
@@ -75,12 +75,12 @@ def test_seed_is_idempotent_on_repeat_calls():
 
 
 # ---------------------------------------------------------------------------
-# unknown_class advisory + non-crash.
+# unknown_class error + non-crash.
 # ---------------------------------------------------------------------------
 
 
 def test_unknown_class_does_not_crash_validation(empty_registry):
-    """A block whose class is missing from the registry yields an advisory.
+    """A block whose class is missing from the registry yields an error.
 
     Crucially, the call does NOT raise — the validator skips all
     other rules for that block and continues.
@@ -112,7 +112,7 @@ def test_unknown_class_does_not_crash_validation(empty_registry):
     unknowns = [i for i in issues if i.kind == "unknown_class"]
     assert len(unknowns) == 1
     assert unknowns[0].block_id == ghost.block_id
-    assert unknowns[0].severity == "advisory"
+    assert unknowns[0].severity == "error"
     # Rule 3 does not fire for an unknown class.
     assert not [
         i for i in issues
@@ -148,7 +148,7 @@ def test_unknown_class_does_not_block_other_rules(empty_registry):
     scope.blocks.extend([ghost, real_consumer])
 
     issues = validate(_DagBuilderState(root=scope))
-    # Unknown class advisory present.
+    # Unknown class error present.
     assert any(
         i.kind == "unknown_class" and i.block_id == ghost.block_id
         for i in issues

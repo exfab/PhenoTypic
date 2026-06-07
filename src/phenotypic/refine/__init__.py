@@ -15,7 +15,7 @@ by merging nearby detections based on spatial proximity and size thresholds.
 from ._trim_asymmetry import TrimAsymmetry
 from ._remove_border_objects import RemoveBorderObjects
 from ._keep_nearest_center import KeepNearestCenter
-from ._remove_non_circular import RemoveNonCircular
+from ._remove_low_circularity import RemoveLowCircularity
 from ._extract_colony_core import ExtractColonyCore
 from ._grid_alignment_refiner import GridAlignmentRefiner
 from ._refine_by_sine_fit import RefineBySineFit
@@ -46,7 +46,7 @@ __all__ = [
     "ExtractColonyCore",
     "GridAlignmentRefiner",
     "GridOversizedObjectRemover",
-    "RemoveNonCircular",
+    "RemoveLowCircularity",
     "ManualRefine",
     "MaskClosing",
     "MaskDilation",

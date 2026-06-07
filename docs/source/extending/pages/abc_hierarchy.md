@@ -9,6 +9,13 @@ correct custom operations.
 ```
 ImageOperation (root ABC)
 ├── ImageEnhancer          — modifies detect_mat
+│   ├── ImageDenoiser            — noise-estimate-driven restoration
+│   ├── FocusEdge            — output is an edge/ridge response map
+│   ├── FocusBlob            — output is a blob/scale-space response
+│   ├── Smoothing                — kernel/diffusion blur
+│   ├── BackgroundSubtraction    — removes slow-varying background
+│   ├── MorphologicalFiltering   — structuring-element small-feature ops
+│   └── ContrastAdjustment       — intensity/contrast remapping
 ├── ImageCorrector         — transforms the entire image
 ├── ObjectDetector         — writes to objmask and objmap
 │   └── ThresholdDetector  — convenience base for threshold methods
@@ -18,6 +25,12 @@ ImageOperation (root ABC)
 │   └── GridMeasureFeatures — grid-aware measurements
 └── PostMeasurement        — transforms measurement DataFrames
 ```
+
+The seven `ImageEnhancer` subgroups are **marker ABCs**: they add no new
+methods or parameters and exist purely to label an enhancer's purpose
+(for documentation, GUI grouping, and `isinstance` checks). A concrete
+enhancer subclasses the group that matches what its `_operate` produces;
+every one is still an `ImageEnhancer` and only touches `detect_mat`.
 
 ## What Each ABC Enforces
 

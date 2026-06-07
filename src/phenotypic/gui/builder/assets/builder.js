@@ -62,6 +62,13 @@
         return null;
     };
 
+    window.phenoLinearMapMounted = function phenoLinearMapMounted() {
+        return Boolean(
+            document.getElementById("linear-map-container") &&
+                !document.getElementById("canvas-cytoscape"),
+        );
+    };
+
     /** Poll ``window.phenoGetCy`` every 100ms and invoke ``cb(cy)`` once
      *  the cytoscape instance has mounted.  Shared by every asset that
      *  binds clientside handlers but doesn't know whether the canvas
@@ -74,6 +81,9 @@
         const cy = window.phenoGetCy && window.phenoGetCy();
         if (cy) {
             cb(cy);
+            return;
+        }
+        if (window.phenoLinearMapMounted && window.phenoLinearMapMounted()) {
             return;
         }
         setTimeout(function () {
@@ -249,6 +259,247 @@
         document.addEventListener("DOMContentLoaded", start);
     } else {
         start();
+    }
+})();
+
+
+/* PhenoTypic Pipeline Builder — linear-map zoom controls.
+ *
+ * Fixed-map zoom is intentionally UI-only. It stores no Dash state and never
+ * writes pipeline JSON; it only scales the HTML map content inside the current
+ * viewport. Button ports remain ordinary clickable DOM buttons after scaling.
+ */
+
+(function () {
+    "use strict";
+
+    const VIEWPORT_ID = "linear-map-container";
+    const VIEWPORT_SELECTOR = ".linear-map-zoom-viewport";
+    const CONTENT_SELECTOR = ".linear-map-zoom-content";
+    const ZOOM_MIN = 0.35;
+    const ZOOM_MAX = 2.0;
+    const ZOOM_STEP = 1.2;
+
+    function clampZoom(value) {
+        return Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, value));
+    }
+
+    function parts() {
+        const viewport =
+            document.getElementById(VIEWPORT_ID) ||
+            document.querySelector(VIEWPORT_SELECTOR);
+        if (!viewport) return null;
+        const content = viewport.querySelector(CONTENT_SELECTOR);
+        if (!content) return null;
+        return { viewport, content };
+    }
+
+    function currentZoom(viewport) {
+        const raw =
+            viewport.__phenotypicLinearZoom ||
+            Number.parseFloat(viewport.dataset.linearZoom || "1");
+        return Number.isFinite(raw) ? raw : 1;
+    }
+
+    function applyZoom(zoom) {
+        const found = parts();
+        if (!found) return;
+        const next = clampZoom(zoom);
+        found.viewport.__phenotypicLinearZoom = next;
+        found.viewport.dataset.linearZoom = String(Number(next.toFixed(2)));
+        found.content.style.transformOrigin = "left center";
+        found.content.style.transform = `scale(${next})`;
+    }
+
+    function zoomBy(factor) {
+        const found = parts();
+        if (!found) return;
+        applyZoom(currentZoom(found.viewport) * factor);
+    }
+
+    function resetZoom() {
+        applyZoom(1);
+        const found = parts();
+        if (!found) return;
+        found.viewport.scrollLeft = 0;
+        found.viewport.scrollTop = 0;
+    }
+
+    function fitZoom() {
+        const found = parts();
+        if (!found) return;
+        const width = found.content.scrollWidth || found.content.offsetWidth || 1;
+        const height = found.content.scrollHeight || found.content.offsetHeight || 1;
+        const availableWidth = Math.max(1, found.viewport.clientWidth - 16);
+        const availableHeight = Math.max(1, found.viewport.clientHeight - 16);
+        const fit = Math.min(1, availableWidth / width, availableHeight / height);
+        applyZoom(fit);
+        found.viewport.scrollLeft = 0;
+        found.viewport.scrollTop = 0;
+    }
+
+    function bindButton(id, handler) {
+        const button = document.getElementById(id);
+        if (!button || button.__phenotypicLinearZoomBound) return;
+        button.__phenotypicLinearZoomBound = true;
+        button.addEventListener("click", handler);
+    }
+
+    function bindZoomControls() {
+        bindButton("linear-zoom-out", () => zoomBy(1 / ZOOM_STEP));
+        bindButton("linear-zoom-in", () => zoomBy(ZOOM_STEP));
+        bindButton("linear-zoom-reset", resetZoom);
+        bindButton("linear-zoom-fit", fitZoom);
+
+        const found = parts();
+        if (found && !found.content.style.transform) {
+            applyZoom(currentZoom(found.viewport));
+        }
+    }
+
+    function scheduleBind() {
+        requestAnimationFrame(bindZoomControls);
+    }
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", scheduleBind);
+    } else {
+        scheduleBind();
+    }
+
+    new MutationObserver(scheduleBind).observe(document.body, {
+        childList: true,
+        subtree: true,
+    });
+})();
+
+
+/* PhenoTypic Pipeline Builder — mobile limited-mode enforcement.
+ *
+ * CSS handles the visual treatment for narrow viewports, but edit affordances
+ * also need real DOM disabling so keyboard and assistive-tech activation cannot
+ * mutate the linear builder. Dash swaps large subtrees during normal rendering,
+ * so this observer reapplies the attributes whenever controls are replaced.
+ */
+
+(function () {
+    "use strict";
+
+    const MOBILE_LIMITED_QUERY = "(max-width: 768px)";
+
+    const DISABLED_SELECTORS = [
+        ".palette-button",
+        ".linear-port-menu-action:not(.linear-port-menu-close)",
+        ".linear-side-action:not(.linear-side-drill-action)",
+        "#btn-save",
+        "#btn-save-confirm",
+        "#btn-new-pipeline-node",
+    ];
+
+    const FIELD_SELECTORS = [
+        ".linear-side-param-form input",
+        ".linear-side-param-form textarea",
+        ".linear-side-param-form select",
+        "#input-node-label",
+    ];
+
+    const ENABLED_SELECTORS = [
+        ".linear-port-button",
+        ".linear-unsupported-export-action",
+        ".linear-help-button",
+        ".linear-map-zoom-control",
+        ".linear-port-menu-close",
+        ".linear-side-drill-action",
+        ".breadcrumb button",
+        "#issue-badge",
+    ];
+
+    function setDisabled(el, limited) {
+        if ("disabled" in el) {
+            el.disabled = limited;
+        }
+        el.setAttribute("aria-disabled", limited ? "true" : "false");
+    }
+
+    function setFieldLimited(el, limited) {
+        const tag = el.tagName ? el.tagName.toLowerCase() : "";
+        const type = (el.getAttribute("type") || "").toLowerCase();
+        const mustDisable =
+            tag === "select" ||
+            type === "checkbox" ||
+            type === "radio" ||
+            type === "file";
+
+        if (mustDisable && "disabled" in el) {
+            el.disabled = limited;
+        } else if ("readOnly" in el) {
+            el.readOnly = limited;
+        } else if ("disabled" in el) {
+            el.disabled = limited;
+        }
+        el.setAttribute("aria-disabled", limited ? "true" : "false");
+    }
+
+    function enableAlwaysAvailable(el) {
+        if ("disabled" in el) {
+            el.disabled = false;
+        }
+        if ("readOnly" in el) {
+            el.readOnly = false;
+        }
+        el.removeAttribute("aria-disabled");
+    }
+
+    function applyMobileLimitedMode() {
+        const limited =
+            window.matchMedia &&
+            window.matchMedia(MOBILE_LIMITED_QUERY).matches;
+
+        DISABLED_SELECTORS.forEach((selector) => {
+            document.querySelectorAll(selector).forEach((el) => {
+                setDisabled(el, limited);
+            });
+        });
+
+        FIELD_SELECTORS.forEach((selector) => {
+            document.querySelectorAll(selector).forEach((el) => {
+                setFieldLimited(el, limited);
+            });
+        });
+
+        if (limited) {
+            ENABLED_SELECTORS.forEach((selector) => {
+                document.querySelectorAll(selector).forEach(enableAlwaysAvailable);
+            });
+        }
+    }
+
+    function scheduleApply() {
+        requestAnimationFrame(applyMobileLimitedMode);
+    }
+
+    function startMobileLimiter() {
+        scheduleApply();
+
+        if (window.matchMedia) {
+            const mq = window.matchMedia(MOBILE_LIMITED_QUERY);
+            if (typeof mq.addEventListener === "function") {
+                mq.addEventListener("change", scheduleApply);
+            } else if (typeof mq.addListener === "function") {
+                mq.addListener(scheduleApply);
+            }
+        }
+
+        new MutationObserver(scheduleApply).observe(document.body, {
+            childList: true,
+            subtree: true,
+        });
+    }
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", startMobileLimiter);
+    } else {
+        startMobileLimiter();
     }
 })();
 

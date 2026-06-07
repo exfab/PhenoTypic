@@ -112,8 +112,8 @@ jobs:
             python-version: "3.12"
 
     runs-on: ${{ matrix.os }}
-    # Headless Qt: the napari ``gui`` extra now pulls PyQt6, whose QtGui is
-    # imported by the pytest-qt plugin at configure time. Qt6's default xcb
+    # Headless Qt: the ``qt-test`` group (and the napari extra) pull PyQt6,
+    # whose QtGui is imported by the pytest-qt plugin at configure time. Qt6's default xcb
     # platform plugin needs a display; ``offscreen`` lets the qtbot widget
     # tests run on the displayless runner. (PyQt5 did not require this.)
     env:
@@ -144,7 +144,7 @@ jobs:
       - name: Install dependencies
         run: |
           uv lock
-          uv sync --group dev --all-extras
+          uv sync --group dev --group qt-test --all-extras
 
       - name: Cache testmon data
         uses: actions/cache@v5

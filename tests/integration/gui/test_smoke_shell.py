@@ -227,7 +227,7 @@ def test_shared_logo_served_under_each_mount(sandbox: SandboxRoot) -> None:
     every sub-app's ``/_shared/`` URL prefix.
 
     Each sub-app's Flask server registers a shared-static blueprint that
-    serves the same file from ``gui/_shared/_static/``. This guards against
+    serves the same file from ``phenotypic/_assets/logos/``. This guards against
     accidental reintroduction of per-app duplicate copies.
     """
     app = create_app(sandbox)

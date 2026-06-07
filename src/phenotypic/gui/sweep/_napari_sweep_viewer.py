@@ -9,6 +9,9 @@ from typing import List, Optional, get_args
 
 import numpy as np
 
+from phenotypic._core._image_parts.accessor_abstracts._image_accessor_base import (
+    _HAS_NAPARI,
+)
 from phenotypic.gui._config import ChannelName
 
 from ._sweep_data_model import (
@@ -55,6 +58,11 @@ class NapariSweepViewer:
         Returns:
             The :class:`napari.Viewer` instance.
         """
+        if not _HAS_NAPARI:
+            raise ImportError(
+                "napari is required for the sweep viewer. "
+                "Install with: pip install phenotypic[napari]"
+            )
         import napari
 
         self._data = SweepOutputScanner.scan(self._sweep_dir)
@@ -842,6 +850,11 @@ def launch_sweep_viewer(sweep_dir: Path) -> None:
     Args:
         sweep_dir: Root of the sweep output directory.
     """
+    if not _HAS_NAPARI:
+        raise ImportError(
+            "napari is required for the sweep viewer. "
+            "Install with: pip install phenotypic[napari]"
+        )
     import napari
 
     viewer_obj = NapariSweepViewer(sweep_dir)

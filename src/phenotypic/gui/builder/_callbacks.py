@@ -51,7 +51,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Tuple, TypeAlias
 
 import dash
-from dash import ALL, Input, Output, State, ctx, html, no_update
+from dash import ALL, Input, Output, State, ctx, dcc, html, no_update
 from flask import current_app
 
 from phenotypic.gui._config import CFG_IMAGE_ROOT, CFG_OPERATION_REGISTRY
@@ -69,13 +69,27 @@ from phenotypic.gui.builder._image_renderer import (
     dataframe_to_table,
     render_node_preview,
 )
+from phenotypic.gui.builder._linear_model import (
+    LinearTarget,
+    default_continuation_target,
+    derive_linear_scope,
+    resolve_selected_target,
+    scope_at_path,
+    scope_key,
+    target_from_dict,
+    target_to_dict,
+)
 from phenotypic.gui.builder._layout import (
+    _resolve_dag_accepts,
     _sort_issues_for_badge,
     build_breadcrumb,
     build_canvas_elements,
-    build_canvas_elements_dag,
     build_inspector,
     build_issue_badge,
+)
+from phenotypic.gui.builder._linear_layout import (
+    build_linear_map_section,
+    build_linear_side_loader,
 )
 from phenotypic.gui.builder._modal_browser import (
     no_root_placeholder,
@@ -86,19 +100,22 @@ from phenotypic.gui.builder._session import PreviewRenderError, get_cache
 from phenotypic.gui.builder._state import (
     INPUT_IMAGE_CLASS_NAME,
     PIPELINE_CLASS_NAME,
+    BlockNode,
     BuilderState,
+    _DagBuilderScope,
+    _DagBuilderState,
     StepNode,
     _new_block_id,
     _new_node_id,
     current_scope,
-    from_pipeline,
     stage_of,
     state_from_json,
     state_to_json,
     to_pipeline,
 )
-from phenotypic.gui.builder._conversion_dag import to_pipeline_dag
+from phenotypic.gui.builder._conversion_dag import from_pipeline_dag, to_pipeline_dag
 from phenotypic.gui.builder._validation import validate
+from phenotypic.gui.builder._validation import Issue
 
 logger = logging.getLogger(__name__)
 
@@ -723,6 +740,1063 @@ def _container_is_empty(block_dict: Dict[str, Any]) -> bool:
     return non_input_count == 0
 
 
+def _linear_current_scope(
+    state_dict: Dict[str, Any],
+) -> Tuple[List[str], Optional[Dict[str, Any]]]:
+    """Return the current DAG breadcrumb and scope dict for linear edits."""
+
+    breadcrumb = [
+        segment
+        for segment in list(state_dict.get("breadcrumb", []) or [])
+        if isinstance(segment, str)
+    ]
+    return breadcrumb, _dag_scope_at_breadcrumb(state_dict, breadcrumb)
+
+
+_LINEAR_PENDING_NODE_PREFIX = "linear_node:"
+_LINEAR_PENDING_CLEAR_PREFIX = "linear_clear:"
+
+
+def _linear_pending_node_token(block_id: str) -> str:
+    """Encode a pending linear node delete for the shared confirm modal."""
+
+    return f"{_LINEAR_PENDING_NODE_PREFIX}{block_id}"
+
+
+def _linear_pending_clear_token(target: LinearTarget) -> str:
+    """Encode a pending side-loader clear action for the confirm modal."""
+
+    return (
+        _LINEAR_PENDING_CLEAR_PREFIX
+        + json.dumps(target_to_dict(target), sort_keys=True, separators=(",", ":"))
+    )
+
+
+def _parse_linear_pending_action(
+    pending: str,
+) -> Tuple[Optional[str], Optional[Any]]:
+    """Decode a tagged linear confirm-modal pending value."""
+
+    if pending.startswith(_LINEAR_PENDING_NODE_PREFIX):
+        return "node", pending.removeprefix(_LINEAR_PENDING_NODE_PREFIX)
+    if pending.startswith(_LINEAR_PENDING_CLEAR_PREFIX):
+        raw_target = pending.removeprefix(_LINEAR_PENDING_CLEAR_PREFIX)
+        try:
+            data = json.loads(raw_target)
+        except json.JSONDecodeError:
+            return None, None
+        return "clear", data
+    return None, None
+
+
+def _linear_first_unsupported_issue(
+    state_dict: Dict[str, Any],
+) -> Optional[Issue]:
+    """Return the first unsupported linear scope anywhere in the DAG."""
+
+    try:
+        state = state_from_json(state_dict)
+    except Exception:  # noqa: BLE001
+        return None
+    if not isinstance(state, _DagBuilderState):
+        return None
+    issues = _linear_unsupported_issues_for_state(state)
+    return issues[0] if issues else None
+
+
+def _linear_reject_unsupported_edit(state_dict: Dict[str, Any]) -> bool:
+    """Queue a warning and return ``True`` when linear edits are paused."""
+
+    unsupported = _linear_first_unsupported_issue(state_dict)
+    if unsupported is None:
+        return False
+    _queue_toast(
+        state_dict,
+        f"Linear editing is paused for this DAG shape: {unsupported.detail}",
+        kind="warning",
+    )
+    return True
+
+
+def _linear_unsupported_issues_for_state(
+    state: _DagBuilderState,
+) -> List[Issue]:
+    """Build blocking issues for scopes the fixed linear map cannot edit."""
+
+    issues: List[Issue] = []
+
+    def visit(scope: _DagBuilderScope, scope_path: List[str]) -> None:
+        model = derive_linear_scope(scope, scope_path=scope_path)
+        if model.unsupported is not None:
+            issues.append(
+                Issue(
+                    kind="unsupported_linear",
+                    block_id=model.unsupported.block_id,
+                    detail=model.unsupported.detail,
+                    scope_path=list(scope_path),
+                    severity="error",
+                )
+            )
+        for block in scope.blocks:
+            if block.nested is not None:
+                visit(block.nested, [*scope_path, block.block_id])
+
+    visit(state.root, [])
+    return issues
+
+
+def _state_with_issue_focus(
+    state_data: Dict[str, Any],
+    payload: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Drill to an issue scope and select the offending fixed-map block."""
+
+    raw_target = payload.get("target_breadcrumb")
+    target_breadcrumb = (
+        [entry for entry in raw_target if isinstance(entry, str) and entry]
+        if isinstance(raw_target, list)
+        else []
+    )
+    new_state_dict = state_data
+    if target_breadcrumb != (state_data.get("breadcrumb") or []):
+        new_state_dict = _dispatch_state_update(
+            state_data,
+            "drill_to_scope",
+            {
+                "kind": "drill_to_scope",
+                "target_breadcrumb": target_breadcrumb,
+                "ts": payload.get("ts"),
+            },
+        )
+
+    block_id = payload.get("block_id")
+    if isinstance(block_id, str) and block_id:
+        focused_state = deepcopy(new_state_dict)
+        focused_scope = _dag_scope_at_breadcrumb(
+            focused_state,
+            list(focused_state.get("breadcrumb", []) or []),
+        )
+        if focused_scope is not None and any(
+            block.get("block_id") == block_id
+            for block in focused_scope.get("blocks", []) or []
+        ):
+            focused_state["selected_block_id"] = block_id
+            focused_state["selected_edge_id"] = None
+            new_state_dict = focused_state
+
+    return new_state_dict
+
+
+def _decode_linear_scope_path(encoded: Any) -> List[str]:
+    """Decode a Dash-safe linear id scope path into breadcrumb segments."""
+
+    if not isinstance(encoded, str) or encoded == "__root__":
+        return []
+    return [part for part in encoded.split("/") if part]
+
+
+def _decode_linear_optional(value: Any) -> Optional[str]:
+    """Decode a Dash-safe optional id field."""
+
+    return value if isinstance(value, str) and value != "__none__" else None
+
+
+def _decode_linear_slot(value: Any) -> Optional[int]:
+    """Decode a Dash-safe optional slot field."""
+
+    return value if isinstance(value, int) and value >= 0 else None
+
+
+def _linear_target_payload_from_id(triggered: Dict[str, Any]) -> Dict[str, Any]:
+    """Build a store target payload from a linear pattern id."""
+
+    return {
+        "kind": triggered.get("kind"),
+        "scope_path": _decode_linear_scope_path(triggered.get("scope_path")),
+        "block_id": _decode_linear_optional(triggered.get("block_id")),
+        "param": _decode_linear_optional(triggered.get("param")),
+        "slot": _decode_linear_slot(triggered.get("slot")),
+    }
+
+
+def _linear_param_target_payload_from_id(
+    triggered: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Build a parameter target payload from a side-loader action id."""
+
+    target = _linear_target_payload_from_id(triggered)
+    target["kind"] = (
+        "parameter_slot" if target.get("slot") is not None else "parameter"
+    )
+    return target
+
+
+def _linear_preview_target_payload_from_id(
+    triggered: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Build an image-prefix preview target from a node-action id."""
+
+    block_id = _decode_linear_optional(triggered.get("block_id"))
+    return {
+        "kind": "image_output" if block_id is not None else "continuation",
+        "scope_path": _decode_linear_scope_path(triggered.get("scope_path")),
+        "block_id": block_id,
+        "param": None,
+        "slot": None,
+    }
+
+
+def _linear_source_block_id_from_action_id(
+    triggered: Dict[str, Any],
+) -> Optional[str]:
+    """Decode the source block carried by a linear value action id."""
+
+    return _decode_linear_optional(triggered.get("source_block_id"))
+
+
+def _linear_selected_target(state_dict: Dict[str, Any]) -> LinearTarget:
+    """Resolve the active linear target from JSON state with fallback."""
+
+    return resolve_selected_target(state_from_json(state_dict))
+
+
+def _linear_set_target(
+    state_dict: Dict[str, Any], target: LinearTarget, *, open_menu: bool = False
+) -> None:
+    """Persist a selected target and optionally open its local menu."""
+
+    targets = state_dict.setdefault("selected_targets_by_scope", {})
+    targets[scope_key(target.scope_path)] = target_to_dict(target)
+    state_dict["open_port_menu"] = target_to_dict(target) if open_menu else None
+
+
+def _linear_reset_target_to_continuation(
+    state_dict: Dict[str, Any], scope_path: List[str]
+) -> None:
+    """Select the floating continuation port for ``scope_path``."""
+
+    _linear_set_target(
+        state_dict,
+        default_continuation_target(scope_path),
+        open_menu=False,
+    )
+
+
+def _linear_block(
+    scope_dict: Dict[str, Any], block_id: Optional[str]
+) -> Optional[Dict[str, Any]]:
+    """Find a direct block child inside ``scope_dict``."""
+
+    if not isinstance(block_id, str):
+        return None
+    return next(
+        (
+            block for block in scope_dict.get("blocks", []) or []
+            if block.get("block_id") == block_id
+        ),
+        None,
+    )
+
+
+def _linear_input_block(scope_dict: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Return the scope's InputImage block dict."""
+
+    return next(
+        (
+            block for block in scope_dict.get("blocks", []) or []
+            if block.get("class_name") == INPUT_IMAGE_CLASS_NAME
+        ),
+        None,
+    )
+
+
+def _linear_image_edge_from(
+    scope_dict: Dict[str, Any], source_block_id: str
+) -> Optional[Dict[str, Any]]:
+    """Return the image edge leaving ``source_block_id`` if present."""
+
+    return next(
+        (
+            edge for edge in scope_dict.get("edges", []) or []
+            if edge.get("kind") == "image"
+            and edge.get("source_block_id") == source_block_id
+        ),
+        None,
+    )
+
+
+def _linear_image_edge_to(
+    scope_dict: Dict[str, Any], target_block_id: str
+) -> Optional[Dict[str, Any]]:
+    """Return the image edge entering ``target_block_id`` if present."""
+
+    return next(
+        (
+            edge for edge in scope_dict.get("edges", []) or []
+            if edge.get("kind") == "image"
+            and edge.get("target_block_id") == target_block_id
+        ),
+        None,
+    )
+
+
+def _linear_spine_ids(scope_dict: Dict[str, Any]) -> List[str]:
+    """Return image-spine block ids in execution order."""
+
+    input_block = _linear_input_block(scope_dict)
+    if input_block is None:
+        return []
+    current_id = input_block.get("block_id")
+    if not isinstance(current_id, str):
+        return []
+    spine: List[str] = []
+    seen: set[str] = set()
+    while isinstance(current_id, str) and current_id not in seen:
+        seen.add(current_id)
+        spine.append(current_id)
+        next_edge = _linear_image_edge_from(scope_dict, current_id)
+        current_id = (
+            next_edge.get("target_block_id") if next_edge is not None else None
+        )
+    return spine
+
+
+def _linear_terminal_block(
+    scope_dict: Dict[str, Any],
+) -> Optional[Dict[str, Any]]:
+    """Return the terminal block in the current linear spine."""
+
+    spine = _linear_spine_ids(scope_dict)
+    return _linear_block(scope_dict, spine[-1]) if spine else None
+
+
+def _linear_new_edge(
+    source_block_id: str,
+    target_block_id: str,
+    *,
+    kind: Literal["image", "aux"],
+    target_port: str,
+    target_slot: Optional[int] = None,
+) -> Dict[str, Any]:
+    """Create a JSON edge dict for linear mutations."""
+
+    return {
+        "edge_id": _new_block_id(),
+        "source_block_id": source_block_id,
+        "source_port": "out",
+        "target_block_id": target_block_id,
+        "target_port": target_port,
+        "target_slot": target_slot,
+        "kind": kind,
+    }
+
+
+def _linear_new_block(class_name: str) -> Dict[str, Any]:
+    """Create a JSON block dict with defaults and optional nested scope."""
+
+    nested_scope: Optional[Dict[str, Any]] = None
+    if class_name == PIPELINE_CLASS_NAME:
+        nested_scope = {
+            "blocks": [],
+            "edges": [],
+            "name": "Pipeline",
+            "desc": "",
+            "nrows": None,
+            "ncols": None,
+        }
+        _seed_input_image_dict(nested_scope)
+    return {
+        "block_id": _new_block_id(),
+        "class_name": class_name,
+        "params": _default_params_for(class_name),
+        "label": None,
+        "nested": nested_scope,
+        "collapsed": False,
+        "list_slot_counts": {},
+    }
+
+
+def _linear_insert_block_in_list(
+    scope_dict: Dict[str, Any],
+    new_block: Dict[str, Any],
+    *,
+    before_block_id: Optional[str] = None,
+    after_block_id: Optional[str] = None,
+) -> None:
+    """Insert ``new_block`` near the visible target for stable rendering."""
+
+    blocks = scope_dict.setdefault("blocks", [])
+    insert_at = len(blocks)
+    if before_block_id is not None:
+        for idx, block in enumerate(blocks):
+            if block.get("block_id") == before_block_id:
+                insert_at = idx
+                break
+    elif after_block_id is not None:
+        for idx, block in enumerate(blocks):
+            if block.get("block_id") == after_block_id:
+                insert_at = idx + 1
+                break
+    blocks.insert(insert_at, new_block)
+
+
+def _linear_insert_spine_block(
+    state_dict: Dict[str, Any],
+    scope_dict: Dict[str, Any],
+    target: LinearTarget,
+    class_name: str,
+) -> Optional[str]:
+    """Insert a new main-spine block at ``target`` and reconnect image edges."""
+
+    new_block = _linear_new_block(class_name)
+    new_id = new_block["block_id"]
+    edges = scope_dict.setdefault("edges", [])
+
+    if target.kind == "continuation":
+        terminal = _linear_terminal_block(scope_dict)
+        if terminal is None:
+            return None
+        terminal_id = terminal.get("block_id")
+        if not isinstance(terminal_id, str):
+            return None
+        _linear_insert_block_in_list(
+            scope_dict, new_block, after_block_id=terminal_id
+        )
+        edges.append(
+            _linear_new_edge(
+                terminal_id, new_id, kind="image", target_port="in"
+            )
+        )
+    elif target.kind == "image_output":
+        source = _linear_block(scope_dict, target.block_id)
+        if source is None:
+            return None
+        source_id = source.get("block_id")
+        if not isinstance(source_id, str):
+            return None
+        old_next = _linear_image_edge_from(scope_dict, source_id)
+        next_target = (
+            old_next.get("target_block_id") if old_next is not None else None
+        )
+        if old_next is not None:
+            edges[:] = [
+                edge for edge in edges
+                if edge.get("edge_id") != old_next.get("edge_id")
+            ]
+        _linear_insert_block_in_list(
+            scope_dict, new_block, after_block_id=source_id
+        )
+        edges.append(
+            _linear_new_edge(source_id, new_id, kind="image", target_port="in")
+        )
+        if isinstance(next_target, str):
+            edges.append(
+                _linear_new_edge(
+                    new_id, next_target, kind="image", target_port="in"
+                )
+            )
+    elif target.kind == "image_input":
+        target_block = _linear_block(scope_dict, target.block_id)
+        if target_block is None:
+            return None
+        target_id = target_block.get("block_id")
+        if not isinstance(target_id, str):
+            return None
+        old_prev = _linear_image_edge_to(scope_dict, target_id)
+        if old_prev is None:
+            _queue_toast(
+                state_dict,
+                "Cannot insert before the Input Image source.",
+                kind="info",
+            )
+            return None
+        prev_source = old_prev.get("source_block_id")
+        if not isinstance(prev_source, str):
+            return None
+        edges[:] = [
+            edge for edge in edges
+            if edge.get("edge_id") != old_prev.get("edge_id")
+        ]
+        _linear_insert_block_in_list(
+            scope_dict, new_block, before_block_id=target_id
+        )
+        edges.append(
+            _linear_new_edge(prev_source, new_id, kind="image", target_port="in")
+        )
+        edges.append(
+            _linear_new_edge(new_id, target_id, kind="image", target_port="in")
+        )
+    else:
+        return None
+
+    out_path = list(target.scope_path)
+    state_dict["selected_block_id"] = new_id
+    state_dict["selected_edge_id"] = None
+    _linear_reset_target_to_continuation(state_dict, out_path)
+    return new_id
+
+
+def _linear_edges_for_param(
+    scope_dict: Dict[str, Any],
+    block_id: str,
+    param: str,
+    slot: Optional[int] = None,
+) -> List[Dict[str, Any]]:
+    """Return aux edges targeting ``block_id.param`` and optional slot."""
+
+    matches = [
+        edge for edge in scope_dict.get("edges", []) or []
+        if edge.get("kind") == "aux"
+        and edge.get("target_block_id") == block_id
+        and edge.get("target_port") == param
+    ]
+    if slot is None:
+        return matches
+    return [edge for edge in matches if edge.get("target_slot") == slot]
+
+
+def _linear_aux_subtree_ids(
+    scope_dict: Dict[str, Any], source_block_id: str
+) -> set[str]:
+    """Collect an aux source and its upstream aux dependencies."""
+
+    if _linear_block_is_image_incident(scope_dict, source_block_id):
+        return set()
+
+    to_delete = {source_block_id}
+    if _linear_has_external_aux_output(scope_dict, source_block_id, to_delete):
+        return set()
+
+    changed = True
+    while changed:
+        changed = False
+        for edge in scope_dict.get("edges", []) or []:
+            if edge.get("kind") != "aux":
+                continue
+            if edge.get("target_block_id") not in to_delete:
+                continue
+            source_id = edge.get("source_block_id")
+            if not isinstance(source_id, str) or source_id in to_delete:
+                continue
+            candidate_delete_ids = to_delete | {source_id}
+            if _linear_block_is_image_incident(scope_dict, source_id):
+                continue
+            if _linear_has_external_aux_output(
+                scope_dict, source_id, candidate_delete_ids
+            ):
+                continue
+            to_delete.add(source_id)
+            changed = True
+    return to_delete
+
+
+def _linear_block_is_image_incident(
+    scope_dict: Dict[str, Any], block_id: str
+) -> bool:
+    """Return whether ``block_id`` participates in image flow."""
+
+    return any(
+        edge.get("kind") == "image"
+        and (
+            edge.get("source_block_id") == block_id
+            or edge.get("target_block_id") == block_id
+        )
+        for edge in scope_dict.get("edges", []) or []
+    )
+
+
+def _linear_has_external_aux_output(
+    scope_dict: Dict[str, Any], block_id: str, owned_ids: set[str]
+) -> bool:
+    """Return whether ``block_id`` feeds an aux target outside ``owned_ids``."""
+
+    return any(
+        edge.get("kind") == "aux"
+        and edge.get("source_block_id") == block_id
+        and edge.get("target_block_id") not in owned_ids
+        for edge in scope_dict.get("edges", []) or []
+    )
+
+
+def _linear_delete_aux_sources(
+    scope_dict: Dict[str, Any], source_block_ids: List[str]
+) -> set[str]:
+    """Delete aux source blocks plus their upstream aux dependencies."""
+
+    delete_ids: set[str] = set()
+    for source_id in source_block_ids:
+        delete_ids.update(_linear_aux_subtree_ids(scope_dict, source_id))
+    if not delete_ids:
+        return set()
+
+    scope_dict["blocks"] = [
+        block for block in scope_dict.get("blocks", []) or []
+        if block.get("block_id") not in delete_ids
+    ]
+    scope_dict["edges"] = [
+        edge for edge in scope_dict.get("edges", []) or []
+        if edge.get("source_block_id") not in delete_ids
+        and edge.get("target_block_id") not in delete_ids
+    ]
+    return delete_ids
+
+
+def _linear_compact_list_slots_dict(
+    scope_dict: Dict[str, Any], block: Dict[str, Any], param: str
+) -> None:
+    """Renumber list aux edge slots without preserving empty gaps."""
+
+    indexed_edges = [
+        (idx, edge)
+        for idx, edge in enumerate(scope_dict.get("edges", []) or [])
+        if edge.get("kind") == "aux"
+        and edge.get("target_block_id") == block.get("block_id")
+        and edge.get("target_port") == param
+    ]
+    indexed_edges.sort(
+        key=lambda pair: (
+            pair[1].get("target_slot")
+            if isinstance(pair[1].get("target_slot"), int)
+            else 0,
+            pair[0],
+        )
+    )
+    for slot, (_idx, edge) in enumerate(indexed_edges):
+        edge["target_slot"] = slot
+    slot_counts = block.setdefault("list_slot_counts", {})
+    if indexed_edges:
+        slot_counts[param] = len(indexed_edges)
+    else:
+        slot_counts.pop(param, None)
+
+
+def _linear_remove_param_edges(
+    scope_dict: Dict[str, Any],
+    block: Dict[str, Any],
+    param: str,
+    *,
+    slot: Optional[int] = None,
+    compact: bool = True,
+) -> set[str]:
+    """Remove matching aux edges and owned aux subtrees."""
+
+    block_id = block.get("block_id")
+    if not isinstance(block_id, str):
+        return set()
+    edges_to_remove = _linear_edges_for_param(scope_dict, block_id, param, slot)
+    source_ids = [
+        edge.get("source_block_id")
+        for edge in edges_to_remove
+        if isinstance(edge.get("source_block_id"), str)
+    ]
+    edge_ids = {edge.get("edge_id") for edge in edges_to_remove}
+    scope_dict["edges"] = [
+        edge for edge in scope_dict.get("edges", []) or []
+        if edge.get("edge_id") not in edge_ids
+    ]
+    removed = _linear_delete_aux_sources(scope_dict, source_ids)
+    if compact:
+        _linear_compact_list_slots_dict(scope_dict, block, param)
+    return removed
+
+
+def _linear_param_info(
+    block: Dict[str, Any], param: str
+) -> Optional[Any]:
+    """Return registry metadata for a consumer parameter."""
+
+    from phenotypic.gui._operation_registry import get_registry
+
+    info = get_registry().get(block.get("class_name", ""))
+    if info is None:
+        return None
+    return info.parameters.get(param)
+
+
+def _linear_class_can_fill_param(class_name: str, param_info: Any) -> bool:
+    """Return whether ``class_name`` can be used as a parameter value."""
+
+    from phenotypic.gui._operation_registry import get_registry
+
+    return class_name in _resolve_dag_accepts(param_info, get_registry())
+
+
+def _linear_fill_parameter(
+    state_dict: Dict[str, Any],
+    scope_dict: Dict[str, Any],
+    target: LinearTarget,
+    class_name: str,
+) -> Optional[str]:
+    """Create or replace a side-loaded parameter value."""
+
+    if target.block_id is None or target.param is None:
+        return None
+    if target.kind == "parameter_slot" and target.slot is None:
+        return None
+    consumer = _linear_block(scope_dict, target.block_id)
+    if consumer is None:
+        return None
+    param_info = _linear_param_info(consumer, target.param)
+    if param_info is None:
+        return None
+    if not _linear_class_can_fill_param(class_name, param_info):
+        _queue_toast(
+            state_dict,
+            "Selected target does not accept that operation.",
+            kind="warning",
+        )
+        return None
+
+    is_list = bool(getattr(param_info, "is_list", False))
+    source_block = _linear_new_block(class_name)
+    source_id = source_block["block_id"]
+    if is_list:
+        slot = target.slot if target.kind == "parameter_slot" else None
+        if slot is None:
+            _linear_compact_list_slots_dict(scope_dict, consumer, target.param)
+            slot = int(
+                consumer.setdefault("list_slot_counts", {}).get(target.param, 0)
+            )
+        else:
+            _linear_remove_param_edges(
+                scope_dict,
+                consumer,
+                target.param,
+                slot=slot,
+                compact=False,
+            )
+        scope_dict.setdefault("blocks", []).append(source_block)
+        scope_dict.setdefault("edges", []).append(
+            _linear_new_edge(
+                source_id,
+                target.block_id,
+                kind="aux",
+                target_port=target.param,
+                target_slot=slot,
+            )
+        )
+        _linear_compact_list_slots_dict(scope_dict, consumer, target.param)
+    else:
+        _linear_remove_param_edges(
+            scope_dict, consumer, target.param, compact=False
+        )
+        scope_dict.setdefault("blocks", []).append(source_block)
+        scope_dict.setdefault("edges", []).append(
+            _linear_new_edge(
+                source_id,
+                target.block_id,
+                kind="aux",
+                target_port=target.param,
+            )
+        )
+
+    if class_name == PIPELINE_CLASS_NAME:
+        nested_path = list(target.scope_path) + [source_id]
+        state_dict["breadcrumb"] = nested_path
+        state_dict["selected_block_id"] = None
+        state_dict["selected_edge_id"] = None
+        _linear_reset_target_to_continuation(state_dict, nested_path)
+    else:
+        state_dict["selected_block_id"] = target.block_id
+        state_dict["selected_edge_id"] = None
+        _linear_reset_target_to_continuation(state_dict, list(target.scope_path))
+    return source_id
+
+
+def _linear_clear_param_needs_confirmation(
+    scope_dict: Dict[str, Any],
+    target: LinearTarget,
+) -> bool:
+    """Return whether clearing this side value removes an embedded pipeline."""
+
+    if target.block_id is None or target.param is None:
+        return False
+    if target.kind == "parameter_slot" and target.slot is None:
+        return False
+    slot = target.slot if target.kind == "parameter_slot" else None
+    edges = _linear_edges_for_param(scope_dict, target.block_id, target.param, slot)
+    for edge in edges:
+        source_id = edge.get("source_block_id")
+        if not isinstance(source_id, str):
+            continue
+        source = _linear_block(scope_dict, source_id)
+        if source is not None and source.get("class_name") == PIPELINE_CLASS_NAME:
+            return True
+    return False
+
+
+def _linear_clear_param(
+    state_dict: Dict[str, Any],
+    scope_dict: Dict[str, Any],
+    target: LinearTarget,
+) -> None:
+    """Clear a scalar parameter value or one list slot."""
+
+    if target.block_id is None or target.param is None:
+        return
+    if target.kind == "parameter_slot" and target.slot is None:
+        return
+    consumer = _linear_block(scope_dict, target.block_id)
+    if consumer is None:
+        return
+    slot = target.slot if target.kind == "parameter_slot" else None
+    _linear_remove_param_edges(scope_dict, consumer, target.param, slot=slot)
+    _linear_reset_target_to_continuation(state_dict, list(target.scope_path))
+
+
+def _linear_drill_param_pipeline(
+    state_dict: Dict[str, Any],
+    scope_dict: Dict[str, Any],
+    source_block_id: Optional[str],
+) -> None:
+    """Drill into an aux ImagePipeline source block."""
+
+    if not isinstance(source_block_id, str):
+        return
+    block = _linear_block(scope_dict, source_block_id)
+    if block is None or block.get("class_name") != PIPELINE_CLASS_NAME:
+        return
+    if not isinstance(block.get("nested"), dict):
+        return
+    scope_path = list(state_dict.get("breadcrumb", []) or []) + [source_block_id]
+    state_dict["breadcrumb"] = scope_path
+    state_dict["selected_block_id"] = None
+    state_dict["selected_edge_id"] = None
+    _linear_reset_target_to_continuation(state_dict, scope_path)
+
+
+def _linear_rewire_spine(
+    scope_dict: Dict[str, Any], spine_ids: List[str]
+) -> None:
+    """Replace image-flow edges with consecutive edges for ``spine_ids``."""
+
+    old_spine_ids = set(_linear_spine_ids(scope_dict))
+    scope_dict["edges"] = [
+        edge for edge in scope_dict.get("edges", []) or []
+        if not (
+            edge.get("kind") == "image"
+            and edge.get("source_block_id") in old_spine_ids
+            and edge.get("target_block_id") in old_spine_ids
+        )
+    ]
+    for source_id, target_id in zip(spine_ids, spine_ids[1:]):
+        scope_dict.setdefault("edges", []).append(
+            _linear_new_edge(source_id, target_id, kind="image", target_port="in")
+        )
+
+
+def _linear_reorder_blocks_by_spine(
+    scope_dict: Dict[str, Any], spine_ids: List[str]
+) -> None:
+    """Move spine blocks to match execution order while preserving aux order."""
+
+    by_id = {
+        block.get("block_id"): block
+        for block in scope_dict.get("blocks", []) or []
+        if isinstance(block.get("block_id"), str)
+    }
+    spine_set = set(spine_ids)
+    ordered = [by_id[block_id] for block_id in spine_ids if block_id in by_id]
+    ordered.extend(
+        block for block in scope_dict.get("blocks", []) or []
+        if block.get("block_id") not in spine_set
+    )
+    scope_dict["blocks"] = ordered
+
+
+def _linear_move_node(
+    state_dict: Dict[str, Any],
+    scope_dict: Dict[str, Any],
+    block_id: str,
+    direction: str,
+) -> None:
+    """Swap a main-spine node left or right."""
+
+    spine_ids = _linear_spine_ids(scope_dict)
+    if block_id not in spine_ids:
+        return
+    idx = spine_ids.index(block_id)
+    if idx == 0:
+        return
+    swap_idx = idx - 1 if direction == "left" else idx + 1
+    if swap_idx <= 0 or swap_idx >= len(spine_ids):
+        return
+    spine_ids[idx], spine_ids[swap_idx] = spine_ids[swap_idx], spine_ids[idx]
+    _linear_rewire_spine(scope_dict, spine_ids)
+    _linear_reorder_blocks_by_spine(scope_dict, spine_ids)
+    state_dict["selected_block_id"] = block_id
+    state_dict["selected_edge_id"] = None
+
+
+def _linear_delete_spine_node(
+    state_dict: Dict[str, Any],
+    scope_dict: Dict[str, Any],
+    block_id: str,
+) -> None:
+    """Delete a main-spine node, reconnecting its neighbors."""
+
+    block = _linear_block(scope_dict, block_id)
+    if block is None:
+        return
+    if block.get("class_name") == INPUT_IMAGE_CLASS_NAME:
+        _queue_toast(state_dict, "Input Image cannot be removed.", kind="info")
+        return
+
+    spine_ids = _linear_spine_ids(scope_dict)
+    if block_id not in spine_ids:
+        return
+    next_spine = [candidate for candidate in spine_ids if candidate != block_id]
+
+    aux_sources = [
+        edge.get("source_block_id")
+        for edge in scope_dict.get("edges", []) or []
+        if edge.get("kind") == "aux"
+        and edge.get("target_block_id") == block_id
+        and isinstance(edge.get("source_block_id"), str)
+    ]
+    removed_edge_ids = {
+        edge.get("edge_id") for edge in scope_dict.get("edges", []) or []
+        if edge.get("source_block_id") == block_id
+        or edge.get("target_block_id") == block_id
+    }
+    scope_dict["edges"] = [
+        edge for edge in scope_dict.get("edges", []) or []
+        if not (
+            edge.get("kind") == "aux"
+            and edge.get("target_block_id") == block_id
+        )
+    ]
+    removed_aux_ids = _linear_delete_aux_sources(scope_dict, aux_sources)
+    scope_dict["blocks"] = [
+        candidate for candidate in scope_dict.get("blocks", []) or []
+        if candidate.get("block_id") != block_id
+    ]
+    scope_dict["edges"] = [
+        edge for edge in scope_dict.get("edges", []) or []
+        if edge.get("source_block_id") != block_id
+        and edge.get("target_block_id") != block_id
+    ]
+    _linear_rewire_spine(scope_dict, next_spine)
+    _linear_reorder_blocks_by_spine(scope_dict, next_spine)
+
+    stale_block_ids = removed_aux_ids | {block_id}
+    if out_selected := state_dict.get("selected_block_id"):
+        if out_selected in stale_block_ids:
+            state_dict["selected_block_id"] = None
+    if state_dict.get("selected_edge_id") in removed_edge_ids:
+        state_dict["selected_edge_id"] = None
+    if state_dict.get("pending_delete_block_id") == block_id:
+        state_dict["pending_delete_block_id"] = None
+    _linear_reset_target_to_continuation(
+        state_dict, list(state_dict.get("breadcrumb", []) or [])
+    )
+
+
+def _linear_prefix_state_for_preview(
+    state: _DagBuilderState,
+    target: LinearTarget,
+) -> _DagBuilderState:
+    """Return a temporary DAG state containing only ``target``'s prefix.
+
+    ``Preview here`` intentionally previews the active scope only. The
+    returned state has a fresh root scope made from the visible prefix spine
+    plus any side-loaded aux dependencies required by those prefix blocks;
+    downstream blocks are omitted so global pipeline validation does not gate
+    a local inspection action.
+    """
+
+    scope, spine_blocks, selected_block_id = _linear_preview_selection(
+        state, target
+    )
+
+    keep_ids = {block.block_id for block in spine_blocks}
+    changed = True
+    while changed:
+        changed = False
+        for edge in scope.edges:
+            if edge.kind != "aux" or edge.target_block_id not in keep_ids:
+                continue
+            if edge.source_block_id not in keep_ids:
+                keep_ids.add(edge.source_block_id)
+                changed = True
+
+    prefix_blocks = [
+        deepcopy(block)
+        for block in scope.blocks
+        if block.block_id in keep_ids
+    ]
+    prefix_edges = [
+        deepcopy(edge)
+        for edge in scope.edges
+        if edge.source_block_id in keep_ids and edge.target_block_id in keep_ids
+    ]
+    prefix_scope = _DagBuilderScope(
+        blocks=prefix_blocks,
+        edges=prefix_edges,
+        name=scope.name,
+        desc=scope.desc,
+        nrows=scope.nrows,
+        ncols=scope.ncols,
+    )
+    return _DagBuilderState(root=prefix_scope, selected_block_id=selected_block_id)
+
+
+def _linear_preview_selection(
+    state: _DagBuilderState,
+    target: LinearTarget,
+) -> tuple[_DagBuilderScope, list[BlockNode], str]:
+    """Resolve the active scope, prefix spine, and selected block for preview."""
+
+    scope = scope_at_path(state.root, target.scope_path)
+    if scope is None:
+        raise ValueError("Cannot preview here: the selected scope is stale.")
+
+    model = derive_linear_scope(scope, scope_path=target.scope_path)
+    if model.unsupported is not None:
+        raise ValueError(
+            f"Cannot preview here: unsupported map shape ({model.unsupported.reason})."
+        )
+    if target.kind not in {"continuation", "image_output"}:
+        raise ValueError("Cannot preview here from that port.")
+
+    spine_blocks = list(model.spine_blocks)
+    if not spine_blocks:
+        raise ValueError("Cannot preview here: this scope has no image source.")
+
+    if target.kind == "continuation":
+        return scope, spine_blocks, spine_blocks[-1].block_id
+
+    selected_block_id = target.block_id
+    cutoff_idx = next(
+        (
+            idx
+            for idx, block in enumerate(spine_blocks)
+            if block.block_id == selected_block_id
+        ),
+        None,
+    )
+    if selected_block_id is None or cutoff_idx is None:
+        raise ValueError("Cannot preview here: the selected block is stale.")
+    return scope, spine_blocks[: cutoff_idx + 1], selected_block_id
+
+
+def _linear_state_with_preview_selection(
+    state_data: Dict[str, Any],
+    target_payload: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Close a preview menu and select the block whose output is being previewed."""
+
+    state = state_from_json(state_data)
+    if not isinstance(state, _DagBuilderState):
+        return state_data
+    target = target_from_dict(target_payload, state.breadcrumb)
+    _, _, selected_block_id = _linear_preview_selection(state, target)
+    state.selected_block_id = selected_block_id
+    state.selected_edge_id = None
+    state.open_port_menu = None
+    return state_to_json(state)
+
+
 def _scope_contains_block_id(
     scope_dict: Dict[str, Any], block_id: str
 ) -> bool:
@@ -960,6 +2034,17 @@ DispatchKind: TypeAlias = Literal[
     "drill_to_scope",
     "block_delete_request",
     "block_delete_confirm",
+    # Fixed linear port-map dispatchers.
+    "target_select",
+    "target_menu_close",
+    "linear_palette_add",
+    "linear_delete_node_request",
+    "linear_delete_node_confirm",
+    "linear_node_move",
+    "linear_clear_param",
+    "linear_clear_param_confirm",
+    "linear_drill_param_pipeline",
+    "linear_select_aux_value",
 ]
 
 
@@ -1087,6 +2172,8 @@ def _dispatch_state_update(
             kind = "drill_to_scope"
             payload = {"target_breadcrumb": existing}
         elif kind == "edit_param":
+            if _linear_reject_unsupported_edit(out):
+                return out
             block_id = payload.get("node_id")
             root_scope = out.get("root")
             if not isinstance(root_scope, dict) or not isinstance(
@@ -1105,6 +2192,8 @@ def _dispatch_state_update(
                 )
             return out
         elif kind == "edit_label":
+            if _linear_reject_unsupported_edit(out):
+                return out
             block_id = payload.get("node_id")
             root_scope = out.get("root")
             if not isinstance(root_scope, dict) or not isinstance(
@@ -1132,6 +2221,134 @@ def _dispatch_state_update(
 
     breadcrumb = list(out.get("breadcrumb", []) or [])
     scope = _scope_at_breadcrumb(out, breadcrumb)
+
+    if kind == "target_select":
+        breadcrumb_list = [
+            segment for segment in breadcrumb
+            if isinstance(segment, str)
+        ]
+        target = target_from_dict(payload.get("target", payload), breadcrumb_list)
+        _linear_set_target(
+            out,
+            target,
+            open_menu=bool(payload.get("open_menu", True)),
+        )
+        return out
+
+    if kind == "target_menu_close":
+        out["open_port_menu"] = None
+        return out
+
+    if kind == "linear_palette_add":
+        class_name = payload.get("class_name")
+        if not isinstance(class_name, str) or not class_name:
+            return out
+        if class_name == INPUT_IMAGE_CLASS_NAME:
+            _queue_toast(out, "scope already has an Input Image", kind="info")
+            return out
+        if _linear_reject_unsupported_edit(out):
+            return out
+        scope_path, linear_scope = _linear_current_scope(out)
+        if linear_scope is None:
+            return out
+        _seed_input_image_dict(linear_scope)
+        target = _linear_selected_target(out)
+        if target.kind in {"continuation", "image_output", "image_input"}:
+            _linear_insert_spine_block(out, linear_scope, target, class_name)
+            return out
+        if target.kind in {"parameter", "parameter_slot"}:
+            _linear_fill_parameter(out, linear_scope, target, class_name)
+            return out
+        _linear_reset_target_to_continuation(out, scope_path)
+        return out
+
+    if kind == "linear_clear_param":
+        if _linear_reject_unsupported_edit(out):
+            return out
+        scope_path, linear_scope = _linear_current_scope(out)
+        if linear_scope is None:
+            return out
+        target = target_from_dict(payload.get("target", payload), scope_path)
+        if _linear_clear_param_needs_confirmation(linear_scope, target):
+            out["pending_delete_block_id"] = _linear_pending_clear_token(target)
+            return out
+        _linear_clear_param(out, linear_scope, target)
+        return out
+
+    if kind == "linear_clear_param_confirm":
+        scope_path, linear_scope = _linear_current_scope(out)
+        if linear_scope is None:
+            return out
+        target = target_from_dict(payload.get("target", payload), scope_path)
+        _linear_clear_param(out, linear_scope, target)
+        out["pending_delete_block_id"] = None
+        return out
+
+    if kind == "linear_drill_param_pipeline":
+        _scope_path, linear_scope = _linear_current_scope(out)
+        if linear_scope is None:
+            return out
+        source_block_id = payload.get("source_block_id")
+        if not isinstance(source_block_id, str):
+            target = target_from_dict(payload.get("target", payload), breadcrumb)
+            if target.block_id is not None and target.param is not None:
+                matches = _linear_edges_for_param(
+                    linear_scope,
+                    target.block_id,
+                    target.param,
+                    target.slot if target.kind == "parameter_slot" else None,
+                )
+                source_block_id = (
+                    matches[0].get("source_block_id") if matches else None
+                )
+        _linear_drill_param_pipeline(out, linear_scope, source_block_id)
+        return out
+
+    if kind == "linear_select_aux_value":
+        source_block_id = payload.get("source_block_id")
+        if not isinstance(source_block_id, str):
+            return out
+        _scope_path, linear_scope = _linear_current_scope(out)
+        if linear_scope is None:
+            return out
+        if _linear_block(linear_scope, source_block_id) is None:
+            return out
+        out["selected_block_id"] = source_block_id
+        out["selected_edge_id"] = None
+        return out
+
+    if kind == "linear_node_move":
+        if _linear_reject_unsupported_edit(out):
+            return out
+        block_id = payload.get("block_id")
+        direction = payload.get("direction")
+        if not isinstance(block_id, str) or direction not in {"left", "right"}:
+            return out
+        _scope_path, linear_scope = _linear_current_scope(out)
+        if linear_scope is None:
+            return out
+        _linear_move_node(out, linear_scope, block_id, direction)
+        return out
+
+    if kind == "linear_delete_node_request":
+        if _linear_reject_unsupported_edit(out):
+            return out
+        block_id = payload.get("block_id")
+        if not isinstance(block_id, str):
+            return out
+        out["pending_delete_block_id"] = _linear_pending_node_token(block_id)
+        return out
+
+    if kind == "linear_delete_node_confirm":
+        block_id = payload.get("block_id")
+        if not isinstance(block_id, str):
+            return out
+        _scope_path, linear_scope = _linear_current_scope(out)
+        if linear_scope is None:
+            return out
+        _linear_delete_spine_node(out, linear_scope, block_id)
+        out["pending_delete_block_id"] = None
+        return out
 
     if kind == "add_node":
         class_name = payload["class_name"]
@@ -2052,11 +3269,12 @@ def _filter_blocking_issues(state_data: Optional[Dict[str, Any]]) -> List[Any]:
     """Return the blocking-severity issues for the current builder state.
 
     Spec §5.6: Run preview and Save pipeline are gated on validation
-    severity == ``"error"``.  Advisory hints (severity ==
-    ``"advisory"``: ``stage_order_hint`` and ``unknown_class``) NEVER
-    block these actions — they decorate the canvas with yellow borders
-    and surface in the issue badge tooltip, but the user can still
-    preview / save.
+    severity == ``"error"``.  Advisory hints (currently
+    ``stage_order_hint``) NEVER block these actions — they decorate the
+    canvas with yellow borders and surface in the issue badge tooltip,
+    but the user can still preview / save. Unknown classes and
+    unsupported linear shapes are blocking because they cannot safely
+    materialize a runtime pipeline.
 
     The legacy (non-DAG) state shape doesn't carry the validation
     schema, so :func:`validate` would no-op against it; the helper
@@ -2094,6 +3312,8 @@ def _filter_blocking_issues(state_data: Optional[Dict[str, Any]]) -> List[Any]:
     except Exception:  # noqa: BLE001
         logger.exception("_filter_blocking_issues: validate raised")
         return []
+    if isinstance(state, _DagBuilderState):
+        issues = [*issues, *_linear_unsupported_issues_for_state(state)]
     return [i for i in issues if i.severity == "error"]
 
 
@@ -2199,8 +3419,14 @@ def _render_tree_body(
     )
 
 
-def _render_views(state: BuilderState) -> Tuple[Any, str, Any]:
-    """Re-render breadcrumb, canvas, and inspector for a given state.
+def _mounted_children(component: Any) -> Any:
+    """Return children for callbacks that target an existing mount point."""
+
+    return getattr(component, "children", component)
+
+
+def _render_views(state: BuilderState) -> Tuple[Any, Any, Any]:
+    """Re-render breadcrumb, linear map, and side loader for a given state.
 
     Args:
         state: Live :class:`BuilderState` object.  Post-Phase-8 ``BuilderState``
@@ -2211,34 +3437,34 @@ def _render_views(state: BuilderState) -> Tuple[Any, str, Any]:
             migration-test suite.
 
     Returns:
-        Tuple ``(breadcrumb_children, canvas_elements_json, inspector)``.
-        ``canvas_elements_json`` is the cytoscape elements list
-        **JSON-serialised to a string** — callers wire it to
-        ``Output(ids.CANVAS_ELEMENTS_BRIDGE, "children",
-        allow_duplicate=True)``.  A ``MutationObserver`` in
-        ``viewport_ops.js`` watches that hidden element and reconciles
-        the live cytoscape.js graph (mounted once by
-        :func:`build_canvas_section`).  The ``CANVAS_CYTOSCAPE``
-        ``elements`` prop is never written by a callback —
-        dash-cytoscape's diff drops edges on a wholly-new list
-        (plotly/dash-cytoscape#106) — and the bridge is a DOM element
-        rather than a ``dcc.Store`` because dash-renderer coalesces
-        rapid store-update -> downstream-callback chains and drops
-        updates, whereas ``MutationObserver`` delivers every DOM
-        mutation.  The breadcrumb callback target is the existing nav's
-        ``children`` property, so returning a full nav here would nest
-        the breadcrumb inside itself on every update.
+        Tuple ``(breadcrumb_children, linear_map_children,
+        side_loader_children)``.
+        The map callback target is the mounted
+        :data:`ids.LINEAR_MAP_CONTAINER` ``children`` property, so this
+        function returns the *children* of the section's map container
+        rather than a full section wrapper. The breadcrumb callback
+        target is the existing nav's ``children`` property, so returning
+        a full nav here would nest the breadcrumb inside itself on every
+        update. The inspector callback follows the same mounted-region
+        contract and returns side-loader children, not another
+        :data:`ids.INSPECTOR_CONTAINER` wrapper.
     """
 
     registry = _registry()
     is_dag = hasattr(state, "selected_block_id")
-    try:
-        scope = current_scope(state)
-    except KeyError:
+    stale_scope = False
+    if is_dag:
+        stale_scope = scope_at_path(state.root, state.breadcrumb) is None
+    else:
+        try:
+            current_scope(state)
+        except KeyError:
+            stale_scope = True
+    if stale_scope:
         # Stale breadcrumb — fall back to the root.  Rebuild the state
         # under the right schema so subsequent attribute lookups don't
         # cross legacy/DAG boundaries.
-        if is_dag:
+        if hasattr(state, "selected_block_id"):
             from phenotypic.gui.builder._state import _DagBuilderState
 
             state = _DagBuilderState(
@@ -2250,33 +3476,37 @@ def _render_views(state: BuilderState) -> Tuple[Any, str, Any]:
                 toast_queue=[],
             )
         else:
-            state = BuilderState(
+            from phenotypic.gui.builder._state import _LegacyBuilderState
+
+            state = _LegacyBuilderState(
                 root=state.root,
                 breadcrumb=[],
                 selected_node_id=None,
             )
-        scope = state.root
-
     if is_dag:
-        canvas_elements = build_canvas_elements_dag(
-            scope,
-            selected_block_id=getattr(state, "selected_block_id", None),
-            selected_edge_id=getattr(state, "selected_edge_id", None),
+        map_section = build_linear_map_section(state, registry)
+        map_container = next(
+            (
+                child for child in map_section.children
+                if getattr(child, "id", None) == ids.LINEAR_MAP_CONTAINER
+            ),
+            None,
         )
+        map_children = getattr(map_container, "children", None)
+        inspector = _mounted_children(build_linear_side_loader(state, registry))
     else:
-        canvas_elements = build_canvas_elements(
-            scope, getattr(state, "selected_node_id", None),
+        scope = current_scope(state)
+        map_children = json.dumps(
+            build_canvas_elements(scope, getattr(state, "selected_node_id", None))
         )
-    inspector = build_inspector(state, registry)
+        inspector = _mounted_children(build_inspector(state, registry))
     breadcrumb = build_breadcrumb(state).children
-    # JSON-serialise here so every caller writes the string straight to
-    # ``CANVAS_ELEMENTS_BRIDGE.children`` — see this function's Returns.
-    return breadcrumb, json.dumps(canvas_elements), inspector
+    return breadcrumb, map_children, inspector
 
 
 def _state_replacement_payload(
     pipeline: Any,
-) -> Tuple[Dict[str, Any], Any, str, Any]:
+) -> Tuple[Dict[str, Any], Any, Any, Any]:
     """Build the re-render tuple for a freshly-loaded pipeline.
 
     Both the JSON-load and prefab-load callbacks blow away the current
@@ -2285,19 +3515,11 @@ def _state_replacement_payload(
     this helper centralises the conversion + view rendering.
 
     Returns:
-        Tuple ``(state_dict, breadcrumb, canvas_elements_json,
-        inspector)``.  ``canvas_elements_json`` is the JSON-serialised
-        cytoscape elements list applied via
-        ``Output(ids.CANVAS_ELEMENTS_BRIDGE, "children")`` — see
-        :func:`_render_views`.
+        Tuple ``(state_dict, breadcrumb, linear_map_children,
+        inspector)`` — see :func:`_render_views`.
     """
 
-    scope = from_pipeline(pipeline)
-    new_state = BuilderState(
-        root=scope,
-        breadcrumb=[],
-        selected_node_id=None,
-    )
+    new_state = from_pipeline_dag(pipeline)
     breadcrumb, canvas_elements, inspector = _render_views(new_state)
     return (
         state_to_json(new_state),
@@ -2354,7 +3576,7 @@ def register_callbacks(app: dash.Dash) -> None:
     @app.callback(
         Output(ids.STORE_BUILDER_STATE, "data"),
         Output(ids.BREADCRUMB_CONTAINER, "children"),
-        Output(ids.CANVAS_ELEMENTS_BRIDGE, "children", allow_duplicate=True),
+        Output(ids.LINEAR_MAP_CONTAINER, "children", allow_duplicate=True),
         Output(ids.INSPECTOR_CONTAINER, "children"),
         # Toast outputs surface mutation errors to the user; success path leaves
         # them as ``no_update`` so they don't clobber other callbacks' toasts.
@@ -2365,33 +3587,55 @@ def register_callbacks(app: dash.Dash) -> None:
         # palette
         Input({"type": "palette-add", "class_name": ALL}, "n_clicks"),
         Input(ids.BTN_NEW_PIPELINE_NODE, "n_clicks"),
-        # Palette drag-and-drop: the clientside ``palette_dnd.js``
-        # writes a ``block_create`` payload here on drop / keyboard fallback.
+        # Linear map / side-loader actions. ``surface`` disambiguates map
+        # and side-loader instances that otherwise point at the same
+        # logical target.
+        Input(
+            {
+                "type": ids.LINEAR_PORT,
+                "surface": ALL,
+                "kind": ALL,
+                "scope_path": ALL,
+                "block_id": ALL,
+                "param": ALL,
+                "slot": ALL,
+            },
+            "n_clicks",
+        ),
+        Input(
+            {
+                "type": ids.LINEAR_NODE_ACTION,
+                "surface": ALL,
+                "action": ALL,
+                "scope_path": ALL,
+                "block_id": ALL,
+            },
+            "n_clicks",
+        ),
+        Input(
+            {
+                "type": ids.LINEAR_PARAM_ACTION,
+                "surface": ALL,
+                "action": ALL,
+                "scope_path": ALL,
+                "block_id": ALL,
+                "param": ALL,
+                "slot": ALL,
+                "source_block_id": ALL,
+            },
+            "n_clicks",
+        ),
+        # Retired DAG drag/drop channels remain subscribed as safe no-ops so
+        # loaded assets cannot mutate the fixed linear builder by accident.
         Input(ids.STORE_PALETTE_DROP, "data"),
-        # Wire-drawing + edge mutations: the clientside
-        # ``wire_drawing.js`` writes here on drag-drop; the inspector
-        # writes here for keyboard / button-driven mutations.
-        # Payload is a discriminated union routed on
-        # ``payload["kind"]`` (see ``ids.STORE_EDGE_EVENT`` docstring).
         Input(ids.STORE_EDGE_EVENT, "data"),
-        # selection
-        Input(ids.CANVAS_CYTOSCAPE, "tapNodeData"),
         # drill in (visible button on pipeline-node inspector); drill-out is
         # done via breadcrumb-link clicks, not a dedicated button.
         Input(ids.BTN_DRILL_IN, "n_clicks"),
         Input({"type": "breadcrumb-link", "depth": ALL}, "n_clicks"),
-        # delete
-        Input(ids.BTN_DELETE_NODE, "n_clicks"),
-        # NB: ``Input(CANVAS_CYTOSCAPE, "elements")`` was deliberately
-        # removed. The DAG canvas is driven by the
-        # ``CANVAS_ELEMENTS_BRIDGE`` + MutationObserver path (see section
-        # 2a-0); dash-cytoscape still reports ``elements`` back up when
-        # that observer's ``cy.add`` / ``cy.remove`` mutates the graph,
-        # and re-triggering ``fan_in`` from that report made Dash
-        # supersede (drop) the in-flight mutation invocation's
-        # ``CANVAS_ELEMENTS_BRIDGE`` write — silently losing edges. The
-        # branch it fed (``_maybe_reorder_from_elements``) is a no-op for
-        # DAG state anyway.
+        # Cytoscape element feedback is no longer subscribed in the
+        # default builder; visible state redraws target the fixed linear
+        # map container directly.
         # parameter edits (one input per widget kind)
         Input({"type": "param-bool", "prefix": ALL, "name": ALL}, "value"),
         Input({"type": "param-num", "prefix": ALL, "name": ALL}, "n_blur"),
@@ -2421,12 +3665,13 @@ def register_callbacks(app: dash.Dash) -> None:
     def fan_in_state_mutation(  # noqa: C901, PLR0912, PLR0913, PLR0915
         _palette_clicks: List[int],
         _new_pipe_clicks: Optional[int],
+        _linear_port_clicks: List[int],
+        _linear_node_action_clicks: List[int],
+        _linear_param_action_clicks: List[int],
         palette_drop: Optional[Dict[str, Any]],
         edge_event: Optional[Dict[str, Any]],
-        tap_node_data: Optional[Dict[str, Any]],
         _drill_out_clicks: Optional[int],
         _crumb_clicks: List[int],
-        _delete_clicks: Optional[int],
         bool_vals: List[Any],
         _num_blurs: List[Any],
         _str_blurs: List[Any],
@@ -2451,20 +3696,6 @@ def register_callbacks(app: dash.Dash) -> None:
         See module docstring for the dispatch table.
         """
 
-        # TEMP DIAGNOSTIC (PR #95 cluster-2 E2E flake): log every invocation's
-        # trigger + store payloads so the CI GUI server log reveals whether a
-        # test's ``set_props`` publish reached this callback and with what
-        # ``triggered_id`` (coalescing with the ``elements`` self-Input is the
-        # leading hypothesis). Remove once the builder-canvas flake is fixed.
-        logger.warning(
-            "fan_in_state_mutation: triggered_id=%r all_triggered=%r "
-            "palette_drop=%r edge_event=%r",
-            ctx.triggered_id,
-            [t.get("prop_id") for t in (ctx.triggered or [])],
-            palette_drop,
-            edge_event,
-        )
-
         if state_data is None or ctx.triggered_id is None:
             return _NOOP_FAN_IN
 
@@ -2480,54 +3711,135 @@ def register_callbacks(app: dash.Dash) -> None:
                     # render of the palette button group).
                     if not ctx.triggered[0]["value"]:
                         return _NOOP_FAN_IN
-                    # Keyboard-fallback for the DAG palette: clicks land
-                    # in the current scope's root.  The drag-and-drop path
-                    # writes a richer ``block_create`` payload through
-                    # ``STORE_PALETTE_DROP``; clicks just need
-                    # ``class_name`` because the dispatcher treats a None
-                    # ``container_block_id`` as the root scope.  We also
-                    # auto-wire the new block to the previous tail of the
-                    # scope so the keyboard flow produces a valid linear
-                    # chain — drag-drop leaves wiring to the user since
-                    # they pick the drop position explicitly.
-                    root_scope = state_data.get("root", {}) if isinstance(
-                        state_data, dict
-                    ) else {}
-                    prev_blocks = list(root_scope.get("blocks", []) or [])
-                    prev_edges = list(root_scope.get("edges", []) or [])
-                    sources_with_outgoing = {
-                        e.get("source_block_id")
-                        for e in prev_edges
-                        if e.get("kind") == "image"
-                    }
-                    prev_tail_id: Optional[str] = None
-                    for blk in reversed(prev_blocks):
-                        bid = blk.get("block_id")
-                        if bid and bid not in sources_with_outgoing:
-                            prev_tail_id = bid
-                            break
                     new_state_dict = _dispatch_state_update(
                         state_data,
-                        "block_create",
+                        "linear_palette_add",
                         {
-                            "kind": "block_create",
+                            "kind": "linear_palette_add",
                             "class_name": triggered["class_name"],
-                            "container_block_id": None,
                         },
                     )
-                    new_block_id = new_state_dict.get("selected_block_id")
-                    if prev_tail_id and new_block_id:
+                elif t_type == ids.LINEAR_PORT:
+                    if not ctx.triggered[0]["value"]:
+                        return _NOOP_FAN_IN
+                    new_state_dict = _dispatch_state_update(
+                        state_data,
+                        "target_select",
+                        {
+                            "kind": "target_select",
+                            "target": _linear_target_payload_from_id(triggered),
+                            "open_menu": True,
+                        },
+                    )
+                elif t_type == ids.LINEAR_NODE_ACTION:
+                    if not ctx.triggered[0]["value"]:
+                        return _NOOP_FAN_IN
+                    action = triggered.get("action")
+                    block_id = _decode_linear_optional(triggered.get("block_id"))
+                    if action == "select":
+                        if block_id is None:
+                            return _NOOP_FAN_IN
                         new_state_dict = _dispatch_state_update(
-                            new_state_dict,
-                            "edge_create",
+                            state_data,
+                            "block_select",
+                            {"kind": "block_select", "block_id": block_id},
+                        )
+                    elif action == "target_menu_close":
+                        new_state_dict = _dispatch_state_update(
+                            state_data,
+                            "target_menu_close",
+                            {"kind": "target_menu_close"},
+                        )
+                    elif action == "preview_here":
+                        # The dedicated preview callback handles runtime work;
+                        # this branch keeps the visible inspector aligned with
+                        # the output block whose prefix cache will be baked.
+                        new_state_dict = _linear_state_with_preview_selection(
+                            state_data,
+                            _linear_preview_target_payload_from_id(triggered),
+                        )
+                    elif action == "drill":
+                        if block_id is None:
+                            return _NOOP_FAN_IN
+                        new_state_dict = _dispatch_state_update(
+                            state_data,
+                            "drill_into_container",
                             {
-                                "kind": "edge_create",
-                                "source_block_id": prev_tail_id,
-                                "target_block_id": new_block_id,
-                                "target_port": "in",
-                                "edge_kind": "image",
+                                "kind": "drill_into_container",
+                                "block_id": block_id,
                             },
                         )
+                    elif action == "delete":
+                        if block_id is None:
+                            return _NOOP_FAN_IN
+                        new_state_dict = _dispatch_state_update(
+                            state_data,
+                            "linear_delete_node_request",
+                            {
+                                "kind": "linear_delete_node_request",
+                                "block_id": block_id,
+                            },
+                        )
+                    elif action in {"move_left", "move_right"}:
+                        if block_id is None:
+                            return _NOOP_FAN_IN
+                        new_state_dict = _dispatch_state_update(
+                            state_data,
+                            "linear_node_move",
+                            {
+                                "kind": "linear_node_move",
+                                "block_id": block_id,
+                                "direction": (
+                                    "left"
+                                    if action == "move_left"
+                                    else "right"
+                                ),
+                            },
+                        )
+                    else:
+                        return _NOOP_FAN_IN
+                elif t_type == ids.LINEAR_PARAM_ACTION:
+                    if not ctx.triggered[0]["value"]:
+                        return _NOOP_FAN_IN
+                    action = triggered.get("action")
+                    target_payload = _linear_param_target_payload_from_id(
+                        triggered
+                    )
+                    if action == "replace":
+                        new_state_dict = _dispatch_state_update(
+                            state_data,
+                            "target_select",
+                            {
+                                "kind": "target_select",
+                                "target": target_payload,
+                                "open_menu": False,
+                            },
+                        )
+                    elif action == "clear":
+                        new_state_dict = _dispatch_state_update(
+                            state_data,
+                            "linear_clear_param",
+                            {
+                                "kind": "linear_clear_param",
+                                "target": target_payload,
+                            },
+                        )
+                    elif action == "drill":
+                        new_state_dict = _dispatch_state_update(
+                            state_data,
+                            "linear_drill_param_pipeline",
+                            {
+                                "kind": "linear_drill_param_pipeline",
+                                "target": target_payload,
+                                "source_block_id": (
+                                    _linear_source_block_id_from_action_id(
+                                        triggered
+                                    )
+                                ),
+                            },
+                        )
+                    else:
+                        return _NOOP_FAN_IN
                 elif t_type == "breadcrumb-link":
                     # Pattern-matched Inputs fire on initial render of newly
                     # added matching components — e.g. drilling pushes a new
@@ -2583,85 +3895,23 @@ def register_callbacks(app: dash.Dash) -> None:
 
             # --- Plain string ids -------------------------------------
             elif triggered == ids.STORE_PALETTE_DROP:
-                # ``palette_dnd.js`` writes a ``block_create`` payload here;
-                # the dispatcher enforces InputImage rejection + stale
-                # container id short-circuit (JS already did the hit-test).
-                if not isinstance(palette_drop, dict):
-                    return _NOOP_FAN_IN
-                if palette_drop.get("kind") != "block_create":
-                    return _NOOP_FAN_IN
-                new_state_dict = _dispatch_state_update(
-                    state_data, "block_create", palette_drop
-                )
+                # The fixed linear builder retired palette drag/drop. Keep
+                # the store subscribed so stale asset writes are harmless.
+                return _NOOP_FAN_IN
             elif triggered == ids.STORE_EDGE_EVENT:
-                # Wire-drawing + edge-mutation channel.  The clientside
-                # ``wire_drawing.js`` writes ``edge_create`` /
-                # ``edge_delete`` payloads here on drop / right-click;
-                # the inspector wire / aux cards write ``list_aux_*`` /
-                # ``wire_select`` / ``block_select`` payloads through
-                # the same channel.  Route on ``payload["kind"]`` to
-                # keep the JS surface tiny.
-                if not isinstance(edge_event, dict):
-                    return _NOOP_FAN_IN
-                event_kind = edge_event.get("kind")
-                if event_kind not in {
-                    "edge_create",
-                    "edge_delete",
-                    "list_aux_reorder",
-                    "list_aux_add_empty_slot",
-                    "wire_select",
-                    "block_select",
-                }:
-                    return _NOOP_FAN_IN
-                # TEMP DIAGNOSTIC (PR #95 cluster-2 flake): for edge_create,
-                # log whether the payload's endpoints resolve against the
-                # *current* root-scope blocks. If a test's set_props publish
-                # races ahead of STORE_BUILDER_STATE being updated with the
-                # just-seeded blocks, the endpoints won't be found and the
-                # dispatch silently produces no edge — confirm or refute that.
-                if event_kind == "edge_create" and isinstance(state_data, dict):
-                    _root = state_data.get("root", {}) or {}
-                    _block_ids = {
-                        b.get("block_id") for b in _root.get("blocks", []) or []
-                    }
-                    logger.warning(
-                        "fan_in edge_create: source=%r target=%r "
-                        "root_block_ids=%r src_found=%s tgt_found=%s",
-                        edge_event.get("source_block_id"),
-                        edge_event.get("target_block_id"),
-                        sorted(b for b in _block_ids if b),
-                        edge_event.get("source_block_id") in _block_ids,
-                        edge_event.get("target_block_id") in _block_ids,
-                    )
-                new_state_dict = _dispatch_state_update(
-                    state_data, event_kind, edge_event
-                )
+                # Drag-to-wire and old inspector aux-wire emitters are not
+                # user-facing in the fixed map. Linear side-loader buttons use
+                # their own pattern ids above.
+                return _NOOP_FAN_IN
             elif triggered == ids.BTN_NEW_PIPELINE_NODE:
                 new_state_dict = _dispatch_state_update(
-                    state_data, "add_pipeline", {}
+                    state_data,
+                    "linear_palette_add",
+                    {
+                        "kind": "linear_palette_add",
+                        "class_name": PIPELINE_CLASS_NAME,
+                    },
                 )
-            elif triggered == ids.CANVAS_CYTOSCAPE:
-                # Only ``tapNodeData`` (node selection) feeds this branch.
-                # ``Input(CANVAS_CYTOSCAPE, "elements")`` was removed — see
-                # the decorator comment — so the elements-driven reorder
-                # path is gone (it was a no-op for DAG state anyway).
-                trigger_prop = ctx.triggered[0]["prop_id"].split(".")[-1]
-                if trigger_prop == "tapNodeData":
-                    if not tap_node_data:
-                        return _NOOP_FAN_IN
-                    tapped_id = tap_node_data.get("id")
-                    if not isinstance(tapped_id, str):
-                        return _NOOP_FAN_IN
-                    if ids._decode_main_port_id(tapped_id) is not None:
-                        # Main I/O port taps are cosmetic; ignore.
-                        return _NOOP_FAN_IN
-                    new_state_dict = _dispatch_state_update(
-                        state_data,
-                        "select_node",
-                        {"node_id": tapped_id},
-                    )
-                else:
-                    return _NOOP_FAN_IN
             elif triggered == ids.BTN_DRILL_IN:
                 # The inspector renders a visible "Drill in ▸" button only on
                 # ImagePipeline nodes; for any other selection the button is a
@@ -2669,10 +3919,6 @@ def register_callbacks(app: dash.Dash) -> None:
                 # the canonical action here is drill-in.
                 new_state_dict = _dispatch_state_update(
                     state_data, "drill_in", {}
-                )
-            elif triggered == ids.BTN_DELETE_NODE:
-                new_state_dict = _dispatch_state_update(
-                    state_data, "delete_node", {}
                 )
             elif triggered == ids.INPUT_NODE_LABEL:
                 state = state_from_json(state_data)
@@ -2728,31 +3974,15 @@ def register_callbacks(app: dash.Dash) -> None:
             )
 
     # ----------------------------------------------------------------------
-    # 2a-0. Canvas redraw — dash-cytoscape #106 workaround
+    # 2a-0. Linear map redraw
     # ----------------------------------------------------------------------
     #
-    # dash-cytoscape's ``elements``-prop diff retains stale element state
-    # (to animate position changes) and, on a wholly-new list, re-adds
-    # edges before their endpoint nodes — silently dropping the edges
-    # (plotly/dash-cytoscape#106, still open).  So no callback ever writes
-    # the ``CANVAS_CYTOSCAPE`` ``elements`` prop after the initial layout.
-    #
-    # Instead every mutation callback writes its freshly-rendered
-    # elements — JSON-serialised by :func:`_render_views` — straight into
-    # the hidden ``CANVAS_ELEMENTS_BRIDGE`` element's ``children``.  A
-    # ``MutationObserver`` in ``viewport_ops.js`` watches that element and
-    # reconciles the live cytoscape graph with an explicit ``cy.remove``
-    # / ``cy.add`` / data-update diff.
-    #
-    # Why the callbacks write the DOM element *directly* (no intermediate
-    # ``dcc.Store`` + a single mirror callback): dash-renderer coalesces
-    # rapid store-update -> downstream-callback chains — verified in CI, a
-    # store fed by four rapid ``fan_in`` outputs fired the downstream
-    # callback only three times, dropping the edge_create update (this
-    # held for both a clientside *and* a server downstream callback).
-    # The mutation callbacks themselves *do* fire for every trigger, and
-    # ``MutationObserver`` delivers every DOM mutation, so writing the
-    # bridge straight from each mutation callback loses nothing.
+    # The default builder surface is a fixed HTML/Dash linear port map.
+    # Each state mutation returns fresh ``LINEAR_MAP_CONTAINER.children``
+    # from :func:`_render_views`, so the visible map redraws directly with
+    # normal Dash component diffing. Cytoscape helpers remain importable
+    # for legacy tests and transition cleanup, but are no longer mounted
+    # or updated by this default path.
 
     # ----------------------------------------------------------------------
     # 2a. Validation pipeline (spec §5.6 + §5.3)
@@ -2825,6 +4055,11 @@ def register_callbacks(app: dash.Dash) -> None:
                         )
                         new_issues = []
                     else:
+                        if isinstance(state, _DagBuilderState):
+                            issues = [
+                                *issues,
+                                *_linear_unsupported_issues_for_state(state),
+                            ]
                         new_issues = [
                             {
                                 "kind": issue.kind,
@@ -2840,6 +4075,69 @@ def register_callbacks(app: dash.Dash) -> None:
         if prev_issues is not None and prev_issues == new_issues:
             return no_update
         return new_issues
+
+    @app.callback(
+        Output(ids.DOWNLOAD_RAW_STATE, "data"),
+        Input(
+            {
+                "type": ids.LINEAR_NODE_ACTION,
+                "action": "export_raw_state",
+                "scope_path": ALL,
+                "block_id": ALL,
+                "surface": ALL,
+            },
+            "n_clicks",
+        ),
+        State(ids.STORE_BUILDER_STATE, "data"),
+        prevent_initial_call=True,
+    )
+    def export_raw_builder_state(
+        n_clicks: List[Optional[int]],
+        state_data: Optional[Dict[str, Any]],
+    ) -> Any:
+        """Download raw builder JSON from the unsupported-state panel."""
+
+        if not any(click or 0 for click in n_clicks or []):
+            return no_update
+        if state_data is None:
+            return no_update
+        payload = json.dumps(state_data, indent=2, sort_keys=True)
+        return dcc.send_string(payload, "builder-state.json")
+
+    @app.callback(
+        Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
+        Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.LINEAR_MAP_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
+        Input(
+            {
+                "type": ids.LINEAR_NODE_ACTION,
+                "action": "start_new_state",
+                "scope_path": ALL,
+                "block_id": ALL,
+                "surface": ALL,
+            },
+            "n_clicks",
+        ),
+        prevent_initial_call=True,
+    )
+    def start_new_builder_state(
+        n_clicks: List[Optional[int]],
+    ) -> Tuple[Any, ...]:
+        """Reset an unsupported development DAG to a fresh linear state."""
+
+        noop = (no_update,) * 4
+        if not any(click or 0 for click in n_clicks or []):
+            return noop
+        new_state = BuilderState()
+        new_state_dict = state_to_json(new_state)
+        breadcrumb, canvas_elements, inspector = _render_views(new_state)
+        return (
+            new_state_dict,
+            breadcrumb,
+            canvas_elements,
+            inspector,
+        )
 
     # ----------------------------------------------------------------------
     # 2a-bis. Toolbar issue badge update (spec §4.6)
@@ -2930,24 +4228,23 @@ def register_callbacks(app: dash.Dash) -> None:
         )
 
     # ----------------------------------------------------------------------
-    # 2a-ter. Issue badge row click → scroll_to dispatch (spec §4.6, §5.6)
+    # 2a-ter. Issue badge row click → fixed-map focus dispatch (spec §4.6, §5.6)
     # ----------------------------------------------------------------------
     #
     # Each tooltip row carries the pattern-matched id from
-    # :func:`ids.issue_row_id`.  A click writes a ``scroll_to`` payload
-    # to ``STORE_VIEWPORT_OP``; 6B's clientside ``phenotypicScrollTo``
-    # consumes it (mount scrim → ``drill_to_scope`` if cross-breadcrumb
-    # → expand collapsed containers → ``cy.fit`` → dismiss scrim →
-    # emit ``phenotypic:scroll-to-complete``).
+    # :func:`ids.issue_row_id`. A click writes an ``issue_focus`` payload
+    # to ``STORE_VIEWPORT_OP``; the fixed-map server fan-in consumes it
+    # by drilling to the issue scope and selecting the offending block.
+    # The retired Cytoscape ``scroll_to`` relay remains available for
+    # legacy direct viewport-op tests, but badge rows no longer depend on
+    # a mounted Cytoscape canvas.
     #
     # The row id encodes (block_id, kind, idx) — the click callback
     # walks the active ``STORE_ISSUES`` list to recover the issue's
-    # ``scope_path`` (which becomes ``target_breadcrumb`` per spec §5.6:
-    # the chain compares against ``state.breadcrumb`` and only drills
-    # when different).  ``block_id`` "__scope__" sentinel (used for
-    # scope-level findings like ``missing_input``) translates back to
-    # ``None`` so the clientside chain just pops the breadcrumb without
-    # selecting a specific block.
+    # ``scope_path`` (which becomes ``target_breadcrumb`` per spec §5.6).
+    # ``block_id`` "__scope__" sentinel (used for scope-level findings
+    # like ``missing_input``) translates back to ``None`` so the fan-in
+    # only drills without selecting a specific block.
 
     @app.callback(
         Output(ids.STORE_VIEWPORT_OP, "data", allow_duplicate=True),
@@ -2967,7 +4264,7 @@ def register_callbacks(app: dash.Dash) -> None:
         n_clicks_list: List[Optional[int]],
         issues: Optional[List[Dict[str, Any]]],
     ) -> Any:
-        """Translate an issue-row click into a ``scroll_to`` viewport op.
+        """Translate an issue-row click into a fixed-map focus viewport op.
 
         Reads :data:`dash.callback_context.triggered_id` to identify the
         clicked row, then walks the live ``STORE_ISSUES`` list to
@@ -2977,7 +4274,7 @@ def register_callbacks(app: dash.Dash) -> None:
         .. code-block:: python
 
             {
-                "kind": "scroll_to",
+                "kind": "issue_focus",
                 "block_id": <BlockNode.block_id or None>,
                 "scope_path": <list[str]>,
                 "target_breadcrumb": <list[str]>,
@@ -2985,7 +4282,7 @@ def register_callbacks(app: dash.Dash) -> None:
             }
 
         Per spec §5.6, ``target_breadcrumb`` is set to the issue's
-        ``scope_path`` unconditionally — the clientside chain compares
+        ``scope_path`` unconditionally. The server fan-in compares
         against the current state breadcrumb and only dispatches
         ``drill_to_scope`` when the two differ.
 
@@ -2998,7 +4295,7 @@ def register_callbacks(app: dash.Dash) -> None:
                 not encoded in the row id).
 
         Returns:
-            ``scroll_to`` payload as a plain dict, or :data:`no_update`
+            ``issue_focus`` payload as a plain dict, or :data:`no_update`
             when the trigger is the initial render or the issues list
             is unavailable.
         """
@@ -3043,7 +4340,7 @@ def register_callbacks(app: dash.Dash) -> None:
                 scope_path = list(issue.get("scope_path") or [])
 
         payload: Dict[str, Any] = {
-            "kind": "scroll_to",
+            "kind": "issue_focus",
             "block_id": block_id,
             "scope_path": scope_path,
             "target_breadcrumb": list(scope_path),
@@ -3331,7 +4628,7 @@ def register_callbacks(app: dash.Dash) -> None:
     @app.callback(
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
         Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
-        Output(ids.CANVAS_ELEMENTS_BRIDGE, "children", allow_duplicate=True),
+        Output(ids.LINEAR_MAP_CONTAINER, "children", allow_duplicate=True),
         Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
@@ -3455,7 +4752,7 @@ def register_callbacks(app: dash.Dash) -> None:
     @app.callback(
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
         Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
-        Output(ids.CANVAS_ELEMENTS_BRIDGE, "children", allow_duplicate=True),
+        Output(ids.LINEAR_MAP_CONTAINER, "children", allow_duplicate=True),
         Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
@@ -3515,12 +4812,29 @@ def register_callbacks(app: dash.Dash) -> None:
             "drill_into_container",
             "drill_out",
             "drill_to_scope",
+            "issue_focus",
             "block_collapsed_toggle",
             "block_reparent",
         }:
             return noop
 
         try:
+            if kind == "issue_focus":
+                new_state_dict = _state_with_issue_focus(state_data, viewport_op)
+                if new_state_dict == state_data:
+                    return noop
+                new_state = state_from_json(new_state_dict)
+                breadcrumb, canvas_elements, inspector = _render_views(
+                    new_state
+                )
+                return (
+                    new_state_dict,
+                    breadcrumb,
+                    canvas_elements,
+                    inspector,
+                    *((no_update,) * 5),
+                )
+
             new_state_dict = _dispatch_state_update(
                 state_data, kind, viewport_op
             )
@@ -3699,6 +5013,39 @@ def register_callbacks(app: dash.Dash) -> None:
         root_scope = state_data.get("root")
         if not isinstance(root_scope, dict):
             return False, no_update
+        linear_action, linear_payload = _parse_linear_pending_action(pending)
+        if linear_action == "node" and isinstance(linear_payload, str):
+            hit = _find_block_in_tree(root_scope, linear_payload)
+            if hit is None:
+                return False, no_update
+            _scope, block = hit
+            label = block.get("label") or block.get("class_name") or "node"
+            body_text = (
+                f"Delete '{label}' and any side parameter values attached "
+                "to it?"
+            )
+            return True, html.Div(body_text)
+        if linear_action == "clear":
+            target = target_from_dict(linear_payload, [])
+            scope_dict = _dag_scope_at_breadcrumb(
+                state_data, list(target.scope_path)
+            )
+            label = "parameter value"
+            if (
+                scope_dict is not None
+                and target.block_id is not None
+                and target.param is not None
+            ):
+                block = _linear_block(scope_dict, target.block_id)
+                if block is not None:
+                    block_label = (
+                        block.get("label")
+                        or block.get("class_name")
+                        or "node"
+                    )
+                    label = f"{target.param} on '{block_label}'"
+            body_text = f"Clear embedded pipeline value for {label}?"
+            return True, html.Div(body_text)
         hit = _find_block_in_tree(root_scope, pending)
         if hit is None:
             return False, no_update
@@ -3719,7 +5066,7 @@ def register_callbacks(app: dash.Dash) -> None:
     @app.callback(
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
         Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
-        Output(ids.CANVAS_ELEMENTS_BRIDGE, "children", allow_duplicate=True),
+        Output(ids.LINEAR_MAP_CONTAINER, "children", allow_duplicate=True),
         Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
         Input(ids.BTN_CONFIRM_DELETE, "n_clicks"),
         State(ids.STORE_BUILDER_STATE, "data"),
@@ -3744,14 +5091,32 @@ def register_callbacks(app: dash.Dash) -> None:
         if not isinstance(pending, str) or not pending:
             return noop
         try:
-            new_state_dict = _dispatch_state_update(
-                state_data,
-                "block_delete_confirm",
-                {
-                    "kind": "block_delete_confirm",
+            linear_action, linear_payload = _parse_linear_pending_action(pending)
+            if linear_action == "node" and isinstance(linear_payload, str):
+                dispatch_kind = "linear_delete_node_confirm"
+                dispatch_payload = {
+                    "kind": dispatch_kind,
+                    "block_id": linear_payload,
+                    "ts": int(time.time() * 1000),
+                }
+            elif linear_action == "clear":
+                dispatch_kind = "linear_clear_param_confirm"
+                dispatch_payload = {
+                    "kind": dispatch_kind,
+                    "target": linear_payload,
+                    "ts": int(time.time() * 1000),
+                }
+            else:
+                dispatch_kind = "block_delete_confirm"
+                dispatch_payload = {
+                    "kind": dispatch_kind,
                     "block_id": pending,
                     "ts": int(time.time() * 1000),
-                },
+                }
+            new_state_dict = _dispatch_state_update(
+                state_data,
+                dispatch_kind,
+                dispatch_payload,
             )
             if new_state_dict == state_data:
                 return noop
@@ -3796,7 +5161,7 @@ def register_callbacks(app: dash.Dash) -> None:
     @app.callback(
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
         Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
-        Output(ids.CANVAS_ELEMENTS_BRIDGE, "children", allow_duplicate=True),
+        Output(ids.LINEAR_MAP_CONTAINER, "children", allow_duplicate=True),
         Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
@@ -3875,7 +5240,7 @@ def register_callbacks(app: dash.Dash) -> None:
     @app.callback(
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
         Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
-        Output(ids.CANVAS_ELEMENTS_BRIDGE, "children", allow_duplicate=True),
+        Output(ids.LINEAR_MAP_CONTAINER, "children", allow_duplicate=True),
         Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
@@ -3940,7 +5305,7 @@ def register_callbacks(app: dash.Dash) -> None:
     @app.callback(
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
         Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
-        Output(ids.CANVAS_ELEMENTS_BRIDGE, "children", allow_duplicate=True),
+        Output(ids.LINEAR_MAP_CONTAINER, "children", allow_duplicate=True),
         Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
@@ -4007,7 +5372,7 @@ def register_callbacks(app: dash.Dash) -> None:
     @app.callback(
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
         Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
-        Output(ids.CANVAS_ELEMENTS_BRIDGE, "children", allow_duplicate=True),
+        Output(ids.LINEAR_MAP_CONTAINER, "children", allow_duplicate=True),
         Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
@@ -4020,66 +5385,100 @@ def register_callbacks(app: dash.Dash) -> None:
     def new_pipeline_palette_click_dag(
         n_clicks: Optional[int], state_data: Dict[str, Any]
     ) -> Tuple[Any, ...]:
-        """``+ New Pipeline`` palette-button keyboard fallback (DAG).
-
-        ``palette_dnd.js`` handles the drag-and-drop path via
-        ``STORE_PALETTE_DROP``.  When the user clicks the button
-        (keyboard fallback / no drag), this callback dispatches
-        ``block_create`` against the current scope with
-        ``class_name="ImagePipeline"`` so a fresh container container
-        appears at the active breadcrumb depth.
-
-        Short-circuits to ``no_update`` for legacy state — the legacy
-        fan-in already handles ``BTN_NEW_PIPELINE_NODE`` via the
-        ``add_pipeline`` dispatch kind.
-        """
+        """Retired DAG palette fallback kept inert for callback compatibility."""
 
         noop = (no_update,) * 8
-        if not n_clicks or state_data is None:
-            return noop
-        if not isinstance(state_data.get("root"), dict):
-            return noop
-        if "blocks" not in (state_data.get("root") or {}):
-            return noop
-        try:
-            # Look up the container we're currently viewing — the new
-            # block lands in the same scope by passing the parent
-            # container's block_id (or ``None`` for the root scope).
-            breadcrumb_list = list(state_data.get("breadcrumb", []) or [])
-            container_block_id = breadcrumb_list[-1] if breadcrumb_list else None
-            new_state_dict = _dispatch_state_update(
-                state_data,
-                "block_create",
-                {
-                    "kind": "block_create",
-                    "class_name": PIPELINE_CLASS_NAME,
-                    "x": 0.0,
-                    "y": 0.0,
-                    "container_block_id": container_block_id,
-                    "ts": int(time.time() * 1000),
-                },
-            )
-            if new_state_dict == state_data:
-                return noop
-            new_state = state_from_json(new_state_dict)
-            breadcrumb, canvas_elements, inspector = _render_views(new_state)
-            return (
-                new_state_dict,
-                breadcrumb,
-                canvas_elements,
-                inspector,
-                no_update,
-                no_update,
-                no_update,
-                no_update,
-            )
-        except Exception:  # noqa: BLE001
-            logger.exception("new_pipeline_palette_click_dag failed")
-            return noop
+        _ = (n_clicks, state_data)
+        return noop
 
     # ----------------------------------------------------------------------
-    # 3. Run preview
+    # 3. Prefix preview / Run preview
     # ----------------------------------------------------------------------
+
+    @app.callback(
+        Output(ids.STORE_INTERMEDIATE_KEYS, "data", allow_duplicate=True),
+        Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
+        Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
+        Output(ids.TOAST_NOTIFICATION, "icon", allow_duplicate=True),
+        Output(ids.TOAST_NOTIFICATION, "header", allow_duplicate=True),
+        Input(
+            {
+                "type": ids.LINEAR_NODE_ACTION,
+                "surface": ALL,
+                "action": ALL,
+                "scope_path": ALL,
+                "block_id": ALL,
+            },
+            "n_clicks",
+        ),
+        State(ids.STORE_BUILDER_STATE, "data"),
+        State(ids.STORE_SESSION_ID, "data"),
+        State(STORE_IMAGE_PATH, "data"),
+        State(ids.INPUT_NROWS, "value"),
+        State(ids.INPUT_NCOLS, "value"),
+        prevent_initial_call=True,
+    )
+    def run_linear_prefix_preview(
+        _node_action_clicks: List[int],
+        state_data: Dict[str, Any],
+        session_id: Optional[str],
+        image_path: Optional[str],
+        nrows: Optional[Any],
+        ncols: Optional[Any],
+    ) -> Tuple[Any, bool, str, str, str]:
+        """Run ``Preview here`` for a linear map prefix only."""
+
+        if not isinstance(ctx.triggered_id, dict):
+            return no_update, no_update, no_update, no_update, no_update
+        triggered = ctx.triggered_id
+        if triggered.get("type") != ids.LINEAR_NODE_ACTION:
+            return no_update, no_update, no_update, no_update, no_update
+        if triggered.get("action") != "preview_here":
+            return no_update, no_update, no_update, no_update, no_update
+        if not ctx.triggered or not ctx.triggered[0].get("value"):
+            return no_update, no_update, no_update, no_update, no_update
+        if state_data is None:
+            return no_update, *_toast("No state to preview", ok=False)
+        if not session_id:
+            session_id = uuid.uuid4().hex
+
+        try:
+            from phenotypic.abc_ import GridOperation
+
+            t0 = time.time()
+            state = state_from_json(state_data)
+            if not hasattr(state, "selected_block_id"):
+                return no_update, *_toast(
+                    "Preview here is only available in the linear builder.",
+                    ok=False,
+                )
+            target = target_from_dict(
+                _linear_preview_target_payload_from_id(triggered),
+                state.breadcrumb,
+            )
+            prefix_state = _linear_prefix_state_for_preview(state, target)
+            pipeline = to_pipeline_dag(prefix_state)
+            uses_grid = _pipeline_uses_grid(pipeline, GridOperation)
+
+            image = _load_preview_image(image_path, uses_grid, nrows, ncols)
+            cache = get_cache()
+            cache.set_image(session_id, image, str(image_path) if image_path else None)
+
+            result = pipeline.apply_with_intermediates(image)
+            _bake_preview_cache(prefix_state, pipeline, result, session_id, cache)
+
+            duration = time.time() - t0
+            keys = cache.known_intermediate_keys(session_id)
+            return (
+                keys,
+                *_toast(f"Prefix preview ran in {duration:.2f}s", ok=True),
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("Prefix preview failed")
+            return (
+                no_update,
+                *_toast(_format_exception(exc), ok=False),
+            )
 
     @app.callback(
         Output(ids.STORE_INTERMEDIATE_KEYS, "data"),
@@ -4624,7 +6023,7 @@ def register_callbacks(app: dash.Dash) -> None:
         Output(ids.STORE_BROWSE_DIR_JSON, "data", allow_duplicate=True),
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
         Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
-        Output(ids.CANVAS_ELEMENTS_BRIDGE, "children", allow_duplicate=True),
+        Output(ids.LINEAR_MAP_CONTAINER, "children", allow_duplicate=True),
         Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
         Output(ids.MODAL_LOAD_PICKER, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
@@ -4695,7 +6094,7 @@ def register_callbacks(app: dash.Dash) -> None:
     @app.callback(
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
         Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
-        Output(ids.CANVAS_ELEMENTS_BRIDGE, "children", allow_duplicate=True),
+        Output(ids.LINEAR_MAP_CONTAINER, "children", allow_duplicate=True),
         Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
         Output(ids.MODAL_LOAD_PICKER, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
@@ -4987,15 +6386,11 @@ def register_callbacks(app: dash.Dash) -> None:
     )
 
     # ----------------------------------------------------------------------
-    # 8b. Canvas element application
+    # 8b. Retired canvas element application
     # ----------------------------------------------------------------------
-    # Canvas elements are applied by the ``MutationObserver`` in
-    # ``viewport_ops.js``: every mutation callback writes the
-    # JSON-serialised elements list (from :func:`_render_views`) straight
-    # into the ``CANVAS_ELEMENTS_BRIDGE`` hidden element's ``children``
-    # (see section 2a-0), and the observer reconciles the cytoscape
-    # graph.  The ``CANVAS_CYTOSCAPE`` ``elements`` prop is never written
-    # post-init, so dash-cytoscape's buggy diff never runs.
+    # The legacy Cytoscape bridge remains mounted for transition safety,
+    # but default builder mutation callbacks now redraw the HTML linear
+    # map directly via ``LINEAR_MAP_CONTAINER.children``.
 
     # ----------------------------------------------------------------------
     # 9. Point picker — clientside lifecycle callbacks
@@ -5102,25 +6497,15 @@ def register_callbacks(app: dash.Dash) -> None:
         return not is_open
 
     # ----------------------------------------------------------------------
-    # 11. Asset-status disable wiring (spec §6).
+    # 11. Asset-status banner wiring.
     # ----------------------------------------------------------------------
     # Subscribes to ``STORE_ASSET_STATUS`` (written by ``assets/builder.js``'s
     # readiness-poll loop with shape
     # ``{"wire_drawing": bool, "palette_dnd": bool, "viewport_ops": bool,
-    # "dagre_missing": bool}``).  When a JS file fails to load:
-    #
-    # * ``viewport_ops`` missing or ``dagre_missing`` True →
-    #   ``BTN_RELAYOUT`` becomes ``disabled``.
-    # * ``palette_dnd`` missing → the palette container receives a CSS
-    #   style toggling ``pointer-events: none`` so users see the palette
-    #   but cannot start an HTML5 drag.
-    # * ``wire_drawing`` missing → no server-side gate (the JS isn't there
-    #   to handle a port mousedown anyway); the banner above the canvas
-    #   surfaces the failure text.
-    #
-    # The visible elements (``BTN_RELAYOUT``, ``PALETTE_CONTAINER``,
-    # ``BANNER_ASSET_STATUS``) are guaranteed to exist on every render
-    # path so the callback inputs always resolve.
+    # "dagre_missing": bool}``).  These assets now power retired Cytoscape
+    # affordances, so missing readiness must not disable the click-only
+    # palette or show irrelevant drag/wire warnings in the linear builder.
+    # The hidden relayout button remains mounted only as a callback anchor.
     @app.callback(
         Output(ids.BTN_RELAYOUT, "disabled"),
         Output(ids.PALETTE_CONTAINER, "style", allow_duplicate=True),
@@ -5130,9 +6515,9 @@ def register_callbacks(app: dash.Dash) -> None:
         prevent_initial_call=True,
     )
     def asset_status_disables(
-        status: Optional[Dict[str, Any]],
+        _status: Optional[Dict[str, Any]],
     ) -> Tuple[bool, Dict[str, Any], List[Any], Dict[str, Any]]:
-        """Gate the relayout button + palette on missing JS assets.
+        """Keep retired asset readiness signals inert in the linear builder.
 
         Args:
             status: Dict written by the clientside readiness poll —
@@ -5142,52 +6527,12 @@ def register_callbacks(app: dash.Dash) -> None:
                 completes).
 
         Returns:
-            Tuple of (relayout disabled, palette style override, banner
-            children, banner style) so the relayout button and palette
-            stay in lock-step with the asset readiness signal.
+            Tuple of (hidden relayout disabled, palette style override,
+            banner children, banner style).  The hidden relayout anchor
+            stays disabled and the click palette remains server-routed.
         """
 
-        status = status or {}
-        # Compute layout / palette gates.
-        viewport_ready = bool(status.get("viewport_ops", True))
-        dagre_missing = bool(status.get("dagre_missing", False))
-        palette_ready = bool(status.get("palette_dnd", True))
-        wire_ready = bool(status.get("wire_drawing", True))
-
-        relayout_disabled = (not viewport_ready) or dagre_missing
-        palette_style: Dict[str, Any]
-        if palette_ready:
-            # Default: let the palette accept HTML5 drag events again.
-            palette_style = {}
-        else:
-            # Palette JS missing: disable HTML5 drag without hiding the
-            # palette itself (the user can still focus + read buttons).
-            palette_style = {
-                "pointerEvents": "none",
-                "opacity": 0.6,
-            }
-
-        # Build the banner rows for any missing assets.
-        rows: List[Any] = []
-        if not wire_ready:
-            rows.append(html.Div("Wire drawing offline"))
-        if not palette_ready:
-            rows.append(
-                html.Div(
-                    "Block creation offline — drag from the palette is "
-                    "unavailable"
-                )
-            )
-        if not viewport_ready:
-            rows.append(html.Div("Layout offline"))
-        if dagre_missing:
-            rows.append(html.Div("Layout extension missing"))
-
-        if rows:
-            banner_style = {"display": "block"}
-            return relayout_disabled, palette_style, rows, banner_style
-
-        return relayout_disabled, palette_style, [], {"display": "none"}
+        return True, {}, [], {"display": "none"}
 
     # ----------------------------------------------------------------------
     # 12. Toolbar Re-layout / Inspector Re-anchor → STORE_VIEWPORT_OP

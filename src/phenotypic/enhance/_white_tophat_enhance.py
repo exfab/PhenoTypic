@@ -8,10 +8,10 @@ if TYPE_CHECKING:
 import numpy as np
 from skimage.morphology import white_tophat
 
-from phenotypic.abc_ import ImageEnhancer
+from phenotypic.abc_ import MorphologicalFiltering
 
 
-class WhiteTophatEnhance(ImageEnhancer):
+class WhiteTophatEnhance(MorphologicalFiltering):
     """Isolate small bright structures in ``detect_mat`` with the white top-hat transform.
 
     Computes the white top-hat (original minus morphological opening) and
@@ -50,7 +50,7 @@ class WhiteTophatEnhance(ImageEnhancer):
           isolate) small bright artifacts.
         - :class:`SubtractOpening` for OpenCV-accelerated white top-hat
           background subtraction.
-        - :class:`EnhanceBlobs` for scale-invariant blob detection
+        - :class:`FocusBlobLoG` for scale-invariant blob detection
           that responds to both small and large colonies.
 
     See Also:

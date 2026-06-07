@@ -26,6 +26,14 @@ from playwright.sync_api import Page
 from tests.e2e.gui.conftest import _build_sandbox, _start_live_server
 
 
+pytestmark = pytest.mark.skip(
+    reason=(
+        "Retired Cytoscape asset-resilience surface; default builder uses "
+        "fixed linear ports and keeps these assets inert."
+    )
+)
+
+
 # ---------------------------------------------------------------------------
 # Live-server override (mirrors test_palette_drag.py).
 # ---------------------------------------------------------------------------

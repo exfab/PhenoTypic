@@ -295,9 +295,10 @@ class TestAggregateMeasurementsAutoResolve:
         assert "Shape_Area" not in size_df.columns
         assert "Metadata_ImageFile" in size_df.columns
 
-    def test_no_state_file_keeps_master_but_skips_splits(
+    def test_no_state_file_keeps_master_and_splits_known_columns(
         self, tmp_path: Path
     ) -> None:
+        """Dynamic splits no longer require a recovered pipeline."""
         output_dir = tmp_path / "out"
         output_dir.mkdir()
 
@@ -318,4 +319,14 @@ class TestAggregateMeasurementsAutoResolve:
 
         assert master_path is not None
         assert master_path.exists()
-        assert not measurements_by_feature_dir(output_dir).exists()
+        split_dir = measurements_by_feature_dir(output_dir)
+        assert split_dir.is_dir()
+        size_csv = split_dir / "MeasureSize.csv"
+        assert size_csv.exists()
+        size_df = pl.read_csv(size_csv)
+        assert size_df.columns == [
+            "Metadata_Dataset",
+            "Metadata_ImageFile",
+            "Object_Label",
+            "Size_Area",
+        ]

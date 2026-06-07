@@ -46,14 +46,20 @@ Optional Extras
 
 PhenoTypic provides optional extras for different use cases:
 
-- ``[gui]`` — Full interactive environment including napari viewer, Panel dashboards,
-  and Jupyter integration. Required for ``image.rgb.napari()`` and related viewer methods.
+- ``[gui]`` — Browser-based GUI hub: Panel dashboards, Dash apps, and Jupyter
+  integration. Does **not** include napari.
+- ``[napari]`` — The interactive napari desktop viewers (pulls napari + PyQt6).
+  Required for ``image.rgb.napari()`` and related viewer methods, the point
+  picker, and the napari sweep viewer (``python -m phenotypic.gui.sweep``).
 - ``[torch]`` — PyTorch + SAM2 for ``Sam2Detector`` (Linux/macOS only).
 
 .. code-block:: bash
 
-   # Full interactive / GUI environment (napari, Panel, Jupyter)
+   # Browser GUI hub (Panel, Dash, Jupyter)
    uv add "phenotypic[gui]"
+
+   # napari desktop viewers
+   uv add "phenotypic[napari]"
 
    # SAM2 GPU detector (Linux/macOS)
    uv add "phenotypic[torch]"

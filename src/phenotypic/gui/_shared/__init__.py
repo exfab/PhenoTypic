@@ -3,7 +3,7 @@
 The dashboard logo is identical in every Dash sub-app (builder, results
 viewer, run console, analysis). Rather than vendoring four physical
 copies into each app's assets folder, the file lives once at
-``_shared/_static/dashboard_logo.svg`` and a tiny Flask blueprint
+``phenotypic/_assets/logos/dashboard_logo.svg`` and a tiny Flask blueprint
 registered on each sub-app's server (and on the shell) serves the file
 under ``/_shared/<filename>``.
 
