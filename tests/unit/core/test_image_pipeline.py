@@ -13,7 +13,7 @@ from phenotypic.measure import (
 )
 from phenotypic.refine import (
     RemoveBorderObjects,
-    RemoveNonCircular,
+    RemoveLowCircularity,
     SmallObjectRemover,
     RemoveGridOutliers,
     ReduceSectionsByLine,
@@ -107,7 +107,7 @@ def test_kmarx_pipeline_pickleable(plate_grid_images):
                 "median filter"                   : MedianFilter(),
                 "detection"                       : OtsuDetector(),
                 "border_removal"                  : RemoveBorderObjects(border_size=50),
-                "low circularity remover"         : RemoveNonCircular(cutoff=0.6),
+                "low circularity remover"         : RemoveLowCircularity(cutoff=0.6),
                 "small object remover"            : SmallObjectRemover(min_size=100),
                 "Reduce by section residual error": ReduceSectionsByLine(),
                 "outlier removal"                 : RemoveGridOutliers(),

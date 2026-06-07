@@ -31,7 +31,7 @@ class MaskOpening(ObjectRefiner, FootprintMixin):
           structuring element.
         - Plates where jagged or pixelated colony boundaries would distort
           perimeter or shape measurements.
-        - Post-detection cleanup before :class:`RemoveNonCircular` or area
+        - Post-detection cleanup before :class:`RemoveLowCircularity` or area
           measurement to reduce false negatives from ragged edges.
 
     Consider Also:

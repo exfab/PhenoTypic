@@ -1,4 +1,4 @@
-"""Entry point for ``python -m phenotypic.nn``."""
+"""Entry point for ``python -m phenotypic.detect.nn``."""
 
 from ._cli import nn_cli
 

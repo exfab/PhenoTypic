@@ -48,7 +48,7 @@ class TrimAsymmetry(ObjectRefiner):
         - :class:`SmallObjectRemover` when spurious fragments are
           distinguishable by size alone rather than by radial position
           relative to the colony centre.
-        - :class:`RemoveNonCircular` when the entire colony shape should be
+        - :class:`RemoveLowCircularity` when the entire colony shape should be
           judged against a circularity threshold rather than a radial
           symmetric envelope.
         - :class:`MaskErosion` for a simpler boundary retraction when the

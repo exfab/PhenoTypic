@@ -33,7 +33,7 @@ class SmallObjectRemover(ObjectRefiner):
     Consider Also:
         - :class:`RemoveBorderObjects` for removing partial colonies at
           image edges regardless of their size.
-        - :class:`RemoveNonCircular` for discarding non-circular artefacts
+        - :class:`RemoveLowCircularity` for discarding non-circular artefacts
           regardless of area.
         - :class:`SmallToLargeMerger` when small fragments should be
           absorbed into a nearby large colony rather than discarded.

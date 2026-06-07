@@ -9,7 +9,7 @@ import importlib.util
 
 import pytest
 
-from phenotypic.nn._checkpoint_manager import (
+from phenotypic.detect.nn._checkpoint_manager import (
     Device,
     MicroSamCheckpointManager,
     MicroSamModelType,
@@ -113,13 +113,13 @@ class TestResolveDevice:
     """Test resolve_device() with torch installed."""
 
     def test_cpu_returns_cpu(self):
-        from phenotypic.nn._checkpoint_manager import resolve_device
+        from phenotypic.detect.nn._checkpoint_manager import resolve_device
 
         assert resolve_device("cpu") == "cpu"
 
     def test_auto_with_allow_cpu(self):
         """auto + allow_cpu=True should return a device string without error."""
-        from phenotypic.nn._checkpoint_manager import resolve_device
+        from phenotypic.detect.nn._checkpoint_manager import resolve_device
 
         result = resolve_device("auto", allow_cpu=True)
         assert isinstance(result, str)
@@ -127,7 +127,7 @@ class TestResolveDevice:
 
     def test_auto_without_allow_cpu_returns_or_raises(self):
         """auto + allow_cpu=False either finds an accelerator or raises."""
-        from phenotypic.nn._checkpoint_manager import resolve_device
+        from phenotypic.detect.nn._checkpoint_manager import resolve_device
 
         try:
             result = resolve_device("auto", allow_cpu=False)

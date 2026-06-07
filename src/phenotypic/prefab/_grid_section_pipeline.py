@@ -8,7 +8,7 @@ from phenotypic.grid import GridApply
 from phenotypic.refine import (
     RemoveBorderObjects,
     SmallObjectRemover,
-    RemoveNonCircular,
+    RemoveLowCircularity,
     ReduceSectionsByLine,
     RemoveGridOutliers,
 )
@@ -149,7 +149,7 @@ class GridSectionPipeline(PrefabPipeline):
             ),
             "border_removal"                  : RemoveBorderObjects(
                     border_size=border_remover_size),
-            "low circularity remover"         : RemoveNonCircular(
+            "low circularity remover"         : RemoveLowCircularity(
                     cutoff=circularity_cutoff),
             "small object remover"            : SmallObjectRemover(
                     min_size=small_object_min_size),

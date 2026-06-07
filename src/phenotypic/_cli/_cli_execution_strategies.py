@@ -174,7 +174,7 @@ class LocalParallelStrategy(ExecutionStrategy):
 
         if has_gpu_ops:
             try:
-                from phenotypic.nn._checkpoint_manager import resolve_device
+                from phenotypic.detect.nn._checkpoint_manager import resolve_device
 
                 device = resolve_device("auto")
                 console.print(f"[green]✓ GPU detected: {device}[/green]")

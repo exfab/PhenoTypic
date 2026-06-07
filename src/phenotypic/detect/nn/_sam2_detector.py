@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
 from phenotypic.abc_ import GpuDetector
-from phenotypic.nn._checkpoint_manager import (
+from phenotypic.detect.nn._checkpoint_manager import (
     Device,
     Sam2ModelSize,
 )
@@ -107,7 +107,7 @@ class Sam2Detector(GpuDetector):
         * :class:`~phenotypic.detect.WatershedDetector` when touching
           colonies of similar appearance must be split and a GPU is
           unavailable.
-        * :class:`~phenotypic.nn.MicroSamDetector` for microscopy images
+        * :class:`~phenotypic.detect.nn.MicroSamDetector` for microscopy images
           where a domain-finetuned SAM model may outperform the general-
           purpose SAM2 checkpoint.
         * :class:`~phenotypic.detect.HysteresisDetector` when colony
@@ -118,7 +118,7 @@ class Sam2Detector(GpuDetector):
         Videos," *arXiv:2408.00714*, 2024.
 
     See Also:
-        :class:`~phenotypic.nn.MicroSamDetector`
+        :class:`~phenotypic.detect.nn.MicroSamDetector`
             Microscopy-finetuned SAM for domain-specific segmentation.
         :doc:`/how_to/pages/gpu_detection_setup`
             Installation, checkpoint management, and SLURM deployment.
@@ -129,7 +129,7 @@ class Sam2Detector(GpuDetector):
         Construct a detector and inspect its default parameters (no GPU
         or ``sam2`` package required):
 
-        >>> from phenotypic.nn import Sam2Detector
+        >>> from phenotypic.detect.nn import Sam2Detector
         >>> det = Sam2Detector(model_size="tiny", points_per_side=32)
         >>> det.model_size
         'tiny'
@@ -138,12 +138,12 @@ class Sam2Detector(GpuDetector):
         to JSON (round-trips without GPU dependencies):
 
         >>> from phenotypic import ImagePipeline
-        >>> from phenotypic.nn import Sam2Detector
+        >>> from phenotypic.detect.nn import Sam2Detector
         >>> pipe = ImagePipeline(ops=[Sam2Detector(model_size="small")])
         >>> json_str = pipe.to_json()
         >>> pipe2 = ImagePipeline.from_json(json_str)
         >>> type(pipe2.get_ops()["Sam2Detector"])
-        <class 'phenotypic.nn._sam2_detector.Sam2Detector'>
+        <class 'phenotypic.detect.nn._sam2_detector.Sam2Detector'>
     """
 
     model_size: Sam2ModelSize = "tiny"
@@ -176,7 +176,7 @@ class Sam2Detector(GpuDetector):
                 "Install with: pip install phenotypic[torch]"
             ) from None
 
-        from phenotypic.nn._checkpoint_manager import (
+        from phenotypic.detect.nn._checkpoint_manager import (
             Sam2CheckpointManager,
             resolve_device,
         )

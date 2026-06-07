@@ -37,7 +37,7 @@ class ExtractColonyCore(ObjectRefiner):
           are not intensity-distinct from the surrounding halo.
         - :class:`InoculumDetector` when core detection is needed as a standalone
           detection step rather than a post-detection refinement.
-        - :class:`RemoveNonCircular` for shape-based filtering when halos distort
+        - :class:`RemoveLowCircularity` for shape-based filtering when halos distort
           circularity measurements without requiring intensity separation.
 
     Args:

@@ -43,6 +43,14 @@ from tests.e2e.gui.builder.conftest import (
 from tests.e2e.gui.conftest import _build_sandbox, _start_live_server
 
 
+pytestmark = pytest.mark.skip(
+    reason=(
+        "Retired drag-to-wire surface; default builder fills targets via "
+        "button ports and side loader actions."
+    )
+)
+
+
 # ---------------------------------------------------------------------------
 # Live-server override (mirrors test_palette_drag.py).
 # ---------------------------------------------------------------------------

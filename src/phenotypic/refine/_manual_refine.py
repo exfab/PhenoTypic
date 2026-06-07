@@ -27,7 +27,7 @@ class ManualRefine(ObjectRefiner, PointPickerMixin, FootprintMixin):
     scratch at picked coordinates, this refiner *filters* the output of an
     earlier detector. It is the manual-curation counterpart to automated
     refiners such as :class:`SmallObjectRemover` or
-    :class:`RemoveNonCircular`, and is suitable for ground-truth
+    :class:`RemoveLowCircularity`, and is suitable for ground-truth
     curation, interactive review, and correcting systematic detector misses
     on a handful of colonies. For where refinement sits in a pipeline see
     :doc:`/explanation/refinement_strategies`.

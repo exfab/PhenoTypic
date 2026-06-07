@@ -2,18 +2,17 @@
 
 Each Dash sub-app registers this blueprint on its own ``app.server`` so
 the same SVG file is served under every mount point's URL prefix. The
-canonical file lives in :file:`_static/` next to this module; layouts
+canonical logo lives in :mod:`phenotypic._assets` (``logos/``); layouts
 reference it via :data:`SHARED_LOGO_PATH` joined to the sub-app's
 ``url_prefix``.
 """
 from __future__ import annotations
 
-from pathlib import Path
-
 from flask import Blueprint, Flask, send_from_directory
 
-_HERE = Path(__file__).resolve().parent
-_STATIC_DIR = _HERE / "_static"
+from phenotypic._assets import logos_dir
+
+_STATIC_DIR = logos_dir()
 
 #: URL-prefix path where the blueprint mounts on each Flask server.
 SHARED_BLUEPRINT_PREFIX = "/_shared"

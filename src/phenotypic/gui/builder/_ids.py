@@ -264,6 +264,136 @@ BTN_INSPECTOR_LIST_MOVE = "btn-inspector-list-move"
 #: fallback uses :data:`BTN_INSPECTOR_LIST_MOVE` instead.
 STORE_INSPECTOR_LIST_REORDER = "store-inspector-list-reorder"
 
+# ---------------------------------------------------------------------------
+# Fixed linear port-map ids
+# ---------------------------------------------------------------------------
+
+#: Default builder map container for the fixed linear port-map. Phase 4 will
+#: update this element's ``children`` directly from state mutations.
+LINEAR_MAP_CONTAINER = "linear-map-container"
+
+#: UI-only fixed-map zoom controls. These do not write builder state and are
+#: intentionally distinct from the retired Cytoscape canvas zoom ids.
+LINEAR_ZOOM_OUT = "linear-zoom-out"
+LINEAR_ZOOM_IN = "linear-zoom-in"
+LINEAR_ZOOM_RESET = "linear-zoom-reset"
+LINEAR_ZOOM_FIT = "linear-zoom-fit"
+
+#: ``dcc.Download`` sink for unsupported-state raw builder JSON export.
+DOWNLOAD_RAW_STATE = "download-raw-state"
+
+#: Pattern-match ``type`` key for every clickable fixed-map / side-loader port.
+LINEAR_PORT = "linear-port"
+
+#: Pattern-match ``type`` key for the local popup menu rendered next to a port.
+LINEAR_PORT_MENU = "linear-port-menu"
+
+#: Pattern-match ``type`` key for node-level actions in the fixed map and side
+#: loader (select, preview, delete, move, help).
+LINEAR_NODE_ACTION = "linear-node-action"
+
+#: Pattern-match ``type`` key for parameter/value actions in the fixed map and
+#: side loader (replace, clear, drill/edit, help).
+LINEAR_PARAM_ACTION = "linear-param-action"
+
+_LINEAR_ROOT_SCOPE = "__root__"
+_LINEAR_NONE = "__none__"
+_LINEAR_NO_SLOT = -1
+
+
+def _linear_scope_id_value(scope_path: Optional[list[str]]) -> str:
+    return "/".join(scope_path or []) or _LINEAR_ROOT_SCOPE
+
+
+def _linear_optional_id_value(value: Optional[str]) -> str:
+    return value if value is not None else _LINEAR_NONE
+
+
+def linear_port_id(
+    *,
+    kind: str,
+    scope_path: Optional[list[str]] = None,
+    block_id: Optional[str] = None,
+    param: Optional[str] = None,
+    slot: Optional[int] = None,
+    surface: str = "map",
+) -> Dict[str, Any]:
+    """Build the pattern id for a clickable linear port button."""
+
+    return {
+        "type": LINEAR_PORT,
+        "surface": surface,
+        "kind": kind,
+        "scope_path": _linear_scope_id_value(scope_path),
+        "block_id": _linear_optional_id_value(block_id),
+        "param": _linear_optional_id_value(param),
+        "slot": slot if slot is not None else _LINEAR_NO_SLOT,
+    }
+
+
+def linear_port_menu_id(
+    *,
+    kind: str,
+    scope_path: Optional[list[str]] = None,
+    block_id: Optional[str] = None,
+    param: Optional[str] = None,
+    slot: Optional[int] = None,
+    surface: str = "map",
+) -> Dict[str, Any]:
+    """Build the pattern id for a linear port popup menu."""
+
+    return {
+        "type": LINEAR_PORT_MENU,
+        "surface": surface,
+        "kind": kind,
+        "scope_path": _linear_scope_id_value(scope_path),
+        "block_id": _linear_optional_id_value(block_id),
+        "param": _linear_optional_id_value(param),
+        "slot": slot if slot is not None else _LINEAR_NO_SLOT,
+    }
+
+
+def linear_node_action_id(
+    *,
+    action: str,
+    scope_path: Optional[list[str]] = None,
+    block_id: Optional[str] = None,
+    surface: str = "map",
+) -> Dict[str, Any]:
+    """Build the pattern id for a linear node action button."""
+
+    return {
+        "type": LINEAR_NODE_ACTION,
+        "surface": surface,
+        "action": action,
+        "scope_path": _linear_scope_id_value(scope_path),
+        "block_id": _linear_optional_id_value(block_id),
+    }
+
+
+def linear_param_action_id(
+    *,
+    action: str,
+    scope_path: Optional[list[str]] = None,
+    block_id: Optional[str] = None,
+    param: Optional[str] = None,
+    slot: Optional[int] = None,
+    source_block_id: Optional[str] = None,
+    surface: str = "map",
+) -> Dict[str, Any]:
+    """Build the pattern id for a linear parameter/value action button."""
+
+    return {
+        "type": LINEAR_PARAM_ACTION,
+        "surface": surface,
+        "action": action,
+        "scope_path": _linear_scope_id_value(scope_path),
+        "block_id": _linear_optional_id_value(block_id),
+        "param": _linear_optional_id_value(param),
+        "slot": slot if slot is not None else _LINEAR_NO_SLOT,
+        "source_block_id": _linear_optional_id_value(source_block_id),
+    }
+
 
 def issue_row_id(block_id: Optional[str], kind: str, idx: int) -> Dict[str, Any]:
     """Build the pattern-matching id for a single issue-tooltip row.
@@ -986,4 +1116,19 @@ __all__ = [
     "inspector_add_empty_slot_id",
     "inspector_list_move_id",
     "inspector_list_reorder_store_id",
+    # Linear port-map additions
+    "LINEAR_MAP_CONTAINER",
+    "LINEAR_ZOOM_OUT",
+    "LINEAR_ZOOM_IN",
+    "LINEAR_ZOOM_RESET",
+    "LINEAR_ZOOM_FIT",
+    "DOWNLOAD_RAW_STATE",
+    "LINEAR_PORT",
+    "LINEAR_PORT_MENU",
+    "LINEAR_NODE_ACTION",
+    "LINEAR_PARAM_ACTION",
+    "linear_port_id",
+    "linear_port_menu_id",
+    "linear_node_action_id",
+    "linear_param_action_id",
 ]

@@ -15,7 +15,7 @@ from ..abc_ import ObjectRefiner
 from phenotypic.schema import OBJECT
 
 
-class RemoveNonCircular(ObjectRefiner):
+class RemoveLowCircularity(ObjectRefiner):
     """Remove objects whose Polsby-Popper circularity score falls below a threshold.
 
     Computes ``4π × area / perimeter²`` for each labeled object and
