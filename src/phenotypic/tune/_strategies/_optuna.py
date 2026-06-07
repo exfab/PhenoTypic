@@ -28,6 +28,7 @@ from .._search_space import (
 from ._config import SamplerKind
 from ._optuna_support import (
     is_multi_objective_directions,
+    retry_on_transient_db_error,
     set_trial_user_attrs,
     study_objective_kwargs,
 )
@@ -130,15 +131,30 @@ class OptunaStrategy:
         pruner = optuna.pruners.SuccessiveHalvingPruner(
             min_resource=rung_floor, reduction_factor=rung_factor
         )
-        create_kwargs: dict[str, Any] = {
-            "sampler": sampler_obj,
-            "pruner": pruner,
-            "storage": storage_url,
-            "study_name": study_name,
-            "load_if_exists": study_name is not None,
-            **study_objective_kwargs(self._directions),
-        }
-        self._study = optuna.create_study(**create_kwargs)
+        # Reuse the store's ONE study handle when it exposes one (the
+        # OptunaStudyStore already created the study + materialized its RDB
+        # schema). Opening a second create_study(load_if_exists=True) here would
+        # duplicate that handle and re-run the cold-DB schema race. The sampler
+        # and pruner live on the in-memory Study object (not in storage), so we
+        # re-attach OURS to the shared handle — otherwise the run would inherit
+        # the store's default TPE sampler / no-ASHA pruner. A store without a
+        # ``.study`` (the screening rounds' journal) falls back to opening the
+        # strategy's own study from the URL + name.
+        shared_study = getattr(store, "study", None)
+        if shared_study is not None:
+            shared_study.sampler = sampler_obj
+            shared_study.pruner = pruner
+            self._study = shared_study
+        else:
+            create_kwargs: dict[str, Any] = {
+                "sampler": sampler_obj,
+                "pruner": pruner,
+                "storage": storage_url,
+                "study_name": study_name,
+                "load_if_exists": study_name is not None,
+                **study_objective_kwargs(self._directions),
+            }
+            self._study = optuna.create_study(**create_kwargs)
 
     # -- sampler selection ----------------------------------------------------
 
@@ -179,7 +195,10 @@ class OptunaStrategy:
             :class:`OptunaPruningChannel` when pruning is active for this trial,
             else a :class:`NoOpChannel`.
         """
-        trial = self._study.ask()
+        # Bounded retry on a transient DB error (a lock timeout / dropped
+        # connection against the shared SQLite-WAL / Postgres study); a
+        # non-transient error propagates immediately (Change 5).
+        trial = retry_on_transient_db_error(self._study.ask)
         self._stashed = trial
         params = self._materialize(trial)
         prune_active = self._prune and not explore and not self._multi_objective
@@ -252,27 +271,52 @@ class OptunaStrategy:
         if trial is None:  # pragma: no cover - register without a prior suggest
             raise RuntimeError("register_result called before suggest")
         self._stashed = None
+        trial_number = trial.number
 
         # Stamp our off-model Trial fields onto the in-flight trial BEFORE telling
         # so the strategy's native ask/tell trial IS the full persisted record
         # (one shared study, no add_trial mirror): the store's _to_trial reads
         # these back. Set regardless of terminal state — a FAIL/PRUNED trial still
-        # carries its params/terms for the journal export.
-        set_trial_user_attrs(trial, params=params, result=result)
+        # carries its params/terms for the journal export. Each DB-touching call
+        # (the user-attr stamp + the tell) is wrapped in the bounded transient-DB
+        # retry (Change 5): a lock timeout / dropped connection is retried, a
+        # non-transient error propagates immediately.
+        retry_on_transient_db_error(
+            lambda: set_trial_user_attrs(trial, params=params, result=result),
+            trial_number=trial_number,
+        )
 
         if getattr(result, "failed", False):
-            self._study.tell(trial, state=optuna.trial.TrialState.FAIL)
+            retry_on_transient_db_error(
+                lambda: self._study.tell(
+                    trial, state=optuna.trial.TrialState.FAIL
+                ),
+                trial_number=trial_number,
+            )
             return
         if pruned or getattr(result, "pruned", False):
-            self._study.tell(trial, state=optuna.trial.TrialState.PRUNED)
+            retry_on_transient_db_error(
+                lambda: self._study.tell(
+                    trial, state=optuna.trial.TrialState.PRUNED
+                ),
+                trial_number=trial_number,
+            )
             return
         if self._multi_objective:
             # Tell the per-objective vector (emission order == directions order)
             # so NSGA-II ranks the Pareto front natively.
             objectives = getattr(result, "objectives", None) or {}
-            self._study.tell(trial, [float(v) for v in objectives.values()])
+            values = [float(v) for v in objectives.values()]
+            retry_on_transient_db_error(
+                lambda: self._study.tell(trial, values),
+                trial_number=trial_number,
+            )
             return
-        self._study.tell(trial, float(result.score))
+        score = float(result.score)
+        retry_on_transient_db_error(
+            lambda: self._study.tell(trial, score),
+            trial_number=trial_number,
+        )
 
     # -- budget ---------------------------------------------------------------
 

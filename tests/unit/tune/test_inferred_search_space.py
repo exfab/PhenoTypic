@@ -44,6 +44,7 @@ def test_excluded_reason_members():
         "path",
         "name_ref",
         "non_numeric",
+        "non_positive_default",
         "tune_spec_off",
         "unsupported_type",
     ):
@@ -101,6 +102,21 @@ def test_needs_review_true_for_inference_blind_exclusion():
         ),
         excluded=(
             Excluded(key="0.scale", reason="non_numeric", field_type="float"),
+        ),
+    )
+    assert space.needs_review is True
+
+
+def test_needs_review_true_for_non_positive_default_exclusion():
+    # ``non_positive_default`` (a numeric anchor <= 0 collapsing the [d/f, d·f]
+    # window) is inference-blind — it must raise the review flag just like
+    # ``non_numeric`` did before it was split out.
+    space = InferredSearchSpace(
+        knobs=(),
+        excluded=(
+            Excluded(
+                key="0.k", reason="non_positive_default", field_type="float"
+            ),
         ),
     )
     assert space.needs_review is True

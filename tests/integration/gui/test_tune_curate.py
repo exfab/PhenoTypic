@@ -95,3 +95,90 @@ def test_pinned_pair_tolerates_missing_store(bad_store: object) -> None:
 
     result = pinned_pair(5, bad_store)  # type: ignore[arg-type]
     assert result["a"] == 5
+
+
+# ---------------------------------------------------------------------------
+# Difference-mode CSS specificity (the side-by-side panels must hide)
+# ---------------------------------------------------------------------------
+
+def _tune_css() -> str:
+    import phenotypic.gui.tune as tune_pkg
+
+    css_path = Path(tune_pkg.__file__).parent / "_assets" / "tune.css"
+    return css_path.read_text(encoding="utf-8")
+
+
+def test_difference_mode_hide_rule_outspecifies_grid() -> None:
+    """A compound (two-class) rule hides the side-by-side panels in Difference.
+
+    ``.tune-view-hidden{display:none}`` (one class) loses the cascade to the
+    equally-specific ``.tune-curate-sidebyside{display:grid}`` declared later in
+    the file, so the panels leaked through in Difference mode. The fix is a
+    higher-specificity ``.tune-curate-sidebyside.tune-view-hidden{display:none}``
+    rule; this guards it isn't dropped, and that it sits AFTER the base grid rule
+    so the cascade resolves correctly.
+    """
+    css = _tune_css()
+    compound = ".tune-curate-sidebyside.tune-view-hidden"
+    assert compound in css, "missing the higher-specificity Difference-hide rule"
+
+    # The compound rule must appear after the base `.tune-curate-sidebyside {`
+    # declaration (cascade order matters for equal specificity, and this is
+    # higher specificity regardless — but ordering keeps intent obvious).
+    base_idx = css.index(".tune-curate-sidebyside {")
+    compound_idx = css.index(compound)
+    assert compound_idx > base_idx
+
+    # The compound rule resolves to display:none (the hide).
+    tail = css[compound_idx : compound_idx + 160]
+    assert "display: none" in tail
+
+
+def test_switch_curate_mode_classes_toggle_hidden(tmp_path: Path) -> None:
+    """In Difference mode the side-by-side container carries ``tune-view-hidden``;
+    in Side-by-side mode the difference container does. Pairs with the CSS rule
+    above (class wiring + specificity together make the panels hide)."""
+    app = _curate_app(tmp_path)
+    client = app.server.test_client()
+
+    out_key = next(
+        k
+        for k in app.callback_map
+        if "tune-curate-mode-store.data" in k and "tune-side-by-side" in k
+    )
+
+    def _classes(mode_value: str) -> dict[str, str]:
+        resp = client.post(
+            "/_dash-update-component",
+            json={
+                "output": out_key,
+                "outputs": [
+                    {"id": "tune-curate-mode-store", "property": "data"},
+                    {"id": "tune-side-by-side", "property": "className"},
+                    {"id": "tune-difference", "property": "className"},
+                ],
+                "inputs": [
+                    {
+                        "id": "tune-curate-mode-toggle",
+                        "property": "value",
+                        "value": mode_value,
+                    }
+                ],
+                "state": [],
+                "changedPropIds": ["tune-curate-mode-toggle.value"],
+            },
+        )
+        assert resp.status_code == 200
+        r = resp.get_json()["response"]
+        return {
+            "side": r["tune-side-by-side"]["className"],
+            "diff": r["tune-difference"]["className"],
+        }
+
+    difference = _classes("difference")
+    assert "tune-view-hidden" in difference["side"]  # side-by-side hidden
+    assert "tune-view-hidden" not in difference["diff"]
+
+    side = _classes("side")
+    assert "tune-view-hidden" not in side["side"]
+    assert "tune-view-hidden" in side["diff"]  # difference hidden

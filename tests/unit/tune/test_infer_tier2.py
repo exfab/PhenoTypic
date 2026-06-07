@@ -79,7 +79,9 @@ def test_enum_to_categorical():
     res = _infer_single(Mode, Mode.A)
     assert isinstance(res, Knob)
     assert res.source == "enum"
-    assert set(res.domain.choices) == {Mode.A, Mode.B}
+    # Stores enum *values* (not members) so the domain is JSON-native and
+    # round-trips to the same Python type via the op's field_validator.
+    assert set(res.domain.choices) == {"a", "b"}
 
 
 # --------------------------------------------------------------------------- #
@@ -159,12 +161,15 @@ def test_unbounded_widen_when_low_equals_high_int():
 
 
 def test_unbounded_non_positive_default_excluded():
+    # A non-positive anchor (d <= 0) collapses the multiplicative window and is
+    # now flagged with the distinct ``non_positive_default`` reason (not the
+    # overloaded ``non_numeric``).
     res = _infer_single(float, 0.0)
     assert isinstance(res, Excluded)
-    assert res.reason == "non_numeric"
+    assert res.reason == "non_positive_default"
     res_neg = _infer_single(int, -5)
     assert isinstance(res_neg, Excluded)
-    assert res_neg.reason == "non_numeric"
+    assert res_neg.reason == "non_positive_default"
 
 
 # --------------------------------------------------------------------------- #

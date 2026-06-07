@@ -18,16 +18,19 @@ from ._space import Knob, SearchSpace
 #: Why a field was excluded from the inferred space — a closed set (never a bare
 #: ``str``). ``"ndarray"``/``"path"``/``"name_ref"``/``"tune_spec_off"`` are
 #: *deliberate* exclusions (the field is simply not scalar-tunable, or the author
-#: opted it out). ``"non_numeric"`` (an unbounded numeric with a non-positive
-#: default — the multiplicative window collapses) and ``"unsupported_type"`` (a
-#: multi-type union / unrecognised annotation) are *inference-blind*: inference
-#: could not produce a plausible domain, so the proposal flags the whole space
-#: for review (see ``InferredSearchSpace.needs_review``).
+#: opted it out). ``"non_numeric"`` (a non-numeric / ``None`` anchor for the
+#: unbounded heuristic), ``"non_positive_default"`` (a numeric anchor ``<= 0``, so
+#: the multiplicative ``[d/f, d·f]`` window collapses or flips sign), and
+#: ``"unsupported_type"`` (a multi-type union / unrecognised annotation) are
+#: *inference-blind*: inference could not produce a plausible domain, so the
+#: proposal flags the whole space for review (see
+#: ``InferredSearchSpace.needs_review``).
 ExcludeReason = Literal[
     "ndarray",
     "path",
     "name_ref",
     "non_numeric",
+    "non_positive_default",
     "tune_spec_off",
     "unsupported_type",
 ]
@@ -35,7 +38,7 @@ ExcludeReason = Literal[
 #: Exclusion reasons that mean "inference could not even guess" — these raise the
 #: proposal-level review flag. The remaining reasons are deliberate exclusions.
 _BLIND_REASONS: frozenset[ExcludeReason] = frozenset(
-    {"non_numeric", "unsupported_type"}
+    {"non_numeric", "non_positive_default", "unsupported_type"}
 )
 
 
@@ -96,8 +99,8 @@ class InferredSearchSpace(BaseModel):
 
         ``True`` iff any knob is flagged ``needs_review`` **or** any field was
         excluded for an inference-blind reason (``non_numeric`` /
-        ``unsupported_type``). Deliberate exclusions (ndarray / path / name-ref
-        / ``tune_spec_off``) do not raise the flag.
+        ``non_positive_default`` / ``unsupported_type``). Deliberate exclusions
+        (ndarray / path / name-ref / ``tune_spec_off``) do not raise the flag.
         """
         if any(k.needs_review for k in self.knobs):
             return True

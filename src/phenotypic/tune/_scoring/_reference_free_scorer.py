@@ -158,6 +158,13 @@ class ReferenceFreeScorer(Scorer):
     #: re-validates and stays unavailable until it does.
     _meta_validated: bool = PrivateAttr(default=False)
 
+    #: The raw proxy-vs-GT Spearman ρ from the last :meth:`meta_validate` run,
+    #: kept distinct from the enable verdict so the stricter *unattended* bar
+    #: (:data:`_UNATTENDED_RHO`) is checked against the actual correlation rather
+    #: than conflated with the 0.7 enable decision. Run-local (``PrivateAttr``,
+    #: never serialized); ``-inf`` until the gate has run.
+    _last_rho: float = PrivateAttr(default=float("-inf"))
+
     # ----------------------------------------------------------------- #
     # availability + the meta-validation gate (Task 2)
     # ----------------------------------------------------------------- #
@@ -206,24 +213,31 @@ class ReferenceFreeScorer(Scorer):
         if not masks:
             # No ground truth → cannot certify the proxy → abstain (fail-safe).
             self._meta_validated = False
+            self._last_rho = float("-inf")
             return False
         rho = self._proxy_gt_spearman(gt_images, masks, grid)
+        # Store the raw ρ so the stricter unattended bar reads the actual value;
+        # the enable verdict and the unattended verdict are distinct thresholds.
+        self._last_rho = float(rho)
         self._meta_validated = bool(rho >= _ENABLE_RHO)
         return self._meta_validated
 
     def is_unattended_safe(self) -> bool:
         """Whether the last gate run cleared the *unattended* auto-tuning bar.
 
-        A stricter read than :meth:`availability`: unattended auto-tuning needs
-        ``ρ ≥`` :data:`_UNATTENDED_RHO`. v1 stores only the enable verdict, so
-        this conservatively requires the scorer be enabled; the deferred real-GT
-        validation (``DEFERRED-WORK §1``) will record the stricter margin.
+        A strictly stronger read than :meth:`availability`: unattended auto-tuning
+        needs ``ρ ≥`` :data:`_UNATTENDED_RHO` (0.8), checked against the **raw**
+        correlation :attr:`_last_rho` recorded by :meth:`meta_validate` — *not*
+        conflated with the 0.7 enable verdict. Because ``_last_rho`` is ``-inf``
+        until the gate runs, this returns ``False`` before meta-validation and
+        whenever the gate abstained (no GT), so it implies :meth:`availability`
+        but a proxy that only cleared the 0.7 enable bar is **not** unattended-safe.
 
         Returns:
-            ``True`` only when the proxy is enabled (a necessary condition for
-            unattended use).
+            ``True`` only when the last gate run's ρ reached the unattended
+            threshold (``≥`` :data:`_UNATTENDED_RHO`); ``False`` otherwise.
         """
-        return self._meta_validated
+        return self._last_rho >= _UNATTENDED_RHO
 
     def _load_gt_masks(self, gt_images: Any) -> dict[str, Any]:
         """Resolve the configured ground-truth mask source to a name→mask map.
@@ -425,11 +439,17 @@ class ReferenceFreeScorer(Scorer):
     def _coefficient_of_variation(values: pd.Series) -> float:
         """The coefficient of variation ``σ / μ`` of one replicate group.
 
+        Uses the **sample** standard deviation (``ddof=1``, Bessel's correction):
+        a replicate group is a *sample* of the colony-size population, not the
+        whole population, so the unbiased estimator is the correct dispersion
+        (and it matches pandas' ``Series.std`` default).
+
         Args:
             values: A group's ``Size_Area`` values.
 
         Returns:
-            ``std / mean`` (``0.0`` for a single value or a non-positive mean).
+            Sample ``std / mean`` (``0.0`` for a single value or a non-positive
+            mean).
         """
         clean = values.dropna()
         if len(clean) < 2:
@@ -437,7 +457,7 @@ class ReferenceFreeScorer(Scorer):
         mean = float(clean.mean())
         if mean <= 0.0:
             return 0.0
-        return float(clean.std(ddof=0)) / mean
+        return float(clean.std(ddof=1)) / mean
 
     def _count(self, measurements: pd.DataFrame, empty: bool) -> float:
         """The reused expected-vs-detected grid count term (``§C.6``).

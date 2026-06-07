@@ -17,6 +17,7 @@ from phenotypic.tune import (
     SearchSpace,
 )
 from phenotypic.tune._scoring._reference_free_scorer import (
+    ReferenceFreeScorer as _RFS,
     _bounded_inverse,
     _clamp01,
 )
@@ -296,3 +297,77 @@ def test_meta_validation_flag_does_not_serialize():
     object.__setattr__(scorer, "_meta_validated", True)
     reloaded = ReferenceFreeScorer.model_validate_json(scorer.model_dump_json())
     assert reloaded.availability() is False
+
+
+# --------------------------------------------------------------------------- #
+# coefficient of variation uses the SAMPLE std (ddof=1), not the population std
+# --------------------------------------------------------------------------- #
+def test_coefficient_of_variation_uses_sample_std_ddof1():
+    # [10, 20, 30]: sample std (ddof=1) = 10, mean = 20 → CV = 0.5 exactly.
+    # The old population std (ddof=0) would give sqrt(200/3)/20 ≈ 0.4082, so this
+    # pin distinguishes the two estimators.
+    cv = _RFS._coefficient_of_variation(pd.Series([10.0, 20.0, 30.0]))
+    assert cv == pytest.approx(0.5)
+
+
+def test_coefficient_of_variation_two_value_group_ddof1():
+    # [100, 200]: ddof=1 std = sqrt(5000) ≈ 70.7107, mean = 150 → CV ≈ 0.4714.
+    cv = _RFS._coefficient_of_variation(pd.Series([100.0, 200.0]))
+    assert cv == pytest.approx(0.4714045207910317)
+    # Sanity: strictly above the ddof=0 value (0.3333), i.e. genuinely Bessel-corrected.
+    assert cv > 1.0 / 3.0
+
+
+def test_size_cv_term_reflects_ddof1_fold():
+    # End-to-end: a single [10,20,30] group folds via 1/(1+CV) with the ddof=1 CV.
+    scorer = ReferenceFreeScorer()
+    image, _ = _measured_plate()
+    frame = pd.DataFrame({"Size_Area": [10.0, 20.0, 30.0]})
+    assert scorer.score_image(image, frame)["SizeCV"] == pytest.approx(
+        _bounded_inverse(0.5)
+    )
+
+
+# --------------------------------------------------------------------------- #
+# is_unattended_safe checks the RAW rho against the 0.8 bar (not the 0.7 verdict)
+# --------------------------------------------------------------------------- #
+def test_is_unattended_safe_false_before_meta_validate():
+    # No gate run → raw rho is -inf → not unattended-safe (and not available).
+    scorer = ReferenceFreeScorer()
+    assert scorer.is_unattended_safe() is False
+    assert scorer.availability() is False
+
+
+def test_enable_bar_does_not_imply_unattended_bar(monkeypatch):
+    # rho in [0.7, 0.8): the proxy is ENABLED (availability True) but NOT
+    # unattended-safe — the two thresholds must not be conflated.
+    scorer = ReferenceFreeScorer(gt_masks_source="/some/gt")
+    monkeypatch.setattr(scorer, "_load_gt_masks", lambda images: {"x": object()})
+    monkeypatch.setattr(scorer, "_proxy_gt_spearman", lambda *a, **k: 0.75)
+    scorer.meta_validate([load_synth_yeast_plate()], grid={})
+    assert scorer.availability() is True  # cleared the 0.7 enable bar
+    assert scorer.is_unattended_safe() is False  # but NOT the 0.8 unattended bar
+
+
+def test_unattended_bar_met_when_rho_at_or_above_threshold(monkeypatch):
+    scorer = ReferenceFreeScorer(gt_masks_source="/some/gt")
+    monkeypatch.setattr(scorer, "_load_gt_masks", lambda images: {"x": object()})
+    monkeypatch.setattr(scorer, "_proxy_gt_spearman", lambda *a, **k: 0.8)
+    scorer.meta_validate([load_synth_yeast_plate()], grid={})
+    assert scorer.availability() is True
+    assert scorer.is_unattended_safe() is True
+
+
+def test_unattended_safe_resets_when_gate_abstains(monkeypatch):
+    # A passing run, then a re-run that abstains (no GT) must clear BOTH verdicts
+    # — the stored raw rho is reset to -inf so a stale 0.8 cannot linger.
+    scorer = ReferenceFreeScorer(gt_masks_source="/some/gt")
+    monkeypatch.setattr(scorer, "_load_gt_masks", lambda images: {"x": object()})
+    monkeypatch.setattr(scorer, "_proxy_gt_spearman", lambda *a, **k: 0.95)
+    scorer.meta_validate([load_synth_yeast_plate()], grid={})
+    assert scorer.is_unattended_safe() is True
+    # Now the GT disappears → abstain.
+    monkeypatch.setattr(scorer, "_load_gt_masks", lambda images: {})
+    scorer.meta_validate([load_synth_yeast_plate()], grid={})
+    assert scorer.availability() is False
+    assert scorer.is_unattended_safe() is False

@@ -73,11 +73,13 @@ def test_masks_for_accepts_filename_with_suffix(mask_dir):
 
 
 def test_masks_for_reads_tif(mask_dir):
+    # plate2.tif was written as an integer (uint8) image; the loader now
+    # PRESERVES the on-disk dtype (no bool cast), so the integer values survive.
     gt = GroundTruthMasks(gt_masks_source=mask_dir)
     mask = gt.masks_for("plate2")
     assert isinstance(mask, np.ndarray)
-    assert mask.dtype == bool
-    np.testing.assert_array_equal(mask, np.array([[True, False], [False, True]]))
+    assert np.issubdtype(mask.dtype, np.integer)
+    np.testing.assert_array_equal(mask, np.array([[1, 0], [0, 1]]))
 
 
 def test_unknown_name_returns_none(mask_dir):
@@ -128,3 +130,57 @@ def test_modality_count_for_csv_source(tmp_path):
     # A count source yields no per-image masks.
     assert gt.masks_for("plate1") is None
     assert gt.available_names() == frozenset()
+
+
+# --------------------------------------------------------------------------- #
+# B1 — dtype preservation (the loader no longer casts to bool)
+# --------------------------------------------------------------------------- #
+def test_read_mask_preserves_integer_instance_labels(tmp_path):
+    # An integer-labelled .npy must survive as integer (instance labels reach the
+    # matcher); the old bool cast destroyed every per-object label.
+    d = tmp_path / "gt"
+    d.mkdir()
+    np.save(d / "labels.npy", np.array([[1, 1, 0], [0, 2, 2]], dtype=np.int32))
+    gt = GroundTruthMasks(gt_masks_source=d, gt_format="instance")
+    mask = gt.masks_for("labels")
+    assert isinstance(mask, np.ndarray)
+    assert np.issubdtype(mask.dtype, np.integer)
+    assert int(mask.max()) == 2
+    np.testing.assert_array_equal(mask, np.array([[1, 1, 0], [0, 2, 2]]))
+
+
+def test_read_mask_preserves_boolean_foreground(tmp_path):
+    # A binary .npy stays bool (no spurious widening); foreground convention holds.
+    d = tmp_path / "gt"
+    d.mkdir()
+    np.save(d / "fg.npy", np.array([[True, False], [False, True]]))
+    gt = GroundTruthMasks(gt_masks_source=d)  # default gt_format == "binary"
+    mask = gt.masks_for("fg")
+    assert mask is not None
+    assert mask.dtype == bool
+
+
+# --------------------------------------------------------------------------- #
+# B1 — gt_format is a serializable closed set that round-trips
+# --------------------------------------------------------------------------- #
+def test_gt_format_defaults_to_binary(mask_dir):
+    assert GroundTruthMasks(gt_masks_source=mask_dir).gt_format == "binary"
+
+
+def test_gt_format_round_trips_through_model_dump_json(mask_dir):
+    gt = GroundTruthMasks(gt_masks_source=mask_dir, gt_format="instance")
+    reloaded = GroundTruthMasks.model_validate_json(gt.model_dump_json())
+    assert reloaded.gt_format == "instance"
+
+
+def test_gt_format_is_in_serialized_payload(mask_dir):
+    # The flag must live in the serialized surface (so tuning_spec.json carries it).
+    payload = GroundTruthMasks(
+        gt_masks_source=mask_dir, gt_format="instance"
+    ).model_dump()
+    assert payload["gt_format"] == "instance"
+
+
+def test_gt_format_rejects_unknown_value(mask_dir):
+    with pytest.raises(ValueError):
+        GroundTruthMasks(gt_masks_source=mask_dir, gt_format="semantic")  # type: ignore[arg-type]

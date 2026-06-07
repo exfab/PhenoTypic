@@ -74,6 +74,7 @@ def run_worker(
     """
     from .._engine import TuningEngine
     from .._multi_objective import objective_directions
+    from .._strategies._optuna_support import fail_stale_running_trials
 
     spec = TuningSpec.model_validate_json(Path(spec_path).read_text())
     images = _load_images(Path(images_dir))
@@ -86,6 +87,14 @@ def run_worker(
     store = build_worker_store(
         storage_url=storage_url, study_name=study_name, directions=directions
     )
+    # Reconcile stale RUNNING trials left by a previously-killed worker BEFORE
+    # entering the ask/tell loop and the budget check: a zombie trial stuck in
+    # RUNNING never reaches COMPLETE/PRUNED, so failing it keeps the shared
+    # budget accounting honest (the engine + strategy count only COMPLETE+PRUNED
+    # toward n_trials, so an un-failed zombie does not over-consume — but
+    # reconciling clears it from the study so it cannot skew sampler/pruner
+    # statistics, and a re-enqueued worker starts from a clean slate).
+    fail_stale_running_trials(store.study)
     TuningEngine(spec, store=store).optimize(images)
 
 

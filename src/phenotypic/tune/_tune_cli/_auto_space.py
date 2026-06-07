@@ -33,6 +33,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from phenotypic.tools_ import _io_constants as io
+from phenotypic.tools_ import atomic_write_text
 
 from .._search_space import InferredSearchSpace, infer_search_space
 
@@ -64,7 +65,9 @@ def run_auto_space(pipeline: object, output_dir: str | Path) -> InferredSearchSp
     output_dir = Path(output_dir)
     io.deliverables_dir(output_dir).mkdir(parents=True, exist_ok=True)
     proposal = infer_search_space(pipeline)
-    io.tuning_spec_path(output_dir).write_text(proposal.model_dump_json(indent=2))
+    atomic_write_text(
+        io.tuning_spec_path(output_dir), proposal.model_dump_json(indent=2)
+    )
     return proposal
 
 

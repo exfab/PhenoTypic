@@ -91,6 +91,37 @@ def _build_parser() -> argparse.ArgumentParser:
         help="submit a distributed worker fleet over SLURM instead of running locally",
     )
     run_p.add_argument(
+        "--n-workers",
+        type=int,
+        default=None,
+        dest="n_workers",
+        help=(
+            "number of SLURM array workers in the fleet (--slurm only); when "
+            "unset, defaults to min(8, n_trials) or 4"
+        ),
+    )
+    run_p.add_argument(
+        "--slurm-partition",
+        default=None,
+        dest="slurm_partition",
+        help=(
+            "SLURM partition for the worker fleet (--slurm only); when unset the "
+            "#SBATCH --partition directive is omitted (cluster default)"
+        ),
+    )
+    run_p.add_argument(
+        "--slurm-mem",
+        default=None,
+        dest="slurm_mem",
+        help="SLURM --mem for each worker (--slurm only), e.g. '8G'",
+    )
+    run_p.add_argument(
+        "--slurm-time",
+        default=None,
+        dest="slurm_time",
+        help="SLURM --time wall-clock limit for each worker (--slurm only), e.g. '04:00:00'",
+    )
+    run_p.add_argument(
         "--held-out-fraction",
         type=float,
         default=None,
@@ -159,6 +190,10 @@ def _run_command(args: argparse.Namespace) -> None:
         images_dir=Path(args.input),
         held_out_fraction=args.held_out_fraction,
         cv_group=args.cv_group,
+        n_workers=args.n_workers,
+        slurm_partition=args.slurm_partition,
+        slurm_mem=args.slurm_mem,
+        slurm_time=args.slurm_time,
     )
 
 

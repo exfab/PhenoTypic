@@ -86,6 +86,47 @@ TUNE_ACTIVE_VIEW_STORE = "tune-active-view-store"
 TUNE_RUN_ROOT_STORE = "tune-run-root-store"
 
 # ---------------------------------------------------------------------------
+# Run picker (Chunk C — bind a tune output directory at runtime)
+# ---------------------------------------------------------------------------
+
+#: The page-body container the bind callback swaps from the pick-a-run prompt to
+#: the loaded four-view layout. Held at the page root so the store-write that
+#: binds a run can re-render the whole body without disturbing the picker chrome
+#: or the run-root store above it.
+TUNE_PAGE_BODY = "tune-page-body"
+
+#: The "Bind run" / "Browse..." run-picker button that opens the sandbox-bounded
+#: run-directory picker modal.
+TUNE_BTN_PICK_RUN = "tune-btn-pick-run"
+
+#: The selected-run-directory label shown next to the picker button (the bound
+#: run path, or a "no run bound" placeholder).
+TUNE_RUN_PICKER_LABEL = "tune-run-picker-label"
+
+#: A status / error note next to the run picker: surfaces a "not a tune output"
+#: rejection (a clear message, never a 500) when discovery fails.
+TUNE_RUN_PICKER_NOTE = "tune-run-picker-note"
+
+#: The sandbox-bounded run-directory picker modal (reuses the builder
+#: ``directory_tree`` folder-only listing, like the Curate Image Source picker).
+TUNE_RUN_PICKER_MODAL = "tune-run-picker-modal"
+
+#: The run-picker modal body that re-renders the directory tree on navigation.
+TUNE_RUN_PICKER_MODAL_BODY = "tune-run-picker-modal-body"
+
+#: The browse-dir store the run-picker modal's tree re-renders from on navigation.
+TUNE_RUN_PICKER_BROWSE_DIR = "tune-run-picker-browse-dir"
+
+#: The run-picker modal's Cancel button.
+TUNE_BTN_RUN_PICKER_CANCEL = "tune-btn-run-picker-cancel"
+
+#: The run-picker modal's "Bind this run" confirm button.
+TUNE_BTN_RUN_PICKER_CONFIRM = "tune-btn-run-picker-confirm"
+
+#: The pattern-matching ``type`` for a directory entry in the run-picker tree.
+TUNE_DIR_ENTRY_RUN = "tune-dir-entry-run"
+
+# ---------------------------------------------------------------------------
 # Monitor view (Chunk A)
 # ---------------------------------------------------------------------------
 
@@ -268,6 +309,16 @@ __all__ = [
     "TUNE_RUN_HEADER",
     "TUNE_ACTIVE_VIEW_STORE",
     "TUNE_RUN_ROOT_STORE",
+    "TUNE_PAGE_BODY",
+    "TUNE_BTN_PICK_RUN",
+    "TUNE_RUN_PICKER_LABEL",
+    "TUNE_RUN_PICKER_NOTE",
+    "TUNE_RUN_PICKER_MODAL",
+    "TUNE_RUN_PICKER_MODAL_BODY",
+    "TUNE_RUN_PICKER_BROWSE_DIR",
+    "TUNE_BTN_RUN_PICKER_CANCEL",
+    "TUNE_BTN_RUN_PICKER_CONFIRM",
+    "TUNE_DIR_ENTRY_RUN",
     "TUNE_STUDY_POLL",
     "TUNE_OBJECTIVE_FIGURE",
     "TUNE_IMPORTANCE_FIGURE",

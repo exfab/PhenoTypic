@@ -18,6 +18,11 @@ __pycache__/
 .mypy_cache/
 phenotypic.egg-info/
 
+# Phenotypic run machine-state (normally under a user-chosen output dir,
+# but ignored defensively in case an output dir is placed inside the repo)
+.phenotypic/
+.pht-tune-cache/
+
 # Virtual environments
 .venv/
 .junie/

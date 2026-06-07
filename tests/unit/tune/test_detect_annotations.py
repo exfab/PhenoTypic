@@ -44,7 +44,7 @@ def _excluded(op, field_name: str):
         (CannyDetector(), "sigma", FloatRange, (0.5, 3.0, False)),
         (CannyDetector(), "min_size", IntRange, (20, 500)),
         (CannyDetector(), "low_threshold", FloatRange, (0.05, 0.2, False)),
-        (CannyDetector(), "high_threshold", FloatRange, (0.1, 0.4, False)),
+        (CannyDetector(), "high_threshold", FloatRange, (0.2, 0.4, False)),
         (RoundPeaksDetector(), "footprint_width", IntRange, (4, 20)),
         (RoundPeaksDetector(), "noise_radius", IntRange, (1, 3)),
         (RoundPeaksDetector(), "smoothing_sigma", FloatRange, (0.0, 5.0)),

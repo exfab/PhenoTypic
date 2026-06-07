@@ -28,7 +28,7 @@ a missing stem yields ``None``.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Literal, Optional
+from typing import Any, Literal, Optional, TypeAlias
 
 import numpy as np
 import numpy.typing as npt
@@ -43,6 +43,28 @@ from pydantic import (
 #: surface beyond this loader): ``"mask"`` (a directory of per-image masks),
 #: ``"count"`` (a CSV/Parquet of per-image expected counts), ``"none"`` (abstain).
 Modality = Literal["mask", "count", "none"]
+
+#: How the pixels of a **mask-modality** GT source are interpreted — a
+#: serializable closed set (it round-trips through ``model_dump`` /
+#: ``tuning_spec.json`` like ``gt_masks_source`` does):
+#:
+#: * ``"instance"`` — the on-disk mask is already an **integer instance-label**
+#:   array (each colony a distinct positive label); the matcher consumes it
+#:   directly.
+#: * ``"binary"`` — the on-disk mask is a **binary foreground** mask (any
+#:   non-zero pixel is colony); per-cell instances are derived from the grid at
+#:   scoring time (:mod:`._supervised`).
+#:
+#: Orthogonal to :data:`Modality`: ``gt_format`` only *interprets* a ``"mask"``
+#: source — it has no bearing on the ``"count"`` / ``"none"`` modalities.
+GTFormat: TypeAlias = Literal["instance", "binary"]
+
+#: A loaded GT mask array — integer instance labels **or** a binary/boolean
+#: foreground mask. The loader preserves the on-disk dtype (it no longer forces
+#: ``bool``), so instance labels survive to the matcher and only the
+#: :class:`~._supervised.SupervisedScorer` decides how to interpret them per
+#: :data:`GTFormat`.
+GTMaskArray: TypeAlias = "npt.NDArray[np.integer[Any]] | npt.NDArray[np.bool_]"
 
 #: Mask file suffixes, in resolution priority order: a binary ``.npy`` array wins
 #: over a ``.tif``, which wins over a ``.png`` — the first existing one is used.
@@ -68,40 +90,57 @@ class GroundTruthMasks(BaseModel):
             table (``modality "count"``), or ``None`` to abstain
             (``modality "none"``). Captured as a string in the serialized surface
             so the source round-trips through ``tuning_spec.json``.
+        gt_format: How a **mask**-modality source's pixels are interpreted —
+            ``"instance"`` (an integer instance-label array, consumed directly by
+            the matcher) or ``"binary"`` (a foreground mask, default; per-cell
+            instances are derived from the grid by the supervised scorer).
+            Orthogonal to the modality and round-trips through
+            ``tuning_spec.json``. Ignored by the ``"count"`` / ``"none"``
+            modalities.
 
     Examples:
-        Construct from a directory of masks and round-trip the source path:
+        Construct from a directory of masks and round-trip the source path and
+        format. The loader **preserves the on-disk dtype** — a binary mask loads
+        as ``bool``, an integer-labeled mask stays integer:
 
         >>> import json, tempfile, numpy as np
         >>> from pathlib import Path
         >>> from phenotypic.tune._scoring._gt_loader import GroundTruthMasks
         >>> tmp = Path(tempfile.mkdtemp())
         >>> _ = np.save(tmp / "plate1.npy", np.array([[True, False]]))
-        >>> gt = GroundTruthMasks(gt_masks_source=tmp)
+        >>> _ = np.save(tmp / "labels.npy", np.array([[1, 0], [0, 2]]))
+        >>> gt = GroundTruthMasks(gt_masks_source=tmp, gt_format="instance")
         >>> gt.modality()
         'mask'
         >>> sorted(gt.available_names())
-        ['plate1']
-        >>> bool(gt.masks_for("plate1.png").dtype == bool)
+        ['labels', 'plate1']
+        >>> bool(gt.masks_for("plate1.png").dtype == bool)  # binary stays bool
         True
+        >>> int(gt.masks_for("labels").max())  # integer labels preserved
+        2
         >>> reloaded = GroundTruthMasks.model_validate_json(gt.model_dump_json())
         >>> str(reloaded.gt_masks_source) == str(tmp)
         True
+        >>> reloaded.gt_format
+        'instance'
 
-        A sourceless loader abstains:
+        A sourceless loader abstains (and defaults ``gt_format`` to binary):
 
         >>> GroundTruthMasks(gt_masks_source=None).modality()
         'none'
+        >>> GroundTruthMasks(gt_masks_source=None).gt_format
+        'binary'
     """
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     gt_masks_source: Optional[Path] = None
+    gt_format: GTFormat = "binary"
 
-    #: In-memory cache of resolved masks (image stem → boolean array). Excluded
-    #: from serialization (arrays are not JSON-native) and rebuilt lazily on
-    #: demand from :attr:`gt_masks_source`, so a reloaded loader re-resolves.
-    _cache: dict[str, npt.NDArray[np.bool_]] = PrivateAttr(default_factory=dict)
+    #: In-memory cache of resolved masks (image stem → integer/boolean array).
+    #: Excluded from serialization (arrays are not JSON-native) and rebuilt lazily
+    #: on demand from :attr:`gt_masks_source`, so a reloaded loader re-resolves.
+    _cache: dict[str, GTMaskArray] = PrivateAttr(default_factory=dict)
 
     @model_validator(mode="before")
     @classmethod
@@ -166,20 +205,24 @@ class GroundTruthMasks(BaseModel):
         }
         return frozenset(stems)
 
-    def masks_for(self, image_name: str) -> Optional[npt.NDArray[np.bool_]]:
+    def masks_for(self, image_name: str) -> Optional[GTMaskArray]:
         """Resolve the ground-truth mask for one image by its stem.
 
         Strips any extension from ``image_name`` (so ``"plate1.png"`` and bare
         ``"plate1"`` match the same stem) and looks for
         ``gt_masks_source/<stem>.{npy,tif,png}`` in :data:`_MASK_SUFFIX_PRIORITY`
-        order, returning the first that exists as a boolean array. The result is
-        cached in the excluded :attr:`_cache`.
+        order, returning the first that exists **with its on-disk dtype
+        preserved** — integer instance labels stay integer, a binary mask stays
+        boolean. How those values are interpreted (instance vs. binary) is the
+        :attr:`gt_format` decision, applied by the supervised scorer, not here.
+        The result is cached in the excluded :attr:`_cache`.
 
         Args:
             image_name: The image's name or filename; only its stem is matched.
 
         Returns:
-            The boolean ground-truth mask, or ``None`` when no source directory is
+            The ground-truth mask (integer labels or a boolean foreground mask,
+            dtype preserved from disk), or ``None`` when no source directory is
             configured or no mask file exists for the stem.
         """
         source = self.gt_masks_source
@@ -197,19 +240,25 @@ class GroundTruthMasks(BaseModel):
         return None
 
     @staticmethod
-    def _read_mask(path: Path) -> npt.NDArray[np.bool_]:
-        """Read a mask file into a boolean array (``.npy`` / ``.tif`` / ``.png``).
+    def _read_mask(path: Path) -> GTMaskArray:
+        """Read a mask file (``.npy`` / ``.tif`` / ``.png``), preserving dtype.
+
+        The on-disk dtype is **not** coerced: an integer instance-label array
+        stays integer (so per-object labels survive to the matcher) and a binary
+        mask stays boolean. The :attr:`gt_format` flag — not this reader — decides
+        whether the values are read as instance labels or as a binary foreground.
 
         Args:
             path: An existing mask file with a recognized suffix.
 
         Returns:
-            The mask as a boolean array (non-zero entries are foreground).
+            The mask as loaded from disk: integer labels stay integer, a boolean
+            mask stays boolean (non-zero entries are foreground either way).
         """
         if path.suffix.lower() == ".npy":
-            return np.load(path).astype(bool)
+            return np.load(path)
         # Image masks (.tif/.png): read via skimage, guarded for headless/cross-
         # platform installs where the imageio backend may be unavailable.
         from skimage import io as skio
 
-        return np.asarray(skio.imread(path)).astype(bool)
+        return np.asarray(skio.imread(path))

@@ -10,7 +10,7 @@ freeze the poll). These tests pin both halves.
 from __future__ import annotations
 
 import importlib.util
-import time
+import threading
 from pathlib import Path
 
 import pytest
@@ -51,45 +51,78 @@ def _journal_with_live_url(path: Path, storage_url: str) -> TuneRunRoot:
 
 
 @pytest.mark.skipif(not _OPTUNA_PRESENT, reason="live path is gated on the tune extra")
-def test_slow_live_open_does_not_block_poll_past_timeout(
+def test_slow_live_open_degrades_to_journal_without_joining_worker(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A long-hanging live open must return the parquet fallback in < timeout+eps.
+    """A still-blocked live open degrades to the parquet fallback, non-blocking.
 
-    Proves the bound: even if the live-store constructor blocks far longer than
-    the timeout, the poll returns within ~timeout (not the full block), with the
-    parquet store + the unreachable note. RED before the fix (the
-    ``with``-managed executor re-joins the worker on ``__exit__`` and blocks the
-    full sleep). The sleep (well above the 3 s timeout, but short enough not to
-    zombie test teardown via the executor's at-exit join) is interruptible by
-    the orphaned worker finishing on its own.
+    Behavioral (not wall-clock) pin of the C1 fix: when the live-store
+    constructor is still blocked, the poll must (a) return the parquet store +
+    the unreachable note rather than hang, and (b) NOT re-join the worker (the
+    bug the ``with``-managed executor's ``__exit__`` re-introduced).
+
+    Determinism: the slow open is gated on a :class:`threading.Event` the test
+    releases in ``finally`` (no fixed ``time.sleep`` that zombies teardown), and
+    the ``future.result`` timeout is monkeypatched to a small, deterministic
+    value so the bound is exercised without timing the wall clock. The proof of
+    "didn't join the worker" is that the gate is still un-released at the moment
+    the poll returns. RED before the fix: the executor's ``__exit__`` would block
+    on ``gate.wait()`` until the ``finally`` released it, and the assertion that
+    the gate is still held on return would fail.
     """
     from phenotypic.gui.tune import _callbacks
 
-    # Comfortably exceeds _LIVE_CONNECT_TIMEOUT_S (3 s) and the < timeout+2 s
-    # assertion bound (5 s) without leaving a 30 s zombie worker at teardown.
-    _HANG_SECONDS = 8.0
+    # A small, deterministic connect-timeout ceiling (the SUT reads this module
+    # global in ``future.result(timeout=...)``). It is a ceiling, not a sleep —
+    # the poll returns as soon as the bounded wait elapses.
+    monkeypatch.setattr(_callbacks, "_LIVE_CONNECT_TIMEOUT_S", 0.2)
 
-    def _hang(_root: object) -> object:
-        time.sleep(_HANG_SECONDS)
+    gate = threading.Event()
+    entered = threading.Event()
+
+    def _blocked_open(_root: object) -> object:
+        entered.set()  # the worker actually ran (the open was attempted)
+        gate.wait(timeout=30.0)  # held open until the test releases it
         raise AssertionError("should never return — the poll must abandon this")
 
-    monkeypatch.setattr(_callbacks, "_open_live_study", _hang)
+    monkeypatch.setattr(_callbacks, "_open_live_study", _blocked_open)
 
     root = _journal_with_live_url(
         tmp_path, "postgresql+psycopg://nope@10.255.255.1:54399/x"
     )
 
-    started = time.monotonic()
-    store, note = _callbacks.read_study_for_monitor(root)
-    elapsed = time.monotonic() - started
+    # Run the poll on a helper thread so the test can assert it RETURNS while the
+    # worker's gate is still held. A re-joining implementation (the C1 bug) could
+    # only return by waiting out the 30 s gate, so ``done.wait`` below would not
+    # fire — a deterministic, fast-failing behavioral signal that waits on a
+    # completion event, never a fixed sleep.
+    result: dict[str, object] = {}
+    done = threading.Event()
 
-    assert elapsed < _callbacks._LIVE_CONNECT_TIMEOUT_S + 2.0, (
-        f"poll blocked {elapsed:.1f}s — the connect timeout did not bound it"
-    )
-    assert store is not None
-    assert [t.score for t in store.trials] == [0.3, 0.6]  # the parquet fallback
-    assert "couldn't reach the live study" in note
+    def _drive() -> None:
+        try:
+            store, note = _callbacks.read_study_for_monitor(root)
+            result["store"], result["note"] = store, note
+        finally:
+            done.set()
+
+    worker = threading.Thread(target=_drive, name="poll-driver")
+    worker.start()
+    try:
+        # The poll degraded and returned promptly WHILE the live open is still
+        # blocked (gate un-released) — i.e. it did not join the worker.
+        assert done.wait(timeout=10.0), "poll did not return — it joined the worker"
+        assert not gate.is_set(), "the gate was released — the test, not the SUT"
+
+        store = result["store"]
+        note = result["note"]
+        assert store is not None
+        assert [t.score for t in store.trials] == [0.3, 0.6]  # the parquet fallback
+        assert "couldn't reach the live study" in note
+    finally:
+        gate.set()  # release the orphaned worker so it exits cleanly (no zombie)
+        entered.wait(timeout=5.0)
+        worker.join(timeout=5.0)
 
 
 def test_postgres_url_gets_connect_timeout_applied() -> None:

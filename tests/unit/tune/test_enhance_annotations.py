@@ -66,7 +66,7 @@ def _excluded(op, field_name: str):
         (FocusEdgePhase(), "n_scale", IntRange, (3, 6)),
         (FocusEdgePhase(), "min_wavelength", FloatRange, (2.0, 10.0, False)),
         (FocusEdgePhase(), "sigma_onf", FloatRange, (0.1, 1.0, False)),
-        (FocusEdgePhase(), "k", FloatRange, (0.0, 20.0, False)),
+        (FocusEdgePhase(), "k", FloatRange, (0.5, 20.0, False)),
         (FlattenIllumination(), "sigma", FloatRange, (40.0, 300.0, True)),
         (BM3DDenoiser(), "sigma_psd", FloatRange, (0.01, 0.15, True)),
         (FocusBlobLoG(), "min_radius", FloatRange, (1.0, 5.0)),

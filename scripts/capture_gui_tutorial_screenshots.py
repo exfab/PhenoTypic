@@ -1787,46 +1787,50 @@ def _heatmap_exploration_loaded_shots(page) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Tune co-pilot (standalone loaded app over a real tune output)
+# Tune co-pilot (standalone EMPTY-STATE app — bound at runtime via the picker)
 # ---------------------------------------------------------------------------
 #
-# The hub mounts ``/tune/`` in its empty (run-unbound) state — sidebar binding
-# of a tune run is a later chunk — so a LOADED co-pilot is captured by booting a
-# standalone tune app against the hermetic ``TUNE_OUTPUT_DIR``, mirroring
-# ``capture_standalone_viewer_screenshots``. The app is constructed in a child
+# The hub mounts ``/tune/`` in its empty (run-unbound) state; the user binds a
+# tune output at runtime with the sandbox-bounded run picker (Chunk C). The
+# tutorial captures that real flow: a standalone tune app is booted EMPTY-STATE
+# (``create_app(root=None, sandbox=...)``) against the dataset sandbox (so the
+# picker tree can reach the hermetic ``TUNE_OUTPUT_DIR`` AND the Curate Image
+# Source can reach ``PLATES_DIR``), and the capture drives the picker to bind the
+# run before screenshotting the loaded views. The app is constructed in a child
 # process via an inline snippet (there is no ``python -m phenotypic.gui.tune``
-# launcher) that discovers the run, binds the dataset sandbox (so the Curate
-# Image Source can reach ``PLATES_DIR``), and serves ``create_app`` on a port.
+# launcher) that serves ``create_app`` on a port.
 
-#: The inline child-process program that boots the loaded tune app. Reads the
-#: run dir / sandbox root / port from argv and serves ``create_app`` forever.
+#: The inline child-process program that boots the EMPTY-STATE tune app. Reads
+#: the sandbox root / port from argv and serves ``create_app(root=None)`` so the
+#: capture exercises the runtime run-binding path (the picker → bind → loaded
+#: views). ``TUNE_OUTPUT_DIR`` lives under the sandbox root, so it is reachable
+#: in the picker's folder tree.
 _TUNE_STANDALONE_BOOT = """\
 import sys
 from pathlib import Path
 from phenotypic.gui.shell import SandboxRoot
 from phenotypic.gui.tune import create_app
-from phenotypic.gui.tune._run_root import TuneRunRoot
 
-run_dir, sandbox_root, port = sys.argv[1], sys.argv[2], int(sys.argv[3])
-root = TuneRunRoot.discover(Path(run_dir))
+sandbox_root, port = sys.argv[1], int(sys.argv[2])
 sandbox = SandboxRoot.from_path(sandbox_root)
-app = create_app(root=root, url_prefix="/", sandbox=sandbox)
+app = create_app(root=None, url_prefix="/", sandbox=sandbox)
 app.run(host="127.0.0.1", port=port, debug=False)
 """
 
 
 def _boot_standalone_tune(port: int) -> subprocess.Popen[str]:
-    """Spawn the loaded tune co-pilot child process on ``port``.
+    """Spawn the EMPTY-STATE tune co-pilot child process on ``port``.
 
-    The child runs :data:`_TUNE_STANDALONE_BOOT` over ``TUNE_OUTPUT_DIR`` with
-    the dataset sandbox, so the run binds and the Curate Image Source can reach
-    ``PLATES_DIR``. The caller owns the returned process's teardown.
+    The child runs :data:`_TUNE_STANDALONE_BOOT` with the dataset sandbox so the
+    run picker's folder tree can reach ``TUNE_OUTPUT_DIR`` and, once bound, the
+    Curate Image Source can reach ``PLATES_DIR``. The caller owns the returned
+    process's teardown. The capture (:func:`_capture_tune_copilot`) drives the
+    picker to bind the run at runtime.
     """
     cmd = [
         sys.executable,
         "-c",
         _TUNE_STANDALONE_BOOT,
-        str(TUNE_OUTPUT_DIR),
         str(DATASET_DIR),
         str(port),
     ]
@@ -1849,17 +1853,74 @@ def _show_tune_subtab(page, name: str) -> None:
             print(f"[shot]   tune_copilot: sub-tab {name} click skipped: {exc!r}")
 
 
-def _capture_tune_copilot(context, base_url: str) -> None:
-    """Drive the loaded tune co-pilot and screenshot each sub-tab.
+def _bind_tune_run_via_picker(page, *, run_dir_name: str) -> None:
+    """Drive the runtime run picker to bind ``run_dir_name`` (Chunk C).
 
-    Monitor is the default view (its 3-second poll fills the objective +
-    importance figures + the trials table). Curate pins the first two shortlist
-    cards into A / B and picks a plate so the overlays render. Space and Launch
-    are captured as-mounted (their forms render from the bound run's spec).
+    Opens the sandbox-bounded run picker, screenshots the modal, navigates into
+    the run directory (clicking its folder entry sets the browse-dir into it),
+    and clicks "Bind this run" — exercising the real runtime binding path that
+    populates ``tune-run-root-store`` and swaps in the loaded views. Best-effort:
+    a missing affordance is logged and skipped so the rest of the capture still
+    runs.
+    """
+    browse = page.locator("#tune-btn-pick-run")
+    if browse.count() == 0:
+        print("[shot]   tune_copilot: run-picker button not found — bind skipped")
+        return
+    try:
+        browse.click(timeout=4000)
+        page.wait_for_selector("#tune-run-picker-modal", timeout=4000)
+        page.wait_for_timeout(500)
+    except Exception as exc:  # pragma: no cover - best-effort
+        print(f"[shot]   tune_copilot: run-picker open skipped: {exc!r}")
+        return
+    _save(page, "tune_copilot", "00b_run_picker_modal.png")
+
+    # Navigate INTO the run directory: clicking its folder entry sets the
+    # browse-dir to that folder, which is what "Bind this run" then binds.
+    folder = page.locator(
+        f"#tune-run-picker-modal-body >> text={run_dir_name}/"
+    ).first
+    try:
+        if folder.count() > 0:
+            folder.click(timeout=3000)
+            page.wait_for_timeout(600)
+    except Exception as exc:  # pragma: no cover - best-effort
+        print(f"[shot]   tune_copilot: run-dir navigation skipped: {exc!r}")
+
+    confirm = page.locator("#tune-btn-run-picker-confirm")
+    try:
+        if confirm.count() > 0:
+            confirm.click(timeout=3000)
+            # The body swaps to the loaded views; wait for the Monitor objective
+            # figure to mount before the caller's poll-settle wait.
+            page.wait_for_selector("#tune-objective-figure", timeout=8000)
+            page.wait_for_timeout(500)
+    except Exception as exc:  # pragma: no cover - best-effort
+        print(f"[shot]   tune_copilot: run bind confirm skipped: {exc!r}")
+
+
+def _capture_tune_copilot(context, base_url: str) -> None:
+    """Drive the tune co-pilot from empty → bound → each sub-tab.
+
+    First the EMPTY state: the page mounts run-unbound with the run picker.
+    :func:`_bind_tune_run_via_picker` opens the sandbox-bounded picker, navigates
+    into the run directory, and clicks "Bind this run" — the real runtime binding
+    path — which swaps in the loaded views. Then Monitor is the default view (its
+    3-second poll fills the objective + importance figures + the trials table);
+    Curate pins the first two shortlist cards into A / B and picks a plate so the
+    overlays render; Space and Launch are captured as-mounted (their forms render
+    from the bound run's spec).
     """
     page = context.new_page()
     page.goto(base_url + "/")
     page.wait_for_load_state("networkidle")
+    # Empty state: the pick-a-run prompt + the run picker, before any view loads.
+    _save(page, "tune_copilot", "00_empty_state.png")
+
+    # Bind the run at runtime via the picker (Browse → pick run dir → Bind).
+    _bind_tune_run_via_picker(page, run_dir_name=TUNE_OUTPUT_DIR.name)
+
     # The Monitor poll fires every 3s, and its first ticks spend ~3s each
     # timing out the live SQLite study open before degrading to the finished
     # ``trials.parquet`` journal. Wait several cycles so a journal-backed tick

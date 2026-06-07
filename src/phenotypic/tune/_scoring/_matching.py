@@ -8,10 +8,12 @@ for object-level supervised metrics. Two strategies:
   object overlaps), then pair within each cell. The arrayed plate's grid *is* the
   spatial prior, so no IoU tolerance is needed — a cell holds one biological colony.
 * :func:`match_iou_greedy` — the tolerance-based fallback for non-gridded layouts:
-  rank every candidate pair by IoU and greedily assign the highest first. At
-  ``τ > 0.5`` the assignment is provably **one-to-one** (no predicted or GT object can
-  exceed 0.5 IoU with two disjoint counterparts), so a merge leaves a GT object
-  unmatched and a split leaves a predicted object unmatched.
+  rank every candidate pair by IoU and greedily assign the highest first. A pair
+  is accepted only when its IoU is **strictly greater** than ``τ``; at the default
+  ``τ = 0.5`` every accepted pair therefore has IoU > 0.5, which makes the
+  assignment provably **one-to-one** (no predicted or GT object can exceed 0.5 IoU
+  with two disjoint counterparts), so a merge leaves a GT object unmatched and a
+  split leaves a predicted object unmatched.
 
 Both return a ``list[tuple]`` of ``(pred_label, gt_label)`` pairs: a matched pair has
 both non-``None``; an unmatched predicted object is ``(pred_label, None)`` and an
@@ -59,11 +61,15 @@ def match_iou_greedy(
 
     Computes the IoU of every overlapping predicted–GT label pair, sorts the pairs
     by descending IoU, and assigns the highest first; a pair is accepted only when
-    its IoU **exceeds** ``tau`` and neither object is already matched. At
-    ``τ > 0.5`` the result is provably one-to-one (supervised-scorers §C): a merge
-    (one predicted blob over two GT objects) can claim at most one GT, leaving the
-    other GT unmatched; a split (two predicted objects over one GT) leaves the
-    losing predicted object unmatched.
+    its IoU is **strictly greater** than ``tau`` and neither object is already
+    matched. With this strict-greater rule the default ``tau = 0.5`` accepts only
+    pairs whose IoU exceeds 0.5, and the result is then provably one-to-one
+    (supervised-scorers §C): no object can exceed 0.5 IoU with two disjoint
+    counterparts, so a merge (one predicted blob over two GT objects) can claim at
+    most one GT, leaving the other GT unmatched, and a split (two predicted objects
+    over one GT) leaves the losing predicted object unmatched. (A ``tau`` below 0.5
+    relaxes acceptance and can break uniqueness — e.g. the ``tau = 0.4`` merge/split
+    cases in the tests.)
 
     Args:
         pred_labels: The predicted label/objmap array (``0`` is background).
@@ -156,7 +162,10 @@ def match_per_grid_cell(image: Any, gt: npt.ArrayLike) -> list[MatchPair]:
     a cell holds several objects on each side they are paired by descending IoU
     (the same one-to-one rule as :func:`match_iou_greedy`, with ``τ = 0`` so every
     co-located pair is eligible). Objects with no counterpart in their cell are
-    returned unmatched.
+    returned unmatched. An object lying **entirely on the inter-cell gutter**
+    (grid section ``0``) belongs to no colony pocket; it is excluded from the
+    per-cell pairing and returned unmatched (``(label, None)`` /
+    ``(None, label)``) rather than scored as a spurious cross-gutter pair.
 
     Args:
         image: A ``GridImage`` exposing ``objmap`` (the predicted labels) and
@@ -177,7 +186,14 @@ def match_per_grid_cell(image: Any, gt: npt.ArrayLike) -> list[MatchPair]:
     pred_cells = _cell_assignment(pred, section_map)
     gt_cells = _cell_assignment(gt_arr, section_map)
 
-    cells = sorted(set(pred_cells.values()) | set(gt_cells.values()))
+    # Exclude the gutter (``_NO_CELL`` / 0): objects lying entirely on the
+    # inter-cell gutter are not in any colony pocket, so they are not scored as
+    # spurious pairs. They surface as unmatched (``(label, None)`` /
+    # ``(None, label)``) — never paired across the gutter — consistent with the
+    # module's "``None`` labels are never paired" contract.
+    cells = sorted(
+        (set(pred_cells.values()) | set(gt_cells.values())) - {_NO_CELL}
+    )
     matches: list[MatchPair] = []
     for cell in cells:
         pred_here = [lab for lab, c in pred_cells.items() if c == cell]
@@ -185,6 +201,14 @@ def match_per_grid_cell(image: Any, gt: npt.ArrayLike) -> list[MatchPair]:
         matches.extend(
             _pair_within_cell(pred, gt_arr, sorted(pred_here), sorted(gt_here))
         )
+    # Carry gutter-only objects through as unmatched (never paired across the
+    # gutter), preserving the (matched, unmatched-pred, unmatched-gt) ordering.
+    matches.extend(
+        (lab, None) for lab, c in sorted(pred_cells.items()) if c == _NO_CELL
+    )
+    matches.extend(
+        (None, lab) for lab, c in sorted(gt_cells.items()) if c == _NO_CELL
+    )
     return matches
 
 

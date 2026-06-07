@@ -18,6 +18,7 @@ artifact filenames, directory names, JSON contract keys, and path helpers
 
 from . import colourspace, constants_, exceptions_, napari_, panel_, register, slurm, slurm_
 from . import _io_constants
+from ._atomic_io import atomic_write_bytes, atomic_write_text
 from ._column_ref import ColumnRef, ColumnRefList, ColumnSource
 from ._io_constants import (
     # Filenames (CLI artifacts)
@@ -183,6 +184,8 @@ __all__ = [
     "GridInferenceMixin",
     "HDF",
     "LazyWidgetMixin",
+    "atomic_write_bytes",
+    "atomic_write_text",
     "colourspace",
     "constants_",
     "exceptions_",

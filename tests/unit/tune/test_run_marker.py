@@ -9,9 +9,12 @@ env-var-driven distributed-Postgres case.
 """
 from __future__ import annotations
 
+import importlib.util
 import json
+from pathlib import Path
 
 import pandas as pd
+import pytest
 
 from phenotypic import ImagePipeline
 from phenotypic.analysis import ExpectedVsDetectedCount
@@ -30,6 +33,8 @@ from phenotypic.tune import (
 from phenotypic.tune._spec import Budget, TuningSpec
 from phenotypic.tune._strategies._config import PHENOTYPIC_TUNE_STORAGE_URL_ENV
 from phenotypic.tune._tune_cli._run import run_tuning
+
+_OPTUNA = importlib.util.find_spec("optuna") is not None
 
 
 def _spec(tmp_path) -> TuningSpec:
@@ -93,6 +98,7 @@ def test_run_marker_records_env_storage_url(tmp_path, monkeypatch):
     assert marker["storage_url"] == "postgresql://host/tune"
 
 
+@pytest.mark.skipif(not _OPTUNA, reason="optuna extra not installed")
 def test_run_marker_written_before_slurm_branch(tmp_path, monkeypatch):
     """The marker exists even for a fire-and-forget SLURM submission (it is
     written before the engine/SLURM branch). The strategy + slurm flag reflect
@@ -141,23 +147,19 @@ def test_run_proceeds_when_marker_write_fails(tmp_path, monkeypatch, caplog):
 
     from phenotypic.tune._tune_cli import _run as run_mod
 
-    original_marker_path = run_mod.io.tune_cache_run_marker_path
-
-    class _ExplodingPath(type(tmp_path)):
-        """A marker path whose write_text raises, like a read-only FS."""
-
-        def write_text(self, *args, **kwargs):  # type: ignore[override]
-            raise OSError("Read-only file system")
-
-    def _exploding_marker_path(output_dir):
-        real = original_marker_path(output_dir)
-        return _ExplodingPath(real)
-
-    monkeypatch.setattr(
-        run_mod.io, "tune_cache_run_marker_path", _exploding_marker_path
-    )
-
     out = tmp_path / "run"
+    marker_target = run_mod.io.tune_cache_run_marker_path(out)
+    real_atomic_write_text = run_mod.atomic_write_text
+
+    def _exploding_atomic_write_text(path, text, **kwargs):
+        # Only the GUI-discovery marker write fails (read-only / over-quota FS);
+        # the real deliverables (tuning_spec.json, best_pipeline.json) still write.
+        if Path(path) == Path(marker_target):
+            raise OSError("Read-only file system")
+        return real_atomic_write_text(path, text, **kwargs)
+
+    monkeypatch.setattr(run_mod, "atomic_write_text", _exploding_atomic_write_text)
+
     with caplog.at_level(logging.WARNING):
         best = run_tuning(
             _spec(tmp_path),

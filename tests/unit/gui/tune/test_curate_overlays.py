@@ -109,6 +109,188 @@ def test_pending_dict_stays_bounded(tmp_path: Path) -> None:
     ov.clear_pending_for_session("sess")
 
 
+def _wait_ready(ov, key, timeout: float = 5.0) -> None:
+    """Block until ``key``'s overlay future has resolved (test helper)."""
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline and not ov.overlay_ready(key):
+        time.sleep(0.02)
+    assert ov.overlay_ready(key)
+
+
+def test_base_pipelines_registry_stays_bounded(tmp_path: Path) -> None:
+    # _BASE_PIPELINES memoizes one base pipeline per distinct run path. In a
+    # long-lived hub process each opened run would pin its base forever, so the
+    # registry must be a capped LRU (like _PENDING / OverlayCache) — never grow
+    # without bound. Drive read_base_pipeline across far more than the cap worth
+    # of distinct run dirs (each has no tuning_spec.json → memoizes None, which
+    # still occupies a slot) and assert the cap holds.
+    from phenotypic.gui.tune import _curate_overlays as ov
+    from phenotypic.gui.tune._curate_overlays import (
+        _BASE_PIPELINES,
+        _BASE_PIPELINES_CAP,
+    )
+    from phenotypic.gui.tune._run_root import TuneRunRoot
+
+    _BASE_PIPELINES.clear()
+    n = _BASE_PIPELINES_CAP * 3
+    for i in range(n):
+        run_dir = tmp_path / f"run_{i}"
+        run_dir.mkdir()
+        root = TuneRunRoot(
+            path=run_dir,
+            trials_path=None,
+            storage_url=None,
+            study_name="tune",
+            directions=None,
+            images_dir=None,
+            best_pipeline_path=run_dir / "best_pipeline.json",
+        )
+        ov.read_base_pipeline(root)
+
+    assert len(_BASE_PIPELINES) <= _BASE_PIPELINES_CAP, (
+        f"_BASE_PIPELINES grew to {len(_BASE_PIPELINES)} > cap {_BASE_PIPELINES_CAP}"
+    )
+    _BASE_PIPELINES.clear()
+
+
+def test_cache_key_for_strips_session_namespace() -> None:
+    # The per-tab PendingKey is (session, trial, plate, mode); the process-wide
+    # OverlayCache key drops the session (the render is identical regardless of
+    # tab). request_overlay (submit) and the poll self-heal (peek) MUST agree on
+    # this projection, so it is single-sourced here.
+    from phenotypic.gui.tune import _curate_overlays as ov
+
+    assert ov.cache_key_for(("sessABC", 3, "plate.tif", "candidate")) == (
+        3,
+        "plate.tif",
+        "candidate",
+    )
+    diff_key = ov.difference_key("sessABC", 1, 2, "plate.tif")
+    # The cache key is exactly what request_overlay would submit under.
+    assert ov.cache_key_for(diff_key) == (1, "plate.tif|2", "difference")
+
+
+def test_overlay_cache_peek_is_non_consuming(tmp_path: Path) -> None:
+    # peek() returns the cached array WITHOUT consuming a future (the self-heal
+    # read the poll falls back to). It must be idempotent — the array lives in
+    # the OverlayCache independent of the _PENDING future registry.
+    from phenotypic.gui.tune._overlays import OverlayCache
+
+    cache = OverlayCache(tmp_path / "peek_cache", capacity=4)
+    key = (0, "plate.tif", "candidate")
+    assert cache.peek(key) is None  # nothing rendered yet
+
+    rendered = cache.get_or_render(key, lambda: np.full((3, 3, 3), 5, np.uint8))
+    first = cache.peek(key)
+    second = cache.peek(key)
+    assert first is not None and second is not None
+    assert np.array_equal(first, rendered)
+    assert np.array_equal(first, second)  # repeatable, non-destructive
+
+
+def test_poll_self_heals_from_cache_after_sibling_resubmit_drops_future(
+    tmp_path: Path,
+) -> None:
+    # B4 regression: pin trial A (slot A renders), then pin trial B. Pinning B
+    # re-submits the batch, whose stale-drop loop drops A's already-resolved
+    # future from _PENDING (same session+plate). Pre-fix, the poll then returned
+    # no_update for slot A forever → a permanent "rendering…" spinner only a full
+    # reload cleared. The rendered A array still lives in the OverlayCache, so the
+    # poll must self-heal: peek the cache and render the figure.
+    from phenotypic.gui.tune import _curate_overlays as ov
+    from phenotypic.gui.tune._callbacks import _poll_curate_overlays
+    from phenotypic.gui.tune._overlays import get_overlay_cache
+    from phenotypic.gui.tune._run_root import TuneRunRoot
+    from phenotypic.tools_ import trials_parquet_path
+    from phenotypic.tune._study_store import JournalStudyStore, Trial
+
+    # A discoverable (legacy parquet) run so the poll resolves the SAME per-run
+    # OverlayCache singleton the submit used.
+    run_dir = tmp_path / "selfheal_run"
+    run_dir.mkdir()
+    parquet = trials_parquet_path(run_dir)
+    parquet.parent.mkdir(parents=True, exist_ok=True)
+    JournalStudyStore(
+        trials=[
+            Trial(number=0, params={"0.sigma": 1.0}, score=0.3, terms={}, n_images=2),
+            Trial(number=1, params={"0.sigma": 2.0}, score=0.6, terms={}, n_images=2),
+        ]
+    ).to_parquet(parquet)
+    TuneRunRoot.discover(run_dir)  # precondition: the run dir is discoverable
+    run_root_data = {"path": str(run_dir)}
+    cache = get_overlay_cache(run_dir)
+
+    session, plate = "sess-b4", "plate.tif"
+    key_a = ov.candidate_key(session, 0, plate)
+    key_b = ov.candidate_key(session, 1, plate)
+
+    # 1) Pin A: submit + let it resolve.
+    ov.request_overlay(cache, key_a, lambda: np.full((4, 4, 3), 10, np.uint8))
+    _wait_ready(ov, key_a)
+
+    # 2) Pin B: submitting B drops A's resolved future from _PENDING (the
+    #    stale-drop on same session+plate) — exactly the wedge.
+    ov.request_overlay(cache, key_b, lambda: np.full((4, 4, 3), 20, np.uint8))
+    _wait_ready(ov, key_b)
+    from phenotypic.gui.tune._curate_overlays import _PENDING
+
+    assert key_a not in _PENDING  # A's future was dropped by B's submit
+    assert not ov.overlay_ready(key_a)  # so tier-1 (take) can't resolve it
+
+    # 3) The poll self-heals slot A from the cache (peek), not no_update.
+    fig_a, fig_b, _fig_diff = _poll_curate_overlays(
+        ov,
+        pinned={"a": 0, "b": 1},
+        plate=plate,
+        mode="side",
+        session_id=session,
+        run_root_data=run_root_data,
+    )
+    from dash import no_update
+
+    assert fig_a is not no_update, "slot A wedged on the spinner (no self-heal)"
+    assert fig_a.data[0].type == "image"  # the real overlay figure
+    # Slot B resolves through the normal take path.
+    assert fig_b is not no_update
+    assert fig_b.data[0].type == "image"
+
+    ov.clear_pending_for_session(session)
+
+
+def test_poll_returns_no_update_when_nothing_cached_or_pending(tmp_path: Path) -> None:
+    # The self-heal must not over-reach: with no pending future AND no cached
+    # array, the poll keeps no_update (the render is genuinely still in flight or
+    # never submitted) rather than fabricating a figure.
+    from phenotypic.gui.tune import _curate_overlays as ov
+    from phenotypic.gui.tune._callbacks import _poll_curate_overlays
+    from phenotypic.gui.tune._run_root import TuneRunRoot
+    from phenotypic.tools_ import trials_parquet_path
+    from phenotypic.tune._study_store import JournalStudyStore, Trial
+
+    run_dir = tmp_path / "empty_run"
+    run_dir.mkdir()
+    parquet = trials_parquet_path(run_dir)
+    parquet.parent.mkdir(parents=True, exist_ok=True)
+    JournalStudyStore(
+        trials=[Trial(number=0, params={}, score=0.1, terms={}, n_images=1)]
+    ).to_parquet(parquet)
+    TuneRunRoot.discover(run_dir)
+
+    from dash import no_update
+
+    fig_a, fig_b, fig_diff = _poll_curate_overlays(
+        ov,
+        pinned={"a": 0, "b": None},
+        plate="never_submitted.tif",
+        mode="side",
+        session_id="sess-empty",
+        run_root_data={"path": str(run_dir)},
+    )
+    assert fig_a is no_update
+    assert fig_b is no_update  # b not pinned → key is None → no_update
+    assert fig_diff is no_update
+
+
 def test_overlay_figure_wraps_rgb_array() -> None:
     from phenotypic.gui.tune._curate_overlays import overlay_figure
 

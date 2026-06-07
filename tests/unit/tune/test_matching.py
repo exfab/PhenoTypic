@@ -118,6 +118,57 @@ def test_iou_greedy_split_leaves_pred_unmatched():
 
 
 # --------------------------------------------------------------------------- #
+# match_per_grid_cell — the gutter (section 0) is excluded from pairing
+# --------------------------------------------------------------------------- #
+class _FakeGridImage:
+    """A minimal duck-typed GridImage with a fully controlled section map."""
+
+    def __init__(self, labels: np.ndarray, sections: np.ndarray) -> None:
+        self.objmap = _ArrayAccessor(labels)
+        self.grid = _FakeGrid(sections)
+
+
+class _FakeGrid:
+    def __init__(self, sections: np.ndarray) -> None:
+        self._sections = sections
+
+    def get_section_map(self) -> np.ndarray:
+        return self._sections
+
+
+def test_grid_cell_gutter_only_objects_are_not_paired():
+    # Two objects share the inter-cell gutter (section 0): a predicted blob and a
+    # GT blob over the SAME gutter pixels. Before the fix the gutter id leaked
+    # into the cell loop and these were scored as a (spurious) matched pair; now
+    # the gutter is excluded, so each surfaces as unmatched and they are never
+    # paired across the gutter. A real colony in cell 1 still matches normally.
+    section_map = np.array([[0, 0, 1, 1, 0, 0]])  # cols 0,1,4,5 = gutter
+    pred = np.array([[7, 7, 5, 5, 0, 0]])  # obj 7 in gutter, obj 5 in cell 1
+    gt = np.array([[8, 8, 5, 5, 0, 0]])  # obj 8 in gutter (overlaps 7), 5 in cell 1
+    matches = match_per_grid_cell(_FakeGridImage(pred, section_map), gt)
+
+    # The cross-gutter pair must NOT appear despite the gutter pixels overlapping.
+    assert (7, 8) not in matches
+    # Gutter-only objects come through as unmatched.
+    assert (7, None) in matches
+    assert (None, 8) in matches
+    # The genuine in-cell colony still matches one-to-one.
+    assert (5, 5) in matches
+
+
+def test_grid_cell_gutter_only_objects_excluded_even_without_real_cells():
+    # If EVERY object lies on the gutter, no pairs are produced — they are all
+    # returned unmatched rather than paired with each other.
+    section_map = np.array([[0, 0, 0, 0]])  # all gutter
+    pred = np.array([[1, 1, 0, 0]])
+    gt = np.array([[2, 2, 0, 0]])  # overlaps pred 1 exactly, but on the gutter
+    matches = match_per_grid_cell(_FakeGridImage(pred, section_map), gt)
+    assert not any(p is not None and g is not None for p, g in matches)
+    assert (1, None) in matches
+    assert (None, 2) in matches
+
+
+# --------------------------------------------------------------------------- #
 # helper: wrap a GridImage so it reports a custom predicted objmap
 # --------------------------------------------------------------------------- #
 class _PredObjmapWrapper:

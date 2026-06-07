@@ -114,7 +114,9 @@ class FocusEdgePhase(FocusEdge):
     min_wavelength: Annotated[float, TuneSpec(2.0, 10.0)] = Field(3.0, ge=2.0)
     mult: Annotated[float, TuneSpec(1.5, 3.0)] = Field(2.1, gt=1.0)
     sigma_onf: Annotated[float, TuneSpec(0.1, 1.0)] = Field(0.55, ge=0.1, le=1.0)
-    k: Annotated[float, TuneSpec(0.0, 20.0)] = Field(2.0, ge=0.0)
+    # Lower bound 0.5 (not 0.0): k=0 disables noise thresholding, a degenerate
+    # search anchor that the optimizer should never spend trials on.
+    k: Annotated[float, TuneSpec(0.5, 20.0)] = Field(2.0, ge=0.0)
     cutoff: Annotated[float, TuneSpec(0.3, 0.7)] = Field(0.5, gt=0.0, lt=1.0)
     g: Annotated[float, TuneSpec(2.0, 20.0)] = Field(10.0, gt=0.0)
     noise_method: Annotated[float, TuneSpec(tunable=False)] = -1.0

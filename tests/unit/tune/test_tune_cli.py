@@ -91,6 +91,7 @@ def test_resolve_strategy_grid_and_random():
     assert rnd.n_trials == 7
 
 
+@pytest.mark.skipif(not _OPTUNA, reason="optuna extra not installed")
 def test_resolve_strategy_tpe_builds_optuna_config():
     cfg = resolve_strategy("tpe", n_trials=12, storage_url="sqlite:///x.db")
     assert isinstance(cfg, OptunaConfig)
@@ -218,6 +219,7 @@ def test_cli_screen_flag_toggles_screening(tmp_path, monkeypatch):
     assert captured["screen"] is False
 
 
+@pytest.mark.skipif(not _OPTUNA, reason="optuna extra not installed")
 def test_cli_slurm_flag_uses_slurm_executor(tmp_path, monkeypatch):
     # --slurm routes through the SlurmExecutor worker-fleet submission instead of
     # the local in-process engine run.

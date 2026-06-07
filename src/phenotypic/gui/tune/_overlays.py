@@ -557,6 +557,27 @@ class OverlayCache:
         """
         return self._lookup(key)
 
+    def peek(self, key: OverlayKey) -> np.ndarray | None:
+        """Return *key*'s cached overlay array WITHOUT consuming a future.
+
+        The authoritative, non-destructive read the Curate readiness poll
+        self-heals from (B4): the rendered array is memoized here (mem + disk
+        LRU) independent of the per-tab ``_PENDING`` future registry, so when a
+        re-submit drops or a consume-once ``take_overlay`` pops the future for a
+        slot, the poll can still recover the figure by peeking the cache. Never
+        renders (a miss returns ``None``) and never mutates the cache except to
+        bump LRU recency on a hit (so a peeked key isn't evicted out from under
+        the poll). Functionally an alias of :meth:`result`; named for the poll's
+        "look, don't take" intent.
+
+        Args:
+            key: The cache key to probe.
+
+        Returns:
+            The cached overlay array, or ``None`` when nothing is cached yet.
+        """
+        return self._lookup(key)
+
 
 # ---------------------------------------------------------------------------
 # Process-wide OverlayCache singleton (one per run's machine-state tree)

@@ -26,10 +26,12 @@ four-view sub-tab stack:
 
 ## Prerequisites
 
-- A tune output directory produced by `python -m phenotypic.tune run`. It
-  is recognised by its `.pht-tune-cache/run.json` marker (written at run
-  start, before any deliverable lands), so both an in-flight run and a
-  finished run resolve. A finished run also carries `trials.parquet` and
+- A tune output directory produced by `python -m phenotypic.tune run`,
+  **inside the GUI sandbox** (the `--root` you launched `phenotypic-gui`
+  with) so the run picker can reach it. It is recognised by its
+  `.pht-tune-cache/run.json` marker (written at run start, before any
+  deliverable lands), so both an in-flight run and a finished run resolve.
+  A finished run also carries `trials.parquet` and
   `deliverables/tuning_spec.json`.
 - For the Curate overlays, the run's calibration **image directory** must
   be reachable inside the GUI sandbox. The Image Source pre-fills from the
@@ -38,11 +40,30 @@ four-view sub-tab stack:
 
 ## Walkthrough
 
-Open the `Tune` tab and bind a tune output. The **Monitor** view reads
-the study and renders the objective curve (raw per-trial scores plus the
-monotone running-best trace), the parameter-importance bars, the
-winner-stability badge, and the trials table. The 3-second poll keeps all
-four live while a run is still in flight:
+Open the `Tune` tab. The co-pilot mounts **run-unbound** — an empty state
+with a short prompt and a `Bind run` button in the header:
+
+![Tune co-pilot empty state: the pick-a-run prompt and the Bind-run button.](../../_static/gui_images/tune_copilot/00_empty_state.png)
+
+Click `Bind run` to open the **run picker** — a sandbox-bounded directory
+browser (the same security boundary the builder / run-console pickers
+enforce, so a tune output can only be bound from inside the GUI sandbox).
+Navigate to the run's output directory and click `Bind this run`:
+
+![Tune run picker: the sandbox-bounded directory browser.](../../_static/gui_images/tune_copilot/00b_run_picker_modal.png)
+
+Binding only **reads** the directory — it runs `TuneRunRoot.discover`
+over the run's markers and, on success, swaps the page into the loaded
+four-view stack. A directory that is not a tune output (no
+`.pht-tune-cache/run.json`, `tuning_spec.json`, or `trials.parquet`) — or
+one outside the sandbox — is refused with a clear note next to the button,
+never a crash.
+
+Once bound, the **Monitor** view reads the study and renders the objective
+curve (raw per-trial scores plus the monotone running-best trace), the
+parameter-importance bars, the winner-stability badge, and the trials
+table. The 3-second poll keeps all four live while a run is still in
+flight:
 
 ![Tune Monitor: objective curve, importance bars, gap badge, trials table.](../../_static/gui_images/tune_copilot/01_monitor.png)
 
@@ -80,7 +101,11 @@ and flag names:
 - **The co-pilot is read-only.** It never re-runs the optimizer — Launch
   only *composes* the command; you run it yourself. The import surface
   stays optuna-free, and the live study is opened lazily inside the
-  Monitor poll callback only.
+  Monitor poll callback only. **Binding a run only reads its directory** —
+  the run picker validates the markers and never writes to the run dir.
+- **The page mounts empty.** Through `phenotypic-gui` the `/tune/` tab
+  opens run-unbound; use `Bind run` to point it at a tune output. You can
+  re-bind a different run at any time from the same header button.
 - **A live run resolves before any deliverable lands.** Discovery reads
   the `.pht-tune-cache/run.json` marker first, so an in-flight run shows
   on Monitor before `trials.parquet` or `tuning_spec.json` exist. If the

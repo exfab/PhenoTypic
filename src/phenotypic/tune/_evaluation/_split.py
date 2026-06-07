@@ -29,6 +29,7 @@ from typing import Literal, Optional, TypeAlias
 import numpy as np
 
 from phenotypic.tools_ import _io_constants as _io
+from phenotypic.tools_ import atomic_write_text
 
 #: The held-out partition tier (robust-eval split policy):
 #: - ``"group"``: a whole metadata group is held out (the strongest test of
@@ -251,7 +252,7 @@ def write_split(output_dir: Path, split: Split) -> Path:
     """
     path = _io.tune_cache_split_assignment_path(Path(output_dir))
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(asdict(split), sort_keys=True, indent=2))
+    atomic_write_text(path, json.dumps(asdict(split), sort_keys=True, indent=2))
     return path
 
 

@@ -6,7 +6,7 @@ if TYPE_CHECKING:
     from phenotypic._core._grid_image import GridImage
     from phenotypic._core._image import Image
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from skimage import feature, morphology
 from scipy import ndimage
 
@@ -104,12 +104,40 @@ class CannyDetector(ThresholdDetector):
     # Mode-dependent: a fraction when use_quantiles=True, an absolute gradient
     # value otherwise — so a TuneSpec search window only, no tight Field bound.
     low_threshold: Annotated[float, TuneSpec(0.05, 0.2)] = 0.1
-    high_threshold: Annotated[float, TuneSpec(0.1, 0.4)] = 0.2
+    # Search windows are deliberately NON-OVERLAPPING (low ≤ 0.2 ≤ high) so the
+    # optimizer can never sample ``low > high`` — a degenerate Canny config. The
+    # constructor params are unchanged (no derived/delta field), so serialized
+    # pipelines keep round-tripping; the ``_check_threshold_order`` validator is a
+    # belt-and-suspenders guard for manually-constructed detectors.
+    high_threshold: Annotated[float, TuneSpec(0.2, 0.4)] = 0.2
     use_quantiles: bool = True
     # TODO: review bound (unverified vs literature)
     min_size: Annotated[int, TuneSpec(20, 500)] = Field(50, ge=1)
     invert_edges: bool = True
     connectivity: Annotated[int, TuneSpec(categories=[1, 2])] = Field(2, ge=1, le=2)
+
+    @model_validator(mode="after")
+    def _check_threshold_order(self) -> "CannyDetector":
+        """Reject a configuration where ``high_threshold <= low_threshold``.
+
+        Canny hysteresis requires the upper threshold to strictly exceed the
+        lower one; a crossed pair produces a degenerate edge map. The tuning
+        search windows are already non-overlapping (``low ≤ 0.2 ≤ high``), so the
+        optimizer can never reach this state — this guard only fires for a
+        hand-constructed detector. The defaults (low ``0.1``, high ``0.2``) pass.
+
+        Returns:
+            ``self`` unchanged when the thresholds are correctly ordered.
+
+        Raises:
+            ValueError: If ``high_threshold <= low_threshold``.
+        """
+        if self.high_threshold <= self.low_threshold:
+            raise ValueError(
+                f"high_threshold ({self.high_threshold}) must be greater than "
+                f"low_threshold ({self.low_threshold})"
+            )
+        return self
 
     def _operate(self, image: Image | GridImage) -> Image:
 

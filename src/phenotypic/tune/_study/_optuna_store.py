@@ -73,6 +73,20 @@ class OptunaStudyStore:
         self._study = optuna.create_study(**create_kwargs)
 
     @property
+    def study(self) -> "optuna.Study":
+        """The live Optuna study object (the strategy reuses this ONE handle).
+
+        Exposed so :meth:`OptunaConfig.build` can hand the strategy the study the
+        store already created (and whose RDB schema it materialized), instead of
+        the strategy opening a **second** ``create_study(load_if_exists=True)`` on
+        the same URL + name. The strategy re-attaches its own sampler/pruner to
+        this object (both live on the in-memory :class:`optuna.Study`, not in
+        storage), so there is one handle, one schema-create, and the sampler the
+        run asked for.
+        """
+        return self._study
+
+    @property
     def study_name(self) -> str:
         """The shared study name (so the strategy can bind to this same study)."""
         return self._study_name

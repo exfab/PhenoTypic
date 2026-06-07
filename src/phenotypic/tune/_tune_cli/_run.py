@@ -19,10 +19,12 @@ import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Final, Optional
+from urllib.parse import urlsplit
 
 from phenotypic import GridImage
 from phenotypic._execution._slurm import SlurmExecutor
 from phenotypic.tools_ import _io_constants as io
+from phenotypic.tools_ import atomic_write_text
 
 from .._engine import TuningEngine
 from .._evaluation import (
@@ -89,18 +91,59 @@ def _resolve_storage_url(storage_url: Optional[str], output_dir: Path) -> str:
     a null URL in the marker would silently force the GUI Monitor into
     parquet-only mode for the env-driven distributed case.
 
+    This is also the single chokepoint that **rejects a password-bearing URL**:
+    an inline ``postgresql://user:secret@host/db`` password would be persisted
+    verbatim into the ``run.json`` marker and the generated SLURM worker script
+    (both world-readable on a shared cluster filesystem). Since this resolver
+    feeds BOTH writers, guarding here covers every downstream consumer. The
+    local SQLite fallback carries no password and always passes.
+
     Args:
         storage_url: The explicit storage URL, or ``None``.
         output_dir: The run output directory (for the ``study.db`` fallback).
 
     Returns:
         The resolved, non-null storage URL.
+
+    Raises:
+        ValueError: When the resolved URL embeds an inline password (keep the
+            secret out of the URL: use ``~/.pgpass``, ``$PGPASSWORD``, or a
+            ``PGSERVICE`` entry instead).
     """
-    return (
+    url = (
         storage_url
         or os.environ.get(PHENOTYPIC_TUNE_STORAGE_URL_ENV)
         or _default_study_db_url(output_dir)
     )
+    _reject_password_in_url(url)
+    return url
+
+
+def _reject_password_in_url(url: str) -> None:
+    """Raise if ``url`` embeds an inline password (the single chokepoint, B2).
+
+    An inline password in the storage URL would be written verbatim into the
+    GUI-discovery ``run.json`` marker and the generated SLURM worker script,
+    both readable by anyone with filesystem access on a shared cluster. We
+    refuse it here, the one place every resolved URL flows through, so neither
+    sink ever sees the secret. A password-less Postgres URL (libpq resolves the
+    secret from ``~/.pgpass`` / ``$PGPASSWORD`` / a ``PGSERVICE`` entry per
+    worker) and the local SQLite fallback both pass.
+
+    Args:
+        url: The resolved storage URL.
+
+    Raises:
+        ValueError: When :attr:`urllib.parse.SplitResult.password` is non-null.
+    """
+    if urlsplit(url).password is not None:
+        raise ValueError(
+            "the Optuna storage URL embeds an inline password, which would be "
+            "written in plaintext to the run.json marker and the SLURM worker "
+            "script. Remove the password from the URL and let libpq resolve it: "
+            "use a ~/.pgpass file, the $PGPASSWORD environment variable, or a "
+            "PGSERVICE entry (e.g. postgresql+psycopg://user@host:5432/db)."
+        )
 
 
 def _strategy_marker_name(strategy: StrategyConfig) -> str:
@@ -160,7 +203,7 @@ def _write_run_marker(
     # tolerance in ``migrate_legacy_machine_state``.
     try:
         marker_path.parent.mkdir(parents=True, exist_ok=True)
-        marker_path.write_text(json.dumps(marker, indent=2))
+        atomic_write_text(marker_path, json.dumps(marker, indent=2))
     except OSError:
         logging.getLogger(__name__).warning(
             "could not write the tune run.json marker at %s; the run proceeds "
@@ -313,6 +356,10 @@ def run_tuning(
     images_dir: Optional[Path] = None,
     held_out_fraction: Optional[float] = None,
     cv_group: Optional[str] = None,
+    n_workers: Optional[int] = None,
+    slurm_partition: Optional[str] = None,
+    slurm_mem: Optional[str] = None,
+    slurm_time: Optional[str] = None,
 ) -> Optional[Trial]:
     """Run ``spec`` over ``images`` and write the ``deliverables/`` artifacts.
 
@@ -342,6 +389,15 @@ def run_tuning(
         cv_group: Optional ``--cv-group`` override of the held-out grouping column
             (:attr:`HeldOutConfig.group_key`). ``None`` keeps the spec value (then
             the scorer's inferred ``groupby[0]``). The gap margins stay spec-only.
+        n_workers: Optional ``--n-workers`` override of the SLURM fleet size
+            (``--slurm`` only); ``None`` keeps the ``min(8, n_trials)`` default.
+        slurm_partition: Optional ``--slurm-partition`` for the worker fleet
+            (``--slurm`` only); ``None`` omits the ``#SBATCH --partition``
+            directive (the cluster default partition).
+        slurm_mem: Optional ``--slurm-mem`` per worker (``--slurm`` only), e.g.
+            ``"8G"``; ``None`` omits the directive.
+        slurm_time: Optional ``--slurm-time`` wall-clock limit per worker
+            (``--slurm`` only), e.g. ``"04:00:00"``; ``None`` omits the directive.
 
     Returns:
         The best :class:`Trial`, or ``None`` (e.g. a fire-and-forget SLURM
@@ -377,8 +433,8 @@ def run_tuning(
     io.deliverables_dir(output_dir).mkdir(parents=True, exist_ok=True)
 
     # Always echo the resolved spec so the deliverable is re-runnable.
-    io.tuning_spec_path(output_dir).write_text(
-        resolved_spec.model_dump_json(indent=2)
+    atomic_write_text(
+        io.tuning_spec_path(output_dir), resolved_spec.model_dump_json(indent=2)
     )
 
     # Mark the run as a tune output at START — before the engine/SLURM branch, so
@@ -400,6 +456,10 @@ def run_tuning(
             storage_url=storage_url,
             spec_path=spec_path,
             images_dir=images_dir,
+            n_workers=n_workers,
+            slurm_partition=slurm_partition,
+            slurm_mem=slurm_mem,
+            slurm_time=slurm_time,
         )
 
     trials_path = io.trials_parquet_path(output_dir)
@@ -480,6 +540,10 @@ def _submit_slurm_fleet(
     storage_url: Optional[str],
     spec_path: Optional[Path],
     images_dir: Optional[Path],
+    n_workers: Optional[int] = None,
+    slurm_partition: Optional[str] = None,
+    slurm_mem: Optional[str] = None,
+    slurm_time: Optional[str] = None,
 ) -> Optional[Trial]:
     """Submit a distributed worker fleet via :class:`SlurmExecutor`.
 
@@ -487,6 +551,22 @@ def _submit_slurm_fleet(
     ``$PHENOTYPIC_TUNE_STORAGE_URL`` env fallback, or the run's ``study.db``.
     Fire-and-forget: the fleet writes into the shared study; the final
     ``trials.parquet`` export happens on a later ``--recompile`` finalize.
+
+    Args:
+        spec: The resolved tuning spec.
+        output_dir: The run directory.
+        storage_url: The explicit Optuna storage URL, or ``None`` (resolved via
+            the 3-way fallback).
+        spec_path: The on-disk spec path (required; each worker reloads it).
+        images_dir: The calibration image directory (required; each worker scans
+            it).
+        n_workers: The fleet size; ``None`` falls back to ``min(8, n_trials)``
+            (or ``4`` when the strategy carries no positive ``n_trials``).
+        slurm_partition: The SLURM partition; ``None`` omits the
+            ``#SBATCH --partition`` directive (the cluster default).
+        slurm_mem: The per-worker ``--mem`` (e.g. ``"8G"``); ``None`` omits it.
+        slurm_time: The per-worker ``--time`` limit (e.g. ``"04:00:00"``);
+            ``None`` omits it.
     """
     if spec_path is None or images_dir is None:
         raise ValueError(
@@ -495,7 +575,10 @@ def _submit_slurm_fleet(
         )
     url = _resolve_storage_url(storage_url, output_dir)
     n_trials = getattr(spec.strategy, "n_trials", None)
-    n_workers = min(8, n_trials) if isinstance(n_trials, int) and n_trials > 0 else 4
+    default_workers = (
+        min(8, n_trials) if isinstance(n_trials, int) and n_trials > 0 else 4
+    )
+    resolved_workers = n_workers if n_workers is not None else default_workers
     # Pre-create the shared study (and its RDB schema) in THIS process BEFORE the
     # fleet starts. A cold Postgres DB has no Optuna schema, so N workers opening
     # it simultaneously race to CREATE TYPE studydirection / the trial tables and
@@ -515,6 +598,17 @@ def _submit_slurm_fleet(
     from phenotypic._cli._cli_utils import get_python_command
 
     python_command, _ = get_python_command(for_slurm=True)
+    # Build the #SBATCH passthrough from the explicit flags only — an unset flag
+    # is OMITTED so format_sbatch_directives emits no directive for it (the
+    # cluster default applies). Notably ``slurm_partition`` is no longer hardcoded
+    # to "batch": a cluster without a "batch" partition would reject every job.
+    slurm_args: dict[str, Any] = {}
+    if slurm_partition is not None:
+        slurm_args["slurm_partition"] = slurm_partition
+    if slurm_mem is not None:
+        slurm_args["slurm_mem"] = slurm_mem
+    if slurm_time is not None:
+        slurm_args["slurm_time"] = slurm_time
     # Workers reload the RESOLVED spec persisted to deliverables/tuning_spec.json
     # (written above), NOT the raw input ``spec_path``: the --strategy / --n-trials
     # / --held-out overrides live only in the resolved spec, so handing the workers
@@ -525,12 +619,12 @@ def _submit_slurm_fleet(
         spec_path=io.tuning_spec_path(output_dir),
         images_dir=Path(images_dir),
         study_name=_STUDY_NAME,
-        n_workers=n_workers,
-        slurm_args={"slurm_partition": "batch"},
+        n_workers=resolved_workers,
+        slurm_args=slurm_args,
         storage_url=url,
         python_command=python_command,
     )
-    executor.run(lambda w: w, list(range(n_workers)))
+    executor.run(lambda w: w, list(range(resolved_workers)))
     return None
 
 
@@ -647,8 +741,8 @@ def _finalize_generalization(
         images_by_name,
         current_identity=_dataset_identity(images),
     )
-    io.generalization_path(output_dir).write_text(
-        json.dumps(report.to_dict(), indent=2)
+    atomic_write_text(
+        io.generalization_path(output_dir), json.dumps(report.to_dict(), indent=2)
     )
 
 
@@ -665,11 +759,14 @@ def _finalize_outputs(
     ``param_importance.json``; writes ``best_pipeline.json`` when a winner exists.
     """
     _export_trials_parquet(store, trials_path)
-    io.param_importance_path(output_dir).write_text(
-        json.dumps(compute_param_importance(store), indent=2)
+    atomic_write_text(
+        io.param_importance_path(output_dir),
+        json.dumps(compute_param_importance(store), indent=2),
     )
     if winner_pipeline is not None:
-        io.best_pipeline_path(output_dir).write_text(winner_pipeline.to_json() or "")
+        atomic_write_text(
+            io.best_pipeline_path(output_dir), winner_pipeline.to_json() or ""
+        )
 
 
 def _export_trials_parquet(store: StudyStore, trials_path: Path) -> None:
@@ -739,15 +836,19 @@ def _finalize_pareto_outputs(
         )
         if winner is not None:
             pipeline = build_pipeline(spec.pipeline, winner.params)
-            io.pareto_best_pipeline_path(output_dir, name).write_text(
-                pipeline.to_json() or ""
+            atomic_write_text(
+                io.pareto_best_pipeline_path(output_dir, name),
+                pipeline.to_json() or "",
             )
-        io.pareto_importance_path(output_dir, name).write_text(
-            json.dumps(compute_param_importance(store, objective=name), indent=2)
+        atomic_write_text(
+            io.pareto_importance_path(output_dir, name),
+            json.dumps(compute_param_importance(store, objective=name), indent=2),
         )
 
-    # The knee is the run's headline winner — overwrite best_pipeline.json.
+    # The knee is the run's headline winner: overwrite best_pipeline.json.
     knee = store.knee_point(front)
     if knee is not None:
         knee_pipeline = build_pipeline(spec.pipeline, knee.params)
-        io.best_pipeline_path(output_dir).write_text(knee_pipeline.to_json() or "")
+        atomic_write_text(
+            io.best_pipeline_path(output_dir), knee_pipeline.to_json() or ""
+        )

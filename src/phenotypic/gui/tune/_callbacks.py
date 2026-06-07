@@ -1,8 +1,12 @@
 """Dash callbacks for the ``/tune/`` co-pilot.
 
-Two concerns live here, each a thin Dash adapter around a pure, headless-
+Three concerns live here, each a thin Dash adapter around a pure, headless-
 testable helper:
 
+* **Run binding** — :func:`~phenotypic.gui.tune._run_picker.discover_run_payload`
+  validates a sandbox-bounded directory as a tune output; the bind callback
+  writes the discovered run-root payload into ``TUNE_RUN_ROOT_STORE`` and swaps
+  the page body to the loaded four-view layout (or surfaces a note on failure).
 * **Sub-tab switching** — :func:`active_view` maps a clicked sub-tab button's
   ID to its view name (falling back to the default Monitor view for an unknown
   or absent trigger); the registered callback toggles which view container is
@@ -397,7 +401,126 @@ def register_callbacks(app, *, sandbox=None) -> None:  # type: ignore[no-untyped
     _register_space_export(app)
 
     if sandbox is not None:
+        # The runtime run picker + the Curate Image Source picker both need the
+        # sandbox boundary. Registered unconditionally (whenever a sandbox is
+        # bound) so they are wired even for the empty-state mount — the run
+        # picker is exactly what populates ``TUNE_RUN_ROOT_STORE`` and swaps in
+        # the loaded views, and ``suppress_callback_exceptions=True`` makes
+        # registering against not-yet-present loaded-view components safe.
+        _register_run_picker_callbacks(app, sandbox)
         _register_curate_callbacks(app, sandbox)
+
+
+# ---------------------------------------------------------------------------
+# Run picker — bind a tune output directory at runtime (Chunk C)
+# ---------------------------------------------------------------------------
+
+def _register_run_picker_callbacks(app, sandbox) -> None:  # type: ignore[no-untyped-def]
+    """Register the runtime run-picker callbacks (Chunk C).
+
+    Wires the sandbox-bounded run-directory picker that turns the empty-state
+    mount into a loaded co-pilot:
+
+    * **Open / cancel** the picker modal.
+    * **Navigate** the folder-only tree (folder click → browse-dir store).
+    * **Re-render** the tree body on browse-dir change.
+    * **Confirm → bind**: validate the chosen directory via
+      :func:`~phenotypic.gui.tune._run_picker.discover_run_payload`, and on
+      success write the run-root payload into ``TUNE_RUN_ROOT_STORE`` AND swap
+      the page body to the loaded four-view layout (the Monitor / Curate / Space
+      / Launch callbacks then render from the store). On failure the store /
+      body are left untouched and a clear note is shown — never a 500.
+
+    Binding only **reads** the run directory; it never mutates it.
+
+    Args:
+        app: The :class:`dash.Dash` instance.
+        sandbox: The frozen-at-launch sandbox bounding the directory selection
+            (and threaded into the loaded body's Curate Image Source picker).
+    """
+    from dash import ALL, Input, Output, State, no_update
+
+    from phenotypic.gui.tune._layout import build_loaded_body
+    from phenotypic.gui.tune._run_picker import (
+        discover_run_payload,
+        render_run_picker_tree,
+    )
+    from phenotypic.gui.tune._run_root import TuneRunRoot
+
+    # --- Open / cancel the picker modal -----------------------------------
+    @app.callback(
+        Output(ids.TUNE_RUN_PICKER_MODAL, "is_open", allow_duplicate=True),
+        Input(ids.TUNE_BTN_PICK_RUN, "n_clicks"),
+        Input(ids.TUNE_BTN_RUN_PICKER_CANCEL, "n_clicks"),
+        prevent_initial_call=True,
+    )
+    def _toggle_run_picker_modal(open_clicks, cancel_clicks):  # type: ignore[no-untyped-def]
+        if ctx.triggered_id == ids.TUNE_BTN_PICK_RUN and open_clicks:
+            return True
+        if ctx.triggered_id == ids.TUNE_BTN_RUN_PICKER_CANCEL and cancel_clicks:
+            return False
+        return no_update
+
+    # --- Navigate the tree (folder click → browse-dir store) --------------
+    @app.callback(
+        Output(ids.TUNE_RUN_PICKER_BROWSE_DIR, "data", allow_duplicate=True),
+        Input(
+            {"type": ids.TUNE_DIR_ENTRY_RUN, "kind": ALL, "path": ALL},
+            "n_clicks",
+        ),
+        prevent_initial_call=True,
+    )
+    def _navigate_run_picker_tree(_clicks):  # type: ignore[no-untyped-def]
+        triggered = ctx.triggered_id
+        if not isinstance(triggered, dict):
+            return no_update
+        if triggered.get("type") != ids.TUNE_DIR_ENTRY_RUN:
+            return no_update
+        if not ctx.triggered or not ctx.triggered[0].get("value"):
+            return no_update
+        path = triggered.get("path")
+        return path if isinstance(path, str) else no_update
+
+    # --- Re-render the tree body on browse-dir change ---------------------
+    @app.callback(
+        Output(ids.TUNE_RUN_PICKER_MODAL_BODY, "children"),
+        Input(ids.TUNE_RUN_PICKER_BROWSE_DIR, "data"),
+        prevent_initial_call=True,
+    )
+    def _render_run_picker_body(dir_value):  # type: ignore[no-untyped-def]
+        from pathlib import Path
+
+        current = Path(dir_value) if dir_value else None
+        return render_run_picker_tree(sandbox, current)
+
+    # --- Confirm → discover + bind the run --------------------------------
+    @app.callback(
+        Output(ids.TUNE_RUN_ROOT_STORE, "data", allow_duplicate=True),
+        Output(ids.TUNE_PAGE_BODY, "children", allow_duplicate=True),
+        Output(ids.TUNE_RUN_PICKER_LABEL, "children", allow_duplicate=True),
+        Output(ids.TUNE_RUN_PICKER_NOTE, "children", allow_duplicate=True),
+        Output(ids.TUNE_RUN_PICKER_MODAL, "is_open", allow_duplicate=True),
+        Input(ids.TUNE_BTN_RUN_PICKER_CONFIRM, "n_clicks"),
+        State(ids.TUNE_RUN_PICKER_BROWSE_DIR, "data"),
+        prevent_initial_call=True,
+    )
+    def _confirm_run_bind(n_clicks, browsed):  # type: ignore[no-untyped-def]
+        if not n_clicks:
+            return no_update, no_update, no_update, no_update, no_update
+        payload, note = discover_run_payload(sandbox, browsed or "")
+        if payload is None:
+            # Keep the store / body / label as-is and leave the modal open so the
+            # user can pick a different directory; show the clear failure note.
+            return no_update, no_update, no_update, note, no_update
+        # Success: re-discover (cheap — markers only, never optuna) to build the
+        # loaded body, then write the store + swap the body + label, clear the
+        # note, and close the modal. ``discover`` already succeeded inside
+        # ``discover_run_payload``, so this re-read does not raise.
+        from pathlib import Path
+
+        root = TuneRunRoot.discover(Path(payload["path"]))
+        body = build_loaded_body(root, sandbox=sandbox)
+        return payload, body, payload["path"], "", False
 
 
 def _register_launch_command_mirror(app) -> None:  # type: ignore[no-untyped-def]
@@ -503,11 +626,8 @@ def write_space_spec(
             atomic ``os.replace`` cannot complete. Re-raised so the caller can
             surface it in a note.
     """
-    from pathlib import Path
-
-    from phenotypic._cli._cli_output_manager import _atomic_write
     from phenotypic.gui.tune._space import _load_space_source, space_to_spec
-    from phenotypic.tools_ import tuning_spec_path
+    from phenotypic.tools_ import atomic_write_text, tuning_spec_path
 
     source = _load_space_source(root)
     if source is None:
@@ -519,14 +639,10 @@ def write_space_spec(
     payload = spec.model_dump_json(indent=2)
 
     target = tuning_spec_path(root.path)
-
-    def _write(tmp: str) -> None:
-        Path(tmp).write_text(payload, encoding="utf-8")
-
-    # Atomic write (shared CLI helper): temp file + ``os.replace`` so a reader
-    # never sees a half-written spec. A read-only output dir (HPCC) raises
+    # Atomic write (shared helper): temp file + ``os.replace`` so a reader never
+    # sees a half-written spec. A read-only output dir (HPCC) raises
     # PermissionError, re-raised so the caller can surface it in the Space note.
-    _atomic_write(target, _write)
+    atomic_write_text(target, payload)
     return target
 
 
@@ -932,10 +1048,11 @@ def _register_curate_overlay_callbacks(app, sandbox=None) -> None:  # type: igno
         State(ids.TUNE_PLATE_PICKER, "value"),
         State(ids.TUNE_CURATE_MODE_STORE, "data"),
         State(ids.TUNE_SESSION_ID, "data"),
+        State(ids.TUNE_RUN_ROOT_STORE, "data"),
         prevent_initial_call=True,
     )
     def _poll_overlays(  # type: ignore[no-untyped-def]
-        _n, pinned, plate, mode, session_id
+        _n, pinned, plate, mode, session_id, run_root_data
     ):
         return _poll_curate_overlays(
             ov,
@@ -943,6 +1060,7 @@ def _register_curate_overlay_callbacks(app, sandbox=None) -> None:  # type: igno
             plate=plate,
             mode=mode,
             session_id=session_id,
+            run_root_data=run_root_data,
         )
 
     # --- Set as winner: write deliverables/best_pipeline.json (atomic) ----
@@ -1077,7 +1195,7 @@ def _submit_curate_overlays(  # type: ignore[no-untyped-def]
     if not plate:
         return no_plate, no_plate, no_plate
     if not (run_root_data and run_root_data.get("path")):
-        return no_update_triple()
+        return _no_update_triple()
 
     pinned = pinned if isinstance(pinned, dict) else {}
     a_trial, b_trial = pinned.get("a"), pinned.get("b")
@@ -1088,7 +1206,7 @@ def _submit_curate_overlays(  # type: ignore[no-untyped-def]
         root = TuneRunRoot.discover(Path(run_root_data["path"]))
     except Exception:  # noqa: BLE001 - render must degrade, never raise
         logger.warning("Curate render re-discovery failed", exc_info=True)
-        return no_update_triple()
+        return _no_update_triple()
 
     base = ov.read_base_pipeline(root)
     if base is None:
@@ -1113,7 +1231,7 @@ def _submit_curate_overlays(  # type: ignore[no-untyped-def]
     return fig_a, fig_b, fig_diff
 
 
-def no_update_triple():  # type: ignore[no-untyped-def]
+def _no_update_triple():  # type: ignore[no-untyped-def]
     """Three ``no_update`` sentinels for the three Curate graph outputs."""
     from dash import no_update
 
@@ -1185,9 +1303,23 @@ def _submit_difference(  # type: ignore[no-untyped-def]
 
 
 def _poll_curate_overlays(  # type: ignore[no-untyped-def]
-    ov, *, pinned, plate, mode, session_id
+    ov, *, pinned, plate, mode, session_id, run_root_data=None
 ):
-    """Swap any resolved overlay future into its figure; else ``no_update``."""
+    """Swap any resolved overlay into its figure; else ``no_update``.
+
+    Two-tier resolution per slot (the B4 self-heal): first the in-flight
+    ``_PENDING`` future (``overlay_ready`` → ``take_overlay``); if no future is
+    ready/available for a slot, fall back to a **non-consuming**
+    :meth:`OverlayCache.peek` of the same cache key. The OverlayCache is
+    authoritative — the rendered array lives there independent of the per-tab
+    future registry — so a future dropped by a re-submit (a sibling pin's
+    stale-drop) or already consumed by an earlier poll tick self-heals into the
+    cached figure instead of wedging on a permanent "rendering…" spinner.
+
+    ``run_root_data`` resolves the per-run cache for the peek. When it is missing
+    / un-discoverable the peek tier is simply skipped (degrades to take-only, the
+    pre-fix behaviour) — the poll never raises.
+    """
     from phenotypic.gui.tune import _curate as curate
 
     pinned = pinned if isinstance(pinned, dict) else {}
@@ -1195,13 +1327,28 @@ def _poll_curate_overlays(  # type: ignore[no-untyped-def]
     session = session_id or "default"
     error_fig = curate.placeholder_figure("render failed — see logs")
 
+    cache = _resolve_overlay_cache(run_root_data)
+
     def _swap(key):  # type: ignore[no-untyped-def]
         from dash import no_update
 
-        if key is None or not ov.overlay_ready(key):
+        if key is None:
             return no_update
-        array = ov.take_overlay(key)
-        return ov.overlay_figure(array) if array is not None else error_fig
+        # Tier 1: an in-flight future that has resolved → consume it.
+        if ov.overlay_ready(key):
+            array = ov.take_overlay(key)
+            if array is not None:
+                return ov.overlay_figure(array)
+            # A resolved-to-None future is a genuine render failure (the cache
+            # stores nothing for it), so surface the error rather than spin.
+            return error_fig
+        # Tier 2 (self-heal): no live future, but the array may already be in the
+        # authoritative cache (future dropped on a re-submit or consumed earlier).
+        if cache is not None:
+            cached = cache.peek(ov.cache_key_for(key))
+            if cached is not None:
+                return ov.overlay_figure(cached)
+        return no_update
 
     key_a = ov.candidate_key(session, a_trial, plate) if a_trial is not None and plate else None
     key_b = ov.candidate_key(session, b_trial, plate) if b_trial is not None and plate else None
@@ -1211,6 +1358,27 @@ def _poll_curate_overlays(  # type: ignore[no-untyped-def]
         else None
     )
     return _swap(key_a), _swap(key_b), _swap(key_diff)
+
+
+def _resolve_overlay_cache(run_root_data):  # type: ignore[no-untyped-def]
+    """Resolve the per-run :class:`OverlayCache` for the poll's self-heal peek.
+
+    Returns ``None`` (never raises) when no run is bound or the run path can't be
+    re-discovered, so the poll degrades to take-only resolution.
+    """
+    if not (run_root_data and run_root_data.get("path")):
+        return None
+    from pathlib import Path
+
+    from phenotypic.gui.tune._overlays import get_overlay_cache
+    from phenotypic.gui.tune._run_root import TuneRunRoot
+
+    try:
+        root = TuneRunRoot.discover(Path(run_root_data["path"]))
+        return get_overlay_cache(root.path)
+    except Exception:  # noqa: BLE001 - poll must never raise; peek is optional
+        logger.warning("Overlay poll cache resolution failed", exc_info=True)
+        return None
 
 
 __all__ = ["active_view", "read_study_for_monitor", "register_callbacks"]

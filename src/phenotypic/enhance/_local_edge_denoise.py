@@ -82,7 +82,13 @@ class LocalEdgeDenoise(_GATSupportMixin, ImageDenoiser):
     _GAT_NOISE_PARAMS: ClassVar[dict[str, float]] = {"sigma_color": 1.0}
     _GAT_DEFER_ATTRS: ClassVar[tuple[str, ...]] = ("clip",)
 
-    sigma_color: Annotated[Optional[float], TuneSpec(0.02, 0.5, log=True)] = None
+    # Categorical (not a float range) so the optimizer can try ``None`` — the
+    # auto-estimate (noise-std) mode — alongside representative explicit sigmas.
+    # A plain ``TuneSpec(0.02, 0.5)`` window would never sample the ``None`` arm.
+    sigma_color: Annotated[
+        Optional[float],
+        TuneSpec(categories=[None, 0.02, 0.05, 0.1, 0.2, 0.5]),
+    ] = None
     sigma_spatial: Annotated[float, TuneSpec(1.0, 50.0, log=True)] = Field(15, gt=0.0)
     win_size: Annotated[Optional[int], TuneSpec(tunable=False)] = None
     mode: Literal["constant", "edge", "symmetric", "reflect", "wrap"] = "constant"

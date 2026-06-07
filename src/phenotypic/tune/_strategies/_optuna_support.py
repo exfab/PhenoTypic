@@ -9,11 +9,24 @@ actionable :class:`ImportError` pointing at ``uv sync --extras tune``.
 """
 from __future__ import annotations
 
+import logging
+import time
 from types import ModuleType
-from typing import TYPE_CHECKING, Any, Final, Optional, Sequence
+from typing import TYPE_CHECKING, Any, Callable, Final, Optional, Sequence, TypeVar
 
 if TYPE_CHECKING:  # pragma: no cover - typing only; never imports optuna at runtime
     import optuna
+
+_logger = logging.getLogger(__name__)
+
+_T = TypeVar("_T")
+
+#: Bounded transient-DB retry policy (Change 5). A shared SQLite-WAL / Postgres
+#: study occasionally raises a transient ``OperationalError`` (a lock timeout, a
+#: dropped connection) under concurrent ask/tell; a few short backoffs clear it.
+#: A non-transient error is never retried.
+_RETRY_ATTEMPTS: Final[int] = 3
+_RETRY_BASE_DELAY_S: Final[float] = 0.1
 
 #: The actionable message shown when the ``tune`` extra is not installed.
 _MISSING_OPTUNA_MSG = (
@@ -143,3 +156,116 @@ def _require_optuna() -> ModuleType:
     except ImportError as exc:  # pragma: no cover - exercised only without extra
         raise ImportError(_MISSING_OPTUNA_MSG) from exc
     return optuna
+
+
+def fail_stale_running_trials(study: "optuna.Study") -> int:
+    """Mark every still-``RUNNING`` trial in ``study`` as ``FAIL`` (Change 3).
+
+    A worker killed mid-trial (node failure, SLURM timeout, OOM) leaves its
+    in-flight trial in :obj:`~optuna.trial.TrialState.RUNNING` forever. Such a
+    zombie never reaches ``COMPLETE``/``PRUNED``, so it does not consume the
+    shared budget — but it lingers in the study and, on some pruners/samplers,
+    skews cross-trial statistics. Reconciling it to ``FAIL`` before a fresh
+    worker enters the ask/tell loop keeps the budget accounting honest and the
+    study clean.
+
+    Optuna's built-in :func:`optuna.storages.fail_stale_trials` is a **no-op**
+    unless heartbeat is configured on the ``RDBStorage`` (``grace_period`` /
+    ``heartbeat_interval``), which PhenoTypic does not enable — so we enumerate
+    the RUNNING trials and tell each ``FAIL`` by trial number ourselves
+    (``skip_if_finished=True`` tolerates a concurrent worker that finalized the
+    same trial first). ``import optuna`` stays lazy in the body.
+
+    Args:
+        study: The shared Optuna study to reconcile.
+
+    Returns:
+        The number of trials transitioned to ``FAIL``.
+    """
+    import optuna
+
+    running = study.get_trials(
+        deepcopy=False, states=(optuna.trial.TrialState.RUNNING,)
+    )
+    failed = 0
+    for trial in running:
+        try:
+            study.tell(
+                trial.number,
+                state=optuna.trial.TrialState.FAIL,
+                skip_if_finished=True,
+            )
+            failed += 1
+        except Exception:  # pragma: no cover - defensive; a racing finalize
+            # A concurrent worker may have just finalized this trial; don't let
+            # one reconciliation failure abort the worker's startup.
+            _logger.warning(
+                "could not fail stale RUNNING trial %d during reconciliation",
+                trial.number,
+                exc_info=True,
+            )
+    if failed:
+        _logger.info("reconciled %d stale RUNNING trial(s) to FAIL", failed)
+    return failed
+
+
+def retry_on_transient_db_error(
+    func: Callable[[], _T],
+    *,
+    trial_number: Optional[int] = None,
+    attempts: int = _RETRY_ATTEMPTS,
+) -> _T:
+    """Call ``func`` with a bounded exponential backoff on transient DB errors.
+
+    Wraps a single ``study.ask`` / ``study.tell`` / user-attr / append call
+    (Change 5) so a transient :class:`sqlalchemy.exc.OperationalError` — a lock
+    timeout or a momentarily-dropped connection against the shared SQLite-WAL /
+    Postgres study — is retried up to ``attempts`` times with a doubling delay,
+    rather than crashing the whole worker. Any **non**-``OperationalError`` (a
+    programming bug, a constraint violation, a study-state error) propagates
+    immediately — only the transient class is retried. Each retry is logged with
+    the trial number when known.
+
+    ``sqlalchemy`` is imported **function-local** (the lazy-import boundary):
+    this module must stay importable without the ``tune`` extra. If SQLAlchemy
+    is somehow unavailable, no error class can match, so ``func`` is called
+    once and any error propagates.
+
+    Args:
+        func: The zero-argument DB operation to run (e.g. ``lambda: study.ask()``).
+        trial_number: The trial number for log context, or ``None``.
+        attempts: The maximum number of tries (default :data:`_RETRY_ATTEMPTS`).
+
+    Returns:
+        Whatever ``func`` returns on the first successful call.
+
+    Raises:
+        Exception: The last transient error after ``attempts`` exhausted, or any
+            non-transient error on the first occurrence.
+    """
+    try:
+        from sqlalchemy.exc import OperationalError
+    except ImportError:  # pragma: no cover - sqlalchemy ships with the tune extra
+        return func()
+
+    last_exc: Optional[BaseException] = None
+    for attempt in range(attempts):
+        try:
+            return func()
+        except OperationalError as exc:
+            last_exc = exc
+            if attempt + 1 >= attempts:
+                break
+            delay = _RETRY_BASE_DELAY_S * (2**attempt)
+            _logger.warning(
+                "transient DB error on trial %s (attempt %d/%d); retrying in "
+                "%.2fs: %s",
+                trial_number if trial_number is not None else "?",
+                attempt + 1,
+                attempts,
+                delay,
+                exc,
+            )
+            time.sleep(delay)
+    assert last_exc is not None  # only reached after an OperationalError
+    raise last_exc

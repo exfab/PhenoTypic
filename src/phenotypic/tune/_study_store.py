@@ -12,6 +12,7 @@ for the concrete journal.
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any, Optional
 
@@ -177,9 +178,27 @@ class JournalStudyStore:
         return pd.DataFrame(rows, columns=self._COLUMNS)
 
     def to_parquet(self, path: Path) -> None:
-        """Write the journal to ``path`` (creating parent dirs)."""
-        Path(path).parent.mkdir(parents=True, exist_ok=True)
-        self.to_dataframe().to_parquet(path, index=False)
+        """Write the journal to ``path`` atomically (creating parent dirs).
+
+        Writes to a sibling ``<path>.tmp`` first, then :func:`os.replace`s it over
+        ``path`` (atomic on POSIX). A killed worker / full disk mid-serialize
+        therefore leaves any pre-existing ``trials.parquet`` intact rather than a
+        truncated file, and the temp is removed on failure so no ``.tmp`` debris
+        lingers. The temp sibling shares ``path``'s directory so the rename stays
+        on one filesystem (the atomicity precondition).
+        """
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp_path = path.with_suffix(path.suffix + ".tmp")
+        try:
+            self.to_dataframe().to_parquet(tmp_path, index=False)
+            os.replace(tmp_path, path)
+        except BaseException:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+            raise
 
     @classmethod
     def from_parquet(cls, path: Path) -> "JournalStudyStore":

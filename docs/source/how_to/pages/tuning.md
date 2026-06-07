@@ -11,6 +11,22 @@ The engine replaces the old `sweep` module: instead of enumerating a fixed
 grid of pipeline variants, you author (or auto-infer) a search space, pick a
 scoring objective, and let the optimizer propose candidates.
 
+```{admonition} Migrating from a legacy `sweep` manifest
+:class: tip
+
+If you have an existing sweep manifest, convert it to a `tuning_spec.json` —
+a `Categorical` grid over the manifest's varying parameters (plus
+`__enabled__` presence knobs for optional ops) — with the migration script:
+
+    python scripts/migrate_sweep_manifest.py old_manifest.json \
+        -o tuning_spec.json --metadata layout.csv
+
+`--metadata` is the per-image layout CSV/Parquet that feeds the count scorer
+(grouped by `--groupby`, default `Metadata_ImageName`). Manifests that swept
+**nested** operations raise `NotImplementedError` — author those spaces by
+hand against the new `SearchSpace` API.
+```
+
 ## Python interface
 
 ### Running a study from the CLI

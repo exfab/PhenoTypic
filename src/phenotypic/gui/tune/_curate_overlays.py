@@ -64,6 +64,26 @@ def difference_key(
     """
     return (session, int(a_trial), f"{plate}|{b_trial}", "difference")
 
+
+def cache_key_for(key: PendingKey) -> tuple[int, str, str]:
+    """Project a session-namespaced :data:`PendingKey` to its OverlayCache key.
+
+    The per-tab ``_PENDING`` registry namespaces futures by ``session_id`` so two
+    browser tabs never share a render, but the process-wide
+    :class:`~phenotypic.gui.tune._overlays.OverlayCache` is keyed only by
+    ``(trial, plate, mode)`` (the render is identical regardless of which tab
+    asked). Single-sources that projection so :func:`request_overlay` (submit)
+    and the readiness poll's self-heal (:meth:`OverlayCache.peek`) can never
+    drift on the cache-key shape.
+
+    Args:
+        key: A ``(session_id, trial, plate, mode)`` pending key.
+
+    Returns:
+        The ``(trial, plate, mode)`` OverlayCache key.
+    """
+    return (key[1], key[2], key[3])
+
 #: Hard cap on the module-level pending-future registry. ``_PENDING`` only needs
 #: to bridge IN-FLIGHT renders — the rendered array is already memoized in the
 #: per-run :class:`OverlayCache` (mem + disk LRU), so a key dropped here is not a
@@ -78,8 +98,17 @@ _PENDING_CAP: int = 64
 _PENDING: "OrderedDict[PendingKey, Future[np.ndarray]]" = OrderedDict()
 _PENDING_LOCK = threading.Lock()
 
+#: Hard cap on the cached-base-pipeline registry. Matches the ``_PENDING`` /
+#: :class:`OverlayCache` capping pattern: each distinct run path opened in a
+#: long-lived hub process would otherwise pin its base pipeline forever. 16 is
+#: ample (a user rarely audits more than a handful of runs in one session) while
+#: bounding resident memory.
+_BASE_PIPELINES_CAP: int = 16
+
 #: Cached base pipelines, keyed by run path (read once from tuning_spec.json).
-_BASE_PIPELINES: "dict[str, Optional[ImagePipeline]]" = {}
+#: MRU-ordered and bounded to :data:`_BASE_PIPELINES_CAP` (oldest evicted),
+#: guarded by :data:`_BASE_LOCK`.
+_BASE_PIPELINES: "OrderedDict[str, Optional[ImagePipeline]]" = OrderedDict()
 _BASE_LOCK = threading.Lock()
 
 
@@ -102,10 +131,15 @@ def read_base_pipeline(root: "TuneRunRoot") -> "Optional[ImagePipeline]":
     key = str(root.path)
     with _BASE_LOCK:
         if key in _BASE_PIPELINES:
+            _BASE_PIPELINES.move_to_end(key)  # touch → MRU
             return _BASE_PIPELINES[key]
     base = _read_base_pipeline_uncached(root)
     with _BASE_LOCK:
         _BASE_PIPELINES[key] = base
+        _BASE_PIPELINES.move_to_end(key)
+        # Hard LRU cap: evict the oldest until bounded.
+        while len(_BASE_PIPELINES) > _BASE_PIPELINES_CAP:
+            _BASE_PIPELINES.popitem(last=False)
     return base
 
 
@@ -149,7 +183,7 @@ def request_overlay(
         key: The ``(session_id, trial, plate, mode)`` pending key.
         render_fn: A zero-arg callable returning the overlay RGB array.
     """
-    cache_key = (key[1], key[2], key[3])  # OverlayKey: (trial, plate, mode)
+    cache_key = cache_key_for(key)  # OverlayKey: (trial, plate, mode)
     with _PENDING_LOCK:
         existing = _PENDING.get(key)
         if existing is not None and not existing.done():
@@ -172,12 +206,19 @@ def request_overlay(
 
 
 def overlay_ready(key: PendingKey) -> bool:
-    """Return ``True`` when ``key``'s overlay future has resolved."""
+    """Return ``True`` when ``key``'s overlay future has resolved.
+
+    ``future.done()`` is evaluated INSIDE :data:`_PENDING_LOCK` (the B4 TOCTOU
+    fix): reading it after releasing the lock let a concurrent ``request_overlay``
+    drop/replace the future between the check and the use, so the poll could see
+    a stale done-state for a future no longer in the registry.
+    """
     with _PENDING_LOCK:
         future = _PENDING.get(key)
-        if future is not None:
-            _PENDING.move_to_end(key)  # touch → MRU so the poll can't evict it
-    return future is not None and future.done()
+        if future is None:
+            return False
+        _PENDING.move_to_end(key)  # touch → MRU so the poll can't evict it
+        return future.done()
 
 
 def take_overlay(key: PendingKey) -> "Optional[np.ndarray]":
@@ -280,6 +321,7 @@ __all__ = [
     "PendingKey",
     "candidate_key",
     "difference_key",
+    "cache_key_for",
     "read_base_pipeline",
     "request_overlay",
     "overlay_ready",

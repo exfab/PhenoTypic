@@ -13,9 +13,18 @@
     background: var(--color-bg);
 }
 
+/* The swappable page body — the bind callback replaces its children from the
+   pick-a-run prompt to the loaded four-view stack. A bare block; the views and
+   the empty-state prompt carry their own chrome. */
+.tune-page-body,
+.tune-body-inner {
+    display: block;
+}
+
 .tune-run-header {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: var(--sp-3);
     padding: var(--sp-3) var(--sp-4);
     margin-bottom: var(--sp-4);
@@ -25,6 +34,35 @@
     box-shadow: var(--shadow-sm);
     font-size: var(--font-size-header-2);
     color: var(--color-heading);
+}
+
+.tune-run-title {
+    font-size: var(--font-size-header-2);
+    font-weight: 600;
+    color: var(--color-heading);
+}
+
+/* ---- Run picker (Chunk C — bind a tune output at runtime) -------------- */
+
+.tune-runpicker-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--sp-3);
+}
+
+.tune-runpicker-value {
+    font-family: var(--font-mono);
+    font-size: var(--font-size-caption);
+    color: var(--color-muted);
+    word-break: break-all;
+}
+
+.tune-runpicker-note {
+    font-size: var(--font-size-caption);
+    /* Vermilion is the design system's reserved error/alert color (DESIGN.md);
+       the run-picker note only ever carries a bind-failure message. */
+    color: var(--oi-vermilion);
 }
 
 /* ---- Sub-tab button row ------------------------------------------------ */
@@ -210,6 +248,18 @@
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: var(--sp-4);
+}
+
+/* Difference-mode hide wins over the side-by-side `display: grid`. A single
+ * `.tune-view-hidden{display:none}` class loses to the equally-specific
+ * `.tune-curate-sidebyside{display:grid}` declared later in this file, so the
+ * panels leaked through in Difference mode. These compound (two-class) rules
+ * raise specificity so the hidden state always wins. The analogous difference
+ * rule keeps the symmetry future-proof if `.tune-curate-difference` ever gains
+ * a non-`block` display. */
+.tune-curate-sidebyside.tune-view-hidden,
+.tune-curate-difference.tune-view-hidden {
+    display: none;
 }
 
 .tune-curate-winner {

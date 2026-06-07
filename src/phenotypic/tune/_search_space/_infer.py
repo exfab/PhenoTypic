@@ -211,7 +211,11 @@ def _unbounded_knob_or_excluded(
         return Excluded(key=key, reason="non_numeric", field_type=field_type)
     d = float(value)
     if d <= 0:
-        return Excluded(key=key, reason="non_numeric", field_type=field_type)
+        # A non-positive anchor collapses/flips the multiplicative ``[d/f, d·f]``
+        # window — distinct from a genuinely non-numeric anchor above.
+        return Excluded(
+            key=key, reason="non_positive_default", field_type=field_type
+        )
 
     low = d / factor
     high = d * factor
@@ -487,11 +491,16 @@ def _dispatch_core(
             description=description,
         )
 
-    # Enum -> Categorical(members).
+    # Enum -> Categorical(member *values*, not members). Storing the raw values
+    # keeps the domain JSON-native: ``model_dump(mode="json")`` →
+    # ``model_validate`` round-trips to the same Python type (a member would
+    # serialize to a bare string and reload as ``str``, losing the enum type).
+    # The build path re-applies a chosen value through the op constructor, whose
+    # field_validator coerces the value back to the enum, so apply still works.
     if isinstance(core, type) and issubclass(core, enum.Enum):
         return Knob(
             target=parse_key(key),
-            domain=Categorical(choices=tuple(core)),
+            domain=Categorical(choices=tuple(m.value for m in core)),
             source="enum",
             needs_review=False,
             description=description,
@@ -727,10 +736,36 @@ def infer_search_space(
                 )
                 knobs.extend(n_knobs)
                 excluded.extend(n_excluded)
-    knobs = [
-        k.model_copy(update={"target": with_op_class(k.target, ops)}) for k in knobs
-    ]
+    knobs = [_stamp_op_classes(k, ops) for k in knobs]
     return InferredSearchSpace(knobs=tuple(knobs), excluded=tuple(excluded))
+
+
+def _stamp_op_classes(knob: Knob, ops: list) -> Knob:
+    """Fill ``op_class`` on a knob's own target **and** its conditional parents.
+
+    The knob's ``target`` is always stamped (posture C — every programmatic
+    target is wrong-op cross-checked). Each ``conditional_on`` parent target is
+    stamped too, so a presence-conditional knob's gate resolves against the
+    correct parent op once presence-wrapping is enabled. The latter is latent in
+    v1 (``_tune_optional`` is never set, so ``conditional_on`` is always
+    ``None``), but stamping defensively keeps a future presence layer correct
+    without a change here.
+
+    Args:
+        knob: The inferred knob to enrich.
+        ops: The pipeline's ops in position order (the ``op_class`` source).
+
+    Returns:
+        A copy of ``knob`` with ``op_class`` populated on its target and on every
+        ``conditional_on`` parent target.
+    """
+    update: dict[str, Any] = {"target": with_op_class(knob.target, ops)}
+    if knob.conditional_on is not None:
+        update["conditional_on"] = tuple(
+            (with_op_class(parent, ops), value)
+            for parent, value in knob.conditional_on
+        )
+    return knob.model_copy(update=update)
 
 
 def _field_holds_operation(field_info: Any) -> bool:
