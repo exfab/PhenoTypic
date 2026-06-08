@@ -34,7 +34,7 @@ from phenotypic.gui._design import (
     COLOR_SURFACE,
     FONT_SIZE_LABEL,
 )
-from phenotypic.qc import QcRecipe, QcRecipeLoadWarning
+from phenotypic.tools_._qc_recipe import QcRecipe, QcRecipeLoadWarning
 from phenotypic.gui.results_viewer._qc_tab import _ids as ids
 from phenotypic.gui.results_viewer._qc_tab._check_card import build_check_card
 from phenotypic.gui.results_viewer._qc_tab.review import _ids as review_ids

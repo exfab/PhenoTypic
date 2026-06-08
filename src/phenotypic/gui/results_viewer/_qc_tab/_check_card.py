@@ -26,7 +26,7 @@ from phenotypic.gui._design import (
     FONT_SIZE_CAPTION,
     FONT_SIZE_LABEL,
 )
-from phenotypic.qc import QcRecipeEntry
+from phenotypic.tools_._qc_recipe import QcRecipeEntry
 from phenotypic.gui.results_viewer._qc_tab import _ids as ids
 
 

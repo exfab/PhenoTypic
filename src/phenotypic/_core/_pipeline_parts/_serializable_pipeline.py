@@ -9,7 +9,7 @@ from typing import Dict, List, Union, Optional, TYPE_CHECKING
 if TYPE_CHECKING:
     from phenotypic._core._image_pipeline import ImagePipeline
     from phenotypic.analysis.abc_ import ModelFitter, SetAnalyzer
-    from phenotypic.qc._recipe import QcRecipeEntry
+    from phenotypic.tools_._qc_recipe import QcRecipeEntry
 
 import warnings
 
@@ -802,7 +802,7 @@ class SerializablePipeline(NapariPipelineViewer):
             AttributeError: If an entry's class cannot be resolved and
                 ``skipped`` is ``None``.
         """
-        from phenotypic.qc._recipe import QcRecipeEntry, QcRecipeLoadWarning
+        from phenotypic.tools_._qc_recipe import QcRecipeEntry, QcRecipeLoadWarning
 
         if not isinstance(serialized, list):
             return []

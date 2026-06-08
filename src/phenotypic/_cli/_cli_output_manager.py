@@ -618,7 +618,7 @@ def finalize_post_master_outputs(
                 # Import the submodule directly (not ``phenotypic.qc``) so QC
                 # compute is only pulled in on the path that needs it, keeping
                 # the qc package __init__ free of an eager _runner import.
-                from phenotypic.qc._runner import run_qc
+                from phenotypic.tools_._qc_recipe._runner import run_qc
 
                 run_qc(post_df.to_pandas(), pipeline, output_dir)
             except Exception:

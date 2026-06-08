@@ -64,7 +64,7 @@ from phenotypic.gui.results_viewer._layout import (
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 from phenotypic.gui.results_viewer.colony_view import _crop_routes as colony_crop_routes
 from phenotypic.gui.shell._ids import SHELL_SIDEBAR_SELECTION_STORE
-from phenotypic.qc import QcRecipe
+from phenotypic.tools_._qc_recipe import QcRecipe
 
 logger = logging.getLogger(__name__)
 
