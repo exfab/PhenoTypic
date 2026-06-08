@@ -25,8 +25,8 @@ import pytest
 
 from phenotypic import ImagePipeline
 from phenotypic.analysis import ExpectedVsDetectedCount, ReplicateAgreement
-from phenotypic.qc._recipe import QcRecipeEntry
-from phenotypic.qc._runner import run_qc
+from phenotypic.tools_._qc_recipe import QcRecipeEntry
+from phenotypic.tools_._qc_recipe._runner import run_qc
 from phenotypic.tools_ import measurements_parquet_path
 
 
