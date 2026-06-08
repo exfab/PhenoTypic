@@ -81,6 +81,12 @@ TUNE_RUN_HEADER = "tune-run-header"
 #: The active-view store: which sub-tab's container is currently shown.
 TUNE_ACTIVE_VIEW_STORE = "tune-active-view-store"
 
+#: The active top-level tune destination: Setup / Run / Monitor.
+TUNE_ACTIVE_DESTINATION_STORE = "tune-active-destination-store"
+
+#: Hamburger/destination row container.
+TUNE_DESTINATION_DRAWER = "tune-destination-drawer"
+
 #: The run-root store: a JSON-serialisable descriptor of the bound
 #: :class:`~phenotypic.gui.tune.TuneRunRoot` the poll callback re-reads from.
 TUNE_RUN_ROOT_STORE = "tune-run-root-store"
@@ -94,6 +100,59 @@ TUNE_RUN_ROOT_STORE = "tune-run-root-store"
 #: binds a run can re-render the whole body without disturbing the picker chrome
 #: or the run-root store above it.
 TUNE_PAGE_BODY = "tune-page-body"
+
+# ---------------------------------------------------------------------------
+# Setup destination
+# ---------------------------------------------------------------------------
+
+TUNE_SETUP_PIPELINE_STORE = "tune-setup-pipeline-store"
+TUNE_SETUP_AUTHORED_SPEC_STORE = "tune-setup-authored-spec-store"
+TUNE_SETUP_PIPELINE_INPUT = "tune-setup-pipeline-input"
+TUNE_SETUP_METADATA_INPUT = "tune-setup-metadata-input"
+TUNE_SETUP_GATE = "tune-setup-gate"
+TUNE_SETUP_SEARCH_SPACE = "tune-setup-search-space"
+TUNE_SETUP_SCORER = "tune-setup-scorer"
+TUNE_SETUP_FOOTER = "tune-setup-footer"
+TUNE_SETUP_CONTINUE = "tune-setup-continue"
+
+# ---------------------------------------------------------------------------
+# Run destination
+# ---------------------------------------------------------------------------
+
+TUNE_RUN_IMAGES_OVERRIDE = "tune-run-images-override"
+TUNE_RUN_OUTPUT_DIR = "tune-run-output-dir"
+TUNE_RUN_STRATEGY = "tune-run-strategy"
+TUNE_RUN_N_TRIALS = "tune-run-n-trials"
+TUNE_RUN_STORAGE_URL = "tune-run-storage-url"
+TUNE_RUN_N_WORKERS = "tune-run-n-workers"
+TUNE_RUN_SLURM_PARTITION = "tune-run-slurm-partition"
+TUNE_RUN_SLURM_MEM = "tune-run-slurm-mem"
+TUNE_RUN_SLURM_TIME = "tune-run-slurm-time"
+TUNE_RUN_HELD_OUT_FRACTION = "tune-run-held-out-fraction"
+TUNE_RUN_CV_GROUP = "tune-run-cv-group"
+TUNE_RUN_MODE = "tune-run-mode"
+TUNE_RUN_SCREEN = "tune-run-screen"
+TUNE_RUN_COMMAND = "tune-run-command"
+TUNE_RUN_PREFLIGHT = "tune-run-preflight"
+TUNE_RUN_DEPLOY = "tune-run-deploy"
+TUNE_RUN_STATUS = "tune-run-status"
+TUNE_RUN_ACTIVE_RECORD_STORE = "tune-run-active-record-store"
+
+# ---------------------------------------------------------------------------
+# Monitor destination extensions
+# ---------------------------------------------------------------------------
+
+TUNE_MONITOR_ACTIVE_RUN_STORE = "tune-monitor-active-run-store"
+TUNE_MONITOR_SWITCHER = "tune-monitor-switcher"
+TUNE_MONITOR_RUN_SWITCH = "tune-monitor-run-switch"
+TUNE_MONITOR_LOCAL_LOG = "tune-monitor-local-log"
+TUNE_MONITOR_SLURM_FLEET = "tune-monitor-slurm-fleet"
+TUNE_MONITOR_CANCEL_CONFIRM = "tune-monitor-cancel-confirm"
+TUNE_MONITOR_CANCEL = "tune-monitor-cancel"
+TUNE_MONITOR_CANCEL_NOTE = "tune-monitor-cancel-note"
+TUNE_MONITOR_EXPORT = "tune-monitor-export"
+TUNE_MONITOR_EXPORT_NOTE = "tune-monitor-export-note"
+TUNE_MONITOR_RESULT_ZONE = "tune-monitor-result-zone"
 
 #: The "Bind run" / "Browse..." run-picker button that opens the sandbox-bounded
 #: run-directory picker modal.
@@ -308,8 +367,48 @@ __all__ = [
     "TUNE_PAGE",
     "TUNE_RUN_HEADER",
     "TUNE_ACTIVE_VIEW_STORE",
+    "TUNE_ACTIVE_DESTINATION_STORE",
+    "TUNE_DESTINATION_DRAWER",
     "TUNE_RUN_ROOT_STORE",
     "TUNE_PAGE_BODY",
+    "TUNE_SETUP_PIPELINE_STORE",
+    "TUNE_SETUP_AUTHORED_SPEC_STORE",
+    "TUNE_SETUP_PIPELINE_INPUT",
+    "TUNE_SETUP_METADATA_INPUT",
+    "TUNE_SETUP_GATE",
+    "TUNE_SETUP_SEARCH_SPACE",
+    "TUNE_SETUP_SCORER",
+    "TUNE_SETUP_FOOTER",
+    "TUNE_SETUP_CONTINUE",
+    "TUNE_RUN_IMAGES_OVERRIDE",
+    "TUNE_RUN_OUTPUT_DIR",
+    "TUNE_RUN_STRATEGY",
+    "TUNE_RUN_N_TRIALS",
+    "TUNE_RUN_STORAGE_URL",
+    "TUNE_RUN_N_WORKERS",
+    "TUNE_RUN_SLURM_PARTITION",
+    "TUNE_RUN_SLURM_MEM",
+    "TUNE_RUN_SLURM_TIME",
+    "TUNE_RUN_HELD_OUT_FRACTION",
+    "TUNE_RUN_CV_GROUP",
+    "TUNE_RUN_MODE",
+    "TUNE_RUN_SCREEN",
+    "TUNE_RUN_COMMAND",
+    "TUNE_RUN_PREFLIGHT",
+    "TUNE_RUN_DEPLOY",
+    "TUNE_RUN_STATUS",
+    "TUNE_RUN_ACTIVE_RECORD_STORE",
+    "TUNE_MONITOR_ACTIVE_RUN_STORE",
+    "TUNE_MONITOR_SWITCHER",
+    "TUNE_MONITOR_RUN_SWITCH",
+    "TUNE_MONITOR_LOCAL_LOG",
+    "TUNE_MONITOR_SLURM_FLEET",
+    "TUNE_MONITOR_CANCEL_CONFIRM",
+    "TUNE_MONITOR_CANCEL",
+    "TUNE_MONITOR_CANCEL_NOTE",
+    "TUNE_MONITOR_EXPORT",
+    "TUNE_MONITOR_EXPORT_NOTE",
+    "TUNE_MONITOR_RESULT_ZONE",
     "TUNE_BTN_PICK_RUN",
     "TUNE_RUN_PICKER_LABEL",
     "TUNE_RUN_PICKER_NOTE",

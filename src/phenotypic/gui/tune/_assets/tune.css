@@ -42,6 +42,165 @@
     color: var(--color-heading);
 }
 
+/* ---- Top-level destinations ------------------------------------------- */
+
+.tune-destination-row {
+    display: flex;
+    gap: var(--sp-2);
+    margin-bottom: var(--sp-4);
+    border-bottom: 1px solid var(--color-rule);
+}
+
+.tune-dest {
+    appearance: none;
+    border: none;
+    background: transparent;
+    color: var(--color-muted);
+    font-family: var(--font-body);
+    font-size: var(--font-size-label);
+    font-weight: 700;
+    padding: var(--sp-2) var(--sp-4);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: var(--transition);
+}
+
+.tune-dest:hover {
+    color: var(--color-body);
+}
+
+.tune-dest-active {
+    color: var(--color-blue);
+    border-bottom-color: var(--color-blue);
+}
+
+.tune-destination-views {
+    display: block;
+}
+
+.tune-setup {
+    display: grid;
+    gap: var(--sp-4);
+}
+
+.tune-setup-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+    padding: var(--sp-4);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    background: var(--color-surface);
+}
+
+.tune-setup-section h3 {
+    margin: 0;
+    font-size: var(--font-size-header-2);
+    color: var(--color-heading);
+}
+
+.tune-setup-path-input {
+    width: 100%;
+    max-width: 42rem;
+    padding: var(--sp-2) var(--sp-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    color: var(--color-body);
+    background: var(--color-surface);
+    font-family: var(--font-mono);
+    font-size: var(--font-size-caption);
+}
+
+.tune-setup-locked {
+    color: var(--color-muted);
+    background: var(--color-bg);
+    border-style: dashed;
+}
+
+.tune-setup-note {
+    color: var(--color-muted);
+    font-size: var(--font-size-body);
+}
+
+.tune-setup-footer {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.tune-setup-continue {
+    appearance: none;
+    border: 1px solid var(--color-blue);
+    border-radius: var(--radius-sm);
+    background: var(--color-blue);
+    color: var(--color-surface);
+    font-family: var(--font-body);
+    font-size: var(--font-size-label);
+    font-weight: 700;
+    padding: var(--sp-2) var(--sp-4);
+    cursor: pointer;
+}
+
+.tune-setup-continue:disabled {
+    border-color: var(--color-border);
+    background: var(--color-bg);
+    color: var(--color-muted);
+    cursor: not-allowed;
+}
+
+/* ---- Run destination ---------------------------------------------------- */
+
+.tune-run {
+    display: grid;
+    gap: var(--sp-4);
+}
+
+.tune-run-section {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: var(--sp-3);
+    padding: var(--sp-4);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    background: var(--color-surface);
+}
+
+.tune-run-section h3 {
+    flex: 1 0 100%;
+    margin: 0;
+    font-size: var(--font-size-header-2);
+    color: var(--color-heading);
+}
+
+.tune-run-field {
+    min-width: 12rem;
+}
+
+.tune-run-input {
+    min-width: 10rem;
+    padding: var(--sp-2) var(--sp-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    color: var(--color-body);
+    background: var(--color-surface);
+    font-family: var(--font-body);
+    font-size: var(--font-size-caption);
+}
+
+.tune-run-input-wide {
+    flex: 1 1 24rem;
+}
+
+.tune-run-mode {
+    min-width: 10rem;
+    font-size: var(--font-size-label);
+}
+
+.tune-run-note {
+    font-size: var(--font-size-caption);
+    color: var(--color-muted);
+}
+
 /* ---- Run picker (Chunk C — bind a tune output at runtime) -------------- */
 
 .tune-runpicker-row {
@@ -149,6 +308,44 @@
     margin-top: var(--sp-3);
     font-size: var(--font-size-caption);
     color: var(--color-muted);
+}
+
+.tune-monitor-live,
+.tune-monitor-result {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--sp-3);
+    padding: var(--sp-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-bg);
+}
+
+.tune-monitor-live-card {
+    flex: 1 1 16rem;
+    min-height: 2.5rem;
+    font-family: var(--font-mono);
+    font-size: var(--font-size-caption);
+    color: var(--color-muted);
+    white-space: pre-wrap;
+}
+
+.tune-monitor-switcher-item {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+    margin: 0 var(--sp-2) var(--sp-2) 0;
+    padding: var(--sp-2) var(--sp-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    font-size: var(--font-size-caption);
+}
+
+.tune-monitor-switcher-active {
+    border-color: var(--color-blue);
+    color: var(--color-blue);
 }
 
 .tune-empty-state {

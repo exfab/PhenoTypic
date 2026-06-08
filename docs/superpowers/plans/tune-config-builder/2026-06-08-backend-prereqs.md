@@ -2,7 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add the two backend (non-GUI) changes the Tune Config Builder depends on — `FloatRange.step` (quantized floats, wired into grid/random/Optuna) and `TuningSpec.phenotypic_version` (a provenance stamp) — so the later GUI plans have a complete, tested foundation.
+**Goal:** Add the backend (non-GUI) changes the Tune Config Builder depends on:
+`FloatRange.step` (quantized floats, wired into grid/random/Optuna),
+`TuningSpec.phenotypic_version` (a provenance stamp), and an explicit
+`best_params.json` deliverable that Monitor can read without reverse-engineering
+`trials.parquet`.
 
 **Architecture:** Pure changes to the `phenotypic.tune` module. `FloatRange` gains an optional `step` that mirrors `IntRange.step`: a quantizing `values()` method makes a stepped float grid-enumerable, and the three strategies (grid enumerate, random sample, Optuna suggest) each learn to use it, with the Optuna step↔log guard that already exists for `IntRange`. `TuningSpec` gains a `phenotypic_version` field stamped via `default_factory` and a load-time mismatch warning.
 
@@ -11,7 +15,7 @@
 **Plan series:** This is **Plan 1 of 4**. Downstream (separate plans, not in scope here):
 - Plan 2 — GUI scaffold: hamburger Setup/Run/Monitor IA, Setup empty-state gate, `SANDBOX_TUNE_PRESETS_SUBDIR`, the scorer-param-form spike (Q9).
 - Plan 3 — GUI Run/deploy: strategy/budget/compute form, image source from the shared source-image-root, deploy via the run-console runner, pre-flight + blocked-deploy validation.
-- Plan 4 — GUI Monitor: run switcher, Local/SLURM live view, cancel, single-best + Pareto export.
+- Plan 4 — GUI Monitor: run switcher, Local/SLURM live view, Local cancel, single-best + Pareto export.
 
 Reference: the spec set in `docs/superpowers/spec/tune-config-builder/` (esp. docs 02 and 04) and the mockup `mockups/tune-config-builder.html`.
 
@@ -26,11 +30,14 @@ Reference: the spec set in `docs/superpowers/spec/tune-config-builder/` (esp. do
 | `src/phenotypic/tune/_strategies/_random.py` | Random sampling | Sample a stepped `FloatRange` from its grid |
 | `src/phenotypic/tune/_strategies/_optuna.py` | Optuna `suggest_*` mapping | Pass `step` to `suggest_float`; step↔log guard |
 | `src/phenotypic/tune/_spec.py` | `TuningSpec` root model | Add `phenotypic_version` field + mismatch warning |
+| `src/phenotypic/tools_/_io_constants.py` | Artifact constants / paths | Add `BEST_PARAMS_JSON` + `best_params_path()` |
+| `src/phenotypic/tune/_tune_cli/_run.py` | Tune CLI finalize | Write `best_params.json` for the headline winner |
 | `tests/unit/tune/test_domains.py` | Domain unit tests | `FloatRange.step` / `values()` cases |
 | `tests/unit/tune/test_grid_enumerate.py` | Grid tests | Stepped-float enumeration case |
 | `tests/unit/tune/test_strategies.py` | Random strategy tests | Stepped-float sampling case |
 | `tests/unit/tune/test_optuna_strategy.py` | Optuna tests | Stepped-float suggest + guard |
 | `tests/unit/tune/test_tuning_spec.py` | Spec round-trip tests | `phenotypic_version` stamp + warning |
+| `tests/unit/tune/test_tune_cli.py` / `tests/unit/tune/test_phase4_integration.py` | CLI deliverable tests | `best_params.json` single + Pareto-knee cases |
 
 ---
 
@@ -515,7 +522,86 @@ git commit -m "feat(tune): stamp TuningSpec with phenotypic_version + load warni
 
 ---
 
-## Task 6: Full-suite verification + lint/type gate
+## Task 6: `best_params.json` deliverable
+
+**Files:**
+- Modify: `src/phenotypic/tools_/_io_constants.py`
+- Modify: `src/phenotypic/tune/_tune_cli/_run.py`
+- Test: `tests/unit/tune/test_tune_cli.py`
+- Test: `tests/unit/tune/test_phase4_integration.py`
+
+- [ ] **Step 1: Write the failing tests**
+
+Extend the existing successful single-objective tune CLI test to assert
+`best_params_path(out)` exists, parses as JSON, contains a non-empty `"params"`
+mapping, and includes a non-null `"trial_number"`.
+
+Extend the existing Pareto integration test to assert `best_params_path(out)`
+exists, parses as JSON, has `"selection" == "pareto_knee"`, and its `"params"`
+match the knee trial already computed in that test. Reuse the existing runs
+rather than creating new synthetic runs.
+
+- [ ] **Step 2: Add constants and path helper**
+
+In `src/phenotypic/tools_/_io_constants.py`, add:
+
+```python
+BEST_PARAMS_JSON: Final[str] = "best_params.json"
+
+
+def best_params_path(output_dir: Path) -> Path:
+    """Return the best-params sidecar path under ``deliverables/``."""
+    return deliverables_dir(output_dir) / BEST_PARAMS_JSON
+```
+
+Export both names through the module's public export surface.
+
+- [ ] **Step 3: Write the sidecar during tune finalize**
+
+In `src/phenotypic/tune/_tune_cli/_run.py`, write the sidecar beside
+`best_pipeline.json.pht-pipe` for the headline winner:
+
+```python
+if headline is not None:
+    selection = "pareto_knee" if store.pareto_front() else "single_best"
+    atomic_write_text(
+        io.best_params_path(output_dir),
+        json.dumps(
+            {
+                "trial_number": headline.number,
+                "score": headline.score,
+                "objectives": headline.objectives,
+                "params": headline.params,
+                "selection": selection,
+            },
+            indent=2,
+        ),
+    )
+```
+
+Keep the sidecar JSON-native and backend-agnostic. The usable artifact remains
+`best_pipeline.json.pht-pipe`; `best_params.json` exists for Monitor display and
+auditing.
+
+- [ ] **Step 4: Run targeted tests**
+
+Run:
+
+```bash
+uv run pytest tests/unit/tune/test_tune_cli.py tests/unit/tune/test_phase4_integration.py -k "best_params or pareto" -v
+```
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/phenotypic/tools_/_io_constants.py src/phenotypic/tune/_tune_cli/_run.py \
+        tests/unit/tune/test_tune_cli.py tests/unit/tune/test_phase4_integration.py
+git commit -m "feat(tune): publish best_params sidecar for GUI Monitor"
+```
+
+---
+
+## Task 7: Full-suite verification + lint/type gate
 
 **Files:** none (verification only)
 
@@ -553,6 +639,7 @@ git commit -m "test(tune): update snapshots for FloatRange.step + phenotypic_ver
 - Optuna `suggest_float(step=)` + step↔log guard → Task 4. ✓
 - `TuningSpec.phenotypic_version` via `default_factory` → Task 5. ✓
 - Load-time mismatch warning, provenance preserved, legacy loads → Task 5. ✓
+- `best_params.json` sidecar for Monitor → Task 6. ✓
 - `TuningSpec.to_json` already exists (no new wrapper) → confirmed in doc 04; not a task. ✓
 - `SANDBOX_TUNE_PRESETS_SUBDIR` → **GUI constant, deferred to Plan 2** (correctly out of scope here). ✓
 

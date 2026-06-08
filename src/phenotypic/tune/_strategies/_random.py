@@ -44,6 +44,8 @@ class RandomStrategy:
         if isinstance(domain, IntRange):
             return self._rng.choice(domain.values())
         if isinstance(domain, FloatRange):
+            if domain.step is not None:
+                return self._rng.choice(domain.values())
             if domain.log:
                 lo, hi = math.log(domain.low), math.log(domain.high)
                 return math.exp(self._rng.uniform(lo, hi))

@@ -206,6 +206,10 @@ _LEGACY_TUNING_SPEC_JSON: Final[str] = f"tuning_spec{LEGACY_JSON_SUFFIX}"
 BEST_PIPELINE_JSON: Final[str] = f"best_pipeline{CONFIG_SUFFIX_PIPELINE}"
 _LEGACY_BEST_PIPELINE_JSON: Final[str] = f"best_pipeline{LEGACY_JSON_SUFFIX}"
 
+#: Sidecar with the selected headline trial's params and scores, written by the
+#: tune CLI into :data:`DIR_DELIVERABLES` for GUI Monitor display.
+BEST_PARAMS_JSON: Final[str] = "best_params.json"
+
 #: The RF-permutation ``param_importance.json`` report written by the tune
 #: CLI into :data:`DIR_DELIVERABLES`.
 PARAM_IMPORTANCE_JSON: Final[str] = "param_importance.json"
@@ -832,6 +836,11 @@ def resolve_best_pipeline_path(output_dir: Path) -> Path:
 def param_importance_path(output_dir: Path) -> Path:
     """Return ``<output>/deliverables/param_importance.json`` (the report)."""
     return deliverables_dir(output_dir) / PARAM_IMPORTANCE_JSON
+
+
+def best_params_path(output_dir: Path) -> Path:
+    """Return ``<output>/deliverables/best_params.json`` (winner params sidecar)."""
+    return deliverables_dir(output_dir) / BEST_PARAMS_JSON
 
 
 def trials_parquet_path(output_dir: Path) -> Path:

@@ -2,13 +2,25 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Extend the Monitor destination — a run switcher over every live/finished study, a Local-vs-SLURM live view (with degrade when the study store is unreachable), mode-aware run cancellation, and the result zone that closes the loop: **Export best pipeline** (single-objective) or **Pareto export** (multi-objective).
+**Goal:** Extend the Monitor destination — a run switcher over every live/finished
+study, a Local-vs-SLURM live view (with degrade when the study store is
+unreachable), Local-run cancellation, and the result zone that closes the loop:
+**Export best pipeline** (single-objective) or **Pareto export**
+(multi-objective). SLURM cancellation is not in v1.
 
-**Architecture:** Same pure-helper pattern. New pure module `_monitor.py` (switcher view-models, live-view selection, cancel prompts) and `_export.py` (build + write the tuned pipeline). Reuses `RunRegistry`/`RunRecord` (`shell/_runs_registry.py`), `LocalRunner.stop` for local cancel, `scancel` for SLURM, and the tune engine's `build_pipeline` + `is_multi_objective`/`objective_names`. The existing Monitor/Curate charts stay as-is; this plan adds the switcher, the live-view swap, cancel, and the export zone.
+**Architecture:** Same pure-helper pattern. New pure module `_monitor.py`
+(switcher view-models, live-view selection, Local cancel prompt) and `_export.py`
+(build + write the tuned pipeline). Reuses `RunRegistry`/`RunRecord`
+(`shell/_runs_registry.py`), `LocalRunner.stop` for Local cancel, and the tune
+engine's `build_pipeline` + `is_multi_objective`/`objective_names`. The existing
+Monitor/Curate charts stay as-is; this plan adds the switcher, the live-view
+swap, Local cancel, and the export zone.
 
 **Tech Stack:** Python, Dash, pydantic v2, pytest, `uv`. (Optuna stays lazy — the live study read already gates on the `tune` extra inside the poll callback; this plan adds no eager optuna import.)
 
-**Depends on:** Plans 1–3 merged. Plan 3's deploy callback writes `RunRegistry` entries (mode + `slurm_job_id` + storage) that this plan reads.
+**Depends on:** Plans 1–3 merged. Plan 1 writes `best_params.json`; Plan 3's
+deploy callback writes `RunRegistry` entries (mode + output dir + storage) that
+this plan reads.
 
 **Spec refs:** `docs/superpowers/spec/tune-config-builder/03-run-deploy-and-monitor.md` (Monitor section); mockup Monitor view (run switcher, SLURM fleet card, best-result zone).
 
@@ -18,13 +30,13 @@
 
 | File | Responsibility | Change |
 |------|----------------|--------|
-| `src/phenotypic/gui/tune/_monitor.py` | **New.** Pure switcher / live-view / cancel logic | `run_switcher_items()`, `live_view_kind()`, `cancel_prompt()` |
+| `src/phenotypic/gui/tune/_monitor.py` | **New.** Pure switcher / live-view / Local cancel logic | `run_switcher_items()`, `live_view_kind()`, `cancel_prompt()` |
 | `src/phenotypic/gui/tune/_export.py` | **New.** Build + write the tuned pipeline | `export_winning_pipeline()`, `export_pareto_pipeline()` |
-| `src/phenotypic/gui/tune/_ids.py` | Tune IDs | Switcher, live-view containers, cancel dialog, export zone |
+| `src/phenotypic/gui/tune/_ids.py` | Tune IDs | Switcher, live-view containers, Local cancel dialog, export zone |
 | `src/phenotypic/gui/tune/_layout.py` | Layout | Monitor: switcher + Local/SLURM live containers + export zone |
-| `src/phenotypic/gui/tune/_callbacks.py` | Callbacks | Switcher select, live-view swap, cancel confirm/exec, export |
+| `src/phenotypic/gui/tune/_callbacks.py` | Callbacks | Switcher select, live-view swap, Local cancel confirm/exec, export |
 | `src/phenotypic/gui/FEATURES.md` | Ledger | Monitor affordance rows |
-| `tests/unit/gui/tune/test_monitor.py` | **New** | switcher / live-view / cancel-prompt cases |
+| `tests/unit/gui/tune/test_monitor.py` | **New** | switcher / live-view / Local cancel-prompt cases |
 | `tests/unit/gui/tune/test_export.py` | **New** | export single + pareto cases |
 | `tests/integration/gui/tune/test_monitor_view.py` | **New** | switcher swap + cancel + export (mocked runner) |
 
@@ -49,21 +61,22 @@ from phenotypic.gui.tune._monitor import (
 )
 
 
-def _rec(run_id, mode, status, job=None):
-    return SimpleNamespace(run_id=run_id, mode=mode, status=status, slurm_job_id=job)
+def _rec(run_id, mode, status):
+    return SimpleNamespace(run_id=run_id, mode=mode, status=status)
 
 
 def test_switcher_marks_active_and_killable():
     recs = [
         _rec("a", "local", "running"),
-        _rec("b", "slurm", "running", job="4815162"),
+        _rec("b", "slurm", "running"),
         _rec("c", "local", "complete"),
     ]
     items = run_switcher_items(recs, active_id="b")
     by_id = {it.run_id: it for it in items}
     assert by_id["b"].active is True
     assert by_id["a"].active is False
-    assert by_id["a"].killable is True       # running → cancellable
+    assert by_id["a"].killable is True       # running Local → cancellable
+    assert by_id["b"].killable is False      # SLURM cancel is deferred
     assert by_id["c"].killable is False      # complete → not cancellable
 
 
@@ -73,11 +86,9 @@ def test_live_view_kind_selects_local_vs_slurm_and_degrades():
     assert live_view_kind("slurm", store_reachable=False) == "slurm-detached"
 
 
-def test_cancel_prompt_is_mode_aware():
+def test_cancel_prompt_is_local_only():
     local = cancel_prompt("yeast_qc_tpe", "local")
     assert "SIGTERM" in local and "resumed" in local
-    slurm = cancel_prompt("ecoli_grid", "slurm")
-    assert "scancel" in slurm and "shared" in slurm
 ```
 
 - [ ] **Step 2: Run tests to verify they fail**
@@ -92,8 +103,8 @@ Expected: FAIL — `_monitor` module does not exist.
 """Pure Monitor logic: run-switcher view-models, live-view selection, cancel text.
 
 Decoupled from the Dash layer and from ``RunRegistry``'s exact shape — the
-switcher takes any objects exposing ``run_id`` / ``mode`` / ``status`` /
-``slurm_job_id`` (``RunRecord`` qualifies), so the callback adapts registry rows
+switcher takes any objects exposing ``run_id`` / ``mode`` / ``status``
+(``RunRecord`` qualifies), so the callback adapts registry rows
 to these helpers and the unit tests use lightweight stand-ins.
 """
 from __future__ import annotations
@@ -103,7 +114,7 @@ from typing import Any, Literal
 
 LiveViewKind = Literal["local-log", "slurm-fleet", "slurm-detached"]
 
-#: Statuses for which a run can still be cancelled.
+#: Statuses for which a Local run can still be cancelled.
 _CANCELLABLE = {"running", "submitting"}
 
 
@@ -126,7 +137,7 @@ def run_switcher_items(records: list[Any], *, active_id: str | None) -> list[Swi
             mode=r.mode,
             status=r.status,
             active=(r.run_id == active_id),
-            killable=(r.status in _CANCELLABLE),
+            killable=(r.mode == "local" and r.status in _CANCELLABLE),
         )
         for r in records
     ]
@@ -136,7 +147,7 @@ def live_view_kind(mode: str, *, store_reachable: bool) -> LiveViewKind:
     """Pick the live view for the selected run.
 
     Local runs tail stdout; SLURM runs show a fleet card when the study store is
-    reachable for polling, else a detached card (job id + task count only).
+    reachable for polling, else a detached submitted-to-cluster card.
     """
     if mode == "slurm":
         return "slurm-fleet" if store_reachable else "slurm-detached"
@@ -144,13 +155,9 @@ def live_view_kind(mode: str, *, store_reachable: bool) -> LiveViewKind:
 
 
 def cancel_prompt(name: str, mode: str) -> str:
-    """Mode-aware confirmation body for cancelling a run."""
-    if mode == "slurm":
-        return (
-            f"Issue scancel for {name}'s array job? Completed trials already "
-            "written to the shared study store are kept, and the study can be "
-            "resumed later."
-        )
+    """Confirmation body for cancelling a Local run."""
+    if mode != "local":
+        raise ValueError("SLURM cancellation is not supported in v1")
     return (
         f"Send SIGTERM to {name}? The trials already recorded in the journal are "
         "kept, and the study can be resumed."
@@ -321,8 +328,8 @@ Expected: FAIL — switcher/live-view not wired.
   `run_switcher_items(registry.list(), active_id=…)`; each pill shows
   name/mode/status and (when `killable`) a ✕.
 - Two live-view containers: `tune-live-local` (the existing log tail / progress)
-  and `tune-live-slurm` (the fleet card: array-task chips + job id + the polling
-  note; for `slurm-detached`, the degraded "submitted N tasks — store
+  and `tune-live-slurm` (the fleet card: array-task chips + the polling
+  note; for `slurm-detached`, the degraded "submitted N tasks - store
   unreachable" variant). A select-run callback computes
   `live_view_kind(record.mode, store_reachable=…)` and toggles which container is
   visible (reuse the hidden-class pattern). `store_reachable` is derived by
@@ -344,12 +351,12 @@ git commit -m "feat(gui-tune): Monitor run switcher + Local/SLURM live-view swap
 
 ---
 
-## Task 4: Wire cancellation (Dash)
+## Task 4: Wire Local cancellation (Dash)
 
 **Files:**
 - Modify: `src/phenotypic/gui/tune/_ids.py` (cancel confirm dialog ids)
 - Modify: `src/phenotypic/gui/tune/_layout.py` (the confirm dialog)
-- Modify: `src/phenotypic/gui/tune/_callbacks.py` (✕ → confirm → stop/scancel → registry + counter)
+- Modify: `src/phenotypic/gui/tune/_callbacks.py` (✕ → confirm → stop → registry + counter)
 - Test: `tests/integration/gui/tune/test_monitor_view.py` (cancel half)
 
 - [ ] **Step 1: Write the failing test**
@@ -374,15 +381,13 @@ Expected: FAIL — cancel not wired.
 
 - [ ] **Step 3: Implement**
 
-- The ✕ on a killable pill opens the confirm dialog with body
+- The ✕ on a killable **Local** pill opens the confirm dialog with body
   `cancel_prompt(name, record.mode)`.
 - Confirm:
-  - Local → `runner.stop(run_id)` (`runner = app.server.config[CFG_RUNNER]`).
-  - SLURM → run `scancel <record.slurm_job_id>` via the SLURM helper / subprocess
-    (reuse `run_console/_slurm.py` if it exposes a cancel; else a small
-    `subprocess.run(["scancel", job_id])`).
+  - `runner.stop(run_id)` (`runner = app.server.config[CFG_RUNNER]`).
   - Update the `RunRecord.status` to `"cancelled"` in the registry, decrement the
     live-runs session store, re-render the switcher.
+  - SLURM pills are not killable in v1 and do not show the ✕.
 
 - [ ] **Step 4: Run to verify it passes**
 
@@ -394,7 +399,7 @@ Expected: PASS.
 ```bash
 git add src/phenotypic/gui/tune/_ids.py src/phenotypic/gui/tune/_layout.py \
         src/phenotypic/gui/tune/_callbacks.py tests/integration/gui/tune/test_monitor_view.py
-git commit -m "feat(gui-tune): cancel a run (SIGTERM/scancel) with mode-aware confirm"
+git commit -m "feat(gui-tune): cancel a local tune run with SIGTERM confirm"
 ```
 
 ---
@@ -436,15 +441,15 @@ Expected: FAIL — export zone not wired.
 - Choose the result zone from `is_multi_objective(spec.scorer)` (import from
   `phenotypic.tune._multi_objective`, alongside `objective_names`; **not**
   `_evaluation`):
-  - **single** → a "Best so far" card (trial id, score, params, "may still
-    improve" while running); **Export best** → `export_winning_pipeline(base,
-    best_params, output_dir)`; plus **Open in Builder** / **Send to Run Console**
+  - **single** → a "Best so far" card (trial id, score, params from
+    `best_params.json`, "may still improve" while running); **Export best** →
+    `export_winning_pipeline(base, best_params, output_dir)`; plus **Open in Builder** / **Send to Run Console**
     handing the exported path to the other mounts via the shell-level store.
   - **multi** → a Pareto view listing front trials per `objective_names(scorer)`;
     a picker selects a trial; **Export** → `export_pareto_pipeline(base, params,
     output_dir, objective=…)`.
-- Read the best/front params from the bound run's deliverables (the engine writes
-  `best_params.json` / the Pareto sidecar); `base` is the spec's pipeline.
+- Read the headline params from `best_params.json` (Plan 1) and Pareto front
+  params from `pareto_front.parquet`; `base` is the spec's pipeline.
 
 - [ ] **Step 4: Run to verify it passes**
 
@@ -453,7 +458,7 @@ Expected: PASS.
 
 - [ ] **Step 5: Update `FEATURES.md`**
 
-Rows for: run switcher, each pill, ✕ cancel + confirm dialog, Local/SLURM/detached
+Rows for: run switcher, each pill, Local ✕ cancel + confirm dialog, Local/SLURM/detached
 live views, best-result card, Export best, Open in Builder, Send to Run Console,
 Pareto front view + picker + per-objective export — each with a `Test ref`.
 
@@ -489,10 +494,10 @@ git commit -m "test(gui-tune): monitor verification + refreshed tutorial screens
 ## Self-Review
 
 **Spec coverage (doc 03 Monitor):** run switcher → Tasks 1,3. Local vs SLURM live
-view + degrade-when-unreachable → Tasks 1 (`live_view_kind`), 3. Cancel (SIGTERM
-local / scancel SLURM, trials-kept text) → Tasks 1 (`cancel_prompt`), 4. Single
+view + degrade-when-unreachable → Tasks 1 (`live_view_kind`), 3. Local cancel
+(SIGTERM, trials-kept text) → Tasks 1 (`cancel_prompt`), 4. Single
 best card + Export best → Tasks 2,5. **Pareto** export (per D13/Q5) → Tasks 2,5.
-Live-runs decrement on cancel → Task 4. Monitor/Curate charts unchanged → not
+Live-runs decrement on Local cancel → Task 4. Monitor/Curate charts unchanged → not
 touched. Notifications-when-backgrounded (a minor surfaced item) → not in scope;
 the live-runs counter + switcher cover return-to-it.
 

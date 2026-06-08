@@ -71,7 +71,8 @@ page bar. See D2.
   sub-tab toggling — no route change).
 - A **live-runs counter** appears in three coordinated places: the page bar
   (clickable → Monitor), the drawer's Monitor item, and the hub's Tune tab chip.
-  Deploying increments it; a run finishing/cancelling decrements it (doc 03).
+  Deploying increments it; a run finishing, or a Local run being cancelled,
+  decrements it (doc 03).
 - **Crumb**: the page bar shows the active destination name + a one-line
   subtitle.
 
@@ -123,7 +124,7 @@ Any PR touching `src/phenotypic/gui/` must update the two CI-gated ledgers:
 
 - **`gui/FEATURES.md`** — one row per new affordance (hamburger, each
   destination, the domain editor, validation badges, deploy button, run
-  switcher, cancel, export-best, save/load, etc.) with a `Test ref`. The
+  switcher, Local cancel, export-best, save/load, etc.) with a `Test ref`. The
   `features-md-gate` job rejects PRs that touch `gui/` without editing this.
 - **`gui/WORKFLOWS.md`** — the end-to-end "author → deploy → monitor → export"
   flow gets a row, which **requires** a matching `_capture_*` function in

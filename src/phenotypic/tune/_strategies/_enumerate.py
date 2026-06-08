@@ -9,14 +9,16 @@ from __future__ import annotations
 import itertools
 from typing import Any
 
-from .._search_space import Categorical, Domain, Fixed, IntRange, SearchSpace
+from .._search_space import Categorical, Domain, Fixed, FloatRange, IntRange, SearchSpace
 
 
 def grid_values(domain: Domain) -> list[Any]:
-    """The discrete grid values for a domain. ``FloatRange`` is not enumerable."""
+    """The discrete grid values for a domain."""
     if isinstance(domain, Categorical):
         return list(domain.choices)
     if isinstance(domain, IntRange):
+        return domain.values()
+    if isinstance(domain, FloatRange) and domain.step is not None:
         return domain.values()
     if isinstance(domain, Fixed):
         return [domain.value]

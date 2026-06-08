@@ -64,6 +64,17 @@ def test_random_respects_conditionals_and_seed():
     assert seq_a == seq_b  # seeded determinism
 
 
+def test_random_samples_stepped_float_from_quantized_values():
+    space = SearchSpace(knobs=(
+        Knob(key="0.f", domain=FloatRange(low=0.0, high=1.0, step=0.25)),
+    ))
+    strat = RandomStrategy(space, n_trials=30, seed=8)
+    allowed = set(FloatRange(low=0.0, high=1.0, step=0.25).values())
+    while not strat.is_exhausted():
+        params, _ = strat.suggest()
+        assert params["0.f"] in allowed
+
+
 def test_grid_rejects_floatrange():
     import pytest
     with pytest.raises(ValueError):

@@ -7,6 +7,7 @@ A tunable parameter's domain is one of ``Categorical`` / ``IntRange`` /
 """
 from __future__ import annotations
 
+from decimal import Decimal
 from typing import Annotated, Any, Literal, Union
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -75,24 +76,58 @@ class IntRange(_DomainBase):
 
 
 class FloatRange(_DomainBase):
-    """A float range ``[low, high]`` with an optional log scale.
+    """A float range ``[low, high]`` with optional grid step / log scale.
 
     Args:
         low: Inclusive lower bound.
         high: Inclusive upper bound; must be ``>= low``.
+        step: Optional strict stride for grid enumeration. ``None`` means the
+            range is continuous and not grid-enumerable. When the stride does
+            not land on ``high``, ``high`` is appended exactly.
         log: Whether to sample on a logarithmic scale (default ``False``).
     """
 
     kind: Literal["float_range"] = "float_range"
     low: float
     high: float
+    step: float | None = None
     log: bool = False
 
     @model_validator(mode="after")
     def _ordered(self) -> "FloatRange":
         if self.high < self.low:
             raise ValueError(f"FloatRange high ({self.high}) < low ({self.low})")
+        if self.step is not None and self.step <= 0:
+            raise ValueError("FloatRange step must be positive when set")
         return self
+
+    def values(self) -> list[float]:
+        """The deterministic strict-stride grid values for a stepped range.
+
+        Values start at ``low`` and advance by repeated ``step`` addition.
+        ``high`` is appended exactly when the stride does not land on it.
+
+        Returns:
+            The inclusive float values from ``low`` to ``high``.
+
+        Raises:
+            ValueError: When this range is continuous (``step is None``).
+        """
+        if self.step is None:
+            raise ValueError("continuous FloatRange has no enumerable values")
+        if self.low == self.high:
+            return [self.low]
+        low = Decimal(str(self.low))
+        high = Decimal(str(self.high))
+        step = Decimal(str(self.step))
+        values = [self.low]
+        value = low + step
+        while value < high:
+            values.append(float(value))
+            value += step
+        if values[-1] != self.high:
+            values.append(self.high)
+        return values
 
 
 class Fixed(_DomainBase):

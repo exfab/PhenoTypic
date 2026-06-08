@@ -19,6 +19,7 @@
 | File | Responsibility | Change |
 |------|----------------|--------|
 | `src/phenotypic/gui/tune/_run_argv.py` | **New.** Pure tune CLI argv builder | `tune_run_argv()` |
+| `src/phenotypic/gui/tune/_command.py` | Existing command preview renderer | Add the same Run-form override flags as `tune_run_argv()` |
 | `src/phenotypic/gui/tune/_validation.py` | Plan 2 module | Add `preflight_issues()`, `can_deploy()` |
 | `src/phenotypic/gui/tune/_run_image_source.py` | **New.** Run `-i` resolver | `resolve_run_images()` (separate from the Curate `_image_source.py`) |
 | `src/phenotypic/gui/tune/_ids.py` | Tune IDs | Run-view + deploy IDs |
@@ -59,6 +60,11 @@ def test_minimal_local_argv():
         n_trials=50,
         storage_url="sqlite:///out/run1/.pht-tune-cache/study.db",
         n_workers=8,
+        slurm_partition=None,
+        slurm_mem=None,
+        slurm_time=None,
+        held_out_fraction=0.2,
+        cv_group="plate_id",
         slurm=False,
         screen=False,
         python="python",
@@ -70,18 +76,25 @@ def test_minimal_local_argv():
     assert argv[argv.index("--strategy") + 1] == "tpe"
     assert argv[argv.index("--n-trials") + 1] == "50"
     assert argv[argv.index("--n-workers") + 1] == "8"
+    assert argv[argv.index("--held-out-fraction") + 1] == "0.2"
+    assert argv[argv.index("--cv-group") + 1] == "plate_id"
     assert "--slurm" not in argv
 
 
 def test_grid_omits_n_trials_and_slurm_flag_present():
     argv = tune_run_argv(
         spec_path="s", images_dir="i", output_dir="o", strategy="grid",
-        n_trials=50, storage_url=None, n_workers=None, slurm=True, screen=True,
+        n_trials=50, storage_url=None, n_workers=None,
+        slurm_partition="batch", slurm_mem="8G", slurm_time="04:00:00",
+        held_out_fraction=None, cv_group=None, slurm=True, screen=True,
         python="python",
     )
     assert "--n-trials" not in argv      # grid is exhaustive; budget ignored
     assert "--slurm" in argv
     assert "--screen" in argv
+    assert argv[argv.index("--slurm-partition") + 1] == "batch"
+    assert argv[argv.index("--slurm-mem") + 1] == "8G"
+    assert argv[argv.index("--slurm-time") + 1] == "04:00:00"
     assert "--storage-url" not in argv   # None omitted
 
 
@@ -89,8 +102,10 @@ def test_missing_required_slot_raises():
     with pytest.raises(ValueError, match="spec_path"):
         tune_run_argv(
             spec_path="", images_dir="i", output_dir="o", strategy="tpe",
-            n_trials=None, storage_url=None, n_workers=None, slurm=False,
-            screen=False, python="python",
+            n_trials=None, storage_url=None, n_workers=None,
+            slurm_partition=None, slurm_mem=None, slurm_time=None,
+            held_out_fraction=None, cv_group=None, slurm=False, screen=False,
+            python="python",
         )
 ```
 
@@ -125,6 +140,11 @@ def tune_run_argv(
     n_trials: Optional[int],
     storage_url: Optional[str],
     n_workers: Optional[int],
+    slurm_partition: Optional[str],
+    slurm_mem: Optional[str],
+    slurm_time: Optional[str],
+    held_out_fraction: Optional[float],
+    cv_group: Optional[str],
     slurm: bool,
     screen: bool,
     python: str | None = None,
@@ -156,6 +176,16 @@ def tune_run_argv(
         argv += ["--storage-url", storage_url]
     if n_workers is not None:
         argv += ["--n-workers", str(n_workers)]
+    if slurm_partition:
+        argv += ["--slurm-partition", slurm_partition]
+    if slurm_mem:
+        argv += ["--slurm-mem", slurm_mem]
+    if slurm_time:
+        argv += ["--slurm-time", slurm_time]
+    if held_out_fraction is not None:
+        argv += ["--held-out-fraction", str(held_out_fraction)]
+    if cv_group:
+        argv += ["--cv-group", cv_group]
     if slurm:
         argv.append("--slurm")
     if screen:
@@ -361,6 +391,7 @@ git commit -m "feat(gui-tune): resolve run images from shared source-root + over
 - Modify: `src/phenotypic/gui/tune/_ids.py` (Run-view IDs: strategy/sampler/budget/seed inputs, advanced inputs, Local/SLURM toggle, image-source row, output picker, storage input, command-preview, pre-flight banner, deploy button, footer)
 - Modify: `src/phenotypic/gui/tune/_layout.py` (`build_layout`: the Run destination body)
 - Modify: `src/phenotypic/gui/tune/_callbacks.py` (pre-flight banner + command preview + footer gating)
+- Modify: `src/phenotypic/gui/tune/_command.py` (preview parity for every argv flag)
 - Test: `tests/integration/gui/tune/test_run_deploy.py` (pre-flight + gate half)
 
 - [ ] **Step 1: Write the failing integration test (pre-flight half)**
@@ -402,12 +433,16 @@ In `build_layout`, render the Run destination body:
   workers; storage URL; SLURM fields.
 - **Command preview**: a read-only block fed by
   `render_launch_command(spec_path, input_dir, output_dir, strategy=…, n_trials=…,
-  storage_url=…, screen=…, slurm=…)`.
+  storage_url=…, n_workers=…, slurm_partition=…, slurm_mem=…,
+  slurm_time=…, held_out_fraction=…, cv_group=…, screen=…, slurm=…)`.
 
 Callbacks (no deploy yet): on strategy/space change, compute
 `preflight_issues(space, strategy=…)` → render the banner + set the deploy
 button's `disabled` from `can_deploy(setup_issues, run_issues)`; on any field
-change, re-render the command preview via `render_launch_command`.
+change, re-render the command preview via `render_launch_command`. The preview
+must stay in parity with `tune_run_argv`; add a unit test that compares
+`shlex.split(render_launch_command(...))` to `tune_run_argv(..., python="python")`
+for the shared flags.
 
 Lazy `optuna`: this view must not import optuna at module load — only the deploy
 callback (next task) touches the engine, and even there via the CLI subprocess.
@@ -481,14 +516,16 @@ In `register_callbacks`, add the Deploy callback. Logic (hard-guarded):
    `run = preflight_issues(space, strategy=…)`. If `not can_deploy(setup, run)`,
    return without launching (no-op; the button is already disabled, this is the
    belt-and-braces guard).
-2. Assemble the `TuningSpec` from the Setup + Run state and write the run copy:
-   `spec.to_json(tuning_spec_path(output_dir))` →
-   `deliverables/tuning_spec.json.pht-tune` (uses Plan 1's stamped spec +
-   existing `tuning_spec_path` from `phenotypic.tools_._io_constants`).
+2. Assemble the authored `TuningSpec` from the Setup state and write a launch
+   input spec under the GUI tune scratch/library area (not under
+   `deliverables/`). The CLI owns the canonical resolved run copy at
+   `deliverables/tuning_spec.json.pht-tune`; it writes that after applying
+   strategy/budget/held-out argv overrides.
 3. Resolve images: `images = resolve_run_images(store_payload=…, override=…)`.
 4. Build argv: `argv = tune_run_argv(spec_path=…, images_dir=images,
    output_dir=…, strategy=…, n_trials=…, storage_url=…, n_workers=…,
-   slurm=(target=="slurm"), screen=…)`.
+   slurm_partition=…, slurm_mem=…, slurm_time=…, held_out_fraction=…,
+   cv_group=…, slurm=(target=="slurm"), screen=…)`.
 5. Launch — **both targets use `LocalRunner.start`**, because the tune CLI's own
    `--slurm` flag (already appended by `tune_run_argv` when `slurm=True`) makes
    the subprocess *submit the SLURM worker fleet itself* (`phenotypic.tune run
@@ -497,14 +534,13 @@ In `register_callbacks`, add the Deploy callback. Logic (hard-guarded):
    and would not fit). Concretely:
    - `runner = app.server.config[CFG_RUNNER]`;
      `runner.start(run_id, argv, output_dir=Path(output_dir))`.
-   - For SLURM, the subprocess is short-lived (dispatches sbatch then returns);
-     parse the array job id from its stdout (or read it back from the run's
-     `.pht-tune-cache/run.json` marker the CLI writes) for the registry record.
+   - For SLURM, the subprocess is short-lived (dispatches sbatch then returns).
+     v1 does **not** parse or persist the array job id because GUI-side SLURM
+     cancellation is deferred.
    - Register the run in the shared `RunRegistry`
      (`app.server.config[CFG_RUN_REGISTRY]`) as a `RunRecord` with
-     `mode` ("local"/"slurm"), `slurm_job_id`, and `output_dir`, so Monitor
-     (Plan 4) renders the right live view even when the study store is
-     unreachable.
+     `mode` ("local"/"slurm") and `output_dir`, so Monitor (Plan 4) renders the
+     right live view even when the study store is unreachable.
 6. Bump the live-runs `dcc.Store(storage_type="session")` and set the active
    destination to `monitor` (auto-advance).
 
@@ -573,7 +609,7 @@ git commit -m "test(gui-tune): run/deploy verification fixups" || echo "nothing 
 
 ## Self-Review
 
-**Spec coverage (doc 03):** Run sections (strategy/budget/advanced/compute) → Task 4. Image source from shared source-root + override → Task 3 (+wiring 4). Command preview via `render_launch_command` → Task 4. Pre-flight grid×float → Task 2. Deploy serializes run copy + builds argv + launches local/SLURM + RunRegistry + auto-advance + session-store counter → Task 5. Runner imported in place (no move) → stated in Architecture (D13/Q3). Lazy optuna → Tasks 4,5 + verification 6. SLURM degrade-when-unreachable & the Monitor live views, run switcher, cancel, single-best + **Pareto** export → **Plan 4** (the deploy callback records mode + job id so Plan 4 can render). Save-to-library button → wired here (FEATURES row) using `tune_presets_dir` (Plan 2); load/library browser detail can extend in Plan 4 polish.
+**Spec coverage (doc 03):** Run sections (strategy/budget/advanced/compute) → Task 4. Image source from shared source-root + override → Task 3 (+wiring 4). Command preview via `render_launch_command` → Task 4. Pre-flight grid×float → Task 2. Deploy writes an authored launch spec, builds a full CLI argv, launches local/SLURM, registers mode/output in `RunRegistry`, and auto-advances with a session-store counter → Task 5. Runner imported in place (no move) → stated in Architecture (D13/Q3). Lazy optuna → Tasks 4,5 + verification 6. SLURM degrade-when-unreachable & the Monitor live views, run switcher, Local cancel, single-best + **Pareto** export → **Plan 4**. Save-to-library button → wired here (FEATURES row) using `tune_presets_dir` (Plan 2); load/library browser detail can extend in Plan 4 polish.
 
 **Placeholder scan:** Pure tasks (1–3) have complete code. Wiring tasks (4,5) reference the established integration harness + name exact helpers/signatures to call — no "TODO". The `fake_runner`/`tune_run_state` fixtures are described concretely (record `start` args; inject via `CFG_RUNNER`) and follow the run-console test pattern.
 
@@ -584,5 +620,6 @@ git commit -m "test(gui-tune): run/deploy verification fixups" || echo "nothing 
 ## Execution Handoff
 
 Plan 3 of 4. Plan 4 (Monitor: run switcher, Local/SLURM live view + degrade,
-cancel, single-best + Pareto export) consumes the `RunRegistry` entries this plan
-writes. Recommended: subagent-driven, fresh agent per task, review between tasks.
+Local cancel, single-best + Pareto export) consumes the `RunRegistry` entries
+this plan writes. Recommended: subagent-driven, fresh agent per task, review
+between tasks.

@@ -684,18 +684,17 @@ from phenotypic.gui.tune import _ids as ids
 from phenotypic.gui.tune._nav import destination_view_id
 
 
-def test_setup_is_the_landing_destination(tune_app):
-    # The setup destination view exists and is the active (non-hidden) one.
-    assert destination_view_id("setup") in tune_app.index_string or True  # smoke
-    # Replace with the harness's component-query assertion used by neighbors.
+def test_setup_is_the_landing_destination(tune_setup_state):
+    assert tune_setup_state.active_destination == "setup"
+    assert tune_setup_state.view_class(destination_view_id("setup")).find("tune-view-hidden") == -1
 
 
 def test_search_space_locked_until_pipeline_chosen(tune_setup_state):
-    # With no pipeline, the search-space + scorer sections carry the locked class
-    # and the Continue/Deploy footer action is disabled.
     assert tune_setup_state.search_space_locked is True
+    assert tune_setup_state.continue_disabled is True
     tune_setup_state.choose_pipeline("yeast_plate_pipeline.json.pht-pipe")
     assert tune_setup_state.search_space_locked is False
+    assert tune_setup_state.continue_disabled is False
 ```
 
 **`tests/integration/gui/tune/` does not exist yet — create it (with `__init__.py`)
@@ -737,11 +736,30 @@ def tune_app(tmp_path, fake_runner):
 
 
 class _SetupState:
-    """Drives the Setup callbacks directly (call the extracted pure helpers +
-    the registered callback functions). Expose the attributes the tests assert:
-    `search_space_locked`, and `choose_pipeline(path)`."""
-    def __init__(self, app): self.app = app; self.search_space_locked = True
-    def choose_pipeline(self, path): self.search_space_locked = False
+    """Drives the registered Setup callbacks directly.
+
+    Do not fake state by assigning booleans. Locate the callback in
+    ``app.callback_map`` by output id, call it with realistic Dash payloads, and
+    store the returned component props/classes. Expose:
+    ``active_destination``, ``view_class(id)``, ``search_space_locked``,
+    ``continue_disabled``, and ``choose_pipeline(path)``.
+    """
+    def __init__(self, app):
+        self.app = app
+        self._last_props = {}
+
+    def choose_pipeline(self, path):
+        """Invoke the real pipeline-gate callback with the selected pipeline path."""
+        self._last_props.update(self._invoke_callback_for_output("tune-setup-gate", path))
+
+    def _invoke_callback_for_output(self, output_id, *args):
+        """Look up ``output_id`` in ``app.callback_map`` and call that callback.
+
+        Replace ``"tune-setup-gate"`` with the final `_ids.py` output id during
+        Task 6 implementation. The important contract is that this helper calls
+        the registered Dash callback instead of mutating `_last_props` directly.
+        """
+        raise NotImplementedError("wire to app.callback_map in Task 6")
 
 
 @pytest.fixture
@@ -751,10 +769,11 @@ def tune_setup_state(tune_app):
 
 This is the contract: a `create_app`-built app with a `_FakeRunner` injected,
 and a `_State` object exposing the asserted attributes by calling the registered
-callbacks / pure helpers. Plans 3 and 4 extend this file with `tune_run_state`,
-`tune_monitor_state`, and `seed_*` helpers. The two assertions to land here:
-(a) Setup renders as the active destination; (b) the pipeline gate flips the
-locked + footer-disabled state.
+callbacks or querying rendered components. Avoid placeholder assertions such as
+`or True`, and avoid test-only state flips that bypass the callback being tested.
+Plans 3 and 4 extend this file with `tune_run_state`, `tune_monitor_state`, and
+`seed_*` helpers. The two assertions to land here: (a) Setup renders as the active
+destination; (b) the pipeline gate flips the locked + footer-disabled state.
 
 - [ ] **Step 2: Run to verify it fails**
 
@@ -835,7 +854,9 @@ git commit -m "test(gui-tune): scaffold verification fixups" || echo "nothing to
 
 **Spec coverage (doc 01 / doc 02):** hamburger Setup/Run/Monitor IA → Tasks 3,6. Empty-state pipeline gate → Tasks 5(impl-support),6. Search-space prefill + knob table + source badges → Task 6. Per-knob domain editor (Range/Choices/step/by-magnitude) → Task 4 (+wiring 6). Help tooltips from field descriptions → Task 6. Scale affordances (filter/needs-review/re-infer) → Task 6 + FEATURES rows. Validation (no-knobs / low<high / qc-metadata) → Task 5. Scorer section + Q9 spike → Task 1. `SANDBOX_TUNE_PRESETS_SUBDIR` → Task 2. Run/deploy + Monitor → **out of scope (Plans 3, 4)**, correctly. Bulk-action *behavior* (actual re-infer edit-preservation) is wired in Task 6 but its deep logic (diffing inferred vs edited) is light here — acceptable for v1 scaffold; flag in FEATURES as shipping with the preserve-edits note.
 
-**Placeholder scan:** Pure-helper tasks (1–5) carry complete code. The two wiring tasks (6, integration test) intentionally reference the sibling `tests/integration/gui/tune/` harness rather than inventing a fixture — this is "reuse the established pattern," with concrete assertions named, not "TODO."
+**Placeholder scan:** Pure-helper tasks (1–5) carry complete code. The wiring
+task uses callback-level integration tests or rendered component queries; no
+always-passing smoke assertions and no state-only test doubles are allowed.
 
 **Type consistency:** `Destination` literal + `active_destination`/`destination_*_class` consistent (Task 3). `Domain` from `domain_from_editor` consumed by `domain_summary`/`grid_feasibility` (Task 4). `Issue(section, message, blocks)` consistent across `validate_setup` + tests (Task 5). `scorer_operation_info` returns `OperationInfo` consumed by `param_form` (Task 1, 6).
 

@@ -64,6 +64,7 @@ terminal suffixes instead of plain `.json`:
 | Artifact | Filename | Constant |
 |----------|----------|----------|
 | Tuning spec (full or inferred proposal) | `tuning_spec.json.pht-tune` | `TUNING_SPEC_JSON` |
+| Best params sidecar | `best_params.json` | `BEST_PARAMS_JSON` |
 | Exported tuned pipeline | `best_pipeline.json.pht-pipe` | `BEST_PIPELINE_JSON` |
 | Pareto winner per objective | `pareto/best_<objective>.json.pht-pipe` | (templated) |
 | Base pipeline | `pipeline.json.pht-pipe` | `PIPELINE_JSON` |
@@ -102,15 +103,19 @@ Two destinations with distinct purposes — do not conflate them:
 - This is the cross-run reuse library; it holds many named `.json.pht-tune`
   specs (lightweight versioning).
 
-### Run copy (automatic on Deploy)
+### Run copy (automatic inside the CLI)
 
-- Deploy **always** writes the run's own canonical copy to
+- The GUI **does not** pre-write `deliverables/tuning_spec.json.pht-tune`.
+  Deploy writes an authored launch spec to a scratch/spec-library path, passes
+  that path as the CLI positional `spec`, and lets `python -m phenotypic.tune run`
+  resolve strategy/budget/held-out overrides.
+- The CLI **always** writes the run's own canonical resolved copy to
   `deliverables/tuning_spec.json.pht-tune` via `tuning_spec_path(output_dir)` —
   the reproducibility record bundled with the run output, independent of whether
   the user clicked Save.
 
-So "Save" (library, optional) and "Deploy persistence" (run record, automatic)
-are separate concerns and both exist.
+So "Save" (library, optional), "authored launch spec" (GUI scratch input), and
+"resolved run spec" (CLI-owned deliverable) are separate concerns.
 
 ## Validation contract (blocked-deploy)
 

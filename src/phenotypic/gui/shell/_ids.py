@@ -152,6 +152,7 @@ VIEWER_OUTPUT_ROOT_STORE = "viewer-output-root"
 RUN_PIPELINE_PATH_STORE = "run-pipeline-path"
 RUN_INPUT_DIR_STORE = "run-input-dir"
 RUN_OUTPUT_DIR_STORE = "run-output-dir"
+TUNE_PIPELINE_PATH_STORE = "tune-pipeline-path"
 
 
 __all__ = [
@@ -187,6 +188,7 @@ __all__ = [
     "RUN_PIPELINE_PATH_STORE",
     "RUN_INPUT_DIR_STORE",
     "RUN_OUTPUT_DIR_STORE",
+    "TUNE_PIPELINE_PATH_STORE",
     "sidebar_entry_id",
     "sidebar_expand_id",
     "release_button_id",

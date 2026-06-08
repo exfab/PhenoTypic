@@ -102,7 +102,7 @@ The two targets diverge *after* launch and Monitor must reflect it:
   **log** with per-trial lines (params, score, pruned, ★ best).
 - **SLURM** — there is **no local stdout**; workers run on the cluster and write
   trials to the shared study store. Monitor shows a **fleet card** instead:
-  array-task states (done/running/queued), the job id + partition/mem/time, and
+  array-task states (done/running/queued, when available), partition/mem/time, and
   a note that Monitor **polls the study DB** (e.g. every 3 s) for progress, with
   per-task output in `slurm-%A_%a.out` on the cluster. The charts come from the
   store, not a tail.
@@ -110,9 +110,9 @@ The two targets diverge *after* launch and Monitor must reflect it:
     study store — a SQLite DB on a shared filesystem, or a reachable Postgres
     `--storage-url`. When the store is **unreachable** (the common detached
     remote-Postgres cluster pattern), Monitor **degrades gracefully**: it shows
-    "running on cluster — submitted N tasks" with the job id and a hint to
-    inspect externally, rather than erroring. The deploy step records the job id
-    + storage URL so the fleet card can render without store access.
+    "running on cluster - submitted N tasks" with a hint to inspect externally,
+    rather than erroring. The deploy step records mode, output directory, and
+    storage URL; it does **not** require or parse a SLURM job id in v1.
 
 The deploy target chosen on Run determines which live view Monitor opens; the
 run switcher lets the user flip between any live/finished run regardless of mode.
@@ -129,16 +129,17 @@ This is what the live-runs counter points at.
 
 ### Cancellation
 
-Each running pill has a **✕** that opens a **mode-aware confirm dialog**:
+Each running **Local** pill has a **✕** that opens a confirm dialog:
 
 - Local → "Send `SIGTERM`? The N trials already in the journal are kept; the
   study can be resumed."
-- SLURM → "Issue `scancel` for the array job? Completed trials in the shared
-  store are kept; resumable."
 
 Confirming greys the pill, tags it *cancelled*, removes the ✕, and **decrements
 the live-runs counter**. (The ✕ stops event propagation so it doesn't also
 select the run.)
+
+SLURM cancellation is **not in v1**. SLURM pills do not show the ✕, and Monitor
+does not shell out to `scancel`.
 
 ### Monitor / Curate sub-tabs (unchanged)
 
@@ -181,6 +182,6 @@ without guessing.
   to import it.
 - `gui/tune/` Run view + callbacks — strategy/budget/compute form, pre-flight,
   deploy wiring, auto-advance.
-- `gui/tune/` Monitor — run switcher, Local/SLURM live-view swap, cancel dialog,
+- `gui/tune/` Monitor — run switcher, Local/SLURM live-view swap, local cancel dialog,
   best-result export zone. The export action calls `build_pipeline(...)` and the
   `best_pipeline_path` helper (doc 04).

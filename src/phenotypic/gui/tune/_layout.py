@@ -30,7 +30,9 @@ from dash import dcc, html
 from dash.development.base_component import Component
 
 from phenotypic.gui.tune import _ids as ids
+from phenotypic.gui.tune import _nav
 from phenotypic.gui.tune._run_picker import build_run_picker_modal, build_run_picker_row
+from phenotypic.tune._strategies._config import STRATEGY_CHOICES
 
 if TYPE_CHECKING:
     from phenotypic.gui.shell._sandbox import SandboxRoot
@@ -67,6 +69,7 @@ def build_layout(
     """
     store_data = {"path": str(root.path)} if root is not None else None
     bound_path = str(root.path) if root is not None else None
+    active_destination: _nav.Destination = "monitor" if root is not None else "setup"
     body = (
         build_loaded_body(root, sandbox=sandbox)
         if root is not None
@@ -79,6 +82,10 @@ def build_layout(
         # the swappable body) so every view's callbacks can reach it as ``State``
         # regardless of the active sub-tab, and so a body swap never tears it down.
         dcc.Store(id=ids.TUNE_RUN_ROOT_STORE, data=store_data),
+        dcc.Store(id=ids.TUNE_ACTIVE_DESTINATION_STORE, data=active_destination),
+        dcc.Store(id=ids.TUNE_SETUP_PIPELINE_STORE, data=None),
+        dcc.Store(id=ids.TUNE_SETUP_AUTHORED_SPEC_STORE, data=None),
+        dcc.Store(id=ids.TUNE_RUN_ACTIVE_RECORD_STORE, data=None),
         html.Div(
             [
                 html.Span("Tune run", className="tune-run-title"),
@@ -87,13 +94,259 @@ def build_layout(
             id=ids.TUNE_RUN_HEADER,
             className="tune-run-header",
         ),
-        html.Div(body, id=ids.TUNE_PAGE_BODY, className="tune-page-body"),
+        _build_destination_row(active=active_destination),
+        html.Div(
+            [
+                html.Div(
+                    build_setup_view(),
+                    id=_nav.destination_view_id("setup"),
+                    className=_nav.destination_view_class(
+                        "setup", active_destination
+                    ),
+                ),
+                html.Div(
+                    build_run_view_placeholder(),
+                    id=_nav.destination_view_id("run"),
+                    className=_nav.destination_view_class("run", active_destination),
+                ),
+                html.Div(
+                    html.Div(body, id=ids.TUNE_PAGE_BODY, className="tune-page-body"),
+                    id=_nav.destination_view_id("monitor"),
+                    className=_nav.destination_view_class(
+                        "monitor", active_destination
+                    ),
+                ),
+            ],
+            className="tune-destination-views",
+        ),
     ]
     # The run-picker modal lives at the page root (next to the store) so it is
     # reachable in both the empty and loaded states; ``None`` sandbox omits it.
     if sandbox is not None:
         children.append(build_run_picker_modal(sandbox))
     return html.Div(children, id=ids.TUNE_PAGE, className="tune-page")
+
+
+def _build_destination_row(active: _nav.Destination) -> html.Div:
+    """Render the top-level Setup / Run / Monitor destination row."""
+    return html.Div(
+        [
+            html.Button(
+                _nav.DESTINATION_LABELS[name],
+                id=_nav.destination_button_id(name),
+                n_clicks=0,
+                className=_nav.destination_button_class(name, active),
+                disabled=_nav.destination_button_disabled(
+                    name, pipeline_path=None
+                ),
+            )
+            for name in _nav.DESTINATIONS
+        ],
+        id=ids.TUNE_DESTINATION_DRAWER,
+        className="tune-destination-row",
+    )
+
+
+def build_setup_view() -> html.Div:
+    """Render the initial Setup destination scaffold."""
+    return html.Div(
+        [
+            html.Div(
+                [
+                    html.H3("Pipeline"),
+                    dcc.Input(
+                        id=ids.TUNE_SETUP_PIPELINE_INPUT,
+                        type="text",
+                        debounce=True,
+                        placeholder="Pipeline or tuning spec path",
+                        className="tune-setup-path-input",
+                    ),
+                    dcc.Input(
+                        id=ids.TUNE_SETUP_METADATA_INPUT,
+                        type="text",
+                        debounce=True,
+                        placeholder="Metadata layout CSV/Parquet for QC scorer",
+                        className="tune-setup-path-input",
+                    ),
+                    html.Div(
+                        "Choose a pipeline and metadata layout to author a tune spec.",
+                        id=ids.TUNE_SETUP_GATE,
+                        className="tune-setup-note",
+                    ),
+                ],
+                className="tune-setup-section",
+            ),
+            html.Div(
+                [html.H3("Search space"), html.Div("Locked until pipeline is chosen.")],
+                id=ids.TUNE_SETUP_SEARCH_SPACE,
+                className="tune-setup-section tune-setup-locked",
+            ),
+            html.Div(
+                [html.H3("Scorer"), html.Div("Locked until pipeline is chosen.")],
+                id=ids.TUNE_SETUP_SCORER,
+                className="tune-setup-section tune-setup-locked",
+            ),
+            html.Div(
+                html.Button(
+                    "Continue",
+                    id=ids.TUNE_SETUP_CONTINUE,
+                    disabled=True,
+                    className="tune-setup-continue",
+                ),
+                id=ids.TUNE_SETUP_FOOTER,
+                className="tune-setup-footer",
+            ),
+        ],
+        className="tune-setup",
+    )
+
+
+def build_run_view_placeholder() -> html.Div:
+    """Render the Run destination."""
+    return html.Div(
+        [
+            html.Div(
+                [
+                    html.H3("Inputs"),
+                    dcc.Input(
+                        id=ids.TUNE_RUN_IMAGES_OVERRIDE,
+                        type="text",
+                        debounce=True,
+                        placeholder="Image source override (blank uses shared source)",
+                        className="tune-run-input tune-run-input-wide",
+                    ),
+                    dcc.Input(
+                        id=ids.TUNE_RUN_OUTPUT_DIR,
+                        type="text",
+                        debounce=True,
+                        placeholder="Output directory",
+                        className="tune-run-input tune-run-input-wide",
+                    ),
+                ],
+                className="tune-run-section",
+            ),
+            html.Div(
+                [
+                    html.H3("Strategy"),
+                    dcc.Dropdown(
+                        id=ids.TUNE_RUN_STRATEGY,
+                        options=[
+                            {"label": choice, "value": choice}
+                            for choice in STRATEGY_CHOICES
+                        ],
+                        value="tpe",
+                        clearable=False,
+                        className="tune-run-field",
+                    ),
+                    dcc.Input(
+                        id=ids.TUNE_RUN_N_TRIALS,
+                        type="number",
+                        min=1,
+                        step=1,
+                        value=50,
+                        className="tune-run-input",
+                    ),
+                    dcc.Input(
+                        id=ids.TUNE_RUN_STORAGE_URL,
+                        type="text",
+                        debounce=True,
+                        placeholder="Storage URL",
+                        className="tune-run-input tune-run-input-wide",
+                    ),
+                ],
+                className="tune-run-section",
+            ),
+            html.Div(
+                [
+                    html.H3("Compute"),
+                    dcc.RadioItems(
+                        id=ids.TUNE_RUN_MODE,
+                        options=[
+                            {"label": "Local", "value": "local"},
+                            {"label": "SLURM", "value": "slurm"},
+                        ],
+                        value="local",
+                        inline=True,
+                        className="tune-run-mode",
+                    ),
+                    dcc.Checklist(
+                        id=ids.TUNE_RUN_SCREEN,
+                        options=[{"label": "Two-round screening", "value": "on"}],
+                        value=[],
+                        className="tune-run-mode",
+                    ),
+                    dcc.Input(
+                        id=ids.TUNE_RUN_N_WORKERS,
+                        type="number",
+                        min=1,
+                        step=1,
+                        placeholder="Workers",
+                        className="tune-run-input",
+                    ),
+                    dcc.Input(
+                        id=ids.TUNE_RUN_SLURM_PARTITION,
+                        type="text",
+                        debounce=True,
+                        placeholder="SLURM partition",
+                        className="tune-run-input",
+                    ),
+                    dcc.Input(
+                        id=ids.TUNE_RUN_SLURM_MEM,
+                        type="text",
+                        debounce=True,
+                        placeholder="SLURM mem",
+                        className="tune-run-input",
+                    ),
+                    dcc.Input(
+                        id=ids.TUNE_RUN_SLURM_TIME,
+                        type="text",
+                        debounce=True,
+                        placeholder="SLURM time",
+                        className="tune-run-input",
+                    ),
+                ],
+                className="tune-run-section",
+            ),
+            html.Div(
+                [
+                    html.H3("Evaluation"),
+                    dcc.Input(
+                        id=ids.TUNE_RUN_HELD_OUT_FRACTION,
+                        type="number",
+                        min=0,
+                        max=1,
+                        step=0.01,
+                        placeholder="Held-out fraction",
+                        className="tune-run-input",
+                    ),
+                    dcc.Input(
+                        id=ids.TUNE_RUN_CV_GROUP,
+                        type="text",
+                        debounce=True,
+                        placeholder="CV group",
+                        className="tune-run-input",
+                    ),
+                ],
+                className="tune-run-section",
+            ),
+            html.Div(id=ids.TUNE_RUN_PREFLIGHT, className="tune-run-note"),
+            html.Code(id=ids.TUNE_RUN_COMMAND, className="tune-launch-command"),
+            html.Div(
+                [
+                    html.Button(
+                        "Deploy",
+                        id=ids.TUNE_RUN_DEPLOY,
+                        n_clicks=0,
+                        disabled=True,
+                        className="tune-setup-continue",
+                    ),
+                    html.Span(id=ids.TUNE_RUN_STATUS, className="tune-run-note"),
+                ],
+                className="tune-setup-footer",
+            ),
+        ],
+        className="tune-run",
+    )
 
 
 def build_empty_body() -> html.Div:
@@ -110,7 +363,23 @@ def build_empty_body() -> html.Div:
     """
     return html.Div(
         [
+            dcc.Interval(id=ids.TUNE_STUDY_POLL, interval=3000, n_intervals=0),
             _build_subtab_row(),
+            _build_monitor_registry_shell(),
+            html.Div(
+                [
+                    dcc.Graph(id=ids.TUNE_OBJECTIVE_FIGURE),
+                    dcc.Graph(id=ids.TUNE_IMPORTANCE_FIGURE),
+                    html.Span(
+                        "—",
+                        id=ids.TUNE_GAP_BADGE,
+                        className="tune-gap-badge tune-gap-badge-stable",
+                    ),
+                    html.Div(id=ids.TUNE_TRIALS_TABLE),
+                    html.Div(id=ids.TUNE_MONITOR_NOTE),
+                ],
+                style={"display": "none"},
+            ),
             html.Div(
                 [
                     html.P(
@@ -231,6 +500,7 @@ def build_monitor_view(root: "TuneRunRoot") -> html.Div:
         # ``build_layout``) so the Monitor poll, the overlay-poll self-heal, and
         # the Space/Launch callbacks can all reach it regardless of the active
         # sub-tab. The Monitor poll reads it as ``State`` from there.
+        _build_monitor_registry_shell(),
         html.Div(
             [
                 html.Span("Winner stability:"),
@@ -268,6 +538,64 @@ def build_monitor_view(root: "TuneRunRoot") -> html.Div:
     )
 
     return html.Div(children, className="tune-monitor")
+
+
+def _build_monitor_registry_shell() -> html.Div:
+    """Render Monitor run-switcher, live-status, cancel, and export zones."""
+    return html.Div(
+        [
+            dcc.Store(id=ids.TUNE_MONITOR_ACTIVE_RUN_STORE, data=None),
+            html.Div(id=ids.TUNE_MONITOR_SWITCHER, className="tune-monitor-full"),
+            html.Div(
+                [
+                    html.Div(
+                        "Local log tail will appear here.",
+                        id=ids.TUNE_MONITOR_LOCAL_LOG,
+                        className="tune-monitor-live-card",
+                    ),
+                    html.Div(
+                        "SLURM fleet polling state will appear here.",
+                        id=ids.TUNE_MONITOR_SLURM_FLEET,
+                        className="tune-monitor-live-card",
+                    ),
+                    dcc.ConfirmDialogProvider(
+                        id=ids.TUNE_MONITOR_CANCEL_CONFIRM,
+                        message="Cancel this Local tune run?",
+                        children=html.Button(
+                            "Cancel Local",
+                            id=ids.TUNE_MONITOR_CANCEL,
+                            n_clicks=0,
+                            disabled=True,
+                            className="tune-setup-continue",
+                        ),
+                    ),
+                    html.Span(
+                        "",
+                        id=ids.TUNE_MONITOR_CANCEL_NOTE,
+                        className="tune-run-note",
+                    ),
+                ],
+                className="tune-monitor-full tune-monitor-live",
+            ),
+            html.Div(
+                [
+                    html.Button(
+                        "Export best pipeline",
+                        id=ids.TUNE_MONITOR_EXPORT,
+                        n_clicks=0,
+                        className="tune-setup-continue",
+                    ),
+                    html.Span(
+                        "",
+                        id=ids.TUNE_MONITOR_EXPORT_NOTE,
+                        className="tune-run-note",
+                    ),
+                ],
+                id=ids.TUNE_MONITOR_RESULT_ZONE,
+                className="tune-monitor-full tune-monitor-result",
+            ),
+        ]
+    )
 
 
 __all__ = [

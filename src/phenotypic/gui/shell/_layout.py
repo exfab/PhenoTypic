@@ -56,6 +56,7 @@ from phenotypic.gui.shell._ids import (
     SHELL_TAB_TUNE,
     SHELL_TAB_VIEWER,
     SHELL_TOP_BAR,
+    TUNE_PIPELINE_PATH_STORE,
 )
 from phenotypic.gui.shell._sandbox import SandboxRoot
 from phenotypic.gui.shell._sidebar import build_sidebar
@@ -322,6 +323,11 @@ def wrap_in_chrome(
             ),
             dcc.Store(
                 id=SHELL_SOURCE_IMAGE_ROOT_STORE,
+                storage_type="local",
+                data=None,
+            ),
+            dcc.Store(
+                id=TUNE_PIPELINE_PATH_STORE,
                 storage_type="local",
                 data=None,
             ),

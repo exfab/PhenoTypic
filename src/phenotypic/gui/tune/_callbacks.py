@@ -26,12 +26,14 @@ from __future__ import annotations
 
 import importlib.util
 import logging
+from pathlib import Path
 from concurrent.futures import Future, ThreadPoolExecutor, TimeoutError as FutureTimeout
 from typing import TYPE_CHECKING, Optional
 
-from dash import ctx
+from dash import ctx, no_update
 
-from phenotypic.gui._config import THREAD_NAME_PREFIX
+from phenotypic.gui._config import CFG_RUNNER, CFG_RUN_REGISTRY, THREAD_NAME_PREFIX
+from phenotypic.gui.shell._ids import TUNE_PIPELINE_PATH_STORE
 from phenotypic.gui.shell._ids import SHELL_SOURCE_IMAGE_ROOT_STORE
 from phenotypic.gui.shell._source_context import (
     SourcePayload,
@@ -39,6 +41,20 @@ from phenotypic.gui.shell._source_context import (
     source_payload_from_path,
 )
 from phenotypic.gui.tune import _ids as ids
+from phenotypic.gui.tune import _nav
+from phenotypic.gui.tune._command import render_launch_command
+from phenotypic.gui.tune._deploy import deploy_tune_run
+from phenotypic.gui.tune._export import export_best_from_run
+from phenotypic.gui.tune._monitor import cancel_prompt, run_switcher_items
+from phenotypic.gui.tune._run_image_source import resolve_run_images
+from phenotypic.gui.tune._run_argv import tune_run_argv
+from phenotypic.gui.tune._setup_authoring import write_authored_setup_spec
+from phenotypic.gui.tune._validation import preflight_issues, spec_path_issue
+from phenotypic.tools_ import (
+    CONFIG_SUFFIX_TUNING,
+    PIPELINE_CONFIG_SUFFIXES,
+    matches_any_suffix,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -129,6 +145,216 @@ _BUTTON_ID_TO_VIEW: dict[str, ids.SubTabName] = {
 }
 
 
+def setup_gate_state(
+    pipeline_path: str | None,
+    metadata_path: str | None = None,
+) -> tuple[str, str, bool, str]:
+    """Return Setup section classes, Continue state, and gate note."""
+    if pipeline_path:
+        if metadata_path:
+            return (
+                "tune-setup-section",
+                "tune-setup-section",
+                False,
+                f"Pipeline selected: {pipeline_path}. Metadata selected: {metadata_path}",
+            )
+        return (
+            "tune-setup-section",
+            "tune-setup-section",
+            True,
+            f"Pipeline selected: {pipeline_path}. Add metadata to author a tune spec.",
+        )
+    return (
+        "tune-setup-section tune-setup-locked",
+        "tune-setup-section tune-setup-locked",
+        True,
+        "Choose a pipeline and metadata layout to author a tune spec.",
+    )
+
+
+def setup_pipeline_path_from_sources(
+    typed_path: str | None,
+    shell_handoff: object,
+) -> str | None:
+    """Resolve the Setup pipeline path from direct entry and shell handoff."""
+    candidates: list[str] = []
+    if isinstance(shell_handoff, str):
+        candidates.append(shell_handoff)
+    elif isinstance(shell_handoff, dict):
+        for key in ("path", "abs_path"):
+            value = shell_handoff.get(key)
+            if isinstance(value, str):
+                candidates.append(value)
+                break
+    if typed_path:
+        candidates.append(typed_path)
+
+    valid_suffixes = PIPELINE_CONFIG_SUFFIXES | frozenset({CONFIG_SUFFIX_TUNING})
+    for candidate in candidates:
+        path = candidate.strip()
+        if path and matches_any_suffix(path, valid_suffixes):
+            return path
+    return None
+
+
+def authored_spec_descriptor(
+    *,
+    path: str,
+    pipeline_path: str,
+    metadata_path: str,
+) -> dict[str, str]:
+    """Return the Setup-authored spec descriptor stored in Dash state."""
+    return {
+        "path": path,
+        "pipeline_path": pipeline_path,
+        "metadata_path": metadata_path,
+    }
+
+
+def active_authored_spec_path(
+    descriptor: object,
+    *,
+    pipeline_path: str | None,
+    metadata_path: str | None,
+) -> str | None:
+    """Return the authored spec path only when it matches current Setup inputs."""
+    if not isinstance(descriptor, dict):
+        return None
+    path = descriptor.get("path")
+    source = descriptor.get("pipeline_path")
+    metadata = descriptor.get("metadata_path")
+    if (
+        isinstance(path, str)
+        and path
+        and isinstance(source, str)
+        and isinstance(metadata, str)
+        and source == (pipeline_path or "")
+        and metadata == (metadata_path or "")
+    ):
+        return path
+    return None
+
+
+def _toggle_on(values: object) -> bool:
+    """Return whether a one-option Checklist carries ``on``."""
+    return isinstance(values, list) and "on" in values
+
+
+def _optional_int(value: object) -> int | None:
+    """Normalize a Dash numeric input to ``int | None``."""
+    if value in (None, ""):
+        return None
+    if isinstance(value, (int, float, str)):
+        return int(value)
+    raise TypeError(f"expected numeric input, got {type(value).__name__}")
+
+
+def _optional_float(value: object) -> float | None:
+    """Normalize a Dash numeric input to ``float | None``."""
+    if value in (None, ""):
+        return None
+    if isinstance(value, (int, float, str)):
+        return float(value)
+    raise TypeError(f"expected numeric input, got {type(value).__name__}")
+
+
+def cancel_monitor_run(
+    *,
+    runner: object,
+    registry: object,
+    run_id: str | None,
+    confirmed: bool = True,
+) -> str:
+    """Cancel a running Local tune run and update the registry."""
+    if not run_id:
+        return "No run selected."
+    record = registry.get(run_id)  # type: ignore[attr-defined]
+    if record is None:
+        return f"Run not found: {run_id}"
+    if record.mode != "local":
+        return "SLURM cancellation is not supported in v1."
+    if not confirmed:
+        return cancel_prompt(record.run_id, record.mode)
+    reconciled = reconcile_local_run_status(
+        runner=runner,
+        registry=registry,
+        run_id=run_id,
+    )
+    if reconciled in {"complete", "failed"}:
+        return f"Local run already exited: {run_id} ({reconciled})."
+    cancel_prompt(record.run_id, record.mode)
+    stopped = runner.stop(run_id)  # type: ignore[attr-defined]
+    if not stopped:
+        return f"Local run is not active: {run_id}"
+    registry.update_status(run_id, "cancelled")  # type: ignore[attr-defined]
+    return f"Cancelled Local run: {run_id}"
+
+
+def reconcile_run_status(
+    *,
+    runner: object,
+    registry: object,
+    run_id: str,
+) -> str | None:
+    """Reap an exited runner process and mirror its final status into the registry."""
+    record = registry.get(run_id)  # type: ignore[attr-defined]
+    if (
+        record is None
+        or record.mode not in {"local", "slurm"}
+        or record.status not in {"running", "submitting"}
+    ):
+        return None
+    is_running = getattr(runner, "is_running", None)
+    if callable(is_running) and is_running(run_id):
+        return str(record.status)
+    reap = getattr(runner, "reap", None)
+    if not callable(reap):
+        return None
+    returncode = reap(run_id)
+    if returncode is None:
+        return None
+    status = "running" if record.mode == "slurm" and returncode == 0 else (
+        "complete" if returncode == 0 else "failed"
+    )
+    registry.update_status(run_id, status)  # type: ignore[attr-defined]
+    return status
+
+
+def reconcile_local_run_status(
+    *,
+    runner: object,
+    registry: object,
+    run_id: str,
+) -> str | None:
+    """Reap an exited Local run and mirror its final status into the registry."""
+    record = registry.get(run_id)  # type: ignore[attr-defined]
+    if record is None or record.mode != "local":
+        return None
+    return reconcile_run_status(runner=runner, registry=registry, run_id=run_id)
+
+
+def _load_spec_preflight_issues(spec_path: str, strategy: str) -> list[str]:
+    """Return deploy-blocking preflight messages for ``spec_path``."""
+    from phenotypic.tune import TuningSpec
+
+    spec = TuningSpec.model_validate_json(Path(spec_path).read_text(encoding="utf-8"))
+    return [
+        issue.message
+        for issue in preflight_issues(spec.search_space, strategy=strategy)
+        if issue.blocks in {"deploy", "both"}
+    ]
+
+
+def export_monitor_best_pipeline(*, registry: object, run_id: str | None) -> Path:
+    """Export the active run's best pipeline from its params sidecar."""
+    if not run_id:
+        raise ValueError("No run selected.")
+    record = registry.get(run_id)  # type: ignore[attr-defined]
+    if record is None:
+        raise ValueError(f"Run not found: {run_id}")
+    return export_best_from_run(record.output_dir)
+
+
 def active_view(trigger_id: str | None) -> ids.SubTabName:
     """Resolve which sub-tab view a click on ``trigger_id`` should show.
 
@@ -196,25 +422,20 @@ def _ensure_connect_timeout(storage_url: str) -> str:
         The URL with ``connect_timeout`` ensured for a postgres backend, or the
         original URL unchanged for any other backend (or an unparseable URL).
     """
-    from sqlalchemy.engine import make_url
-    from sqlalchemy.exc import ArgumentError
+    from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
-    try:
-        url = make_url(storage_url)
-    except (ArgumentError, ValueError):
-        # An unparseable URL: leave it alone and let the constructor surface the
-        # real error (still bounded by the non-re-blocking worker wait).
+    parsed = urlsplit(storage_url)
+    backend = parsed.scheme.split("+", 1)[0]
+    if backend not in _CONNECT_TIMEOUT_BACKENDS:
+        return storage_url
+    query = parse_qsl(parsed.query, keep_blank_values=True)
+    if any(key == "connect_timeout" for key, _value in query):
         return storage_url
 
-    if url.get_backend_name() not in _CONNECT_TIMEOUT_BACKENDS:
-        return storage_url
-    if "connect_timeout" in url.query:
-        return storage_url
-
-    bounded = url.update_query_dict(
-        {"connect_timeout": str(int(_LIVE_CONNECT_TIMEOUT_S))}, append=False
+    query.append(("connect_timeout", str(int(_LIVE_CONNECT_TIMEOUT_S))))
+    return urlunsplit(
+        (parsed.scheme, parsed.netloc, parsed.path, urlencode(query), parsed.fragment)
     )
-    return bounded.render_as_string(hide_password=False)
 
 
 def _open_live_study(root: "TuneRunRoot") -> "_ReadableStore":
@@ -225,25 +446,19 @@ def _open_live_study(root: "TuneRunRoot") -> "_ReadableStore":
     :func:`_ensure_connect_timeout` to bound the connect at the source.
     """
     from pathlib import Path
-
-    from sqlalchemy.engine import make_url
-    from sqlalchemy.exc import ArgumentError
+    from urllib.parse import urlsplit
 
     from phenotypic.tune._study._optuna_store import OptunaStudyStore
 
     assert root.storage_url is not None  # guarded by the caller
-    try:
-        url = make_url(root.storage_url)
-    except (ArgumentError, ValueError):
-        url = None
+    url = urlsplit(root.storage_url)
+    database = url.path if url.scheme.split("+", 1)[0] == "sqlite" else ""
     if (
-        url is not None
-        and url.get_backend_name() == "sqlite"
-        and url.database
-        and url.database != ":memory:"
-        and not Path(url.database).exists()
+        database
+        and database != "/:memory:"
+        and not Path(database).exists()
     ):
-        raise FileNotFoundError(url.database)
+        raise FileNotFoundError(database)
     return OptunaStudyStore(
         storage_url=_ensure_connect_timeout(root.storage_url),
         study_name=root.study_name,
@@ -382,7 +597,481 @@ def register_callbacks(app, *, sandbox=None) -> None:  # type: ignore[no-untyped
         sandbox: The frozen-at-launch sandbox root. When ``None`` the Curate
             callbacks are skipped (the Curate view degrades to a note).
     """
-    from dash import Input, Output, State
+    from dash import ALL, Input, Output, State, html
+
+    @app.callback(
+        Output(ids.TUNE_ACTIVE_DESTINATION_STORE, "data"),
+        *[
+            Output(_nav.destination_view_id(name), "className")
+            for name in _nav.DESTINATIONS
+        ],
+        *[
+            Output(_nav.destination_button_id(name), "className")
+            for name in _nav.DESTINATIONS
+        ],
+        *[
+            Input(_nav.destination_button_id(name), "n_clicks")
+            for name in _nav.DESTINATIONS
+        ],
+        State(ids.TUNE_SETUP_AUTHORED_SPEC_STORE, "data"),
+        State(ids.TUNE_SETUP_PIPELINE_STORE, "data"),
+        State(ids.TUNE_SETUP_METADATA_INPUT, "value"),
+        prevent_initial_call=True,
+    )
+    def _switch_destination(*args: object) -> tuple[str, ...]:
+        descriptor = args[-3] if len(args) >= 3 else None
+        pipeline_path = args[-2] if len(args) >= 2 else None
+        metadata_path = args[-1] if args else None
+        spec_path = active_authored_spec_path(
+            descriptor,
+            pipeline_path=pipeline_path if isinstance(pipeline_path, str) else None,
+            metadata_path=metadata_path if isinstance(metadata_path, str) else None,
+        )
+        active = _nav.active_destination(
+            ctx.triggered_id,
+            pipeline_path=spec_path,
+        )
+        view_classes = [
+            _nav.destination_view_class(name, active) for name in _nav.DESTINATIONS
+        ]
+        button_classes = [
+            _nav.destination_button_class(name, active) for name in _nav.DESTINATIONS
+        ]
+        return (active, *view_classes, *button_classes)
+
+    @app.callback(
+        Output(ids.TUNE_SETUP_PIPELINE_STORE, "data"),
+        Input(ids.TUNE_SETUP_PIPELINE_INPUT, "value"),
+        Input(TUNE_PIPELINE_PATH_STORE, "data"),
+    )
+    def _select_setup_pipeline(
+        typed_path: str | None,
+        shell_handoff: object,
+    ) -> str | None:
+        return setup_pipeline_path_from_sources(typed_path, shell_handoff)
+
+    @app.callback(
+        Output(ids.TUNE_SETUP_SEARCH_SPACE, "className"),
+        Output(ids.TUNE_SETUP_SCORER, "className"),
+        Output(ids.TUNE_SETUP_CONTINUE, "disabled"),
+        Output(ids.TUNE_SETUP_GATE, "children"),
+        Output(_nav.destination_button_id("run"), "disabled"),
+        Input(ids.TUNE_SETUP_PIPELINE_STORE, "data"),
+        Input(ids.TUNE_SETUP_METADATA_INPUT, "value"),
+        Input(ids.TUNE_SETUP_AUTHORED_SPEC_STORE, "data"),
+    )
+    def _toggle_setup_gate(
+        pipeline_path: str | None,
+        metadata_path: str | None,
+        authored_spec_descriptor_value: object,
+    ) -> tuple[str, str, bool, str, bool]:
+        search_class, scorer_class, disabled, note = setup_gate_state(
+            pipeline_path,
+            metadata_path,
+        )
+        authored_spec_path = active_authored_spec_path(
+            authored_spec_descriptor_value,
+            pipeline_path=pipeline_path,
+            metadata_path=metadata_path,
+        )
+        if authored_spec_path:
+            note = f"Authored tuning spec: {authored_spec_path}"
+        return (
+            search_class,
+            scorer_class,
+            disabled,
+            note,
+            _nav.destination_button_disabled(
+                "run", pipeline_path=authored_spec_path
+            ),
+        )
+
+    @app.callback(
+        Output(ids.TUNE_SETUP_AUTHORED_SPEC_STORE, "data"),
+        Output(ids.TUNE_SETUP_GATE, "children", allow_duplicate=True),
+        Output(ids.TUNE_ACTIVE_DESTINATION_STORE, "data", allow_duplicate=True),
+        *[
+            Output(_nav.destination_view_id(name), "className", allow_duplicate=True)
+            for name in _nav.DESTINATIONS
+        ],
+        *[
+            Output(_nav.destination_button_id(name), "className", allow_duplicate=True)
+            for name in _nav.DESTINATIONS
+        ],
+        Input(ids.TUNE_SETUP_CONTINUE, "n_clicks"),
+        State(ids.TUNE_SETUP_PIPELINE_STORE, "data"),
+        State(ids.TUNE_SETUP_METADATA_INPUT, "value"),
+        prevent_initial_call=True,
+    )
+    def _author_setup_spec(
+        n_clicks: int | None,
+        pipeline_path: str | None,
+        metadata_path: str | None,
+    ) -> tuple[object, ...]:
+        if not n_clicks:
+            return (no_update,) * 9
+        if sandbox is None:
+            return ("", "Setup authoring requires a sandbox-bound GUI launch.", *([no_update] * 7))
+        if not pipeline_path or not metadata_path:
+            return ("", "Choose a pipeline and metadata layout before Continue.", *([no_update] * 7))
+        try:
+            authored = write_authored_setup_spec(
+                sandbox_root=sandbox.root,
+                pipeline_or_spec_path=sandbox.resolve(pipeline_path),
+                metadata_path=sandbox.resolve(metadata_path),
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("Tune setup authoring failed")
+            return ("", f"Could not author tuning spec: {exc}", *([no_update] * 7))
+        active: _nav.Destination = "run"
+        view_classes = [
+            _nav.destination_view_class(name, active) for name in _nav.DESTINATIONS
+        ]
+        button_classes = [
+            _nav.destination_button_class(name, active) for name in _nav.DESTINATIONS
+        ]
+        return (
+            authored_spec_descriptor(
+                path=str(authored),
+                pipeline_path=pipeline_path,
+                metadata_path=metadata_path,
+            ),
+            f"Authored tuning spec: {authored}",
+            active,
+            *view_classes,
+            *button_classes,
+        )
+
+    @app.callback(
+        Output(ids.TUNE_RUN_COMMAND, "children"),
+        Output(ids.TUNE_RUN_PREFLIGHT, "children"),
+        Output(ids.TUNE_RUN_DEPLOY, "disabled"),
+        Input(ids.TUNE_SETUP_AUTHORED_SPEC_STORE, "data"),
+        Input(ids.TUNE_SETUP_PIPELINE_STORE, "data"),
+        Input(ids.TUNE_SETUP_METADATA_INPUT, "value"),
+        Input(SHELL_SOURCE_IMAGE_ROOT_STORE, "data"),
+        Input(ids.TUNE_RUN_IMAGES_OVERRIDE, "value"),
+        Input(ids.TUNE_RUN_OUTPUT_DIR, "value"),
+        Input(ids.TUNE_RUN_STRATEGY, "value"),
+        Input(ids.TUNE_RUN_N_TRIALS, "value"),
+        Input(ids.TUNE_RUN_STORAGE_URL, "value"),
+        Input(ids.TUNE_RUN_N_WORKERS, "value"),
+        Input(ids.TUNE_RUN_SLURM_PARTITION, "value"),
+        Input(ids.TUNE_RUN_SLURM_MEM, "value"),
+        Input(ids.TUNE_RUN_SLURM_TIME, "value"),
+        Input(ids.TUNE_RUN_HELD_OUT_FRACTION, "value"),
+        Input(ids.TUNE_RUN_CV_GROUP, "value"),
+        Input(ids.TUNE_RUN_MODE, "value"),
+        Input(ids.TUNE_RUN_SCREEN, "value"),
+    )
+    def _render_run_command(
+        authored_spec_descriptor_value: object,
+        pipeline_path: str | None,
+        metadata_path: str | None,
+        shared_source: object,
+        images_override: str | None,
+        output_dir: str | None,
+        strategy: str | None,
+        n_trials: object,
+        storage_url: str | None,
+        n_workers: object,
+        slurm_partition: str | None,
+        slurm_mem: str | None,
+        slurm_time: str | None,
+        held_out_fraction: object,
+        cv_group: str | None,
+        mode: str | None,
+        screen_values: object,
+    ) -> tuple[str, str, bool]:
+        if sandbox is None:
+            return "", "Run requires a sandbox-bound GUI launch.", True
+        spec_path = active_authored_spec_path(
+            authored_spec_descriptor_value,
+            pipeline_path=pipeline_path,
+            metadata_path=metadata_path,
+        )
+        spec_issue = spec_path_issue(spec_path)
+        if spec_issue is not None:
+            return "", spec_issue.message, True
+        assert spec_path is not None
+        try:
+            run_issues = _load_spec_preflight_issues(spec_path, strategy or "tpe")
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Tune preflight failed", exc_info=True)
+            return "", f"Could not inspect tuning spec: {exc}", True
+        if run_issues:
+            return "", " ".join(run_issues), True
+        images_dir = resolve_run_images(sandbox, shared_source, images_override)
+        missing = []
+        if not spec_path:
+            missing.append("pipeline/spec")
+        if not images_dir:
+            missing.append("images")
+        if not output_dir:
+            missing.append("output")
+        if missing:
+            return "", "Set " + ", ".join(missing) + " before Deploy.", True
+        assert spec_path is not None
+        assert images_dir is not None
+        assert output_dir is not None
+        command = render_launch_command(
+            spec_path,
+            images_dir,
+            output_dir,
+            strategy=strategy or "tpe",
+            n_trials=_optional_int(n_trials),
+            storage_url=storage_url or None,
+            n_workers=_optional_int(n_workers),
+            slurm_partition=slurm_partition or None,
+            slurm_mem=slurm_mem or None,
+            slurm_time=slurm_time or None,
+            held_out_fraction=_optional_float(held_out_fraction),
+            cv_group=cv_group or None,
+            screen=_toggle_on(screen_values),
+            slurm=mode == "slurm",
+        )
+        return command, "Ready to deploy.", False
+
+    @app.callback(
+        Output(ids.TUNE_RUN_STATUS, "children"),
+        Output(ids.TUNE_RUN_ACTIVE_RECORD_STORE, "data"),
+        Output(ids.TUNE_MONITOR_ACTIVE_RUN_STORE, "data", allow_duplicate=True),
+        Output(ids.TUNE_ACTIVE_DESTINATION_STORE, "data", allow_duplicate=True),
+        *[
+            Output(_nav.destination_view_id(name), "className", allow_duplicate=True)
+            for name in _nav.DESTINATIONS
+        ],
+        *[
+            Output(_nav.destination_button_id(name), "className", allow_duplicate=True)
+            for name in _nav.DESTINATIONS
+        ],
+        Input(ids.TUNE_RUN_DEPLOY, "n_clicks"),
+        State(ids.TUNE_SETUP_AUTHORED_SPEC_STORE, "data"),
+        State(ids.TUNE_SETUP_PIPELINE_STORE, "data"),
+        State(ids.TUNE_SETUP_METADATA_INPUT, "value"),
+        State(SHELL_SOURCE_IMAGE_ROOT_STORE, "data"),
+        State(ids.TUNE_RUN_IMAGES_OVERRIDE, "value"),
+        State(ids.TUNE_RUN_OUTPUT_DIR, "value"),
+        State(ids.TUNE_RUN_STRATEGY, "value"),
+        State(ids.TUNE_RUN_N_TRIALS, "value"),
+        State(ids.TUNE_RUN_STORAGE_URL, "value"),
+        State(ids.TUNE_RUN_N_WORKERS, "value"),
+        State(ids.TUNE_RUN_SLURM_PARTITION, "value"),
+        State(ids.TUNE_RUN_SLURM_MEM, "value"),
+        State(ids.TUNE_RUN_SLURM_TIME, "value"),
+        State(ids.TUNE_RUN_HELD_OUT_FRACTION, "value"),
+        State(ids.TUNE_RUN_CV_GROUP, "value"),
+        State(ids.TUNE_RUN_MODE, "value"),
+        State(ids.TUNE_RUN_SCREEN, "value"),
+        prevent_initial_call=True,
+    )
+    def _deploy_run(
+        n_clicks: int | None,
+        authored_spec_descriptor_value: object,
+        pipeline_path: str | None,
+        metadata_path: str | None,
+        shared_source: object,
+        images_override: str | None,
+        output_dir: str | None,
+        strategy: str | None,
+        n_trials: object,
+        storage_url: str | None,
+        n_workers: object,
+        slurm_partition: str | None,
+        slurm_mem: str | None,
+        slurm_time: str | None,
+        held_out_fraction: object,
+        cv_group: str | None,
+        mode: str | None,
+        screen_values: object,
+    ) -> tuple[object, ...]:
+        if not n_clicks:
+            return (no_update,) * 10
+        if sandbox is None:
+            return ("Run requires a sandbox-bound GUI launch.", no_update, *([no_update] * 8))
+        runner = app.server.config.get(CFG_RUNNER)
+        registry = app.server.config.get(CFG_RUN_REGISTRY)
+        if runner is None or registry is None:
+            return ("Runner unavailable.", no_update, *([no_update] * 8))
+        spec_path = active_authored_spec_path(
+            authored_spec_descriptor_value,
+            pipeline_path=pipeline_path,
+            metadata_path=metadata_path,
+        )
+        spec_issue = spec_path_issue(spec_path)
+        if spec_issue is not None:
+            return (spec_issue.message, no_update, *([no_update] * 8))
+        assert spec_path is not None
+        try:
+            run_issues = _load_spec_preflight_issues(spec_path, strategy or "tpe")
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Tune deploy preflight failed", exc_info=True)
+            return (f"Could not inspect tuning spec: {exc}", no_update, *([no_update] * 8))
+        if run_issues:
+            return (" ".join(run_issues), no_update, *([no_update] * 8))
+        images_dir = resolve_run_images(sandbox, shared_source, images_override)
+        if not spec_path or not images_dir or not output_dir:
+            return ("Set pipeline/spec, images, and output before Deploy.", no_update, *([no_update] * 8))
+        slurm = mode == "slurm"
+        argv = tune_run_argv(
+            spec_path=spec_path,
+            images_dir=images_dir,
+            output_dir=output_dir,
+            strategy=strategy or "tpe",
+            n_trials=_optional_int(n_trials),
+            storage_url=storage_url or None,
+            n_workers=_optional_int(n_workers),
+            slurm_partition=slurm_partition or None,
+            slurm_mem=slurm_mem or None,
+            slurm_time=slurm_time or None,
+            held_out_fraction=_optional_float(held_out_fraction),
+            cv_group=cv_group or None,
+            slurm=slurm,
+            screen=_toggle_on(screen_values),
+        )
+        try:
+            run_id = deploy_tune_run(
+                runner=runner,
+                registry=registry,
+                sandbox=sandbox,
+                argv=argv,
+                output_dir=Path(output_dir),
+                slurm=slurm,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("Tune deploy failed")
+            return (str(exc), no_update, *([no_update] * 8))
+        active: _nav.Destination = "monitor"
+        view_classes = [
+            _nav.destination_view_class(name, active) for name in _nav.DESTINATIONS
+        ]
+        button_classes = [
+            _nav.destination_button_class(name, active) for name in _nav.DESTINATIONS
+        ]
+        return (
+            f"Deployed: {run_id}",
+            {"run_id": run_id, "mode": "slurm" if slurm else "local"},
+            run_id,
+            active,
+            *view_classes,
+            *button_classes,
+        )
+
+    @app.callback(
+        Output(ids.TUNE_MONITOR_SWITCHER, "children"),
+        Output(ids.TUNE_MONITOR_CANCEL, "disabled"),
+        Output(ids.TUNE_MONITOR_LOCAL_LOG, "children"),
+        Output(ids.TUNE_MONITOR_SLURM_FLEET, "children"),
+        Input(ids.TUNE_STUDY_POLL, "n_intervals"),
+        Input(ids.TUNE_MONITOR_ACTIVE_RUN_STORE, "data"),
+    )
+    def _render_monitor_registry(
+        _n: int | None,
+        active_run_id: str | None,
+    ) -> tuple[object, bool, str, str]:
+        registry = app.server.config.get(CFG_RUN_REGISTRY)
+        if registry is None:
+            return "No run registry.", True, "", ""
+        runner = app.server.config.get(CFG_RUNNER)
+        if runner is not None:
+            for record in registry.list():
+                reconcile_run_status(
+                    runner=runner,
+                    registry=registry,
+                    run_id=record.run_id,
+                )
+        records = registry.list()
+        items = run_switcher_items(records, active_id=active_run_id)
+        active_item = next((item for item in items if item.active), None)
+        switcher = [
+            html.Button(
+                f"{item.run_id} | {item.mode} | {item.status}",
+                id={"type": ids.TUNE_MONITOR_RUN_SWITCH, "run_id": item.run_id},
+                n_clicks=0,
+                className=(
+                    "tune-monitor-switcher-item"
+                    + (" tune-monitor-switcher-active" if item.active else "")
+                ),
+            )
+            for item in items
+        ]
+        cancel_disabled = active_item is None or not active_item.killable
+        local_text = ""
+        slurm_text = ""
+        if active_item is not None and active_item.mode == "local":
+            lines = (
+                runner.snapshot_log(active_item.run_id, tail=40)
+                if runner is not None
+                else []
+            )
+            local_text = "\n".join(lines) if lines else "No local log lines yet."
+        elif active_item is not None:
+            slurm_text = (
+                f"SLURM run {active_item.run_id}: {active_item.status}. "
+                "Cancellation is not supported in v1."
+            )
+        return switcher, cancel_disabled, local_text, slurm_text
+
+    @app.callback(
+        Output(ids.TUNE_MONITOR_ACTIVE_RUN_STORE, "data", allow_duplicate=True),
+        Input({"type": ids.TUNE_MONITOR_RUN_SWITCH, "run_id": ALL}, "n_clicks"),
+        prevent_initial_call=True,
+    )
+    def _select_monitor_run(_clicks: object) -> object:
+        triggered = ctx.triggered_id
+        if isinstance(triggered, dict) and triggered.get("type") == ids.TUNE_MONITOR_RUN_SWITCH:
+            run_id = triggered.get("run_id")
+            return run_id if isinstance(run_id, str) else no_update
+        return no_update
+
+    @app.callback(
+        Output(ids.TUNE_MONITOR_CANCEL_NOTE, "children"),
+        Input(ids.TUNE_MONITOR_CANCEL_CONFIRM, "submit_n_clicks"),
+        State(ids.TUNE_MONITOR_ACTIVE_RUN_STORE, "data"),
+        prevent_initial_call=True,
+    )
+    def _cancel_monitor_run(
+        n_clicks: int | None,
+        active_run_id: str | None,
+    ) -> str:
+        if not n_clicks:
+            return ""
+        runner = app.server.config.get(CFG_RUNNER)
+        registry = app.server.config.get(CFG_RUN_REGISTRY)
+        if runner is None or registry is None:
+            return "Runner unavailable."
+        return cancel_monitor_run(
+            runner=runner,
+            registry=registry,
+            run_id=active_run_id,
+        )
+
+    @app.callback(
+        Output(ids.TUNE_MONITOR_EXPORT_NOTE, "children"),
+        Input(ids.TUNE_MONITOR_EXPORT, "n_clicks"),
+        State(ids.TUNE_MONITOR_ACTIVE_RUN_STORE, "data"),
+        prevent_initial_call=True,
+    )
+    def _export_monitor_best(
+        n_clicks: int | None,
+        active_run_id: str | None,
+    ) -> str:
+        if not n_clicks:
+            return ""
+        registry = app.server.config.get(CFG_RUN_REGISTRY)
+        if registry is None:
+            return "Run registry unavailable."
+        try:
+            written = export_monitor_best_pipeline(
+                registry=registry,
+                run_id=active_run_id,
+            )
+        except FileNotFoundError as exc:
+            return f"Export unavailable: {exc}"
+        except Exception:  # noqa: BLE001
+            logger.warning("Monitor best-pipeline export failed", exc_info=True)
+            return "Export failed — see the server log."
+        return f"Exported {written}"
 
     @app.callback(
         Output(ids.TUNE_ACTIVE_VIEW_STORE, "data"),
@@ -556,18 +1245,27 @@ def _register_run_picker_callbacks(app, sandbox) -> None:  # type: ignore[no-unt
         Output(ids.TUNE_RUN_PICKER_LABEL, "children", allow_duplicate=True),
         Output(ids.TUNE_RUN_PICKER_NOTE, "children", allow_duplicate=True),
         Output(ids.TUNE_RUN_PICKER_MODAL, "is_open", allow_duplicate=True),
+        Output(ids.TUNE_ACTIVE_DESTINATION_STORE, "data", allow_duplicate=True),
+        *[
+            Output(_nav.destination_view_id(name), "className", allow_duplicate=True)
+            for name in _nav.DESTINATIONS
+        ],
+        *[
+            Output(_nav.destination_button_id(name), "className", allow_duplicate=True)
+            for name in _nav.DESTINATIONS
+        ],
         Input(ids.TUNE_BTN_RUN_PICKER_CONFIRM, "n_clicks"),
         State(ids.TUNE_RUN_PICKER_BROWSE_DIR, "data"),
         prevent_initial_call=True,
     )
     def _confirm_run_bind(n_clicks, browsed):  # type: ignore[no-untyped-def]
         if not n_clicks:
-            return no_update, no_update, no_update, no_update, no_update
+            return (no_update,) * 12
         payload, note = discover_run_payload(sandbox, browsed or "")
         if payload is None:
             # Keep the store / body / label as-is and leave the modal open so the
             # user can pick a different directory; show the clear failure note.
-            return no_update, no_update, no_update, note, no_update
+            return no_update, no_update, no_update, note, no_update, *([no_update] * 7)
         # Success: re-discover (cheap — markers only, never optuna) to build the
         # loaded body, then write the store + swap the body + label, clear the
         # note, and close the modal. ``discover`` already succeeded inside
@@ -576,7 +1274,23 @@ def _register_run_picker_callbacks(app, sandbox) -> None:  # type: ignore[no-unt
 
         root = TuneRunRoot.discover(Path(payload["path"]))
         body = build_loaded_body(root, sandbox=sandbox)
-        return payload, body, payload["path"], "", False
+        active: _nav.Destination = "monitor"
+        view_classes = [
+            _nav.destination_view_class(name, active) for name in _nav.DESTINATIONS
+        ]
+        button_classes = [
+            _nav.destination_button_class(name, active) for name in _nav.DESTINATIONS
+        ]
+        return (
+            payload,
+            body,
+            payload["path"],
+            "",
+            False,
+            active,
+            *view_classes,
+            *button_classes,
+        )
 
 
 def _register_launch_command_mirror(app) -> None:  # type: ignore[no-untyped-def]
