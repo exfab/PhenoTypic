@@ -34,6 +34,15 @@ SHELL_TOP_BAR = "shell-top-bar"
 #: Read-only label echoing the resolved sandbox root.
 SHELL_ROOT_LABEL = "shell-root-label"
 
+#: Browser-local store holding the shared source-image-root payload.
+SHELL_SOURCE_IMAGE_ROOT_STORE = "shell-source-image-root-store"
+
+#: Top-bar label summarising the selected source image directory.
+SHELL_SOURCE_IMAGE_ROOT_LABEL = "shell-source-image-root-label"
+
+#: Top-bar action clearing :data:`SHELL_SOURCE_IMAGE_ROOT_STORE`.
+SHELL_SOURCE_IMAGE_ROOT_CLEAR = "shell-source-image-root-clear"
+
 #: Memory readout (``psutil.Process().memory_info().rss``); refreshed by
 #: ``SHELL_RSS_INTERVAL``.
 SHELL_RSS_LABEL = "shell-rss-label"
@@ -149,6 +158,9 @@ __all__ = [
     "ToolName",
     "SHELL_TOP_BAR",
     "SHELL_ROOT_LABEL",
+    "SHELL_SOURCE_IMAGE_ROOT_STORE",
+    "SHELL_SOURCE_IMAGE_ROOT_LABEL",
+    "SHELL_SOURCE_IMAGE_ROOT_CLEAR",
     "SHELL_RSS_LABEL",
     "SHELL_RSS_INTERVAL",
     "SHELL_HELP_BUTTON",

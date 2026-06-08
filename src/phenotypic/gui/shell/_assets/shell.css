@@ -96,6 +96,37 @@
   letter-spacing: 0.02em;
 }
 
+.shell-source-label {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: rgba(255, 255, 255, 0.78);
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+}
+
+.shell-source-clear-button,
+.shell-source-clear-button:focus,
+.shell-source-clear-button:active {
+  background: transparent !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  color: rgba(255, 255, 255, 0.75) !important;
+  font-size: var(--text-xs);
+  line-height: 1;
+  padding: 0 !important;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-sm);
+  box-shadow: none !important;
+}
+
+.shell-source-clear-button:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: var(--color-white) !important;
+}
+
 /* Sidebar collapse button: icon-only chevron in the top bar */
 .shell-sidebar-collapse-button,
 .shell-sidebar-collapse-button:focus,

@@ -32,11 +32,18 @@ from typing import TYPE_CHECKING, Optional
 from dash import ctx
 
 from phenotypic.gui._config import THREAD_NAME_PREFIX
+from phenotypic.gui.shell._ids import SHELL_SOURCE_IMAGE_ROOT_STORE
+from phenotypic.gui.shell._source_context import (
+    SourcePayload,
+    resolve_source_image_root,
+    source_payload_from_path,
+)
 from phenotypic.gui.tune import _ids as ids
 
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from phenotypic.gui.shell._sandbox import SandboxRoot
     from phenotypic.gui.tune._study_read import _ReadableStore
     from phenotypic.gui.tune._run_root import TuneRunRoot
 
@@ -77,6 +84,37 @@ _NOTE_LIVE_UNREACHABLE: str = (
     "couldn't reach the live study — check network / ~/.pgpass. "
     "Showing the last finished trials."
 )
+
+
+def _source_payload_for_tune_image_source(
+    sandbox: "SandboxRoot",
+    image_source: Optional[str],
+    current_payload: object,
+) -> SourcePayload | None:
+    """Build a shared source payload from Tune's Image Source store."""
+    if not image_source:
+        return None
+    payload = source_payload_from_path(sandbox, image_source, source="tune")
+    if payload is None:
+        return None
+    if (
+        isinstance(current_payload, dict)
+        and current_payload.get("abs_path") == payload["abs_path"]
+    ):
+        return None
+    return payload
+
+
+def _tune_image_source_from_shared(
+    sandbox: "SandboxRoot",
+    shared_payload: object,
+    current_image_source: Optional[str],
+) -> str | None:
+    """Return a Tune Image Source from shared source when Tune is unset."""
+    if current_image_source:
+        return None
+    resolved = resolve_source_image_root(sandbox, shared_payload)
+    return str(resolved) if resolved is not None else None
 
 #: The note shown when the run wants a live study but the ``tune`` extra (and so
 #: ``optuna``) is not installed.
@@ -889,6 +927,37 @@ def _register_curate_callbacks(app, sandbox) -> None:  # type: ignore[no-untyped
                 f"Refused: {browsed} escapes the sandbox or is not a directory.",
             )
         return str(resolved), str(resolved), False, no_update, no_update
+
+    @app.callback(
+        Output(SHELL_SOURCE_IMAGE_ROOT_STORE, "data", allow_duplicate=True),
+        Input(ids.TUNE_IMAGE_SOURCE_STORE, "data"),
+        State(SHELL_SOURCE_IMAGE_ROOT_STORE, "data"),
+        prevent_initial_call=True,
+    )
+    def _mirror_tune_image_source_to_shared(
+        image_source, current_payload
+    ):  # type: ignore[no-untyped-def]
+        payload = _source_payload_for_tune_image_source(
+            sandbox, image_source, current_payload
+        )
+        return payload if payload is not None else no_update
+
+    @app.callback(
+        Output(ids.TUNE_IMAGE_SOURCE_STORE, "data", allow_duplicate=True),
+        Output(ids.TUNE_IMAGE_SOURCE_LABEL, "children", allow_duplicate=True),
+        Input(SHELL_SOURCE_IMAGE_ROOT_STORE, "data"),
+        State(ids.TUNE_IMAGE_SOURCE_STORE, "data"),
+        prevent_initial_call="initial_duplicate",
+    )
+    def _initialize_tune_image_source_from_shared(
+        shared_payload, current_image_source
+    ):  # type: ignore[no-untyped-def]
+        image_source = _tune_image_source_from_shared(
+            sandbox, shared_payload, current_image_source
+        )
+        if image_source is None:
+            return no_update, no_update
+        return image_source, image_source
 
     # --- Mirror the Image Source store → prompt visibility ----------------
     @app.callback(
