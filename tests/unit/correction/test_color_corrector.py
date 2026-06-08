@@ -24,6 +24,7 @@ from phenotypic.correction._color_correction._helpers import (
     trim_background_edges,
     validate_patch_shape,
 )
+from phenotypic.tools_ import CONFIG_SUFFIX_COLOR_CHECKER, ensure_typed_json_suffix
 
 
 # ---------------------------------------------------------------------------
@@ -719,9 +720,26 @@ class TestColorCorrectorSerialization:
     def test_profile_to_json_from_json_file_roundtrip(self, tmp_path):
         """An unfitted profile written to file is recovered with params intact."""
         filepath = tmp_path / "profile.json"
+        typed_filepath = ensure_typed_json_suffix(
+            filepath, CONFIG_SUFFIX_COLOR_CHECKER
+        )
         ColorCheckerProfile(degree=3, outlier_sigma=1.5).to_json(filepath)
 
-        assert filepath.exists()
+        assert not filepath.exists()
+        assert typed_filepath.exists()
+        loaded = ColorCheckerProfile.from_json(typed_filepath)
+        assert loaded.degree == 3
+        assert loaded.outlier_sigma == 1.5
+        assert loaded.is_fitted is False
+
+    def test_profile_from_json_accepts_explicit_legacy_file(self, tmp_path):
+        """Explicit legacy ``.json`` profile files still load."""
+        filepath = tmp_path / "profile.json"
+        filepath.write_text(
+            ColorCheckerProfile(degree=3, outlier_sigma=1.5).to_json(),
+            encoding="utf-8",
+        )
+
         loaded = ColorCheckerProfile.from_json(filepath)
         assert loaded.degree == 3
         assert loaded.outlier_sigma == 1.5
@@ -730,9 +748,13 @@ class TestColorCorrectorSerialization:
     def test_fitted_profile_to_json_from_json_roundtrip(self, fitted_profile, tmp_path):
         """A fitted profile round-trips its correction matrix exactly via file."""
         filepath = tmp_path / "fitted_profile.json"
+        typed_filepath = ensure_typed_json_suffix(
+            filepath, CONFIG_SUFFIX_COLOR_CHECKER
+        )
         fitted_profile.to_json(filepath)
 
-        loaded = ColorCheckerProfile.from_json(filepath)
+        assert typed_filepath.exists()
+        loaded = ColorCheckerProfile.from_json(typed_filepath)
         np.testing.assert_array_almost_equal(
             loaded.correction_matrix,
             fitted_profile.correction_matrix,
@@ -743,9 +765,13 @@ class TestColorCorrectorSerialization:
     def test_profile_from_json_with_exif(self, fitted_profile_with_exif, tmp_path):
         """capture_metadata survives the file round-trip."""
         filepath = tmp_path / "exif_profile.json"
+        typed_filepath = ensure_typed_json_suffix(
+            filepath, CONFIG_SUFFIX_COLOR_CHECKER
+        )
         fitted_profile_with_exif.to_json(filepath)
 
-        loaded = ColorCheckerProfile.from_json(filepath)
+        assert typed_filepath.exists()
+        loaded = ColorCheckerProfile.from_json(typed_filepath)
         assert loaded.capture_metadata == fitted_profile_with_exif.capture_metadata
         assert loaded.capture_metadata.camera_model == "EOS R100"
         assert loaded.capture_metadata.iso == 800

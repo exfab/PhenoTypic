@@ -12,6 +12,10 @@ from pathlib import Path
 from pydantic import BaseModel, ConfigDict, PrivateAttr
 
 from phenotypic.tools_._docstring_params import apply_docstring_descriptions
+from phenotypic.tools_._io_constants import (
+    CONFIG_SUFFIX_OPERATION,
+    ensure_typed_json_suffix,
+)
 from phenotypic.tools_._json_io import read_json_source
 
 # Check for optional dependencies
@@ -236,10 +240,12 @@ class BaseOperation(BaseModel, ABC):
             >>> import tempfile
             >>> from pathlib import Path
             >>> from phenotypic.detect import OtsuDetector
+            >>> from phenotypic.tools_ import CONFIG_SUFFIX_OPERATION, ensure_typed_json_suffix
             >>> with tempfile.TemporaryDirectory() as d:
             ...     p = Path(d) / "op.json"
+            ...     saved = ensure_typed_json_suffix(p, CONFIG_SUFFIX_OPERATION)
             ...     OtsuDetector(ignore_zeros=True).to_json(p)
-            ...     loaded = OtsuDetector.from_json(p)
+            ...     loaded = OtsuDetector.from_json(saved)
             >>> loaded.ignore_zeros
             True
         """
@@ -249,7 +255,9 @@ class BaseOperation(BaseModel, ABC):
         }
         json_str = json.dumps(envelope, indent=2)
         if filepath is not None:
-            Path(filepath).write_text(json_str)
+            ensure_typed_json_suffix(filepath, CONFIG_SUFFIX_OPERATION).write_text(
+                json_str
+            )
             return None
         return json_str
 

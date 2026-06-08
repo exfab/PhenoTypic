@@ -24,6 +24,10 @@ from pydantic import (
 )
 
 from phenotypic.tools_._json_io import read_json_source
+from phenotypic.tools_._io_constants import (
+    CONFIG_SUFFIX_COLOR_CHECKER,
+    ensure_typed_json_suffix,
+)
 from phenotypic.tools_.typing_ import NdArrayField
 
 from ._capture_metadata import CaptureMetadata
@@ -392,16 +396,20 @@ class ColorCheckerProfile(BaseModel):
             >>> import tempfile
             >>> from pathlib import Path
             >>> from phenotypic.correction import ColorCheckerProfile
+            >>> from phenotypic.tools_ import CONFIG_SUFFIX_COLOR_CHECKER, ensure_typed_json_suffix
             >>> with tempfile.TemporaryDirectory() as d:
             ...     p = Path(d) / "profile.json"
+            ...     saved = ensure_typed_json_suffix(p, CONFIG_SUFFIX_COLOR_CHECKER)
             ...     ColorCheckerProfile(degree=3).to_json(p)
-            ...     loaded = ColorCheckerProfile.from_json(p)
+            ...     loaded = ColorCheckerProfile.from_json(saved)
             >>> loaded.degree
             3
         """
         json_str = self.model_dump_json(indent=2)
         if filepath is not None:
-            Path(filepath).write_text(json_str)
+            ensure_typed_json_suffix(
+                filepath, CONFIG_SUFFIX_COLOR_CHECKER
+            ).write_text(json_str)
             return None
         return json_str
 

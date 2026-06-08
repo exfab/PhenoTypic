@@ -118,6 +118,7 @@ from phenotypic.gui.builder._validation import validate
 from phenotypic.gui.builder._validation import Issue
 from phenotypic.gui.shell._ids import SHELL_SOURCE_IMAGE_ROOT_STORE
 from phenotypic.gui.shell._source_context import SOURCE_PAYLOAD_VERSION
+from phenotypic.tools_ import CONFIG_SUFFIX_PIPELINE, ensure_typed_json_suffix
 
 logger = logging.getLogger(__name__)
 
@@ -629,6 +630,14 @@ def _queue_toast(
 
     queue = state_dict.setdefault("toast_queue", [])
     queue.append({"kind": kind, "text": text})
+
+
+def _write_pipeline_config(pipeline: Any, target: Path) -> Path:
+    """Write *pipeline* using the canonical typed pipeline suffix."""
+    typed_target = ensure_typed_json_suffix(target, CONFIG_SUFFIX_PIPELINE)
+    typed_target.parent.mkdir(parents=True, exist_ok=True)
+    pipeline.to_json(typed_target)
+    return typed_target
 
 
 def _dag_scope_at_breadcrumb(
@@ -5876,10 +5885,7 @@ def register_callbacks(app: dash.Dash) -> None:
                         ),
                     )
 
-            payload = pipeline.to_json()
-            target.parent.mkdir(parents=True, exist_ok=True)
-            with open(target, "w", encoding="utf-8") as fh:
-                fh.write(payload if isinstance(payload, str) else json.dumps(payload))
+            target = _write_pipeline_config(pipeline, target)
             return (False, *_toast(f"Saved to {target}", ok=True))
         except Exception as exc:  # noqa: BLE001
             logger.exception("Save failed")

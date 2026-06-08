@@ -345,8 +345,8 @@ are excluded to keep serialization clean.
         verbose=False
     )
     
-    # Save to file
-    pipeline.to_json('my_pipeline.json')
+    # Save to typed pipeline config file
+    pipeline.to_json('my_pipeline.json.pht-pipe')
     
     # Get JSON string
     json_str = pipeline.to_json()
@@ -404,7 +404,7 @@ instantiated with their saved parameters.
 .. code-block:: python
 
     # Load from file
-    loaded_pipeline = ImagePipeline.from_json('my_pipeline.json')
+    loaded_pipeline = ImagePipeline.from_json('my_pipeline.json.pht-pipe')
     
     # Load from string
     json_str = '{"ops": {...}, "meas": {...}}'
@@ -423,10 +423,10 @@ instantiated with their saved parameters.
         ops=[GaussianBlur(sigma=2.0), OtsuDetector()],
         meas=[MeasureShape()]
     )
-    pipeline.to_json('colony_detection_v1.json')
+    pipeline.to_json('colony_detection_v1.json.pht-pipe')
     
     # Researcher 2: Load and apply to new data
-    pipeline = ImagePipeline.from_json('colony_detection_v1.json')
+    pipeline = ImagePipeline.from_json('colony_detection_v1.json.pht-pipe')
     results = []
     for img_path in image_list:
         img = Image.imread(img_path)

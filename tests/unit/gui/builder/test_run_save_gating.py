@@ -25,10 +25,14 @@ from __future__ import annotations
 
 from typing import Any, Dict, List
 
+from phenotypic import ImagePipeline
+from phenotypic.detect import OtsuDetector
 from phenotypic.gui.builder._callbacks import (
     _filter_blocking_issues,
     _gate_toast_for_issue,
+    _write_pipeline_config,
 )
+from phenotypic.tools_ import CONFIG_SUFFIX_PIPELINE, ensure_typed_json_suffix
 from phenotypic.gui.builder._state import (
     BlockNode,
     Edge,
@@ -64,6 +68,19 @@ def _image_edge(src: str, tgt: str) -> Edge:
         target_port="in",
         kind="image",
     )
+
+
+def test_write_pipeline_config_normalizes_legacy_json_filename(tmp_path):
+    """Builder save writes the typed pipeline suffix even for legacy filename input."""
+    raw_target = tmp_path / "my_pipeline.json"
+    typed_target = ensure_typed_json_suffix(raw_target, CONFIG_SUFFIX_PIPELINE)
+    pipeline = ImagePipeline(ops=[OtsuDetector()])
+
+    saved_path = _write_pipeline_config(pipeline, raw_target)
+
+    assert saved_path == typed_target
+    assert typed_target.exists()
+    assert not raw_target.exists()
 
 
 def _state_with_clean_scope() -> Dict[str, Any]:

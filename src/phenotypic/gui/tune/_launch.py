@@ -55,10 +55,10 @@ def _spec_input_output(root: "TuneRunRoot") -> tuple[str, str, str]:
     Returns:
         The ``(spec_path, input_dir, output_dir)`` string triple.
     """
-    from phenotypic.tools_ import tuning_spec_path
+    from phenotypic.tools_ import resolve_tuning_spec_path
 
     output_dir = str(root.path)
-    spec_path = str(tuning_spec_path(root.path))
+    spec_path = str(resolve_tuning_spec_path(root.path))
     input_dir = str(root.images_dir) if root.images_dir is not None else "<images>"
     return spec_path, input_dir, output_dir
 

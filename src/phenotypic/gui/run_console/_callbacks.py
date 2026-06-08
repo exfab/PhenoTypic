@@ -72,6 +72,7 @@ from phenotypic.gui.shell._source_context import (
     resolve_source_image_root,
     source_payload_from_path,
 )
+from phenotypic.tools_ import PIPELINE_CONFIG_SUFFIXES, matches_any_suffix
 
 logger = logging.getLogger(__name__)
 
@@ -1436,8 +1437,8 @@ def register_callbacks(
         Buttons are enabled/disabled based on the selection's
         capabilities:
 
-        * **Set as pipeline** — enabled when the path looks like a JSON
-          (``has_pipeline_json`` capability OR a ``.json`` extension).
+        * **Set as pipeline** — enabled when the path looks like a pipeline
+          config (``has_pipeline_json`` capability OR a matching config suffix).
         * **Set as input dir** — enabled for any directory.
         * **Set as output dir** — enabled for any directory (a CLI
           output dir or a fresh path the user typed).
@@ -1453,10 +1454,9 @@ def register_callbacks(
 
         caps = selection.get("capabilities") or {}
         is_dir = bool(selection.get("is_dir"))
-        path_lower = path.lower()
         looks_like_json = (
             caps.get("has_pipeline_json", False)
-            or path_lower.endswith(".json")
+            or matches_any_suffix(path, PIPELINE_CONFIG_SUFFIXES)
         )
 
         return (
