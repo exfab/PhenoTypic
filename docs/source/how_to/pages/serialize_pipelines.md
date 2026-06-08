@@ -14,8 +14,8 @@ pipeline = pht.ImagePipeline(
     name="yeast_detection_v1",
 )
 
-# Save to file
-pipeline.to_json("yeast_detection_v1.json")
+# Save to a typed pipeline config file
+pipeline.to_json("yeast_detection_v1.json.pht-pipe")
 
 # Get as string (for logging, databases, etc.)
 json_str = pipeline.to_json()
@@ -24,7 +24,7 @@ json_str = pipeline.to_json()
 ## Load from JSON
 
 ```python
-loaded = pht.ImagePipeline.from_json("yeast_detection_v1.json")
+loaded = pht.ImagePipeline.from_json("yeast_detection_v1.json.pht-pipe")
 ```
 
 The PhenoTypic version is recorded in the JSON. You will get a warning if
