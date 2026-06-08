@@ -137,7 +137,7 @@ class TestFailureIsolation:
         def _boom(*args: object, **kwargs: object) -> None:
             raise RuntimeError("simulated QC failure")
 
-        monkeypatch.setattr("phenotypic.qc._runner.run_qc", _boom)
+        monkeypatch.setattr("phenotypic.tools_._qc_recipe._runner.run_qc", _boom)
 
         # Must not raise — finalize swallows QC failures.
         finalize_post_master_outputs(tmp_path, _master(), _qc_pipeline())
