@@ -64,8 +64,14 @@ from phenotypic.gui.run_console._form import (
 from phenotypic.gui.run_console._layout import render_recents_table
 from phenotypic.gui.run_console._recent_runs import scan_recent_runs
 from phenotypic.gui.run_console._runner import LocalRunner
+from phenotypic.gui.shell._ids import SHELL_SOURCE_IMAGE_ROOT_STORE
 from phenotypic.gui.shell._runs_registry import RunMode, RunRecord, RunRegistry
 from phenotypic.gui.shell._sandbox import SandboxRoot
+from phenotypic.gui.shell._source_context import (
+    SourcePayload,
+    resolve_source_image_root,
+    source_payload_from_path,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -115,6 +121,39 @@ def _shorten_path(path_str: Optional[str], sandbox: SandboxRoot) -> str:
         return str(p.relative_to(sandbox.root))
     except ValueError:
         return path_str
+
+
+def _source_payload_for_input_dir(
+    sandbox: SandboxRoot,
+    input_dir: Optional[str],
+    current_payload: object,
+) -> SourcePayload | None:
+    """Build a shared source payload from the Run input directory."""
+    if not input_dir:
+        return None
+    payload = source_payload_from_path(
+        sandbox, input_dir, source="run-console"
+    )
+    if payload is None:
+        return None
+    if (
+        isinstance(current_payload, dict)
+        and current_payload.get("abs_path") == payload["abs_path"]
+    ):
+        return None
+    return payload
+
+
+def _input_dir_from_shared_source(
+    sandbox: SandboxRoot,
+    shared_payload: object,
+    current_input_dir: Optional[str],
+) -> str | None:
+    """Return a Run input dir from shared source when the field is empty."""
+    if current_input_dir:
+        return None
+    resolved = resolve_source_image_root(sandbox, shared_payload)
+    return str(resolved) if resolved is not None else None
 
 
 def _looks_like_pipeline_json(path: Path) -> bool:
@@ -686,6 +725,40 @@ def register_callbacks(
     _register_picker_label(ids.RC_LABEL_PIPELINE, ids.RC_STORE_PIPELINE_PATH)
     _register_picker_label(ids.RC_LABEL_INPUT, ids.RC_STORE_INPUT_DIR)
     _register_picker_label(ids.RC_LABEL_OUTPUT, ids.RC_STORE_OUTPUT_DIR)
+
+    # ----------------------------------------------------------------------
+    # 5b. Shared source-image-root sync
+    # ----------------------------------------------------------------------
+
+    @app.callback(
+        Output(SHELL_SOURCE_IMAGE_ROOT_STORE, "data", allow_duplicate=True),
+        Input(ids.RC_STORE_INPUT_DIR, "data"),
+        State(SHELL_SOURCE_IMAGE_ROOT_STORE, "data"),
+        prevent_initial_call=True,
+    )
+    def _mirror_input_dir_to_shared_source(
+        input_dir: Optional[str],
+        current_payload: object,
+    ) -> Any:
+        payload = _source_payload_for_input_dir(
+            sandbox, input_dir, current_payload
+        )
+        return payload if payload is not None else no_update
+
+    @app.callback(
+        Output(ids.RC_STORE_INPUT_DIR, "data", allow_duplicate=True),
+        Input(SHELL_SOURCE_IMAGE_ROOT_STORE, "data"),
+        State(ids.RC_STORE_INPUT_DIR, "data"),
+        prevent_initial_call="initial_duplicate",
+    )
+    def _initialize_input_dir_from_shared_source(
+        shared_payload: object,
+        current_input_dir: Optional[str],
+    ) -> Any:
+        input_dir = _input_dir_from_shared_source(
+            sandbox, shared_payload, current_input_dir
+        )
+        return input_dir if input_dir is not None else no_update
 
     # ----------------------------------------------------------------------
     # 6. Advanced + SLURM collapses
