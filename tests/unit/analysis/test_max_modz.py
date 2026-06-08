@@ -13,7 +13,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from phenotypic.analysis._max_modz import MaxModifiedZScore
+from phenotypic.analysis.qc import MaxModifiedZScore
 from phenotypic.analysis._qc_math import modified_z_scores
 
 

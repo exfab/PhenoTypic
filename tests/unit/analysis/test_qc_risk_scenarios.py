@@ -34,7 +34,7 @@ import pandas as pd
 import pytest
 from pydantic import ValidationError
 
-from phenotypic.analysis._replicate_agreement import ReplicateAgreement
+from phenotypic.analysis.qc import ReplicateAgreement
 from phenotypic.analysis.abc_._quality_check import QualityCheck
 
 # Renamed, prefixed summary columns per the contract (collision-proof).

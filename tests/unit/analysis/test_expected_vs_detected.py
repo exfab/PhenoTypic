@@ -9,7 +9,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import pytest
 
-from phenotypic.analysis._expected_vs_detected import ExpectedVsDetectedCount
+from phenotypic.analysis.qc import ExpectedVsDetectedCount
 
 
 def _make_96well_metadata(image_file: str = "plate1.png") -> pd.DataFrame:

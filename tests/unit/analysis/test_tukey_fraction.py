@@ -13,7 +13,7 @@ import pandas as pd
 import pytest
 
 from phenotypic.analysis._qc_math import tukey_outlier_fraction
-from phenotypic.analysis._tukey_fraction import TukeyOutlierFraction
+from phenotypic.analysis.qc import TukeyOutlierFraction
 
 
 # --------------------------------------------------------------------------- #
