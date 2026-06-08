@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated
 
 import bm3d
 import numpy as np
@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
 from ..abc_ import ImageCorrector
+from ..tools_.typing_ import TuneSpec
 from ..tools_._anscombe import gat_forward, gat_inverse, resolve_scale_factor
 from ..tools_.colourspace import decode_srgb, encode_srgb
 
@@ -121,14 +122,16 @@ class ColorDenoise(ImageCorrector):
         background on noise models and denoiser selection.
     """
 
-    sigma_psd: float = 0.02
-    block_size: int = 8
+    sigma_psd: Annotated[float, TuneSpec(0.01, 0.15, log=True)] = 0.02
+    block_size: Annotated[int, TuneSpec(categories=(4, 8, 16))] = 8
     clip: bool = True
     use_gat: bool = False
-    gat_gain: float = 1.0
-    gat_mu: float = 0.0
-    gat_read_sigma: float = 0.0
-    gat_scale_factor: float | None = None
+    # GAT noise-model parameters are sensor-calibration constants, not search
+    # targets — keep their Field bounds, exclude from tuning.
+    gat_gain: Annotated[float, TuneSpec(tunable=False)] = 1.0
+    gat_mu: Annotated[float, TuneSpec(tunable=False)] = 0.0
+    gat_read_sigma: Annotated[float, TuneSpec(tunable=False)] = 0.0
+    gat_scale_factor: Annotated[float | None, TuneSpec(tunable=False)] = None
 
     @field_validator("sigma_psd")
     @classmethod

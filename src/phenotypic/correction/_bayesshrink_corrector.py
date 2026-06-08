@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, ClassVar, Literal
+from typing import TYPE_CHECKING, Annotated, ClassVar, Literal
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -9,6 +9,7 @@ from skimage.restoration import denoise_wavelet
 
 from ..abc_ import ImageCorrector
 from ..tools_.mixin import _GATSupportMixin
+from ..tools_.typing_ import TuneSpec
 from ._wavelet_rgb import restore_wavelet_rgb_dtype
 
 
@@ -135,10 +136,10 @@ class BayesShrinkCorrector(_GATSupportMixin, ImageCorrector):
     _GAT_NOISE_PARAMS: ClassVar[dict[str, float]] = {"sigma": 1.0}
     _GAT_DEFER_ATTRS: ClassVar[tuple[str, ...]] = ("rescale_sigma", "clip")
 
-    sigma: float | None = None
+    sigma: Annotated[float | None, TuneSpec(0.01, 0.1, log=True)] = None
     wavelet: str = "db2"
     mode: Literal["soft", "hard"] = "soft"
-    wavelet_levels: int | None = None
+    wavelet_levels: Annotated[int | None, TuneSpec(2, 6)] = None
     convert2ycbcr: bool = True
     rescale_sigma: bool = True
     clip: bool = True

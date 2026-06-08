@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Any, List, Literal
+from typing import TYPE_CHECKING, Annotated, Any, List, Literal
 import numpy as np
 from pydantic import Field, field_validator
 from scipy.ndimage import label
@@ -9,7 +9,7 @@ if TYPE_CHECKING:
 
 from phenotypic.abc_ import ObjectDetector
 from phenotypic.detect import OtsuDetector, RoundPeaksDetector
-from phenotypic.tools_.typing_ import OperationField
+from phenotypic.tools_.typing_ import OperationField, TuneSpec
 
 
 class CompositeDetector(ObjectDetector):
@@ -87,7 +87,7 @@ class CompositeDetector(ObjectDetector):
         default_factory=lambda: [OtsuDetector(), RoundPeaksDetector()]
     )
     mode: Literal['union', 'intersection', 'overlap'] = 'overlap'
-    min_overlap_ratio: float = 0.0
+    min_overlap_ratio: Annotated[float, TuneSpec(0.0, 0.5)] = Field(0.0, ge=0.0, le=1.0)
 
     @field_validator("detectors", mode="before")
     @classmethod

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -11,7 +11,7 @@ from scipy.ndimage import binary_fill_holes
 
 from phenotypic.abc_ import ObjectRefiner
 from phenotypic.tools_.funcs_ import is_binary_mask
-from phenotypic.tools_.typing_ import NdArrayField
+from phenotypic.tools_.typing_ import NdArrayField, TuneSpec
 
 
 class MaskFill(ObjectRefiner):
@@ -61,7 +61,7 @@ class MaskFill(ObjectRefiner):
     """
 
     structure: NdArrayField | None = None
-    origin: int = 0
+    origin: Annotated[int, TuneSpec(tunable=False)] = 0
 
     @field_validator("structure")
     @classmethod

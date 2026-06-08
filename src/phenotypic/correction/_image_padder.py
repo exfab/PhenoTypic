@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal, Tuple
+from typing import TYPE_CHECKING, Annotated, Any, Literal, Tuple
 
 from pydantic import ValidationInfo, field_validator
 
@@ -10,6 +10,7 @@ if TYPE_CHECKING:
 import numpy as np
 from scipy.sparse import csr_matrix
 from phenotypic.abc_ import ImageCorrector
+from phenotypic.tools_.typing_ import TuneSpec
 
 #: The eleven fill strategies accepted by ``np.pad``. Declared as a
 #: ``Literal`` so the pre-migration ``__prescreen_params`` mode-membership
@@ -95,10 +96,11 @@ class ImagePadder(ImageCorrector):
         padding with rotation correction.
     """
 
-    left: int | None = None
-    right: int | None = None
-    top: int | None = None
-    bottom: int | None = None
+    # Per-edge pixel pad offsets — image-specific geometry, not a quality knob.
+    left: Annotated[int | None, TuneSpec(tunable=False)] = None
+    right: Annotated[int | None, TuneSpec(tunable=False)] = None
+    top: Annotated[int | None, TuneSpec(tunable=False)] = None
+    bottom: Annotated[int | None, TuneSpec(tunable=False)] = None
     mode: PadMode = "constant"
     constant_value: int | float = 0
 

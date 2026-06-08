@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Iterable, TYPE_CHECKING
+from typing import Annotated, Iterable, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -8,6 +8,7 @@ from pydantic import field_validator
 from skimage.filters import frangi
 
 from phenotypic.abc_ import FocusEdge
+from phenotypic.tools_.typing_ import TuneSpec
 
 
 class FocusEdgeFrangi(FocusEdge):
@@ -94,7 +95,7 @@ class FocusEdgeFrangi(FocusEdge):
 
     sigmas: tuple[float, ...] = (0.5, 1, 1.5)
     alpha: float = 0.5
-    beta: float = 0.5
+    beta: Annotated[float, TuneSpec(0.1, 1.0)] = 0.5
     gamma: float | None = None
     black_ridges: bool = False
 

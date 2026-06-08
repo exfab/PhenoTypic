@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Annotated, Any, Literal
 
 import numpy as np
 from pydantic import field_validator
@@ -11,6 +11,7 @@ if TYPE_CHECKING:
 from phenotypic.abc_ import ObjectRefiner
 from phenotypic.tools_.mixin._footprint_mixin import FootprintMixin
 from phenotypic.tools_.mixin._point_picker_mixin import PointPickerMixin
+from phenotypic.tools_.typing_ import TuneSpec
 
 
 class ManualRefine(ObjectRefiner, PointPickerMixin, FootprintMixin):
@@ -100,7 +101,7 @@ class ManualRefine(ObjectRefiner, PointPickerMixin, FootprintMixin):
 
     centers: list[tuple[int, int]] | None = None
     shape: Literal["square", "diamond", "disk"] = "disk"
-    width: int = 15
+    width: Annotated[int, TuneSpec(tunable=False)] = 15
 
     @field_validator("centers", mode="before")
     @classmethod

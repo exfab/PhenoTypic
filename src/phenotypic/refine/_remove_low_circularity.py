@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -12,6 +12,7 @@ from skimage.measure import regionprops_table
 import math
 
 from ..abc_ import ObjectRefiner
+from ..tools_.typing_ import TuneSpec
 from phenotypic.schema import OBJECT
 
 
@@ -71,7 +72,7 @@ class RemoveLowCircularity(ObjectRefiner):
         morphological refinement methods.
     """
 
-    cutoff: float = 0.785
+    cutoff: Annotated[float, TuneSpec(0.5, 0.9)] = 0.785
 
     @field_validator("cutoff")
     @classmethod

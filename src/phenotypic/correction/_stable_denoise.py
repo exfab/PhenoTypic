@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Annotated, Literal
 
 import bm3d
 import numpy as np
@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
 from ..abc_ import ImageCorrector
+from ..tools_.typing_ import TuneSpec
 from ..tools_._anscombe import gat_forward, gat_inverse
 from ..tools_.colourspace import decode_srgb, encode_srgb
 
@@ -105,12 +106,14 @@ class StableDenoise(ImageCorrector):
         background on Poisson-Gaussian noise models and denoiser selection.
     """
 
-    block_size: int = 8
+    block_size: Annotated[int, TuneSpec(categories=(4, 8, 16))] = 8
     stage_arg: Literal["all_stages", "hard_thresholding"] = "all_stages"
-    gain: float = 1.0
-    mu: float = 0.0
-    sigma: float = 0.0
-    scale_factor: float | None = None
+    # gain/mu/sigma/scale_factor are the GAT noise-model calibration family
+    # (sensor constants), not denoise-strength knobs — exclude from tuning.
+    gain: Annotated[float, TuneSpec(tunable=False)] = 1.0
+    mu: Annotated[float, TuneSpec(tunable=False)] = 0.0
+    sigma: Annotated[float, TuneSpec(tunable=False)] = 0.0
+    scale_factor: Annotated[float | None, TuneSpec(tunable=False)] = None
 
     @field_validator("gain", mode="before")
     @classmethod
