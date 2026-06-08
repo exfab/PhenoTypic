@@ -27,7 +27,7 @@ from phenotypic.gui.results_viewer._filtered_state import KEY_DATASET, KEY_IMAGE
 from phenotypic.tools_ import (
     master_measurements_parquet_path,
     measurements_parquet_path,
-    pipeline_json_path,
+    resolve_pipeline_config_path,
 )
 
 logger = logging.getLogger(__name__)
@@ -176,7 +176,7 @@ class OutputRoot:
         cache_dir = root / _CACHE_RELATIVE
         cache_dir.mkdir(parents=True, exist_ok=True)
 
-        pipeline_summary = _read_pipeline_summary(pipeline_json_path(root))
+        pipeline_summary = _read_pipeline_summary(resolve_pipeline_config_path(root))
         overlay_index = _scan_overlay_index(results_dir, datasets_with_overlays)
 
         return cls(

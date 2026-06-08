@@ -1,7 +1,7 @@
 """Run console form — pickers + mode + advanced + slurm config.
 
 Builds the left-column form for the Run console: three picker buttons
-(pipeline JSON, input directory, output directory), a Local/SLURM mode
+(pipeline config, input directory, output directory), a Local/SLURM mode
 toggle, inline ``Dry-run`` / ``Resume`` / ``Save inspect figures``
 checkboxes, an Advanced collapse (``--sample``, ``--nrows``, ``--ncols``,
 ``--image-type``, ``--workers``, ``--log-level``), and a SLURM config
@@ -141,7 +141,7 @@ def build_pipeline_picker_modal(sandbox: SandboxRoot) -> dbc.Modal:
     # callback wiring is consistent across modals.
     return dbc.Modal(
         [
-            dbc.ModalHeader(dbc.ModalTitle("Pick pipeline JSON")),
+            dbc.ModalHeader(dbc.ModalTitle("Pick pipeline config")),
             dbc.ModalBody(body),
             footer,
             html.Div(
@@ -587,7 +587,7 @@ def build_form(sandbox: SandboxRoot) -> html.Div:
     pickers = html.Div(
         [
             _picker_row(
-                label="Pipeline JSON",
+                label="Pipeline config file",
                 button_id=ids.RC_BTN_PICK_PIPELINE,
                 label_id=ids.RC_LABEL_PIPELINE,
                 placeholder="(no pipeline selected)",

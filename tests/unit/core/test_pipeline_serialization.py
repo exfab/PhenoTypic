@@ -13,6 +13,7 @@ from phenotypic.detect import OtsuDetector
 from phenotypic.enhance import GaussianBlur, EnhanceLocalContrast
 from phenotypic.measure import MeasureShape, MeasureIntensity, MeasureColor
 from phenotypic.refine import SmallObjectRemover, RemoveBorderObjects
+from phenotypic.tools_ import CONFIG_SUFFIX_PIPELINE, ensure_typed_json_suffix
 
 
 class TestBasicSerialization:
@@ -225,13 +226,27 @@ class TestFileIO:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             filepath = Path(tmpdir) / "pipeline.json"
+            typed_filepath = ensure_typed_json_suffix(filepath, CONFIG_SUFFIX_PIPELINE)
             pipe.to_json(filepath)
 
             # Verify file exists and contains valid JSON
-            assert filepath.exists()
-            config = json.loads(filepath.read_text())
+            assert not filepath.exists()
+            assert typed_filepath.exists()
+            config = json.loads(typed_filepath.read_text())
             assert "pipe_cfgs" in config
             assert "meas" in config
+
+    def test_save_to_file_without_suffix_appends_typed_suffix(self):
+        """A bare save path gets the full typed pipeline suffix."""
+        pipe = ImagePipeline(ops=[OtsuDetector()], meas=[MeasureShape()])
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = Path(tmpdir) / "pipeline"
+            typed_filepath = ensure_typed_json_suffix(filepath, CONFIG_SUFFIX_PIPELINE)
+            pipe.to_json(filepath)
+
+            assert typed_filepath.exists()
+            assert typed_filepath.name == "pipeline.json.pht-pipe"
 
     def test_load_from_file(self):
         """Test loading pipeline from a file."""
@@ -239,9 +254,22 @@ class TestFileIO:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             filepath = Path(tmpdir) / "pipeline.json"
+            typed_filepath = ensure_typed_json_suffix(filepath, CONFIG_SUFFIX_PIPELINE)
             pipe.to_json(filepath)
 
             # Load from file
+            loaded_pipe = ImagePipeline.from_json(typed_filepath)
+            assert len(loaded_pipe._ops) == 1
+            assert len(loaded_pipe._meas) == 1
+
+    def test_load_explicit_legacy_json_file(self):
+        """Explicit legacy ``.json`` files still load."""
+        pipe = ImagePipeline(ops=[OtsuDetector()], meas=[MeasureShape()])
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = Path(tmpdir) / "pipeline.json"
+            filepath.write_text(pipe.to_json(), encoding="utf-8")
+
             loaded_pipe = ImagePipeline.from_json(filepath)
             assert len(loaded_pipe._ops) == 1
             assert len(loaded_pipe._meas) == 1
@@ -252,10 +280,11 @@ class TestFileIO:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             filepath = str(Path(tmpdir) / "pipeline.json")
+            typed_filepath = ensure_typed_json_suffix(filepath, CONFIG_SUFFIX_PIPELINE)
             pipe.to_json(filepath)
 
             # Load using string path
-            loaded_pipe = ImagePipeline.from_json(filepath)
+            loaded_pipe = ImagePipeline.from_json(str(typed_filepath))
             assert len(loaded_pipe._ops) == 1
 
     def test_roundtrip_through_file(self):
@@ -267,8 +296,9 @@ class TestFileIO:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             filepath = Path(tmpdir) / "pipeline.json"
+            typed_filepath = ensure_typed_json_suffix(filepath, CONFIG_SUFFIX_PIPELINE)
             original_pipe.to_json(filepath)
-            loaded_pipe = ImagePipeline.from_json(filepath)
+            loaded_pipe = ImagePipeline.from_json(typed_filepath)
 
             # Test functionality - use same image name to allow direct comparison
             img1 = Image(load_colony(), name="test")

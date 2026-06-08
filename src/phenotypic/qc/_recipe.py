@@ -46,6 +46,7 @@ from pathlib import Path
 from typing import Any
 
 from phenotypic.analysis.abc_ import QualityCheck
+from phenotypic.tools_ import DIR_DELIVERABLES
 
 logger = logging.getLogger(__name__)
 
@@ -274,6 +275,8 @@ class QcRecipe:
         seed_mtime_ns: Nanosecond mtime of :attr:`path` as last observed by
             this instance. ``None`` means the file did not exist at load.
             Refreshed by :meth:`load` and after each successful write.
+        source_path: Optional path whose document seeded this recipe when it
+            differs from :attr:`path` (currently legacy ``pipeline.json``).
         load_warnings: Class-resolution / construction / corruption
             failures collected during :meth:`load` and :meth:`instantiate`.
     """
@@ -281,6 +284,7 @@ class QcRecipe:
     path: Path
     entries: list[QcRecipeEntry] = field(default_factory=list)
     seed_mtime_ns: int | None = None
+    source_path: Path | None = None
     load_warnings: list[QcRecipeLoadWarning] = field(default_factory=list)
     _lock: threading.RLock = field(
         default_factory=threading.RLock, repr=False
@@ -314,20 +318,21 @@ class QcRecipe:
         Returns:
             A :class:`QcRecipe` ready for in-place mutation.
         """
-        from phenotypic.tools_ import pipeline_json_path
+        from phenotypic.tools_ import pipeline_json_path, resolve_pipeline_config_path
 
         pipeline_path = pipeline_json_path(Path(output_root_path))
+        read_path = resolve_pipeline_config_path(Path(output_root_path))
 
-        if not pipeline_path.exists():
+        if not read_path.exists():
             return cls(path=pipeline_path)
 
         try:
-            payload = json.loads(pipeline_path.read_text(encoding="utf-8"))
+            payload = json.loads(read_path.read_text(encoding="utf-8"))
         except json.JSONDecodeError as exc:
             logger.warning(
-                "pipeline.json at %s could not be parsed; loading empty QC "
+                "pipeline config at %s could not be parsed; loading empty QC "
                 "recipe. On-disk file left untouched. Error: %s",
-                pipeline_path,
+                read_path,
                 exc,
             )
             return cls(
@@ -342,9 +347,9 @@ class QcRecipe:
             )
         except OSError as exc:
             logger.warning(
-                "pipeline.json at %s could not be read; loading empty QC "
+                "pipeline config at %s could not be read; loading empty QC "
                 "recipe. Error: %s",
-                pipeline_path,
+                read_path,
                 exc,
             )
             return cls(
@@ -361,7 +366,7 @@ class QcRecipe:
         entries, warnings = cls._parse_entries(payload)
 
         try:
-            mtime: int | None = pipeline_path.stat().st_mtime_ns
+            mtime: int | None = read_path.stat().st_mtime_ns
         except OSError:
             mtime = None
 
@@ -369,6 +374,7 @@ class QcRecipe:
             path=pipeline_path,
             entries=entries,
             seed_mtime_ns=mtime,
+            source_path=read_path if read_path != pipeline_path else None,
             load_warnings=warnings,
         )
 
@@ -416,8 +422,9 @@ class QcRecipe:
         """
         if self.seed_mtime_ns is None:
             return False
+        tracked_path = self._tracked_path()
         try:
-            current = self.path.stat().st_mtime_ns
+            current = tracked_path.stat().st_mtime_ns
         except FileNotFoundError:
             return True
         return current != self.seed_mtime_ns
@@ -425,10 +432,30 @@ class QcRecipe:
     def reload(self) -> None:
         """Re-read the on-disk ``qc`` array, replacing :attr:`entries`."""
         with self._lock:
-            fresh = QcRecipe.load(self.path.parent)
+            output_root = (
+                self.path.parent.parent
+                if self.path.parent.name == DIR_DELIVERABLES
+                else self.path.parent
+            )
+            fresh = QcRecipe.load(output_root)
             self.entries = fresh.entries
             self.seed_mtime_ns = fresh.seed_mtime_ns
+            self.source_path = fresh.source_path
             self.load_warnings = fresh.load_warnings
+
+    def _tracked_path(self) -> Path:
+        """Return the path whose mtime should be compared against the seed."""
+        if self.path.exists() or self.source_path is None:
+            return self.path
+        return self.source_path
+
+    def _document_read_path(self) -> Path:
+        """Return the best existing document to merge before a scoped write."""
+        if self.path.exists():
+            return self.path
+        if self.source_path is not None and self.source_path.exists():
+            return self.source_path
+        return self.path
 
     def _write_qc_array(self) -> bool:
         """Atomically rewrite *only* the ``qc`` key of ``pipeline.json``.
@@ -458,10 +485,11 @@ class QcRecipe:
                 return False
 
             document: dict[str, Any] = {}
-            if self.path.exists():
+            read_path = self._document_read_path()
+            if read_path.exists():
                 try:
                     loaded = json.loads(
-                        self.path.read_text(encoding="utf-8")
+                        read_path.read_text(encoding="utf-8")
                     )
                     if isinstance(loaded, dict):
                         document = loaded
@@ -469,7 +497,7 @@ class QcRecipe:
                     logger.warning(
                         "Could not re-read %s before scoped qc write; "
                         "writing a minimal qc-only document instead.",
-                        self.path,
+                        read_path,
                         exc_info=True,
                     )
 
@@ -493,6 +521,7 @@ class QcRecipe:
                 self.seed_mtime_ns = self.path.stat().st_mtime_ns
             except OSError:
                 self.seed_mtime_ns = None
+            self.source_path = None
             return True
 
     # ------------------------------------------------------------------ #

@@ -227,3 +227,53 @@ def test_curate_prompt_when_image_source_unset(tmp_path: Path) -> None:
     app = create_app(root=root, url_prefix="/tune/", sandbox=sandbox)
     layout = str(app.layout)
     assert "tune-curate-prompt" in layout
+
+
+def test_tune_image_source_builds_shared_source_payload(tmp_path: Path) -> None:
+    from phenotypic.gui.shell._source_context import source_payload_from_path
+    from phenotypic.gui.tune._callbacks import (
+        _source_payload_for_tune_image_source,
+    )
+
+    plates = tmp_path / "plates"
+    plates.mkdir()
+    sandbox = SandboxRoot.from_path(tmp_path)
+
+    payload = _source_payload_for_tune_image_source(sandbox, str(plates), None)
+    expected = source_payload_from_path(sandbox, plates, source="tune")
+
+    assert payload == expected
+    assert payload is not None
+    assert payload["source"] == "tune"
+
+
+def test_shared_source_initializes_tune_when_no_current_source(
+    tmp_path: Path,
+) -> None:
+    from phenotypic.gui.shell._source_context import source_payload_from_path
+    from phenotypic.gui.tune._callbacks import _tune_image_source_from_shared
+
+    plates = tmp_path / "plates"
+    plates.mkdir()
+    sandbox = SandboxRoot.from_path(tmp_path)
+    payload = source_payload_from_path(sandbox, plates, source="manual")
+
+    assert _tune_image_source_from_shared(sandbox, payload, None) == str(
+        plates.resolve()
+    )
+
+
+def test_shared_source_does_not_override_bound_tune_source(
+    tmp_path: Path,
+) -> None:
+    from phenotypic.gui.shell._source_context import source_payload_from_path
+    from phenotypic.gui.tune._callbacks import _tune_image_source_from_shared
+
+    plates = tmp_path / "plates"
+    bound = tmp_path / "bound"
+    plates.mkdir()
+    bound.mkdir()
+    sandbox = SandboxRoot.from_path(tmp_path)
+    payload = source_payload_from_path(sandbox, plates, source="manual")
+
+    assert _tune_image_source_from_shared(sandbox, payload, str(bound)) is None

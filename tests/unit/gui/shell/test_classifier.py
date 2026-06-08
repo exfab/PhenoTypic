@@ -162,6 +162,16 @@ def test_pipeline_json_detected(tmp_path: Path) -> None:
     assert caps.is_image_dir is False
 
 
+def test_typed_pipeline_config_detected(tmp_path: Path) -> None:
+    p = tmp_path / "my_pipeline.json.pht-pipe"
+    p.write_text(json.dumps(
+        {"name": "demo", "operations": [{"type": "GrayscaleEnhancer"}]}
+    ))
+    caps = classify(p)
+    assert caps.has_pipeline_json is True
+    assert caps.is_image_dir is False
+
+
 def test_arbitrary_json_not_a_pipeline(tmp_path: Path) -> None:
     p = tmp_path / "not_a_pipeline.json"
     p.write_text(json.dumps({"foo": "bar", "baz": [1, 2, 3]}))

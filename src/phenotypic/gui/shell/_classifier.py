@@ -32,6 +32,7 @@ from phenotypic.gui._config import (
     RESULTS_DIRNAME,
 )
 from phenotypic.gui.builder._directory_browser import IMAGE_EXTS
+from phenotypic.tools_ import PIPELINE_CONFIG_SUFFIXES, matches_any_suffix
 
 __all__ = ["Capabilities", "classify", "invalidate_cache"]
 
@@ -207,8 +208,10 @@ def _classify_cached(path_str: str, mtime_ns: int) -> Capabilities:
 
 
 def _classify_file(path: Path) -> Capabilities:
-    """File-only classifier. Currently only flags pipeline JSONs."""
-    if path.suffix.lower() == ".json" and _peek_for_pipeline_marker(path):
+    """File-only classifier. Currently only flags pipeline config files."""
+    if matches_any_suffix(
+        path, PIPELINE_CONFIG_SUFFIXES
+    ) and _peek_for_pipeline_marker(path):
         return Capabilities(
             is_image_dir=False,
             has_pipeline_json=True,

@@ -15,6 +15,11 @@ from phenotypic.enhance import GaussianBlur
 from phenotypic.measure import MeasureShape
 from phenotypic.prefab import HeavyOtsuPipeline
 from phenotypic.refine import RemoveBorderObjects, SmallObjectRemover
+from phenotypic.tools_ import (
+    CONFIG_SUFFIX_OPERATION,
+    CONFIG_SUFFIX_PIPELINE,
+    ensure_typed_json_suffix,
+)
 
 from unit.test_fixtures import (
     walk_package_for_measurements,
@@ -253,14 +258,18 @@ def test_file_roundtrip():
 
     with tempfile.TemporaryDirectory() as tmpdir:
         filepath = Path(tmpdir) / "pipeline.json"
+        typed_filepath = ensure_typed_json_suffix(
+                filepath, CONFIG_SUFFIX_PIPELINE
+        )
         pipe.to_json(filepath)
 
-        assert filepath.exists()
-        config = json.loads(filepath.read_text())
+        assert typed_filepath.exists()
+        assert not filepath.exists()
+        config = json.loads(typed_filepath.read_text())
         assert "pipe_cfgs" in config
         assert "meas" in config
 
-        loaded = ImagePipeline.from_json(filepath)
+        loaded = ImagePipeline.from_json(typed_filepath)
         assert loaded.name == "file_test"
         assert len(loaded._ops) == 2
         assert len(loaded._meas) == 1
@@ -289,10 +298,14 @@ def test_operation_to_json_from_json_file_roundtrip():
     """An operation written to file is recovered with its params intact."""
     with tempfile.TemporaryDirectory() as tmpdir:
         filepath = Path(tmpdir) / "op.json"
+        typed_filepath = ensure_typed_json_suffix(
+                filepath, CONFIG_SUFFIX_OPERATION
+        )
         OtsuDetector(ignore_zeros=True).to_json(filepath)
 
-        assert filepath.exists()
-        loaded = OtsuDetector.from_json(filepath)
+        assert typed_filepath.exists()
+        assert not filepath.exists()
+        loaded = OtsuDetector.from_json(typed_filepath)
         assert isinstance(loaded, OtsuDetector)
         assert loaded.ignore_zeros is True
 
@@ -314,9 +327,12 @@ def test_operation_polymorphic_from_json_via_base():
     """``ImageOperation.from_json`` resolves the concrete subclass in the file."""
     with tempfile.TemporaryDirectory() as tmpdir:
         filepath = Path(tmpdir) / "op.json"
+        typed_filepath = ensure_typed_json_suffix(
+                filepath, CONFIG_SUFFIX_OPERATION
+        )
         OtsuDetector().to_json(filepath)
 
-        loaded = ImageOperation.from_json(filepath)
+        loaded = ImageOperation.from_json(typed_filepath)
         assert type(loaded).__name__ == "OtsuDetector"
         assert isinstance(loaded, ImageOperation)
 
@@ -327,10 +343,13 @@ def test_operation_from_json_subclass_mismatch_raises():
     """Loading via a sibling subclass rejects a non-matching class."""
     with tempfile.TemporaryDirectory() as tmpdir:
         filepath = Path(tmpdir) / "op.json"
+        typed_filepath = ensure_typed_json_suffix(
+                filepath, CONFIG_SUFFIX_OPERATION
+        )
         OtsuDetector().to_json(filepath)
 
         with pytest.raises(TypeError):
-            TriangleDetector.from_json(filepath)
+            TriangleDetector.from_json(typed_filepath)
 
 
 @pytest.mark.smoke
@@ -339,13 +358,19 @@ def test_operation_from_json_measurement_via_image_op_raises():
     """A measurement file cannot be loaded through ``ImageOperation.from_json``."""
     with tempfile.TemporaryDirectory() as tmpdir:
         filepath = Path(tmpdir) / "meas.json"
+        typed_filepath = ensure_typed_json_suffix(
+                filepath, CONFIG_SUFFIX_OPERATION
+        )
         MeasureShape().to_json(filepath)
 
         # MeasureFeatures is a sibling of ImageOperation under BaseOperation.
         with pytest.raises(TypeError):
-            ImageOperation.from_json(filepath)
+            ImageOperation.from_json(typed_filepath)
         # ...but BaseOperation.from_json resolves it fine.
-        assert type(BaseOperation.from_json(filepath)).__name__ == "MeasureShape"
+        assert (
+                type(BaseOperation.from_json(typed_filepath)).__name__
+                == "MeasureShape"
+        )
 
 
 @pytest.mark.smoke
@@ -357,9 +382,12 @@ def test_nested_op_to_json_from_json_roundtrip():
     )
     with tempfile.TemporaryDirectory() as tmpdir:
         filepath = Path(tmpdir) / "composite.json"
+        typed_filepath = ensure_typed_json_suffix(
+                filepath, CONFIG_SUFFIX_OPERATION
+        )
         composite.to_json(filepath)
 
-        loaded = CompositeDetector.from_json(filepath)
+        loaded = CompositeDetector.from_json(typed_filepath)
         assert isinstance(loaded, CompositeDetector)
         assert len(loaded.detectors) == 2
         assert isinstance(loaded.detectors[0], OtsuDetector)

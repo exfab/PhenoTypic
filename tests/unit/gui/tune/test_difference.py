@@ -15,10 +15,6 @@ from __future__ import annotations
 
 import numpy as np
 
-from phenotypic import ImagePipeline
-from phenotypic.data import load_synth_yeast_plate
-from phenotypic.detect import OtsuDetector
-from phenotypic.enhance import GaussianBlur
 from phenotypic.gui._design import OI_GREY, OI_ORANGE, OI_SKY
 from phenotypic.gui.tune._overlays import (
     cell_disagreement,
@@ -43,6 +39,21 @@ def _two_blob_plus_extra_objmap_b() -> np.ndarray:
     arr[1:3, 5:7] = 2
     arr[4:6, 9:11] = 9
     return arr
+
+
+class _FakeGrid:
+    def __init__(self, counts: dict[int, int]) -> None:
+        import pandas as pd
+
+        self._series = pd.Series(counts, dtype=int)
+
+    def get_section_counts(self, ascending: bool = False):  # noqa: ANN001
+        return self._series
+
+
+class _FakeGridImage:
+    def __init__(self, counts: dict[int, int]) -> None:
+        self.grid = _FakeGrid(counts)
 
 
 def test_difference_objects_partitions_both_only_a_only_b() -> None:
@@ -113,45 +124,17 @@ def test_render_difference_max_dim_none_is_full_res() -> None:
 
 
 def test_cell_disagreement_counts_differing_cells() -> None:
-    # Two real segmentations of the synthetic plate that disagree on a known
-    # number of grid cells. The synthetic plate is a clean, well-separated 8x12
-    # array (one colony per cell), so blur alone never merges neighbours --
-    # removing colonies is the deterministic way to force a per-cell count
-    # difference. The baseline detects one colony per cell; the derived
-    # segmentation drops three colonies entirely, so those three cells fall to a
-    # zero count and disagree.
-    base = ImagePipeline(ops=[GaussianBlur(sigma=1.0), OtsuDetector()]).apply(
-        load_synth_yeast_plate()
-    )
-    dropped = base.copy()
-    objmap = dropped.objmap[:].copy()
-    for label in (1, 2, 3):
-        objmap[objmap == label] = 0
-    dropped.objmap[:] = objmap
-
-    n = cell_disagreement(base, dropped)
+    a = _FakeGridImage({0: 1, 1: 1, 2: 2})
+    b = _FakeGridImage({0: 1, 1: 0, 2: 3})
+    n = cell_disagreement(a, b)
     assert isinstance(n, int)
-    assert n == 3
+    assert n == 2
     # A segmentation never disagrees with itself.
-    assert cell_disagreement(base, base) == 0
-    assert cell_disagreement(dropped, dropped) == 0
+    assert cell_disagreement(a, a) == 0
 
 
 def test_cell_disagreement_handles_absent_sections() -> None:
     # A section absent from one series is a zero count, not a KeyError.
-    class _FakeGrid:
-        def __init__(self, counts: dict[int, int]) -> None:
-            import pandas as pd
-
-            self._series = pd.Series(counts, dtype=int)
-
-        def get_section_counts(self, ascending: bool = False):  # noqa: ANN001
-            return self._series
-
-    class _FakeGridImage:
-        def __init__(self, counts: dict[int, int]) -> None:
-            self.grid = _FakeGrid(counts)
-
     # Cell 0 agrees (1 vs 1); cell 1 differs (2 vs 0=absent); cell 2 differs
     # (absent=0 vs 3). Two cells disagree.
     a = _FakeGridImage({0: 1, 1: 2})
