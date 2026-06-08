@@ -28,57 +28,68 @@ class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
     regular arrays (96, 384, 1536 formats). For a full comparison see
     :doc:`/explanation/detection_strategies_compared`.
 
+    Best For:
+        - Pinned yeast or bacterial plates with colonies arranged in a
+          regular rectangular grid.
+        - Plates where colony shape is approximately circular and colonies
+          are well-separated or only mildly touching.
+        - High-throughput screens where automatic grid inference eliminates
+          the need for manual grid specification.
+        - Workflows that require one-colony-per-cell assignment for
+          downstream quantification.
+
+    Consider Also:
+        - :class:`SinePeakDetector` when colony sizes are heterogeneous or
+          some wells are empty, where rank cross-correlation locates the
+          grid more robustly than direct peak finding.
+        - :class:`WatershedDetector` when colonies are densely packed and
+          touching but not arranged on a regular grid.
+        - :class:`FilamentousFungiDetector` when colonies exhibit spreading,
+          filamentous growth that violates the round-colony assumption.
+        - :class:`ManualGridPointDetector` when colony positions are known a
+          priori from robotic spotting coordinates.
+
     Args:
         thresh_method: Thresholding method for binary mask creation.
-            Options: ``'otsu'`` (default), ``'mean'``, ``'local'``,
+            Accepted values: ``'otsu'`` (default), ``'mean'``, ``'local'``,
             ``'triangle'``, ``'minimum'``, ``'isodata'``, ``'li'``.
             ``'otsu'`` works well for most standardised imaging setups;
-            ``'local'`` adapts to spatial illumination gradients.
-
-        subtract_background: If True (default), apply white tophat transform
-            to remove uneven illumination before thresholding. Disable on
-            plates with uniform lighting to save compute time.
-
-        remove_noise: If True (default), apply morphological opening to
-            remove small noise artefacts from the binary mask.
-
+            ``'local'`` adapts to spatial illumination gradients. Default:
+            ``'otsu'``.
+        subtract_background: Apply white tophat transform to remove uneven
+            illumination before thresholding. Disable on plates with
+            uniform lighting to save compute time. Default: True.
+        remove_noise: Apply morphological opening to remove small noise
+            artefacts from the binary mask. Default: True.
         footprint_width: Width in pixels for the background subtraction
-            kernel (default 6). When a GridImage is provided, an adaptive
-            kernel sized to 1.5x colony spacing is used instead, making
-            this a fallback for plain Image inputs. Typical range: 4--20.
-
+            kernel. When a GridImage is provided, an adaptive kernel sized
+            to 1.5x colony spacing is used instead, making this a fallback
+            for plain Image inputs. Typical range: 4--20. Default: 6.
         noise_radius: Radius of the diamond structuring element for
-            morphological noise removal (default 1, yielding a 3x3
-            diamond). Increase for larger noise artefacts. Typical range:
-            1--3.
-
+            morphological noise removal. Increase for larger noise
+            artefacts. Typical range: 1--3. Default: 1.
         smoothing_sigma: Gaussian sigma for smoothing row/column intensity
-            profiles before peak detection (default 2.0). Higher values
-            suppress noise but may merge adjacent colony peaks. Set to 0 to
-            disable smoothing. Typical range: 0--5.0.
-
+            profiles before peak detection. Higher values suppress noise but
+            may merge adjacent colony peaks. Set to 0 to disable smoothing.
+            Typical range: 0.0--5.0. Default: 2.0.
         min_peak_distance: Minimum pixel distance between detected peaks.
-            If None (default), automatically estimated from grid dimensions.
-
+            When ``None``, automatically estimated from grid dimensions.
+            Default: None.
         peak_prominence: Minimum prominence threshold for peak detection.
-            If None (default), auto-calculated as 0.1 * signal range.
-            Higher values are more selective. Typical range: 0.05--0.3 of
-            signal range.
-
-        edge_refinement: If True (default), refine grid edges using
-            weighted local intensity profiles for improved accuracy.
-
+            When ``None``, auto-calculated as 0.1 × signal range. Higher
+            values are more selective. Default: None.
+        edge_refinement: Refine grid edges using weighted local intensity
+            profiles for improved accuracy. Default: True.
         selection_mode: Strategy for choosing one object per grid cell.
-            ``"dominant"`` (default) keeps the largest object by pixel
-            count. ``"centered"`` keeps the object whose centroid is
-            closest to the cell centre. ``"regularized"`` fits a global
-            regular-grid model from median row/column centroids, then
-            re-selects per cell -- best for pinned arrays.
-
-        split_merged: If True (default), pre-split merged colonies that
-            span multiple grid cells using EDT watershed before grid
-            assignment. Set to False when colonies are well-separated and
-            splitting is unnecessary.
+            ``"dominant"`` keeps the largest object by pixel count.
+            ``"centered"`` keeps the object whose centroid is closest to
+            the cell centre. ``"regularized"`` fits a global regular-grid
+            model from median row/column centroids, then re-selects per
+            cell — best for pinned arrays. Default: ``"dominant"``.
+        split_merged: Pre-split merged colonies that span multiple grid
+            cells using EDT watershed before grid assignment. Set to False
+            when colonies are well-separated and splitting is unnecessary.
+            Default: True.
 
     Returns:
         Image: Input image with ``objmask`` set to a binary colony mask
@@ -88,30 +99,11 @@ class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
     Raises:
         ValueError: If an invalid thresholding method is specified.
 
-    Best For:
-        * Pinned yeast or bacterial plates with colonies arranged in a
-          regular rectangular grid.
-        * Plates where colony shape is approximately circular and colonies
-          are well-separated or only mildly touching.
-        * High-throughput screens where automatic grid inference eliminates
-          the need for manual grid specification.
-        * Workflows that require one-colony-per-cell assignment for
-          downstream quantification.
-
-    Consider Also:
-        * :class:`WatershedDetector` when colonies are densely packed and
-          touching but not arranged on a regular grid.
-        * :class:`FilamentousFungiDetector` when colonies exhibit spreading,
-          filamentous growth that violates the round-colony assumption.
-        * :class:`OtsuDetector` when a simple binary mask is sufficient and
-          per-cell assignment is not needed.
-        * :class:`ManualGridPointDetector` when colony positions are known a
-          priori from robotic spotting coordinates.
-
     References:
         [1] O. Wagih and L. Parts, "gitter: A robust and accurate method
         for quantification of colony sizes from plate images," *G3
         (Bethesda)*, vol. 4, no. 3, pp. 547--552, 2014.
+        doi: 10.1534/g3.113.009431.
 
     See Also:
         :doc:`/tutorials/notebooks/02_detecting_colonies`

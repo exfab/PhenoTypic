@@ -14,44 +14,42 @@ class IsodataDetector(ThresholdDetector):
     """Detect colonies by iterative ISODATA clustering of the intensity histogram.
 
     Iteratively partition pixels into foreground and background classes by
-    computing class means, then refine the threshold until convergence. The
-    resulting binary mask separates colony pixels from agar background. Works
-    best when both classes have similar variance and roughly balanced pixel
-    counts. For a full comparison see
-    :doc:`/explanation/detection_strategies_compared`.
+    computing class means, then refine the threshold until the estimate
+    converges. The resulting binary mask separates colony pixels from agar
+    background and works best when both pixel populations have similar variance
+    and roughly balanced counts. For a full comparison of detection strategies
+    see :doc:`/explanation/detection_strategies_compared`.
+
+    Best For:
+        - Plates where colony and background pixel counts are roughly balanced.
+        - Medium-contrast images where iterative refinement improves on a
+          single-pass threshold.
+        - Standardised imaging setups producing consistently symmetric
+          histograms across plates.
+
+    Consider Also:
+        - :class:`OtsuDetector` for a faster single-pass threshold when the
+          histogram is clearly bimodal.
+        - :class:`LiDetector` when the histogram is skewed or noise dominates
+          one side of the distribution.
+        - :class:`HysteresisDetector` when colony brightness varies across the
+          plate and a single threshold under-segments faint regions.
 
     Args:
-        ignore_zeros: Exclude zero-intensity pixels from threshold
-            computation. Enable for plates with black borders or masked
-            regions; disable only when zero is a meaningful intensity value.
-            Default: True.
-
+        ignore_zeros: Exclude zero-intensity pixels from the histogram before
+            computing the threshold. Enable for plates with black borders or
+            masked regions. Default: False.
         ignore_borders: Remove colonies touching image edges via
             ``clear_border()``. Recommended for grid-based colony counting
             to eliminate partial colonies at plate boundaries. Default: True.
 
     Returns:
-        Image: Input image with ``objmask`` set to binary mask and
+        Image: Input image with ``objmask`` set to the binary colony mask and
         ``objmap`` set to labeled connected components.
 
     Raises:
-        ValueError: If threshold computation fails (e.g., degenerate
-            histogram with insufficient intensity variation).
-
-    Best For:
-        * Plates where colony and background pixel counts are roughly balanced.
-        * Medium-contrast images where iterative refinement improves on a
-          single-pass threshold.
-        * Standardised imaging setups where the histogram is approximately
-          symmetric around the threshold.
-
-    Consider Also:
-        * :class:`OtsuDetector` for a faster single-pass threshold when the
-          histogram is clearly bimodal.
-        * :class:`LiDetector` when the histogram is skewed or noise dominates
-          one side of the distribution.
-        * :class:`HysteresisDetector` when colony brightness varies and a
-          single threshold under-segments faint regions.
+        ValueError: If threshold computation fails due to a degenerate
+            histogram with insufficient intensity variation.
 
     References:
         [1] T. W. Ridler and S. Calvard, "Picture thresholding using an
@@ -59,12 +57,12 @@ class IsodataDetector(ThresholdDetector):
         vol. 8, no. 8, pp. 630--632, 1978.
 
     See Also:
-        :doc:`/tutorials/notebooks/02_detecting_colonies`
-            Step-by-step tutorial for basic colony detection.
-        :doc:`/how_to/notebooks/choose_detection_algorithm`
-            Guide for selecting the right detector for your plate images.
-        :doc:`/explanation/detection_strategies_compared`
-            In-depth comparison of all detection strategies.
+        :doc:`/tutorials/notebooks/02_detecting_colonies` for a step-by-step
+        tutorial on basic colony detection.
+        :doc:`/how_to/notebooks/choose_detection_algorithm` for guidance on
+        selecting the right detector for your plate images.
+        :doc:`/explanation/detection_strategies_compared` for an in-depth
+        comparison of all thresholding strategies.
     """
 
     ignore_zeros: bool = False

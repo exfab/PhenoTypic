@@ -14,59 +14,93 @@ from ..tools_.typing_ import TuneSpec
 
 
 class BM3DDenoiser(_GATSupportMixin, ImageDenoiser):
-    """Denoise ``detect_mat`` with block-matching and 3D collaborative filtering.
+    """Denoise ``detect_mat`` using block-matching and 3-D collaborative filtering.
 
-    Groups similar image patches and filters them jointly in the transform
-    domain, preserving fine colony details while removing structured noise
-    patterns (scanner artifacts, systematic CCD noise, imaging hardware
-    texture). Produces higher-quality results than simple Gaussian blur at
-    significantly higher computational cost.
+    Groups similar image patches across the plate and filters them jointly
+    in a 3-D transform domain, removing scanner banding, CCD read patterns,
+    and imaging-hardware texture while retaining colony edges and fine
+    morphological features. The optional second Wiener-filtering stage
+    further sharpens colony boundaries relative to the initial
+    hard-thresholding pass. For algorithm details see
+    :doc:`/explanation/what_enhancement_does`.
 
-    For algorithm details, see :doc:`/explanation/what_enhancement_does`.
+    Best For:
+        - Structured patterned noise from scanner CCD rows or camera
+          sensor banding visible across the plate background.
+        - Low-light incubator or plate-reader images where high ISO
+          introduces spatially correlated noise.
+        - Plates where fine colony morphology — wrinkle texture, satellite
+          colonies, rough biofilm edges — must survive denoising.
+        - Pipelines that already use ``'all_stages'`` for highest-quality
+          deliverables and can absorb the additional compute.
+        - Poisson-Gaussian mixed noise (fluorescence readers, sCMOS cameras)
+          via ``use_gat=True``.
+
+    Consider Also:
+        - :class:`BayesShrinkEnhancer` for per-subband adaptive wavelet
+          denoising with lower computational cost when structured patterns
+          are not the primary concern.
+        - :class:`NonLocalMeansDenoiser` for patch-based denoising at
+          moderately lower computational overhead.
+        - :class:`VisuShrinkEnhancer` when speed matters more than quality
+          and a universal wavelet threshold is acceptable.
+        - :class:`MedianFilter` for isolated salt-and-pepper impulse noise
+          rather than Gaussian or structured noise.
 
     Args:
-        sigma_psd: Noise standard deviation in [0, 1] normalized scale.
-            Typical range: 0.01--0.05 for moderate noise, 0.05--0.15 for
-            heavy noise. Too low preserves noise; too high removes colony
-            texture. Ignored when ``use_gat=True`` (the stabilized-domain
-            value 1.0 is used internally). Default: 0.02.
-        block_size: Block size for BM3D patch matching. Default: 8.
-        stage_arg: Processing mode. ``'all_stages'`` (default) applies both
-            hard thresholding and Wiener filtering for highest quality;
-            ``'hard_thresholding'`` runs only the first stage for faster
-            processing.
-        clip: Clip output to [0, 1]. Default: ``True``. Automatically
-            deferred when ``use_gat=True``.
-        use_gat: Wrap denoising in the Generalized Anscombe Transform for
-            Poisson-Gaussian noise. Default: ``False``. See
-            :class:`phenotypic.tools_.mixin._GATSupportMixin`.
-        gat_gain: Camera gain (e/ADU) used by the GAT. Default: 1.0.
-        gat_mu: Read-noise mean used by the GAT. Default: 0.0.
-        gat_read_sigma: Read-noise standard deviation used by the GAT.
+        sigma_psd: Noise standard deviation on the [0, 1] normalised
+            intensity scale. Acts as the noise-model oracle for both the
+            hard-thresholding and Wiener stages. Typical range: 0.01--0.05
+            for moderate scanner noise; 0.05--0.15 for heavy noise. Setting
+            too low leaves structured patterns intact; too high smooths away
+            colony texture alongside noise. Ignored when ``use_gat=True`` —
+            the stabilised-domain value 1.0 is used internally. Default: 0.02.
+        block_size: Side length (pixels) of square patches used for
+            block-matching. Larger blocks capture more self-similar structure
+            and increase denoising strength at the cost of speed and potential
+            over-smoothing of fine colony detail. Typical range: 4--16; integer
+            powers of 2 are conventional. Default: 8.
+        stage_arg: Processing pipeline. ``'all_stages'`` (default) runs the
+            hard-thresholding stage followed by a Wiener-filtering stage using
+            the HT estimate as an oracle, producing better boundary sharpness.
+            ``'hard_thresholding'`` runs only the first stage — approximately
+            2× faster with slightly coarser colony edges. Accepted values:
+            ``'all_stages'``, ``'hard_thresholding'``. Default: ``'all_stages'``.
+        clip: Clamp output to [0, 1] after BM3D aggregation. BM3D can
+            produce values marginally outside [0, 1] due to weighted patch
+            accumulation. Default: ``True``. Automatically set to ``False``
+            inside the GAT region when ``use_gat=True``.
+
+        # GAT parameters — only active when use_gat=True
+        use_gat: Wrap the BM3D call in a forward Generalised Anscombe
+            Transform (GAT) → denoise at fixed sigma_psd=1.0 → exact
+            unbiased inverse GAT pipeline. Enables correct denoising under
+            mixed Poisson-Gaussian noise from low-light sensors. Leave
+            ``False`` for standard flatbed scanner images where additive
+            Gaussian read noise dominates. Default: ``False``.
+        gat_gain: Camera gain in electrons per ADU, used by the GAT to model
+            Poisson variance scaling. Obtain from the sensor datasheet or a
+            photon-transfer curve. Only relevant when ``use_gat=True``.
+            Default: 1.0.
+        gat_mu: Read-noise mean (DC baseline offset) in ADU before
+            [0, 1] normalisation. Set to the dark-current bias level if the
+            image has not been background-subtracted. Only relevant when
+            ``use_gat=True``. Default: 0.0.
+        gat_read_sigma: Standard deviation of the Gaussian read-noise
+            component (electrons RMS). Setting this to the manufacturer's
+            read noise improves stabilisation accuracy under mixed
+            Poisson-Gaussian conditions. Only relevant when ``use_gat=True``.
             Default: 0.0.
-        gat_scale_factor: [0, 1] -> counts multiplier. ``None`` auto-detects
-            from image bit depth. Default: ``None``.
+        gat_scale_factor: Multiplier converting the [0, 1] normalised
+            ``detect_mat`` back to photon counts before the forward GAT.
+            ``None`` auto-detects from ``image.metadata.bit_depth`` (255 for
+            8-bit, 65535 for 16-bit). Supply an explicit value when the
+            ``detect_mat`` was normalised by a range other than the bit-depth
+            maximum. Only relevant when ``use_gat=True``. Default: ``None``.
 
     Returns:
         Image: Input image with ``detect_mat`` denoised via BM3D
         collaborative filtering. ``rgb`` and ``gray`` are unchanged.
-
-    Best For:
-        - Structured camera or scanner noise on plate images.
-        - Low-light imaging where high ISO introduces patterned noise.
-        - Preserving fine morphological features (wrinkles, satellite
-          colonies) during denoising.
-        - Poisson-Gaussian noise via ``use_gat=True`` (replaces the legacy
-          ``AnscombeForward`` -> ``BM3DDenoiser`` -> ``AnscombeInverse``
-          three-step pipeline with one operation).
-
-    Consider Also:
-        - :class:`LocalEdgeDenoise` for faster edge-preserving denoising
-          when structured noise is not the primary concern.
-        - :class:`NonLocalMeansDenoiser` for patch-based denoising with
-          lower computational overhead.
-        - :class:`VisuShrinkEnhancer` for fast wavelet denoising when
-          speed matters more than quality.
 
     References:
         [1] K. Dabov, A. Foi, V. Katkovnik, and K. Egiazarian, "Image
@@ -83,6 +117,8 @@ class BM3DDenoiser(_GATSupportMixin, ImageDenoiser):
         visual walkthrough of denoising pipelines on plate images.
         :doc:`/how_to/notebooks/denoise_low_light` for BM3D and other
         denoising strategies on low-light plate images.
+        :doc:`/explanation/what_enhancement_does` for background on
+        block-matching and collaborative filtering.
     """
 
     _GAT_NOISE_PARAMS: ClassVar[dict[str, float]] = {"sigma_psd": 1.0}

@@ -24,28 +24,6 @@ class ManualPointDetector(ObjectDetector, PointPickerMixin, FootprintMixin):
     geometry, sparse or irregular layouts, and manual annotation workflows
     where each object position is known individually.
 
-    Args:
-        centers: An N x 2 array-like of ``(y, x)`` pixel coordinates
-            specifying each colony centre. Accepts any sequence that
-            ``np.asarray`` can convert (list of tuples, nested list, or
-            NumPy array). When *None* or empty, :meth:`apply` zeros out
-            ``objmask`` and ``objmap`` and returns immediately.
-
-        shape: Morphological footprint shape stamped at each coordinate.
-            ``"disk"`` (default) preserves round colony geometry.
-            ``"square"`` covers rectangular regions. ``"diamond"`` offers
-            a compromise between the two.
-
-        width: Diameter of the footprint in pixels (default 15). Larger
-            values cover more area per colony; smaller values produce
-            tighter, more precise masks. Typical range: 5--50, depending
-            on image resolution and colony size.
-
-    Returns:
-        Image: Input image with ``objmask`` set to the union of all
-        stamped footprints and ``objmap`` set to uniquely labelled regions
-        (1-indexed, in the order centres were supplied).
-
     Best For:
         * Manual annotation and ground-truth mask generation for
           benchmarking detection algorithms.
@@ -61,6 +39,32 @@ class ManualPointDetector(ObjectDetector, PointPickerMixin, FootprintMixin):
           and only one or two anchor coordinates are needed.
         * :class:`RoundPeaksDetector` when colony centres can be inferred
           automatically from intensity profiles.
+
+    Args:
+        centers: An N x 2 array-like of ``(y, x)`` pixel coordinates, one
+            per colony, supplied by the user (purely a manual choice).
+            Accepts any sequence that ``np.asarray`` can convert (list of
+            tuples, nested list, or NumPy array). When *None* (default) or
+            empty, :meth:`apply` zeros out ``objmask`` and ``objmap`` and
+            returns immediately.
+
+        shape: Morphological footprint shape stamped at each coordinate.
+            ``"disk"`` (default) preserves round colony geometry.
+            ``"square"`` covers rectangular regions. ``"diamond"`` offers
+            a compromise between the two.
+
+        width: Diameter of the footprint in pixels. Larger values cover
+            more area per colony (risking overlap of touching colonies);
+            smaller values produce tighter, more precise masks. A
+            reasonable starting point is roughly the visible colony
+            diameter, then adjust by checking whether stamps under-cover
+            large colonies or spill onto neighbours. Typical range: 5--50,
+            depending on image resolution and colony size. Default: 15.
+
+    Returns:
+        Image: Input image with ``objmask`` set to the union of all
+        stamped footprints and ``objmap`` set to uniquely labelled regions
+        (1-indexed, in the order centres were supplied).
 
     See Also:
         :doc:`/tutorials/notebooks/02_detecting_colonies`

@@ -21,84 +21,93 @@ from phenotypic.tools_.typing_ import NdArrayField, TuneSpec
 class WatershedDetector(ThresholdDetector):
     """Detect and separate touching colonies by watershed segmentation on a distance-transform surface.
 
-    Threshold the plate image to a binary mask, compute a Euclidean distance
-    transform to locate colony centres, seed markers at local maxima, and
-    propagate labelled regions via watershed on the Sobel gradient. This
-    region-growing approach individually labels colonies that are in physical
-    contact -- a scenario where global thresholding merges them into a single
-    object. For a full comparison see
+    Thresholds the plate image to a binary mask, computes a Euclidean distance
+    transform to locate colony centres, seeds markers at local maxima of that
+    surface, and propagates labelled regions via compact watershed on the Sobel
+    gradient. This region-growing approach individually labels colonies that are
+    in physical contact — a scenario where global thresholding merges them into
+    a single object. For a full comparison of detection strategies, see
     :doc:`/explanation/detection_strategies_compared`.
 
-    Args:
-        footprint: Structuring element for peak detection. ``'auto'``
-            infers size from grid spacing (GridImage only); an int creates a
-            diamond of that radius; an ndarray supplies a custom footprint;
-            None (default) lets scikit-image choose. Larger footprints merge
-            nearby peaks into fewer seeds; smaller footprints yield finer
-            segmentation. Typical range: 5--50 (diamond radius in pixels).
-
-        min_size: Minimum object area in pixels (default 50). Objects
-            smaller than this are removed as dust or debris. Typical range:
-            20--200 depending on image resolution and colony size.
-
-        compactness: Watershed compactness parameter (default 0.001). Higher
-            values enforce more regularly shaped segments; lower values let
-            regions follow intensity gradients freely. Typical range:
-            0.0001--0.1. Increase if colonies are round and over-segmented;
-            decrease for irregular morphologies.
-
-        connectivity: Connectivity for region labelling (1 = 4-connected,
-            2 = 8-connected; default 1). Higher connectivity merges
-            diagonally adjacent pixels.
-
-        relabel: If True (default), relabel segments to consecutive IDs
-            after watershed.
-
-        ignore_zeros: If True (default), exclude zero-intensity pixels from
-            threshold computation. Enable for plates with black borders or
-            masked regions.
-
-    Returns:
-        Image: Input image with ``objmap`` set to a labelled colony map
-        where each colony receives a unique integer label. ``objmask`` is
-        derived from the non-zero region of the label map.
-
-    Raises:
-        ValueError: If invalid parameters are provided or if the distance
-            transform / watershed computation fails.
-
     Best For:
-        * Dense plates where colonies touch or overlap and must be counted
-          individually.
-        * Plates with variable colony sizes (e.g., mutant libraries) where
-          the distance transform naturally adapts seed placement.
-        * Irregular colony morphologies that follow local intensity
-          gradients better than geometric assumptions.
-        * Post-incubation plates where colony crowding is the primary
+        - Dense plates where yeast or bacterial colonies touch or overlap and
+          must be counted individually.
+        - Mutant-library plates with variable colony sizes where the distance
+          transform naturally adapts seed placement to each colony's footprint.
+        - Post-incubation plates where colony crowding is the primary
           segmentation challenge.
+        - Round, compact colonies on rich-media agar where compactness
+          regularisation reinforces the expected shape.
 
     Consider Also:
-        * :class:`OtsuDetector` when colonies are well-separated and a
-          simple binary mask suffices.
-        * :class:`RoundPeaksDetector` when colonies sit on a regular
-          pinned grid and peak-based assignment is more efficient.
-        * :class:`FilamentousFungiDetector` when colonies exhibit spreading,
-          filamentous growth rather than compact morphology.
-        * :class:`CannyDetector` when edge contrast is stronger than
-          intensity contrast for delineating colony boundaries.
+        - :class:`OtsuDetector` when colonies are well-separated and a simple
+          global threshold suffices without region-growing.
+        - :class:`RoundPeaksDetector` when colonies sit on a regular pinned
+          grid and peak-based grid-cell assignment is more efficient.
+        - :class:`FilamentousFungiDetector` when colonies exhibit spreading
+          hyphal growth rather than compact morphology.
+        - :class:`CannyDetector` when edge contrast is stronger than intensity
+          contrast for delineating colony boundaries.
+
+    Args:
+        footprint: Structuring element for peak suppression on the
+            distance-transform surface. ``'auto'`` infers the diamond radius
+            from grid spacing (GridImage only, half the well pitch); an
+            ``int`` is expanded to a diamond of that radius in pixels; an
+            ``ndarray`` supplies a custom binary footprint; ``None`` (default)
+            lets scikit-image use a 1-px minimum distance, which typically
+            over-seeds dense images. Larger footprints merge nearby peaks into
+            fewer seeds; smaller footprints allow finer segmentation. Typical
+            diamond radius range: 5--50 px. Default: None. A reasonable
+            starting point for pinned-array plates is ``'auto'``, which sets
+            the radius to approximately half the well pitch.
+        min_size: Minimum object area in pixels. Objects smaller than this
+            are removed from the binary mask before distance-transform
+            computation (to reduce noise) and from the final labelled map.
+            Typical range: 20--200 px, scaling with image resolution and
+            colony size. Default: 50.
+        compactness: Compact-watershed shape-regularisation penalty. Higher
+            values produce more geometrically regular, convex segments; lower
+            values let region boundaries follow the Sobel gradient freely,
+            fitting irregular colony morphologies. Typical range:
+            0.0001--0.1. Increase toward 0.01--0.05 for round yeast colonies
+            on rich agar; decrease toward 0.0001 for mucoid, sectored, or
+            spreading morphologies. Default: 0.001.
+        connectivity: Pixel connectivity for watershed flooding and final
+            region labelling. ``1`` for 4-connectivity (default); ``2`` for
+            8-connectivity. 4-connectivity avoids false merges at diagonal
+            colony contact points. Default: 1.
+        relabel: When ``True`` (default), relabels segments to consecutive
+            integer IDs starting at 1 after watershed. Set to ``False`` only
+            when downstream code depends on the raw marker indices. Default:
+            True.
+        ignore_zeros: When ``True``, Otsu threshold is computed only from
+            non-zero pixels and zero-valued pixels are forced to background.
+            Enable for images with black borders, scanner shadow, or
+            pre-masked regions outside the plate area where structural zeros
+            would otherwise bias the Otsu histogram. Default: False.
+
+    Returns:
+        Image: Input image with ``objmap`` set to a labelled colony map where
+        each colony receives a unique integer label, and ``objmask`` derived
+        from the non-zero entries of that map.
 
     References:
-        [1] S. Beucher and C. Lantuejoul, "Use of watersheds in contour
-        detection," in *Proc. Int. Workshop on Image Processing*, CCETT,
-        Rennes, France, 1979.
+        [1] P. Neubert and P. Protzel, "Compact watershed and preemptive SLIC:
+        On improving trade-offs of superpixel segmentation algorithms," in
+        *Proc. 22nd Int. Conf. Pattern Recognit. (ICPR)*, Stockholm, Sweden,
+        2014, pp. 996--1001.
+        [2] N. Otsu, "A threshold selection method from gray-level
+        histograms," *IEEE Trans. Syst., Man, Cybern.*, vol. 9, no. 1,
+        pp. 62--66, Jan. 1979.
 
     See Also:
-        :doc:`/tutorials/notebooks/02_detecting_colonies`
-            Step-by-step tutorial for basic colony detection.
-        :doc:`/how_to/notebooks/choose_detection_algorithm`
-            Guide for selecting the right detector for your plate images.
-        :doc:`/explanation/detection_strategies_compared`
-            In-depth comparison of all detection strategies.
+        :doc:`/tutorials/notebooks/02_detecting_colonies` for a step-by-step
+        tutorial demonstrating colony detection on real plate images.
+        :doc:`/how_to/notebooks/choose_detection_algorithm` for a guide to
+        selecting the right detector for your plate images.
+        :doc:`/explanation/detection_strategies_compared` for an in-depth
+        comparison of all detection strategies and their failure modes.
     """
 
     footprint: Literal["auto"] | NdArrayField | int | None = None
@@ -236,11 +245,12 @@ class WatershedDetector(ThresholdDetector):
 
         objmap = morphology.remove_small_objects(objmap, min_size=self.min_size)
         image.objmap[:] = objmap
-        image.objmap.relabel(connectivity=self.connectivity)
+        if self.relabel:
+            image.objmap.relabel(connectivity=self.connectivity)
 
         # Final comprehensive memory report
         self._log_memory_usage(
-                "final cleanup and relabeling",
+                "final cleanup and optional relabeling",
                 include_process=True,
                 include_tracemalloc=True,
         )

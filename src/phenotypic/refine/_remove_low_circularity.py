@@ -16,44 +16,57 @@ from phenotypic.schema import OBJECT
 
 
 class RemoveLowCircularity(ObjectRefiner):
-    """Remove objects whose Polsby-Popper circularity falls below a cutoff.
+    """Remove objects whose Polsby-Popper circularity score falls below a threshold.
 
-    Computes circularity as ``4 * pi * area / perimeter^2`` for each labeled
-    object and discards those below the threshold. Keeps well-formed, roughly
-    circular colonies while filtering out elongated artifacts, merged blobs,
-    and segmentation debris.
+    Computes ``4π × area / perimeter²`` for each labeled object and
+    discards those below ``cutoff``. A perfect circle scores 1.0; elongated
+    or jagged shapes score lower. Well-formed round colonies are retained
+    while scratches, merged blobs, and irregular segmentation debris are
+    removed.
+
+    For an overview of morphological refinement strategies, see
+    :doc:`/explanation/refinement_strategies`.
+
+    Best For:
+        - Post-threshold cleanup to exclude elongated scratches, merged
+          colony blobs, or agar-edge artefacts before size or shape
+          measurement.
+        - High-throughput grid assays where all genuine colonies are
+          expected to be round and irregular detections indicate artefacts.
+        - Plates with round yeast or bacterial colonies where any
+          non-circular detection is reliably spurious.
+
+    Consider Also:
+        - :class:`SmallObjectRemover` when artefacts are better
+          distinguished by area than by shape, or when colony morphology
+          is legitimately non-circular.
+        - :class:`RemoveBorderObjects` when irregular detections cluster
+          near the plate edge because of partial cropping.
+        - :class:`MaskOpening` for smoothing jagged boundaries before
+          circularity filtering so that genuine colonies are not penalised
+          by pixelation artefacts in the perimeter measurement.
 
     Args:
-        cutoff: Minimum Polsby-Popper circularity in ``[0, 1]`` required to
-            retain an object. Typical range: 0.5--0.9. Higher values keep
-            only near-circular shapes; lower values tolerate irregular
-            morphologies. Default: 0.785.
+        cutoff: Minimum Polsby-Popper circularity score in ``[0, 1]``
+            required to retain an object. A perfect circle has a score of
+            1.0; elongated or irregular shapes score lower. The default
+            0.785 (π/4) is the area ratio of a circle inscribed in its
+            bounding square and provides a reasonable boundary between
+            compact colonies and elongated artefacts. Higher values enforce
+            stricter roundness; lower values tolerate irregular morphology.
+            Typical range: 0.5--0.9. Default: 0.785.
 
     Returns:
-        Image: Input image with ``objmap`` and ``objmask`` updated to exclude
-        objects below the circularity cutoff.
+        Image: Input image with ``objmap`` and ``objmask`` updated to
+        exclude all objects whose circularity is at or below ``cutoff``.
+        ``rgb``, ``gray``, and ``detect_mat`` are unchanged.
 
     Raises:
         ValueError: If ``cutoff`` is outside ``[0, 1]``.
 
-    Best For:
-        - Post-threshold cleanup to exclude elongated scratches or merged
-          colonies before phenotyping.
-        - Enforcing morphology consistency in high-throughput grid assays.
-        - Plates with round yeast or bacterial colonies where irregular
-          detections indicate artifacts.
-
-    Consider Also:
-        - :class:`SmallObjectRemover` when artifacts are distinguished by
-          size rather than shape.
-        - :class:`RemoveBorderObjects` when irregular detections cluster
-          near plate edges.
-        - :class:`MaskOpening` for smoothing jagged boundaries before
-          circularity filtering.
-
     See Also:
         :doc:`/how_to/notebooks/refine_noisy_boundaries` for shape-based
-        cleanup workflows.
+        cleanup workflows on real plate images.
         :doc:`/explanation/refinement_strategies` for a comparison of
         morphological refinement methods.
     """

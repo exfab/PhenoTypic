@@ -79,12 +79,8 @@ Repository = "https://github.com/Wheeldon-Lab/PhenoTypic"
 [project.optional-dependencies]
 
 gui = [
-    # Panel GUI components
-    "panel>=1.3",
-    "param>=2.0",
-    "bokeh>=3.3",
+    # Templating (report/dashboard HTML)
     "jinja2>=3.1",
-    "jupyter-bokeh>=4.0.5",
     # Jupyter integration
     "ipykernel>=6.31.0",
     "ipywidgets>=8.1.7",
@@ -246,7 +242,6 @@ module = [
     "vispy.*",
     "ruptures",
     "pooch",
-    "param",
     "qtpy.*",
     # Optional accelerator / conda-only backends not installed in the dev env:
     # micro_sam is conda-only (not on PyPI); habana_frameworks is Intel Gaudi.

@@ -11,35 +11,47 @@ from ..abc_ import ObjectRefiner
 
 
 class SmallObjectRemover(ObjectRefiner):
-    """Remove objects smaller than a minimum area from the detection mask.
+    """Remove detected objects below a minimum pixel area from the detection mask.
 
-    Eliminates dust, condensation specks, and noise fragments that appear
-    as tiny labeled objects after thresholding. Reduces false positives
-    and stabilizes colony counts.
+    Eliminates dust particles, condensation specks, agar debris, and
+    noise fragments that appear as small labeled regions after thresholding
+    or edge detection. Reduces false-positive colony counts and stabilizes
+    downstream measurements.
 
-    Args:
-        min_size: Minimum object area in pixels to keep. Objects below this
-            threshold are removed. Typical range: 20--200 depending on
-            image resolution. Default: 64.
-
-    Returns:
-        Image: Input image with ``objmask`` and ``objmap`` updated to
-        exclude small objects.
+    For guidance on choosing the right refinement sequence, see
+    :doc:`/explanation/refinement_strategies`.
 
     Best For:
-        - Cleaning up salt-and-pepper artifacts after detection.
-        - Removing fragmented debris around large colonies.
-        - Post-processing after aggressive enhancement or thresholding.
+        - Cleaning up salt-and-pepper artefacts left after aggressive
+          thresholding or Frangi filtering.
+        - Removing fragmented debris and micro-condensation specks that
+          cluster around genuine colonies.
+        - Post-processing dense detection masks where noise fragments
+          inflate colony counts.
+        - Stabilizing counts before grid assignment or size measurement.
 
     Consider Also:
         - :class:`RemoveBorderObjects` for removing partial colonies at
-          image edges (size-independent).
-        - :class:`RemoveLowCircularity` for removing non-circular artifacts
-          regardless of size.
+          image edges regardless of their size.
+        - :class:`RemoveLowCircularity` for discarding non-circular artefacts
+          regardless of area.
+        - :class:`SmallToLargeMerger` when small fragments should be
+          absorbed into a nearby large colony rather than discarded.
+
+    Args:
+        min_size: Minimum object area in pixels to retain. Objects whose
+            pixel area falls strictly below this value are removed. Scale
+            with image resolution, since colony area grows roughly with the
+            square of dpi; as a rough starting point, try 20--100 px near
+            300 dpi and 100--500 px near 1200 dpi. Default: 64.
+
+    Returns:
+        Image: Input image with ``objmap`` updated to exclude objects
+        smaller than ``min_size``. ``objmask`` is updated to match.
 
     See Also:
         :doc:`/how_to/notebooks/refine_noisy_boundaries` for a walkthrough
-        of refinement operations.
+        of refinement operations on real plate images.
         :doc:`/explanation/refinement_strategies` for choosing the right
         refinement sequence.
     """

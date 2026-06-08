@@ -17,41 +17,50 @@ class SubtractWhiteTophat(MorphologicalFiltering):
     Computes the white top-hat (original minus morphological opening) and
     subtracts it from the image, removing small bright blobs such as dust
     specks, glare highlights, and condensation artifacts while preserving
-    larger colony structures.
+    larger colony structures intact.
 
     For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 
-    Args:
-        shape: Footprint geometry. ``'diamond'`` (default) or ``'disk'``
-            provide isotropic behavior; ``'square'`` can align with sensor
-            grid artifacts.
-        width: Maximum bright-object size (pixels) targeted for removal.
-            Set slightly smaller than the smallest colonies to preserve
-            them. ``None`` (default) derives a small value from image
-            dimensions.
-
-    Returns:
-        Image: Input image with ``detect_mat`` smoothed by subtracting
-        the white top-hat. ``rgb`` and ``gray`` are unchanged.
-
     Best For:
         - Removing small bright artifacts that could be mistaken for tiny
-          colonies.
-        - Reducing glare highlights on shiny plates before thresholding.
-        - Cleaning up dust and condensation artifacts that confuse
+          colonies during thresholding.
+        - Reducing glare highlights on shiny agar plates before colony
           detection.
+        - Cleaning up dust and condensation artifacts that confuse
+          downstream segmentation.
 
     Consider Also:
-        - :class:`WhiteTophatEnhance` when you want to isolate (not
-          suppress) small bright structures.
+        - :class:`WhiteTophatEnhance` when the goal is to isolate small
+          bright structures rather than suppress them.
         - :class:`GrayOpening` for morphological smoothing that removes
           small bright features without explicit subtraction.
         - :class:`RankMedianEnhancer` for impulsive noise removal via
-          median filtering.
+          median filtering when artifacts are single-pixel in scale.
+
+    Args:
+        shape: Footprint geometry for the structuring element. Accepted
+            values: ``'diamond'`` (default) and ``'disk'`` provide
+            isotropic behavior suited to round artifacts; ``'square'``
+            can align with sensor grid patterns.
+        width: Maximum bright-artifact size in pixels targeted for
+            removal. Set smaller than the smallest genuine colony
+            diameter to preserve colonies. ``None`` (default) auto-derives
+            a small value as approximately 0.4 % of the shorter image
+            dimension.
+
+    Returns:
+        Image: Input image with ``detect_mat`` artifact-suppressed by
+        subtracting the white top-hat. ``rgb`` and ``gray`` are
+        unchanged.
+
+    Raises:
+        ValueError: If an unsupported footprint shape is provided.
 
     See Also:
         :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a
         visual walkthrough of artifact removal on plate images.
+        :doc:`/explanation/what_enhancement_does` for background on
+        top-hat transforms and artifact suppression strategies.
     """
 
     shape: str = "diamond"

@@ -19,31 +19,6 @@ class UserThreshold(ThresholdDetector):
     specific imaging setup. For a full comparison see
     :doc:`/explanation/detection_strategies_compared`.
 
-    Args:
-        threshold: Intensity cutoff for binary segmentation. Pixels with
-            intensity >= *threshold* become colony (True), others become
-            background (False). For 8-bit images the valid range is
-            0--255; for 16-bit images 0--65535; for float images 0.0--1.0.
-            Higher values are more conservative (fewer colonies detected);
-            lower values are more sensitive (more colonies, more noise).
-            Default 0.5. Start by inspecting the image histogram to find
-            the valley between background and colony peaks.
-
-        ignore_zeros: If True (default), exclude zero-intensity pixels from
-            processing. Enable for plates with black borders or masked
-            regions.
-
-        ignore_borders: If True (default), remove colonies touching image
-            edges via ``clear_border()``. Recommended for grid-based colony
-            counting.
-
-    Returns:
-        Image: Input image with ``objmask`` set to a binary colony mask
-        (True = colony, False = background). ``objmap`` is not modified.
-
-    Raises:
-        ValueError: If *threshold* is negative.
-
     Best For:
         * Standardised imaging setups where the optimal threshold has been
           determined empirically and remains stable across plates.
@@ -62,6 +37,36 @@ class UserThreshold(ThresholdDetector):
           the plate and a single threshold cannot capture all colonies.
         * :class:`TriangleDetector` when colonies are sparse and the
           histogram is skewed toward background.
+
+    Args:
+        threshold: Intensity cutoff for binary segmentation; pixels with
+            intensity >= *threshold* become colony (True), others
+            background (False). This is inherently a user choice -- there is
+            no universal optimum, since it depends on the imaging setup and
+            organism contrast. Valid range is bit-depth dependent: 0--255
+            for 8-bit, 0--65535 for 16-bit, 0.0--1.0 for float images;
+            must be non-negative. Raising it is more conservative (fewer
+            colonies, less noise); lowering it is more sensitive (more
+            colonies, more noise). Default: 0.5. Start by inspecting the
+            histogram for the valley between the background and colony
+            peaks, then nudge it while watching whether faint colonies
+            survive or agar texture leaks in.
+
+        ignore_zeros: If True, exclude zero-intensity pixels from
+            processing. Enable for plates with black borders or masked
+            regions. Default: False.
+
+        ignore_borders: If True (default), remove colonies touching image
+            edges via ``clear_border()``. Recommended for grid-based colony
+            counting; disable to retain peripheral colonies.
+
+    Returns:
+        Image: Input image with ``objmask`` set to a binary colony mask
+        (True = colony, False = background). Assigning ``objmask`` rebuilds
+        ``objmap`` from the binary mask via the accessor.
+
+    Raises:
+        ValueError: If *threshold* is negative.
 
     See Also:
         :doc:`/tutorials/notebooks/02_detecting_colonies`

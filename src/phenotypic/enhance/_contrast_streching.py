@@ -13,36 +13,44 @@ from ..tools_.typing_ import TuneSpec
 
 
 class ContrastStretching(ContrastAdjustment):
-    """Stretch the intensity range of detect_mat to fill the full dynamic range.
+    """Stretch the intensity range of ``detect_mat`` to fill the full dynamic range.
 
-    Rescales pixel values based on lower and upper percentiles, compressing
-    outliers (specular highlights, deep shadows) while expanding the range
-    where colony intensities reside. Simpler and faster than EnhanceLocalContrast, with no
-    local tile artifacts.
+    Rescales pixel values by clipping at lower and upper percentiles, then
+    linearly remapping the retained range to [0, 1]. Outliers such as specular
+    highlights and deep shadows are clamped, expanding the range where colony
+    intensities reside. Simpler and faster than :class:`EnhanceLocalContrast`,
+    with no local tile artefacts.
+
+    For how contrast adjustment fits into the pipeline, see
+    :doc:`/explanation/what_enhancement_does`.
+
+    Best For:
+        - Plates with narrow intensity histograms from under-exposure or low
+          scanner gain.
+        - Normalizing exposure variation across imaging sessions or plate batches.
+        - Quick preprocessing before global thresholding (Otsu, Triangle).
+        - Images with bright specular highlights or very dark border regions
+          that compress the useful intensity range.
+
+    Consider Also:
+        - :class:`EnhanceLocalContrast` when illumination varies spatially
+          across the plate and per-tile equalization is needed.
+        - :class:`FlattenIllumination` when the primary issue is a large-scale
+          brightness gradient rather than a narrow dynamic range.
 
     Args:
         lower_percentile: Dark clipping point. Pixels below this percentile
-            are mapped to the minimum. Typical range: 1--5. Default: 2.
+            are mapped to 0. Typical range: 1--5. Default: 2.
         upper_percentile: Bright clipping point. Pixels above this percentile
-            are mapped to the maximum. Typical range: 95--99. Default: 98.
+            are mapped to 1. Typical range: 95--99. Default: 98.
 
     Returns:
         Image: Input image with ``detect_mat`` rescaled to the full dynamic
         range. ``rgb`` and ``gray`` are unchanged.
 
-    Best For:
-        - Plates with narrow histograms (under-exposed or low-contrast).
-        - Normalizing exposure across different imaging sessions.
-        - Quick preprocessing before global thresholding (Otsu, Triangle).
-
-    Consider Also:
-        - :class:`EnhanceLocalContrast` when illumination varies spatially across the plate.
-        - :class:`FlattenIllumination` when the primary issue is a brightness
-          gradient rather than narrow dynamic range.
-
     See Also:
         :doc:`/how_to/notebooks/enhance_low_contrast` for a comparison of
-        contrast enhancement methods.
+        contrast enhancement methods on real plate images.
         :doc:`/explanation/what_enhancement_does` for how enhancement fits
         into the pipeline model.
     """

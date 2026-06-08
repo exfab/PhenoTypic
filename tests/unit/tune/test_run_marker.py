@@ -84,7 +84,21 @@ def test_run_marker_written_with_required_keys(tmp_path):
 @pytest.mark.skipif(not _OPTUNA, reason="optuna extra not installed")
 def test_run_marker_records_env_storage_url_for_optuna(tmp_path, monkeypatch):
     """An Optuna run with no explicit URL records the env URL."""
-    monkeypatch.setenv(PHENOTYPIC_TUNE_STORAGE_URL_ENV, "postgresql://host/tune")
+    from phenotypic.tune._study_store import JournalStudyStore
+    from phenotypic.tune._tune_cli import _run as run_mod
+
+    class _FakeEngine:
+        def __init__(self, spec, store):
+            pass
+
+        def optimize(self, images):
+            return None
+
+    monkeypatch.setenv(
+        PHENOTYPIC_TUNE_STORAGE_URL_ENV, "postgresql+psycopg://host/tune"
+    )
+    monkeypatch.setattr(run_mod, "_open_store", lambda *a, **kw: JournalStudyStore())
+    monkeypatch.setattr(run_mod, "TuningEngine", _FakeEngine)
     out = tmp_path / "run"
     run_tuning(
         _spec(tmp_path),
@@ -96,7 +110,7 @@ def test_run_marker_records_env_storage_url_for_optuna(tmp_path, monkeypatch):
         images_dir=tmp_path / "images",
     )
     marker = json.loads(io.tune_cache_run_marker_path(out).read_text())
-    assert marker["storage_url"] == "postgresql://host/tune"
+    assert marker["storage_url"] == "postgresql+psycopg://host/tune"
 
 
 def test_run_marker_ignores_env_storage_url_for_grid(tmp_path, monkeypatch):

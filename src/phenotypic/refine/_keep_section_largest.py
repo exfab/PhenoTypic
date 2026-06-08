@@ -14,35 +14,42 @@ from phenotypic.schema import OBJECT
 
 
 class KeepSectionLargest(GridObjectRefiner):
-    """Retain only the largest object within each grid section by area.
+    """Retain only the largest object by area within each grid section.
 
-    Measures the pixel area of every detected object, groups them by grid
-    cell, and keeps only the largest per cell. Smaller fragments, debris,
-    and secondary detections within each grid position are removed.
+    Measures the pixel area of every detected object via :class:`MeasureSize`,
+    groups objects by grid cell, and discards all but the largest per cell.
+    Fragments, debris, and secondary detections within each grid position are
+    removed, yielding at most one colony label per well. Requires a
+    ``GridImage`` input so that grid section membership is known.
+
+    For an overview of grid refinement approaches, see
+    :doc:`/explanation/refinement_strategies`.
+
+    Best For:
+        - Pinned colony grids (96-well, 384-well) where the genuine colony is
+          consistently the largest detection in each cell and smaller objects
+          are condensation, debris, or satellite colonies.
+        - Quick post-detection cleanup that does not require grid inference
+          because the grid layout is already embedded in the ``GridImage``.
+        - Pipelines that produce multi-detection grid cells and need a simple,
+          parameter-free reduction to one object per position.
+
+    Consider Also:
+        - :class:`GridAlignmentRefiner` for grid-aware selection with
+          configurable strategies (dominant, centered, regularized) and
+          optional grid inference for plain ``Image`` inputs.
+        - :class:`KeepNearestCenter` when the most spatially centered object
+          is a more reliable proxy for the true colony than pixel area.
+        - :class:`ReduceSectionsByLine` for regression-based selection using
+          expected grid positions when area is not a reliable discriminant.
 
     Returns:
         Image: Input image with ``objmap`` reduced to the single largest
-        object per grid section.
-
-    Best For:
-        - Grid plates where the true colony is the largest detection in
-          each cell and smaller objects are noise or debris.
-        - Quick post-detection cleanup on 96-well or 384-well formats.
-        - Simplifying multi-detection grid cells to one object per position.
-
-    Consider Also:
-        - :class:`GridAlignmentRefiner` for full grid-aware dominant-object
-          selection with configurable strategies.
-        - :class:`KeepNearestCenter` when the most centered object is
-          more reliable than the largest.
-        - :class:`ReduceSectionsByLine` for regression-based selection
-          using expected grid positions.
+        object per grid section; all other objects are set to background.
 
     See Also:
         :doc:`/how_to/notebooks/refine_noisy_boundaries` for grid-based
-        refinement workflows.
-        :doc:`/explanation/refinement_strategies` for an overview of
-        grid refinement approaches.
+        refinement workflows on real plate images.
     """
 
     def _operate(self, image: GridImage) -> GridImage:

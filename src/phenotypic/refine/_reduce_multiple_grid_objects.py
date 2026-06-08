@@ -12,32 +12,40 @@ from phenotypic.schema import GRID_LINREG_STATS
 
 
 class ReduceSectionsByLine(GridObjectRefiner):
-    """Reduce multi-detections per grid cell by keeping the object closest to a linear-regression prediction.
+    """Reduce multi-detections per grid cell to one by keeping the object best predicted by linear regression.
 
-    Models expected colony positions along each row and column using linear
-    regression, then iteratively removes objects with the largest positional
-    residuals until each grid cell contains at most one detection. Cells with
-    the most objects are processed first to stabilize the regression fit.
+    Fits linear trends to colony centroids along each row and column, then
+    iteratively removes objects with the largest positional residuals until
+    every grid cell contains at most one detection. Grid cells with the most
+    objects are processed first to stabilize the regression fit before
+    resolving cells with fewer extra detections.
 
-    Returns:
-        Image: Input image with ``objmap`` and ``objmask`` reduced to at most
-        one object per grid cell based on minimum residual error.
+    Requires a ``GridImage`` with grid metadata already populated.
+
+    For an overview of grid refinement strategies, see
+    :doc:`/explanation/refinement_strategies`.
 
     Best For:
-        - Grid cells with multiple detections from halos, debris, or
-          over-segmentation.
-        - Condensation or glare artifacts that create extra detections near
-          true colonies.
-        - Pinned arrays where consistent spatial layout makes positional
+        - Grid cells with multiple detections from halos, condensation, or
+          agar debris that shadow nearby true colonies.
+        - Pinned arrays where a consistent spatial layout makes positional
           prediction reliable.
+        - Over-segmented detections where one cell contains a genuine colony
+          plus one or more satellite artefacts.
 
     Consider Also:
-        - :class:`GridAlignmentRefiner` for faster dominant-object-per-cell
-          selection without regression modeling.
-        - :class:`KeepSectionLargest` for a simpler largest-per-cell
-          strategy.
-        - :class:`RemoveGridOutliers` for removing outliers within noisy
-          rows or columns rather than reducing to one per cell.
+        - :class:`GridAlignmentRefiner` for a faster dominant-object-per-cell
+          approach that does not require iterative regression.
+        - :class:`KeepSectionLargest` for a simpler strategy that keeps only
+          the largest object per grid cell without position modeling.
+        - :class:`RemoveGridOutliers` when the goal is pruning positional
+          outliers within noisy rows or columns rather than enforcing one
+          detection per cell.
+
+    Returns:
+        Image: Input image with ``objmap`` and ``objmask`` reduced so that
+        each grid cell contains at most one object, selected by minimum
+        linear-regression residual error.
 
     See Also:
         :doc:`/how_to/notebooks/refine_noisy_boundaries` for grid-based

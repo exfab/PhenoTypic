@@ -31,39 +31,6 @@ class HysteresisDetector(ThresholdDetector):
     stages and under uneven illumination. For a full comparison see
     :doc:`/explanation/detection_strategies_compared`.
 
-    Args:
-        low: Lower threshold controlling expansion sensitivity. Accepts a
-            method name (``'otsu'``, ``'triangle'``, ``'li'``, ``'yen'``,
-            ``'isodata'``, ``'mean'``, ``'minimum'``) for automatic
-            computation, or a float for a manual value (0--255 for 8-bit,
-            0--65535 for 16-bit). Default ``'mean'``. Lower values include
-            more faint colony pixels but increase false positives. Typical
-            tuning: start with ``'mean'`` and switch to a numeric value if
-            automatic methods are too aggressive or too conservative.
-
-        high: Upper threshold seeding strong colony regions. Same format as
-            *low*. Default ``'otsu'``. Must be >= *low* after computation.
-            Higher values restrict seeds to the brightest colony pixels,
-            producing fewer but higher-confidence detections.
-
-        ignore_zeros: If True (default), exclude zero-intensity pixels from
-            automatic threshold computation. Enable for plates with black
-            borders or masked regions.
-
-        ignore_borders: If True (default), remove colonies touching image
-            edges via ``clear_border()``. Recommended for grid-based colony
-            counting.
-
-    Returns:
-        Image: Input image with ``objmask`` set to a binary colony mask
-        where True pixels are colony foreground (including faint pixels
-        connected to strong seed regions). ``objmap`` is not modified.
-
-    Raises:
-        ValueError: If the computed high threshold is less than the computed
-            low threshold, or if an unrecognised threshold method name is
-            provided.
-
     Best For:
         * Plates where colony brightness varies (e.g., young versus mature
           growth, or centre-to-edge intensity gradients within a colony).
@@ -81,6 +48,47 @@ class HysteresisDetector(ThresholdDetector):
           into individually labelled regions.
         * :class:`CannyDetector` when colonies are best delineated by edge
           contrast rather than intensity.
+
+    Args:
+        low: Lower threshold controlling expansion sensitivity. There is no
+            universal best value -- it is a user choice. Accepts a method
+            name (``'otsu'``, ``'triangle'``, ``'li'``, ``'yen'``,
+            ``'isodata'``, ``'mean'``, ``'minimum'``) for automatic
+            computation, or a float for a manual value (0--255 for 8-bit,
+            0--65535 for 16-bit). Default ``'mean'``. Lowering *low* grows
+            each seed outward to capture more faint marginal pixels but
+            risks bridging colonies into noise; raising it tightens each
+            colony toward its bright core. Start with ``'mean'`` and adjust
+            by observing whether faint colony edges are kept or lost.
+            Dense plates and filamentous fungi (thin faint margins) often
+            need a lower *low*; noisy agar needs it raised.
+
+        high: Upper threshold seeding strong colony regions. Same format and
+            user-choice character as *low*. Default ``'otsu'``. Must resolve
+            to a value >= *low*. Raising *high* restricts seeds to the
+            brightest colony centres (fewer, higher-confidence detections);
+            lowering it admits more, dimmer seeds. Raise *high* on noisy or
+            textured plates so agar granularity is not seeded; lower it when
+            genuine faint colonies fail to seed at all.
+
+        ignore_zeros: If True, exclude zero-intensity pixels from automatic
+            threshold computation. Enable for plates with black borders or
+            masked regions. Default: False.
+
+        ignore_borders: If True (default), remove colonies touching image
+            edges via ``clear_border()``. Recommended for grid-based colony
+            counting; disable when peripheral colonies must be retained.
+
+    Returns:
+        Image: Input image with ``objmask`` set to a binary colony mask
+        where True pixels are colony foreground (including faint pixels
+        connected to strong seed regions). Assigning ``objmask`` rebuilds
+        ``objmap`` from the binary mask via the accessor.
+
+    Raises:
+        ValueError: If the computed high threshold is less than the computed
+            low threshold, or if an unrecognised threshold method name is
+            provided.
 
     See Also:
         :doc:`/tutorials/notebooks/02_detecting_colonies`

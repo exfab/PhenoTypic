@@ -11,46 +11,53 @@ from phenotypic.abc_ import ObjectRefiner
 
 
 class Skeletonize(ObjectRefiner):
-    """Reduce object masks to single-pixel-wide skeletons via medial axis thinning.
+    """Reduce object masks to single-pixel-wide skeletons via medial-axis thinning.
 
-    Compresses each object region to its medial axis (centerline), preserving
-    topological connectivity while discarding boundary and interior pixels.
-    Useful for distilling colony morphology to its core branching structure
-    for filament or spreading phenotype analysis.
+    Compresses each detected region to its medial axis (centerline),
+    preserving topological connectivity while discarding all interior and
+    boundary pixels. The result captures the branching structure and
+    elongation of each colony without the area contribution of filled masks.
 
-    Args:
-        method: Thinning algorithm. ``"zhang"`` is fast and optimized for
-            clean 2D masks. ``"lee"`` is more robust to noise and works on
-            2D/3D. ``None`` auto-selects based on dimensionality. Default:
-            None.
-
-    Returns:
-        Image: Input image with ``objmask`` replaced by the single-pixel-wide
-        skeleton.
-
-    Raises:
-        ValueError: If an invalid ``method`` is provided.
+    For a comparison of morphological refinement methods, see
+    :doc:`/explanation/refinement_strategies`.
 
     Best For:
         - Extracting colony centerlines for elongation or orientation
           analysis.
         - Analyzing branching patterns in filamentous fungi or spreading
           bacterial phenotypes.
-        - Simplifying masks for spatial graph analysis or hyphae tracking.
+        - Simplifying masks before spatial graph analysis or hyphal
+          network tracing.
         - Reducing boundary noise before measuring advanced morphological
-          features.
+          features such as tortuosity or branch count.
 
     Consider Also:
-        - :class:`Thinning` for iterative boundary peeling with control
-          over the number of iterations.
-        - :class:`MaskGradient` when you need boundary outlines rather
+        - :class:`Thinning` for iterative boundary peeling with explicit
+          control over the number of thinning steps.
+        - :class:`MaskGradient` when boundary outlines are needed rather
           than medial axes.
         - :class:`MaskErosion` for uniform inward shrinking that preserves
-          filled regions.
+          filled object interiors.
+
+    Args:
+        method: Skeletonization algorithm. ``"zhang"`` applies Zhang--Suen
+            fast parallel thinning for 2-D binary masks. ``"lee"`` uses
+            Lee's octree-based algorithm, which also supports 3-D arrays.
+            ``None`` selects automatically based on array dimensionality.
+            Default: None.
+
+    Returns:
+        Image: Input image with ``objmask`` replaced by the
+        single-pixel-wide medial-axis skeleton. Assigning ``objmask``
+        rebuilds ``objmap`` from the skeleton mask.
+
+    Raises:
+        ValueError: If ``method`` is not ``"zhang"``, ``"lee"``, or
+            ``None``.
 
     See Also:
         :doc:`/how_to/notebooks/refine_noisy_boundaries` for skeleton-based
-        analysis workflows.
+        analysis workflows on real plate images.
         :doc:`/explanation/refinement_strategies` for a comparison of
         morphological refinement methods.
     """

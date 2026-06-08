@@ -159,11 +159,13 @@ def test_worker_startup_does_not_fail_live_running_trials(tmp_path, monkeypatch)
 
     from phenotypic.tune import OptunaConfig
 
-    from tests.unit.tune.test_run_tuning_slurm import _grid_input_spec
+    from tests.unit.tune.test_run_tuning_slurm import (
+        _registry_resolvable_grid_input_spec,
+    )
 
     spec_path = tmp_path / "spec.json"
     spec_path.write_text(
-        _grid_input_spec()
+        _registry_resolvable_grid_input_spec(tmp_path)
         .model_copy(update={"strategy": OptunaConfig(n_trials=1, storage_url=url)})
         .model_dump_json()
     )

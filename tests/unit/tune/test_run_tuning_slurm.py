@@ -14,9 +14,11 @@ import json
 import sys
 from dataclasses import dataclass
 
+import pandas as pd
 import pytest
 
 from phenotypic import ImagePipeline
+from phenotypic.analysis import ExpectedVsDetectedCount
 from phenotypic.detect import OtsuDetector
 from phenotypic.enhance import GaussianBlur
 from phenotypic.tools_ import _io_constants as io
@@ -26,6 +28,7 @@ from phenotypic.tune import (
     GridConfig,
     Knob,
     OptunaConfig,
+    QCScorer,
     Scorer,
     SearchSpace,
 )
@@ -41,16 +44,34 @@ class _ConstScorer(Scorer):
         return {"Count": 1.0}
 
 
-def _grid_input_spec() -> TuningSpec:
+def _grid_input_spec_with_scorer(scorer: Scorer) -> TuningSpec:
     return TuningSpec(
         pipeline=ImagePipeline(ops=[GaussianBlur(sigma=1.0), OtsuDetector()]),
         search_space=SearchSpace(knobs=(
             Knob(key="1.ignore_zeros", domain=Categorical(choices=(True, False))),
         )),
-        scorer=_ConstScorer(),
+        scorer=scorer,
         evaluator=Evaluator(),
         strategy=GridConfig(),  # the INPUT spec is grid…
         budget=Budget(),
+    )
+
+
+def _grid_input_spec() -> TuningSpec:
+    return _grid_input_spec_with_scorer(_ConstScorer())
+
+
+def _registry_resolvable_grid_input_spec(tmp_path) -> TuningSpec:
+    layout_path = tmp_path / "layout.csv"
+    pd.DataFrame(
+        {"Metadata_ImageName": ["cal"], "Object_Label": [1]}
+    ).to_csv(layout_path, index=False)
+    return _grid_input_spec_with_scorer(
+        QCScorer(
+            check=ExpectedVsDetectedCount(
+                metadata=str(layout_path), groupby=["Metadata_ImageName"]
+            )
+        )
     )
 
 
@@ -178,7 +199,7 @@ def test_worker_filters_held_out_images_from_split(tmp_path, monkeypatch):
     split_path = io.tune_cache_split_assignment_path(tmp_path)
     spec_path = tmp_path / "spec.json"
     spec_path.write_text(
-        _grid_input_spec()
+        _registry_resolvable_grid_input_spec(tmp_path)
         .model_copy(update={"strategy": OptunaConfig(n_trials=1)})
         .model_dump_json()
     )

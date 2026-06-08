@@ -1,12 +1,27 @@
-import pytest
+from typing import ClassVar
+
 import numpy as np
-from phenotypic import ImagePipeline
+import pytest
+
+from phenotypic import Image, ImagePipeline
+from phenotypic.abc_ import ObjectDetector
 from phenotypic.detect import (
     OtsuDetector,
     CannyDetector,
     CompositeDetector,
     TriangleDetector,
 )
+
+
+class StaticMaskDetector(ObjectDetector):
+    """Detector fixture that emits one registered binary mask."""
+
+    masks: ClassVar[dict[str, np.ndarray]] = {}
+    key: str
+
+    def _operate(self, image):
+        image.objmask[:] = self.masks[self.key]
+        return image
 
 
 class TestCompositeDetector:
@@ -181,28 +196,73 @@ class TestCompositeDetector:
                 restored_result.objmap[:]
         )
 
-    def test_overlap_ratio_effects(self, synth_plate):
+    def test_overlap_ratio_effects(self):
         """Test that min_overlap_ratio parameter has effect in overlap mode."""
-        image = synth_plate.copy()
+        large = np.zeros((8, 8), dtype=bool)
+        large[1:5, 1:5] = True
+
+        small = np.zeros((8, 8), dtype=bool)
+        small[1:3, 1:3] = True
+
+        StaticMaskDetector.masks = {"large": large, "small": small}
+        image = Image(arr=np.zeros((8, 8), dtype=np.uint8))
 
         # Conservative overlap (high ratio)
         conservative = CompositeDetector(
-                detectors=[OtsuDetector(), CannyDetector(sigma=2)],
+                detectors=[
+                    StaticMaskDetector(key="large"),
+                    StaticMaskDetector(key="small"),
+                ],
                 mode='overlap',
-                min_overlap_ratio=0.9
+                min_overlap_ratio=0.5
         )
         conservative_result = conservative.apply(image)
 
         # Permissive overlap (low ratio)
         permissive = CompositeDetector(
-                detectors=[OtsuDetector(), CannyDetector(sigma=2)],
+                detectors=[
+                    StaticMaskDetector(key="large"),
+                    StaticMaskDetector(key="small"),
+                ],
                 mode='overlap',
-                min_overlap_ratio=0.1
+                min_overlap_ratio=0.2
         )
         permissive_result = permissive.apply(image)
 
-        # Permissive should detect more or equal objects
-        assert permissive_result.objmap[:].max() >= conservative_result.objmap[:].max()
+        # Permissive should retain more or equal foreground area
+        assert permissive_result.objmask[:].sum() >= conservative_result.objmask[:].sum()
+
+    def test_overlap_mode_applies_min_overlap_ratio_to_component_fraction(self):
+        """Overlap mode keeps only components meeting the requested overlap fraction."""
+        large = np.zeros((8, 8), dtype=bool)
+        large[1:5, 1:5] = True
+
+        small = np.zeros((8, 8), dtype=bool)
+        small[1:3, 1:3] = True
+
+        StaticMaskDetector.masks = {"large": large, "small": small}
+        image = Image(arr=np.zeros((8, 8), dtype=np.uint8))
+
+        permissive = CompositeDetector(
+                detectors=[
+                    StaticMaskDetector(key="large"),
+                    StaticMaskDetector(key="small"),
+                ],
+                mode="overlap",
+                min_overlap_ratio=0.2,
+        ).apply(image)
+
+        strict = CompositeDetector(
+                detectors=[
+                    StaticMaskDetector(key="large"),
+                    StaticMaskDetector(key="small"),
+                ],
+                mode="overlap",
+                min_overlap_ratio=0.5,
+        ).apply(image)
+
+        np.testing.assert_array_equal(permissive.objmask[:], large)
+        np.testing.assert_array_equal(strict.objmask[:], small)
 
     # inplace=True/False semantics are now covered by the smoke contract
     # tests/smoke/test_operation.py::test_inplace_contract

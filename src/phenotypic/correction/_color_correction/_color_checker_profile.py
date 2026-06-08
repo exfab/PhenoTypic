@@ -44,6 +44,24 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _in_jupyter_notebook() -> bool:
+    """Detect whether code is running inside a Jupyter notebook kernel.
+
+    Returns ``True`` only for notebook kernels (``ZMQInteractiveShell``),
+    not plain IPython terminals — used to decide whether to inline-display
+    a figure via ``Figure.show()``.
+
+    Returns:
+        ``True`` when running in a Jupyter notebook kernel.
+    """
+    try:
+        from IPython import get_ipython as _get_ipython
+    except ImportError:
+        return False
+    shell = _get_ipython()
+    return shell is not None and shell.__class__.__name__ == "ZMQInteractiveShell"
+
+
 class _RoiPreprocessing(NamedTuple):
     """Stages of per-ROI preprocessing shared by fit and the dashboard.
 
@@ -897,42 +915,44 @@ class ColorCheckerProfile(BaseModel):
     # -- dashboard ---------------------------------------------------------
 
     def dashboard(self, show: bool = True) -> Any:
-        """Display an interactive Panel dashboard for quality inspection.
+        """Build the Plotly color-correction diagnostic report.
 
-        Uses the image and ROIs stored during :meth:`fit`.  If fitted via
-        :meth:`_fit_from_patch_colors`, pipeline and segmentation sections
-        are hidden.
+        Constructs a :class:`ColorCorrectionReport` from this fitted profile and
+        returns its :meth:`~phenotypic.abc_.FigureProvider.dash` rendering. The
+        report declares no interactive controls, so ``dash()`` composes the
+        per-section figures into a single ``plotly.graph_objects.Figure``.
 
-        In Jupyter notebooks the dashboard renders inline.  In terminals
-        a local web server is launched.
+        Uses the image and ROIs stored during :meth:`fit`. When fitted via
+        :meth:`_fit_from_patch_colors` (no source image), the pipeline-step and
+        segmentation figures are omitted.
 
         Args:
-            show: Auto-display the dashboard.  Set ``False`` in tests
-                or for programmatic use.
+            show: When ``True`` and running inside a Jupyter notebook, display
+                the figure inline before returning it. Set ``False`` in tests or
+                for programmatic use.
 
         Returns:
-            The Panel layout object.
+            A ``plotly.graph_objects.Figure`` (always returned, even after an
+            inline display).
 
         Raises:
             RuntimeError: If the profile has not been fitted.
-            ImportError: If Panel is not installed.
         """
         if not self.is_fitted:
             raise RuntimeError(
                     "Cannot create dashboard for an unfitted profile."
             )
-        from phenotypic.tools_.panel_ import require_panel, display_or_return
+        from ._color_correction_report import ColorCorrectionReport
 
-        require_panel()
-
-        from ._diagnostic_dashboard import ColorCorrectionDashboard
-
-        dashboard = ColorCorrectionDashboard(
+        report = ColorCorrectionReport(
                 profile=self, image=self._image, rois=self.rois,
         )
-        panel_layout = dashboard.panel()
+        figure = report.dash()
 
-        return display_or_return(panel_layout, show=show)
+        if show and _in_jupyter_notebook():
+            figure.show()
+
+        return figure
 
     # -- serialisation ------------------------------------------------------
     #

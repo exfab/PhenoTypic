@@ -11,55 +11,53 @@ from ..abc_ import ThresholdDetector
 
 
 class MinimumDetector(ThresholdDetector):
-    """Detect colonies by finding the valley between two histogram peaks.
+    """Detect colonies by thresholding at the intensity valley between two histogram peaks.
 
-    Locate the intensity minimum (valley) between the two dominant peaks of
-    the image histogram and threshold at that point. This works well when
-    colonies and background form two clearly separated intensity populations,
-    as the valley provides a natural separation boundary. For a full
-    comparison see :doc:`/explanation/detection_strategies_compared`.
+    Locate the minimum intensity value (valley) between the two dominant peaks
+    of the image histogram and set it as the threshold. The resulting binary
+    mask places the colony–background boundary at the natural gap in the
+    intensity distribution. For a full comparison of detection strategies see
+    :doc:`/explanation/detection_strategies_compared`.
+
+    Best For:
+        - High-contrast plates where colony and background intensities form
+          two distinct, well-separated histogram peaks.
+        - Standardised imaging setups producing consistently bimodal histograms
+          across plates.
+        - Images where the intensity gap between colonies and agar is wide and
+          the valley is unambiguous.
+
+    Consider Also:
+        - :class:`OtsuDetector` when the histogram is bimodal but peaks are
+          broad or partially overlapping.
+        - :class:`LiDetector` when the histogram is unimodal or weakly bimodal
+          and a cross-entropy criterion is more appropriate.
+        - :class:`HysteresisDetector` when colony brightness varies across the
+          plate and a single valley-based threshold under-segments faint regions.
 
     Args:
-        ignore_zeros: Exclude zero-intensity pixels from threshold
-            computation. Enable for plates with black borders or masked
-            regions; disable only when zero is a meaningful intensity value.
-            Default: True.
-
+        ignore_zeros: Exclude zero-intensity pixels from the histogram before
+            locating the valley. Enable for plates with black borders or masked
+            regions. Default: False.
         ignore_borders: Remove colonies touching image edges via
             ``clear_border()``. Recommended for grid-based colony counting
             to eliminate partial colonies at plate boundaries. Default: True.
 
     Returns:
-        Image: Input image with ``objmask`` set to binary mask and
+        Image: Input image with ``objmask`` set to the binary colony mask and
         ``objmap`` set to labeled connected components.
 
     Raises:
         ValueError: If the histogram has no clear bimodal distribution and
-            no valley can be found.
-
-    Best For:
-        * High-contrast plates where colony and background intensities form
-          two distinct, well-separated histogram peaks.
-        * Standardised imaging setups producing consistently bimodal
-          histograms across plates.
-        * Images where the intensity gap between colonies and agar is wide
-          and the valley is unambiguous.
-
-    Consider Also:
-        * :class:`OtsuDetector` when the histogram is bimodal but peaks
-          are broad or partially overlapping.
-        * :class:`LiDetector` when the histogram is unimodal or weakly
-          bimodal and a cross-entropy criterion is more appropriate.
-        * :class:`HysteresisDetector` when colony brightness varies and a
-          single valley-based threshold under-segments faint regions.
+            no valley can be identified.
 
     See Also:
-        :doc:`/tutorials/notebooks/02_detecting_colonies`
-            Step-by-step tutorial for basic colony detection.
-        :doc:`/how_to/notebooks/choose_detection_algorithm`
-            Guide for selecting the right detector for your plate images.
-        :doc:`/explanation/detection_strategies_compared`
-            In-depth comparison of all detection strategies.
+        :doc:`/tutorials/notebooks/02_detecting_colonies` for a step-by-step
+        tutorial on basic colony detection.
+        :doc:`/how_to/notebooks/choose_detection_algorithm` for guidance on
+        selecting the right detector for your plate images.
+        :doc:`/explanation/detection_strategies_compared` for an in-depth
+        comparison of all thresholding strategies.
     """
 
     ignore_zeros: bool = False

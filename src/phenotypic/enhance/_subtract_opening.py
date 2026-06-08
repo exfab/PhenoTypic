@@ -17,42 +17,48 @@ class SubtractOpening(BackgroundSubtraction, FootprintMixin):
 
     Computes the white top-hat transform (original minus morphological
     opening) using OpenCV's C++/SIMD backend, isolating bright foreground
-    structures smaller than the structuring element while removing
+    structures smaller than the structuring element while discarding
     slow-varying background intensity. Significantly faster than
     scikit-image equivalents for high-throughput workflows.
 
     For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 
+    Best For:
+        - Fast background subtraction for high-throughput plate screening
+          or parameter sweeps.
+        - Removing uneven illumination gradients and agar shading before
+          colony detection.
+        - Large-batch pipelines where speed is a priority and a flat
+          structuring element is acceptable.
+        - Drop-in acceleration when :class:`SubtractRollingBall` is the
+          accuracy reference but runtime is the constraint.
+
+    Consider Also:
+        - :class:`SubtractRollingBall` for parabolic background estimation
+          that handles gradual, non-uniform intensity ramps more
+          accurately.
+        - :class:`SubtractGaussian` for Gaussian-based subtraction with
+          continuous control over the background scale.
+        - :class:`WhiteTophatEnhance` when you want to retain only the
+          extracted small bright structures rather than a corrected image.
+
     Args:
-        shape: Structuring element geometry. ``'disk'`` (default) gives
-            isotropic removal suited to round colonies; ``'square'`` is
-            fastest; ``'diamond'`` is a compromise.
-        width: Diameter of the structuring element in pixels. Must be
-            larger than colony diameter to avoid subtracting colony
-            signal. Typical range: 31--101. Default: 51.
-        n_iter: Number of morphological iterations. Higher values
-            intensify background removal. Default: 1.
+        shape: Structuring element geometry. Accepted values: ``'disk'``
+            (default) for isotropic removal suited to round colonies;
+            ``'square'`` for fastest computation; ``'diamond'`` as a
+            compromise between the two.
+        width: Diameter of the structuring element in pixels. Must exceed
+            the largest colony diameter to avoid including colony pixels
+            in the background estimate. Typical range: 31--101. Default:
+            51.
+        n_iter: Number of morphological opening iterations. Additional
+            iterations intensify background removal at the cost of
+            eroding fine colony structure. Default: 1.
 
     Returns:
         Image: Input image with ``detect_mat`` containing only foreground
         structures smaller than the structuring element. ``rgb`` and
         ``gray`` are unchanged.
-
-    Best For:
-        - Fast background subtraction for high-throughput plate screening.
-        - Removing uneven illumination gradients and agar shading before
-          colony detection.
-        - Pipelines where speed matters (large batches, parameter sweeps).
-        - Drop-in performance upgrade over :class:`SubtractRollingBall`
-          when a flat structuring element is acceptable.
-
-    Consider Also:
-        - :class:`SubtractRollingBall` for parabolic background estimation
-          that handles gradual intensity ramps more accurately.
-        - :class:`SubtractGaussian` for Gaussian-based background
-          subtraction with continuous control over the background scale.
-        - :class:`WhiteTophatEnhance` when you want to keep only the
-          extracted small bright structures.
 
     See Also:
         :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a

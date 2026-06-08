@@ -14,43 +14,59 @@ from phenotypic.tools_.typing_ import NdArrayField
 
 
 class MaskOpening(ObjectRefiner, FootprintMixin):
-    """Smooth mask boundaries and break thin bridges between touching colonies.
+    """Smooth mask boundaries and separate touching colonies using morphological opening.
 
-    Applies binary opening (erosion then dilation) to remove small isolated
-    pixels and narrow connections. Colonies linked by faint film or agar
-    artifacts become separated without significantly shrinking well-formed
-    colony masks.
+    Applies binary erosion followed by dilation with the chosen structuring
+    element, removing isolated noise pixels and narrow bridges between adjacent
+    colony masks. Colony bodies that survive the erosion step are restored by
+    dilation, so well-formed masks lose little area while thin connections are
+    severed.
 
-    Args:
-        shape: Structuring element. ``'auto'`` selects based on detected
-            objects. ``'diamond'``, ``'square'``, ``'disk'``, or a custom
-            ndarray. Default: ``None``.
-        width: Size of the structuring element in pixels. Larger values
-            smooth more aggressively. Typical range: 3--9. Default: 5.
-        n_iter: Number of opening iterations. Default: 1.
-
-    Returns:
-        Image: Input image with ``objmask`` and ``objmap`` morphologically
-        opened.
+    For an overview of morphological refinement strategies, see
+    :doc:`/explanation/refinement_strategies`.
 
     Best For:
-        - Splitting colonies connected by 1--2 pixel bridges after thresholding.
-        - Removing tiny noise specks from the detection mask.
-        - Smoothing jagged mask edges before measurement.
+        - Colonies joined by a 1--3 pixel agar bridge after global thresholding.
+        - Detection masks with isolated noise specks smaller than the
+          structuring element.
+        - Plates where jagged or pixelated colony boundaries would distort
+          perimeter or shape measurements.
+        - Post-detection cleanup before :class:`RemoveLowCircularity` or area
+          measurement to reduce false negatives from ragged edges.
 
     Consider Also:
-        - :class:`MaskClosing` for the opposite effect — filling small gaps
-          and bridging fragments.
-        - :class:`SmallObjectRemover` for removing small objects by area
-          rather than morphology.
-        - :class:`SeparateObjects` for splitting merged colonies using
-          watershed-based separation.
+        - :class:`MaskClosing` when the goal is filling small holes or
+          bridging gaps within a colony mask rather than severing connections.
+        - :class:`SmallObjectRemover` when small artefacts are fully
+          disconnected objects best removed by area threshold.
+        - :class:`SeparateObjects` when touching colonies share a large
+          overlapping region and watershed-based separation is needed.
+
+    Args:
+        shape: Structuring element geometry. ``"auto"`` chooses a diamond
+            sized to 0.5% of the smaller image dimension. ``"diamond"``,
+            ``"square"``, or ``"disk"`` use the ``width`` parameter to set
+            the element size. A NumPy array supplies a custom footprint.
+            ``None`` passes no footprint to skimage, which uses a 3×3
+            cross. Default: ``None``.
+        width: Radius of the structuring element in pixels when ``shape``
+            is ``"diamond"``, ``"square"``, or ``"disk"``. Larger values
+            sever broader bridges and smooth rougher edges but risk eroding
+            thin genuine colony appendages. Typical range: 3--9. Default: 5.
+        n_iter: Number of opening iterations. Each iteration compounds
+            the erosion-dilation cycle, progressively widening the gap at
+            each connection point. Typical range: 1--3. Default: 1.
+
+    Returns:
+        Image: Input image with ``objmask`` and ``objmap`` updated after
+        morphological opening. ``rgb``, ``gray``, and ``detect_mat`` are
+        unchanged.
 
     See Also:
         :doc:`/how_to/notebooks/refine_noisy_boundaries` for a walkthrough
-        of refinement operations.
+        of morphological refinement on real plate images.
         :doc:`/explanation/refinement_strategies` for the recommended
-        refinement sequence.
+        refinement sequence and structuring element guidance.
     """
 
     shape: Literal["auto", "square", "diamond", "disk"] | NdArrayField | None = None

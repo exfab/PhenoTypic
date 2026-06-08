@@ -13,45 +13,43 @@ from ..abc_ import ThresholdDetector
 class YenDetector(ThresholdDetector):
     """Detect colonies by maximising the correlation between the original and binarised image.
 
-    Compute a threshold that maximises the correlation coefficient between
-    the original intensity image and its binarised version. Handles skewed
-    histograms better than Otsu in some scenarios, offering a middle ground
-    between variance-based (Otsu) and entropy-based (Li) criteria. For a
-    full comparison see :doc:`/explanation/detection_strategies_compared`.
+    Compute a threshold that maximises the squared correlation coefficient
+    between the original intensity image and its binarised version. Handles
+    skewed histograms reliably, offering a middle ground between variance-based
+    (Otsu) and entropy-based (Li) criteria. For a full comparison of detection
+    strategies see :doc:`/explanation/detection_strategies_compared`.
+
+    Best For:
+        - High-contrast plates with clear intensity separation between colonies
+          and agar background.
+        - Images with skewed histograms where one pixel class is substantially
+          larger than the other.
+        - Exploratory analysis when unsure whether a variance-based or
+          entropy-based criterion better fits the plate histogram.
+
+    Consider Also:
+        - :class:`OtsuDetector` for a faster variance-based threshold when the
+          histogram is balanced and clearly bimodal.
+        - :class:`LiDetector` when the histogram is low-contrast or unimodal
+          and entropy-based separation is more appropriate.
+        - :class:`TriangleDetector` when colonies are very sparse and the
+          histogram is strongly background-dominated.
 
     Args:
-        ignore_zeros: Exclude zero-intensity pixels from threshold
-            computation. Enable for plates with black borders or masked
-            regions; disable only when zero is a meaningful intensity value.
-            Default: True.
-
+        ignore_zeros: Exclude zero-intensity pixels from the histogram before
+            computing the threshold. Enable for plates with black borders or
+            masked regions. Default: False.
         ignore_borders: Remove colonies touching image edges via
             ``clear_border()``. Recommended for grid-based colony counting
             to eliminate partial colonies at plate boundaries. Default: True.
 
     Returns:
-        Image: Input image with ``objmask`` set to binary mask and
+        Image: Input image with ``objmask`` set to the binary colony mask and
         ``objmap`` set to labeled connected components.
 
     Raises:
-        ValueError: If threshold computation fails (e.g., degenerate
-            histogram with insufficient intensity variation).
-
-    Best For:
-        * High-contrast plates with clear intensity separation between
-          colonies and agar.
-        * Images with skewed histograms where one class is larger than
-          the other.
-        * Exploratory analysis when unsure whether a variance-based or
-          entropy-based criterion fits the data better.
-
-    Consider Also:
-        * :class:`OtsuDetector` for a faster variance-based threshold when
-          the histogram is balanced and bimodal.
-        * :class:`LiDetector` when the histogram is low-contrast or
-          unimodal and entropy-based separation is more appropriate.
-        * :class:`TriangleDetector` when colonies are very sparse and the
-          histogram is strongly background-dominated.
+        ValueError: If threshold computation fails due to a degenerate
+            histogram with insufficient intensity variation.
 
     References:
         [1] J. C. Yen, F. J. Chang, and S. Chang, "A new criterion for
@@ -59,12 +57,12 @@ class YenDetector(ThresholdDetector):
         vol. 4, no. 3, pp. 370--378, 1995.
 
     See Also:
-        :doc:`/tutorials/notebooks/02_detecting_colonies`
-            Step-by-step tutorial for basic colony detection.
-        :doc:`/how_to/notebooks/choose_detection_algorithm`
-            Guide for selecting the right detector for your plate images.
-        :doc:`/explanation/detection_strategies_compared`
-            In-depth comparison of all detection strategies.
+        :doc:`/tutorials/notebooks/02_detecting_colonies` for a step-by-step
+        tutorial on basic colony detection.
+        :doc:`/how_to/notebooks/choose_detection_algorithm` for guidance on
+        selecting the right detector for your plate images.
+        :doc:`/explanation/detection_strategies_compared` for an in-depth
+        comparison of all thresholding strategies.
     """
 
     ignore_zeros: bool = False

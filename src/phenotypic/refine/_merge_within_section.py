@@ -14,38 +14,46 @@ from phenotypic.schema import GRID
 
 
 class MergeWithinSection(GridObjectRefiner):
-    """Merge all objects within each grid section into a single labeled region.
+    """Consolidate all detections within each grid cell into a single labeled region.
 
-    Reassigns object labels so that every detection in the same grid cell
-    receives a common label, effectively consolidating fragmented detections
-    into one object per grid position. Useful when multiple fragments from a
-    single colony need to be treated as one unit for downstream measurement.
+    Reassigns object labels so that every detection in the same grid section
+    receives a common label equal to the section's row-major index. After
+    merging, each grid cell contains at most one label, so downstream
+    measurements treat fragmented per-cell detections as a single colony.
+
+    Requires a ``GridImage`` with grid metadata already populated.
+
+    For an overview of merging strategies, see
+    :doc:`/explanation/refinement_strategies`.
+
+    Best For:
+        - Grid plates where a single colony splits into several labeled
+          regions within one well due to agar texture or thresholding.
+        - Consolidating over-segmented grid cells before area, intensity,
+          or size measurements.
+        - Ensuring exactly one detection label per grid position for
+          well-based phenotyping pipelines.
+
+    Consider Also:
+        - :class:`KeepSectionLargest` when only the dominant fragment per
+          cell should be retained rather than all fragments merged into one
+          object.
+        - :class:`MergeFragmentChains` for proximity-based transitive
+          merging on non-grid images where section membership is unknown.
+        - :class:`SmallToLargeMerger` when small fragments should absorb
+          into the nearest large colony regardless of grid section
+          boundaries.
 
     Returns:
         Image: Input image with ``objmap`` relabeled so each grid section
-        contains at most one object label.
-
-    Best For:
-        - Grid plates where a single colony fragments into multiple
-          detections within the same cell.
-        - Consolidating over-segmented grid cells before area or intensity
-          measurements.
-        - Ensuring exactly one label per grid position for well-based
-          phenotyping.
-
-    Consider Also:
-        - :class:`KeepSectionLargest` when only the dominant fragment should
-          be kept rather than merging all fragments.
-        - :class:`MergeFragmentChains` for proximity-based merging on
-          non-grid images.
-        - :class:`SmallToLargeMerger` when small fragments should merge into
-          the nearest large colony rather than all fragments merging equally.
+        contains at most one object label. ``objmask``, ``rgb``, ``gray``,
+        and ``detect_mat`` are unchanged.
 
     See Also:
         :doc:`/how_to/notebooks/merge_fragmented_detections` for merging
         workflows on grid plates.
         :doc:`/explanation/refinement_strategies` for an overview of
-        merging strategies.
+        grid-aware merging strategies.
     """
 
     def _operate(self, image: GridImage) -> GridImage:

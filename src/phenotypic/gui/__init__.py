@@ -18,12 +18,10 @@ from __future__ import annotations
 
 
 def _check_gui_deps() -> bool:
-    """Check if Panel GUI dependencies are available."""
+    """Check if the Dash GUI stack is importable (Panel was removed)."""
     import importlib.util
 
-    return all(
-        importlib.util.find_spec(pkg) is not None for pkg in ["panel", "param"]
-    )
+    return importlib.util.find_spec("dash") is not None
 
 
 GUI_AVAILABLE = _check_gui_deps()

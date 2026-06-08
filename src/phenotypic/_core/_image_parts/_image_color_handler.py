@@ -9,10 +9,10 @@ import numpy as np
 
 from phenotypic.tools_.constants_ import GAMMA_ENCODINGS
 from .accessors._color_accessor import ColorAccessor
-from ._image_panel_handler import ImagePanelHandler
+from ._image_plot_handler import ImagePlotHandler
 
 
-class ImageColorSpace(ImagePanelHandler):
+class ImageColorSpace(ImagePlotHandler):
     """Manages color space representation and transformations for image data.
 
     This class extends ImageObjectsHandler to add comprehensive color space management,

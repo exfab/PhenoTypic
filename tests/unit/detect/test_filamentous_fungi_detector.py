@@ -71,6 +71,11 @@ class TestFilamentousFungiDetector:
                     inoculum_detector="not_a_detector",
             )
 
+    def test_tile_size_must_exceed_tile_overlap(self):
+        """Sliding-window tiles must advance by at least one pixel."""
+        with pytest.raises(ValueError, match="tile_size.*greater than tile_overlap"):
+            FilamentousFungiDetector(tile_size=128, tile_overlap=128)
+
     # inplace=True/False semantics are now covered by the smoke contract
     # tests/smoke/test_operation.py::test_inplace_contract
 
