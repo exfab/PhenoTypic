@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -66,7 +66,7 @@
     <link rel="prev" title="phenotypic.detect.FilamentousFungiDetector" href="phenotypic.detect.FilamentousFungiDetector.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -559,6 +559,7 @@
 </ul>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../cli_reference.html">CLI Reference</a></li>
+
 <li class="toctree-l1"><a class="reference internal" href="../config_reference.html">Configuration Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../glossary.html">Glossary</a></li>
 </ul>
@@ -566,6 +567,7 @@
 <ul class="current nav bd-sidenav">
 <li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.abc_.html">phenotypic.abc_</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.register_detection_mode.html">phenotypic.abc_.register_detection_mode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.figure.html">phenotypic.abc_.figure</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.MeasureFeatures.html">phenotypic.abc_.MeasureFeatures</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.ImageOperation.html">phenotypic.abc_.ImageOperation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.ImageEnhancer.html">phenotypic.abc_.ImageEnhancer</a></li>
@@ -593,6 +595,10 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.FootprintMixin.html">phenotypic.abc_.FootprintMixin</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.PostMeasurement.html">phenotypic.abc_.PostMeasurement</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.DetectionMode.html">phenotypic.abc_.DetectionMode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.Control.html">phenotypic.abc_.Control</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.FigureSpec.html">phenotypic.abc_.FigureSpec</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.FigureProvider.html">phenotypic.abc_.FigureProvider</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.BoundFigures.html">phenotypic.abc_.BoundFigures</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.analysis.html">phenotypic.analysis</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -755,6 +761,8 @@
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.tools_.html">phenotypic.tools_</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.atomic_write_bytes.html">phenotypic.tools_.atomic_write_bytes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.atomic_write_text.html">phenotypic.tools_.atomic_write_text</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.is_binary_mask.html">phenotypic.tools_.is_binary_mask</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.timed_execution.html">phenotypic.tools_.timed_execution</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.analysis_csv_path.html">phenotypic.tools_.analysis_csv_path</a></li>
@@ -762,6 +770,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.analysis_html_path.html">phenotypic.tools_.analysis_html_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.analysis_parquet_path.html">phenotypic.tools_.analysis_parquet_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.analysis_scatter_json_path.html">phenotypic.tools_.analysis_scatter_json_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.best_pipeline_path.html">phenotypic.tools_.best_pipeline_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.chunk_lock_path.html">phenotypic.tools_.chunk_lock_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.chunk_manifest_path.html">phenotypic.tools_.chunk_manifest_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.chunk_parquet_filename.html">phenotypic.tools_.chunk_parquet_filename</a></li>
@@ -779,6 +788,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.deliverables_dir.html">phenotypic.tools_.deliverables_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.event_log_path.html">phenotypic.tools_.event_log_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.failures_jsonl_path.html">phenotypic.tools_.failures_jsonl_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.generalization_path.html">phenotypic.tools_.generalization_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.job_metadata_path.html">phenotypic.tools_.job_metadata_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.load_image_from_hdf.html">phenotypic.tools_.load_image_from_hdf</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.load_master_measurements.html">phenotypic.tools_.load_master_measurements</a></li>
@@ -792,6 +802,11 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.migrate_legacy_machine_state.html">phenotypic.tools_.migrate_legacy_machine_state</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.clear_machine_state.html">phenotypic.tools_.clear_machine_state</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.overlay_manifest_path.html">phenotypic.tools_.overlay_manifest_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.param_importance_path.html">phenotypic.tools_.param_importance_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.pareto_best_pipeline_path.html">phenotypic.tools_.pareto_best_pipeline_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.pareto_dir.html">phenotypic.tools_.pareto_dir</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.pareto_front_parquet_path.html">phenotypic.tools_.pareto_front_parquet_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.pareto_importance_path.html">phenotypic.tools_.pareto_importance_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.phenotypic_cache_dir.html">phenotypic.tools_.phenotypic_cache_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.phenotypic_cache_pipeline_json_path.html">phenotypic.tools_.phenotypic_cache_pipeline_json_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.pipeline_json_path.html">phenotypic.tools_.pipeline_json_path</a></li>
@@ -812,12 +827,21 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.resolve_manifest_json_path.html">phenotypic.tools_.resolve_manifest_json_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.resolve_processing_state_path.html">phenotypic.tools_.resolve_processing_state_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.resolve_progress_dir.html">phenotypic.tools_.resolve_progress_dir</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.resolve_split_assignment_path.html">phenotypic.tools_.resolve_split_assignment_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.resolve_study_db_path.html">phenotypic.tools_.resolve_study_db_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.results_dir.html">phenotypic.tools_.results_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.sentinel_resubmitted_path.html">phenotypic.tools_.sentinel_resubmitted_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.shard_parquet_filename.html">phenotypic.tools_.shard_parquet_filename</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.slurm_scripts_dir.html">phenotypic.tools_.slurm_scripts_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.task_status_filename.html">phenotypic.tools_.task_status_filename</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.task_status_path.html">phenotypic.tools_.task_status_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.trials_parquet_path.html">phenotypic.tools_.trials_parquet_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.tune_cache_dir.html">phenotypic.tools_.tune_cache_dir</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.tune_cache_run_marker_path.html">phenotypic.tools_.tune_cache_run_marker_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.tune_cache_split_assignment_path.html">phenotypic.tools_.tune_cache_split_assignment_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.tune_cache_splits_dir.html">phenotypic.tools_.tune_cache_splits_dir</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.tune_cache_study_db_path.html">phenotypic.tools_.tune_cache_study_db_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.tuning_spec_path.html">phenotypic.tools_.tuning_spec_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.ClipControlMixin.html">phenotypic.tools_.ClipControlMixin</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.FootprintMixin.html">phenotypic.tools_.FootprintMixin</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.GridInferenceMixin.html">phenotypic.tools_.GridInferenceMixin</a></li>
@@ -888,30 +912,15 @@
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.napari_.PointPickerWidget.html">phenotypic.tools_.napari_.PointPickerWidget</a></li>
 </ul>
 </details></li>
-<li class="toctree-l2 has-children"><a class="reference internal" href="phenotypic.tools_.panel_.html">phenotypic.tools_.panel_</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.panel_.PANEL_AVAILABLE.html">phenotypic.tools_.panel_.PANEL_AVAILABLE</a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.panel_.PLOTLY_AVAILABLE.html">phenotypic.tools_.panel_.PLOTLY_AVAILABLE</a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.panel_.PANEL_IMPORT_ERROR.html">phenotypic.tools_.panel_.PANEL_IMPORT_ERROR</a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.panel_.display_or_return.html">phenotypic.tools_.panel_.display_or_return</a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.panel_.ensure_panel_extension.html">phenotypic.tools_.panel_.ensure_panel_extension</a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.panel_.in_ipython.html">phenotypic.tools_.panel_.in_ipython</a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.panel_.in_jupyter.html">phenotypic.tools_.panel_.in_jupyter</a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.panel_.require_panel.html">phenotypic.tools_.panel_.require_panel</a></li>
-</ul>
-</details></li>
 <li class="toctree-l2 has-children"><a class="reference internal" href="phenotypic.tools_.register.html">phenotypic.tools_.register</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.register.available_analysis_plugins.html">phenotypic.tools_.register.available_analysis_plugins</a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.register.available_dashboards.html">phenotypic.tools_.register.available_dashboards</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.register.available_plotters.html">phenotypic.tools_.register.available_plotters</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.register.get_analysis_plugin.html">phenotypic.tools_.register.get_analysis_plugin</a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.register.get_dashboard.html">phenotypic.tools_.register.get_dashboard</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.register.get_plotter.html">phenotypic.tools_.register.get_plotter</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.register.register_analysis.html">phenotypic.tools_.register.register_analysis</a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.register.register_dashboard.html">phenotypic.tools_.register.register_dashboard</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.register.register_plotter.html">phenotypic.tools_.register.register_plotter</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.register.AnalysisPluginRegistry.html">phenotypic.tools_.register.AnalysisPluginRegistry</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.register.BaseRegistry.html">phenotypic.tools_.register.BaseRegistry</a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.register.DashboardRegistry.html">phenotypic.tools_.register.DashboardRegistry</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.register.PlotterRegistry.html">phenotypic.tools_.register.PlotterRegistry</a></li>
 </ul>
 </details></li>
@@ -930,6 +939,56 @@
 </ul>
 </details></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.slurm_.html">phenotypic.tools_.slurm_</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.tune.html">phenotypic.tune</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.build_pipeline.html">phenotypic.tune.build_pipeline</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.infer_group_key.html">phenotypic.tune.infer_group_key</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.compute_generalization_gap.html">phenotypic.tune.compute_generalization_gap</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.run_held_out.html">phenotypic.tune.run_held_out</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.compute_param_importance.html">phenotypic.tune.compute_param_importance</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.compute_param_importance_report.html">phenotypic.tune.compute_param_importance_report</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.count_free_params.html">phenotypic.tune.count_free_params</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.screening_warmup_floor.html">phenotypic.tune.screening_warmup_floor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.select_params_to_freeze.html">phenotypic.tune.select_params_to_freeze</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.freeze_value.html">phenotypic.tune.freeze_value</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.build_reduced_space.html">phenotypic.tune.build_reduced_space</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.run_tuning.html">phenotypic.tune.run_tuning</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.infer_search_space.html">phenotypic.tune.infer_search_space</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.run_auto_space.html">phenotypic.tune.run_auto_space</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.Categorical.html">phenotypic.tune.Categorical</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.IntRange.html">phenotypic.tune.IntRange</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.FloatRange.html">phenotypic.tune.FloatRange</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.Fixed.html">phenotypic.tune.Fixed</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.Knob.html">phenotypic.tune.Knob</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.SearchSpace.html">phenotypic.tune.SearchSpace</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.StrategyConfig.html">phenotypic.tune.StrategyConfig</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.GridConfig.html">phenotypic.tune.GridConfig</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.RandomConfig.html">phenotypic.tune.RandomConfig</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.OptunaConfig.html">phenotypic.tune.OptunaConfig</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.Scorer.html">phenotypic.tune.Scorer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.QCScorer.html">phenotypic.tune.QCScorer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.ReferenceFreeScorer.html">phenotypic.tune.ReferenceFreeScorer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.GroundTruthMasks.html">phenotypic.tune.GroundTruthMasks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.SupervisedScorer.html">phenotypic.tune.SupervisedScorer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.CompositeScorer.html">phenotypic.tune.CompositeScorer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.Evaluator.html">phenotypic.tune.Evaluator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.EvaluationResult.html">phenotypic.tune.EvaluationResult</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.HeldOutConfig.html">phenotypic.tune.HeldOutConfig</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.GeneralizationReport.html">phenotypic.tune.GeneralizationReport</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.TuningEngine.html">phenotypic.tune.TuningEngine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.TuningSpec.html">phenotypic.tune.TuningSpec</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.Budget.html">phenotypic.tune.Budget</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.StudyStore.html">phenotypic.tune.StudyStore</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.JournalStudyStore.html">phenotypic.tune.JournalStudyStore</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.Trial.html">phenotypic.tune.Trial</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.ImportanceReport.html">phenotypic.tune.ImportanceReport</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.ScreeningController.html">phenotypic.tune.ScreeningController</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.ScreeningConfig.html">phenotypic.tune.ScreeningConfig</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.ScreeningResult.html">phenotypic.tune.ScreeningResult</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.TuneSpec.html">phenotypic.tune.TuneSpec</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.InferredSearchSpace.html">phenotypic.tune.InferredSearchSpace</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.Excluded.html">phenotypic.tune.Excluded</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.util.html">phenotypic.util</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -1021,43 +1080,6 @@ threshold. This two-pass approach captures colonies whose intensity varies
 from bright centres to faint margins – a common pattern across growth
 stages and under uneven illumination. For a full comparison see
 <a class="reference internal" href="../../explanation/detection_strategies_compared.html"><span class="doc">Detection Strategies Compared</span></a>.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>low</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Lower threshold controlling expansion sensitivity. Accepts a
-method name (<code class="docutils literal notranslate"><span class="pre">'otsu'</span></code>, <code class="docutils literal notranslate"><span class="pre">'triangle'</span></code>, <code class="docutils literal notranslate"><span class="pre">'li'</span></code>, <code class="docutils literal notranslate"><span class="pre">'yen'</span></code>,
-<code class="docutils literal notranslate"><span class="pre">'isodata'</span></code>, <code class="docutils literal notranslate"><span class="pre">'mean'</span></code>, <code class="docutils literal notranslate"><span class="pre">'minimum'</span></code>) for automatic
-computation, or a float for a manual value (0–255 for 8-bit,
-0–65535 for 16-bit). Default <code class="docutils literal notranslate"><span class="pre">'mean'</span></code>. Lower values include
-more faint colony pixels but increase false positives. Typical
-tuning: start with <code class="docutils literal notranslate"><span class="pre">'mean'</span></code> and switch to a numeric value if
-automatic methods are too aggressive or too conservative.</p></li>
-<li><p><strong>high</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Upper threshold seeding strong colony regions. Same format as
-<em>low</em>. Default <code class="docutils literal notranslate"><span class="pre">'otsu'</span></code>. Must be &gt;= <em>low</em> after computation.
-Higher values restrict seeds to the brightest colony pixels,
-producing fewer but higher-confidence detections.</p></li>
-<li><p><strong>ignore_zeros</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – If True (default), exclude zero-intensity pixels from
-automatic threshold computation. Enable for plates with black
-borders or masked regions.</p></li>
-<li><p><strong>ignore_borders</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – If True (default), remove colonies touching image
-edges via <code class="docutils literal notranslate"><span class="pre">clear_border()</span></code>. Recommended for grid-based colony
-counting.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Input image with <code class="docutils literal notranslate"><span class="pre">objmask</span></code> set to a binary colony mask
-where True pixels are colony foreground (including faint pixels
-connected to strong seed regions). <code class="docutils literal notranslate"><span class="pre">objmap</span></code> is not modified.</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>Image</p>
-</dd>
-<dt class="field-even">Raises<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If the computed high threshold is less than the computed
-    low threshold, or if an unrecognised threshold method name is
-    provided.</p>
-</dd>
-</dl>
 <dl class="simple">
 <dt>Best For:</dt><dd><ul class="simple">
 <li><p>Plates where colony brightness varies (e.g., young versus mature
@@ -1078,6 +1100,51 @@ into individually labelled regions.</p></li>
 <li><p><a class="reference internal" href="../phenotypic.detect.html#phenotypic.detect.CannyDetector" title="phenotypic.detect.CannyDetector"><code class="xref py py-class docutils literal notranslate"><span class="pre">CannyDetector</span></code></a> when colonies are best delineated by edge
 contrast rather than intensity.</p></li>
 </ul>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>low</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Lower threshold controlling expansion sensitivity. There is no
+universal best value – it is a user choice. Accepts a method
+name (<code class="docutils literal notranslate"><span class="pre">'otsu'</span></code>, <code class="docutils literal notranslate"><span class="pre">'triangle'</span></code>, <code class="docutils literal notranslate"><span class="pre">'li'</span></code>, <code class="docutils literal notranslate"><span class="pre">'yen'</span></code>,
+<code class="docutils literal notranslate"><span class="pre">'isodata'</span></code>, <code class="docutils literal notranslate"><span class="pre">'mean'</span></code>, <code class="docutils literal notranslate"><span class="pre">'minimum'</span></code>) for automatic
+computation, or a float for a manual value (0–255 for 8-bit,
+0–65535 for 16-bit). Default <code class="docutils literal notranslate"><span class="pre">'mean'</span></code>. Lowering <em>low</em> grows
+each seed outward to capture more faint marginal pixels but
+risks bridging colonies into noise; raising it tightens each
+colony toward its bright core. Start with <code class="docutils literal notranslate"><span class="pre">'mean'</span></code> and adjust
+by observing whether faint colony edges are kept or lost.
+Dense plates and filamentous fungi (thin faint margins) often
+need a lower <em>low</em>; noisy agar needs it raised.</p></li>
+<li><p><strong>high</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Upper threshold seeding strong colony regions. Same format and
+user-choice character as <em>low</em>. Default <code class="docutils literal notranslate"><span class="pre">'otsu'</span></code>. Must resolve
+to a value &gt;= <em>low</em>. Raising <em>high</em> restricts seeds to the
+brightest colony centres (fewer, higher-confidence detections);
+lowering it admits more, dimmer seeds. Raise <em>high</em> on noisy or
+textured plates so agar granularity is not seeded; lower it when
+genuine faint colonies fail to seed at all.</p></li>
+<li><p><strong>ignore_zeros</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – If True, exclude zero-intensity pixels from automatic
+threshold computation. Enable for plates with black borders or
+masked regions. Default: False.</p></li>
+<li><p><strong>ignore_borders</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – If True (default), remove colonies touching image
+edges via <code class="docutils literal notranslate"><span class="pre">clear_border()</span></code>. Recommended for grid-based colony
+counting; disable when peripheral colonies must be retained.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Input image with <code class="docutils literal notranslate"><span class="pre">objmask</span></code> set to a binary colony mask
+where True pixels are colony foreground (including faint pixels
+connected to strong seed regions). Assigning <code class="docutils literal notranslate"><span class="pre">objmask</span></code> rebuilds
+<code class="docutils literal notranslate"><span class="pre">objmap</span></code> from the binary mask via the accessor.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Image</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If the computed high threshold is less than the computed
+    low threshold, or if an unrecognised threshold method name is
+    provided.</p>
 </dd>
 </dl>
 <div class="admonition seealso">
@@ -1753,7 +1820,7 @@ a [<cite>PydanticSerializationError</cite>][pydantic_core.PydanticSerializationE
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="phenotypic.detect.HysteresisDetector.model_fields">
-<span class="sig-name descname"><span class="pre">model_fields</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'high':</span> <span class="pre">FieldInfo(annotation=Union[str,</span> <span class="pre">float],</span> <span class="pre">required=False,</span> <span class="pre">default='otsu',</span> <span class="pre">description=&quot;Upper</span> <span class="pre">threshold</span> <span class="pre">seeding</span> <span class="pre">strong</span> <span class="pre">colony</span> <span class="pre">regions.</span> <span class="pre">Same</span> <span class="pre">format</span> <span class="pre">as</span> <span class="pre">*low*.</span> <span class="pre">Default</span> <span class="pre">``'otsu'``.</span> <span class="pre">Must</span> <span class="pre">be</span> <span class="pre">&gt;=</span> <span class="pre">*low*</span> <span class="pre">after</span> <span class="pre">computation.</span> <span class="pre">Higher</span> <span class="pre">values</span> <span class="pre">restrict</span> <span class="pre">seeds</span> <span class="pre">to</span> <span class="pre">the</span> <span class="pre">brightest</span> <span class="pre">colony</span> <span class="pre">pixels,</span> <span class="pre">producing</span> <span class="pre">fewer</span> <span class="pre">but</span> <span class="pre">higher-confidence</span> <span class="pre">detections.&quot;),</span> <span class="pre">'ignore_borders':</span> <span class="pre">FieldInfo(annotation=bool,</span> <span class="pre">required=False,</span> <span class="pre">default=True,</span> <span class="pre">description='If</span> <span class="pre">True</span> <span class="pre">(default),</span> <span class="pre">remove</span> <span class="pre">colonies</span> <span class="pre">touching</span> <span class="pre">image</span> <span class="pre">edges</span> <span class="pre">via</span> <span class="pre">``clear_border()``.</span> <span class="pre">Recommended</span> <span class="pre">for</span> <span class="pre">grid-based</span> <span class="pre">colony</span> <span class="pre">counting.'),</span> <span class="pre">'ignore_zeros':</span> <span class="pre">FieldInfo(annotation=bool,</span> <span class="pre">required=False,</span> <span class="pre">default=False,</span> <span class="pre">description='If</span> <span class="pre">True</span> <span class="pre">(default),</span> <span class="pre">exclude</span> <span class="pre">zero-intensity</span> <span class="pre">pixels</span> <span class="pre">from</span> <span class="pre">automatic</span> <span class="pre">threshold</span> <span class="pre">computation.</span> <span class="pre">Enable</span> <span class="pre">for</span> <span class="pre">plates</span> <span class="pre">with</span> <span class="pre">black</span> <span class="pre">borders</span> <span class="pre">or</span> <span class="pre">masked</span> <span class="pre">regions.'),</span> <span class="pre">'low':</span> <span class="pre">FieldInfo(annotation=Union[str,</span> <span class="pre">float],</span> <span class="pre">required=False,</span> <span class="pre">default='mean',</span> <span class="pre">description=&quot;Lower</span> <span class="pre">threshold</span> <span class="pre">controlling</span> <span class="pre">expansion</span> <span class="pre">sensitivity.</span> <span class="pre">Accepts</span> <span class="pre">a</span> <span class="pre">method</span> <span class="pre">name</span> <span class="pre">(``'otsu'``,</span> <span class="pre">``'triangle'``,</span> <span class="pre">``'li'``,</span> <span class="pre">``'yen'``,</span> <span class="pre">``'isodata'``,</span> <span class="pre">``'mean'``,</span> <span class="pre">``'minimum'``)</span> <span class="pre">for</span> <span class="pre">automatic</span> <span class="pre">computation,</span> <span class="pre">or</span> <span class="pre">a</span> <span class="pre">float</span> <span class="pre">for</span> <span class="pre">a</span> <span class="pre">manual</span> <span class="pre">value</span> <span class="pre">(0--255</span> <span class="pre">for</span> <span class="pre">8-bit,</span> <span class="pre">0--65535</span> <span class="pre">for</span> <span class="pre">16-bit).</span> <span class="pre">Default</span> <span class="pre">``'mean'``.</span> <span class="pre">Lower</span> <span class="pre">values</span> <span class="pre">include</span> <span class="pre">more</span> <span class="pre">faint</span> <span class="pre">colony</span> <span class="pre">pixels</span> <span class="pre">but</span> <span class="pre">increase</span> <span class="pre">false</span> <span class="pre">positives.</span> <span class="pre">Typical&quot;)}</span></em><a class="headerlink" href="#phenotypic.detect.HysteresisDetector.model_fields" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">model_fields</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'high':</span> <span class="pre">FieldInfo(annotation=Union[str,</span> <span class="pre">float],</span> <span class="pre">required=False,</span> <span class="pre">default='otsu',</span> <span class="pre">description=&quot;Upper</span> <span class="pre">threshold</span> <span class="pre">seeding</span> <span class="pre">strong</span> <span class="pre">colony</span> <span class="pre">regions.</span> <span class="pre">Same</span> <span class="pre">format</span> <span class="pre">and</span> <span class="pre">user-choice</span> <span class="pre">character</span> <span class="pre">as</span> <span class="pre">*low*.</span> <span class="pre">Default</span> <span class="pre">``'otsu'``.</span> <span class="pre">Must</span> <span class="pre">resolve</span> <span class="pre">to</span> <span class="pre">a</span> <span class="pre">value</span> <span class="pre">&gt;=</span> <span class="pre">*low*.</span> <span class="pre">Raising</span> <span class="pre">*high*</span> <span class="pre">restricts</span> <span class="pre">seeds</span> <span class="pre">to</span> <span class="pre">the</span> <span class="pre">brightest</span> <span class="pre">colony</span> <span class="pre">centres</span> <span class="pre">(fewer,</span> <span class="pre">higher-confidence</span> <span class="pre">detections);</span> <span class="pre">lowering</span> <span class="pre">it</span> <span class="pre">admits</span> <span class="pre">more,</span> <span class="pre">dimmer</span> <span class="pre">seeds.</span> <span class="pre">Raise</span> <span class="pre">*high*</span> <span class="pre">on</span> <span class="pre">noisy</span> <span class="pre">or</span> <span class="pre">textured</span> <span class="pre">plates</span> <span class="pre">so</span> <span class="pre">agar</span> <span class="pre">granularity</span> <span class="pre">is</span> <span class="pre">not</span> <span class="pre">seeded;</span> <span class="pre">lower</span> <span class="pre">it</span> <span class="pre">when</span> <span class="pre">genuine</span> <span class="pre">faint</span> <span class="pre">colonies</span> <span class="pre">fail</span> <span class="pre">to</span> <span class="pre">seed</span> <span class="pre">at</span> <span class="pre">all.&quot;),</span> <span class="pre">'ignore_borders':</span> <span class="pre">FieldInfo(annotation=bool,</span> <span class="pre">required=False,</span> <span class="pre">default=True,</span> <span class="pre">description='If</span> <span class="pre">True</span> <span class="pre">(default),</span> <span class="pre">remove</span> <span class="pre">colonies</span> <span class="pre">touching</span> <span class="pre">image</span> <span class="pre">edges</span> <span class="pre">via</span> <span class="pre">``clear_border()``.</span> <span class="pre">Recommended</span> <span class="pre">for</span> <span class="pre">grid-based</span> <span class="pre">colony</span> <span class="pre">counting;</span> <span class="pre">disable</span> <span class="pre">when</span> <span class="pre">peripheral</span> <span class="pre">colonies</span> <span class="pre">must</span> <span class="pre">be</span> <span class="pre">retained.'),</span> <span class="pre">'ignore_zeros':</span> <span class="pre">FieldInfo(annotation=bool,</span> <span class="pre">required=False,</span> <span class="pre">default=False,</span> <span class="pre">description='If</span> <span class="pre">True,</span> <span class="pre">exclude</span> <span class="pre">zero-intensity</span> <span class="pre">pixels</span> <span class="pre">from</span> <span class="pre">automatic</span> <span class="pre">threshold</span> <span class="pre">computation.</span> <span class="pre">Enable</span> <span class="pre">for</span> <span class="pre">plates</span> <span class="pre">with</span> <span class="pre">black</span> <span class="pre">borders</span> <span class="pre">or</span> <span class="pre">masked</span> <span class="pre">regions.</span> <span class="pre">Default:</span> <span class="pre">False.'),</span> <span class="pre">'low':</span> <span class="pre">FieldInfo(annotation=Union[str,</span> <span class="pre">float],</span> <span class="pre">required=False,</span> <span class="pre">default='mean',</span> <span class="pre">description=&quot;Lower</span> <span class="pre">threshold</span> <span class="pre">controlling</span> <span class="pre">expansion</span> <span class="pre">sensitivity.</span> <span class="pre">There</span> <span class="pre">is</span> <span class="pre">no</span> <span class="pre">universal</span> <span class="pre">best</span> <span class="pre">value</span> <span class="pre">--</span> <span class="pre">it</span> <span class="pre">is</span> <span class="pre">a</span> <span class="pre">user</span> <span class="pre">choice.</span> <span class="pre">Accepts</span> <span class="pre">a</span> <span class="pre">method</span> <span class="pre">name</span> <span class="pre">(``'otsu'``,</span> <span class="pre">``'triangle'``,</span> <span class="pre">``'li'``,</span> <span class="pre">``'yen'``,</span> <span class="pre">``'isodata'``,</span> <span class="pre">``'mean'``,</span> <span class="pre">``'minimum'``)</span> <span class="pre">for</span> <span class="pre">automatic</span> <span class="pre">computation,</span> <span class="pre">or</span> <span class="pre">a</span> <span class="pre">float</span> <span class="pre">for</span> <span class="pre">a</span> <span class="pre">manual</span> <span class="pre">value</span> <span class="pre">(0--255</span> <span class="pre">for</span> <span class="pre">8-bit,</span> <span class="pre">0--65535</span> <span class="pre">for</span> <span class="pre">16-bit).</span> <span class="pre">Default</span> <span class="pre">``'mean'``.</span> <span class="pre">Lowering</span> <span class="pre">*low*</span> <span class="pre">grows</span> <span class="pre">each</span> <span class="pre">seed</span> <span class="pre">outward</span> <span class="pre">to</span> <span class="pre">capture</span> <span class="pre">more</span> <span class="pre">faint</span> <span class="pre">marginal</span> <span class="pre">pixels</span> <span class="pre">but</span> <span class="pre">risks</span> <span class="pre">bridging</span> <span class="pre">colonies</span> <span class="pre">into</span> <span class="pre">noise;</span> <span class="pre">raising</span> <span class="pre">it</span> <span class="pre">tightens</span> <span class="pre">each</span> <span class="pre">colony</span> <span class="pre">toward</span> <span class="pre">its</span> <span class="pre">bright</span> <span class="pre">core.</span> <span class="pre">Start</span> <span class="pre">with</span> <span class="pre">``'mean'``</span> <span class="pre">and</span> <span class="pre">adjust</span> <span class="pre">by</span> <span class="pre">observing</span> <span class="pre">whether</span> <span class="pre">faint</span> <span class="pre">colony</span> <span class="pre">edges</span> <span class="pre">are</span> <span class="pre">kept</span> <span class="pre">or</span> <span class="pre">lost.</span> <span class="pre">Dense</span> <span class="pre">plates</span> <span class="pre">and</span> <span class="pre">filamentous</span> <span class="pre">fungi</span> <span class="pre">(thin</span> <span class="pre">faint</span> <span class="pre">margins)</span> <span class="pre">often</span> <span class="pre">need</span> <span class="pre">a</span> <span class="pre">lower</span> <span class="pre">*low*;</span> <span class="pre">noisy</span> <span class="pre">agar</span> <span class="pre">needs</span> <span class="pre">it</span> <span class="pre">raised.&quot;)}</span></em><a class="headerlink" href="#phenotypic.detect.HysteresisDetector.model_fields" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py property">

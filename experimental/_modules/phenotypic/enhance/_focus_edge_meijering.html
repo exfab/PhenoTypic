@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -575,52 +575,77 @@
 <div class="viewcode-block" id="FocusEdgeMeijering">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.enhance.html#phenotypic.enhance.FocusEdgeMeijering">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">FocusEdgeMeijering</span><span class="p">(</span><span class="n">FocusEdge</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Enhance fine ridge-like structures in ``detect_mat`` with the Meijering neuriteness filter.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Enhance fine filamentous ridges in ``detect_mat`` using the Meijering neuriteness filter.</span>
 
-<span class="sd">    Computes the Meijering neuriteness measure from Hessian matrix eigenvalues</span>
-<span class="sd">    to highlight elongated, thread-like structures such as delicate filaments,</span>
-<span class="sd">    thin wrinkles, and network-like features. More selective than</span>
-<span class="sd">    :class:`FocusEdgeSato` for very fine, well-separated ridges.</span>
+<span class="sd">    Computes the Meijering neuriteness measure from Hessian eigenvalues at</span>
+<span class="sd">    each sigma scale, using an analytically derived shape parameter that</span>
+<span class="sd">    maximally suppresses blob-like and isotropic responses while favouring</span>
+<span class="sd">    elongated, thread-like features. The output is a [0, 1] ridge-strength</span>
+<span class="sd">    map suited to detecting delicate hyphae, actinomycete filaments, and</span>
+<span class="sd">    fine biofilm ridge networks. For algorithm details see</span>
+<span class="sd">    :doc:`/explanation/what_enhancement_does`.</span>
 
-<span class="sd">    For algorithm details, see :doc:`/explanation/what_enhancement_does`.</span>
+<span class="sd">    Best For:</span>
+<span class="sd">        - Delicate fungal hyphae and actinomycete filaments resolved to</span>
+<span class="sd">          2--5 px width where the analytic shape optimum provides maximum</span>
+<span class="sd">          elongation selectivity.</span>
+<span class="sd">        - Sparse mycelial networks with well-separated filaments where</span>
+<span class="sd">          sensitivity to thin ridges is more important than junction detection.</span>
+<span class="sd">        - Fine biofilm grooves or wrinkle networks in bacterial colony</span>
+<span class="sd">          morphology plates.</span>
+<span class="sd">        - Pipelines where minimising the number of parameters to tune is</span>
+<span class="sd">          a priority (alpha defaults to the analytic optimum).</span>
+
+<span class="sd">    Consider Also:</span>
+<span class="sd">        - :class:`FocusEdgeFrangi` for broader mycelial networks with</span>
+<span class="sd">          independent control over plate-like and blob-like sensitivity.</span>
+<span class="sd">        - :class:`FocusEdgeSato` for thicker, continuous tubular structures</span>
+<span class="sd">          with a different eigenvalue-combination strategy.</span>
+<span class="sd">        - :class:`FocusEdgeHessian` when combined edge and colony boundary</span>
+<span class="sd">          detection alongside filament ridges is needed.</span>
+<span class="sd">        - :class:`StructureSmoothing` for anisotropic pre-smoothing along</span>
+<span class="sd">          hyphal orientation before this ridge filter.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        sigmas: Sequence of standard deviations for Gaussian derivatives.</span>
-<span class="sd">            Smaller values detect finer structures; larger values detect</span>
-<span class="sd">            thicker features. Typical range: ``(1, 2, 3)`` to</span>
-<span class="sd">            ``range(1, 10)``. Default: ``(1, 2, 3)``.</span>
-<span class="sd">        alpha: Shape parameter controlling linearity sensitivity. ``None``</span>
-<span class="sd">            (default) uses ``-1/(ndim+1)`` which is ``-1/3`` for 2D</span>
-<span class="sd">            images. Rarely requires manual tuning.</span>
-<span class="sd">        black_ridges: If ``True``, detect dark ridges on bright background.</span>
-<span class="sd">            If ``False`` (default), detect bright ridges on dark background.</span>
-<span class="sd">        mode: Boundary handling. Accepted values: ``&#39;constant&#39;``,</span>
-<span class="sd">            ``&#39;reflect&#39;``, ``&#39;wrap&#39;``, ``&#39;nearest&#39;``, ``&#39;mirror&#39;``.</span>
-<span class="sd">            Default: ``&#39;reflect&#39;``.</span>
-<span class="sd">        cval: Fill value when ``mode=&#39;constant&#39;``. Default: 0.</span>
+<span class="sd">        sigmas: Gaussian standard deviations (pixels) at which the Hessian</span>
+<span class="sd">            is evaluated. Each value responds most strongly to ridges whose</span>
+<span class="sd">            cross-sectional half-width is approximately that number of pixels;</span>
+<span class="sd">            the per-pixel maximum across all scales is taken. Typical range:</span>
+<span class="sd">            ``(1, 2, 3)`` for standard plate scans; extend the lower bound to</span>
+<span class="sd">            0.5 for very thin filaments at high magnification or the upper</span>
+<span class="sd">            bound to 5--8 for thick mycelial mats. Default: ``(1, 2, 3)``.</span>
+<span class="sd">        alpha: Shape parameter controlling how the Hessian eigenvalues are</span>
+<span class="sd">            combined into a neuriteness score. ``None`` (default) uses the</span>
+<span class="sd">            analytically derived optimum ``-1/(ndim+1)`` (``-1/3`` for 2-D</span>
+<span class="sd">            images), which maximally suppresses blob-like structures while</span>
+<span class="sd">            retaining elongated ridges. Manual values closer to 0 reduce blob</span>
+<span class="sd">            suppression; more-negative values sharpen the ridge/blob</span>
+<span class="sd">            discrimination. Default: ``None``.</span>
+<span class="sd">        black_ridges: Polarity of the target ridges. ``False`` (default)</span>
+<span class="sd">            detects bright ridges on a dark background, matching the</span>
+<span class="sd">            ``detect_mat`` convention where hyphae appear bright. ``True``</span>
+<span class="sd">            detects dark ridges on a bright background. Default: ``False``.</span>
+<span class="sd">        mode: Boundary padding mode for Gaussian derivative computation.</span>
+<span class="sd">            Accepted values: ``&#39;constant&#39;``, ``&#39;reflect&#39;``, ``&#39;wrap&#39;``,</span>
+<span class="sd">            ``&#39;nearest&#39;``, ``&#39;mirror&#39;``. Default: ``&#39;reflect&#39;``.</span>
+<span class="sd">        cval: Fill value used when ``mode=&#39;constant&#39;``. Has no effect for</span>
+<span class="sd">            any other mode. Default: 0.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        Image: Input image with ``detect_mat`` replaced by the Meijering</span>
 <span class="sd">        neuriteness response map. ``rgb`` and ``gray`` are unchanged.</span>
 
-<span class="sd">    Best For:</span>
-<span class="sd">        - Delicate filamentous structures too thin for standard detection</span>
-<span class="sd">          (actinomycetes, fungal hyphae, bacterial networks).</span>
-<span class="sd">        - Fine wrinkles, grooves, or network features in biofilms.</span>
-<span class="sd">        - Sparse mycelial networks or bacterial filaments that require</span>
-<span class="sd">          sensitive ridge detection.</span>
-
-<span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`FocusEdgeSato` for thicker, continuous tubular</span>
-<span class="sd">          structures with less sensitivity to parameter tuning.</span>
-<span class="sd">        - :class:`FocusEdgeHessian` for combined edge and ridge detection</span>
-<span class="sd">          with blob sensitivity control.</span>
-<span class="sd">        - :class:`StructureSmoothing` for enhancing directional</span>
-<span class="sd">          structures via anisotropic smoothing before ridge detection.</span>
+<span class="sd">    References:</span>
+<span class="sd">        [1] E. Meijering, M. Jacob, J.-C. F. Sarria, P. Steiner, H. Hirling,</span>
+<span class="sd">        and M. Unser, &quot;Design and validation of a tool for neurite tracing</span>
+<span class="sd">        and analysis in fluorescence microscopy images,&quot; *Cytometry Part A*,</span>
+<span class="sd">        vol. 58, no. 2, pp. 167--176, Apr. 2004.</span>
 
 <span class="sd">    See Also:</span>
+<span class="sd">        :doc:`/tutorials/notebooks/10_detecting_filamentous_fungi` for a</span>
+<span class="sd">        visual walkthrough of filamentous fungi detection using ridge filters.</span>
 <span class="sd">        :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a</span>
-<span class="sd">        visual walkthrough of ridge enhancement on plate images.</span>
+<span class="sd">        broader enhancement pipeline walkthrough on plate images.</span>
 <span class="sd">        :doc:`/explanation/what_enhancement_does` for background on</span>
 <span class="sd">        Hessian-based ridge detection methods.</span>
 <span class="sd">    &quot;&quot;&quot;</span>

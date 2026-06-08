@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -562,7 +562,7 @@
   <h1>Source code for phenotypic.enhance._enhance_local_contrast</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Annotated</span><span class="p">,</span> <span class="n">Optional</span>
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
@@ -570,50 +570,54 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">skimage.exposure</span><span class="w"> </span><span class="kn">import</span> <span class="n">equalize_adapthist</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ContrastAdjustment</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">TuneSpec</span>
 
 
 <div class="viewcode-block" id="EnhanceLocalContrast">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.enhance.html#phenotypic.enhance.EnhanceLocalContrast">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">EnhanceLocalContrast</span><span class="p">(</span><span class="n">ContrastAdjustment</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Boost local contrast in detect_mat using adaptive histogram equalization.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Boost local contrast in ``detect_mat`` using adaptive histogram equalization.</span>
 
-<span class="sd">    Divides detect_mat into tiles and equalizes the histogram within each tile,</span>
-<span class="sd">    with a clip limit that prevents excessive noise amplification. Faint colonies</span>
-<span class="sd">    become more visible and easier to threshold, even when illumination varies</span>
-<span class="sd">    across the plate.</span>
+<span class="sd">    Divides ``detect_mat`` into tiles and equalizes the intensity histogram</span>
+<span class="sd">    within each tile, with a clip limit that caps the redistribution gain and</span>
+<span class="sd">    prevents excessive noise amplification. Faint colonies become more visible</span>
+<span class="sd">    and easier to threshold, even when illumination varies across the plate.</span>
 
 <span class="sd">    For a discussion of contrast enhancement strategies, see</span>
 <span class="sd">    :doc:`/explanation/what_enhancement_does`.</span>
 
+<span class="sd">    Best For:</span>
+<span class="sd">        - Plates with faint or translucent colonies that blend into agar.</span>
+<span class="sd">        - Images with uneven illumination such as vignetting or shadows from</span>
+<span class="sd">          plate lids.</span>
+<span class="sd">        - Pre-conditioning before global thresholding (Otsu, Triangle).</span>
+<span class="sd">        - Early time-point plates where colonies are barely visible.</span>
+
+<span class="sd">    Consider Also:</span>
+<span class="sd">        - :class:`ContrastStretching` for a simpler global contrast adjustment</span>
+<span class="sd">          when illumination is already uniform across the plate.</span>
+<span class="sd">        - :class:`FlattenIllumination` when the primary problem is a large-scale</span>
+<span class="sd">          illumination gradient rather than local contrast variation.</span>
+<span class="sd">        - :class:`SharpenEdgeGauss` when edges need sharpening rather than</span>
+<span class="sd">          contrast boosting.</span>
+
 <span class="sd">    Args:</span>
-<span class="sd">        kernel_size: Tile size for local equalization. Smaller tiles reveal</span>
-<span class="sd">            tiny colonies but amplify agar texture; larger tiles produce</span>
-<span class="sd">            smoother results. ``None`` auto-selects based on image size</span>
-<span class="sd">            (typically min(height, width) / 15). Default: ``None``.</span>
-<span class="sd">        clip_limit: Maximum local contrast amplification. Typical range:</span>
-<span class="sd">            0.005--0.05. Lower values suppress noise; higher values make</span>
-<span class="sd">            faint colonies stand out more. Default: 0.01.</span>
+<span class="sd">        kernel_size: Tile size for local equalization in pixels. Smaller tiles</span>
+<span class="sd">            reveal tiny colonies and local features but amplify agar texture;</span>
+<span class="sd">            larger tiles produce smoother results. ``None`` auto-selects a tile</span>
+<span class="sd">            size of roughly one fifteenth of the image height. Default: ``None``.</span>
+<span class="sd">        clip_limit: Maximum local contrast amplification factor. Typical range:</span>
+<span class="sd">            0.005--0.05. Lower values suppress noise amplification; higher</span>
+<span class="sd">            values make faint colonies stand out more at the cost of</span>
+<span class="sd">            amplifying local noise. Default: 0.01.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        Image: Input image with ``detect_mat`` contrast-enhanced.</span>
 <span class="sd">        ``rgb`` and ``gray`` are unchanged.</span>
 
 <span class="sd">    Raises:</span>
-<span class="sd">        ValueError: If the detect_mat value range is invalid.</span>
-
-<span class="sd">    Best For:</span>
-<span class="sd">        - Plates with faint or translucent colonies that blend into agar.</span>
-<span class="sd">        - Uneven illumination (vignetting, shadows from plate lids).</span>
-<span class="sd">        - Pre-conditioning before global thresholding (Otsu, Triangle).</span>
-<span class="sd">        - Early time-point plates where colonies are barely visible.</span>
-
-<span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`ContrastStretching` for a simpler global contrast adjustment</span>
-<span class="sd">          when illumination is already uniform.</span>
-<span class="sd">        - :class:`FlattenIllumination` when the primary problem is a large-scale</span>
-<span class="sd">          illumination gradient rather than local contrast.</span>
-<span class="sd">        - :class:`SharpenEdgeGauss` when edges need sharpening rather than contrast</span>
-<span class="sd">          boosting.</span>
+<span class="sd">        ValueError: If the ``detect_mat`` value range is invalid for</span>
+<span class="sd">            equalization.</span>
 
 <span class="sd">    References:</span>
 <span class="sd">        [1] S. M. Pizer et al., &quot;Adaptive histogram equalization and its</span>
@@ -622,13 +626,13 @@
 
 <span class="sd">    See Also:</span>
 <span class="sd">        :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a</span>
-<span class="sd">        visual walkthrough of EnhanceLocalContrast before detection.</span>
+<span class="sd">        visual walkthrough of ``EnhanceLocalContrast`` before detection.</span>
 <span class="sd">        :doc:`/how_to/notebooks/enhance_low_contrast` for a comparison of</span>
-<span class="sd">        contrast enhancement methods.</span>
+<span class="sd">        contrast enhancement methods on real plate images.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="n">kernel_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">clip_limit</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.01</span>
+    <span class="n">kernel_size</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="n">tunable</span><span class="o">=</span><span class="kc">False</span><span class="p">)]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">clip_limit</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">0.005</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">,</span> <span class="n">log</span><span class="o">=</span><span class="kc">True</span><span class="p">)]</span> <span class="o">=</span> <span class="mf">0.01</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
         <span class="k">try</span><span class="p">:</span>

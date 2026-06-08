@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -66,7 +66,7 @@
     <link rel="prev" title="phenotypic.tools_.exceptions_.InvalidMapValueError" href="phenotypic.tools_.exceptions_.InvalidMapValueError.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -559,6 +559,7 @@
 </ul>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../cli_reference.html">CLI Reference</a></li>
+
 <li class="toctree-l1"><a class="reference internal" href="../config_reference.html">Configuration Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../glossary.html">Glossary</a></li>
 </ul>
@@ -566,6 +567,7 @@
 <ul class="current nav bd-sidenav">
 <li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.abc_.html">phenotypic.abc_</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.register_detection_mode.html">phenotypic.abc_.register_detection_mode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.figure.html">phenotypic.abc_.figure</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.MeasureFeatures.html">phenotypic.abc_.MeasureFeatures</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.ImageOperation.html">phenotypic.abc_.ImageOperation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.ImageEnhancer.html">phenotypic.abc_.ImageEnhancer</a></li>
@@ -593,6 +595,10 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.FootprintMixin.html">phenotypic.abc_.FootprintMixin</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.PostMeasurement.html">phenotypic.abc_.PostMeasurement</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.DetectionMode.html">phenotypic.abc_.DetectionMode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.Control.html">phenotypic.abc_.Control</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.FigureSpec.html">phenotypic.abc_.FigureSpec</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.FigureProvider.html">phenotypic.abc_.FigureProvider</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.BoundFigures.html">phenotypic.abc_.BoundFigures</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.analysis.html">phenotypic.analysis</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -755,6 +761,8 @@
 </ul>
 </details></li>
 <li class="toctree-l1 current active has-children"><a class="reference internal" href="phenotypic.tools_.html">phenotypic.tools_</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.atomic_write_bytes.html">phenotypic.tools_.atomic_write_bytes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.atomic_write_text.html">phenotypic.tools_.atomic_write_text</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.is_binary_mask.html">phenotypic.tools_.is_binary_mask</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.timed_execution.html">phenotypic.tools_.timed_execution</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.analysis_csv_path.html">phenotypic.tools_.analysis_csv_path</a></li>
@@ -762,6 +770,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.analysis_html_path.html">phenotypic.tools_.analysis_html_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.analysis_parquet_path.html">phenotypic.tools_.analysis_parquet_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.analysis_scatter_json_path.html">phenotypic.tools_.analysis_scatter_json_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.best_pipeline_path.html">phenotypic.tools_.best_pipeline_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.chunk_lock_path.html">phenotypic.tools_.chunk_lock_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.chunk_manifest_path.html">phenotypic.tools_.chunk_manifest_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.chunk_parquet_filename.html">phenotypic.tools_.chunk_parquet_filename</a></li>
@@ -779,6 +788,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.deliverables_dir.html">phenotypic.tools_.deliverables_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.event_log_path.html">phenotypic.tools_.event_log_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.failures_jsonl_path.html">phenotypic.tools_.failures_jsonl_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.generalization_path.html">phenotypic.tools_.generalization_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.job_metadata_path.html">phenotypic.tools_.job_metadata_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.load_image_from_hdf.html">phenotypic.tools_.load_image_from_hdf</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.load_master_measurements.html">phenotypic.tools_.load_master_measurements</a></li>
@@ -792,6 +802,11 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.migrate_legacy_machine_state.html">phenotypic.tools_.migrate_legacy_machine_state</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.clear_machine_state.html">phenotypic.tools_.clear_machine_state</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.overlay_manifest_path.html">phenotypic.tools_.overlay_manifest_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.param_importance_path.html">phenotypic.tools_.param_importance_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.pareto_best_pipeline_path.html">phenotypic.tools_.pareto_best_pipeline_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.pareto_dir.html">phenotypic.tools_.pareto_dir</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.pareto_front_parquet_path.html">phenotypic.tools_.pareto_front_parquet_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.pareto_importance_path.html">phenotypic.tools_.pareto_importance_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.phenotypic_cache_dir.html">phenotypic.tools_.phenotypic_cache_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.phenotypic_cache_pipeline_json_path.html">phenotypic.tools_.phenotypic_cache_pipeline_json_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.pipeline_json_path.html">phenotypic.tools_.pipeline_json_path</a></li>
@@ -812,12 +827,21 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.resolve_manifest_json_path.html">phenotypic.tools_.resolve_manifest_json_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.resolve_processing_state_path.html">phenotypic.tools_.resolve_processing_state_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.resolve_progress_dir.html">phenotypic.tools_.resolve_progress_dir</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.resolve_split_assignment_path.html">phenotypic.tools_.resolve_split_assignment_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.resolve_study_db_path.html">phenotypic.tools_.resolve_study_db_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.results_dir.html">phenotypic.tools_.results_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.sentinel_resubmitted_path.html">phenotypic.tools_.sentinel_resubmitted_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.shard_parquet_filename.html">phenotypic.tools_.shard_parquet_filename</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.slurm_scripts_dir.html">phenotypic.tools_.slurm_scripts_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.task_status_filename.html">phenotypic.tools_.task_status_filename</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.task_status_path.html">phenotypic.tools_.task_status_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.trials_parquet_path.html">phenotypic.tools_.trials_parquet_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.tune_cache_dir.html">phenotypic.tools_.tune_cache_dir</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.tune_cache_run_marker_path.html">phenotypic.tools_.tune_cache_run_marker_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.tune_cache_split_assignment_path.html">phenotypic.tools_.tune_cache_split_assignment_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.tune_cache_splits_dir.html">phenotypic.tools_.tune_cache_splits_dir</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.tune_cache_study_db_path.html">phenotypic.tools_.tune_cache_study_db_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.tuning_spec_path.html">phenotypic.tools_.tuning_spec_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.ClipControlMixin.html">phenotypic.tools_.ClipControlMixin</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.FootprintMixin.html">phenotypic.tools_.FootprintMixin</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.GridInferenceMixin.html">phenotypic.tools_.GridInferenceMixin</a></li>
@@ -888,30 +912,15 @@
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.napari_.PointPickerWidget.html">phenotypic.tools_.napari_.PointPickerWidget</a></li>
 </ul>
 </details></li>
-<li class="toctree-l2 has-children"><a class="reference internal" href="phenotypic.tools_.panel_.html">phenotypic.tools_.panel_</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.panel_.PANEL_AVAILABLE.html">phenotypic.tools_.panel_.PANEL_AVAILABLE</a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.panel_.PLOTLY_AVAILABLE.html">phenotypic.tools_.panel_.PLOTLY_AVAILABLE</a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.panel_.PANEL_IMPORT_ERROR.html">phenotypic.tools_.panel_.PANEL_IMPORT_ERROR</a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.panel_.display_or_return.html">phenotypic.tools_.panel_.display_or_return</a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.panel_.ensure_panel_extension.html">phenotypic.tools_.panel_.ensure_panel_extension</a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.panel_.in_ipython.html">phenotypic.tools_.panel_.in_ipython</a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.panel_.in_jupyter.html">phenotypic.tools_.panel_.in_jupyter</a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.panel_.require_panel.html">phenotypic.tools_.panel_.require_panel</a></li>
-</ul>
-</details></li>
 <li class="toctree-l2 has-children"><a class="reference internal" href="phenotypic.tools_.register.html">phenotypic.tools_.register</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.register.available_analysis_plugins.html">phenotypic.tools_.register.available_analysis_plugins</a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.register.available_dashboards.html">phenotypic.tools_.register.available_dashboards</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.register.available_plotters.html">phenotypic.tools_.register.available_plotters</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.register.get_analysis_plugin.html">phenotypic.tools_.register.get_analysis_plugin</a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.register.get_dashboard.html">phenotypic.tools_.register.get_dashboard</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.register.get_plotter.html">phenotypic.tools_.register.get_plotter</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.register.register_analysis.html">phenotypic.tools_.register.register_analysis</a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.register.register_dashboard.html">phenotypic.tools_.register.register_dashboard</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.register.register_plotter.html">phenotypic.tools_.register.register_plotter</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.register.AnalysisPluginRegistry.html">phenotypic.tools_.register.AnalysisPluginRegistry</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.register.BaseRegistry.html">phenotypic.tools_.register.BaseRegistry</a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.register.DashboardRegistry.html">phenotypic.tools_.register.DashboardRegistry</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.register.PlotterRegistry.html">phenotypic.tools_.register.PlotterRegistry</a></li>
 </ul>
 </details></li>
@@ -930,6 +939,56 @@
 </ul>
 </details></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.slurm_.html">phenotypic.tools_.slurm_</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.tune.html">phenotypic.tune</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.build_pipeline.html">phenotypic.tune.build_pipeline</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.infer_group_key.html">phenotypic.tune.infer_group_key</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.compute_generalization_gap.html">phenotypic.tune.compute_generalization_gap</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.run_held_out.html">phenotypic.tune.run_held_out</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.compute_param_importance.html">phenotypic.tune.compute_param_importance</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.compute_param_importance_report.html">phenotypic.tune.compute_param_importance_report</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.count_free_params.html">phenotypic.tune.count_free_params</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.screening_warmup_floor.html">phenotypic.tune.screening_warmup_floor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.select_params_to_freeze.html">phenotypic.tune.select_params_to_freeze</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.freeze_value.html">phenotypic.tune.freeze_value</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.build_reduced_space.html">phenotypic.tune.build_reduced_space</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.run_tuning.html">phenotypic.tune.run_tuning</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.infer_search_space.html">phenotypic.tune.infer_search_space</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.run_auto_space.html">phenotypic.tune.run_auto_space</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.Categorical.html">phenotypic.tune.Categorical</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.IntRange.html">phenotypic.tune.IntRange</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.FloatRange.html">phenotypic.tune.FloatRange</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.Fixed.html">phenotypic.tune.Fixed</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.Knob.html">phenotypic.tune.Knob</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.SearchSpace.html">phenotypic.tune.SearchSpace</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.StrategyConfig.html">phenotypic.tune.StrategyConfig</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.GridConfig.html">phenotypic.tune.GridConfig</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.RandomConfig.html">phenotypic.tune.RandomConfig</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.OptunaConfig.html">phenotypic.tune.OptunaConfig</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.Scorer.html">phenotypic.tune.Scorer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.QCScorer.html">phenotypic.tune.QCScorer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.ReferenceFreeScorer.html">phenotypic.tune.ReferenceFreeScorer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.GroundTruthMasks.html">phenotypic.tune.GroundTruthMasks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.SupervisedScorer.html">phenotypic.tune.SupervisedScorer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.CompositeScorer.html">phenotypic.tune.CompositeScorer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.Evaluator.html">phenotypic.tune.Evaluator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.EvaluationResult.html">phenotypic.tune.EvaluationResult</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.HeldOutConfig.html">phenotypic.tune.HeldOutConfig</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.GeneralizationReport.html">phenotypic.tune.GeneralizationReport</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.TuningEngine.html">phenotypic.tune.TuningEngine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.TuningSpec.html">phenotypic.tune.TuningSpec</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.Budget.html">phenotypic.tune.Budget</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.StudyStore.html">phenotypic.tune.StudyStore</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.JournalStudyStore.html">phenotypic.tune.JournalStudyStore</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.Trial.html">phenotypic.tune.Trial</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.ImportanceReport.html">phenotypic.tune.ImportanceReport</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.ScreeningController.html">phenotypic.tune.ScreeningController</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.ScreeningConfig.html">phenotypic.tune.ScreeningConfig</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.ScreeningResult.html">phenotypic.tune.ScreeningResult</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.TuneSpec.html">phenotypic.tune.TuneSpec</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.InferredSearchSpace.html">phenotypic.tune.InferredSearchSpace</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.Excluded.html">phenotypic.tune.Excluded</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.util.html">phenotypic.util</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>

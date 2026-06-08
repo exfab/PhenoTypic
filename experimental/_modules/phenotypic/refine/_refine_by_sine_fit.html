@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -563,9 +563,9 @@
 <span></span><span class="sd">&quot;&quot;&quot;Grid-aligned object refinement using sinusoidal cross-correlation.</span>
 
 <span class="sd">Refines detected colonies by filtering to keep only the dominant object in each grid cell,</span>
-<span class="sd">using FFT-based sinusoidal cross-correlation (gitter-faithful, Wagih &amp; Parts 2014) for</span>
-<span class="sd">grid edge estimation. More robust to outlier colonies than simple peak-finding because</span>
-<span class="sd">rank-based Spearman correlation is insensitive to monotonic intensity transformations.</span>
+<span class="sd">using FFT-based sinusoidal cross-correlation for grid edge estimation. This is inspired</span>
+<span class="sd">by projection-based grid quantification work such as gitter, but the sinusoidal template</span>
+<span class="sd">and rank-transform correlation are implementation-specific extensions.</span>
 <span class="sd">&quot;&quot;&quot;</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
@@ -590,65 +590,85 @@
 <div class="viewcode-block" id="RefineBySineFit">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.refine.html#phenotypic.refine.RefineBySineFit">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">RefineBySineFit</span><span class="p">(</span><span class="n">GridInferenceMixin</span><span class="p">,</span> <span class="n">ObjectRefiner</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Retain only grid-aligned colonies using sinusoidal cross-correlation for grid estimation.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Retain only grid-aligned colonies using sinusoidal cross-correlation for grid edge estimation.</span>
 
 <span class="sd">    Estimates grid edges by computing FFT-based normalized cross-correlation</span>
-<span class="sd">    against a sinusoidal template of expected colony periodicity, then keeps</span>
-<span class="sd">    one dominant object per cell. Rank-based (Spearman) correlation provides</span>
-<span class="sd">    robustness to outlier colony intensities and monotonic intensity</span>
-<span class="sd">    transformations compared to simple peak-finding.</span>
+<span class="sd">    of rank-transformed projection profiles against a sinusoidal template of</span>
+<span class="sd">    expected colony periodicity, then retains one object per cell according</span>
+<span class="sd">    to the chosen selection strategy. Rank-transforming the profile before</span>
+<span class="sd">    correlation (a Spearman-style step) makes the grid estimate robust to</span>
+<span class="sd">    outlier colony intensities and to monotonic intensity transformations,</span>
+<span class="sd">    compared to direct peak-finding on raw intensity profiles.</span>
+
+<span class="sd">    For a comparison of grid refinement approaches, see</span>
+<span class="sd">    :doc:`/explanation/refinement_strategies`.</span>
+
+<span class="sd">    Best For:</span>
+<span class="sd">        - Gridded plates (96-well, 384-well, pinned cultures) where colony</span>
+<span class="sd">          sizes or intensities are heterogeneous or unevenly grown.</span>
+<span class="sd">        - Post-detection cleanup when simple projection-peak grid estimation</span>
+<span class="sd">          misses or misaligns grid lines due to variable colony brightness.</span>
+<span class="sd">        - Plates with large empty sectors where direct intensity peak-finding</span>
+<span class="sd">          loses periodicity signal.</span>
+
+<span class="sd">    Consider Also:</span>
+<span class="sd">        - :class:`GridAlignmentRefiner` for faster grid estimation when</span>
+<span class="sd">          colony intensities are relatively uniform across the plate.</span>
+<span class="sd">        - :class:`KeepSectionLargest` for a simpler largest-per-cell</span>
+<span class="sd">          strategy on ``GridImage`` inputs where grid metadata is</span>
+<span class="sd">          already available.</span>
+<span class="sd">        - :class:`ReduceSectionsByLine` for regression-based reduction of</span>
+<span class="sd">          multi-detections within grid cells after grid edges are known.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        smoothing_sigma: Gaussian smoothing sigma for intensity profiles.</span>
-<span class="sd">            Typical range: 0.5--5.0. Higher values smooth noise but may</span>
-<span class="sd">            merge adjacent peaks. Default: 2.0.</span>
-<span class="sd">        min_peak_distance: Minimum pixel distance between grid peaks.</span>
-<span class="sd">            ``None`` auto-estimates. Default: None.</span>
-<span class="sd">        peak_prominence: Minimum prominence for peak detection. ``None``</span>
-<span class="sd">            auto-calculates. Default: None.</span>
-<span class="sd">        edge_refinement: Refine grid edges using local intensity minima.</span>
-<span class="sd">            Default: True.</span>
-<span class="sd">        correlation_threshold: Minimum NCC value for a valid peak.</span>
-<span class="sd">            Typical range: 0.1--0.6. Lower values accept weaker matches;</span>
-<span class="sd">            higher values are more selective. Default: 0.3.</span>
-<span class="sd">        selection_mode: Strategy for choosing one object per cell.</span>
-<span class="sd">            ``&quot;dominant&quot;`` keeps the largest, ``&quot;centered&quot;`` keeps the</span>
-<span class="sd">            most centered, ``&quot;regularized&quot;`` fits a global model.</span>
-<span class="sd">            Default: ``&quot;dominant&quot;``.</span>
+<span class="sd">        smoothing_sigma: Standard deviation (pixels) of the Gaussian applied</span>
+<span class="sd">            to row and column projection profiles before cross-correlation.</span>
+<span class="sd">            Higher values suppress noise in sparse or uneven profiles but</span>
+<span class="sd">            risk merging adjacent peaks on dense plates. Typical range:</span>
+<span class="sd">            0.5--5.0. Default: 2.0.</span>
+<span class="sd">        min_peak_distance: Minimum pixel distance between detected grid peaks.</span>
+<span class="sd">            ``None`` auto-estimates from expected colony spacing. Increase</span>
+<span class="sd">            to avoid spurious sub-peaks on large plates. Default: ``None``.</span>
+<span class="sd">        peak_prominence: Minimum peak prominence in the cross-correlation</span>
+<span class="sd">            profile. ``None`` auto-computes as 10% of the profile range.</span>
+<span class="sd">            Raise to suppress weak periodicity signals from noisy plates.</span>
+<span class="sd">            Default: ``None``.</span>
+<span class="sd">        edge_refinement: Refine estimated grid edges by snapping to local</span>
+<span class="sd">            intensity minima between detected peaks. Disable on plates with</span>
+<span class="sd">            variable inter-colony spacing. Default: ``True``.</span>
+<span class="sd">        correlation_threshold: Minimum normalized cross-correlation value</span>
+<span class="sd">            required to accept a peak as a valid grid position. Lower values</span>
+<span class="sd">            recover peaks on sparse or faint plates; higher values are more</span>
+<span class="sd">            selective and suppress false periodicity. Typical range:</span>
+<span class="sd">            0.1--0.6. Default: 0.3.</span>
+<span class="sd">        selection_mode: Strategy for keeping one object per grid cell.</span>
+<span class="sd">            ``&quot;dominant&quot;`` retains the largest object by area; ``&quot;centered&quot;``</span>
+<span class="sd">            retains the object closest to the cell centroid; ``&quot;regularized&quot;``</span>
+<span class="sd">            fits a global spatial model. Default: ``&quot;dominant&quot;``.</span>
+<span class="sd">        split_merged: Attempt to split objects that span multiple grid cells</span>
+<span class="sd">            before applying per-cell selection. Default: ``False``.</span>
 
 <span class="sd">    Returns:</span>
-<span class="sd">        Image: Input image with ``objmap`` filtered to grid-aligned objects</span>
-<span class="sd">        and ``objmask`` updated to match.</span>
+<span class="sd">        Image: Input image with ``objmap`` filtered to at most one grid-</span>
+<span class="sd">        aligned object per cell and ``objmask`` updated to match. ``rgb``,</span>
+<span class="sd">        ``gray``, and ``detect_mat`` are unchanged.</span>
 
 <span class="sd">    Raises:</span>
 <span class="sd">        ValueError: If grid inference fails or image lacks detection results.</span>
 
-<span class="sd">    Best For:</span>
-<span class="sd">        - Gridded plates (96-well, 384-well, pinned cultures) where colony</span>
-<span class="sd">          intensities are heterogeneous or unevenly grown.</span>
-<span class="sd">        - Post-detection cleanup when simple peak-finding grid estimation</span>
-<span class="sd">          is unreliable.</span>
-<span class="sd">        - Plates with variable colony sizes or uneven growth where rank-based</span>
-<span class="sd">          correlation outperforms direct intensity matching.</span>
-
-<span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`GridAlignmentRefiner` for faster grid estimation when</span>
-<span class="sd">          colony intensities are relatively uniform.</span>
-<span class="sd">        - :class:`KeepSectionLargest` for a simpler largest-per-cell</span>
-<span class="sd">          strategy on GridImage inputs.</span>
-<span class="sd">        - :class:`ReduceSectionsByLine` for regression-based multi-</span>
-<span class="sd">          detection reduction within grid cells.</span>
-
 <span class="sd">    References:</span>
 <span class="sd">        [1] O. Wagih and L. Parts, &quot;gitter: a robust and accurate method</span>
 <span class="sd">        for quantification of colony sizes from plate images,&quot; *G3</span>
-<span class="sd">        (Bethesda)*, vol. 4, no. 3, pp. 547--552, 2014.</span>
+<span class="sd">        (Bethesda)*, vol. 4, no. 3, pp. 547--552, Mar. 2014. Prior work on</span>
+<span class="sd">        correlation-based grid-colony quantification from plate images; the</span>
+<span class="sd">        sinusoidal cross-correlation and rank-transform steps used here are</span>
+<span class="sd">        not drawn from this paper.</span>
 
 <span class="sd">    See Also:</span>
 <span class="sd">        :doc:`/how_to/notebooks/refine_noisy_boundaries` for grid-based</span>
-<span class="sd">        cleanup workflows.</span>
+<span class="sd">        cleanup workflows on real plate images.</span>
 <span class="sd">        :doc:`/explanation/refinement_strategies` for a comparison of</span>
-<span class="sd">        grid refinement approaches.</span>
+<span class="sd">        grid refinement approaches and grid inference methods.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">smoothing_sigma</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.0</span>
@@ -727,12 +747,13 @@
                         <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="nb">object</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>  <span class="c1"># type: ignore[override]</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Estimate grid edges using sinusoidal cross-correlation.</span>
 
-<span class="sd">        Overrides GridInferenceMixin._estimate_edges with a gitter-faithful</span>
+<span class="sd">        Overrides GridInferenceMixin._estimate_edges with a projection-based</span>
 <span class="sd">        approach: generates a sine template matching expected colony periodicity,</span>
 <span class="sd">        computes FFT-based normalized cross-correlation against the projection</span>
 <span class="sd">        signal, and selects peaks from the correlation output. Rank-based</span>
-<span class="sd">        (Spearman) correlation provides robustness to outliers and monotonic</span>
-<span class="sd">        intensity transformations.</span>
+<span class="sd">        (Spearman-style) correlation provides robustness to outliers and</span>
+<span class="sd">        monotonic intensity transformations. The sinusoidal template and</span>
+<span class="sd">        rank-transform steps are not from the gitter paper cited above.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            binary_image: Binary mask of detected colonies.</span>

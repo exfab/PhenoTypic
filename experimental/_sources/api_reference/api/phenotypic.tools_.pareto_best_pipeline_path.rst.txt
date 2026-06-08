@@ -1,0 +1,6 @@
+phenotypic.tools\_.pareto\_best\_pipeline\_path
+===============================================
+
+.. currentmodule:: phenotypic.tools_
+
+.. autofunction:: pareto_best_pipeline_path

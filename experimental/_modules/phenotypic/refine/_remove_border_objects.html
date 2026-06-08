@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -575,38 +575,52 @@
 <div class="viewcode-block" id="RemoveBorderObjects">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.refine.html#phenotypic.refine.RemoveBorderObjects">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">RemoveBorderObjects</span><span class="p">(</span><span class="n">ObjectRefiner</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Remove colonies that touch the image border within a configurable margin.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Remove colonies that touch or overlap the image border within a configurable margin.</span>
 
-<span class="sd">    Zeroes any labeled objects in ``objmap`` whose pixels fall within a</span>
-<span class="sd">    border band, ensuring only fully contained colonies are analyzed.</span>
-<span class="sd">    Partial edge colonies bias size and shape measurements.</span>
+<span class="sd">    Identifies all labeled objects whose pixels fall within the exclusion</span>
+<span class="sd">    band along any edge, then zeros those labels from ``objmap``. Colonies</span>
+<span class="sd">    that are fully interior are unaffected. Partial border colonies bias</span>
+<span class="sd">    area, perimeter, and shape measurements and should be excluded before</span>
+<span class="sd">    phenotyping.</span>
 
-<span class="sd">    Args:</span>
-<span class="sd">        border_size: Width of the exclusion border. ``None`` uses 1% of</span>
-<span class="sd">            the smaller dimension. Float in (0, 1) is a fraction of the</span>
-<span class="sd">            image size. Int or float &gt;= 1 is absolute pixels. Default: 1.</span>
-
-<span class="sd">    Returns:</span>
-<span class="sd">        Image: Input image with ``objmask`` and ``objmap`` updated to</span>
-<span class="sd">        exclude border-touching objects.</span>
-
-<span class="sd">    Raises:</span>
-<span class="sd">        TypeError: If ``border_size`` type is invalid.</span>
+<span class="sd">    For an overview of refinement strategies, see</span>
+<span class="sd">    :doc:`/explanation/refinement_strategies`.</span>
 
 <span class="sd">    Best For:</span>
-<span class="sd">        - Plates where the plate rim or image crop truncates edge colonies.</span>
-<span class="sd">        - Grid assays where border wells are partially visible.</span>
-<span class="sd">        - Automated crops that shift between frames.</span>
+<span class="sd">        - Plates where the plate rim or scanner shadow truncates edge</span>
+<span class="sd">          colonies, making size measurements unreliable.</span>
+<span class="sd">        - Grid assays where border wells are only partially visible within</span>
+<span class="sd">          the image crop.</span>
+<span class="sd">        - Time-lapse or batch workflows where automated crops may shift</span>
+<span class="sd">          between frames, intermittently clipping the same edge colonies.</span>
 
 <span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`SmallObjectRemover` for removing noise fragments that are</span>
-<span class="sd">          not necessarily at the border.</span>
-<span class="sd">        - :class:`GridOversizedObjectRemover` for removing abnormally large</span>
-<span class="sd">          objects that span multiple grid sections.</span>
+<span class="sd">        - :class:`SmallObjectRemover` when the target artefacts are small</span>
+<span class="sd">          noise fragments scattered across the plate, not limited to the</span>
+<span class="sd">          border region.</span>
+<span class="sd">        - :class:`GridOversizedObjectRemover` when the problem is objects</span>
+<span class="sd">          that span multiple grid sections rather than partial border</span>
+<span class="sd">          colonies.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        border_size: Width of the exclusion band along each image edge.</span>
+<span class="sd">            ``None`` defaults to 1% of the smaller image dimension.</span>
+<span class="sd">            A float in ``(0, 1)`` is interpreted as a fraction of the</span>
+<span class="sd">            smaller image dimension. An integer or float ``&gt;= 1`` is</span>
+<span class="sd">            treated as an absolute pixel count. Typical range: 1--30 px.</span>
+<span class="sd">            Default: 1.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Image: Input image with ``objmap`` and ``objmask`` updated to</span>
+<span class="sd">        exclude all labeled objects that touch the exclusion border.</span>
+<span class="sd">        ``rgb``, ``gray``, and ``detect_mat`` are unchanged.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        TypeError: If ``border_size`` is not an integer, float, or ``None``.</span>
 
 <span class="sd">    See Also:</span>
 <span class="sd">        :doc:`/how_to/notebooks/refine_noisy_boundaries` for a walkthrough</span>
-<span class="sd">        of refinement operations.</span>
+<span class="sd">        of border and edge refinement on real plate images.</span>
 <span class="sd">        :doc:`/explanation/refinement_strategies` for choosing the right</span>
 <span class="sd">        refinement sequence.</span>
 <span class="sd">    &quot;&quot;&quot;</span>

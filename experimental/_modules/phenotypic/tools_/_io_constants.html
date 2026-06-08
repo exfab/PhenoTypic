@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -703,6 +703,67 @@
 <span class="c1">#: :func:`readme_md_path`.</span>
 <span class="n">README_MD</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;README.md&quot;</span>
 
+<span class="c1">#: The resolved ``tuning_spec.json`` echoed by ``python -m phenotypic.tune``</span>
+<span class="c1">#: into :data:`DIR_DELIVERABLES` — the self-contained, re-runnable recipe.</span>
+<span class="n">TUNING_SPEC_JSON</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;tuning_spec.json&quot;</span>
+
+<span class="c1">#: The winning ``best_pipeline.json`` written by the tune CLI into</span>
+<span class="c1">#: :data:`DIR_DELIVERABLES`; reloads as a runnable ``ImagePipeline``.</span>
+<span class="n">BEST_PIPELINE_JSON</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;best_pipeline.json&quot;</span>
+
+<span class="c1">#: The RF-permutation ``param_importance.json`` report written by the tune</span>
+<span class="c1">#: CLI into :data:`DIR_DELIVERABLES`.</span>
+<span class="n">PARAM_IMPORTANCE_JSON</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;param_importance.json&quot;</span>
+
+<span class="c1">#: The tune trial journal ``trials.parquet`` written at the output-dir root</span>
+<span class="c1">#: (powers CLI resume), not under :data:`DIR_DELIVERABLES`.</span>
+<span class="n">TRIALS_PARQUET</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;trials.parquet&quot;</span>
+
+<span class="c1">#: The canonical Optuna study database ``study.db`` (SQLite WAL) written inside</span>
+<span class="c1">#: the hidden tune cache (:data:`DIR_PHT_TUNE_CACHE`). Holds the Optuna-backed</span>
+<span class="c1">#: store&#39;s persistent, resumable sampler state when the ``tune`` extra is used.</span>
+<span class="c1">#: A legacy run wrote it at the output root; :func:`resolve_study_db_path` reads</span>
+<span class="c1">#: either location (no migration).</span>
+<span class="n">STUDY_DB</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;study.db&quot;</span>
+
+<span class="c1">#: The robust-eval held-out split assignment ``split.json`` written inside</span>
+<span class="c1">#: :data:`DIR_SPLITS`. A machine-state sidecar — it must survive a</span>
+<span class="c1">#: fresh-master rewrite and gate resume — so it lives in the hidden tune cache</span>
+<span class="c1">#: (:data:`DIR_PHT_TUNE_CACHE`), not under :data:`DIR_DELIVERABLES`. See</span>
+<span class="c1">#: :func:`tune_cache_split_assignment_path`.</span>
+<span class="n">SPLIT_ASSIGNMENT_JSON</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;split.json&quot;</span>
+
+<span class="c1">#: The tune-run marker ``run.json`` written into :data:`DIR_PHT_TUNE_CACHE` at</span>
+<span class="c1">#: run START (before any deliverable exists), so the GUI shell classifier can</span>
+<span class="c1">#: recognise a live or finished tune output even before ``deliverables/`` lands.</span>
+<span class="c1">#: Carries the study identity + storage URL + run policy. See</span>
+<span class="c1">#: :func:`tune_cache_run_marker_path`.</span>
+<span class="n">RUN_MARKER_JSON</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;run.json&quot;</span>
+
+<span class="c1">#: The robust-eval generalization report ``generalization.json`` written into</span>
+<span class="c1">#: :data:`DIR_DELIVERABLES` — a user-facing deliverable (the winner&#39;s held-out</span>
+<span class="c1">#: gap verdict). See :func:`generalization_path`.</span>
+<span class="n">GENERALIZATION_JSON</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;generalization.json&quot;</span>
+
+<span class="c1">#: The Pareto-front parquet written by a **multi-objective** tune run into</span>
+<span class="c1">#: :data:`DIR_PARETO` (under ``deliverables/``). One row per non-dominated trial</span>
+<span class="c1">#: (the same schema as :data:`TRIALS_PARQUET`, with ``objectives_json`` populated).</span>
+<span class="n">PARETO_FRONT_PARQUET</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;pareto_front.parquet&quot;</span>
+
+<span class="c1">#: Per-objective best-pipeline filename template written into :data:`DIR_PARETO`:</span>
+<span class="c1">#: ``best_&lt;objective&gt;.json`` (e.g. ``best_Dice.json``, ``best_s0.json``). One per</span>
+<span class="c1">#: objective axis — the pipeline maximizing that single objective on the front.</span>
+<span class="c1">#: Rendered by :func:`pareto_best_pipeline_path`; kept private (a parameterized</span>
+<span class="c1">#: string is not an enumeration — see the code-style note on render functions).</span>
+<span class="n">_PARETO_BEST_PIPELINE_FILENAME_TEMPLATE</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;best_</span><span class="si">{objective}</span><span class="s2">.json&quot;</span>
+
+<span class="c1">#: Per-objective param-importance filename template written into :data:`DIR_PARETO`:</span>
+<span class="c1">#: ``param_importance_&lt;objective&gt;.json`` (e.g. ``param_importance_s0.json``). The</span>
+<span class="c1">#: multi-objective sibling of :data:`PARAM_IMPORTANCE_JSON` — one RF-permutation</span>
+<span class="c1">#: importance report per objective axis. Rendered by :func:`pareto_importance_path`;</span>
+<span class="c1">#: kept private (a parameterized string is not an enumeration).</span>
+<span class="n">_PARETO_IMPORTANCE_FILENAME_TEMPLATE</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;param_importance_</span><span class="si">{objective}</span><span class="s2">.json&quot;</span>
+
 <span class="c1"># ---------------------------------------------------------------------------</span>
 <span class="c1"># QC artifact filenames (live inside DIR_QC)</span>
 <span class="c1"># ---------------------------------------------------------------------------</span>
@@ -866,6 +927,20 @@
 <span class="c1">#: roots at :func:`deliverables_dir`.</span>
 <span class="n">DIR_DELIVERABLES</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;deliverables&quot;</span>
 
+<span class="c1">#: ``splits/`` — the robust-eval held-out **split assignment** sidecar folder</span>
+<span class="c1">#: (holds :data:`SPLIT_ASSIGNMENT_JSON`). Lives inside the hidden tune cache</span>
+<span class="c1">#: (:data:`DIR_PHT_TUNE_CACHE`), **not** under :data:`DIR_DELIVERABLES`: the</span>
+<span class="c1">#: split is machine state that must survive a fresh-master rewrite and gate</span>
+<span class="c1">#: resume. See :func:`tune_cache_splits_dir`.</span>
+<span class="n">DIR_SPLITS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;splits&quot;</span>
+
+<span class="c1">#: ``&lt;output&gt;/deliverables/pareto/`` — the **multi-objective** sub-folder holding</span>
+<span class="c1">#: the Pareto front parquet (:data:`PARETO_FRONT_PARQUET`) and the per-objective</span>
+<span class="c1">#: best pipelines (:func:`pareto_best_pipeline_path`). Written only by a</span>
+<span class="c1">#: multi-objective tune run; a single-objective run never creates it (the</span>
+<span class="c1">#: back-compat lock — plan §0b). Rooted under :func:`deliverables_dir`.</span>
+<span class="n">DIR_PARETO</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;pareto&quot;</span>
+
 <span class="c1">#: ``&lt;output&gt;/.phenotypic/`` — hidden machine-state cache root. Holds the</span>
 <span class="c1">#: run&#39;s progress/, processing_state.json, and processing_events.log. Hidden</span>
 <span class="c1">#: so it does not clutter the user-facing output folder and is skipped by the</span>
@@ -873,6 +948,17 @@
 <span class="c1">#: ``.phenotypic-gui`` sandbox dir (presets/state) — different root, different</span>
 <span class="c1">#: purpose.</span>
 <span class="n">DIR_PHENOTYPIC</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;.phenotypic&quot;</span>
+
+<span class="c1">#: ``&lt;output&gt;/.pht-tune-cache/`` — hidden machine-state cache root for a **tune**</span>
+<span class="c1">#: run, the sibling of :data:`DIR_PHENOTYPIC` for the forward CLI. Holds the</span>
+<span class="c1">#: Optuna ``study.db`` (+ WAL), the held-out ``splits/split.json``, and the</span>
+<span class="c1">#: GUI-discovery ``run.json`` marker. Hidden so it does not clutter the</span>
+<span class="c1">#: user-facing output and is skipped by the GUI candidate scan; the tune cache</span>
+<span class="c1">#: is kept distinct from ``.phenotypic`` so a directory that hosts both a</span>
+<span class="c1">#: forward run and a tune run never collides their machine-state. Note that</span>
+<span class="c1">#: ``trials.parquet`` is NOT relocated here — it stays at the output root as the</span>
+<span class="c1">#: dual-purpose Optuna-resume + user-facing trial journal.</span>
+<span class="n">DIR_PHT_TUNE_CACHE</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;.pht-tune-cache&quot;</span>
 
 
 <span class="c1"># ---------------------------------------------------------------------------</span>
@@ -1246,6 +1332,282 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">pipeline_json_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/pipeline.json``.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">PIPELINE_JSON</span></div>
+
+
+
+<div class="viewcode-block" id="tuning_spec_path">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.tuning_spec_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">tuning_spec_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/tuning_spec.json`` (the resolved recipe).&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">TUNING_SPEC_JSON</span></div>
+
+
+
+<div class="viewcode-block" id="best_pipeline_path">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.best_pipeline_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">best_pipeline_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/best_pipeline.json`` (the tuned winner).&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">BEST_PIPELINE_JSON</span></div>
+
+
+
+<div class="viewcode-block" id="param_importance_path">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.param_importance_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">param_importance_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/param_importance.json`` (the report).&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">PARAM_IMPORTANCE_JSON</span></div>
+
+
+
+<div class="viewcode-block" id="trials_parquet_path">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.trials_parquet_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">trials_parquet_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/trials.parquet`` (the trial journal; output-dir root).&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">TRIALS_PARQUET</span></div>
+
+
+
+<div class="viewcode-block" id="tune_cache_dir">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.tune_cache_dir">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">tune_cache_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/.pht-tune-cache/`` — the tune run&#39;s machine-state root.</span>
+
+<span class="sd">    The tune-side sibling of :func:`phenotypic_cache_dir`. Pure path expression;</span>
+<span class="sd">    callers ``mkdir`` when they intend to write.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        output_dir: The run output directory.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        ``&lt;output_dir&gt;/.pht-tune-cache/``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">DIR_PHT_TUNE_CACHE</span></div>
+
+
+
+<div class="viewcode-block" id="tune_cache_run_marker_path">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.tune_cache_run_marker_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">tune_cache_run_marker_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/.pht-tune-cache/run.json`` — the tune-run marker.</span>
+
+<span class="sd">    Written at run START (before any deliverable lands) so a live or finished</span>
+<span class="sd">    tune output is GUI-discoverable. See :data:`RUN_MARKER_JSON`.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        output_dir: The run output directory.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        ``&lt;output_dir&gt;/.pht-tune-cache/run.json``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">tune_cache_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">RUN_MARKER_JSON</span></div>
+
+
+
+<div class="viewcode-block" id="tune_cache_study_db_path">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.tune_cache_study_db_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">tune_cache_study_db_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/.pht-tune-cache/study.db`` (the Optuna study DB).</span>
+
+<span class="sd">    The canonical SQLite-WAL storage for the Optuna-backed</span>
+<span class="sd">    :class:`OptunaStudyStore` when the ``tune`` extra is installed, relocated</span>
+<span class="sd">    into the hidden tune cache. A legacy run wrote it at the output root; use</span>
+<span class="sd">    :func:`resolve_study_db_path` to read either location.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        output_dir: The run output directory.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        ``&lt;output_dir&gt;/.pht-tune-cache/study.db``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">tune_cache_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">STUDY_DB</span></div>
+
+
+
+<div class="viewcode-block" id="tune_cache_splits_dir">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.tune_cache_splits_dir">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">tune_cache_splits_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/.pht-tune-cache/splits/`` — the held-out split folder.</span>
+
+<span class="sd">    Machine state that must survive a fresh-master rewrite and gate resume, so</span>
+<span class="sd">    it lives in the hidden tune cache, **not** under :func:`deliverables_dir`.</span>
+<span class="sd">    Pure path expression; callers ``mkdir`` when they intend to write.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        output_dir: The run output directory.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        ``&lt;output_dir&gt;/.pht-tune-cache/splits/``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">tune_cache_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">DIR_SPLITS</span></div>
+
+
+
+<div class="viewcode-block" id="tune_cache_split_assignment_path">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.tune_cache_split_assignment_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">tune_cache_split_assignment_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/.pht-tune-cache/splits/split.json`` — the held-out split.</span>
+
+<span class="sd">    The persisted calibration / held-out partition (plate names + split kind +</span>
+<span class="sd">    dataset identity + seed entropy). Read-if-exists-else-derive on resume, so</span>
+<span class="sd">    a re-run reuses the original partition regardless of the new master seed. A</span>
+<span class="sd">    legacy run wrote it under ``&lt;output&gt;/splits/``; use</span>
+<span class="sd">    :func:`resolve_split_assignment_path` to read either location.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        output_dir: The run output directory.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        ``&lt;output_dir&gt;/.pht-tune-cache/splits/split.json``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">tune_cache_splits_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">SPLIT_ASSIGNMENT_JSON</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_legacy_study_db_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Pre-relocation location: ``&lt;output&gt;/study.db``.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">STUDY_DB</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_legacy_split_assignment_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Pre-relocation location: ``&lt;output&gt;/splits/split.json``.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">DIR_SPLITS</span> <span class="o">/</span> <span class="n">SPLIT_ASSIGNMENT_JSON</span>
+
+
+<div class="viewcode-block" id="resolve_study_db_path">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.resolve_study_db_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">resolve_study_db_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the study DB that exists, preferring ``.pht-tune-cache/``.</span>
+
+<span class="sd">    Read-only resolver: a relocated run keeps ``study.db`` under the hidden tune</span>
+<span class="sd">    cache; a legacy run kept it at the output root. Falls back to the new</span>
+<span class="sd">    location when neither exists (so a cold sampler restart from a missing</span>
+<span class="sd">    ``study.db`` is harmless — no migration is performed).</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        output_dir: The run output directory.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        The study DB path that exists, else the new cache location.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">new</span> <span class="o">=</span> <span class="n">tune_cache_study_db_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">new</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="k">return</span> <span class="n">new</span>
+    <span class="n">legacy</span> <span class="o">=</span> <span class="n">_legacy_study_db_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">legacy</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="k">return</span> <span class="n">legacy</span>
+    <span class="k">return</span> <span class="n">new</span></div>
+
+
+
+<div class="viewcode-block" id="resolve_split_assignment_path">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.resolve_split_assignment_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">resolve_split_assignment_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the split assignment that exists, preferring ``.pht-tune-cache/``.</span>
+
+<span class="sd">    Read-only resolver mirroring :func:`resolve_progress_dir`. The held-out</span>
+<span class="sd">    split is checked in the hidden tune cache FIRST, THEN at the legacy output</span>
+<span class="sd">    root — a missing split silently RE-DERIVES a fresh held-out partition on</span>
+<span class="sd">    resume (a reproducibility / held-out-leak bug), so resume MUST find a</span>
+<span class="sd">    legacy-root ``split.json``. Falls back to the new location when neither</span>
+<span class="sd">    exists (the default for a fresh derive-and-write).</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        output_dir: The run output directory.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        The split-assignment path that exists, else the new cache location.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">new</span> <span class="o">=</span> <span class="n">tune_cache_split_assignment_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">new</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="k">return</span> <span class="n">new</span>
+    <span class="n">legacy</span> <span class="o">=</span> <span class="n">_legacy_split_assignment_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">legacy</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="k">return</span> <span class="n">legacy</span>
+    <span class="k">return</span> <span class="n">new</span></div>
+
+
+
+<div class="viewcode-block" id="generalization_path">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.generalization_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">generalization_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/generalization.json`` — the held-out report.</span>
+
+<span class="sd">    The winner&#39;s generalization verdict (calibration vs held-out score, the gap,</span>
+<span class="sd">    and the pass/fail margin), a user-facing deliverable. The held-out pass that</span>
+<span class="sd">    writes it is Phase 4.5 part 2; this helper resolves the canonical location.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        output_dir: The run output directory.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        ``&lt;output_dir&gt;/deliverables/generalization.json``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">GENERALIZATION_JSON</span></div>
+
+
+
+<div class="viewcode-block" id="pareto_dir">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.pareto_dir">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">pareto_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/pareto/`` — the multi-objective sub-folder.</span>
+
+<span class="sd">    Holds a multi-objective tune run&#39;s Pareto front + per-objective best</span>
+<span class="sd">    pipelines. A single-objective run never creates it (the back-compat lock).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">DIR_PARETO</span></div>
+
+
+
+<div class="viewcode-block" id="pareto_front_parquet_path">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.pareto_front_parquet_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">pareto_front_parquet_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/pareto/pareto_front.parquet`` (the front).&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">pareto_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">PARETO_FRONT_PARQUET</span></div>
+
+
+
+<div class="viewcode-block" id="pareto_best_pipeline_path">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.pareto_best_pipeline_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">pareto_best_pipeline_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">objective</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``deliverables/pareto/best_&lt;objective&gt;.json`` (a per-axis winner).</span>
+
+<span class="sd">    The pipeline maximizing the single ``objective`` axis on the Pareto front.</span>
+<span class="sd">    ``objective`` is the objective name as it appears in ``objectives_json`` (a</span>
+<span class="sd">    scorer-defined label, e.g. ``&quot;Dice&quot;`` or a composite child handle ``&quot;s0&quot;``).</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        output_dir: The run directory.</span>
+<span class="sd">        objective: The objective-axis name (the ``best_&lt;objective&gt;.json`` stem).</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        The per-objective best-pipeline path under :func:`pareto_dir`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">pareto_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">_PARETO_BEST_PIPELINE_FILENAME_TEMPLATE</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+        <span class="n">objective</span><span class="o">=</span><span class="n">objective</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="pareto_importance_path">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.pareto_importance_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">pareto_importance_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">objective</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``deliverables/pareto/param_importance_&lt;objective&gt;.json``.</span>
+
+<span class="sd">    The per-objective RF-permutation importance report (the multi-objective</span>
+<span class="sd">    sibling of :func:`param_importance_path`). ``objective`` is the objective</span>
+<span class="sd">    name as it appears in ``objectives_json`` (a scorer-defined label, e.g.</span>
+<span class="sd">    ``&quot;Dice&quot;`` or a composite child handle ``&quot;s0&quot;``).</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        output_dir: The run directory.</span>
+<span class="sd">        objective: The objective-axis name (the filename&#39;s ``&lt;objective&gt;`` slot).</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        The per-objective importance-report path under :func:`pareto_dir`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">pareto_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">_PARETO_IMPORTANCE_FILENAME_TEMPLATE</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+        <span class="n">objective</span><span class="o">=</span><span class="n">objective</span>
+    <span class="p">)</span></div>
 
 
 

@@ -1,0 +1,65 @@
+phenotypic.tune.CompositeScorer
+===============================
+
+.. currentmodule:: phenotypic.tune
+
+.. autoclass:: CompositeScorer
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~CompositeScorer.__init__
+      ~CompositeScorer.availability
+      ~CompositeScorer.construct
+      ~CompositeScorer.copy
+      ~CompositeScorer.dict
+      ~CompositeScorer.finalize
+      ~CompositeScorer.from_orm
+      ~CompositeScorer.json
+      ~CompositeScorer.model_construct
+      ~CompositeScorer.model_copy
+      ~CompositeScorer.model_dump
+      ~CompositeScorer.model_dump_json
+      ~CompositeScorer.model_json_schema
+      ~CompositeScorer.model_parametrized_name
+      ~CompositeScorer.model_post_init
+      ~CompositeScorer.model_rebuild
+      ~CompositeScorer.model_validate
+      ~CompositeScorer.model_validate_json
+      ~CompositeScorer.model_validate_strings
+      ~CompositeScorer.objective_names
+      ~CompositeScorer.parse_file
+      ~CompositeScorer.parse_obj
+      ~CompositeScorer.parse_raw
+      ~CompositeScorer.schema
+      ~CompositeScorer.schema_json
+      ~CompositeScorer.score_image
+      ~CompositeScorer.update_forward_refs
+      ~CompositeScorer.validate
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~CompositeScorer.model_computed_fields
+      ~CompositeScorer.model_config
+      ~CompositeScorer.model_extra
+      ~CompositeScorer.model_fields
+      ~CompositeScorer.model_fields_set
+      ~CompositeScorer.scorers
+      ~CompositeScorer.weights
+      ~CompositeScorer.multi_objective
+   
+   

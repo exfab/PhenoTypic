@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -579,56 +579,77 @@
 <div class="viewcode-block" id="StructureSmoothing">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.enhance.html#phenotypic.enhance.StructureSmoothing">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">StructureSmoothing</span><span class="p">(</span><span class="n">Smoothing</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Enhance filamentous structures via anisotropic coherence-enhancing diffusion.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Enhance filamentous structures in ``detect_mat`` via coherence-enhancing anisotropic diffusion.</span>
 
-<span class="sd">    Smooths ``detect_mat`` preferentially along coherent structures (lines,</span>
-<span class="sd">    ridges, edges) while preserving boundaries perpendicular to them. Uses the</span>
-<span class="sd">    structure tensor to estimate local orientation and applies directional</span>
-<span class="sd">    diffusion that follows elongated features such as fungal hyphae, streak</span>
+<span class="sd">    Iteratively smooths the image preferentially along locally coherent</span>
+<span class="sd">    orientations while suppressing diffusion across boundaries. A two-scale</span>
+<span class="sd">    structure tensor (noise scale ``sigma``, integration scale ``rho``)</span>
+<span class="sd">    estimates local orientation at each step, and the diffusion tensor</span>
+<span class="sd">    is oriented to follow elongated features such as fungal hyphae, streak</span>
 <span class="sd">    inoculations, and branching colony morphologies.</span>
 
 <span class="sd">    For algorithm details, see :doc:`/explanation/what_enhancement_does`.</span>
 
+<span class="sd">    Best For:</span>
+<span class="sd">        - Filamentous fungal hyphae (Aspergillus, Penicillium, molds) where</span>
+<span class="sd">          branching mycelial networks need reinforcement before ridge detection.</span>
+<span class="sd">        - Streak inoculation patterns where colonies grow along lines.</span>
+<span class="sd">        - Preprocessing before :class:`FocusEdgeSato`, :class:`FocusEdgeFrangi`,</span>
+<span class="sd">          or :class:`FocusEdgeMeijering` to reduce noise without erasing</span>
+<span class="sd">          tubular structures.</span>
+<span class="sd">        - Faint elongated features in low-contrast or noisy plate scans.</span>
+
+<span class="sd">    Consider Also:</span>
+<span class="sd">        - :class:`LocalEdgeDenoise` for isotropic edge-preserving denoising</span>
+<span class="sd">          of round colonies where directional enhancement is not needed.</span>
+<span class="sd">        - :class:`FocusEdgeSato` for direct ridge detection on images that</span>
+<span class="sd">          are already clean enough to skip a diffusion preprocessing step.</span>
+<span class="sd">        - :class:`GaussianBlur` when isotropic smoothing is sufficient and</span>
+<span class="sd">          directional selectivity is not required.</span>
+
 <span class="sd">    Args:</span>
-<span class="sd">        num_iter: Number of diffusion iterations. Typical range: 5--100.</span>
-<span class="sd">            Small values (5--10) give subtle enhancement; medium values</span>
-<span class="sd">            (15--30) are typical; large values (50--100) provide heavy</span>
-<span class="sd">            smoothing. Default: 20.</span>
-<span class="sd">        sigma: Noise/derivative scale for Gaussian gradient computation.</span>
-<span class="sd">            Match to the width of structures to enhance. Typical range:</span>
-<span class="sd">            0.5--5.0. Default: 1.5.</span>
-<span class="sd">        rho: Integration scale for structure tensor smoothing. Must be</span>
-<span class="sd">            &gt;= ``sigma``. ``None`` (default) uses ``sigma`` (single-scale</span>
-<span class="sd">            mode). Typical values: 2--3x ``sigma``.</span>
-<span class="sd">        dt: Time step per iteration. Must satisfy the 2D forward-Euler</span>
-<span class="sd">            stability bound (&lt;=0.125). Typical range: 0.05--0.125.</span>
-<span class="sd">            Default: 0.1.</span>
-<span class="sd">        alpha: Minimum diffusivity (0 &lt; alpha &lt; 1). Small values (0.001)</span>
-<span class="sd">            maximize anisotropy; larger values (0.01--0.1) add isotropic</span>
-<span class="sd">            smoothing. Default: 0.001.</span>
-<span class="sd">        C: Contrast percentile (0 &lt; C &lt;= 100) for the adaptive coherence</span>
-<span class="sd">            threshold. Higher values restrict anisotropy to the most</span>
-<span class="sd">            coherent structures. Default: 99.</span>
+<span class="sd">        num_iter: Number of diffusion iterations. Each iteration advances</span>
+<span class="sd">            the PDE one time step of size ``dt``; the total diffusion extent</span>
+<span class="sd">            is proportional to ``num_iter * dt``. Typical range: 5--100;</span>
+<span class="sd">            values 15--30 are the practical working range for most plate-scan</span>
+<span class="sd">            images. Default: 20.</span>
+<span class="sd">        sigma: Noise scale for Gaussian derivative computation in pixels.</span>
+<span class="sd">            Sets the spatial frequency band at which local orientation is</span>
+<span class="sd">            estimated. Match to the half-width of structures to enhance:</span>
+<span class="sd">            fine hyphae (&lt; 3 px) need sigma 0.5--1.0; thick ridges or</span>
+<span class="sd">            streak bands tolerate 2--4. Typical range: 0.5--5.0.</span>
+<span class="sd">            Default: 1.5.</span>
+<span class="sd">        rho: Integration scale for structure tensor smoothing in pixels.</span>
+<span class="sd">            Averaging the outer-product tensor over ``rho`` produces a</span>
+<span class="sd">            smoother orientation field that follows gently curving</span>
+<span class="sd">            structures. Must be &gt;= ``sigma``. ``None`` (default) sets</span>
+<span class="sd">            ``rho = sigma`` (single-scale mode). Typical values: 2--3x</span>
+<span class="sd">            ``sigma``; use values close to ``sigma`` for tight-turning</span>
+<span class="sd">            branching mycelium and larger values for long straight streaks.</span>
+<span class="sd">        dt: Time step per diffusion iteration. Must satisfy the 2D</span>
+<span class="sd">            forward-Euler stability bound (dt &lt;= 0.125). The extent of</span>
+<span class="sd">            smoothing is governed by the total diffusion time</span>
+<span class="sd">            T = ``num_iter * dt``, so prefer adjusting ``num_iter`` rather</span>
+<span class="sd">            than ``dt`` when tuning effect magnitude. Typical range:</span>
+<span class="sd">            0.05--0.125. Default: 0.1.</span>
+<span class="sd">        alpha: Minimum diffusivity coefficient (0 &lt; alpha &lt; 1). Prevents</span>
+<span class="sd">            the perpendicular-to-structure diffusivity from collapsing to</span>
+<span class="sd">            zero and maximises anisotropy at small values (0.001); larger</span>
+<span class="sd">            values (0.01--0.1) add isotropic regularisation. Default: 0.001.</span>
+<span class="sd">        C: Percentile of the initial coherence histogram used as the</span>
+<span class="sd">            adaptive contrast threshold (0 &lt; C &lt;= 100). High values (95--99)</span>
+<span class="sd">            restrict anisotropic diffusion to only the most coherent pixels;</span>
+<span class="sd">            lower values (70--90) spread it to weaker elongated structures.</span>
+<span class="sd">            Default: 99.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        Image: Input image with ``detect_mat`` smoothed along coherent</span>
 <span class="sd">        structures. ``rgb`` and ``gray`` are unchanged.</span>
 
-<span class="sd">    Best For:</span>
-<span class="sd">        - Filamentous fungal hyphae (Aspergillus, Penicillium, molds) where</span>
-<span class="sd">          branching structures need enhancement.</span>
-<span class="sd">        - Streak inoculation patterns where colonies grow along lines.</span>
-<span class="sd">        - Preprocessing before ridge detection (Frangi, Sato, Meijering) to</span>
-<span class="sd">          reduce noise without losing tubular structures.</span>
-<span class="sd">        - Faint elongated features in low-contrast or noisy scans.</span>
-
-<span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`LocalEdgeDenoise` for isotropic edge-preserving denoising</span>
-<span class="sd">          of round colonies without directional features.</span>
-<span class="sd">        - :class:`FocusEdgeSato` for direct ridge detection without a</span>
-<span class="sd">          diffusion preprocessing step.</span>
-<span class="sd">        - :class:`FocusEdgeMeijering` for detecting very fine neurite-like</span>
-<span class="sd">          filaments.</span>
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If ``num_iter`` &lt; 1, ``dt`` is not in (0, 0.125],</span>
+<span class="sd">            ``sigma`` &lt;= 0, ``rho`` &lt; ``sigma``, ``alpha`` not in (0, 1),</span>
+<span class="sd">            or ``C`` not in (0, 100].</span>
 
 <span class="sd">    References:</span>
 <span class="sd">        [1] J. Weickert, &quot;Coherence-enhancing diffusion filtering,&quot; *Int.</span>
@@ -637,8 +658,10 @@
 <span class="sd">    See Also:</span>
 <span class="sd">        :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a</span>
 <span class="sd">        visual walkthrough of enhancement pipelines on plate images.</span>
+<span class="sd">        :doc:`/tutorials/notebooks/10_detecting_filamentous_fungi` for</span>
+<span class="sd">        pipelines that use this enhancer before ridge detection.</span>
 <span class="sd">        :doc:`/explanation/what_enhancement_does` for background on</span>
-<span class="sd">        anisotropic diffusion and structure tensor analysis.</span>
+<span class="sd">        anisotropic diffusion and the structure tensor.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">model_config</span> <span class="o">=</span> <span class="n">ConfigDict</span><span class="p">(</span><span class="n">populate_by_name</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>

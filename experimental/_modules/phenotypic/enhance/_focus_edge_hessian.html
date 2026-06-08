@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -575,51 +575,80 @@
 <div class="viewcode-block" id="FocusEdgeHessian">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.enhance.html#phenotypic.enhance.FocusEdgeHessian">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">FocusEdgeHessian</span><span class="p">(</span><span class="n">FocusEdge</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Enhance edges and ridge-like structures via multi-scale Hessian filtering.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Enhance colony boundaries and ridge-like structures via multi-scale Hessian filtering.</span>
 
-<span class="sd">    Computes eigenvalue-based Hessian responses across multiple scales to</span>
-<span class="sd">    highlight colony boundaries, thin filamentous structures, and ridge-like</span>
-<span class="sd">    features in ``detect_mat``. Multi-scale analysis makes detection robust</span>
-<span class="sd">    across varying colony sizes and morphologies.</span>
+<span class="sd">    Computes Hessian matrix eigenvalues at each sigma scale and combines them</span>
+<span class="sd">    into a hybrid vesselness score that highlights regions with high curvature</span>
+<span class="sd">    — colony edges, filament ridges, biofilm features — while suppressing flat</span>
+<span class="sd">    agar background. Unlike the Frangi filter, background pixels (with response</span>
+<span class="sd">    ≤ 0) are set to 1, so the output map inverts the agar-to-colony contrast</span>
+<span class="sd">    and is best interpreted as a ridge-strength mask. For algorithm details see</span>
+<span class="sd">    :doc:`/explanation/what_enhancement_does`.</span>
 
-<span class="sd">    For algorithm details, see :doc:`/explanation/what_enhancement_does`.</span>
+<span class="sd">    Best For:</span>
+<span class="sd">        - Sharp colony-agar boundaries on plates with compact bacterial or</span>
+<span class="sd">          yeast colonies resolved at 1--5 px edge width.</span>
+<span class="sd">        - Size-heterogeneous plates where a tuple of sigmas spanning the full</span>
+<span class="sd">          colony size range provides scale-invariant edge response.</span>
+<span class="sd">        - Thin filaments and branching structures with low intensity contrast</span>
+<span class="sd">          that global thresholding misses.</span>
+<span class="sd">        - Textured colonies or biofilms where internal ridge structure aids</span>
+<span class="sd">          downstream morphology analysis.</span>
+
+<span class="sd">    Consider Also:</span>
+<span class="sd">        - :class:`FocusEdgeFrangi` for strictly elongated hyphae and mycelial</span>
+<span class="sd">          networks where background suppression via the adaptive gamma rule</span>
+<span class="sd">          is preferred.</span>
+<span class="sd">        - :class:`FocusEdgeMeijering` for very fine neurite-like filaments</span>
+<span class="sd">          where the analytic shape-parameter optimum is preferred.</span>
+<span class="sd">        - :class:`FocusEdgeLaplace` for simpler single-scale second-derivative</span>
+<span class="sd">          edge detection without multi-scale parameter tuning.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        sigmas: Sequence of standard deviations for Gaussian derivatives.</span>
-<span class="sd">            Smaller values detect finer edges; larger values detect broader</span>
-<span class="sd">            structures. Typical range: ``(1, 2, 3)`` to ``(1, 5)``.</span>
-<span class="sd">            Default: ``(1, 2, 3)``.</span>
-<span class="sd">        alpha: Sensitivity to plate-like structure deviations. Lower values</span>
-<span class="sd">            are more permissive. Typical range: 0.1--1.0. Default: 0.5.</span>
-<span class="sd">        beta: Sensitivity to blob-like structure deviations. Lower values</span>
-<span class="sd">            are more permissive. Typical range: 0.1--1.0. Default: 0.5.</span>
-<span class="sd">        gamma: Background suppression threshold. Larger values suppress</span>
-<span class="sd">            low-curvature regions (agar background) more aggressively.</span>
-<span class="sd">            Typical range: 10--20. Default: 15.</span>
-<span class="sd">        black_ridges: If ``True``, detect dark ridges on bright background.</span>
-<span class="sd">            If ``False`` (default), detect bright ridges on dark background.</span>
-<span class="sd">        mode: Boundary handling. Accepted values: ``&#39;reflect&#39;``,</span>
-<span class="sd">            ``&#39;constant&#39;``, ``&#39;nearest&#39;``, ``&#39;mirror&#39;``, ``&#39;wrap&#39;``.</span>
-<span class="sd">            Default: ``&#39;reflect&#39;``.</span>
-<span class="sd">        cval: Fill value when ``mode=&#39;constant&#39;``. Default: 0.</span>
+<span class="sd">        sigmas: Gaussian standard deviations (pixels) at which the Hessian</span>
+<span class="sd">            is evaluated. Each value responds most strongly to ridges and</span>
+<span class="sd">            edges whose cross-sectional half-width is approximately that</span>
+<span class="sd">            number of pixels; the per-pixel maximum across all scales is</span>
+<span class="sd">            taken. Typical range: ``(1, 2, 3)`` for standard plate scans;</span>
+<span class="sd">            extend to ``(1, 5)`` or wider when colony sizes vary broadly.</span>
+<span class="sd">            A reasonable starting point for whole-plate scans at 600 dpi is</span>
+<span class="sd">            ``(1, 2, 3)``; add larger sigmas for mature large colonies or</span>
+<span class="sd">            thick filaments. Default: ``(1, 2, 3)``.</span>
+<span class="sd">        alpha: Plate-likeness sensitivity in the vesselness formula. In 2-D</span>
+<span class="sd">            images this parameter has no numerical effect because the</span>
+<span class="sd">            plate-sensitivity ratio is undefined and omitted from the 2-D</span>
+<span class="sd">            formula; it is included only for compatibility with 3-D use.</span>
+<span class="sd">            Typical range: 0.1--1.0. Default: 0.5.</span>
+<span class="sd">        beta: Blob-likeness sensitivity. Lower values make the filter more</span>
+<span class="sd">            permissive of rounded, curved, or imperfect ridges (useful for</span>
+<span class="sd">            circular colony edges); higher values restrict responses to more</span>
+<span class="sd">            elongated, line-like structures. Typical range: 0.1--1.0.</span>
+<span class="sd">            Default: 0.5.</span>
+<span class="sd">        gamma: Fixed background suppression threshold applied to the Hessian</span>
+<span class="sd">            Frobenius norm. Only regions with norm above this level produce</span>
+<span class="sd">            nonzero responses; regions below it are set to 1 (background</span>
+<span class="sd">            convention of the hybrid Hessian filter). Typical range: 10--20.</span>
+<span class="sd">            Lower values (5--10) recover faint colony edges; higher values</span>
+<span class="sd">            (20--25) sharpen the contrast between ridges and flat agar.</span>
+<span class="sd">            Default: 15.</span>
+<span class="sd">        black_ridges: Polarity of the target ridges. ``False`` (default)</span>
+<span class="sd">            detects bright ridges on a dark background, matching the</span>
+<span class="sd">            ``detect_mat`` convention where colonies and hyphae appear bright.</span>
+<span class="sd">            ``True`` detects dark ridges on a bright background. Default: ``False``.</span>
+<span class="sd">        mode: Boundary padding mode for Gaussian derivative computation.</span>
+<span class="sd">            Accepted values: ``&#39;reflect&#39;``, ``&#39;constant&#39;``, ``&#39;nearest&#39;``,</span>
+<span class="sd">            ``&#39;mirror&#39;``, ``&#39;wrap&#39;``. Default: ``&#39;reflect&#39;``.</span>
+<span class="sd">        cval: Fill value used when ``mode=&#39;constant&#39;``. Has no effect for</span>
+<span class="sd">            any other mode. Default: 0.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        Image: Input image with ``detect_mat`` replaced by the Hessian</span>
 <span class="sd">        ridge response map. ``rgb`` and ``gray`` are unchanged.</span>
 
-<span class="sd">    Best For:</span>
-<span class="sd">        - Sharp boundaries between colonies and agar background.</span>
-<span class="sd">        - Thin or elongated structures (filaments, branching) with poor</span>
-<span class="sd">          contrast.</span>
-<span class="sd">        - Size-invariant colony edge enhancement before thresholding.</span>
-<span class="sd">        - Textured colonies or biofilms with complex internal structure.</span>
-
-<span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`FocusEdgeSato` for continuous tube-like structures where</span>
-<span class="sd">          Hessian eigenvalue ratios provide cleaner ridge responses.</span>
-<span class="sd">        - :class:`FocusEdgeMeijering` for very fine neurite-like filaments.</span>
-<span class="sd">        - :class:`FocusEdgeLaplace` for simpler second-derivative edge</span>
-<span class="sd">          detection without multi-scale analysis.</span>
+<span class="sd">    References:</span>
+<span class="sd">        [1] A. F. Frangi, W. J. Niessen, K. L. Vincken, and M. A. Viergever,</span>
+<span class="sd">        &quot;Multiscale vessel enhancement filtering,&quot; in *Proc. MICCAI*, 1998,</span>
+<span class="sd">        pp. 130--137.</span>
 
 <span class="sd">    See Also:</span>
 <span class="sd">        :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a</span>

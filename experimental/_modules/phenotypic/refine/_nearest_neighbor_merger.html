@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -579,42 +579,59 @@
 <div class="viewcode-block" id="NearestNeighborMerger">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.refine.html#phenotypic.refine.NearestNeighborMerger">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">NearestNeighborMerger</span><span class="p">(</span><span class="n">ObjectRefiner</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Merge small fragments into their nearest neighboring colony.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Absorb small colony fragments into their nearest neighboring detection.</span>
 
-<span class="sd">    Each object below ``min_size`` is absorbed into its single closest</span>
-<span class="sd">    neighbor within ``distance_threshold``. Unlike transitive merging, this</span>
-<span class="sd">    is one-directional and conservative — it cleans up debris without</span>
-<span class="sd">    cascading merges across the plate.</span>
+<span class="sd">    For each object whose area is below ``min_size``, finds the single</span>
+<span class="sd">    nearest centroid within ``distance_threshold`` and reassigns the</span>
+<span class="sd">    fragment&#39;s label to that neighbor. The merge is one-directional and</span>
+<span class="sd">    non-transitive: large anchor colonies are never themselves merged,</span>
+<span class="sd">    which avoids cascading chains across the plate.</span>
 
-<span class="sd">    Args:</span>
-<span class="sd">        distance_threshold: Maximum centroid distance (pixels) for merging.</span>
-<span class="sd">            Objects beyond this distance remain independent. Typical range:</span>
-<span class="sd">            15--40. Default: 25.</span>
-<span class="sd">        min_size: Only objects with area below this threshold are merge</span>
-<span class="sd">            candidates. Larger objects serve as anchor targets. ``None``</span>
-<span class="sd">            merges all objects (rarely desired). Default: 50.</span>
-
-<span class="sd">    Returns:</span>
-<span class="sd">        Image: Input image with ``objmask`` and ``objmap`` updated after</span>
-<span class="sd">        merging small objects into their nearest neighbors.</span>
+<span class="sd">    For a comparison of merging strategies, see</span>
+<span class="sd">    :doc:`/explanation/refinement_strategies`.</span>
 
 <span class="sd">    Best For:</span>
-<span class="sd">        - Absorbing dust or noise fragments near real colonies.</span>
-<span class="sd">        - Cleaning up small detection artifacts without risking cascading merges.</span>
-<span class="sd">        - Size-selective cleanup where only fragments below a threshold merge.</span>
+<span class="sd">        - Absorbing dust or debris fragments that appear near genuine</span>
+<span class="sd">          colonies after thresholding or edge detection.</span>
+<span class="sd">        - Size-selective cleanup where only small artefacts below an area</span>
+<span class="sd">          threshold need merging while large colonies remain independent.</span>
+<span class="sd">        - Plates with scattered micro-colonies or satellite spots that</span>
+<span class="sd">          should count as part of the nearest parent colony.</span>
 
 <span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`MergeFragmentChains` for chained merging of all nearby</span>
-<span class="sd">          objects regardless of size.</span>
-<span class="sd">        - :class:`SmallToLargeMerger` for merging small objects into the</span>
-<span class="sd">          largest nearby colony.</span>
-<span class="sd">        - :class:`MaskClosing` for bridging narrow gaps morphologically.</span>
+<span class="sd">        - :class:`MergeFragmentChains` when transitive closure is needed</span>
+<span class="sd">          so that chains of nearby fragments (A near B near C) merge into</span>
+<span class="sd">          one detection even if the endpoints are far apart.</span>
+<span class="sd">        - :class:`SmallToLargeMerger` when small fragments should</span>
+<span class="sd">          specifically merge into the largest nearby colony rather than</span>
+<span class="sd">          the geometrically closest one.</span>
+<span class="sd">        - :class:`MaskClosing` for morphological bridging of narrow gaps</span>
+<span class="sd">          without relabeling objects.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        distance_threshold: Maximum centroid-to-centroid distance in pixels</span>
+<span class="sd">            within which a small fragment is eligible to merge with its</span>
+<span class="sd">            nearest neighbor. Fragments beyond this distance remain</span>
+<span class="sd">            independent. Typical range: 10--50. Default: 20.0.</span>
+<span class="sd">        min_size: Area threshold in pixels. Objects with area strictly below</span>
+<span class="sd">            this value are merge candidates; objects at or above serve as</span>
+<span class="sd">            immovable anchors. Set to ``None`` to make all objects eligible</span>
+<span class="sd">            for merging. Typical range: 20--200. Default: 50.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Image: Input image with ``objmap`` updated after absorbing small</span>
+<span class="sd">        fragments into their nearest neighbors. ``objmask``, ``rgb``,</span>
+<span class="sd">        ``gray``, and ``detect_mat`` are unchanged.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If ``distance_threshold`` is not positive.</span>
+<span class="sd">        ValueError: If ``min_size`` is provided and not positive.</span>
 
 <span class="sd">    See Also:</span>
 <span class="sd">        :doc:`/how_to/notebooks/merge_fragmented_detections` for fragment</span>
-<span class="sd">        merging strategies.</span>
+<span class="sd">        merging workflows on real plate images.</span>
 <span class="sd">        :doc:`/explanation/refinement_strategies` for choosing the right</span>
-<span class="sd">        refinement approach.</span>
+<span class="sd">        merging approach.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">distance_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">20.0</span>

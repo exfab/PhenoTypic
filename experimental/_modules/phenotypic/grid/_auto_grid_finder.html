@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -1727,48 +1727,11 @@
 
     <span class="c1"># ------------------------------------------------------------------</span>
     <span class="c1"># Diagnostic dashboard() method</span>
+    <span class="c1">#</span>
+    <span class="c1"># Panels are built by the transient ``GridFitReport`` Plotly provider</span>
+    <span class="c1"># (``grid/_grid_fit_report.py``); ``dashboard()`` only runs the timed</span>
+    <span class="c1"># pipeline, computes the per-axis stats, and hands them to the report.</span>
     <span class="c1"># ------------------------------------------------------------------</span>
-
-    <span class="c1"># Okabe-Ito palette for the dashboard() diagnostic plots. Annotated</span>
-    <span class="c1"># ``ClassVar`` so pydantic keeps them as plain class constants — an</span>
-    <span class="c1"># un-annotated underscore name is otherwise collected as a</span>
-    <span class="c1"># ``ModelPrivateAttr`` and class-level access returns the wrapper.</span>
-    <span class="n">_OI_NAVY</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;#003660&quot;</span>
-    <span class="n">_OI_ORANGE</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;#E69F00&quot;</span>
-    <span class="n">_OI_SKY</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;#56B4E9&quot;</span>
-    <span class="n">_OI_GREEN</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;#009E73&quot;</span>
-    <span class="n">_OI_VERMILION</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;#D55E00&quot;</span>
-    <span class="n">_OI_BLUE</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;#0072B2&quot;</span>
-    <span class="n">_OI_PURPLE</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;#CC79A7&quot;</span>
-    <span class="n">_OI_GREY</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;#BBBBBB&quot;</span>
-
-    <span class="nd">@staticmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">_dashboard_rcparams</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return standard dashboard matplotlib rcParams.&quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="p">{</span>
-            <span class="s2">&quot;axes.facecolor&quot;</span><span class="p">:</span> <span class="s2">&quot;#ffffff&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;figure.facecolor&quot;</span><span class="p">:</span> <span class="s2">&quot;#f5f7fa&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;axes.edgecolor&quot;</span><span class="p">:</span> <span class="s2">&quot;#dde3ed&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;axes.grid&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
-            <span class="s2">&quot;grid.color&quot;</span><span class="p">:</span> <span class="s2">&quot;#e8ecf2&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;grid.linewidth&quot;</span><span class="p">:</span> <span class="mf">0.8</span><span class="p">,</span>
-            <span class="s2">&quot;axes.spines.top&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
-            <span class="s2">&quot;axes.spines.right&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
-            <span class="s2">&quot;axes.titlecolor&quot;</span><span class="p">:</span> <span class="s2">&quot;#003660&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;axes.titleweight&quot;</span><span class="p">:</span> <span class="s2">&quot;600&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;axes.titlesize&quot;</span><span class="p">:</span> <span class="mi">11</span><span class="p">,</span>
-            <span class="s2">&quot;axes.labelsize&quot;</span><span class="p">:</span> <span class="mi">9</span><span class="p">,</span>
-            <span class="s2">&quot;axes.labelcolor&quot;</span><span class="p">:</span> <span class="s2">&quot;#2e3a4e&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;xtick.labelsize&quot;</span><span class="p">:</span> <span class="mi">8</span><span class="p">,</span>
-            <span class="s2">&quot;ytick.labelsize&quot;</span><span class="p">:</span> <span class="mi">8</span><span class="p">,</span>
-            <span class="s2">&quot;xtick.color&quot;</span><span class="p">:</span> <span class="s2">&quot;#8892a4&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;ytick.color&quot;</span><span class="p">:</span> <span class="s2">&quot;#8892a4&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;font.family&quot;</span><span class="p">:</span> <span class="s2">&quot;sans-serif&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;font.sans-serif&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;DM Sans&quot;</span><span class="p">,</span> <span class="s2">&quot;Helvetica Neue&quot;</span><span class="p">,</span> <span class="s2">&quot;Arial&quot;</span><span class="p">],</span>
-            <span class="s2">&quot;axes.prop_cycle&quot;</span><span class="p">:</span> <span class="nb">__import__</span><span class="p">(</span><span class="s2">&quot;matplotlib&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">cycler</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="p">[</span>
-                <span class="s2">&quot;#003660&quot;</span><span class="p">,</span> <span class="s2">&quot;#E69F00&quot;</span><span class="p">,</span> <span class="s2">&quot;#56B4E9&quot;</span><span class="p">,</span> <span class="s2">&quot;#009E73&quot;</span><span class="p">,</span> <span class="s2">&quot;#0072B2&quot;</span><span class="p">,</span> <span class="s2">&quot;#CC79A7&quot;</span><span class="p">,</span>
-            <span class="p">]),</span>
-        <span class="p">}</span>
 
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_in_jupyter</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
@@ -1908,426 +1871,23 @@
             <span class="s2">&quot;pipeline_path&quot;</span><span class="p">:</span> <span class="n">pipeline_path</span><span class="p">,</span>
         <span class="p">}</span>
 
-    <span class="nd">@classmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">_plot_timing_waterfall</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">timings</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Horizontal bar chart of per-step timing.&quot;&quot;&quot;</span>
-        <span class="kn">import</span><span class="w"> </span><span class="nn">panel</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pn</span>
-        <span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
-
-        <span class="k">with</span> <span class="n">plt</span><span class="o">.</span><span class="n">rc_context</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">_dashboard_rcparams</span><span class="p">()):</span>
-            <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mf">2.5</span><span class="p">))</span>
-            <span class="n">steps</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">timings</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
-            <span class="n">times</span> <span class="o">=</span> <span class="p">[</span><span class="n">timings</span><span class="p">[</span><span class="n">s</span><span class="p">]</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">steps</span><span class="p">]</span>
-            <span class="n">total</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">times</span><span class="p">)</span>
-
-            <span class="n">bars</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">barh</span><span class="p">(</span><span class="n">steps</span><span class="p">,</span> <span class="n">times</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="bp">cls</span><span class="o">.</span><span class="n">_OI_NAVY</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mf">0.6</span><span class="p">)</span>
-            <span class="k">for</span> <span class="n">bar</span><span class="p">,</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">bars</span><span class="p">,</span> <span class="n">times</span><span class="p">):</span>
-                <span class="n">ax</span><span class="o">.</span><span class="n">text</span><span class="p">(</span>
-                    <span class="n">bar</span><span class="o">.</span><span class="n">get_width</span><span class="p">()</span> <span class="o">+</span> <span class="n">total</span> <span class="o">*</span> <span class="mf">0.02</span><span class="p">,</span> <span class="n">bar</span><span class="o">.</span><span class="n">get_y</span><span class="p">()</span> <span class="o">+</span> <span class="n">bar</span><span class="o">.</span><span class="n">get_height</span><span class="p">()</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span>
-                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">t</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">s&quot;</span><span class="p">,</span> <span class="n">va</span><span class="o">=</span><span class="s2">&quot;center&quot;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
-                    <span class="n">fontfamily</span><span class="o">=</span><span class="s2">&quot;monospace&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;#2e3a4e&quot;</span><span class="p">,</span>
-                <span class="p">)</span>
-            <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;Time (s)&quot;</span><span class="p">)</span>
-            <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Step Timing (total: </span><span class="si">{</span><span class="n">total</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">s)&quot;</span><span class="p">)</span>
-            <span class="n">ax</span><span class="o">.</span><span class="n">invert_yaxis</span><span class="p">()</span>
-            <span class="n">fig</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
-            <span class="n">pane</span> <span class="o">=</span> <span class="n">pn</span><span class="o">.</span><span class="n">pane</span><span class="o">.</span><span class="n">Matplotlib</span><span class="p">(</span><span class="n">fig</span><span class="p">,</span> <span class="n">tight</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
-            <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="n">fig</span><span class="p">)</span>
-            <span class="k">return</span> <span class="n">pane</span>
-
-    <span class="nd">@classmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">_plot_object_size_dist</span><span class="p">(</span>
-        <span class="bp">cls</span><span class="p">,</span> <span class="n">info_table</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">nrows</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">ncols</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
-        <span class="n">image_shape</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
-    <span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Histogram of object bounding box areas with expected cell size.&quot;&quot;&quot;</span>
-        <span class="kn">import</span><span class="w"> </span><span class="nn">panel</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pn</span>
-        <span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
-
-        <span class="k">with</span> <span class="n">plt</span><span class="o">.</span><span class="n">rc_context</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">_dashboard_rcparams</span><span class="p">()):</span>
-            <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mf">3.5</span><span class="p">))</span>
-
-            <span class="k">if</span> <span class="n">info_table</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
-                <span class="n">ax</span><span class="o">.</span><span class="n">text</span><span class="p">(</span>
-                    <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="s2">&quot;No objects detected&quot;</span><span class="p">,</span> <span class="n">ha</span><span class="o">=</span><span class="s2">&quot;center&quot;</span><span class="p">,</span> <span class="n">va</span><span class="o">=</span><span class="s2">&quot;center&quot;</span><span class="p">,</span>
-                    <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;#8892a4&quot;</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="n">ax</span><span class="o">.</span><span class="n">transAxes</span><span class="p">,</span>
-                <span class="p">)</span>
-                <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Object Size Distribution&quot;</span><span class="p">)</span>
-                <span class="n">fig</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
-                <span class="n">pane</span> <span class="o">=</span> <span class="n">pn</span><span class="o">.</span><span class="n">pane</span><span class="o">.</span><span class="n">Matplotlib</span><span class="p">(</span><span class="n">fig</span><span class="p">,</span> <span class="n">tight</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
-                <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="n">fig</span><span class="p">)</span>
-                <span class="k">return</span> <span class="n">pane</span>
-
-            <span class="n">heights</span> <span class="o">=</span> <span class="p">(</span>
-                <span class="n">info_table</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">MAX_RR</span><span class="p">)]</span><span class="o">.</span><span class="n">values</span>
-                <span class="o">-</span> <span class="n">info_table</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">MIN_RR</span><span class="p">)]</span><span class="o">.</span><span class="n">values</span>
-            <span class="p">)</span>
-            <span class="n">widths</span> <span class="o">=</span> <span class="p">(</span>
-                <span class="n">info_table</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">MAX_CC</span><span class="p">)]</span><span class="o">.</span><span class="n">values</span>
-                <span class="o">-</span> <span class="n">info_table</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">MIN_CC</span><span class="p">)]</span><span class="o">.</span><span class="n">values</span>
-            <span class="p">)</span>
-            <span class="n">areas</span> <span class="o">=</span> <span class="n">heights</span> <span class="o">*</span> <span class="n">widths</span>
-
-            <span class="n">expected_cell_area</span> <span class="o">=</span> <span class="p">(</span>
-                <span class="p">(</span><span class="n">image_shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="n">nrows</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">image_shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">/</span> <span class="n">ncols</span><span class="p">)</span>
-            <span class="p">)</span>
-            <span class="n">oversized_mask</span> <span class="o">=</span> <span class="n">areas</span> <span class="o">&gt;</span> <span class="n">expected_cell_area</span>
-
-            <span class="n">ax</span><span class="o">.</span><span class="n">hist</span><span class="p">(</span>
-                <span class="n">areas</span><span class="p">[</span><span class="o">~</span><span class="n">oversized_mask</span><span class="p">],</span> <span class="n">bins</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="bp">cls</span><span class="o">.</span><span class="n">_OI_NAVY</span><span class="p">,</span>
-                <span class="n">alpha</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Normal&quot;</span><span class="p">,</span>
-            <span class="p">)</span>
-            <span class="k">if</span> <span class="n">oversized_mask</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
-                <span class="n">ax</span><span class="o">.</span><span class="n">hist</span><span class="p">(</span>
-                    <span class="n">areas</span><span class="p">[</span><span class="n">oversized_mask</span><span class="p">],</span> <span class="n">bins</span><span class="o">=</span><span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">oversized_mask</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">//</span> <span class="mi">2</span><span class="p">),</span>
-                    <span class="n">color</span><span class="o">=</span><span class="bp">cls</span><span class="o">.</span><span class="n">_OI_VERMILION</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span>
-                    <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Oversized (</span><span class="si">{</span><span class="n">oversized_mask</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">,</span>
-                <span class="p">)</span>
-            <span class="n">ax</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span>
-                <span class="n">expected_cell_area</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="s2">&quot;--&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="bp">cls</span><span class="o">.</span><span class="n">_OI_GREY</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span>
-                <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Expected cell area&quot;</span><span class="p">,</span>
-            <span class="p">)</span>
-            <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;Bbox Area (px</span><span class="se">\u00b2</span><span class="s2">)&quot;</span><span class="p">)</span>
-            <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Count&quot;</span><span class="p">)</span>
-            <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Object Size Distribution&quot;</span><span class="p">)</span>
-            <span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">fontsize</span><span class="o">=</span><span class="mi">7</span><span class="p">,</span> <span class="n">framealpha</span><span class="o">=</span><span class="mf">0.8</span><span class="p">)</span>
-            <span class="n">fig</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
-            <span class="n">pane</span> <span class="o">=</span> <span class="n">pn</span><span class="o">.</span><span class="n">pane</span><span class="o">.</span><span class="n">Matplotlib</span><span class="p">(</span><span class="n">fig</span><span class="p">,</span> <span class="n">tight</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
-            <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="n">fig</span><span class="p">)</span>
-            <span class="k">return</span> <span class="n">pane</span>
-
-    <span class="nd">@classmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">_plot_center_scatter</span><span class="p">(</span>
-        <span class="bp">cls</span><span class="p">,</span> <span class="n">info_table</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">row_edges</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
-        <span class="n">col_edges</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">image_shape</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
-    <span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Scatter plot of weighted centroids with grid edge overlay.&quot;&quot;&quot;</span>
-        <span class="kn">import</span><span class="w"> </span><span class="nn">panel</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pn</span>
-        <span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
-
-        <span class="k">with</span> <span class="n">plt</span><span class="o">.</span><span class="n">rc_context</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">_dashboard_rcparams</span><span class="p">()):</span>
-            <span class="n">aspect</span> <span class="o">=</span> <span class="n">image_shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">/</span> <span class="n">image_shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-            <span class="n">fig_h</span> <span class="o">=</span> <span class="mf">4.0</span>
-            <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="n">fig_h</span> <span class="o">*</span> <span class="n">aspect</span><span class="p">,</span> <span class="n">fig_h</span><span class="p">))</span>
-
-            <span class="k">if</span> <span class="n">info_table</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
-                <span class="n">ax</span><span class="o">.</span><span class="n">text</span><span class="p">(</span>
-                    <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="s2">&quot;No objects detected&quot;</span><span class="p">,</span> <span class="n">ha</span><span class="o">=</span><span class="s2">&quot;center&quot;</span><span class="p">,</span> <span class="n">va</span><span class="o">=</span><span class="s2">&quot;center&quot;</span><span class="p">,</span>
-                    <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;#8892a4&quot;</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="n">ax</span><span class="o">.</span><span class="n">transAxes</span><span class="p">,</span>
-                <span class="p">)</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">cc</span> <span class="o">=</span> <span class="n">info_table</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">DIST_WEIGHTED_CENTER_CC</span><span class="p">)]</span><span class="o">.</span><span class="n">values</span>
-                <span class="n">rr</span> <span class="o">=</span> <span class="n">info_table</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">DIST_WEIGHTED_CENTER_RR</span><span class="p">)]</span><span class="o">.</span><span class="n">values</span>
-                <span class="n">ax</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span>
-                    <span class="n">cc</span><span class="p">,</span> <span class="n">rr</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="bp">cls</span><span class="o">.</span><span class="n">_OI_NAVY</span><span class="p">,</span>
-                    <span class="n">edgecolors</span><span class="o">=</span><span class="s2">&quot;none&quot;</span><span class="p">,</span>
-                <span class="p">)</span>
-
-            <span class="k">for</span> <span class="n">edge</span> <span class="ow">in</span> <span class="n">row_edges</span><span class="p">:</span>
-                <span class="n">ax</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="n">edge</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="bp">cls</span><span class="o">.</span><span class="n">_OI_VERMILION</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.7</span><span class="p">)</span>
-            <span class="k">for</span> <span class="n">edge</span> <span class="ow">in</span> <span class="n">col_edges</span><span class="p">:</span>
-                <span class="n">ax</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="n">edge</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="bp">cls</span><span class="o">.</span><span class="n">_OI_VERMILION</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.7</span><span class="p">)</span>
-
-            <span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">image_shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
-            <span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="n">image_shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">0</span><span class="p">)</span>
-            <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;Column (px)&quot;</span><span class="p">)</span>
-            <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Row (px)&quot;</span><span class="p">)</span>
-            <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Centroids with Grid Overlay&quot;</span><span class="p">)</span>
-            <span class="n">fig</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
-            <span class="n">pane</span> <span class="o">=</span> <span class="n">pn</span><span class="o">.</span><span class="n">pane</span><span class="o">.</span><span class="n">Matplotlib</span><span class="p">(</span><span class="n">fig</span><span class="p">,</span> <span class="n">tight</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
-            <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="n">fig</span><span class="p">)</span>
-            <span class="k">return</span> <span class="n">pane</span>
-
-    <span class="nd">@classmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">_plot_successive_diffs</span><span class="p">(</span>
-        <span class="bp">cls</span><span class="p">,</span> <span class="n">row_stats</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">col_stats</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
-        <span class="n">info_table_empty</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
-    <span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Histogram of successive center diffs with pitch markers.</span>
-
-<span class="sd">        Reads ``centers``, ``image_pitch``, and ``fit_pitch`` from each</span>
-<span class="sd">        axis&#39;s stats dict (:meth:`_compute_axis_dashboard_stats`) — does</span>
-<span class="sd">        not recompute. Reference lines:</span>
-
-<span class="sd">        - **Green solid**: fitted pitch.</span>
-<span class="sd">        - **Vermilion dashed**: 1× image_pitch (structural prior).</span>
-<span class="sd">          When this disagrees with the green line, the plate doesn&#39;t</span>
-<span class="sd">          fill the image edge-to-edge.</span>
-<span class="sd">        - **Grey dashed/dotted**: 2× and 3× image_pitch for spotting</span>
-<span class="sd">          sparse-coverage peaks.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="kn">import</span><span class="w"> </span><span class="nn">panel</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pn</span>
-        <span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
-
-        <span class="k">with</span> <span class="n">plt</span><span class="o">.</span><span class="n">rc_context</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">_dashboard_rcparams</span><span class="p">()):</span>
-            <span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mf">8.5</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">))</span>
-
-            <span class="k">for</span> <span class="n">ax</span><span class="p">,</span> <span class="n">stats</span> <span class="ow">in</span> <span class="p">[(</span><span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">row_stats</span><span class="p">),</span> <span class="p">(</span><span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">col_stats</span><span class="p">)]:</span>
-                <span class="n">label</span> <span class="o">=</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;label&quot;</span><span class="p">]</span>
-                <span class="n">image_pitch</span> <span class="o">=</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;image_pitch&quot;</span><span class="p">]</span>
-                <span class="n">fit_pitch</span> <span class="o">=</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;fit_pitch&quot;</span><span class="p">]</span>
-                <span class="n">centers</span> <span class="o">=</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;centers&quot;</span><span class="p">]</span>
-
-                <span class="k">if</span> <span class="n">info_table_empty</span><span class="p">:</span>
-                    <span class="n">ax</span><span class="o">.</span><span class="n">text</span><span class="p">(</span>
-                        <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="s2">&quot;No objects detected&quot;</span><span class="p">,</span>
-                        <span class="n">ha</span><span class="o">=</span><span class="s2">&quot;center&quot;</span><span class="p">,</span> <span class="n">va</span><span class="o">=</span><span class="s2">&quot;center&quot;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
-                        <span class="n">color</span><span class="o">=</span><span class="s2">&quot;#8892a4&quot;</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="n">ax</span><span class="o">.</span><span class="n">transAxes</span><span class="p">,</span>
-                    <span class="p">)</span>
-                    <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2"> diffs&quot;</span><span class="p">)</span>
-                    <span class="k">continue</span>
-
-                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">centers</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
-                    <span class="n">ax</span><span class="o">.</span><span class="n">text</span><span class="p">(</span>
-                        <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="s2">&quot;&lt;2 centers&quot;</span><span class="p">,</span>
-                        <span class="n">ha</span><span class="o">=</span><span class="s2">&quot;center&quot;</span><span class="p">,</span> <span class="n">va</span><span class="o">=</span><span class="s2">&quot;center&quot;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
-                        <span class="n">color</span><span class="o">=</span><span class="s2">&quot;#8892a4&quot;</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="n">ax</span><span class="o">.</span><span class="n">transAxes</span><span class="p">,</span>
-                    <span class="p">)</span>
-                    <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2"> diffs&quot;</span><span class="p">)</span>
-                    <span class="k">continue</span>
-
-                <span class="n">diffs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">centers</span><span class="p">)</span>
-                <span class="n">diffs</span> <span class="o">=</span> <span class="n">diffs</span><span class="p">[</span><span class="n">diffs</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]</span>
-                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">diffs</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-                    <span class="n">ax</span><span class="o">.</span><span class="n">text</span><span class="p">(</span>
-                        <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="s2">&quot;No positive diffs&quot;</span><span class="p">,</span>
-                        <span class="n">ha</span><span class="o">=</span><span class="s2">&quot;center&quot;</span><span class="p">,</span> <span class="n">va</span><span class="o">=</span><span class="s2">&quot;center&quot;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
-                        <span class="n">color</span><span class="o">=</span><span class="s2">&quot;#8892a4&quot;</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="n">ax</span><span class="o">.</span><span class="n">transAxes</span><span class="p">,</span>
-                    <span class="p">)</span>
-                    <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2"> diffs&quot;</span><span class="p">)</span>
-                    <span class="k">continue</span>
-
-                <span class="n">bin_width</span> <span class="o">=</span> <span class="n">image_pitch</span> <span class="o">/</span> <span class="mf">8.0</span>
-                <span class="n">upper</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">diffs</span><span class="o">.</span><span class="n">max</span><span class="p">()),</span> <span class="mf">3.5</span> <span class="o">*</span> <span class="n">image_pitch</span><span class="p">)</span>
-                <span class="n">n_bins</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">upper</span> <span class="o">/</span> <span class="n">bin_width</span><span class="p">)),</span> <span class="mi">1</span><span class="p">)</span>
-                <span class="n">ax</span><span class="o">.</span><span class="n">hist</span><span class="p">(</span>
-                    <span class="n">diffs</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="n">n_bins</span><span class="p">,</span> <span class="nb">range</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">upper</span> <span class="o">+</span> <span class="n">bin_width</span><span class="p">),</span>
-                    <span class="n">color</span><span class="o">=</span><span class="bp">cls</span><span class="o">.</span><span class="n">_OI_NAVY</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.85</span><span class="p">,</span>
-                <span class="p">)</span>
-                <span class="n">ax</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span>
-                    <span class="n">fit_pitch</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="bp">cls</span><span class="o">.</span><span class="n">_OI_GREEN</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="s2">&quot;-&quot;</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span>
-                    <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;fit (</span><span class="si">{</span><span class="n">fit_pitch</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">,</span>
-                <span class="p">)</span>
-                <span class="n">ax</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span>
-                    <span class="n">image_pitch</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="bp">cls</span><span class="o">.</span><span class="n">_OI_VERMILION</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="s2">&quot;--&quot;</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mf">1.2</span><span class="p">,</span>
-                    <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;1x ip (</span><span class="si">{</span><span class="n">image_pitch</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">,</span>
-                <span class="p">)</span>
-                <span class="n">ax</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span>
-                    <span class="mi">2</span> <span class="o">*</span> <span class="n">image_pitch</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="bp">cls</span><span class="o">.</span><span class="n">_OI_GREY</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="s2">&quot;--&quot;</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
-                    <span class="n">label</span><span class="o">=</span><span class="s2">&quot;2x ip&quot;</span><span class="p">,</span>
-                <span class="p">)</span>
-                <span class="n">ax</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span>
-                    <span class="mi">3</span> <span class="o">*</span> <span class="n">image_pitch</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="bp">cls</span><span class="o">.</span><span class="n">_OI_GREY</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="s2">&quot;:&quot;</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
-                    <span class="n">label</span><span class="o">=</span><span class="s2">&quot;3x ip&quot;</span><span class="p">,</span>
-                <span class="p">)</span>
-
-                <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;Δ between adjacent centers (px)&quot;</span><span class="p">)</span>
-                <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;count&quot;</span><span class="p">)</span>
-                <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2"> diffs (fit=</span><span class="si">{</span><span class="n">fit_pitch</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">, &quot;</span>
-                    <span class="sa">f</span><span class="s2">&quot;image_pitch=</span><span class="si">{</span><span class="n">image_pitch</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">)&quot;</span>
-                <span class="p">)</span>
-                <span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">fontsize</span><span class="o">=</span><span class="mi">7</span><span class="p">,</span> <span class="n">framealpha</span><span class="o">=</span><span class="mf">0.8</span><span class="p">)</span>
-
-            <span class="n">fig</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
-            <span class="n">pane</span> <span class="o">=</span> <span class="n">pn</span><span class="o">.</span><span class="n">pane</span><span class="o">.</span><span class="n">Matplotlib</span><span class="p">(</span><span class="n">fig</span><span class="p">,</span> <span class="n">tight</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
-            <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="n">fig</span><span class="p">)</span>
-            <span class="k">return</span> <span class="n">pane</span>
-
-    <span class="nd">@classmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">_plot_axis_occupancy</span><span class="p">(</span>
-        <span class="bp">cls</span><span class="p">,</span> <span class="n">row_stats</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">col_stats</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
-        <span class="n">info_table_empty</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
-    <span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Bar chart of detection counts per cell index per axis.</span>
-
-<span class="sd">        Reads everything from the per-axis stats dicts produced by</span>
-<span class="sd">        :meth:`_compute_axis_dashboard_stats` — does **not** recompute</span>
-<span class="sd">        indices/counts. Primary bars (navy / vermilion) use ``fit_counts``</span>
-<span class="sd">        (the algorithm&#39;s decision); when ``stats[&quot;agree&quot;]`` is False,</span>
-<span class="sd">        ``ip_counts`` is overlaid as horizontal grey markers for</span>
-<span class="sd">        comparison and the title reports both occupancies.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="kn">import</span><span class="w"> </span><span class="nn">panel</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pn</span>
-        <span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
-
-        <span class="k">with</span> <span class="n">plt</span><span class="o">.</span><span class="n">rc_context</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">_dashboard_rcparams</span><span class="p">()):</span>
-            <span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mf">8.5</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">))</span>
-
-            <span class="k">for</span> <span class="n">ax</span><span class="p">,</span> <span class="n">stats</span> <span class="ow">in</span> <span class="p">[(</span><span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">row_stats</span><span class="p">),</span> <span class="p">(</span><span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">col_stats</span><span class="p">)]:</span>
-                <span class="n">label</span> <span class="o">=</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;label&quot;</span><span class="p">]</span>
-                <span class="n">n_expected</span> <span class="o">=</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;n_expected&quot;</span><span class="p">]</span>
-                <span class="n">fit_counts</span> <span class="o">=</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;fit_counts&quot;</span><span class="p">]</span>
-                <span class="n">ip_counts</span> <span class="o">=</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;ip_counts&quot;</span><span class="p">]</span>
-                <span class="n">fit_occupied</span> <span class="o">=</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;fit_occupied&quot;</span><span class="p">]</span>
-                <span class="n">ip_occupied</span> <span class="o">=</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;ip_occupied&quot;</span><span class="p">]</span>
-
-                <span class="k">if</span> <span class="n">info_table_empty</span><span class="p">:</span>
-                    <span class="n">ax</span><span class="o">.</span><span class="n">text</span><span class="p">(</span>
-                        <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="s2">&quot;No objects detected&quot;</span><span class="p">,</span>
-                        <span class="n">ha</span><span class="o">=</span><span class="s2">&quot;center&quot;</span><span class="p">,</span> <span class="n">va</span><span class="o">=</span><span class="s2">&quot;center&quot;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
-                        <span class="n">color</span><span class="o">=</span><span class="s2">&quot;#8892a4&quot;</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="n">ax</span><span class="o">.</span><span class="n">transAxes</span><span class="p">,</span>
-                    <span class="p">)</span>
-                    <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2"> occupancy&quot;</span><span class="p">)</span>
-                    <span class="k">continue</span>
-
-                <span class="n">colors</span> <span class="o">=</span> <span class="p">[</span>
-                    <span class="bp">cls</span><span class="o">.</span><span class="n">_OI_VERMILION</span> <span class="k">if</span> <span class="n">c</span> <span class="o">==</span> <span class="mi">0</span> <span class="k">else</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_OI_NAVY</span>
-                    <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">fit_counts</span>
-                <span class="p">]</span>
-                <span class="n">bars</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">bar</span><span class="p">(</span>
-                    <span class="nb">range</span><span class="p">(</span><span class="n">n_expected</span><span class="p">),</span> <span class="n">fit_counts</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">colors</span><span class="p">,</span>
-                    <span class="n">alpha</span><span class="o">=</span><span class="mf">0.85</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;fitted&quot;</span><span class="p">,</span>
-                <span class="p">)</span>
-                <span class="k">for</span> <span class="n">bar</span><span class="p">,</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">bars</span><span class="p">,</span> <span class="n">fit_counts</span><span class="p">):</span>
-                    <span class="k">if</span> <span class="n">c</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-                        <span class="n">ax</span><span class="o">.</span><span class="n">text</span><span class="p">(</span>
-                            <span class="n">bar</span><span class="o">.</span><span class="n">get_x</span><span class="p">()</span> <span class="o">+</span> <span class="n">bar</span><span class="o">.</span><span class="n">get_width</span><span class="p">()</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span>
-                            <span class="n">bar</span><span class="o">.</span><span class="n">get_height</span><span class="p">(),</span> <span class="nb">str</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">c</span><span class="p">)),</span>
-                            <span class="n">ha</span><span class="o">=</span><span class="s2">&quot;center&quot;</span><span class="p">,</span> <span class="n">va</span><span class="o">=</span><span class="s2">&quot;bottom&quot;</span><span class="p">,</span>
-                            <span class="n">fontsize</span><span class="o">=</span><span class="mi">7</span><span class="p">,</span> <span class="n">fontfamily</span><span class="o">=</span><span class="s2">&quot;monospace&quot;</span><span class="p">,</span>
-                            <span class="n">color</span><span class="o">=</span><span class="s2">&quot;#2e3a4e&quot;</span><span class="p">,</span>
-                        <span class="p">)</span>
-
-                <span class="c1"># Image-pitch counts as horizontal grey markers — only</span>
-                <span class="c1"># shown when they disagree with fitted (otherwise the</span>
-                <span class="c1"># plot stays clean).</span>
-                <span class="k">if</span> <span class="ow">not</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;agree&quot;</span><span class="p">]:</span>
-                    <span class="n">ax</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span>
-                        <span class="nb">range</span><span class="p">(</span><span class="n">n_expected</span><span class="p">),</span> <span class="n">ip_counts</span><span class="p">,</span>
-                        <span class="n">marker</span><span class="o">=</span><span class="s2">&quot;_&quot;</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="mi">80</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="bp">cls</span><span class="o">.</span><span class="n">_OI_GREY</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.85</span><span class="p">,</span>
-                        <span class="n">label</span><span class="o">=</span><span class="s2">&quot;image-pitch&quot;</span><span class="p">,</span>
-                    <span class="p">)</span>
-                    <span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">fontsize</span><span class="o">=</span><span class="mi">7</span><span class="p">,</span> <span class="n">framealpha</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span> <span class="n">loc</span><span class="o">=</span><span class="s2">&quot;upper right&quot;</span><span class="p">)</span>
-
-                <span class="n">ax</span><span class="o">.</span><span class="n">set_xticks</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">n_expected</span><span class="p">))</span>
-                <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2"> index&quot;</span><span class="p">)</span>
-                <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;# detections&quot;</span><span class="p">)</span>
-                <span class="k">if</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;agree&quot;</span><span class="p">]:</span>
-                    <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span>
-                        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2"> occupancy &quot;</span>
-                        <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="n">fit_occupied</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">n_expected</span><span class="si">}</span><span class="s2"> cells)&quot;</span>
-                    <span class="p">)</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span>
-                        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2"> occupancy &quot;</span>
-                        <span class="sa">f</span><span class="s2">&quot;(fit: </span><span class="si">{</span><span class="n">fit_occupied</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">n_expected</span><span class="si">}</span><span class="s2">, &quot;</span>
-                        <span class="sa">f</span><span class="s2">&quot;ip: </span><span class="si">{</span><span class="n">ip_occupied</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">n_expected</span><span class="si">}</span><span class="s2">)&quot;</span>
-                    <span class="p">)</span>
-
-            <span class="n">fig</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
-            <span class="n">pane</span> <span class="o">=</span> <span class="n">pn</span><span class="o">.</span><span class="n">pane</span><span class="o">.</span><span class="n">Matplotlib</span><span class="p">(</span><span class="n">fig</span><span class="p">,</span> <span class="n">tight</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
-            <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="n">fig</span><span class="p">)</span>
-            <span class="k">return</span> <span class="n">pane</span>
-
-    <span class="nd">@classmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">_build_inspect_summary</span><span class="p">(</span>
-        <span class="bp">cls</span><span class="p">,</span> <span class="n">result</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">row_stats</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">col_stats</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
-        <span class="n">image_shape</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
-    <span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Markdown summary panel with grid diagnostics.</span>
-
-<span class="sd">        Reads all per-axis numbers from the supplied stats dicts</span>
-<span class="sd">        (:meth:`_compute_axis_dashboard_stats`) — does not recompute.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="kn">import</span><span class="w"> </span><span class="nn">panel</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pn</span>
-
-        <span class="n">info_table</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;info_table&quot;</span><span class="p">]</span>
-        <span class="n">timings</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;timings&quot;</span><span class="p">]</span>
-        <span class="n">grid_df</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;grid_df&quot;</span><span class="p">]</span>
-        <span class="n">nrows</span> <span class="o">=</span> <span class="n">row_stats</span><span class="p">[</span><span class="s2">&quot;n_expected&quot;</span><span class="p">]</span>
-        <span class="n">ncols</span> <span class="o">=</span> <span class="n">col_stats</span><span class="p">[</span><span class="s2">&quot;n_expected&quot;</span><span class="p">]</span>
-
-        <span class="n">n_objects</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">info_table</span><span class="p">)</span>
-        <span class="n">total_time</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">timings</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
-
-        <span class="c1"># Objects per cell stats</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">grid_df</span><span class="o">.</span><span class="n">empty</span> <span class="ow">and</span> <span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">ROW_MAJOR_IDX</span><span class="p">)</span> <span class="ow">in</span> <span class="n">grid_df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
-            <span class="n">counts</span> <span class="o">=</span> <span class="n">grid_df</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">ROW_MAJOR_IDX</span><span class="p">)]</span><span class="o">.</span><span class="n">value_counts</span><span class="p">()</span>
-            <span class="n">min_per_cell</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">counts</span><span class="o">.</span><span class="n">min</span><span class="p">())</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">counts</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span>
-            <span class="n">med_per_cell</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">counts</span><span class="o">.</span><span class="n">median</span><span class="p">())</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">counts</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span>
-            <span class="n">max_per_cell</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">counts</span><span class="o">.</span><span class="n">max</span><span class="p">())</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">counts</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span>
-            <span class="n">occupied</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">counts</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">min_per_cell</span> <span class="o">=</span> <span class="n">med_per_cell</span> <span class="o">=</span> <span class="n">max_per_cell</span> <span class="o">=</span> <span class="n">occupied</span> <span class="o">=</span> <span class="mi">0</span>
-
-        <span class="c1"># Oversized objects</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">info_table</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
-            <span class="n">heights</span> <span class="o">=</span> <span class="p">(</span>
-                <span class="n">info_table</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">MAX_RR</span><span class="p">)]</span><span class="o">.</span><span class="n">values</span>
-                <span class="o">-</span> <span class="n">info_table</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">MIN_RR</span><span class="p">)]</span><span class="o">.</span><span class="n">values</span>
-            <span class="p">)</span>
-            <span class="n">widths</span> <span class="o">=</span> <span class="p">(</span>
-                <span class="n">info_table</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">MAX_CC</span><span class="p">)]</span><span class="o">.</span><span class="n">values</span>
-                <span class="o">-</span> <span class="n">info_table</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">MIN_CC</span><span class="p">)]</span><span class="o">.</span><span class="n">values</span>
-            <span class="p">)</span>
-            <span class="n">expected_cell_area</span> <span class="o">=</span> <span class="p">(</span>
-                <span class="p">(</span><span class="n">image_shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="n">nrows</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">image_shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">/</span> <span class="n">ncols</span><span class="p">)</span>
-            <span class="p">)</span>
-            <span class="n">n_oversized</span> <span class="o">=</span> <span class="nb">int</span><span class="p">((</span><span class="n">heights</span> <span class="o">*</span> <span class="n">widths</span> <span class="o">&gt;</span> <span class="n">expected_cell_area</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">n_oversized</span> <span class="o">=</span> <span class="mi">0</span>
-
-        <span class="k">def</span><span class="w"> </span><span class="nf">_row_pair</span><span class="p">(</span><span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">fit</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">ip</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">total</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<span class="w">            </span><span class="sd">&quot;&quot;&quot;Render a &#39;fit / ip&#39; summary row, marking disagreements.&quot;&quot;&quot;</span>
-            <span class="n">same</span> <span class="o">=</span> <span class="n">fit</span> <span class="o">==</span> <span class="n">ip</span>
-            <span class="n">marker</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span> <span class="k">if</span> <span class="n">same</span> <span class="k">else</span> <span class="s2">&quot; ⚠&quot;</span>
-            <span class="k">if</span> <span class="n">same</span><span class="p">:</span>
-                <span class="k">return</span> <span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;| </span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2"> | </span><span class="si">{</span><span class="n">fit</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">total</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">fit</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">total</span><span class="si">:</span><span class="s2">.0%</span><span class="si">}</span><span class="s2">) |</span><span class="se">\n</span><span class="s2">&quot;</span>
-                <span class="p">)</span>
-            <span class="k">return</span> <span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;| </span><span class="si">{</span><span class="n">label</span><span class="si">}{</span><span class="n">marker</span><span class="si">}</span><span class="s2"> | fit: </span><span class="si">{</span><span class="n">fit</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">total</span><span class="si">}</span><span class="s2"> &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="n">fit</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">total</span><span class="si">:</span><span class="s2">.0%</span><span class="si">}</span><span class="s2">), ip: </span><span class="si">{</span><span class="n">ip</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">total</span><span class="si">}</span><span class="s2"> &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="n">ip</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">total</span><span class="si">:</span><span class="s2">.0%</span><span class="si">}</span><span class="s2">) |</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="p">)</span>
-
-        <span class="n">md</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;### Summary</span><span class="se">\n\n</span><span class="s2">&quot;</span>
-            <span class="sa">f</span><span class="s2">&quot;| Metric | Value |</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="sa">f</span><span class="s2">&quot;|---|---|</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="sa">f</span><span class="s2">&quot;| Objects | </span><span class="si">{</span><span class="n">n_objects</span><span class="si">}</span><span class="s2"> |</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="sa">f</span><span class="s2">&quot;| Grid | </span><span class="si">{</span><span class="n">nrows</span><span class="si">}</span><span class="s2"> x </span><span class="si">{</span><span class="n">ncols</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">nrows</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">ncols</span><span class="si">}</span><span class="s2"> cells) |</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="sa">f</span><span class="s2">&quot;| Occupied cells | </span><span class="si">{</span><span class="n">occupied</span><span class="si">}</span><span class="s2"> |</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="sa">f</span><span class="s2">&quot;| Obj/cell (min / med / max) | </span><span class="si">{</span><span class="n">min_per_cell</span><span class="si">}</span><span class="s2"> / &quot;</span>
-            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">med_per_cell</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> / </span><span class="si">{</span><span class="n">max_per_cell</span><span class="si">}</span><span class="s2"> |</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="sa">f</span><span class="s2">&quot;| Oversized objects | </span><span class="si">{</span><span class="n">n_oversized</span><span class="si">}</span><span class="s2"> |</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="sa">f</span><span class="s2">&quot;| Row pitch | </span><span class="si">{</span><span class="n">row_stats</span><span class="p">[</span><span class="s1">&#39;fit_pitch&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> px |</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="sa">f</span><span class="s2">&quot;| Col pitch | </span><span class="si">{</span><span class="n">col_stats</span><span class="p">[</span><span class="s1">&#39;fit_pitch&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> px |</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="sa">f</span><span class="s2">&quot;| Pipeline path | </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;pipeline_path&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> |</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="o">+</span> <span class="n">_row_pair</span><span class="p">(</span>
-                <span class="s2">&quot;Row occupancy&quot;</span><span class="p">,</span> <span class="n">row_stats</span><span class="p">[</span><span class="s2">&quot;fit_occupied&quot;</span><span class="p">],</span>
-                <span class="n">row_stats</span><span class="p">[</span><span class="s2">&quot;ip_occupied&quot;</span><span class="p">],</span> <span class="n">nrows</span><span class="p">,</span>
-            <span class="p">)</span>
-            <span class="o">+</span> <span class="n">_row_pair</span><span class="p">(</span>
-                <span class="s2">&quot;Col occupancy&quot;</span><span class="p">,</span> <span class="n">col_stats</span><span class="p">[</span><span class="s2">&quot;fit_occupied&quot;</span><span class="p">],</span>
-                <span class="n">col_stats</span><span class="p">[</span><span class="s2">&quot;ip_occupied&quot;</span><span class="p">],</span> <span class="n">ncols</span><span class="p">,</span>
-            <span class="p">)</span>
-            <span class="o">+</span> <span class="n">_row_pair</span><span class="p">(</span>
-                <span class="s2">&quot;Row span coverage&quot;</span><span class="p">,</span> <span class="n">row_stats</span><span class="p">[</span><span class="s2">&quot;fit_span&quot;</span><span class="p">],</span>
-                <span class="n">row_stats</span><span class="p">[</span><span class="s2">&quot;ip_span&quot;</span><span class="p">],</span> <span class="n">nrows</span><span class="p">,</span>
-            <span class="p">)</span>
-            <span class="o">+</span> <span class="n">_row_pair</span><span class="p">(</span>
-                <span class="s2">&quot;Col span coverage&quot;</span><span class="p">,</span> <span class="n">col_stats</span><span class="p">[</span><span class="s2">&quot;fit_span&quot;</span><span class="p">],</span>
-                <span class="n">col_stats</span><span class="p">[</span><span class="s2">&quot;ip_span&quot;</span><span class="p">],</span> <span class="n">ncols</span><span class="p">,</span>
-            <span class="p">)</span>
-            <span class="o">+</span> <span class="sa">f</span><span class="s2">&quot;| Total time | </span><span class="si">{</span><span class="n">total_time</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2"> s |</span><span class="se">\n</span><span class="s2">&quot;</span>
-        <span class="p">)</span>
-        <span class="k">return</span> <span class="n">pn</span><span class="o">.</span><span class="n">pane</span><span class="o">.</span><span class="n">Markdown</span><span class="p">(</span>
-            <span class="n">md</span><span class="p">,</span> <span class="n">styles</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;font-family&quot;</span><span class="p">:</span> <span class="s2">&quot;&#39;DM Sans&#39;, sans-serif&quot;</span><span class="p">},</span>
-        <span class="p">)</span>
-
 <div class="viewcode-block" id="AutoGridFinder.dashboard">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.grid.html#phenotypic.grid.AutoGridFinder.dashboard">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">dashboard</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">,</span> <span class="n">show_progress</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Interactive diagnostic dashboard for grid fitting.</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">dashboard</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">,</span> <span class="n">show_progress</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Notebook Plotly diagnostic dashboard for grid fitting.</span>
 
-<span class="sd">        Profiles the grid-fitting pipeline and displays timing breakdown,</span>
-<span class="sd">        object size distribution, centroid scatter with grid overlay, and</span>
-<span class="sd">        summary statistics. Useful for identifying bottlenecks when</span>
-<span class="sd">        ``grid.info()`` is slow (e.g., with filamentous fungi images).</span>
+<span class="sd">        Profiles the grid-fitting pipeline and returns a single composed</span>
+<span class="sd">        :class:`plotly.graph_objects.Figure` stacking the timing breakdown,</span>
+<span class="sd">        object-size distribution, centroid scatter with grid overlay,</span>
+<span class="sd">        per-axis spacing and occupancy panels, and a summary table. Useful</span>
+<span class="sd">        for identifying bottlenecks when ``grid.info()`` is slow (e.g. with</span>
+<span class="sd">        filamentous fungi images).</span>
 
-<span class="sd">        Uses an ipywidgets progress bar in Jupyter, tqdm otherwise.</span>
+<span class="sd">        The figures are built by the transient</span>
+<span class="sd">        :class:`~phenotypic.grid._grid_fit_report.GridFitReport` provider;</span>
+<span class="sd">        because every panel is control-free, ``report.dash()`` composes them</span>
+<span class="sd">        into one vertical subplot figure. Uses an ipywidgets progress bar in</span>
+<span class="sd">        Jupyter, tqdm otherwise.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            image: Image with detected objects (must have objmap).</span>
@@ -2335,15 +1895,15 @@
 <span class="sd">                profiling. Defaults to True.</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            Panel Column layout with 4 diagnostic panels.</span>
+<span class="sd">            A composed ``plotly.graph_objects.Figure`` with all diagnostic</span>
+<span class="sd">            panels stacked vertically.</span>
 
 <span class="sd">        Notes:</span>
 <span class="sd">            The ``inspect()`` name is reserved across the codebase for</span>
-<span class="sd">            methods returning a saveable matplotlib or plotly figure</span>
-<span class="sd">            consumed by the CLI&#39;s ``--save-inspect`` flag. This method</span>
-<span class="sd">            returns an interactive panel layout that does not flatten</span>
-<span class="sd">            to a static raster, so it is kept under the</span>
-<span class="sd">            :meth:`dashboard` name.</span>
+<span class="sd">            methods returning a saveable figure consumed by the CLI&#39;s</span>
+<span class="sd">            ``--save-inspect`` flag. This diagnostic surface is exposed</span>
+<span class="sd">            under :meth:`dashboard` instead, and ``AutoGridFinder`` does not</span>
+<span class="sd">            mix in ``FigureProvider`` so no ``inspect()`` is auto-discovered.</span>
 
 <span class="sd">        Examples:</span>
 <span class="sd">            &gt;&gt;&gt; from phenotypic.data import load_synth_yeast_plate</span>
@@ -2354,13 +1914,13 @@
 <span class="sd">            &gt;&gt;&gt; finder = AutoGridFinder(nrows=8, ncols=12)</span>
 <span class="sd">            &gt;&gt;&gt; dashboard = finder.dashboard(image)</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="kn">import</span><span class="w"> </span><span class="nn">panel</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pn</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.grid._grid_fit_report</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridFitReport</span>
 
         <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_timed_pipeline</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">show_progress</span><span class="o">=</span><span class="n">show_progress</span><span class="p">)</span>
 
-        <span class="c1"># Compute per-axis dashboard stats ONCE; every downstream panel</span>
-        <span class="c1"># consumes from these dicts so the numbers cannot drift between</span>
-        <span class="c1"># panels. See _compute_axis_dashboard_stats for the schema.</span>
+        <span class="c1"># Compute per-axis dashboard stats ONCE; the report reads from these</span>
+        <span class="c1"># dicts so the numbers cannot drift between panels. See</span>
+        <span class="c1"># _compute_axis_dashboard_stats for the schema.</span>
         <span class="n">row_stats</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_axis_dashboard_stats</span><span class="p">(</span>
             <span class="n">result</span><span class="p">[</span><span class="s2">&quot;info_table&quot;</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">n_expected</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">nrows</span><span class="p">,</span>
             <span class="n">image_dim</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">edges</span><span class="o">=</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;row_edges&quot;</span><span class="p">],</span>
@@ -2369,41 +1929,17 @@
             <span class="n">result</span><span class="p">[</span><span class="s2">&quot;info_table&quot;</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">n_expected</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span>
             <span class="n">image_dim</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">edges</span><span class="o">=</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;col_edges&quot;</span><span class="p">],</span>
         <span class="p">)</span>
-        <span class="n">info_table_empty</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;info_table&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">empty</span><span class="p">)</span>
 
-        <span class="n">header</span> <span class="o">=</span> <span class="n">pn</span><span class="o">.</span><span class="n">pane</span><span class="o">.</span><span class="n">Markdown</span><span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;## Grid Fitting Diagnostics -- </span><span class="si">{</span><span class="n">image</span><span class="o">.</span><span class="n">num_objects</span><span class="si">}</span><span class="s2"> objects, &quot;</span>
-            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">nrows</span><span class="si">}</span><span class="s2">x</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">ncols</span><span class="si">}</span><span class="s2"> grid&quot;</span><span class="p">,</span>
-            <span class="n">styles</span><span class="o">=</span><span class="p">{</span>
-                <span class="s2">&quot;font-family&quot;</span><span class="p">:</span> <span class="s2">&quot;&#39;DM Sans&#39;, sans-serif&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;color&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_OI_NAVY</span><span class="p">,</span>
-            <span class="p">},</span>
+        <span class="n">report</span> <span class="o">=</span> <span class="n">GridFitReport</span><span class="p">(</span>
+            <span class="n">result</span><span class="p">,</span>
+            <span class="n">row_stats</span><span class="o">=</span><span class="n">row_stats</span><span class="p">,</span>
+            <span class="n">col_stats</span><span class="o">=</span><span class="n">col_stats</span><span class="p">,</span>
+            <span class="n">nrows</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">nrows</span><span class="p">,</span>
+            <span class="n">ncols</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span>
+            <span class="n">image_shape</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span>
+            <span class="n">num_objects</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">num_objects</span><span class="p">,</span>
         <span class="p">)</span>
-
-        <span class="n">p1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_plot_timing_waterfall</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;timings&quot;</span><span class="p">])</span>
-        <span class="n">p2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_plot_object_size_dist</span><span class="p">(</span>
-            <span class="n">result</span><span class="p">[</span><span class="s2">&quot;info_table&quot;</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">nrows</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span> <span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span>
-        <span class="p">)</span>
-        <span class="n">p3</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_plot_center_scatter</span><span class="p">(</span>
-            <span class="n">result</span><span class="p">[</span><span class="s2">&quot;info_table&quot;</span><span class="p">],</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;row_edges&quot;</span><span class="p">],</span>
-            <span class="n">result</span><span class="p">[</span><span class="s2">&quot;col_edges&quot;</span><span class="p">],</span> <span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span>
-        <span class="p">)</span>
-        <span class="n">p4</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_inspect_summary</span><span class="p">(</span>
-            <span class="n">result</span><span class="p">,</span> <span class="n">row_stats</span><span class="p">,</span> <span class="n">col_stats</span><span class="p">,</span> <span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span>
-        <span class="p">)</span>
-        <span class="n">p5</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_plot_successive_diffs</span><span class="p">(</span>
-            <span class="n">row_stats</span><span class="p">,</span> <span class="n">col_stats</span><span class="p">,</span> <span class="n">info_table_empty</span><span class="p">,</span>
-        <span class="p">)</span>
-        <span class="n">p6</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_plot_axis_occupancy</span><span class="p">(</span>
-            <span class="n">row_stats</span><span class="p">,</span> <span class="n">col_stats</span><span class="p">,</span> <span class="n">info_table_empty</span><span class="p">,</span>
-        <span class="p">)</span>
-
-        <span class="k">return</span> <span class="n">pn</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span>
-            <span class="n">header</span><span class="p">,</span>
-            <span class="n">pn</span><span class="o">.</span><span class="n">Row</span><span class="p">(</span><span class="n">p1</span><span class="p">,</span> <span class="n">p4</span><span class="p">),</span>
-            <span class="n">pn</span><span class="o">.</span><span class="n">Row</span><span class="p">(</span><span class="n">p3</span><span class="p">,</span> <span class="n">p2</span><span class="p">),</span>
-            <span class="n">pn</span><span class="o">.</span><span class="n">Row</span><span class="p">(</span><span class="n">p5</span><span class="p">,</span> <span class="n">p6</span><span class="p">),</span>
-        <span class="p">)</span></div>
+        <span class="k">return</span> <span class="n">report</span><span class="o">.</span><span class="n">dash</span><span class="p">()</span></div>
 </div>
 
 

@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -578,35 +578,49 @@
 <div class="viewcode-block" id="MaskDilation">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.refine.html#phenotypic.refine.MaskDilation">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">MaskDilation</span><span class="p">(</span><span class="n">ObjectRefiner</span><span class="p">,</span> <span class="n">FootprintMixin</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Expand colony masks outward using morphological dilation.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Expand colony masks outward by morphological dilation.</span>
 
-<span class="sd">    Adds pixels around object boundaries, bridging small gaps between</span>
-<span class="sd">    nearby fragments and recovering faint halos excluded by strict</span>
-<span class="sd">    thresholding. Dilation inflates area; follow with erosion (closing)</span>
-<span class="sd">    if area accuracy is critical.</span>
+<span class="sd">    Adds pixels around all object boundaries, extending each colony mask by</span>
+<span class="sd">    one or more structuring element widths. This bridges thin gaps between</span>
+<span class="sd">    nearby fragments and recovers faint colony halos that strict thresholding</span>
+<span class="sd">    excluded. Dilation permanently inflates mask area; pair with</span>
+<span class="sd">    :class:`MaskErosion` or use :class:`MaskClosing` if area accuracy matters.</span>
 
-<span class="sd">    Args:</span>
-<span class="sd">        shape: Structuring element. ``&#39;auto&#39;``, ``&#39;disk&#39;``, ``&#39;square&#39;``,</span>
-<span class="sd">            ``&#39;diamond&#39;``, or custom ndarray. Default: ``None``.</span>
-<span class="sd">        width: Footprint width in pixels. Default: 3.</span>
-
-<span class="sd">    Returns:</span>
-<span class="sd">        Image: Input image with ``objmask`` and ``objmap`` dilated.</span>
+<span class="sd">    For an overview of morphological refinement methods, see</span>
+<span class="sd">    :doc:`/explanation/refinement_strategies`.</span>
 
 <span class="sd">    Best For:</span>
-<span class="sd">        - Bridging thin gaps between fragments of the same colony.</span>
-<span class="sd">        - Recovering faint colony halos near detection boundaries.</span>
-<span class="sd">        - Preprocessing before merge-based refinement operations.</span>
+<span class="sd">        - Bridging thin background gaps between fragments of the same colony</span>
+<span class="sd">          before merge-based refinement.</span>
+<span class="sd">        - Recovering faint outgrowth halos that fall just below the detection</span>
+<span class="sd">          threshold on plates with heterogeneous colony intensity.</span>
+<span class="sd">        - Expanding colony masks to include diffuse colony edges before</span>
+<span class="sd">          intensity or color measurements.</span>
 
 <span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`MaskClosing` for dilation-then-erosion that bridges gaps</span>
-<span class="sd">          without inflating colony size.</span>
+<span class="sd">        - :class:`MaskClosing` for dilation followed by erosion that bridges</span>
+<span class="sd">          gaps without permanently inflating colony area.</span>
 <span class="sd">        - :class:`MaskErosion` for the opposite effect — shrinking masks</span>
-<span class="sd">          to remove thin protrusions.</span>
+<span class="sd">          inward to remove thin protrusions or boundary noise.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        shape: Structuring element shape for the dilation footprint. ``&quot;auto&quot;``</span>
+<span class="sd">            scales a diamond to the image size; ``&quot;disk&quot;``, ``&quot;square&quot;``, and</span>
+<span class="sd">            ``&quot;diamond&quot;`` use named shapes at the given ``width``; a NumPy</span>
+<span class="sd">            array provides a custom element; ``None`` uses the skimage library</span>
+<span class="sd">            default. Default: ``None``.</span>
+<span class="sd">        width: Footprint width in pixels when using a named shape. Larger values</span>
+<span class="sd">            expand masks further. Typical range: 1--7. Default: 3.</span>
+<span class="sd">        n_iter: Number of dilation iterations applied sequentially. Each</span>
+<span class="sd">            additional iteration extends the mask by one further footprint</span>
+<span class="sd">            radius. Default: 1.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Image: Input image with ``objmask`` and ``objmap`` dilated outward.</span>
 
 <span class="sd">    See Also:</span>
 <span class="sd">        :doc:`/explanation/refinement_strategies` for the recommended</span>
-<span class="sd">        refinement sequence.</span>
+<span class="sd">        morphological refinement sequence.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">shape</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;auto&quot;</span><span class="p">,</span> <span class="s2">&quot;square&quot;</span><span class="p">,</span> <span class="s2">&quot;diamond&quot;</span><span class="p">,</span> <span class="s2">&quot;disk&quot;</span><span class="p">]</span> <span class="o">|</span> <span class="n">NdArrayField</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>

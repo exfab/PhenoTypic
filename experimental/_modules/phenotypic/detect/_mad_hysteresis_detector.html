@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -589,40 +589,6 @@
 <span class="sd">    unstable thresholds. For a full comparison see</span>
 <span class="sd">    :doc:`/explanation/detection_strategies_compared`.</span>
 
-<span class="sd">    Args:</span>
-<span class="sd">        k_high: High-threshold multiplier. The high threshold is</span>
-<span class="sd">            ``k_high * sigma_noise``; pixels above this seed connected</span>
-<span class="sd">            regions. Higher values are more conservative. Typical range:</span>
-<span class="sd">            3.0--8.0. Default: 5.0.</span>
-
-<span class="sd">        k_low: Low-threshold multiplier. The low threshold is</span>
-<span class="sd">            ``k_low * sigma_noise``; pixels above this are included if</span>
-<span class="sd">            connected to a high-threshold seed. Must be less than</span>
-<span class="sd">            ``k_high``. Typical range: 1.5--4.0. Default: 2.5.</span>
-
-<span class="sd">        min_size: Minimum colony area in pixels. Connected components</span>
-<span class="sd">            smaller than this are removed as noise. Default: 20.</span>
-
-<span class="sd">        connectivity: Pixel connectivity for labelling connected</span>
-<span class="sd">            components. ``1`` for 4-connectivity, ``2`` for</span>
-<span class="sd">            8-connectivity. Default: 2.</span>
-
-<span class="sd">        ignore_zeros: Exclude zero-intensity pixels from MAD computation.</span>
-<span class="sd">            Enable for plates with black borders or masked regions.</span>
-<span class="sd">            Default: True.</span>
-
-<span class="sd">        ignore_borders: Remove colonies touching image edges via</span>
-<span class="sd">            ``clear_border()``. Recommended for grid-based colony counting</span>
-<span class="sd">            to eliminate partial colonies at plate boundaries. Default:</span>
-<span class="sd">            True.</span>
-
-<span class="sd">    Returns:</span>
-<span class="sd">        Image: Input image with ``objmask`` set to binary mask and</span>
-<span class="sd">        ``objmap`` set to labeled connected components.</span>
-
-<span class="sd">    Raises:</span>
-<span class="sd">        ValueError: If ``k_low`` &gt;= ``k_high``.</span>
-
 <span class="sd">    Best For:</span>
 <span class="sd">        * Filter response maps (CED, Hessian, LoG, Frangi) where the</span>
 <span class="sd">          noise floor is approximately Gaussian.</span>
@@ -638,6 +604,55 @@
 <span class="sd">          with a bimodal histogram.</span>
 <span class="sd">        * :class:`ChanVeseDetector` when colonies have diffuse edges and</span>
 <span class="sd">          region-based segmentation is more appropriate.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        k_high: High-threshold multiplier setting the seed threshold at</span>
+<span class="sd">            ``k_high * sigma_noise`` standard deviations above the noise</span>
+<span class="sd">            floor. There is no universal best value -- it is tuned to the</span>
+<span class="sd">            scene. Raising *k_high* accepts only the most prominent</span>
+<span class="sd">            colonies as seeds (more conservative); lowering it seeds dimmer</span>
+<span class="sd">            structures. Typical range: 3.0--8.0. Default: 5.0. On noisy or</span>
+<span class="sd">            strongly textured plates raise toward 6--8 so agar granularity</span>
+<span class="sd">            is not seeded; on faint enhancer outputs (e.g. Frangi on weak</span>
+<span class="sd">            hyphae) lower toward 3--4 so genuine signal seeds at all.</span>
+
+<span class="sd">        k_low: Low-threshold multiplier setting the growth threshold at</span>
+<span class="sd">            ``k_low * sigma_noise``; pixels above this join a seed if</span>
+<span class="sd">            connected to it. Must be strictly less than *k_high*. The ratio</span>
+<span class="sd">            *k_high* / *k_low* trades selectivity against coverage: a wider</span>
+<span class="sd">            gap grows seeds further into faint margins. Typical range:</span>
+<span class="sd">            1.5--4.0. Default: 2.5. Lower toward 1.5--2.0 to recover the</span>
+<span class="sd">            faint edges of filamentous or low-contrast colonies; raise it</span>
+<span class="sd">            on clean high-contrast maps.</span>
+
+<span class="sd">        min_size: Minimum colony area in pixels; connected components</span>
+<span class="sd">            smaller than this are removed as noise, debris, or condensation.</span>
+<span class="sd">            Raising it silences small artefacts at the cost of missing</span>
+<span class="sd">            genuine micro-colonies; lowering it recovers faint colonies but</span>
+<span class="sd">            raises false positives. Scale with resolution -- smaller for</span>
+<span class="sd">            dense 384/1536 formats, larger for high-dpi scans. Default: 20.</span>
+
+<span class="sd">        connectivity: Pixel connectivity for labelling connected</span>
+<span class="sd">            components. ``1`` (4-connected) keeps diagonally touching</span>
+<span class="sd">            objects separate; ``2`` (8-connected) bridges diagonal gaps in</span>
+<span class="sd">            thin or branching structures into fewer, larger regions.</span>
+<span class="sd">            Default: 2.</span>
+
+<span class="sd">        ignore_zeros: Exclude zero-intensity pixels from MAD computation.</span>
+<span class="sd">            Enable for plates with black borders or masked regions.</span>
+<span class="sd">            Default: False.</span>
+
+<span class="sd">        ignore_borders: Remove colonies touching image edges via</span>
+<span class="sd">            ``clear_border()``. Recommended for grid-based colony counting</span>
+<span class="sd">            to eliminate partial colonies at plate boundaries. Default:</span>
+<span class="sd">            True.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Image: Input image with ``objmask`` set to binary mask and</span>
+<span class="sd">        ``objmap`` set to labeled connected components.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If ``k_low`` &gt;= ``k_high``.</span>
 
 <span class="sd">    See Also:</span>
 <span class="sd">        :doc:`/tutorials/notebooks/02_detecting_colonies`</span>

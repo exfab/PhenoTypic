@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -562,7 +562,7 @@
   <h1>Source code for phenotypic.enhance._subtract_rolling_ball</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Annotated</span>
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
@@ -570,7 +570,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">skimage.restoration</span><span class="w"> </span><span class="kn">import</span> <span class="n">rolling_ball</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">BackgroundSubtraction</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">NdArrayField</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">NdArrayField</span><span class="p">,</span> <span class="n">TuneSpec</span>
 
 
 <div class="viewcode-block" id="SubtractRollingBall">
@@ -579,40 +579,49 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Remove background from ``detect_mat`` with ImageJ-style rolling-ball subtraction.</span>
 
 <span class="sd">    Models the background as the surface traced by rolling a parabolic ball</span>
-<span class="sd">    under the image intensity landscape, then subtracts it. Effectively</span>
-<span class="sd">    removes slow illumination gradients and agar shading while preserving</span>
-<span class="sd">    colony structures. Handles non-Gaussian intensity ramps better than</span>
-<span class="sd">    :class:`SubtractGaussian`.</span>
+<span class="sd">    under the image intensity landscape, then subtracts it. Removes slow</span>
+<span class="sd">    illumination gradients and agar shading while preserving colony</span>
+<span class="sd">    structures, and handles non-Gaussian intensity ramps better than</span>
+<span class="sd">    Gaussian-based subtraction.</span>
 
 <span class="sd">    For algorithm details, see :doc:`/explanation/what_enhancement_does`.</span>
 
+<span class="sd">    Best For:</span>
+<span class="sd">        - Scanner vignetting, lid glare, or agar thickness variations that</span>
+<span class="sd">          produce non-Gaussian illumination gradients.</span>
+<span class="sd">        - Flattening backgrounds so bright colonies or bright colony</span>
+<span class="sd">          features stand out against local background.</span>
+<span class="sd">        - Images where Gaussian subtraction leaves residual background</span>
+<span class="sd">          near plate edges or bright corners.</span>
+
+<span class="sd">    Consider Also:</span>
+<span class="sd">        - :class:`SubtractGaussian` for Gaussian-based subtraction with</span>
+<span class="sd">          continuous sigma control when the background gradient is smooth</span>
+<span class="sd">          and Gaussian-like.</span>
+<span class="sd">        - :class:`SubtractOpening` for OpenCV-accelerated morphological</span>
+<span class="sd">          background removal in high-throughput pipelines.</span>
+<span class="sd">        - :class:`WhiteTophatEnhance` for isolating small bright</span>
+<span class="sd">          structures rather than producing a corrected background-free</span>
+<span class="sd">          image.</span>
+<span class="sd">        - :class:`ImageInverter` before this operation when colonies are</span>
+<span class="sd">          dark on bright agar and should be made bright explicitly.</span>
+
 <span class="sd">    Args:</span>
-<span class="sd">        radius: Rolling-ball radius in pixels. Must be larger than the</span>
-<span class="sd">            typical colony diameter to avoid subtracting colony signal.</span>
-<span class="sd">            Typical range: 50--200. Default: 100.</span>
-<span class="sd">        kernel: Optional custom ball/shape array. When provided, overrides</span>
-<span class="sd">            ``radius``. Default: ``None``.</span>
-<span class="sd">        nansafe: If ``True``, treat NaNs as missing data to avoid artifacts</span>
-<span class="sd">            when using masked images. Default: ``False``.</span>
+<span class="sd">        radius: Rolling-ball radius in pixels. Must exceed the largest</span>
+<span class="sd">            colony diameter so that colony pixels do not contribute to</span>
+<span class="sd">            the background estimate. Typical range: 50--200. A reasonable</span>
+<span class="sd">            starting point is a value larger than the widest colony on the</span>
+<span class="sd">            plate. Default: 100.</span>
+<span class="sd">        kernel: Optional custom ball or paraboloid array overriding the</span>
+<span class="sd">            default parabolic shape. When provided, ``radius`` is ignored.</span>
+<span class="sd">            Default: ``None``.</span>
+<span class="sd">        nansafe: Treat NaN-valued pixels as missing data during background</span>
+<span class="sd">            estimation, preventing NaN propagation in masked or padded</span>
+<span class="sd">            images. Default: ``False``.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        Image: Input image with ``detect_mat`` background-subtracted.</span>
 <span class="sd">        ``rgb`` and ``gray`` are unchanged.</span>
-
-<span class="sd">    Best For:</span>
-<span class="sd">        - Scanner vignetting, lid glare, or agar thickness variations.</span>
-<span class="sd">        - Flattening backgrounds to improve segmentation of dark colonies</span>
-<span class="sd">          on bright agar.</span>
-<span class="sd">        - Images with non-linear illumination gradients where Gaussian</span>
-<span class="sd">          subtraction leaves residual background.</span>
-
-<span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`SubtractGaussian` for faster Gaussian-based subtraction</span>
-<span class="sd">          with continuous sigma control.</span>
-<span class="sd">        - :class:`SubtractOpening` for OpenCV-accelerated morphological</span>
-<span class="sd">          background removal in high-throughput pipelines.</span>
-<span class="sd">        - :class:`WhiteTophatEnhance` when you want to isolate small</span>
-<span class="sd">          bright structures rather than subtract background.</span>
 
 <span class="sd">    See Also:</span>
 <span class="sd">        :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a</span>
@@ -621,7 +630,8 @@
 <span class="sd">        rolling-ball and other illumination correction strategies.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="n">radius</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span>
+    <span class="c1"># TODO: review bound (unverified vs literature)</span>
+    <span class="n">radius</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mi">50</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="n">log</span><span class="o">=</span><span class="kc">True</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">100</span>
     <span class="n">kernel</span><span class="p">:</span> <span class="n">NdArrayField</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">nansafe</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
 

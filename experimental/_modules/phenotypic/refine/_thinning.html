@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -575,46 +575,50 @@
 <div class="viewcode-block" id="Thinning">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.refine.html#phenotypic.refine.Thinning">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">Thinning</span><span class="p">(</span><span class="n">ObjectRefiner</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Progressively thin object masks by iteratively removing outer pixels while preserving connectivity.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Progressively thin object masks by iteratively removing outer boundary pixels.</span>
 
-<span class="sd">    Strips away boundary pixels one layer at a time, gradually reducing object</span>
-<span class="sd">    width toward single-pixel structures. Unlike skeletonization, thinning</span>
-<span class="sd">    offers explicit iteration control, making it useful for gentle boundary</span>
-<span class="sd">    cleanup (few iterations) or full skeleton extraction (convergence).</span>
+<span class="sd">    Strips boundary pixels one layer at a time while preserving topological</span>
+<span class="sd">    connectivity, gradually reducing each object toward single-pixel-wide</span>
+<span class="sd">    structures. Explicit iteration control makes it suitable for anything</span>
+<span class="sd">    from gentle edge cleanup to full centerline extraction.</span>
 
-<span class="sd">    Args:</span>
-<span class="sd">        max_num_iter: Maximum thinning iterations. ``None`` iterates until</span>
-<span class="sd">            convergence (full skeleton). A small value (1--3) provides</span>
-<span class="sd">            gentle boundary cleanup; a large value (10--50) thins</span>
-<span class="sd">            aggressively. Default: None.</span>
-
-<span class="sd">    Returns:</span>
-<span class="sd">        Image: Input image with ``objmask`` thinned by the specified number</span>
-<span class="sd">        of iterations.</span>
-
-<span class="sd">    Raises:</span>
-<span class="sd">        ValueError: If ``max_num_iter`` is negative.</span>
+<span class="sd">    For a comparison of morphological refinement methods, see</span>
+<span class="sd">    :doc:`/explanation/refinement_strategies`.</span>
 
 <span class="sd">    Best For:</span>
-<span class="sd">        - Gradually separating touching or overlapping colonies via controlled</span>
-<span class="sd">          pixel removal.</span>
-<span class="sd">        - Clarifying diffuse colony boundaries before morphological</span>
-<span class="sd">          measurements.</span>
-<span class="sd">        - Preparing masks for graph-based analysis by converting to</span>
-<span class="sd">          single-pixel skeletons.</span>
-<span class="sd">        - De-noising colony edges while preserving filamentous structures.</span>
+<span class="sd">        - Gently cleaning diffuse or ragged colony boundaries before</span>
+<span class="sd">          morphological measurements with a small number of iterations.</span>
+<span class="sd">        - Gradually separating lightly touching colonies via controlled</span>
+<span class="sd">          pixel removal without applying a full watershed.</span>
+<span class="sd">        - Preparing masks for graph-based analysis by iterating to</span>
+<span class="sd">          single-pixel-wide structures.</span>
+<span class="sd">        - Preserving the overall shape of filamentous colonies while</span>
+<span class="sd">          reducing spurious boundary protrusions.</span>
 
 <span class="sd">    Consider Also:</span>
 <span class="sd">        - :class:`Skeletonize` for direct medial-axis extraction without</span>
-<span class="sd">          iterative control.</span>
-<span class="sd">        - :class:`MaskErosion` for uniform inward shrinking with a</span>
-<span class="sd">          configurable structuring element.</span>
-<span class="sd">        - :class:`SeparateObjects` for watershed-based separation of</span>
-<span class="sd">          touching colonies.</span>
+<span class="sd">          per-iteration control.</span>
+<span class="sd">        - :class:`MaskErosion` for uniform inward shrinking governed by a</span>
+<span class="sd">          configurable structuring element rather than iterative peeling.</span>
+<span class="sd">        - :class:`SeparateObjects` for watershed-based separation when</span>
+<span class="sd">          colonies are firmly merged rather than lightly touching.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        max_num_iter: Maximum number of thinning iterations. ``None`` runs</span>
+<span class="sd">            until convergence, yielding a fully thinned single-pixel-wide</span>
+<span class="sd">            skeleton (Guo--Hall thinning, distinct from the Zhang--Suen/Lee</span>
+<span class="sd">            algorithms in :class:`Skeletonize`, so the output is similar but</span>
+<span class="sd">            not identical). Small values (1--5) provide gentle boundary</span>
+<span class="sd">            cleanup; larger values thin more aggressively. Default: None.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Image: Input image with ``objmask`` thinned by up to</span>
+<span class="sd">        ``max_num_iter`` iterations. Assigning ``objmask`` rebuilds</span>
+<span class="sd">        ``objmap`` from the thinned mask.</span>
 
 <span class="sd">    See Also:</span>
 <span class="sd">        :doc:`/how_to/notebooks/refine_noisy_boundaries` for thinning-based</span>
-<span class="sd">        boundary cleanup workflows.</span>
+<span class="sd">        boundary cleanup workflows on real plate images.</span>
 <span class="sd">        :doc:`/explanation/refinement_strategies` for a comparison of</span>
 <span class="sd">        morphological refinement methods.</span>
 <span class="sd">    &quot;&quot;&quot;</span>

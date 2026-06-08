@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -576,35 +576,42 @@
 <div class="viewcode-block" id="KeepNearestCenter">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.refine.html#phenotypic.refine.KeepNearestCenter">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">KeepNearestCenter</span><span class="p">(</span><span class="n">ObjectRefiner</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Retain only the object whose centroid is closest to the image center.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Retain only the object whose bounding-box center lies closest to the image center.</span>
 
-<span class="sd">    Computes the Euclidean distance from each object&#39;s centroid to the image</span>
-<span class="sd">    center and keeps the single nearest object, removing all others. Useful</span>
-<span class="sd">    for per-cell crops where the intended colony sits near the center and</span>
-<span class="sd">    peripheral detections are artifacts.</span>
+<span class="sd">    Computes the Euclidean distance from each detected object&#39;s bounding-box</span>
+<span class="sd">    center to the image center and discards all objects except the single</span>
+<span class="sd">    nearest. The operation</span>
+<span class="sd">    produces an ``objmap`` with at most one labeled region. It is most effective on</span>
+<span class="sd">    per-cell crops where the intended colony occupies the center of the field and</span>
+<span class="sd">    peripheral detections are debris or bleed-through from adjacent wells.</span>
 
-<span class="sd">    Returns:</span>
-<span class="sd">        Image: Input image with ``objmap`` reduced to the single most centered</span>
-<span class="sd">        object.</span>
+<span class="sd">    For an overview of refinement approaches, see</span>
+<span class="sd">    :doc:`/explanation/refinement_strategies`.</span>
 
 <span class="sd">    Best For:</span>
-<span class="sd">        - Single-colony crops from grid plates where debris appears near edges.</span>
-<span class="sd">        - Automated pipelines that assume one colony per field-of-view.</span>
-<span class="sd">        - Post-crop cleanup in conjunction with grid-based workflows.</span>
+<span class="sd">        - Single-colony crops produced by grid-based workflows where debris</span>
+<span class="sd">          and condensation appear near the crop boundary.</span>
+<span class="sd">        - Automated pipelines that assume exactly one colony per field of view</span>
+<span class="sd">          and need a robust single-object guarantee.</span>
+<span class="sd">        - Post-crop cleanup on images extracted from 96-well or 384-well grids</span>
+<span class="sd">          where bleed-through from neighbouring cells is visible at the edges.</span>
 
 <span class="sd">    Consider Also:</span>
 <span class="sd">        - :class:`KeepSectionLargest` when the largest object per grid cell is</span>
-<span class="sd">          more reliable than the most centered.</span>
-<span class="sd">        - :class:`SmallObjectRemover` when peripheral artifacts are simply</span>
-<span class="sd">          smaller than the true colony.</span>
-<span class="sd">        - :class:`ReduceSectionsByLine` for grid-aware multi-detection</span>
-<span class="sd">          reduction using positional regression.</span>
+<span class="sd">          a more reliable proxy for the true colony than spatial centrality.</span>
+<span class="sd">        - :class:`SmallObjectRemover` when peripheral artefacts are consistently</span>
+<span class="sd">          smaller than the genuine colony and size is the better discriminant.</span>
+<span class="sd">        - :class:`ReduceSectionsByLine` for grid-aware multi-detection reduction</span>
+<span class="sd">          using expected positional regression rather than centroid distance.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Image: Input image with ``objmap`` reduced to the single object whose</span>
+<span class="sd">        bounding-box center is closest to the image center; all other objects</span>
+<span class="sd">        are set to background.</span>
 
 <span class="sd">    See Also:</span>
-<span class="sd">        :doc:`/how_to/notebooks/refine_noisy_boundaries` for boundary cleanup</span>
-<span class="sd">        workflows.</span>
-<span class="sd">        :doc:`/explanation/refinement_strategies` for an overview of</span>
-<span class="sd">        refinement approaches.</span>
+<span class="sd">        :doc:`/how_to/notebooks/refine_noisy_boundaries` for single-object</span>
+<span class="sd">        cleanup workflows on cropped plate images.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">):</span>

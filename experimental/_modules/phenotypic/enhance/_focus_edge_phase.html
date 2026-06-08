@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -572,13 +572,14 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Literal</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Annotated</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Literal</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">numpy.fft</span><span class="w"> </span><span class="kn">import</span> <span class="n">fft2</span><span class="p">,</span> <span class="n">ifft2</span><span class="p">,</span> <span class="n">ifftshift</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">field_validator</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Field</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">..abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">FocusEdge</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..tools_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">TuneSpec</span>
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
@@ -610,146 +611,137 @@
 <div class="viewcode-block" id="FocusEdgePhase">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.enhance.html#phenotypic.enhance.FocusEdgePhase">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">FocusEdgePhase</span><span class="p">(</span><span class="n">FocusEdge</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Enhance colony edges in ``detect_mat`` with contrast-invariant phase congruency.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Enhance colony edges in ``detect_mat`` using contrast-invariant phase congruency.</span>
 
-<span class="sd">    Detects features where Fourier components are maximally in phase,</span>
-<span class="sd">    regardless of amplitude. This makes the response invariant to image</span>
-<span class="sd">    contrast and illumination changes, making it ideal for plates with</span>
-<span class="sd">    uneven lighting, scanner vignetting, or varying colony opacity.</span>
+<span class="sd">    Detects features where log-Gabor Fourier components are maximally in</span>
+<span class="sd">    phase, producing an edge response that depends on phase agreement rather</span>
+<span class="sd">    than amplitude. The result is invariant to local illumination level and</span>
+<span class="sd">    scanner vignetting, making faint or translucent colony boundaries visible</span>
+<span class="sd">    even where intensity-gradient methods fail. For algorithm details see</span>
+<span class="sd">    :doc:`/explanation/what_enhancement_does`.</span>
 
-<span class="sd">    For algorithm details, see :doc:`/explanation/what_enhancement_does`.</span>
+<span class="sd">    Best For:</span>
+<span class="sd">        - Colony boundaries that vary in opacity or contrast across the plate</span>
+<span class="sd">          due to pigmentation differences, agar depth variation, or colony age.</span>
+<span class="sd">        - Plates with scanner vignetting or uneven illumination where</span>
+<span class="sd">          gradient-based filters produce inconsistent edge strength.</span>
+<span class="sd">        - Faint, translucent colonies on bright agar where the amplitude</span>
+<span class="sd">          signal is weak but phase coherence is preserved.</span>
+<span class="sd">        - Filamentous fungi plates where edges span a wide range of</span>
+<span class="sd">          orientations and ``n_orient=8`` captures all hyphal angles.</span>
+
+<span class="sd">    Consider Also:</span>
+<span class="sd">        - :class:`FocusEdgeFrangi` for elongated hyphae when vesselness</span>
+<span class="sd">          selectivity for ridge shape is more important than illumination</span>
+<span class="sd">          invariance.</span>
+<span class="sd">        - :class:`FocusEdgeHessian` for multi-scale ridge and edge detection</span>
+<span class="sd">          with explicit blob-sensitivity control.</span>
+<span class="sd">        - :class:`SharpenEdgeGauss` for edge sharpening that preserves the</span>
+<span class="sd">          original intensity profile on uniformly illuminated plates.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        n_scale: Number of wavelet scales. Typical range: 3--6. More</span>
-<span class="sd">            scales capture a wider range of feature sizes. Default: 4.</span>
-<span class="sd">        n_orient: Number of filter orientations. 6 gives 30-degree</span>
-<span class="sd">            angular spacing. Default: 6.</span>
-<span class="sd">        min_wavelength: Wavelength of smallest scale filter in pixels.</span>
-<span class="sd">            Match to minimum expected colony edge width. Default: 3.0.</span>
-<span class="sd">        mult: Scaling factor between successive wavelengths. Controls</span>
-<span class="sd">            spectral overlap. Default: 2.1.</span>
-<span class="sd">        sigma_onf: Log-Gabor bandwidth parameter. 0.55 gives ~2 octave</span>
-<span class="sd">            bandwidth; 0.75 gives ~1 octave. Default: 0.55.</span>
-<span class="sd">        k: Noise threshold multiplier. Higher values (5--20) increase</span>
-<span class="sd">            noise rejection but may miss faint edges. Default: 2.0.</span>
-<span class="sd">        cutoff: Frequency spread penalty threshold. Default: 0.5.</span>
-<span class="sd">        g: Sigmoid sharpness for frequency spread weighting. Default: 10.</span>
-<span class="sd">        noise_method: Noise estimation method. ``-1`` (default) uses</span>
-<span class="sd">            median-based estimation; ``-2`` uses mode-based (Rayleigh);</span>
-<span class="sd">            values &gt;= 0 set a fixed noise threshold.</span>
-<span class="sd">        output: Result to store in ``detect_mat``. ``&#39;pc_sum&#39;`` (default)</span>
-<span class="sd">            for scalar phase congruency, ``&#39;M&#39;`` for edge strength,</span>
-<span class="sd">            ``&#39;m&#39;`` for corner strength.</span>
+<span class="sd">        n_scale: Number of log-Gabor octave scales. More scales integrate</span>
+<span class="sd">            phase evidence over a wider spatial frequency range, giving a</span>
+<span class="sd">            smoother but spatially broader response. Typical range: 3--6.</span>
+<span class="sd">            Default: 4.</span>
+<span class="sd">        n_orient: Number of oriented filter lobes. 6 gives 30-degree angular</span>
+<span class="sd">            spacing (suitable for circular yeast colony edges); 8 gives</span>
+<span class="sd">            22.5-degree spacing and better sensitivity to hyphae at arbitrary</span>
+<span class="sd">            angles. Typical range: 4--8. Default: 6.</span>
+<span class="sd">        min_wavelength: Center wavelength (pixels) of the finest log-Gabor</span>
+<span class="sd">            scale. Should be matched to the narrowest expected colony edge</span>
+<span class="sd">            width; must be &gt;= 2 (Nyquist limit enforced by validator). Smaller</span>
+<span class="sd">            values detect finer high-frequency features; larger values focus on</span>
+<span class="sd">            broader edges. Default: 3.0.</span>
+<span class="sd">        mult: Ratio between successive scale wavelengths. Together with</span>
+<span class="sd">            ``sigma_onf`` it determines inter-scale spectral coverage. ``2.1``</span>
+<span class="sd">            is the upstream default. For even coverage of the spectrum Kovesi</span>
+<span class="sd">            recommends pairing ``mult`` and ``sigma_onf`` together; e.g.</span>
+<span class="sd">            ``sigma_onf=0.55`` / ``mult=3`` gives roughly 2-octave bandwidth</span>
+<span class="sd">            and ``sigma_onf=0.75`` / ``mult=1.6`` gives roughly 1-octave</span>
+<span class="sd">            bandwidth. Re-tune both whenever either changes. Must be &gt; 1.</span>
+<span class="sd">            Default: 2.1.</span>
+<span class="sd">        sigma_onf: Log-Gabor bandwidth ratio (standard deviation of the</span>
+<span class="sd">            Gaussian transfer function divided by the filter center frequency).</span>
+<span class="sd">            Smaller values give wider bandwidth (more octaves per scale,</span>
+<span class="sd">            broadband, suited for plates with a wide range of colony sizes);</span>
+<span class="sd">            larger values give narrower, more frequency-selective bandwidth.</span>
+<span class="sd">            For even spectral coverage pair with ``mult`` per the upstream</span>
+<span class="sd">            table (``0.55`` with ``mult=3``, ``0.75`` with ``mult=1.6``).</span>
+<span class="sd">            Valid range: 0.1--1.0. Default: 0.55.</span>
+<span class="sd">        k: Noise threshold multiplier in units of the estimated Rayleigh</span>
+<span class="sd">            noise standard deviation. Higher values (5--20) suppress more</span>
+<span class="sd">            noise at the cost of missing faint colony edges; lower values</span>
+<span class="sd">            (1--3) maximise edge recall on clean images. Value 0 disables</span>
+<span class="sd">            noise thresholding entirely. Default: 2.0.</span>
+<span class="sd">        cutoff: Frequency spread penalty threshold. Phase congruency values</span>
+<span class="sd">            are penalised via a sigmoid when the multi-scale amplitude spread</span>
+<span class="sd">            falls below this fraction, discouraging single-scale responses.</span>
+<span class="sd">            Valid range: (0, 1) exclusive. Default: 0.5.</span>
+<span class="sd">        g: Sigmoid sharpness controlling the transition from penalised to</span>
+<span class="sd">            unpenalised frequency spread. Higher values create a near-binary</span>
+<span class="sd">            gate; lower values create a gradual blend. Must be &gt; 0.</span>
+<span class="sd">            Default: 10.0.</span>
+<span class="sd">        noise_method: Noise threshold estimation strategy. ``-1.0`` (default)</span>
+<span class="sd">            estimates from the median of the smallest-scale filter amplitude</span>
+<span class="sd">            (robust, recommended for heterogeneous plate populations). ``-2.0``</span>
+<span class="sd">            uses the Rayleigh histogram mode (more robust on images with</span>
+<span class="sd">            strong background gradients). Any value &gt;= 0 bypasses estimation</span>
+<span class="sd">            and uses that value as a fixed threshold, enabling fully</span>
+<span class="sd">            deterministic pipelines. Default: -1.0.</span>
+<span class="sd">        output: Which phase congruency quantity to store in ``detect_mat``.</span>
+<span class="sd">            ``&#39;pc_sum&#39;`` (default) is the mean phase congruency across all</span>
+<span class="sd">            orientations, normalised to [0, 1]; best general-purpose edge map</span>
+<span class="sd">            for downstream thresholding. ``&#39;M&#39;`` is the maximum eigenvalue of</span>
+<span class="sd">            the phase congruency covariance tensor (edge strength along</span>
+<span class="sd">            continuous curves). ``&#39;m&#39;`` is the minimum eigenvalue (corner and</span>
+<span class="sd">            junction strength). Accepted values: ``&#39;pc_sum&#39;``, ``&#39;M&#39;``,</span>
+<span class="sd">            ``&#39;m&#39;``. Default: ``&#39;pc_sum&#39;``.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        Image: Input image with ``detect_mat`` replaced by the phase</span>
-<span class="sd">        congruency map (clipped to [0, 1]). ``rgb`` and ``gray`` are</span>
-<span class="sd">        unchanged.</span>
+<span class="sd">        congruency map, clipped to [0, 1]. ``rgb`` and ``gray`` are unchanged.</span>
 
-<span class="sd">    Best For:</span>
-<span class="sd">        - Colony boundaries independent of colony color or opacity.</span>
-<span class="sd">        - Images with uneven illumination or scanner vignetting.</span>
-<span class="sd">        - Faint colony edges that gradient-based methods miss.</span>
-<span class="sd">        - Translucent or low-contrast colonies on agar.</span>
-
-<span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`FocusEdgeLaplace` for simpler edge detection when</span>
-<span class="sd">          illumination is uniform.</span>
-<span class="sd">        - :class:`FocusEdgeHessian` for multi-scale ridge and edge detection</span>
-<span class="sd">          with blob sensitivity control.</span>
-<span class="sd">        - :class:`SharpenEdgeGauss` for edge sharpening that preserves the</span>
-<span class="sd">          original intensity profile.</span>
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If ``n_scale`` &lt; 1, ``n_orient`` &lt; 1,</span>
+<span class="sd">            ``min_wavelength`` &lt; 2, ``mult`` &lt;= 1, ``sigma_onf`` outside</span>
+<span class="sd">            [0.1, 1.0], ``k`` &lt; 0, ``cutoff`` outside (0, 1), or ``g`` &lt;= 0.</span>
 
 <span class="sd">    References:</span>
-<span class="sd">        [1] P. Kovesi, &quot;Image features from phase congruency,&quot; *Videre:</span>
-<span class="sd">        J. Comput. Vis. Res.*, vol. 1, no. 3, pp. 1--26, 1999.</span>
+<span class="sd">        [1] P. Morrone and R. A. Owens, &quot;Feature detection from local</span>
+<span class="sd">        energy,&quot; *Pattern Recognit. Lett.*, vol. 6, no. 5, pp. 303--313,</span>
+<span class="sd">        Dec. 1987.</span>
+
+<span class="sd">        [2] M. C. Morrone and D. C. Burr, &quot;Feature detection in human</span>
+<span class="sd">        vision: A phase-dependent energy model,&quot; *Proc. R. Soc. London,</span>
+<span class="sd">        Ser. B*, vol. 235, no. 1280, pp. 221--245, Dec. 1988.</span>
+
+<span class="sd">        [3] P. Kovesi, &quot;Phase congruency: A low-level image invariant,&quot;</span>
+<span class="sd">        *Psychol. Res.*, vol. 64, no. 2, pp. 136--148, Aug. 2000.</span>
+
+<span class="sd">        [4] D. J. Field, &quot;Relations between the statistics of natural images</span>
+<span class="sd">        and the response properties of cortical cells,&quot; *J. Opt. Soc. Am.</span>
+<span class="sd">        A*, vol. 4, no. 12, pp. 2379--2394, Dec. 1987.</span>
 
 <span class="sd">    See Also:</span>
 <span class="sd">        :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a</span>
-<span class="sd">        visual walkthrough of contrast-invariant enhancement on plate</span>
-<span class="sd">        images.</span>
+<span class="sd">        visual walkthrough of contrast-invariant enhancement on plate images.</span>
 <span class="sd">        :doc:`/explanation/what_enhancement_does` for background on</span>
 <span class="sd">        phase congruency and the Local Energy Model.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="n">n_scale</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">4</span>
-    <span class="n">n_orient</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">6</span>
-    <span class="n">min_wavelength</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">3.0</span>
-    <span class="n">mult</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.1</span>
-    <span class="n">sigma_onf</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.55</span>
-    <span class="n">k</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.0</span>
-    <span class="n">cutoff</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span>
-    <span class="n">g</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">10.0</span>
-    <span class="n">noise_method</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1.0</span>
+    <span class="n">n_scale</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">6</span><span class="p">)]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="n">ge</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">n_orient</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">8</span><span class="p">)]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="n">ge</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">min_wavelength</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">10.0</span><span class="p">)]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="mf">3.0</span><span class="p">,</span> <span class="n">ge</span><span class="o">=</span><span class="mf">2.0</span><span class="p">)</span>
+    <span class="n">mult</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">1.5</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">)]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="mf">2.1</span><span class="p">,</span> <span class="n">gt</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
+    <span class="n">sigma_onf</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="mf">0.55</span><span class="p">,</span> <span class="n">ge</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">le</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
+    <span class="c1"># Lower bound 0.5 (not 0.0): k=0 disables noise thresholding, a degenerate</span>
+    <span class="c1"># search anchor that the optimizer should never spend trials on.</span>
+    <span class="n">k</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">20.0</span><span class="p">)]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="mf">2.0</span><span class="p">,</span> <span class="n">ge</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
+    <span class="n">cutoff</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.7</span><span class="p">)]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">gt</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">lt</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
+    <span class="n">g</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">20.0</span><span class="p">)]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="mf">10.0</span><span class="p">,</span> <span class="n">gt</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
+    <span class="n">noise_method</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="n">tunable</span><span class="o">=</span><span class="kc">False</span><span class="p">)]</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1.0</span>
     <span class="n">output</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;M&quot;</span><span class="p">,</span> <span class="s2">&quot;m&quot;</span><span class="p">,</span> <span class="s2">&quot;pc_sum&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;pc_sum&quot;</span>
-
-    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;n_scale&quot;</span><span class="p">)</span>
-    <span class="nd">@classmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">_check_n_scale</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">n_scale</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Require at least one wavelet scale (matches the legacy guard).&quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="n">n_scale</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;n_scale must be &gt;= 1, got </span><span class="si">{</span><span class="n">n_scale</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">n_scale</span>
-
-    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;n_orient&quot;</span><span class="p">)</span>
-    <span class="nd">@classmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">_check_n_orient</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">n_orient</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Require at least one filter orientation (matches the legacy guard).&quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="n">n_orient</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;n_orient must be &gt;= 1, got </span><span class="si">{</span><span class="n">n_orient</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">n_orient</span>
-
-    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;min_wavelength&quot;</span><span class="p">)</span>
-    <span class="nd">@classmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">_check_min_wavelength</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">min_wavelength</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Require a minimum wavelength of at least 2 (matches the legacy guard).&quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="n">min_wavelength</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;min_wavelength must be &gt;= 2, got </span><span class="si">{</span><span class="n">min_wavelength</span><span class="si">}</span><span class="s2">&quot;</span>
-            <span class="p">)</span>
-        <span class="k">return</span> <span class="n">min_wavelength</span>
-
-    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;mult&quot;</span><span class="p">)</span>
-    <span class="nd">@classmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">_check_mult</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">mult</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Require a wavelength scaling factor &gt; 1 (matches the legacy guard).&quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="n">mult</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;mult must be &gt; 1, got </span><span class="si">{</span><span class="n">mult</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">mult</span>
-
-    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;sigma_onf&quot;</span><span class="p">)</span>
-    <span class="nd">@classmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">_check_sigma_onf</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">sigma_onf</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Require ``sigma_onf`` within [0.1, 1.0] (matches the legacy guard).&quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="mf">0.1</span> <span class="o">&lt;=</span> <span class="n">sigma_onf</span> <span class="o">&lt;=</span> <span class="mf">1.0</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;sigma_onf must be in [0.1, 1.0], got </span><span class="si">{</span><span class="n">sigma_onf</span><span class="si">}</span><span class="s2">&quot;</span>
-            <span class="p">)</span>
-        <span class="k">return</span> <span class="n">sigma_onf</span>
-
-    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;k&quot;</span><span class="p">)</span>
-    <span class="nd">@classmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">_check_k</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">k</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Require a non-negative noise multiplier (matches the legacy guard).&quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="n">k</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;k must be &gt;= 0, got </span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">k</span>
-
-    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;cutoff&quot;</span><span class="p">)</span>
-    <span class="nd">@classmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">_check_cutoff</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">cutoff</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Require ``cutoff`` within (0, 1) (matches the legacy guard).&quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="mi">0</span> <span class="o">&lt;</span> <span class="n">cutoff</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;cutoff must be in (0, 1), got </span><span class="si">{</span><span class="n">cutoff</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">cutoff</span>
-
-    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;g&quot;</span><span class="p">)</span>
-    <span class="nd">@classmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">_check_g</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">g</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Require a positive sigmoid sharpness (matches the legacy guard).&quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="n">g</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;g must be &gt; 0, got </span><span class="si">{</span><span class="n">g</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">g</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply phase congruency enhancement to the detection matrix channel.&quot;&quot;&quot;</span>

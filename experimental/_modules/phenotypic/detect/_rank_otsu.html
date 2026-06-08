@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -585,18 +585,32 @@
 <span class="sd">    under-segment parts of the plate. For a full comparison see</span>
 <span class="sd">    :doc:`/explanation/detection_strategies_compared`.</span>
 
-<span class="sd">    Args:</span>
-<span class="sd">        shape: Footprint shape for the local neighbourhood. Accepted</span>
-<span class="sd">            values: ``&#39;square&#39;``, ``&#39;diamond&#39;``, ``&#39;disk&#39;``. Disk and</span>
-<span class="sd">            diamond are rotationally symmetric; square is faster. Default:</span>
-<span class="sd">            ``&#39;square&#39;``.</span>
+<span class="sd">    Best For:</span>
+<span class="sd">        - Plates with vignetting, hot-spots, or centre-to-edge illumination</span>
+<span class="sd">          gradients.</span>
+<span class="sd">        - Large-format plates (384-well or larger) where lighting uniformity</span>
+<span class="sd">          is difficult to achieve.</span>
+<span class="sd">        - Images with spatially varying agar colour or reflectance that</span>
+<span class="sd">          shifts across the plate surface.</span>
 
+<span class="sd">    Consider Also:</span>
+<span class="sd">        - :class:`OtsuDetector` when illumination is uniform and a fast</span>
+<span class="sd">          global threshold suffices.</span>
+<span class="sd">        - :class:`HysteresisDetector` when colony brightness varies but</span>
+<span class="sd">          spatial illumination is reasonably even.</span>
+<span class="sd">        - :class:`ChanVeseDetector` when colonies have diffuse edges and</span>
+<span class="sd">          region-based segmentation is more appropriate.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        shape: Footprint shape for the local neighbourhood. Disk and</span>
+<span class="sd">            diamond are rotationally symmetric; square is faster. Accepted</span>
+<span class="sd">            values: ``&#39;square&#39;``, ``&#39;diamond&#39;``, ``&#39;disk&#39;``. Default:</span>
+<span class="sd">            ``&#39;square&#39;``.</span>
 <span class="sd">        width: Footprint width (or radius for disk/diamond) in pixels.</span>
-<span class="sd">            If ``None``, auto-scales to ``min(height, width) // 8``.</span>
 <span class="sd">            Larger values smooth the threshold spatially (less local</span>
 <span class="sd">            adaptation); smaller values track finer illumination changes</span>
-<span class="sd">            but may over-segment. Default: None.</span>
-
+<span class="sd">            but may over-segment. When ``None``, auto-scales to</span>
+<span class="sd">            ``min(height, width) // 8``. Default: None.</span>
 <span class="sd">        ignore_zeros: Exclude zero-intensity pixels from the local</span>
 <span class="sd">            threshold computation. Enable for plates with black borders</span>
 <span class="sd">            or masked regions. Default: False.</span>
@@ -608,21 +622,6 @@
 <span class="sd">    Raises:</span>
 <span class="sd">        ValueError: If ``shape`` is not one of the accepted values or</span>
 <span class="sd">            ``width`` is not positive.</span>
-
-<span class="sd">    Best For:</span>
-<span class="sd">        * Plates with vignetting, hot-spots, or centre-to-edge illumination</span>
-<span class="sd">          gradients.</span>
-<span class="sd">        * Large-format plates (384-well or larger) where lighting uniformity</span>
-<span class="sd">          is difficult to achieve.</span>
-<span class="sd">        * Images with spatially varying agar colour or reflectance.</span>
-
-<span class="sd">    Consider Also:</span>
-<span class="sd">        * :class:`OtsuDetector` when illumination is uniform and a fast</span>
-<span class="sd">          global threshold suffices.</span>
-<span class="sd">        * :class:`HysteresisDetector` when colony brightness varies but</span>
-<span class="sd">          spatial illumination is reasonably even.</span>
-<span class="sd">        * :class:`ChanVeseDetector` when colonies have diffuse edges and</span>
-<span class="sd">          region-based segmentation is more appropriate.</span>
 
 <span class="sd">    See Also:</span>
 <span class="sd">        :doc:`/tutorials/notebooks/02_detecting_colonies`</span>

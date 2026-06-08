@@ -1,0 +1,60 @@
+phenotypic.tune.Fixed
+=====================
+
+.. currentmodule:: phenotypic.tune
+
+.. autoclass:: Fixed
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~Fixed.__init__
+      ~Fixed.construct
+      ~Fixed.copy
+      ~Fixed.dict
+      ~Fixed.from_orm
+      ~Fixed.json
+      ~Fixed.model_construct
+      ~Fixed.model_copy
+      ~Fixed.model_dump
+      ~Fixed.model_dump_json
+      ~Fixed.model_json_schema
+      ~Fixed.model_parametrized_name
+      ~Fixed.model_post_init
+      ~Fixed.model_rebuild
+      ~Fixed.model_validate
+      ~Fixed.model_validate_json
+      ~Fixed.model_validate_strings
+      ~Fixed.parse_file
+      ~Fixed.parse_obj
+      ~Fixed.parse_raw
+      ~Fixed.schema
+      ~Fixed.schema_json
+      ~Fixed.update_forward_refs
+      ~Fixed.validate
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Fixed.model_computed_fields
+      ~Fixed.model_config
+      ~Fixed.model_extra
+      ~Fixed.model_fields
+      ~Fixed.model_fields_set
+      ~Fixed.kind
+      ~Fixed.value
+   
+   

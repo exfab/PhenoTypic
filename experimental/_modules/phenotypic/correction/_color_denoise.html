@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -579,92 +579,89 @@
 <div class="viewcode-block" id="ColorDenoise">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.correction.html#phenotypic.correction.ColorDenoise">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ColorDenoise</span><span class="p">(</span><span class="n">ImageCorrector</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Denoise an RGB plate image with color block-matching 3D filtering (CBM3D).</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Denoise an RGB plate image using color block-matching 3D filtering (CBM3D).</span>
 
-<span class="sd">    Run the color extension of BM3D jointly across the three RGB channels,</span>
-<span class="sd">    preserving inter-channel color fidelity while removing structured</span>
-<span class="sd">    sensor noise. Unlike the grayscale denoisers (:class:`BM3DDenoiser`,</span>
-<span class="sd">    :class:`StableDenoise`), CBM3D decorrelates color into a</span>
-<span class="sd">    luminance-chrominance opponent space, computes patch grouping **once**</span>
-<span class="sd">    on the luminance channel, and reuses those groups for all three</span>
-<span class="sd">    channels. The shared grouping prevents color fringing and is markedly</span>
-<span class="sd">    cheaper than denoising each channel independently.</span>
-
-<span class="sd">    As an :class:`~phenotypic.abc_.ImageCorrector`, the denoised RGB is</span>
-<span class="sd">    written back through the ``rgb`` accessor, so ``gray`` and</span>
-<span class="sd">    ``detect_mat`` are automatically rebuilt from the cleaned RGB.</span>
+<span class="sd">    Apply the color extension of BM3D jointly across the three sRGB channels</span>
+<span class="sd">    in the linear-light domain, decorrelating color into a luminance-chrominance</span>
+<span class="sd">    space and computing patch grouping once on the luminance channel for reuse</span>
+<span class="sd">    across the chrominance channels. Writing the cleaned RGB through the accessor</span>
+<span class="sd">    cascade automatically rebuilds ``gray`` and ``detect_mat`` from the corrected</span>
+<span class="sd">    data.</span>
 
 <span class="sd">    For algorithm details, see :doc:`/explanation/what_enhancement_does`.</span>
 
+<span class="sd">    Best For:</span>
+<span class="sd">        - RGB plate scans where colony color composition is subsequently</span>
+<span class="sd">          measured and chrominance fidelity at colony boundaries must be</span>
+<span class="sd">          preserved.</span>
+<span class="sd">        - Structured camera or scanner sensor noise that should be suppressed</span>
+<span class="sd">          while preserving colony color fidelity.</span>
+<span class="sd">        - Publication-quality plate figures requiring visually clean,</span>
+<span class="sd">          color-accurate RGB images.</span>
+<span class="sd">        - Low-light or high-ISO DSLR plate captures with Poisson-Gaussian</span>
+<span class="sd">          mixed noise, using ``use_gat=True``.</span>
+
+<span class="sd">    Consider Also:</span>
+<span class="sd">        - :class:`BayesShrinkCorrector` for faster wavelet-based denoising of</span>
+<span class="sd">          all components when CBM3D runtime is prohibitive.</span>
+<span class="sd">        - :class:`StableDenoise` for GAT-stabilized BM3D on the grayscale</span>
+<span class="sd">          channel when only intensity measurements are needed.</span>
+<span class="sd">        - :class:`NonLocalMeansDenoiser` when a simpler, lower-cost denoiser</span>
+<span class="sd">          for the detection matrix is sufficient.</span>
+
 <span class="sd">    Args:</span>
-<span class="sd">        sigma_psd: Gaussian noise standard deviation, interpreted in the</span>
-<span class="sd">            **linear-light** domain (after sRGB linearization). Typical</span>
-<span class="sd">            range: 0.01--0.05 for moderate noise, 0.05--0.15 for heavy</span>
-<span class="sd">            noise. Too low preserves noise; too high erases colony</span>
-<span class="sd">            texture. Ignored when ``use_gat=True`` (the stabilized-domain</span>
-<span class="sd">            value 1.0 is used internally). Default: 0.02.</span>
-<span class="sd">        block_size: Side length in pixels of the BM3D patches; sets both</span>
-<span class="sd">            the hard-thresholding and Wiener block sizes. Larger blocks</span>
-<span class="sd">            capture more context at higher cost. Default: 8.</span>
-<span class="sd">        clip: Clip the result to [0, 1] before rescaling to the original</span>
-<span class="sd">            dtype. Default: ``True``. Out-of-range values are always</span>
-<span class="sd">            clamped to the dtype range regardless, to avoid integer</span>
-<span class="sd">            wraparound.</span>
-<span class="sd">        use_gat: Wrap denoising in the per-channel Generalized Anscombe</span>
-<span class="sd">            Transform for Poisson-Gaussian sensor noise. After</span>
-<span class="sd">            stabilization the RGB noise is approximately unit-variance</span>
-<span class="sd">            white Gaussian, so ``sigma_psd=1.0`` is used internally.</span>
-<span class="sd">            Default: ``False``.</span>
-<span class="sd">        gat_gain: Camera gain in electrons per ADU, used by the GAT.</span>
-<span class="sd">            Default: 1.0.</span>
-<span class="sd">        gat_mu: Read-noise mean (baseline offset) used by the GAT.</span>
-<span class="sd">            Default: 0.0.</span>
-<span class="sd">        gat_read_sigma: Read-noise standard deviation used by the GAT.</span>
-<span class="sd">            Default: 0.0.</span>
-<span class="sd">        gat_scale_factor: Multiplier converting normalized [0, 1] data to</span>
-<span class="sd">            photon counts. ``None`` auto-detects from the image bit depth</span>
-<span class="sd">            (8-bit -&gt; 255, 16-bit -&gt; 65535). Default: ``None``.</span>
+<span class="sd">        sigma_psd: Gaussian noise standard deviation in the linear-light</span>
+<span class="sd">            [0, 1] domain after sRGB decoding. Typical range: 0.01--0.05</span>
+<span class="sd">            for moderate flatbed-scanner noise; 0.05--0.15 for heavy noise</span>
+<span class="sd">            from high-ISO or low-light captures. Too low leaves structured</span>
+<span class="sd">            noise intact; too high erases fine colony texture and inter-colony</span>
+<span class="sd">            gap detail. Ignored when ``use_gat=True``; the stabilized-domain</span>
+<span class="sd">            value 1.0 is used internally. Default: ``0.02``.</span>
+<span class="sd">        block_size: Side length in pixels of the 2D patches used for</span>
+<span class="sd">            block-matching. Sets both the hard-thresholding and Wiener</span>
+<span class="sd">            stage block sizes. Larger values capture more spatial context</span>
+<span class="sd">            and improve denoising of uniform agar backgrounds but increase</span>
+<span class="sd">            computation quadratically. Typical range: 4--16. Default: ``8``.</span>
+<span class="sd">        clip: Clamp the sRGB-re-encoded result to [0, 1] before rescaling to</span>
+<span class="sd">            the original integer dtype, preventing rare BM3D overshoot near</span>
+<span class="sd">            high-contrast colony edges from causing integer wraparound.</span>
+<span class="sd">            Default: ``True``.</span>
+
+<span class="sd">        # GAT parameters (active only when use_gat=True)</span>
+<span class="sd">        use_gat: Wrap the per-channel CBM3D call in the Generalized Anscombe</span>
+<span class="sd">            Transform, converting Poisson-Gaussian mixed noise to</span>
+<span class="sd">            approximately unit-variance Gaussian so BM3D operates optimally.</span>
+<span class="sd">            Enable for fluorescence plate readers or high-ISO DSLR images</span>
+<span class="sd">            where shot noise dominates. Default: ``False``.</span>
+<span class="sd">        gat_gain: Camera gain in electrons per ADU for the GAT noise model.</span>
+<span class="sd">            Scales the Poisson variance component. Typical range: 0.5--10</span>
+<span class="sd">            e-/ADU depending on sensor; obtain from the manufacturer datasheet</span>
+<span class="sd">            or a mean-variance calibration. Default: ``1.0``.</span>
+<span class="sd">        gat_mu: Read-noise mean (dark-current baseline offset) in count units</span>
+<span class="sd">            consistent with ``gat_scale_factor``. Set to 0.0 when the image</span>
+<span class="sd">            has been bias-subtracted, which covers most plate-scanner</span>
+<span class="sd">            workflows. Default: ``0.0``.</span>
+<span class="sd">        gat_read_sigma: Read-noise standard deviation in count units</span>
+<span class="sd">            consistent with ``gat_scale_factor``. Zero assumes pure Poisson</span>
+<span class="sd">            noise; supplying the sensor read-noise spec (a few to a few tens of</span>
+<span class="sd">            counts for typical scientific CCDs) improves stabilization accuracy</span>
+<span class="sd">            at low signal levels. Default: ``0.0``.</span>
+<span class="sd">        gat_scale_factor: Multiplier converting normalized [0, 1] linear-light</span>
+<span class="sd">            data to photon counts before the forward GAT. ``None``</span>
+<span class="sd">            auto-detects from the image bit depth (8-bit: 255, 16-bit:</span>
+<span class="sd">            65535). Override for non-standard bit depths such as 12-bit</span>
+<span class="sd">            sensors stored in a 16-bit container (4095). Default: ``None``.</span>
 
 <span class="sd">    Returns:</span>
-<span class="sd">        Image: Input image with ``rgb`` denoised by CBM3D. ``gray`` and</span>
-<span class="sd">        ``detect_mat`` are recomputed from the cleaned RGB via the</span>
-<span class="sd">        accessor cascade.</span>
+<span class="sd">        Image: Input image with ``rgb`` replaced by the CBM3D-denoised</span>
+<span class="sd">        result. ``gray`` and ``detect_mat`` are automatically recomputed</span>
+<span class="sd">        from the cleaned RGB via the accessor cascade.</span>
 
 <span class="sd">    Raises:</span>
 <span class="sd">        ValueError: If the image has no RGB data, if ``sigma_psd`` is</span>
 <span class="sd">            negative, ``block_size`` is not positive, ``gat_gain`` is not</span>
 <span class="sd">            positive, ``gat_read_sigma`` is negative, or</span>
 <span class="sd">            ``gat_scale_factor`` is not positive.</span>
-
-<span class="sd">    Best For:</span>
-<span class="sd">        - RGB plate scans where colony color composition is measured and</span>
-<span class="sd">          chrominance fidelity must be preserved.</span>
-<span class="sd">        - Publication-quality figures requiring color-accurate denoising.</span>
-<span class="sd">        - Structured camera/scanner noise that should be removed without</span>
-<span class="sd">          introducing color fringing at colony boundaries.</span>
-<span class="sd">        - Low-light or high-ISO captures with Poisson-Gaussian noise via</span>
-<span class="sd">          ``use_gat=True``.</span>
-
-<span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`BM3DDenoiser` for BM3D on the detection matrix only</span>
-<span class="sd">          (non-destructive to RGB and gray).</span>
-<span class="sd">        - :class:`StableDenoise` for variance-stabilized BM3D on the</span>
-<span class="sd">          grayscale channel.</span>
-<span class="sd">        - :class:`BayesShrinkCorrector` for faster wavelet denoising of</span>
-<span class="sd">          all components when CBM3D&#39;s runtime is prohibitive.</span>
-
-<span class="sd">    Notes:</span>
-<span class="sd">        The input is assumed to be sRGB-encoded (the standard for plate</span>
-<span class="sd">        captures). The RGB is decoded to linear light before filtering --</span>
-<span class="sd">        BM3D&#39;s Gaussian-noise model and the GAT&#39;s Poisson model are both</span>
-<span class="sd">        most correct in linear light -- and the denoised result is</span>
-<span class="sd">        re-encoded to sRGB, so the output carries the same encoding as</span>
-<span class="sd">        the input. The denoiser always uses the ``&#39;opp&#39;`` opponent color</span>
-<span class="sd">        transform internally.</span>
-
-<span class="sd">        **Performance:** CBM3D is computationally expensive -- denoising a</span>
-<span class="sd">        full-resolution plate image can take minutes. Crop to a region of</span>
-<span class="sd">        interest or downsample for interactive tuning.</span>
 
 <span class="sd">    References:</span>
 <span class="sd">        [1] K. Dabov, A. Foi, V. Katkovnik, and K. Egiazarian, &quot;Image</span>
@@ -684,22 +681,8 @@
 <span class="sd">    See Also:</span>
 <span class="sd">        :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a</span>
 <span class="sd">        visual walkthrough of denoising pipelines on plate images.</span>
-
-<span class="sd">    Examples:</span>
-<span class="sd">        Construct the corrector with custom parameters:</span>
-
-<span class="sd">        &gt;&gt;&gt; from phenotypic.correction import ColorDenoise</span>
-<span class="sd">        &gt;&gt;&gt; denoiser = ColorDenoise(sigma_psd=0.03, block_size=8)</span>
-<span class="sd">        &gt;&gt;&gt; denoiser.sigma_psd</span>
-<span class="sd">        0.03</span>
-<span class="sd">        &gt;&gt;&gt; denoiser.use_gat</span>
-<span class="sd">        False</span>
-
-<span class="sd">        The corrector is fully serializable for reproducible pipelines:</span>
-
-<span class="sd">        &gt;&gt;&gt; restored = ColorDenoise.model_validate(denoiser.model_dump())</span>
-<span class="sd">        &gt;&gt;&gt; restored.sigma_psd == denoiser.sigma_psd</span>
-<span class="sd">        True</span>
+<span class="sd">        :doc:`/explanation/image_quality_noise_contrast_structure` for</span>
+<span class="sd">        background on noise models and denoiser selection.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">sigma_psd</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.02</span>

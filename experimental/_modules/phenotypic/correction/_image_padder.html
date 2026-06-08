@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -597,53 +597,60 @@
 <span class="k">class</span><span class="w"> </span><span class="nc">ImagePadder</span><span class="p">(</span><span class="n">ImageCorrector</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Extend image dimensions by adding pixels to any combination of edges.</span>
 
-<span class="sd">    Pad the image on the left, right, top, and/or bottom using a</span>
+<span class="sd">    Pads the image on the left, right, top, and/or bottom using a</span>
 <span class="sd">    configurable fill mode. All image components (RGB, gray, detect_mat,</span>
-<span class="sd">    objmap) are padded in sync; the object map is always zero-padded to</span>
-<span class="sd">    preserve label integrity. When applied to a GridImage, grid structure</span>
-<span class="sd">    is preserved and positions are recalculated automatically.</span>
+<span class="sd">    objmap) are padded in sync; the object map is always zero-padded</span>
+<span class="sd">    regardless of ``mode`` to preserve integer label integrity. When applied</span>
+<span class="sd">    to a GridImage, grid structure is preserved and well positions are</span>
+<span class="sd">    recalculated automatically on the extended dimensions.</span>
 
 <span class="sd">    For usage context, see :doc:`/how_to/notebooks/crop_and_pad`.</span>
 
+<span class="sd">    Best For:</span>
+<span class="sd">        - Adding safety margins before rotation so corner colonies are not</span>
+<span class="sd">          clipped by the fill boundary during rotation.</span>
+<span class="sd">        - Standardising image dimensions across a batch when plates were</span>
+<span class="sd">          positioned inconsistently in the scanner.</span>
+<span class="sd">        - Creating border space when colonies grow near plate edges,</span>
+<span class="sd">          improving subsequent grid detection accuracy.</span>
+<span class="sd">        - Pre-processing before convolution-based enhancers that produce</span>
+<span class="sd">          boundary artefacts on tight image borders.</span>
+
+<span class="sd">    Consider Also:</span>
+<span class="sd">        - :class:`ImageCropper` when the goal is to reduce image dimensions</span>
+<span class="sd">          rather than extend them.</span>
+<span class="sd">        - :class:`GridAligner` for correcting plate rotation, which is</span>
+<span class="sd">          typically paired with padding to protect corner colonies.</span>
+
 <span class="sd">    Args:</span>
-<span class="sd">        left: Pixels to add on the left edge. ``None`` means no padding.</span>
-<span class="sd">            Typical range: 50--200. Default: ``None``.</span>
-<span class="sd">        right: Pixels to add on the right edge. ``None`` means no padding.</span>
-<span class="sd">            Typical range: 50--200. Default: ``None``.</span>
-<span class="sd">        top: Pixels to add on the top edge. ``None`` means no padding.</span>
-<span class="sd">            Typical range: 50--200. Default: ``None``.</span>
-<span class="sd">        bottom: Pixels to add on the bottom edge. ``None`` means no</span>
-<span class="sd">            padding. Typical range: 50--200. Default: ``None``.</span>
+<span class="sd">        left: Pixels to add on the left edge. ``None`` applies no padding.</span>
+<span class="sd">            Size to the artifact being protected (e.g. a margin wider than the</span>
+<span class="sd">            largest expected rotation shift). Default: ``None``.</span>
+<span class="sd">        right: Pixels to add on the right edge. ``None`` applies no padding.</span>
+<span class="sd">            Default: ``None``.</span>
+<span class="sd">        top: Pixels to add on the top edge. ``None`` applies no padding.</span>
+<span class="sd">            Default: ``None``.</span>
+<span class="sd">        bottom: Pixels to add on the bottom edge. ``None`` applies no padding.</span>
+<span class="sd">            Default: ``None``.</span>
 <span class="sd">        mode: Fill strategy passed to ``np.pad``. Accepted values:</span>
-<span class="sd">            ``&#39;constant&#39;``, ``&#39;reflect&#39;``, ``&#39;edge&#39;``, ``&#39;symmetric&#39;``,</span>
+<span class="sd">            ``&#39;constant&#39;``, ``&#39;edge&#39;``, ``&#39;reflect&#39;``, ``&#39;symmetric&#39;``,</span>
 <span class="sd">            ``&#39;wrap&#39;``, ``&#39;linear_ramp&#39;``, ``&#39;maximum&#39;``, ``&#39;mean&#39;``,</span>
-<span class="sd">            ``&#39;median&#39;``, ``&#39;minimum&#39;``, ``&#39;empty&#39;``. ``&#39;edge&#39;`` is safest</span>
-<span class="sd">            for colony analysis; ``&#39;reflect&#39;`` reduces convolution boundary</span>
-<span class="sd">            artifacts. Default: ``&#39;constant&#39;``.</span>
-<span class="sd">        constant_value: Fill value when ``mode=&#39;constant&#39;``. ``0`` for</span>
-<span class="sd">            black borders, ``255`` for white. Default: ``0``.</span>
+<span class="sd">            ``&#39;median&#39;``, ``&#39;minimum&#39;``, ``&#39;empty&#39;``. ``&#39;edge&#39;`` replicates</span>
+<span class="sd">            the nearest border pixel (safest for colony analysis); ``&#39;reflect&#39;``</span>
+<span class="sd">            reduces convolution boundary artefacts; ``&#39;constant&#39;`` fills with a</span>
+<span class="sd">            uniform value. Default: ``&#39;constant&#39;``.</span>
+<span class="sd">        constant_value: Fill value used when ``mode=&#39;constant&#39;``. Use ``0``</span>
+<span class="sd">            for black borders or ``255`` for white borders matching bright-agar</span>
+<span class="sd">            backgrounds. Default: ``0``.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        Image: Input image with all components padded by the specified</span>
-<span class="sd">        amounts. GridImage grid positions are recalculated.</span>
+<span class="sd">        amounts. GridImage grid positions are recalculated on the extended</span>
+<span class="sd">        dimensions.</span>
 
 <span class="sd">    Raises:</span>
 <span class="sd">        ValueError: If any padding value is negative.</span>
-<span class="sd">        ValueError: If ``mode`` is not a valid ``np.pad`` mode.</span>
-
-<span class="sd">    Best For:</span>
-<span class="sd">        - Adding safety margins before rotation so corner colonies are</span>
-<span class="sd">          not clipped.</span>
-<span class="sd">        - Standardizing image dimensions across a batch for pipelines</span>
-<span class="sd">          that require uniform size.</span>
-<span class="sd">        - Creating border space when colonies grow near plate edges,</span>
-<span class="sd">          improving grid detection accuracy.</span>
-
-<span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`ImageCropper` when the image needs to be reduced rather</span>
-<span class="sd">          than extended.</span>
-<span class="sd">        - :class:`GridAligner` for correcting plate rotation after</span>
-<span class="sd">          padding.</span>
+<span class="sd">        ValueError: If ``mode`` is not a recognised ``np.pad`` mode.</span>
 
 <span class="sd">    See Also:</span>
 <span class="sd">        :doc:`/how_to/notebooks/crop_and_pad` for a visual walkthrough</span>

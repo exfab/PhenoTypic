@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -576,6 +576,9 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image_parts.plot_accessor._all_data_plotter</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">AllDataPlotter</span><span class="p">,</span>
 <span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image_parts.plot_accessor._detect_modes_plotter</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">DetectModesPlotter</span><span class="p">,</span>
+<span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image_parts.plot_accessor._diagnostics_plotter</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">DiagnosticsPlotter</span><span class="p">,</span>
 <span class="p">)</span>
@@ -661,13 +664,34 @@
 <span class="sd">                and image data.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">root_image</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_instances</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_instances</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_dash_accessor</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span></div>
 
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_accessor_property_name</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Name of the Image property that surfaces this accessor.&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="s2">&quot;plot&quot;</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">dash</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Interactive Plotly/ipywidgets views: ``image.plot.dash.&lt;name&gt;()``.</span>
+
+<span class="sd">        Dispatches to a registered :class:`FigureProvider` plotter&#39;s ``.dash()``</span>
+<span class="sd">        — a composed ``go.Figure`` for control-free providers, or an ipywidgets</span>
+<span class="sd">        dashboard when the figures declare ``Control``s. Mirrors the</span>
+<span class="sd">        ``@register_plotter`` registry used by ``image.plot.&lt;name&gt;()``.</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            &gt;&gt;&gt; from phenotypic.data import load_synth_yeast_plate</span>
+<span class="sd">            &gt;&gt;&gt; image = load_synth_yeast_plate()</span>
+<span class="sd">            &gt;&gt;&gt; dashboard = image.plot.dash.diagnostics()  # ipywidgets dashboard</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dash_accessor</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">._dash_plot_accessor</span><span class="w"> </span><span class="kn">import</span> <span class="n">DashPlotAccessor</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_dash_accessor</span> <span class="o">=</span> <span class="n">DashPlotAccessor</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dash_accessor</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_get_or_create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="bp">cls</span><span class="p">:</span> <span class="nb">type</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Lazily instantiate and cache a plotter by its class.</span>
@@ -793,6 +817,16 @@
 <span class="sd">        See :meth:`~phenotypic._core._image_parts.plot_accessor.DiagnosticsPlotter.diagnostics`.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_or_create</span><span class="p">(</span><span class="n">DiagnosticsPlotter</span><span class="p">)</span><span class="o">.</span><span class="n">diagnostics</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="PlotAccessor.detect_modes">
+<a class="viewcode-back" href="../../../../../api_reference/core/image_methods.html#phenotypic._core._image_parts.accessors._plot_accessor.PlotAccessor.detect_modes">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">detect_modes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Faceted comparison of every registered detection mode.</span>
+
+<span class="sd">        See :meth:`~phenotypic._core._image_parts.plot_accessor.DetectModesPlotter.detect_modes`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_or_create</span><span class="p">(</span><span class="n">DetectModesPlotter</span><span class="p">)</span><span class="o">.</span><span class="n">detect_modes</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
 
 
     <span class="c1"># -- Dynamic dispatch for user-registered plotters --</span>

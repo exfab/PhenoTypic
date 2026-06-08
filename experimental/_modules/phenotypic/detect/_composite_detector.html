@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -587,49 +587,49 @@
 <span class="sd">    reliably. For a full comparison see</span>
 <span class="sd">    :doc:`/explanation/detection_strategies_compared`.</span>
 
+<span class="sd">    Best For:</span>
+<span class="sd">        - Plates where different colony sub-populations respond to different</span>
+<span class="sd">          detection algorithms (e.g., bright colonies via Otsu, faint</span>
+<span class="sd">          colonies via triangle thresholding).</span>
+<span class="sd">        - Consensus-based quality control that accepts only colonies</span>
+<span class="sd">          confirmed by all methods.</span>
+<span class="sd">        - Ensemble strategies that maximise recall by unioning masks from</span>
+<span class="sd">          complementary algorithms.</span>
+<span class="sd">        - Benchmarking workflows that compare detector agreement across</span>
+<span class="sd">          methods.</span>
+
+<span class="sd">    Consider Also:</span>
+<span class="sd">        - :class:`OtsuDetector` or :class:`HysteresisDetector` when a</span>
+<span class="sd">          single detector already captures all colonies reliably.</span>
+<span class="sd">        - :class:`WatershedDetector` when the primary challenge is</span>
+<span class="sd">          separating touching colonies rather than combining detection</span>
+<span class="sd">          strategies.</span>
+
 <span class="sd">    Args:</span>
 <span class="sd">        detectors: List of :class:`~phenotypic.abc_.ObjectDetector` or</span>
 <span class="sd">            :class:`~phenotypic.ImagePipeline` instances to combine.</span>
 <span class="sd">            Pipelines allow preprocessing steps before detection. Defaults</span>
 <span class="sd">            to ``[OtsuDetector(), RoundPeaksDetector()]`` when not</span>
 <span class="sd">            specified.</span>
-
 <span class="sd">        mode: Combination strategy. ``&#39;union&#39;`` marks a pixel as colony if</span>
 <span class="sd">            any detector flags it (logical OR, maximises sensitivity).</span>
 <span class="sd">            ``&#39;intersection&#39;`` requires all detectors to agree (logical AND,</span>
 <span class="sd">            maximises specificity). ``&#39;overlap&#39;`` retains whole objects that</span>
 <span class="sd">            have mutual spatial overlap across masks (balances sensitivity</span>
-<span class="sd">            and specificity). Default ``&#39;overlap&#39;``.</span>
-
+<span class="sd">            and specificity). Default: ``&#39;overlap&#39;``.</span>
 <span class="sd">        min_overlap_ratio: For ``&#39;overlap&#39;`` mode, minimum fraction of</span>
-<span class="sd">            object pixels that must overlap with all other masks. Range:</span>
-<span class="sd">            0.0--1.0. Default 0.0. Higher values produce more conservative</span>
-<span class="sd">            filtering. Typical range: 0.0--0.5.</span>
+<span class="sd">            object pixels that must overlap with another mask before an</span>
+<span class="sd">            object is retained. At the default 0.0 any mutually overlapping</span>
+<span class="sd">            object is kept; larger values bias towards objects confirmed by</span>
+<span class="sd">            more than one detector. Typical range: 0.0--0.5. Default: 0.0.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        Image: Input image with ``objmask`` set to the combined binary</span>
 <span class="sd">        colony mask and ``objmap`` derived from the merged mask.</span>
 
 <span class="sd">    Raises:</span>
-<span class="sd">        ValueError: If *detectors* list is empty or *mode* is not one of</span>
+<span class="sd">        ValueError: If ``detectors`` is empty or ``mode`` is not one of</span>
 <span class="sd">            ``&#39;union&#39;``, ``&#39;intersection&#39;``, or ``&#39;overlap&#39;``.</span>
-
-<span class="sd">    Best For:</span>
-<span class="sd">        * Plates where different colony sub-populations respond to different</span>
-<span class="sd">          detection algorithms (e.g., bright colonies via Otsu, faint</span>
-<span class="sd">          colonies via triangle thresholding).</span>
-<span class="sd">        * Consensus-based quality control that accepts only colonies</span>
-<span class="sd">          confirmed by all methods.</span>
-<span class="sd">        * Ensemble strategies that maximise recall by unioning masks from</span>
-<span class="sd">          complementary algorithms.</span>
-<span class="sd">        * Benchmarking workflows that compare detector agreement.</span>
-
-<span class="sd">    Consider Also:</span>
-<span class="sd">        * :class:`OtsuDetector` or :class:`HysteresisDetector` when a</span>
-<span class="sd">          single detector already captures all colonies reliably.</span>
-<span class="sd">        * :class:`WatershedDetector` when the primary challenge is</span>
-<span class="sd">          separating touching colonies rather than combining detection</span>
-<span class="sd">          strategies.</span>
 
 <span class="sd">    See Also:</span>
 <span class="sd">        :doc:`/tutorials/notebooks/02_detecting_colonies`</span>
@@ -720,12 +720,16 @@
             <span class="k">else</span><span class="p">:</span>
                 <span class="c1"># Start with first two masks</span>
                 <span class="n">combined_mask</span> <span class="o">=</span> <span class="n">CompositeDetector</span><span class="o">.</span><span class="n">_filter_mask_by_overlap_bidirectional</span><span class="p">(</span>
-                        <span class="n">objmaps</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">objmaps</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                        <span class="n">objmaps</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                        <span class="n">objmaps</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+                        <span class="n">min_overlap_ratio</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">min_overlap_ratio</span><span class="p">,</span>
                 <span class="p">)</span>
                 <span class="c1"># For additional masks, progressively filter to keep mutual overlaps</span>
                 <span class="k">for</span> <span class="n">mask</span> <span class="ow">in</span> <span class="n">objmaps</span><span class="p">[</span><span class="mi">2</span><span class="p">:]:</span>
                     <span class="n">combined_mask</span> <span class="o">=</span> <span class="n">CompositeDetector</span><span class="o">.</span><span class="n">_filter_mask_by_overlap_bidirectional</span><span class="p">(</span>
-                            <span class="n">combined_mask</span><span class="p">,</span> <span class="n">mask</span>
+                            <span class="n">combined_mask</span><span class="p">,</span>
+                            <span class="n">mask</span><span class="p">,</span>
+                            <span class="n">min_overlap_ratio</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">min_overlap_ratio</span><span class="p">,</span>
                     <span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
@@ -739,16 +743,24 @@
         <span class="k">return</span> <span class="n">image</span>
 
     <span class="nd">@staticmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">_filter_mask_by_overlap_bidirectional</span><span class="p">(</span><span class="n">mask_a</span><span class="p">,</span> <span class="n">mask_b</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_filter_mask_by_overlap_bidirectional</span><span class="p">(</span>
+            <span class="n">mask_a</span><span class="p">,</span>
+            <span class="n">mask_b</span><span class="p">,</span>
+            <span class="n">min_overlap_ratio</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
+    <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Retain objects in both masks that have mutual overlap.</span>
 
-<span class="sd">        Objects are kept if they overlap with objects in the other mask. Returns</span>
-<span class="sd">        a single merged mask containing all pixels from mutually-overlapping objects.</span>
+<span class="sd">        Objects are kept if they overlap with objects in the other mask by at</span>
+<span class="sd">        least ``min_overlap_ratio`` of their own area. Returns a single merged</span>
+<span class="sd">        mask containing all pixels from retained objects.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            mask_a (np.ndarray): First binary mask (2D boolean or uint8)</span>
 <span class="sd">            mask_b (np.ndarray): Second binary mask (2D boolean or uint8)</span>
+<span class="sd">            min_overlap_ratio (float): Minimum object-area fraction that must</span>
+<span class="sd">                overlap with the other mask. At 0.0, any non-zero overlap keeps</span>
+<span class="sd">                the object.</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            np.ndarray: Merged binary mask with same dtype as mask_a, containing</span>
@@ -771,13 +783,16 @@
         <span class="c1"># Find pixels where both masks have objects</span>
         <span class="n">overlap_region</span> <span class="o">=</span> <span class="p">(</span><span class="n">crop_a</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">crop_b</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
 
-        <span class="c1"># Get labels from each mask that appear in overlap region</span>
-        <span class="n">overlapping_labels_a</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">crop_a</span><span class="p">[</span><span class="n">overlap_region</span><span class="p">])</span>
-        <span class="n">overlapping_labels_b</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">crop_b</span><span class="p">[</span><span class="n">overlap_region</span><span class="p">])</span>
-
-        <span class="c1"># Remove background label if present</span>
-        <span class="n">overlapping_labels_a</span> <span class="o">=</span> <span class="n">overlapping_labels_a</span><span class="p">[</span><span class="n">overlapping_labels_a</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]</span>
-        <span class="n">overlapping_labels_b</span> <span class="o">=</span> <span class="n">overlapping_labels_b</span><span class="p">[</span><span class="n">overlapping_labels_b</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]</span>
+        <span class="n">overlapping_labels_a</span> <span class="o">=</span> <span class="n">CompositeDetector</span><span class="o">.</span><span class="n">_labels_meeting_overlap_ratio</span><span class="p">(</span>
+                <span class="n">crop_a</span><span class="p">,</span>
+                <span class="n">overlap_region</span><span class="p">,</span>
+                <span class="n">min_overlap_ratio</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">overlapping_labels_b</span> <span class="o">=</span> <span class="n">CompositeDetector</span><span class="o">.</span><span class="n">_labels_meeting_overlap_ratio</span><span class="p">(</span>
+                <span class="n">crop_b</span><span class="p">,</span>
+                <span class="n">overlap_region</span><span class="p">,</span>
+                <span class="n">min_overlap_ratio</span><span class="p">,</span>
+        <span class="p">)</span>
 
         <span class="c1"># Create filtered masks retaining only mutually overlapping objects</span>
         <span class="n">filtered_a</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">labeled_a</span><span class="p">,</span> <span class="n">overlapping_labels_a</span><span class="p">)</span>
@@ -787,6 +802,28 @@
         <span class="n">merged_mask</span> <span class="o">=</span> <span class="n">filtered_a</span> <span class="o">|</span> <span class="n">filtered_b</span>
 
         <span class="k">return</span> <span class="n">merged_mask</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">mask_a</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_labels_meeting_overlap_ratio</span><span class="p">(</span>
+            <span class="n">labeled_mask</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+            <span class="n">overlap_region</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+            <span class="n">min_overlap_ratio</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return labels whose overlap fraction meets the configured threshold.&quot;&quot;&quot;</span>
+        <span class="n">kept_labels</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">label_id</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">labeled_mask</span><span class="p">[</span><span class="n">labeled_mask</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]):</span>
+            <span class="n">object_pixels</span> <span class="o">=</span> <span class="n">labeled_mask</span> <span class="o">==</span> <span class="n">label_id</span>
+            <span class="n">overlap_pixels</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">count_nonzero</span><span class="p">(</span><span class="n">object_pixels</span> <span class="o">&amp;</span> <span class="n">overlap_region</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">overlap_pixels</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="n">min_overlap_ratio</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+                <span class="n">kept_labels</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">label_id</span><span class="p">))</span>
+                <span class="k">continue</span>
+
+            <span class="n">object_area</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">count_nonzero</span><span class="p">(</span><span class="n">object_pixels</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">overlap_pixels</span> <span class="o">/</span> <span class="n">object_area</span> <span class="o">&gt;=</span> <span class="n">min_overlap_ratio</span><span class="p">:</span>
+                <span class="n">kept_labels</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">label_id</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">kept_labels</span>
 
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_filter_mask_by_overlap</span><span class="p">(</span><span class="n">mask_to_clean</span><span class="p">,</span> <span class="n">reference_mask</span><span class="p">):</span>

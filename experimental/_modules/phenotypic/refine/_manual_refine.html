@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -588,39 +588,13 @@
 <span class="sd">    identifiers that existed before refinement.</span>
 
 <span class="sd">    Unlike :class:`ManualPointDetector`, which *produces* an ``objmap`` from</span>
-<span class="sd">    scratch at picked coordinates, ``ManualSelector`` *filters* the output of</span>
-<span class="sd">    an earlier detector. It is the manual-curation counterpart to automated</span>
+<span class="sd">    scratch at picked coordinates, this refiner *filters* the output of an</span>
+<span class="sd">    earlier detector. It is the manual-curation counterpart to automated</span>
 <span class="sd">    refiners such as :class:`SmallObjectRemover` or</span>
 <span class="sd">    :class:`RemoveLowCircularity`, and is suitable for ground-truth</span>
 <span class="sd">    curation, interactive review, and correcting systematic detector misses</span>
-<span class="sd">    on a handful of colonies.</span>
-
-<span class="sd">    Args:</span>
-<span class="sd">        centers: An N x 2 array-like of ``(y, x)`` pixel coordinates</span>
-<span class="sd">            specifying each colony to keep. Accepts any sequence that</span>
-<span class="sd">            ``np.asarray`` can convert (list of tuples, nested list, or</span>
-<span class="sd">            NumPy array). When *None* or empty, :meth:`apply` returns the</span>
-<span class="sd">            image unchanged (no-op) rather than zeroing the map — safer</span>
-<span class="sd">            when the selector is chained in a pipeline before points have</span>
-<span class="sd">            been picked.</span>
-
-<span class="sd">        shape: Morphological footprint shape stamped at each coordinate</span>
-<span class="sd">            when locating candidate labels. ``&quot;disk&quot;`` (default) preserves</span>
-<span class="sd">            round colony geometry. ``&quot;square&quot;`` covers rectangular regions.</span>
-<span class="sd">            ``&quot;diamond&quot;`` offers a compromise between the two.</span>
-
-<span class="sd">        width: Diameter of the footprint in pixels (default 15). Larger</span>
-<span class="sd">            widths are more forgiving — a click near an object is still</span>
-<span class="sd">            captured even if it lands slightly off the colony body — but</span>
-<span class="sd">            risk selecting multiple touching colonies with a single pick.</span>
-<span class="sd">            Typical range: 5--50, depending on image resolution and colony</span>
-<span class="sd">            size.</span>
-
-<span class="sd">    Returns:</span>
-<span class="sd">        Image: Input image with ``objmap``/``objmask`` restricted to the</span>
-<span class="sd">        objects whose pixels overlap any stamped footprint. Original label</span>
-<span class="sd">        IDs for surviving objects are preserved (non-consecutive labels</span>
-<span class="sd">        are allowed).</span>
+<span class="sd">    on a handful of colonies. For where refinement sits in a pipeline see</span>
+<span class="sd">    :doc:`/explanation/refinement_strategies`.</span>
 
 <span class="sd">    Best For:</span>
 <span class="sd">        * Manual curation of auto-detected objects before measurement —</span>
@@ -641,11 +615,41 @@
 <span class="sd">        * :class:`SmallObjectRemover` for size-based filtering when</span>
 <span class="sd">          artefacts are systematically smaller than true colonies.</span>
 
+<span class="sd">    Args:</span>
+<span class="sd">        centers: An N x 2 array-like of ``(y, x)`` pixel coordinates, one</span>
+<span class="sd">            per colony to keep, supplied by the user (purely a manual</span>
+<span class="sd">            choice). Accepts any sequence that ``np.asarray`` can convert</span>
+<span class="sd">            (list of tuples, nested list, or NumPy array). When *None*</span>
+<span class="sd">            (default) or empty, :meth:`apply` returns the image unchanged</span>
+<span class="sd">            (no-op) rather than zeroing the map — safer when this refiner is</span>
+<span class="sd">            chained in a pipeline before points have been picked.</span>
+
+<span class="sd">        shape: Morphological footprint shape stamped at each coordinate</span>
+<span class="sd">            when locating candidate labels. ``&quot;disk&quot;`` (default) preserves</span>
+<span class="sd">            round colony geometry. ``&quot;square&quot;`` covers rectangular regions.</span>
+<span class="sd">            ``&quot;diamond&quot;`` offers a compromise between the two.</span>
+
+<span class="sd">        width: Diameter of the stamp footprint in pixels, governing how</span>
+<span class="sd">            forgiving each pick is rather than the final object shape (the</span>
+<span class="sd">            kept object retains its detected extent). Larger widths tolerate</span>
+<span class="sd">            clicks that land slightly off the colony body but risk a single</span>
+<span class="sd">            pick selecting two touching colonies; smaller widths demand more</span>
+<span class="sd">            precise clicks. A reasonable starting point is a small fraction</span>
+<span class="sd">            of the colony spacing so one click maps to one colony, then grow</span>
+<span class="sd">            it if your picks routinely miss. Typical range: 5--50, depending</span>
+<span class="sd">            on image resolution and colony size. Default: 15.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Image: Input image with ``objmap``/``objmask`` restricted to the</span>
+<span class="sd">        objects whose pixels overlap any stamped footprint. Original label</span>
+<span class="sd">        IDs for surviving objects are preserved (non-consecutive labels</span>
+<span class="sd">        are allowed).</span>
+
 <span class="sd">    Note:</span>
 <span class="sd">        The bundled :class:`PointPickerWidget` used by :meth:`napari`</span>
 <span class="sd">        displays only ``rgb``, ``gray``, and ``detect_mat`` layers — it</span>
 <span class="sd">        does **not** overlay the existing ``objmap``. Before calling</span>
-<span class="sd">        ``selector.napari(image)``, preview what is available to pick</span>
+<span class="sd">        ``ManualRefine.napari(image)``, preview what is available to pick</span>
 <span class="sd">        with ``image.objmap.show()`` or ``image.plot.show()`` so you can</span>
 <span class="sd">        see which detections exist.</span>
 
@@ -654,41 +658,8 @@
 <span class="sd">            Step-by-step tutorial for basic colony detection.</span>
 <span class="sd">        :doc:`/how_to/notebooks/choose_detection_algorithm`</span>
 <span class="sd">            Guide for selecting the right detector for your plate images.</span>
-
-<span class="sd">    Examples:</span>
-<span class="sd">        Drop all detections except one chosen colony:</span>
-
-<span class="sd">        &gt;&gt;&gt; from phenotypic.data import load_synth_yeast_plate</span>
-<span class="sd">        &gt;&gt;&gt; from phenotypic.detect import OtsuDetector</span>
-<span class="sd">        &gt;&gt;&gt; from phenotypic.refine import ManualRefine</span>
-<span class="sd">        &gt;&gt;&gt; from scipy.ndimage import center_of_mass</span>
-<span class="sd">        &gt;&gt;&gt; import numpy as np</span>
-<span class="sd">        &gt;&gt;&gt; image = load_synth_yeast_plate()</span>
-<span class="sd">        &gt;&gt;&gt; detected = OtsuDetector().apply(image)</span>
-<span class="sd">        &gt;&gt;&gt; # Pick the centroid of one colony — a pixel well inside its body</span>
-<span class="sd">        &gt;&gt;&gt; # so a small footprint stamp stays on that single colony.</span>
-<span class="sd">        &gt;&gt;&gt; target_label = int(np.unique(detected.objmap[:])[1])</span>
-<span class="sd">        &gt;&gt;&gt; cy, cx = center_of_mass(detected.objmap[:] == target_label)</span>
-<span class="sd">        &gt;&gt;&gt; cy, cx = int(round(cy)), int(round(cx))</span>
-<span class="sd">        &gt;&gt;&gt; selector = ManualRefine(centers=[(cy, cx)], width=3)</span>
-<span class="sd">        &gt;&gt;&gt; curated = selector.apply(detected)</span>
-<span class="sd">        &gt;&gt;&gt; # Only the target label survives; its original ID is preserved</span>
-<span class="sd">        &gt;&gt;&gt; surviving = set(np.unique(curated.objmap[:])) - {0}</span>
-<span class="sd">        &gt;&gt;&gt; len(surviving)</span>
-<span class="sd">        1</span>
-
-<span class="sd">        Use in a pipeline for manual curation after automatic detection:</span>
-
-<span class="sd">        &gt;&gt;&gt; from phenotypic import ImagePipeline</span>
-<span class="sd">        &gt;&gt;&gt; from phenotypic.enhance import GaussianBlur</span>
-<span class="sd">        &gt;&gt;&gt; pipeline = ImagePipeline(ops=[</span>
-<span class="sd">        ...     GaussianBlur(sigma=1.0),</span>
-<span class="sd">        ...     OtsuDetector(),</span>
-<span class="sd">        ...     ManualRefine(centers=[(cy, cx)], width=3),</span>
-<span class="sd">        ... ])</span>
-<span class="sd">        &gt;&gt;&gt; result = pipeline.apply(image)</span>
-<span class="sd">        &gt;&gt;&gt; result.objmap[:].max() &gt; 0</span>
-<span class="sd">        True</span>
+<span class="sd">        :doc:`/explanation/refinement_strategies`</span>
+<span class="sd">            How refiners fit into the detection-to-measurement pipeline.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">centers</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>

@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -562,7 +562,7 @@
   <h1>Source code for phenotypic.enhance._gray_opening</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">TYPE_CHECKING</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Annotated</span><span class="p">,</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">TYPE_CHECKING</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">skimage</span><span class="w"> </span><span class="kn">import</span> <span class="n">morphology</span>
 
@@ -571,56 +571,64 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">MorphologicalFiltering</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.mixin</span><span class="w"> </span><span class="kn">import</span> <span class="n">FootprintMixin</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">TuneSpec</span>
 
 
 <div class="viewcode-block" id="GrayOpening">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.enhance.html#phenotypic.enhance.GrayOpening">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">GrayOpening</span><span class="p">(</span><span class="n">MorphologicalFiltering</span><span class="p">,</span> <span class="n">FootprintMixin</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Remove small bright artifacts from ``detect_mat`` via morphological opening.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Remove small bright artefacts from ``detect_mat`` via morphological opening.</span>
 
 <span class="sd">    Applies erosion followed by dilation with a structuring element, removing</span>
-<span class="sd">    bright features smaller than the element while preserving the shape of</span>
-<span class="sd">    larger structures. Effectively suppresses dust particles, small noise</span>
-<span class="sd">    speckles, and tiny satellite colonies.</span>
+<span class="sd">    bright features whose spatial extent is smaller than the element while</span>
+<span class="sd">    preserving larger colony structures. Effectively suppresses dust particles,</span>
+<span class="sd">    small noise speckles, and tiny satellite colonies that would otherwise</span>
+<span class="sd">    generate false detections.</span>
 
 <span class="sd">    For algorithm details, see :doc:`/explanation/what_enhancement_does`.</span>
 
+<span class="sd">    Best For:</span>
+<span class="sd">        - Removing dust particles and small bright noise from plate scans</span>
+<span class="sd">          before thresholding.</span>
+<span class="sd">        - Suppressing tiny satellite colonies or debris that would be counted</span>
+<span class="sd">          as false positives by downstream detectors.</span>
+<span class="sd">        - Smoothing the detection surface before background subtraction to</span>
+<span class="sd">          reduce artefact interference.</span>
+
+<span class="sd">    Consider Also:</span>
+<span class="sd">        - :class:`WhiteTophatEnhance` when the goal is to isolate and enhance</span>
+<span class="sd">          small bright structures rather than suppress them.</span>
+<span class="sd">        - :class:`SubtractWhiteTophat` for subtracting small bright artefacts</span>
+<span class="sd">          from the image while retaining the broader background.</span>
+<span class="sd">        - :class:`LocalEdgeDenoise` for noise reduction that preserves colony</span>
+<span class="sd">          edges without assuming a specific feature size.</span>
+
 <span class="sd">    Args:</span>
-<span class="sd">        shape: Structuring element geometry. ``&#39;square&#39;`` (default) preserves</span>
-<span class="sd">            edges; ``&#39;diamond&#39;`` is more rounded at diagonals; ``&#39;disk&#39;``</span>
-<span class="sd">            provides uniform circular operations.</span>
-<span class="sd">        width: Diameter of the structuring element in pixels. Larger values</span>
-<span class="sd">            remove larger features. Typical range: 3--15. Default: 5.</span>
-<span class="sd">        n_iter: Number of times to apply the opening. Repeated opening with</span>
-<span class="sd">            a small element produces smoother results than a single pass</span>
-<span class="sd">            with a larger element. Default: 1.</span>
+<span class="sd">        shape: Structuring element geometry. Accepted values: ``&#39;square&#39;``</span>
+<span class="sd">            (default, preserves axis-aligned edges), ``&#39;diamond&#39;`` (rounded</span>
+<span class="sd">            at diagonals), ``&#39;disk&#39;`` (uniform circular neighbourhood).</span>
+<span class="sd">            Default: ``&#39;square&#39;``.</span>
+<span class="sd">        width: Diameter of the structuring element in pixels. Features smaller</span>
+<span class="sd">            than ``width`` are removed. Typical range: 3--15. Default: 5.</span>
+<span class="sd">        n_iter: Number of times to apply the opening in sequence. Repeated</span>
+<span class="sd">            opening with a small element produces smoother suppression than a</span>
+<span class="sd">            single pass with a larger element. Default: 1.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        Image: Input image with ``detect_mat`` morphologically opened.</span>
 <span class="sd">        ``rgb`` and ``gray`` are unchanged.</span>
 
-<span class="sd">    Best For:</span>
-<span class="sd">        - Removing dust particles and small bright noise from plate scans.</span>
-<span class="sd">        - Suppressing tiny satellite colonies that interfere with detection</span>
-<span class="sd">          of larger colonies.</span>
-<span class="sd">        - Smoothing the detection surface before background subtraction.</span>
-
-<span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`WhiteTophatEnhance` when you want to isolate (not remove)</span>
-<span class="sd">          small bright structures.</span>
-<span class="sd">        - :class:`SubtractWhiteTophat` for subtracting small bright artifacts</span>
-<span class="sd">          while retaining the background.</span>
-<span class="sd">        - :class:`LocalEdgeDenoise` for noise reduction that preserves edges</span>
-<span class="sd">          without morphological assumptions.</span>
-
 <span class="sd">    See Also:</span>
-<span class="sd">        :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a</span>
-<span class="sd">        visual walkthrough of enhancement pipelines on plate images.</span>
+<span class="sd">        :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a visual</span>
+<span class="sd">        walkthrough of enhancement pipelines on plate images.</span>
+<span class="sd">        :doc:`/explanation/what_enhancement_does` for how morphological</span>
+<span class="sd">        filtering fits into the pipeline model.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">shape</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;square&quot;</span><span class="p">,</span> <span class="s2">&quot;diamond&quot;</span><span class="p">,</span> <span class="s2">&quot;disk&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;square&quot;</span>
-    <span class="n">width</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span>
-    <span class="n">n_iter</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="c1"># TODO: review bound (unverified vs literature)</span>
+    <span class="n">width</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">15</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="mi">2</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">5</span>
+    <span class="n">n_iter</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">1</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
         <span class="n">footprint</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_footprint</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">width</span><span class="p">)</span>

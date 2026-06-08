@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -578,45 +578,57 @@
 <div class="viewcode-block" id="MaskWhiteTophat">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.refine.html#phenotypic.refine.MaskWhiteTophat">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">MaskWhiteTophat</span><span class="p">(</span><span class="n">ObjectRefiner</span><span class="p">,</span> <span class="n">FootprintMixin</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Remove small bright mask structures using white tophat subtraction.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Remove bright protrusions and thin bridges from the detection mask using white tophat subtraction.</span>
 
-<span class="sd">    Applies a white tophat transform to the binary mask to detect small</span>
-<span class="sd">    bright features (glare bridges, dust speckles, thin connections) and</span>
-<span class="sd">    subtracts them. Produces cleaner, more compact masks that better match</span>
-<span class="sd">    colony boundaries under uneven illumination.</span>
+<span class="sd">    Computes the white tophat transform of the binary mask (mask minus its</span>
+<span class="sd">    morphological opening) and subtracts the result, isolating and eliminating</span>
+<span class="sd">    small bright structures that are narrower than the structuring element.</span>
+<span class="sd">    Glare-induced bridges, dust speckles, and thin connections are suppressed</span>
+<span class="sd">    while the main colony body is preserved.</span>
 
-<span class="sd">    Args:</span>
-<span class="sd">        shape: Structuring element shape. ``&quot;disk&quot;`` preserves round</span>
-<span class="sd">            features, ``&quot;square&quot;`` is more aggressive along axes,</span>
-<span class="sd">            ``&quot;diamond&quot;`` provides a compromise. A NumPy array provides</span>
-<span class="sd">            a custom element. Default: ``&quot;disk&quot;``.</span>
-<span class="sd">        width: Footprint width in pixels. Larger values remove broader</span>
-<span class="sd">            bright features but risk shrinking thin colony appendages.</span>
-<span class="sd">            ``None`` auto-scales to ~0.4% of the smallest image</span>
-<span class="sd">            dimension. Default: None.</span>
-
-<span class="sd">    Returns:</span>
-<span class="sd">        Image: Input image with ``objmask`` updated by subtracting the</span>
-<span class="sd">        white tophat result.</span>
+<span class="sd">    For an overview of morphological refinement strategies, see</span>
+<span class="sd">    :doc:`/explanation/refinement_strategies`.</span>
 
 <span class="sd">    Best For:</span>
-<span class="sd">        - Reducing glare-induced bridges between neighboring colonies.</span>
-<span class="sd">        - Removing bright speckles or dust embedded in masks after</span>
-<span class="sd">          thresholding.</span>
-<span class="sd">        - Cleaning up thin bright connections that inflate colony</span>
-<span class="sd">          perimeters.</span>
+<span class="sd">        - Plates with specular glare that creates bright bridges between</span>
+<span class="sd">          adjacent colony masks after thresholding.</span>
+<span class="sd">        - Detection masks with small bright dust or condensation speckles</span>
+<span class="sd">          that survived the detector.</span>
+<span class="sd">        - Colonies whose perimeter measurements are inflated by thin</span>
+<span class="sd">          protruding artefacts.</span>
+<span class="sd">        - Images where illumination hot-spots produce narrow mask</span>
+<span class="sd">          connections narrower than the structuring element width.</span>
 
 <span class="sd">    Consider Also:</span>
 <span class="sd">        - :class:`MaskOpening` for general morphological opening that</span>
-<span class="sd">          removes thin protrusions without tophat detection.</span>
-<span class="sd">        - :class:`SmallObjectRemover` when small artifacts are entire</span>
-<span class="sd">          disconnected objects rather than thin bridges.</span>
+<span class="sd">          removes thin protrusions and breaks bridges without the tophat</span>
+<span class="sd">          detection step.</span>
+<span class="sd">        - :class:`SmallObjectRemover` when small artefacts are fully</span>
+<span class="sd">          disconnected objects better targeted by an area threshold.</span>
 <span class="sd">        - :class:`ExtractColonyCore` for intensity-based core extraction</span>
-<span class="sd">          when halos are the primary artifact.</span>
+<span class="sd">          when diffuse halos rather than thin bridges are the primary</span>
+<span class="sd">          artefact.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        shape: Structuring element geometry. ``&quot;disk&quot;`` (default) best</span>
+<span class="sd">            preserves round colony boundaries; ``&quot;square&quot;`` is more</span>
+<span class="sd">            aggressive along cardinal axes; ``&quot;diamond&quot;`` is a compromise.</span>
+<span class="sd">            A NumPy array supplies a custom footprint. Default: ``&quot;disk&quot;``.</span>
+<span class="sd">        width: Footprint radius in pixels. Structures narrower than this</span>
+<span class="sd">            value are candidates for removal. Larger values eliminate</span>
+<span class="sd">            broader protrusions but risk eroding genuine thin appendages.</span>
+<span class="sd">            ``None`` auto-scales to approximately 0.4% of the smaller image</span>
+<span class="sd">            dimension. Typical range: 3--10. Default: ``None``.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Image: Input image with ``objmask`` updated by subtracting the</span>
+<span class="sd">        white tophat result. Assigning ``objmask`` rebuilds ``objmap``</span>
+<span class="sd">        from the binary mask; ``rgb``, ``gray``, and ``detect_mat`` are</span>
+<span class="sd">        unchanged.</span>
 
 <span class="sd">    See Also:</span>
 <span class="sd">        :doc:`/how_to/notebooks/refine_noisy_boundaries` for tophat-based</span>
-<span class="sd">        cleanup workflows.</span>
+<span class="sd">        cleanup workflows on real plate images.</span>
 <span class="sd">        :doc:`/explanation/refinement_strategies` for a comparison of</span>
 <span class="sd">        morphological refinement methods.</span>
 <span class="sd">    &quot;&quot;&quot;</span>

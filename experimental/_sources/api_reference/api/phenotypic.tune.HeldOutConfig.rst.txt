@@ -1,0 +1,63 @@
+phenotypic.tune.HeldOutConfig
+=============================
+
+.. currentmodule:: phenotypic.tune
+
+.. autoclass:: HeldOutConfig
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~HeldOutConfig.__init__
+      ~HeldOutConfig.construct
+      ~HeldOutConfig.copy
+      ~HeldOutConfig.dict
+      ~HeldOutConfig.from_orm
+      ~HeldOutConfig.json
+      ~HeldOutConfig.model_construct
+      ~HeldOutConfig.model_copy
+      ~HeldOutConfig.model_dump
+      ~HeldOutConfig.model_dump_json
+      ~HeldOutConfig.model_json_schema
+      ~HeldOutConfig.model_parametrized_name
+      ~HeldOutConfig.model_post_init
+      ~HeldOutConfig.model_rebuild
+      ~HeldOutConfig.model_validate
+      ~HeldOutConfig.model_validate_json
+      ~HeldOutConfig.model_validate_strings
+      ~HeldOutConfig.parse_file
+      ~HeldOutConfig.parse_obj
+      ~HeldOutConfig.parse_raw
+      ~HeldOutConfig.schema
+      ~HeldOutConfig.schema_json
+      ~HeldOutConfig.update_forward_refs
+      ~HeldOutConfig.validate
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~HeldOutConfig.model_computed_fields
+      ~HeldOutConfig.model_config
+      ~HeldOutConfig.model_extra
+      ~HeldOutConfig.model_fields
+      ~HeldOutConfig.model_fields_set
+      ~HeldOutConfig.held_out_fraction
+      ~HeldOutConfig.group_key
+      ~HeldOutConfig.min_heldout_plates
+      ~HeldOutConfig.gap_margin_relative
+      ~HeldOutConfig.gap_margin_absolute
+   
+   

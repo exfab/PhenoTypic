@@ -1,0 +1,33 @@
+phenotypic.tune.TuningEngine
+============================
+
+.. currentmodule:: phenotypic.tune
+
+.. autoclass:: TuningEngine
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~TuningEngine.__init__
+      ~TuningEngine.best_pipeline
+      ~TuningEngine.optimize
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~TuningEngine.store
+   
+   

@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -576,52 +576,73 @@
 <div class="viewcode-block" id="FocusEdgeSato">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.enhance.html#phenotypic.enhance.FocusEdgeSato">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">FocusEdgeSato</span><span class="p">(</span><span class="n">FocusEdge</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Enhance tubular and ridge-like structures in ``detect_mat`` with the Sato tubeness filter.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Enhance hyphal ridges and tubular colony structures in ``detect_mat`` using the Sato tubeness filter.</span>
 
-<span class="sd">    Computes the Sato tubeness measure from Hessian matrix eigenvalues to</span>
-<span class="sd">    highlight continuous ridge structures such as filamentous colonies,</span>
-<span class="sd">    mycelial networks, and branching morphologies. Less sensitive to</span>
-<span class="sd">    parameter tuning than Frangi, making it a good first choice for ridge</span>
-<span class="sd">    detection.</span>
+<span class="sd">    Computes a tubeness response from Hessian matrix eigenvalues at each</span>
+<span class="sd">    specified scale, then takes the per-pixel maximum across all scales to</span>
+<span class="sd">    produce a response map where bright ridges correspond to continuous</span>
+<span class="sd">    filamentous structures. Intermediates are deleted between scales to</span>
+<span class="sd">    reduce peak memory usage.</span>
 
 <span class="sd">    For algorithm details, see :doc:`/explanation/what_enhancement_does`.</span>
 
-<span class="sd">    Args:</span>
-<span class="sd">        sigmas: Sequence of standard deviations for Gaussian derivatives.</span>
-<span class="sd">            Smaller values detect finer structures; larger values detect</span>
-<span class="sd">            thicker features. Typical range: ``(1, 2, 3)`` to</span>
-<span class="sd">            ``range(1, 10, 2)``. Default: ``(1, 2, 3)``.</span>
-<span class="sd">        black_ridges: If ``True``, detect dark ridges on bright background.</span>
-<span class="sd">            If ``False`` (default), detect bright ridges on dark background.</span>
-<span class="sd">        mode: Boundary handling. Accepted values: ``&#39;constant&#39;``,</span>
-<span class="sd">            ``&#39;reflect&#39;``, ``&#39;wrap&#39;``, ``&#39;nearest&#39;``, ``&#39;mirror&#39;``.</span>
-<span class="sd">            Default: ``&#39;reflect&#39;``.</span>
-<span class="sd">        cval: Fill value when ``mode=&#39;constant&#39;``. Default: 0.</span>
-
-<span class="sd">    Returns:</span>
-<span class="sd">        Image: Input image with ``detect_mat`` replaced by the Sato</span>
-<span class="sd">        tubeness response map. ``rgb`` and ``gray`` are unchanged.</span>
-
 <span class="sd">    Best For:</span>
-<span class="sd">        - Thin filamentous colonies or mycelial networks (fungi, Bacillus,</span>
-<span class="sd">          streptomycetes).</span>
-<span class="sd">        - Continuous ridge-like structures that global thresholding misses.</span>
-<span class="sd">        - Interconnected fungal networks or biofilm structures.</span>
-<span class="sd">        - Organisms with branching or root-like colony morphologies.</span>
+<span class="sd">        - Thin filamentous colonies and mycelial networks (Aspergillus,</span>
+<span class="sd">          Neurospora, streptomycetes).</span>
+<span class="sd">        - Continuous ridge-like morphologies that global thresholding misses.</span>
+<span class="sd">        - Branching or root-like colony forms requiring multi-scale detection.</span>
+<span class="sd">        - Plates where hyphal width varies across the image and a single</span>
+<span class="sd">          sigma would miss structures at one end of the size range.</span>
 
 <span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`FocusEdgeMeijering` for very fine neurite-like filaments</span>
-<span class="sd">          where higher selectivity is needed.</span>
+<span class="sd">        - :class:`FocusEdgeFrangi` when blob-versus-tube discrimination is</span>
+<span class="sd">          needed via explicit alpha/beta sensitivity controls.</span>
 <span class="sd">        - :class:`FocusEdgeHessian` for combined edge and ridge detection with</span>
-<span class="sd">          blob sensitivity control.</span>
-<span class="sd">        - :class:`StructureSmoothing` for anisotropic smoothing</span>
-<span class="sd">          that enhances directional structures before ridge detection.</span>
+<span class="sd">          adjustable background suppression.</span>
+<span class="sd">        - :class:`StructureSmoothing` when anisotropic preprocessing is needed</span>
+<span class="sd">          to reinforce coherent hyphal orientation before ridge detection.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        sigmas: Scales (standard deviations in pixels) at which the Hessian</span>
+<span class="sd">            is evaluated. Each sigma responds maximally to ridges whose</span>
+<span class="sd">            cross-sectional half-width matches that value. The output is the</span>
+<span class="sd">            per-pixel maximum across all scales, so extra sigmas can only</span>
+<span class="sd">            raise the response. Typical tuple span: ``(1, 2, 3)`` for</span>
+<span class="sd">            standard 300--600 dpi scans where hyphae are 2--8 px wide;</span>
+<span class="sd">            extend to ``range(1, 10, 2)`` for thick mature filaments or lower</span>
+<span class="sd">            magnification. A reasonable starting point for standard agar plate</span>
+<span class="sd">            scans is to span the expected minimum and maximum hyphal width in</span>
+<span class="sd">            pixels, e.g. ``(1, 3, 5)`` for 600 dpi images of Neurospora.</span>
+<span class="sd">            Default: ``(1, 2, 3)``.</span>
+<span class="sd">        black_ridges: Detect dark ridges on a bright background when ``True``.</span>
+<span class="sd">            ``False`` (default) detects bright ridges on a dark background,</span>
+<span class="sd">            matching the ``detect_mat`` convention where colonies appear bright.</span>
+<span class="sd">        mode: Boundary handling for Gaussian derivative convolution. Accepted</span>
+<span class="sd">            values: ``&#39;constant&#39;``, ``&#39;reflect&#39;``, ``&#39;wrap&#39;``, ``&#39;nearest&#39;``,</span>
+<span class="sd">            ``&#39;mirror&#39;``. ``&#39;reflect&#39;`` (default) mirrors image data at the</span>
+<span class="sd">            border, minimising spurious ridge responses at plate edges.</span>
+<span class="sd">            Use ``&#39;constant&#39;`` (with ``cval`` set to the background level)</span>
+<span class="sd">            only when stitching multi-tile acquisitions.</span>
+<span class="sd">        cval: Fill value used when ``mode=&#39;constant&#39;``. Has no effect for</span>
+<span class="sd">            other border modes. Default: 0.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Image: Input image with ``detect_mat`` replaced by the Sato tubeness</span>
+<span class="sd">        response map. Brighter pixels indicate stronger ridge-like structures</span>
+<span class="sd">        at the sampled scales. ``rgb`` and ``gray`` are unchanged.</span>
+
+<span class="sd">    References:</span>
+<span class="sd">        [1] Y. Sato et al., &quot;Three-dimensional multi-scale line filter for</span>
+<span class="sd">        segmentation and visualization of curvilinear structures in medical</span>
+<span class="sd">        images,&quot; *Med. Image Anal.*, vol. 2, no. 2, pp. 143--168, Jun. 1998.</span>
 
 <span class="sd">    See Also:</span>
 <span class="sd">        :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a</span>
 <span class="sd">        visual walkthrough of ridge enhancement on plate images.</span>
 <span class="sd">        :doc:`/explanation/what_enhancement_does` for background on</span>
 <span class="sd">        Hessian-based ridge detection methods.</span>
+<span class="sd">        :doc:`/tutorials/notebooks/10_detecting_filamentous_fungi` for</span>
+<span class="sd">        filamentous fungi detection pipelines that use this enhancer.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">sigmas</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>

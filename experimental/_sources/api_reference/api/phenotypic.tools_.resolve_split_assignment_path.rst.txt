@@ -1,0 +1,6 @@
+phenotypic.tools\_.resolve\_split\_assignment\_path
+===================================================
+
+.. currentmodule:: phenotypic.tools_
+
+.. autofunction:: resolve_split_assignment_path

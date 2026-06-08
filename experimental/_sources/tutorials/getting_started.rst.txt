@@ -46,7 +46,7 @@ Optional Extras
 
 PhenoTypic provides optional extras for different use cases:
 
-- ``[gui]`` — Browser-based GUI hub: Panel dashboards, Dash apps, and Jupyter
+- ``[gui]`` — Browser-based GUI hub: Plotly dashboards, Dash apps, and Jupyter
   integration. Does **not** include napari.
 - ``[napari]`` — The interactive napari desktop viewers (pulls napari + PyQt6).
   Required for ``image.rgb.napari()`` and related viewer methods, the point
@@ -55,7 +55,7 @@ PhenoTypic provides optional extras for different use cases:
 
 .. code-block:: bash
 
-   # Browser GUI hub (Panel, Dash, Jupyter)
+   # Browser GUI hub (Plotly, Dash, Jupyter)
    uv add "phenotypic[gui]"
 
    # napari desktop viewers

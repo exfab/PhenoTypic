@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -562,37 +562,56 @@
   <h1>Source code for phenotypic.enhance._gaussian_blur</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Literal</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Annotated</span><span class="p">,</span> <span class="n">Literal</span>
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">skimage.filters</span><span class="w"> </span><span class="kn">import</span> <span class="n">gaussian</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">..abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">Smoothing</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..tools_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">TuneSpec</span>
 
 
 <div class="viewcode-block" id="GaussianBlur">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.enhance.html#phenotypic.enhance.GaussianBlur">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">GaussianBlur</span><span class="p">(</span><span class="n">Smoothing</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Smooth noise in detect_mat using isotropic Gaussian convolution.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Smooth noise in ``detect_mat`` using isotropic Gaussian convolution.</span>
 
-<span class="sd">    Reduces high-frequency noise, scanner artifacts, and minor agar texture</span>
+<span class="sd">    Reduces high-frequency noise, scanner artefacts, and minor agar texture</span>
 <span class="sd">    so that downstream thresholding responds to colony signal rather than</span>
-<span class="sd">    noise. Colony edges become more coherent at the cost of some spatial</span>
-<span class="sd">    sharpness.</span>
+<span class="sd">    local pixel variation. Colony edges become more coherent at the cost of</span>
+<span class="sd">    some spatial sharpness; keeping ``sigma`` below the smallest colony radius</span>
+<span class="sd">    avoids merging adjacent colonies.</span>
 
 <span class="sd">    For a comparison of denoising approaches, see</span>
 <span class="sd">    :doc:`/explanation/what_enhancement_does`.</span>
+
+<span class="sd">    Best For:</span>
+<span class="sd">        - Plates with visible scanner CCD noise or agar granularity that</span>
+<span class="sd">          triggers false positives in thresholding.</span>
+<span class="sd">        - Pre-filtering before edge-based detectors (Sobel, Canny) to reduce</span>
+<span class="sd">          noise edges.</span>
+<span class="sd">        - Quick preprocessing when speed matters more than edge preservation.</span>
+
+<span class="sd">    Consider Also:</span>
+<span class="sd">        - :class:`MedianFilter` when salt-and-pepper noise dominates and</span>
+<span class="sd">          preserving sharp colony edges is important.</span>
+<span class="sd">        - :class:`LocalEdgeDenoise` for bilateral smoothing within regions</span>
+<span class="sd">          while keeping colony boundaries sharp.</span>
+<span class="sd">        - :class:`StableDenoise` for highest-quality BM3D denoising on</span>
+<span class="sd">          critical low-light experiments.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        sigma: Standard deviation of the Gaussian kernel in pixels. Controls</span>
 <span class="sd">            blur strength. Typical range: 0.5--5.0. Keep below the smallest</span>
 <span class="sd">            colony radius to avoid merging adjacent colonies. Default: 2.0.</span>
-<span class="sd">        mode: Boundary handling. Accepted values: ``&#39;reflect&#39;``, ``&#39;constant&#39;``,</span>
-<span class="sd">            ``&#39;nearest&#39;``. Default: ``&#39;reflect&#39;``.</span>
-<span class="sd">        cval: Fill value when ``mode=&#39;constant&#39;``. Default: 0.0.</span>
-<span class="sd">        truncate: Kernel extent in standard deviations. Rarely needs</span>
-<span class="sd">            adjustment. Default: 4.0.</span>
+<span class="sd">        mode: Boundary handling strategy. Accepted values: ``&#39;reflect&#39;``,</span>
+<span class="sd">            ``&#39;constant&#39;``, ``&#39;nearest&#39;``. Default: ``&#39;reflect&#39;``.</span>
+<span class="sd">        cval: Fill value used when ``mode=&#39;constant&#39;``. Default: 0.0.</span>
+<span class="sd">        truncate: Kernel half-width in standard deviations; the kernel extends</span>
+<span class="sd">            ``truncate * sigma`` pixels from center. Larger values include more</span>
+<span class="sd">            of the Gaussian tails with minimal quality improvement beyond 4.0.</span>
+<span class="sd">            Default: 4.0.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        Image: Input image with ``detect_mat`` smoothed by the Gaussian</span>
@@ -601,30 +620,17 @@
 <span class="sd">    Raises:</span>
 <span class="sd">        ValueError: If ``mode`` is not one of the accepted values.</span>
 
-<span class="sd">    Best For:</span>
-<span class="sd">        - Plates with visible scanner noise or agar granularity.</span>
-<span class="sd">        - Pre-filtering before edge-based detectors (Sobel, Canny).</span>
-<span class="sd">        - Quick preprocessing when speed matters more than edge preservation.</span>
-
-<span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`MedianFilter` when salt-and-pepper noise dominates and edge</span>
-<span class="sd">          preservation is important.</span>
-<span class="sd">        - :class:`LocalEdgeDenoise` for smoothing within regions while keeping</span>
-<span class="sd">          colony boundaries sharp.</span>
-<span class="sd">        - :class:`StableDenoise` for highest-quality BM3D denoising on critical</span>
-<span class="sd">          experiments.</span>
-
 <span class="sd">    See Also:</span>
-<span class="sd">        :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a</span>
-<span class="sd">        visual walkthrough of enhancement before detection.</span>
+<span class="sd">        :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a visual</span>
+<span class="sd">        walkthrough of enhancement before detection.</span>
 <span class="sd">        :doc:`/how_to/notebooks/denoise_low_light` for a comparison of</span>
-<span class="sd">        denoising methods.</span>
+<span class="sd">        denoising methods on low-light plate images.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="n">sigma</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.0</span>
+    <span class="n">sigma</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">,</span> <span class="n">log</span><span class="o">=</span><span class="kc">True</span><span class="p">)]</span> <span class="o">=</span> <span class="mf">2.0</span>
     <span class="n">mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;reflect&quot;</span><span class="p">,</span> <span class="s2">&quot;constant&quot;</span><span class="p">,</span> <span class="s2">&quot;nearest&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;reflect&quot;</span>
-    <span class="n">cval</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
-    <span class="n">truncate</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">4.0</span>
+    <span class="n">cval</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="n">tunable</span><span class="o">=</span><span class="kc">False</span><span class="p">)]</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="n">truncate</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="n">tunable</span><span class="o">=</span><span class="kc">False</span><span class="p">)]</span> <span class="o">=</span> <span class="mf">4.0</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
         <span class="n">image</span><span class="o">.</span><span class="n">detect_mat</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">gaussian</span><span class="p">(</span>
@@ -633,7 +639,7 @@
                 <span class="n">mode</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">mode</span><span class="p">,</span>
                 <span class="n">truncate</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">truncate</span><span class="p">,</span>
                 <span class="n">cval</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cval</span><span class="p">,</span>
-                <span class="n">channel_axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span>
+                <span class="n">channel_axis</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="k">return</span> <span class="n">image</span></div>
 

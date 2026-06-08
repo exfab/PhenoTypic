@@ -1,0 +1,1137 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.tune._scoring._supervised &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../../_static/documentation_options.js?v=9b4af9f2"></script>
+    <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/tune/_scoring/_supervised';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'dev';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/experimental/_modules/phenotypic/tune/_scoring/_supervised.html" />
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.17.0" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../measurements_ref/index.html">
+          Measurements Ref
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../measurements_ref/index.html">
+          Measurements Ref
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.tune._scoring._supervised</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.tune._scoring._supervised</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;The supervised (ground-truth) scoring objective — Phase 4 chunk B (4.4).</span>
+
+<span class="sd">``SupervisedScorer`` scores a candidate segmentation **against ground-truth</span>
+<span class="sd">annotations** resolved through a path-configured :class:`GroundTruthMasks`</span>
+<span class="sd">loader. It is **modality-tiered** (supervised-scorers §3): the GT source&#39;s</span>
+<span class="sd">modality decides which tier runs, and a tier emits exactly the term(s) it can</span>
+<span class="sd">honestly compute, so the scorer degrades gracefully as annotations get cheaper:</span>
+
+<span class="sd">* **mask tier** (``gt.modality() == &quot;mask&quot;``): resolve the per-image GT mask,</span>
+<span class="sd">  turn it into an **instance-label** array per the loader&#39;s ``gt_format``</span>
+<span class="sd">  (``&quot;instance&quot;`` GT is used as-is; ``&quot;binary&quot;`` foreground GT is split into</span>
+<span class="sd">  connected components within each **geometric, detection-independent** grid</span>
+<span class="sd">  cell, so spatially-separated colonies in one cell become distinct GT instances</span>
+<span class="sd">  while the full GT extent is preserved), match predicted objects to those GT</span>
+<span class="sd">  instances (``&quot;binary&quot;`` always via global IoU-greedy so missed/over-extended</span>
+<span class="sd">  GT is scored honestly; ``&quot;instance&quot;`` via the configured strategy — per-grid-</span>
+<span class="sd">  cell on a ``GridImage`` or IoU-greedy), score each matched pair with the chosen</span>
+<span class="sd">  *single* region metric (Dice **xor** IoU — never both, §1 composition note),</span>
+<span class="sd">  and **macro-average per image** into the ``&quot;Region&quot;`` term.</span>
+<span class="sd">* **count tier** (``gt.modality() == &quot;count&quot;``): **reuse**</span>
+<span class="sd">  :class:`phenotypic.analysis.ExpectedVsDetectedCount` (the master&#39;s count QC</span>
+<span class="sd">  check — do *not* re-implement counting, §1 &quot;reuse, don&#39;t duplicate&quot;) to get</span>
+<span class="sd">  each group&#39;s ``|detected − expected| / expected`` divergence, fold it to a</span>
+<span class="sd">  *higher-is-better* ``[0, 1]`` score anchored on the check&#39;s ``fail_threshold``,</span>
+<span class="sd">  and emit the ``&quot;CountMAE&quot;`` term.</span>
+<span class="sd">* **none tier** (abstain): no resolvable GT → :meth:`availability` is ``False``</span>
+<span class="sd">  and the engine degrades to the configured fallback objective.</span>
+
+<span class="sd">The two region metrics are **monotonically related** (``Dice = 2·IoU/(1+IoU)``)</span>
+<span class="sd">so they rank candidates identically; the scorer therefore carries exactly one</span>
+<span class="sd">(``region_metric``), guarded by a ``field_validator``.</span>
+
+<span class="sd"># TODO(DEFERRED-WORK §1): validate against real annotated plates. v1 ships the</span>
+<span class="sd"># modality-tiered term machinery (mask region-overlap + count-MAE reuse) and the</span>
+<span class="sd"># availability gate; the numeric correctness of the region term vs. a real</span>
+<span class="sd"># annotated calibration set — and the choice of region metric / matching τ that</span>
+<span class="sd"># best tracks the visual optimum — is deferred until such a set exists. No</span>
+<span class="sd"># numeric-vs-real-GT test runs here (tests pin construction, term shape,</span>
+<span class="sd"># availability tiers, count-check reuse, and round-trip only).</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">ClassVar</span><span class="p">,</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">TypeAlias</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConfigDict</span><span class="p">,</span> <span class="n">field_validator</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">skimage</span><span class="w"> </span><span class="kn">import</span> <span class="n">measure</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.analysis</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExpectedVsDetectedCount</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">._gt_loader</span><span class="w"> </span><span class="kn">import</span> <span class="n">GroundTruthMasks</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._matching</span><span class="w"> </span><span class="kn">import</span> <span class="n">MatchPair</span><span class="p">,</span> <span class="n">match_iou_greedy</span><span class="p">,</span> <span class="n">match_per_grid_cell</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._metrics</span><span class="w"> </span><span class="kn">import</span> <span class="n">dice</span><span class="p">,</span> <span class="n">iou</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._qc_scorer</span><span class="w"> </span><span class="kn">import</span> <span class="n">fold_expected_vs_detected_count</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._scorer</span><span class="w"> </span><span class="kn">import</span> <span class="n">Scorer</span>
+
+<span class="c1">#: The single region-overlap metric — Dice **xor** IoU (never both: they rank</span>
+<span class="c1">#: candidates identically, so a panel carrying both adds no information,</span>
+<span class="c1">#: supervised-scorers §1 composition note). A type-only closed set.</span>
+<span class="n">RegionMetric</span><span class="p">:</span> <span class="n">TypeAlias</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;dice&quot;</span><span class="p">,</span> <span class="s2">&quot;iou&quot;</span><span class="p">]</span>
+
+<span class="c1">#: The object-matching strategy — per-grid-cell (the arrayed-plate default) or</span>
+<span class="c1">#: IoU-greedy (the non-gridded fallback). A type-only closed set.</span>
+<span class="n">MatchStrategy</span><span class="p">:</span> <span class="n">TypeAlias</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;grid_cell&quot;</span><span class="p">,</span> <span class="s2">&quot;iou_greedy&quot;</span><span class="p">]</span>
+
+<span class="c1">#: Sentinel cell id for pixels **outside the grid** in the geometric cell map</span>
+<span class="c1">#: (margins beyond the first/last grid edge). Excluded when deriving per-cell</span>
+<span class="c1">#: binary-GT instances so off-grid foreground is never split into a GT object.</span>
+<span class="c1">#: Grid cells themselves use the row-major id ``row * ncols + col`` (``&gt;= 0``).</span>
+<span class="n">_OUTSIDE_GRID</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+
+
+<div class="viewcode-block" id="SupervisedScorer">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.html#phenotypic.tune.SupervisedScorer">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">SupervisedScorer</span><span class="p">(</span><span class="n">Scorer</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Ground-truth segmentation/count objective, tiered by GT modality.</span>
+
+<span class="sd">    The :attr:`gt` loader&#39;s :meth:`GroundTruthMasks.modality` selects the tier</span>
+<span class="sd">    that runs: a directory of per-image masks → the mask (region-overlap) tier;</span>
+<span class="sd">    a ``.csv``/``.parquet`` count table (paired with a configured</span>
+<span class="sd">    :attr:`count_check`) → the count tier; nothing resolvable → abstain. Each</span>
+<span class="sd">    runnable tier contributes exactly one term — ``&quot;Region&quot;`` (mask) or</span>
+<span class="sd">    ``&quot;CountMAE&quot;`` (count) — so :meth:`score_image` returns a tier-appropriate</span>
+<span class="sd">    mapping (empty when no tier can score a given image).</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        gt: The path-configured ground-truth loader. Its ``gt_masks_source``</span>
+<span class="sd">            is the serializable handle and its :meth:`GroundTruthMasks.modality`</span>
+<span class="sd">            drives tier selection and :meth:`availability`.</span>
+<span class="sd">        region_metric: The single region-overlap metric for the mask tier —</span>
+<span class="sd">            ``&quot;dice&quot;`` (default) or ``&quot;iou&quot;``. The two rank identically; carry</span>
+<span class="sd">            exactly one (Dice **xor** IoU, supervised-scorers §1).</span>
+<span class="sd">        match_strategy: How predicted objects are paired with GT objects on the</span>
+<span class="sd">            mask tier — ``&quot;grid_cell&quot;`` (default; the arrayed plate&#39;s grid is the</span>
+<span class="sd">            spatial prior, no τ) or ``&quot;iou_greedy&quot;`` (the non-gridded fallback,</span>
+<span class="sd">            accepting pairs with IoU &gt; :attr:`iou_tau`).</span>
+<span class="sd">        iou_tau: The IoU acceptance threshold for ``&quot;iou_greedy&quot;`` matching</span>
+<span class="sd">            (ignored for ``&quot;grid_cell&quot;``). Default ``0.5`` gives a provably</span>
+<span class="sd">            one-to-one assignment.</span>
+<span class="sd">        count_check: The path-configured :class:`ExpectedVsDetectedCount` reused</span>
+<span class="sd">            for the count tier (do not re-implement counting). Required for the</span>
+<span class="sd">            count tier to run; ``None`` makes the count tier abstain.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        pydantic.ValidationError: If ``region_metric`` is not exactly one of</span>
+<span class="sd">            ``&quot;dice&quot;`` / ``&quot;iou&quot;`` (the Dice-xor-IoU guard).</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        Construct against a count-table GT source and inspect availability — the</span>
+<span class="sd">        synthetic plate is the runnable doctest target (construction + the</span>
+<span class="sd">        modality-tiered availability gate only; numeric GT scoring is deferred):</span>
+
+<span class="sd">        &gt;&gt;&gt; import tempfile</span>
+<span class="sd">        &gt;&gt;&gt; from pathlib import Path</span>
+<span class="sd">        &gt;&gt;&gt; import pandas as pd</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.analysis import ExpectedVsDetectedCount</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.tune import GroundTruthMasks, SupervisedScorer</span>
+<span class="sd">        &gt;&gt;&gt; tmp = Path(tempfile.mkdtemp())</span>
+<span class="sd">        &gt;&gt;&gt; counts = tmp / &quot;counts.csv&quot;</span>
+<span class="sd">        &gt;&gt;&gt; _ = pd.DataFrame(</span>
+<span class="sd">        ...     {&quot;Metadata_ImageName&quot;: [&quot;Synthetic96PlateWithObjects&quot;] * 96,</span>
+<span class="sd">        ...      &quot;Object_Label&quot;: list(range(96))}</span>
+<span class="sd">        ... ).to_csv(counts, index=False)</span>
+<span class="sd">        &gt;&gt;&gt; scorer = SupervisedScorer(</span>
+<span class="sd">        ...     gt=GroundTruthMasks(gt_masks_source=counts),</span>
+<span class="sd">        ...     count_check=ExpectedVsDetectedCount(</span>
+<span class="sd">        ...         metadata=str(counts), groupby=[&quot;Metadata_ImageName&quot;]</span>
+<span class="sd">        ...     ),</span>
+<span class="sd">        ... )</span>
+<span class="sd">        &gt;&gt;&gt; scorer.gt.modality()</span>
+<span class="sd">        &#39;count&#39;</span>
+<span class="sd">        &gt;&gt;&gt; scorer.availability()  # count tier runnable (check configured)</span>
+<span class="sd">        True</span>
+
+<span class="sd">        A sourceless loader abstains, so the engine degrades to the fallback:</span>
+
+<span class="sd">        &gt;&gt;&gt; SupervisedScorer(gt=GroundTruthMasks(gt_masks_source=None)).availability()</span>
+<span class="sd">        False</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">model_config</span> <span class="o">=</span> <span class="n">ConfigDict</span><span class="p">(</span><span class="n">arbitrary_types_allowed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="c1">#: The mask-tier region-overlap term name.</span>
+    <span class="n">region_term_name</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Region&quot;</span>
+    <span class="c1">#: The count-tier folded-divergence term name.</span>
+    <span class="n">count_term_name</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;CountMAE&quot;</span>
+
+    <span class="n">gt</span><span class="p">:</span> <span class="n">GroundTruthMasks</span>
+    <span class="n">region_metric</span><span class="p">:</span> <span class="n">RegionMetric</span> <span class="o">=</span> <span class="s2">&quot;dice&quot;</span>
+    <span class="n">match_strategy</span><span class="p">:</span> <span class="n">MatchStrategy</span> <span class="o">=</span> <span class="s2">&quot;grid_cell&quot;</span>
+    <span class="n">iou_tau</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span>
+    <span class="n">count_check</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ExpectedVsDetectedCount</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;region_metric&quot;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;before&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_exactly_one_region_metric</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">object</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">RegionMetric</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Guard the single-region-metric contract (Dice **xor** IoU).</span>
+
+<span class="sd">        The two region metrics rank candidates identically, so the panel carries</span>
+<span class="sd">        exactly one. This rejects anything outside the closed</span>
+<span class="sd">        :data:`RegionMetric` set (e.g. a ``&quot;both&quot;`` sentinel) at construction.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            value: The raw ``region_metric`` input.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The validated metric name (``&quot;dice&quot;`` or ``&quot;iou&quot;``).</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If ``value`` is not exactly ``&quot;dice&quot;`` or ``&quot;iou&quot;``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">value</span> <span class="o">==</span> <span class="s2">&quot;dice&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s2">&quot;dice&quot;</span>
+        <span class="k">if</span> <span class="n">value</span> <span class="o">==</span> <span class="s2">&quot;iou&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s2">&quot;iou&quot;</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">&quot;region_metric must be exactly one of &#39;dice&#39; or &#39;iou&#39; &quot;</span>
+            <span class="s2">&quot;(Dice xor IoU — they rank identically, so carry only one); &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;got </span><span class="si">{</span><span class="n">value</span><span class="si">!r}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+
+<div class="viewcode-block" id="SupervisedScorer.availability">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.html#phenotypic.tune.SupervisedScorer.availability">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">availability</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Whether some GT tier can run as configured (modality-tiered).</span>
+
+<span class="sd">        Reads :meth:`GroundTruthMasks.modality`: the **mask** tier is available</span>
+<span class="sd">        whenever a mask source resolves; the **count** tier is available only</span>
+<span class="sd">        when a :attr:`count_check` is also configured (the tier reuses it); the</span>
+<span class="sd">        **none** modality abstains. When this returns ``False`` the engine</span>
+<span class="sd">        degrades to the configured fallback objective.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ``True`` if the mask tier (mask modality) or the count tier (count</span>
+<span class="sd">            modality **and** a configured ``count_check``) can run; ``False``</span>
+<span class="sd">            otherwise.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">modality</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">gt</span><span class="o">.</span><span class="n">modality</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">modality</span> <span class="o">==</span> <span class="s2">&quot;mask&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">if</span> <span class="n">modality</span> <span class="o">==</span> <span class="s2">&quot;count&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">count_check</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="kc">False</span></div>
+
+
+<div class="viewcode-block" id="SupervisedScorer.score_image">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.html#phenotypic.tune.SupervisedScorer.score_image">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">score_image</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">measurements</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Score one image against its ground truth, by GT modality tier.</span>
+
+<span class="sd">        Dispatches on :meth:`GroundTruthMasks.modality`:</span>
+
+<span class="sd">        * **mask** — resolve the per-image GT mask via</span>
+<span class="sd">          :meth:`GroundTruthMasks.masks_for` (keyed by ``image.name``); when it</span>
+<span class="sd">          resolves, match predicted vs. GT objects (:mod:`._matching`), score</span>
+<span class="sd">          each matched pair with the chosen single region metric</span>
+<span class="sd">          (:mod:`._metrics`), and **macro-average per image** into ``&quot;Region&quot;``.</span>
+<span class="sd">          An unresolved name yields no term (nothing to score).</span>
+<span class="sd">        * **count** — reuse the configured :attr:`count_check`</span>
+<span class="sd">          (:class:`ExpectedVsDetectedCount`) to get each group&#39;s normalized</span>
+<span class="sd">          count divergence, fold it to a higher-is-better ``[0, 1]`` score</span>
+<span class="sd">          anchored on ``fail_threshold``, and emit ``&quot;CountMAE&quot;``.</span>
+<span class="sd">        * **none** — abstain (empty mapping).</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            image: The processed image — a ``GridImage`` (duck-typed: ``name``,</span>
+<span class="sd">                ``objmap``, ``grid.get_section_map``) on the mask tier; unused on</span>
+<span class="sd">                the count tier.</span>
+<span class="sd">            measurements: The candidate pipeline&#39;s measurement frame.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            A mapping with the runnable tier&#39;s term — ``{&quot;Region&quot;: ...}`` (mask),</span>
+<span class="sd">            ``{&quot;CountMAE&quot;: ...}`` (count) — or ``{}`` when no tier can score this</span>
+<span class="sd">            image (no GT mask for the name, or count tier without a check).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">modality</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">gt</span><span class="o">.</span><span class="n">modality</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">modality</span> <span class="o">==</span> <span class="s2">&quot;mask&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_score_mask_tier</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">measurements</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">modality</span> <span class="o">==</span> <span class="s2">&quot;count&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_score_count_tier</span><span class="p">(</span><span class="n">measurements</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">{}</span></div>
+
+
+    <span class="c1"># ------------------------------------------------------------------ #</span>
+    <span class="c1"># mask tier — match → per-pair region metric → macro-average</span>
+    <span class="c1"># ------------------------------------------------------------------ #</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_score_mask_tier</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">measurements</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Macro-average the per-pair region metric into the ``&quot;Region&quot;`` term.</span>
+
+<span class="sd">        The loaded GT is first turned into an **instance-label** array per the</span>
+<span class="sd">        loader&#39;s :attr:`GroundTruthMasks.gt_format` (:meth:`_gt_instances`) —</span>
+<span class="sd">        ``&quot;instance&quot;`` GT is used as-is; ``&quot;binary&quot;`` GT is split into per-cell</span>
+<span class="sd">        connected components on a **geometric** (detection-independent) cell map.</span>
+<span class="sd">        That instance array then drives matching and per-pair scoring.</span>
+
+<span class="sd">        Matching is dispatched by format:</span>
+
+<span class="sd">        * ``&quot;binary&quot;`` always uses :func:`match_iou_greedy` (pure global IoU, no</span>
+<span class="sd">          section-map dependency) so a GT instance in a cell the prediction</span>
+<span class="sd">          missed stays **unmatched** (scored ``0.0`` = correct miss penalty) and</span>
+<span class="sd">          an over-extended GT is **not clipped** to the prediction&#39;s pixels.</span>
+<span class="sd">        * ``&quot;instance&quot;`` honours the configured :attr:`match_strategy` (the</span>
+<span class="sd">          arrayed-plate ``&quot;grid_cell&quot;`` default, or ``&quot;iou_greedy&quot;``) — the GT</span>
+<span class="sd">          already carries authoritative per-object labels, so the grid prior is</span>
+<span class="sd">          safe to use.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            image: The ``GridImage`` whose ``name`` keys the GT mask and whose</span>
+<span class="sd">                ``objmap`` / ``grid`` drive matching.</span>
+<span class="sd">            measurements: Unused (the mask tier reads the object map, not the</span>
+<span class="sd">                frame) — accepted for signature parity.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ``{&quot;Region&quot;: &lt;macro-averaged metric in [0, 1]&gt;}`` when the image&#39;s GT</span>
+<span class="sd">            mask resolves; ``{}`` when no GT mask exists for ``image.name``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">del</span> <span class="n">measurements</span>  <span class="c1"># mask tier reads image.objmap, not the frame</span>
+        <span class="n">gt_mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">gt</span><span class="o">.</span><span class="n">masks_for</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">gt_mask</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{}</span>
+        <span class="n">gt_instances</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_gt_instances</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">gt_mask</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">gt</span><span class="o">.</span><span class="n">gt_format</span> <span class="o">==</span> <span class="s2">&quot;binary&quot;</span><span class="p">:</span>
+            <span class="c1"># Pure global IoU: detection-independent, so misses/over-extension</span>
+            <span class="c1"># are scored honestly (no clipping to the prediction&#39;s footprint).</span>
+            <span class="n">pairs</span> <span class="o">=</span> <span class="n">match_iou_greedy</span><span class="p">(</span>
+                <span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:],</span> <span class="n">gt_instances</span><span class="p">,</span> <span class="n">tau</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">iou_tau</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">pairs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_match</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">gt_instances</span><span class="p">)</span>
+        <span class="n">score</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_macro_average_region</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">gt_instances</span><span class="p">,</span> <span class="n">pairs</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">{</span><span class="bp">self</span><span class="o">.</span><span class="n">region_term_name</span><span class="p">:</span> <span class="n">score</span><span class="p">}</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_gt_instances</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">gt_mask</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Resolve the loaded GT into an integer **instance-label** array.</span>
+
+<span class="sd">        Dispatches on the loader&#39;s :attr:`GroundTruthMasks.gt_format`:</span>
+
+<span class="sd">        * ``&quot;instance&quot;`` — the GT is already an integer instance-label array</span>
+<span class="sd">          (each colony a distinct positive label); it is used **as-is** (the</span>
+<span class="sd">          loader now preserves on-disk integer labels, so the existing matcher</span>
+<span class="sd">          path is correct).</span>
+<span class="sd">        * ``&quot;binary&quot;`` — the GT is a foreground mask; per-cell instances are</span>
+<span class="sd">          derived from a **geometric, detection-independent** cell map</span>
+<span class="sd">          (:meth:`_geometric_cell_map_or_none`, built from the grid *edges* — not</span>
+<span class="sd">          from ``get_section_map()``, which is prediction-derived and would clip</span>
+<span class="sd">          the GT to the prediction&#39;s pixels and erase entirely-missed cells).</span>
+<span class="sd">          With ``foreground = gt &gt; 0``, each grid cell is connected-component</span>
+<span class="sd">          labelled independently on ``foreground &amp; (cell_map == cell_id)``, with</span>
+<span class="sd">          a running label offset so every component is globally unique. This</span>
+<span class="sd">          **splits spatially-separated colonies in one cell into distinct</span>
+<span class="sd">          instances automatically** (only truly-touching clumps stay merged —</span>
+<span class="sd">          those need ``&quot;instance&quot;`` GT) and **preserves the full GT extent** so</span>
+<span class="sd">          the downstream IoU reflects under-segmentation honestly. An image with</span>
+<span class="sd">          no grid (not a ``GridImage``) falls back to a single global</span>
+<span class="sd">          :func:`skimage.measure.label` of the foreground.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            image: The processed image (a ``GridImage`` exposes</span>
+<span class="sd">                ``grid.get_row_edges()`` / ``get_col_edges()``; a plain image</span>
+<span class="sd">                does not).</span>
+<span class="sd">            gt_mask: The loaded GT array (integer labels or a binary foreground,</span>
+<span class="sd">                dtype preserved by :meth:`GroundTruthMasks.masks_for`).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            An integer instance-label array the same shape as ``gt_mask``</span>
+<span class="sd">            (``0`` = background, positive = distinct GT colony instances).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">gt</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">gt_mask</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">gt</span><span class="o">.</span><span class="n">gt_format</span> <span class="o">==</span> <span class="s2">&quot;instance&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">gt</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="c1"># gt_format == &quot;binary&quot;: derive per-cell connected-component instances on</span>
+        <span class="c1"># a GEOMETRIC (detection-independent) cell map.</span>
+        <span class="n">foreground</span> <span class="o">=</span> <span class="n">gt</span> <span class="o">&gt;</span> <span class="mi">0</span>
+        <span class="n">cell_map</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_geometric_cell_map_or_none</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">foreground</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">cell_map</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># No grid → a single global connected-components labelling.</span>
+            <span class="k">return</span> <span class="n">measure</span><span class="o">.</span><span class="n">label</span><span class="p">(</span><span class="n">foreground</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">gt_instances</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">foreground</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">)</span>
+        <span class="n">running_max</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="c1"># Off-grid margin (_OUTSIDE_GRID = -1) is excluded so foreground beyond</span>
+        <span class="c1"># the grid edges is never promoted into a spurious instance.</span>
+        <span class="n">cell_ids</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="nb">int</span><span class="p">(</span><span class="n">c</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">cell_map</span><span class="p">)</span> <span class="k">if</span> <span class="nb">int</span><span class="p">(</span><span class="n">c</span><span class="p">)</span> <span class="o">!=</span> <span class="n">_OUTSIDE_GRID</span>
+        <span class="p">]</span>
+        <span class="k">for</span> <span class="n">cell_id</span> <span class="ow">in</span> <span class="n">cell_ids</span><span class="p">:</span>
+            <span class="n">cell_fg</span> <span class="o">=</span> <span class="n">foreground</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">cell_map</span> <span class="o">==</span> <span class="n">cell_id</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">cell_fg</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+                <span class="k">continue</span>
+            <span class="n">cell_labels</span> <span class="o">=</span> <span class="n">measure</span><span class="o">.</span><span class="n">label</span><span class="p">(</span><span class="n">cell_fg</span><span class="p">)</span>
+            <span class="n">cell_max</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">cell_labels</span><span class="o">.</span><span class="n">max</span><span class="p">())</span>
+            <span class="k">if</span> <span class="n">cell_max</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="c1"># Offset so this cell&#39;s components are globally unique.</span>
+            <span class="n">gt_instances</span><span class="p">[</span><span class="n">cell_labels</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">cell_labels</span><span class="p">[</span><span class="n">cell_labels</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">running_max</span>
+            <span class="p">)</span>
+            <span class="n">running_max</span> <span class="o">+=</span> <span class="n">cell_max</span>
+        <span class="k">return</span> <span class="n">gt_instances</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_geometric_cell_map_or_none</span><span class="p">(</span>
+        <span class="n">image</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">shape</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;A per-pixel, **detection-independent** grid-cell-id map from grid edges.</span>
+
+<span class="sd">        Builds the cell map purely from the grid line positions</span>
+<span class="sd">        (``grid.get_row_edges()`` / ``get_col_edges()``, each strictly increasing</span>
+<span class="sd">        with length ``n+1``) — never from ``get_section_map()`` (which is derived</span>
+<span class="sd">        from the predicted ``objmap`` and so only labels detected-colony pixels).</span>
+<span class="sd">        Each image row/column is digitized into its grid row/col; pixels inside</span>
+<span class="sd">        the grid get the row-major cell id ``row * ncols + col`` (``&gt;= 0``) and</span>
+<span class="sd">        pixels in the margins beyond the first/last edge get</span>
+<span class="sd">        :data:`_OUTSIDE_GRID` (``-1``).</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            image: The processed image; only a ``GridImage`` exposes the grid</span>
+<span class="sd">                edge accessors and ``grid.nrows`` / ``grid.ncols``.</span>
+<span class="sd">            shape: The GT mask&#39;s ``(H, W[, ...])`` shape; the first two entries</span>
+<span class="sd">                are the image height and width the map is built over.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            An ``(H, W)`` integer cell-id map (cells ``&gt;= 0`` row-major, margin</span>
+<span class="sd">            ``-1``), or ``None`` when the image carries no usable grid (so the</span>
+<span class="sd">            binary-GT derivation falls back to a single global labelling).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">grid</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="s2">&quot;grid&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">grid</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="n">row_getter</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">grid</span><span class="p">,</span> <span class="s2">&quot;get_row_edges&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">col_getter</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">grid</span><span class="p">,</span> <span class="s2">&quot;get_col_edges&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">nrows</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">grid</span><span class="p">,</span> <span class="s2">&quot;nrows&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">ncols</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">grid</span><span class="p">,</span> <span class="s2">&quot;ncols&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="n">row_getter</span> <span class="ow">is</span> <span class="kc">None</span>
+            <span class="ow">or</span> <span class="n">col_getter</span> <span class="ow">is</span> <span class="kc">None</span>
+            <span class="ow">or</span> <span class="n">nrows</span> <span class="ow">is</span> <span class="kc">None</span>
+            <span class="ow">or</span> <span class="n">ncols</span> <span class="ow">is</span> <span class="kc">None</span>
+        <span class="p">):</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="n">height</span><span class="p">,</span> <span class="n">width</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="nb">int</span><span class="p">(</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">row_edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">row_getter</span><span class="p">())</span>
+        <span class="n">col_edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">col_getter</span><span class="p">())</span>
+        <span class="c1"># Digitize each pixel index into its grid row/col; subtract 1 so the</span>
+        <span class="c1"># first interior bin is 0. Pixels before edge[0] -&gt; -1, pixels at/after</span>
+        <span class="c1"># edge[-1] -&gt; n (both filtered by the valid mask below).</span>
+        <span class="n">row_bin</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">digitize</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">height</span><span class="p">),</span> <span class="n">row_edges</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="n">col_bin</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">digitize</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">width</span><span class="p">),</span> <span class="n">col_edges</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="n">valid_row</span> <span class="o">=</span> <span class="p">(</span><span class="n">row_bin</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">row_bin</span> <span class="o">&lt;</span> <span class="nb">int</span><span class="p">(</span><span class="n">nrows</span><span class="p">))</span>
+        <span class="n">valid_col</span> <span class="o">=</span> <span class="p">(</span><span class="n">col_bin</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">col_bin</span> <span class="o">&lt;</span> <span class="nb">int</span><span class="p">(</span><span class="n">ncols</span><span class="p">))</span>
+        <span class="n">valid</span> <span class="o">=</span> <span class="n">valid_row</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">&amp;</span> <span class="n">valid_col</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:]</span>
+        <span class="n">cell_id</span> <span class="o">=</span> <span class="n">row_bin</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="nb">int</span><span class="p">(</span><span class="n">ncols</span><span class="p">)</span> <span class="o">+</span> <span class="n">col_bin</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:]</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">valid</span><span class="p">,</span> <span class="n">cell_id</span><span class="p">,</span> <span class="n">_OUTSIDE_GRID</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_match</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">gt_instances</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">MatchPair</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Pair predicted vs. GT objects by the configured strategy.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            image: The ``GridImage`` carrying the predicted ``objmap`` (and, for</span>
+<span class="sd">                ``&quot;grid_cell&quot;``, the ``grid.get_section_map``).</span>
+<span class="sd">            gt_instances: The per-image ground-truth **instance-label** array</span>
+<span class="sd">                (from :meth:`_gt_instances`).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The ``(pred_label, gt_label)`` pairs from :mod:`._matching`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">match_strategy</span> <span class="o">==</span> <span class="s2">&quot;grid_cell&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">match_per_grid_cell</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">gt_instances</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">match_iou_greedy</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:],</span> <span class="n">gt_instances</span><span class="p">,</span> <span class="n">tau</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">iou_tau</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_macro_average_region</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">gt_instances</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">pairs</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">MatchPair</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Macro-average the single region metric over every match pair.</span>
+
+<span class="sd">        Each pair contributes the chosen metric between the predicted object&#39;s</span>
+<span class="sd">        mask and the GT object&#39;s mask; an unmatched object (``None`` on a side)</span>
+<span class="sd">        is scored against an empty mask, so a missed or spurious object scores</span>
+<span class="sd">        ``0.0`` (a non-empty vs. empty overlap, §A.5). With no objects on either</span>
+<span class="sd">        side the image is perfectly (vacuously) scored ``1.0``.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            image: The ``GridImage`` carrying the predicted ``objmap``.</span>
+<span class="sd">            gt_instances: The per-image ground-truth **instance-label** array</span>
+<span class="sd">                (from :meth:`_gt_instances`); must share the predicted objmap&#39;s</span>
+<span class="sd">                shape.</span>
+<span class="sd">            pairs: The match pairs from :meth:`_match`.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The macro-averaged region metric in ``[0, 1]`` (higher = better).</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If the predicted objmap and ``gt_instances`` differ in</span>
+<span class="sd">                shape (they must be pixel-aligned for per-object overlap).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">pairs</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">1.0</span>  <span class="c1"># nothing predicted, nothing annotated → vacuous match</span>
+        <span class="n">pred</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:])</span>
+        <span class="n">gt</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">gt_instances</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">pred</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="n">gt</span><span class="o">.</span><span class="n">shape</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;predicted objmap and GT instances must share a shape for &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;per-object overlap; got pred </span><span class="si">{</span><span class="n">pred</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2"> vs. GT </span><span class="si">{</span><span class="n">gt</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="n">metric</span> <span class="o">=</span> <span class="n">dice</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">region_metric</span> <span class="o">==</span> <span class="s2">&quot;dice&quot;</span> <span class="k">else</span> <span class="n">iou</span>
+        <span class="c1"># Build the empty fallback from the *pred* shape (pred and gt are</span>
+        <span class="c1"># shape-checked equal above, so either works; pred is the candidate).</span>
+        <span class="n">empty</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">pred</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+        <span class="n">scores</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">pred_label</span><span class="p">,</span> <span class="n">gt_label</span> <span class="ow">in</span> <span class="n">pairs</span><span class="p">:</span>
+            <span class="n">pred_obj</span> <span class="o">=</span> <span class="p">(</span><span class="n">pred</span> <span class="o">==</span> <span class="n">pred_label</span><span class="p">)</span> <span class="k">if</span> <span class="n">pred_label</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">empty</span>
+            <span class="n">gt_obj</span> <span class="o">=</span> <span class="p">(</span><span class="n">gt</span> <span class="o">==</span> <span class="n">gt_label</span><span class="p">)</span> <span class="k">if</span> <span class="n">gt_label</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">empty</span>
+            <span class="n">scores</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">metric</span><span class="p">(</span><span class="n">pred_obj</span><span class="p">,</span> <span class="n">gt_obj</span><span class="p">))</span>
+        <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="n">scores</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">scores</span><span class="p">))</span>
+
+    <span class="c1"># ------------------------------------------------------------------ #</span>
+    <span class="c1"># count tier — reuse ExpectedVsDetectedCount (do NOT re-implement)</span>
+    <span class="c1"># ------------------------------------------------------------------ #</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_score_count_tier</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">measurements</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Fold the reused count divergence into the ``&quot;CountMAE&quot;`` term.</span>
+
+<span class="sd">        Reuses the configured :attr:`count_check`</span>
+<span class="sd">        (:class:`ExpectedVsDetectedCount`) exactly as :class:`QCScorer` does —</span>
+<span class="sd">        runs the check, anchors each group&#39;s ``QC_Count_Metric`` on the check&#39;s</span>
+<span class="sd">        ``fail_threshold`` via :func:`_threshold_anchored`, and averages across</span>
+<span class="sd">        groups — turning the lower-is-better divergence into a higher-is-better</span>
+<span class="sd">        ``[0, 1]`` score. An empty frame, or a count tier with no configured</span>
+<span class="sd">        check, scores ``0.0``.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            measurements: The candidate pipeline&#39;s measurement frame.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ``{&quot;CountMAE&quot;: &lt;score in [0, 1]&gt;}`` (higher = better).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">count_check</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{</span><span class="bp">self</span><span class="o">.</span><span class="n">count_term_name</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">}</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">count_term_name</span><span class="p">:</span> <span class="n">fold_expected_vs_detected_count</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">count_check</span><span class="p">,</span> <span class="n">measurements</span>
+            <span class="p">)</span>
+        <span class="p">}</span></div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

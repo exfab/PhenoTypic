@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -62,11 +62,11 @@
     <link rel="canonical" href="https://exfab.github.io/PhenoTypic/experimental/api_reference/api/phenotypic.tools_.html" />
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="phenotypic.tools_.is_binary_mask" href="phenotypic.tools_.is_binary_mask.html" />
+    <link rel="next" title="phenotypic.tools_.atomic_write_bytes" href="phenotypic.tools_.atomic_write_bytes.html" />
     <link rel="prev" title="phenotypic.refine.KeepSectionLargest" href="phenotypic.refine.KeepSectionLargest.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -559,6 +559,7 @@
 </ul>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../cli_reference.html">CLI Reference</a></li>
+
 <li class="toctree-l1"><a class="reference internal" href="../config_reference.html">Configuration Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../glossary.html">Glossary</a></li>
 </ul>
@@ -566,6 +567,7 @@
 <ul class="current nav bd-sidenav">
 <li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.abc_.html">phenotypic.abc_</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.register_detection_mode.html">phenotypic.abc_.register_detection_mode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.figure.html">phenotypic.abc_.figure</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.MeasureFeatures.html">phenotypic.abc_.MeasureFeatures</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.ImageOperation.html">phenotypic.abc_.ImageOperation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.ImageEnhancer.html">phenotypic.abc_.ImageEnhancer</a></li>
@@ -593,6 +595,10 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.FootprintMixin.html">phenotypic.abc_.FootprintMixin</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.PostMeasurement.html">phenotypic.abc_.PostMeasurement</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.DetectionMode.html">phenotypic.abc_.DetectionMode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.Control.html">phenotypic.abc_.Control</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.FigureSpec.html">phenotypic.abc_.FigureSpec</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.FigureProvider.html">phenotypic.abc_.FigureProvider</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.BoundFigures.html">phenotypic.abc_.BoundFigures</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.analysis.html">phenotypic.analysis</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -755,6 +761,8 @@
 </ul>
 </details></li>
 <li class="toctree-l1 current active has-children"><a class="current reference internal" href="#">phenotypic.tools_</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.atomic_write_bytes.html">phenotypic.tools_.atomic_write_bytes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.atomic_write_text.html">phenotypic.tools_.atomic_write_text</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.is_binary_mask.html">phenotypic.tools_.is_binary_mask</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.timed_execution.html">phenotypic.tools_.timed_execution</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.analysis_csv_path.html">phenotypic.tools_.analysis_csv_path</a></li>
@@ -762,6 +770,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.analysis_html_path.html">phenotypic.tools_.analysis_html_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.analysis_parquet_path.html">phenotypic.tools_.analysis_parquet_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.analysis_scatter_json_path.html">phenotypic.tools_.analysis_scatter_json_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.best_pipeline_path.html">phenotypic.tools_.best_pipeline_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.chunk_lock_path.html">phenotypic.tools_.chunk_lock_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.chunk_manifest_path.html">phenotypic.tools_.chunk_manifest_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.chunk_parquet_filename.html">phenotypic.tools_.chunk_parquet_filename</a></li>
@@ -779,6 +788,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.deliverables_dir.html">phenotypic.tools_.deliverables_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.event_log_path.html">phenotypic.tools_.event_log_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.failures_jsonl_path.html">phenotypic.tools_.failures_jsonl_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.generalization_path.html">phenotypic.tools_.generalization_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.job_metadata_path.html">phenotypic.tools_.job_metadata_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.load_image_from_hdf.html">phenotypic.tools_.load_image_from_hdf</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.load_master_measurements.html">phenotypic.tools_.load_master_measurements</a></li>
@@ -792,6 +802,11 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.migrate_legacy_machine_state.html">phenotypic.tools_.migrate_legacy_machine_state</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.clear_machine_state.html">phenotypic.tools_.clear_machine_state</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.overlay_manifest_path.html">phenotypic.tools_.overlay_manifest_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.param_importance_path.html">phenotypic.tools_.param_importance_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.pareto_best_pipeline_path.html">phenotypic.tools_.pareto_best_pipeline_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.pareto_dir.html">phenotypic.tools_.pareto_dir</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.pareto_front_parquet_path.html">phenotypic.tools_.pareto_front_parquet_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.pareto_importance_path.html">phenotypic.tools_.pareto_importance_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.phenotypic_cache_dir.html">phenotypic.tools_.phenotypic_cache_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.phenotypic_cache_pipeline_json_path.html">phenotypic.tools_.phenotypic_cache_pipeline_json_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.pipeline_json_path.html">phenotypic.tools_.pipeline_json_path</a></li>
@@ -812,12 +827,21 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.resolve_manifest_json_path.html">phenotypic.tools_.resolve_manifest_json_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.resolve_processing_state_path.html">phenotypic.tools_.resolve_processing_state_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.resolve_progress_dir.html">phenotypic.tools_.resolve_progress_dir</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.resolve_split_assignment_path.html">phenotypic.tools_.resolve_split_assignment_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.resolve_study_db_path.html">phenotypic.tools_.resolve_study_db_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.results_dir.html">phenotypic.tools_.results_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.sentinel_resubmitted_path.html">phenotypic.tools_.sentinel_resubmitted_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.shard_parquet_filename.html">phenotypic.tools_.shard_parquet_filename</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.slurm_scripts_dir.html">phenotypic.tools_.slurm_scripts_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.task_status_filename.html">phenotypic.tools_.task_status_filename</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.task_status_path.html">phenotypic.tools_.task_status_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.trials_parquet_path.html">phenotypic.tools_.trials_parquet_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.tune_cache_dir.html">phenotypic.tools_.tune_cache_dir</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.tune_cache_run_marker_path.html">phenotypic.tools_.tune_cache_run_marker_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.tune_cache_split_assignment_path.html">phenotypic.tools_.tune_cache_split_assignment_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.tune_cache_splits_dir.html">phenotypic.tools_.tune_cache_splits_dir</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.tune_cache_study_db_path.html">phenotypic.tools_.tune_cache_study_db_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.tuning_spec_path.html">phenotypic.tools_.tuning_spec_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.ClipControlMixin.html">phenotypic.tools_.ClipControlMixin</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.FootprintMixin.html">phenotypic.tools_.FootprintMixin</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.GridInferenceMixin.html">phenotypic.tools_.GridInferenceMixin</a></li>
@@ -888,30 +912,15 @@
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.napari_.PointPickerWidget.html">phenotypic.tools_.napari_.PointPickerWidget</a></li>
 </ul>
 </details></li>
-<li class="toctree-l2 has-children"><a class="reference internal" href="phenotypic.tools_.panel_.html">phenotypic.tools_.panel_</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.panel_.PANEL_AVAILABLE.html">phenotypic.tools_.panel_.PANEL_AVAILABLE</a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.panel_.PLOTLY_AVAILABLE.html">phenotypic.tools_.panel_.PLOTLY_AVAILABLE</a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.panel_.PANEL_IMPORT_ERROR.html">phenotypic.tools_.panel_.PANEL_IMPORT_ERROR</a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.panel_.display_or_return.html">phenotypic.tools_.panel_.display_or_return</a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.panel_.ensure_panel_extension.html">phenotypic.tools_.panel_.ensure_panel_extension</a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.panel_.in_ipython.html">phenotypic.tools_.panel_.in_ipython</a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.panel_.in_jupyter.html">phenotypic.tools_.panel_.in_jupyter</a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.panel_.require_panel.html">phenotypic.tools_.panel_.require_panel</a></li>
-</ul>
-</details></li>
 <li class="toctree-l2 has-children"><a class="reference internal" href="phenotypic.tools_.register.html">phenotypic.tools_.register</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.register.available_analysis_plugins.html">phenotypic.tools_.register.available_analysis_plugins</a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.register.available_dashboards.html">phenotypic.tools_.register.available_dashboards</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.register.available_plotters.html">phenotypic.tools_.register.available_plotters</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.register.get_analysis_plugin.html">phenotypic.tools_.register.get_analysis_plugin</a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.register.get_dashboard.html">phenotypic.tools_.register.get_dashboard</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.register.get_plotter.html">phenotypic.tools_.register.get_plotter</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.register.register_analysis.html">phenotypic.tools_.register.register_analysis</a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.register.register_dashboard.html">phenotypic.tools_.register.register_dashboard</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.register.register_plotter.html">phenotypic.tools_.register.register_plotter</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.register.AnalysisPluginRegistry.html">phenotypic.tools_.register.AnalysisPluginRegistry</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.register.BaseRegistry.html">phenotypic.tools_.register.BaseRegistry</a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.register.DashboardRegistry.html">phenotypic.tools_.register.DashboardRegistry</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.register.PlotterRegistry.html">phenotypic.tools_.register.PlotterRegistry</a></li>
 </ul>
 </details></li>
@@ -930,6 +939,56 @@
 </ul>
 </details></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.slurm_.html">phenotypic.tools_.slurm_</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.tune.html">phenotypic.tune</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.build_pipeline.html">phenotypic.tune.build_pipeline</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.infer_group_key.html">phenotypic.tune.infer_group_key</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.compute_generalization_gap.html">phenotypic.tune.compute_generalization_gap</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.run_held_out.html">phenotypic.tune.run_held_out</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.compute_param_importance.html">phenotypic.tune.compute_param_importance</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.compute_param_importance_report.html">phenotypic.tune.compute_param_importance_report</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.count_free_params.html">phenotypic.tune.count_free_params</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.screening_warmup_floor.html">phenotypic.tune.screening_warmup_floor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.select_params_to_freeze.html">phenotypic.tune.select_params_to_freeze</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.freeze_value.html">phenotypic.tune.freeze_value</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.build_reduced_space.html">phenotypic.tune.build_reduced_space</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.run_tuning.html">phenotypic.tune.run_tuning</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.infer_search_space.html">phenotypic.tune.infer_search_space</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.run_auto_space.html">phenotypic.tune.run_auto_space</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.Categorical.html">phenotypic.tune.Categorical</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.IntRange.html">phenotypic.tune.IntRange</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.FloatRange.html">phenotypic.tune.FloatRange</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.Fixed.html">phenotypic.tune.Fixed</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.Knob.html">phenotypic.tune.Knob</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.SearchSpace.html">phenotypic.tune.SearchSpace</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.StrategyConfig.html">phenotypic.tune.StrategyConfig</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.GridConfig.html">phenotypic.tune.GridConfig</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.RandomConfig.html">phenotypic.tune.RandomConfig</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.OptunaConfig.html">phenotypic.tune.OptunaConfig</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.Scorer.html">phenotypic.tune.Scorer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.QCScorer.html">phenotypic.tune.QCScorer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.ReferenceFreeScorer.html">phenotypic.tune.ReferenceFreeScorer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.GroundTruthMasks.html">phenotypic.tune.GroundTruthMasks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.SupervisedScorer.html">phenotypic.tune.SupervisedScorer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.CompositeScorer.html">phenotypic.tune.CompositeScorer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.Evaluator.html">phenotypic.tune.Evaluator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.EvaluationResult.html">phenotypic.tune.EvaluationResult</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.HeldOutConfig.html">phenotypic.tune.HeldOutConfig</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.GeneralizationReport.html">phenotypic.tune.GeneralizationReport</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.TuningEngine.html">phenotypic.tune.TuningEngine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.TuningSpec.html">phenotypic.tune.TuningSpec</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.Budget.html">phenotypic.tune.Budget</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.StudyStore.html">phenotypic.tune.StudyStore</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.JournalStudyStore.html">phenotypic.tune.JournalStudyStore</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.Trial.html">phenotypic.tune.Trial</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.ImportanceReport.html">phenotypic.tune.ImportanceReport</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.ScreeningController.html">phenotypic.tune.ScreeningController</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.ScreeningConfig.html">phenotypic.tune.ScreeningConfig</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.ScreeningResult.html">phenotypic.tune.ScreeningResult</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.TuneSpec.html">phenotypic.tune.TuneSpec</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.InferredSearchSpace.html">phenotypic.tune.InferredSearchSpace</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.Excluded.html">phenotypic.tune.Excluded</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.util.html">phenotypic.util</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -1015,13 +1074,19 @@ for persisting plate datasets and measurements.</p>
 <p>Advanced users can access GridInferenceMixin and FootprintMixin for creating custom
 grid-based operations and morphological footprints.</p>
 <p>The <code class="docutils literal notranslate"><span class="pre">register</span></code> submodule provides registry utilities for extensible components
-like plotters and dashboards.</p>
+like plotters and analysis plugins.</p>
 <p>The <code class="docutils literal notranslate"><span class="pre">_io_constants</span></code> submodule is the single source of truth for CLI ↔ GUI
 artifact filenames, directory names, JSON contract keys, and path helpers
 (re-exported here at package level for convenience).</p>
 <p class="rubric">Functions</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.atomic_write_bytes" title="phenotypic.tools_.atomic_write_bytes"><code class="xref py py-obj docutils literal notranslate"><span class="pre">atomic_write_bytes</span></code></a></p></td>
+<td><p>Atomically write <code class="docutils literal notranslate"><span class="pre">data</span></code> to <code class="docutils literal notranslate"><span class="pre">path</span></code> (temp sibling + <code class="docutils literal notranslate"><span class="pre">os.replace</span></code>).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.atomic_write_text" title="phenotypic.tools_.atomic_write_text"><code class="xref py py-obj docutils literal notranslate"><span class="pre">atomic_write_text</span></code></a></p></td>
+<td><p>Atomically write <code class="docutils literal notranslate"><span class="pre">text</span></code> to <code class="docutils literal notranslate"><span class="pre">path</span></code> (temp sibling + <code class="docutils literal notranslate"><span class="pre">os.replace</span></code>).</p></td>
+</tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.is_binary_mask" title="phenotypic.tools_.is_binary_mask"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_binary_mask</span></code></a></p></td>
 <td><p></p></td>
 </tr>
@@ -1043,56 +1108,62 @@ artifact filenames, directory names, JSON contract keys, and path helpers
 <tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.analysis_scatter_json_path" title="phenotypic.tools_.analysis_scatter_json_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">analysis_scatter_json_path</span></code></a></p></td>
 <td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;progress&gt;/analysis_scatter.json</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.chunk_lock_path" title="phenotypic.tools_.chunk_lock_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">chunk_lock_path</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.best_pipeline_path" title="phenotypic.tools_.best_pipeline_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">best_pipeline_path</span></code></a></p></td>
+<td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/best_pipeline.json</span></code> (the tuned winner).</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.chunk_lock_path" title="phenotypic.tools_.chunk_lock_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">chunk_lock_path</span></code></a></p></td>
 <td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;progress&gt;/.chunk_lock</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.chunk_manifest_path" title="phenotypic.tools_.chunk_manifest_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">chunk_manifest_path</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.chunk_manifest_path" title="phenotypic.tools_.chunk_manifest_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">chunk_manifest_path</span></code></a></p></td>
 <td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/progress/chunk_manifest.json</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.chunk_parquet_filename" title="phenotypic.tools_.chunk_parquet_filename"><code class="xref py py-obj docutils literal notranslate"><span class="pre">chunk_parquet_filename</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.chunk_parquet_filename" title="phenotypic.tools_.chunk_parquet_filename"><code class="xref py py-obj docutils literal notranslate"><span class="pre">chunk_parquet_filename</span></code></a></p></td>
 <td><p>Filename of a dashboard chunk Parquet (zero-padded chunk id).</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.chunk_parquet_path" title="phenotypic.tools_.chunk_parquet_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">chunk_parquet_path</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.chunk_parquet_path" title="phenotypic.tools_.chunk_parquet_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">chunk_parquet_path</span></code></a></p></td>
 <td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;progress&gt;/chunks/chunk_&lt;id:03d&gt;.parquet</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.chunk_state_path" title="phenotypic.tools_.chunk_state_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">chunk_state_path</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.chunk_state_path" title="phenotypic.tools_.chunk_state_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">chunk_state_path</span></code></a></p></td>
 <td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/progress/chunk_state.json</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.chunks_dir" title="phenotypic.tools_.chunks_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">chunks_dir</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.chunks_dir" title="phenotypic.tools_.chunks_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">chunks_dir</span></code></a></p></td>
 <td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;progress&gt;/chunks/</span></code> for the dashboard chunk parquets.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.checkpoint_lock_filename" title="phenotypic.tools_.checkpoint_lock_filename"><code class="xref py py-obj docutils literal notranslate"><span class="pre">checkpoint_lock_filename</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.checkpoint_lock_filename" title="phenotypic.tools_.checkpoint_lock_filename"><code class="xref py py-obj docutils literal notranslate"><span class="pre">checkpoint_lock_filename</span></code></a></p></td>
 <td><p>Filename of the SLURM-sentinel exclusive lock for a checkpoint task.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.checkpoint_lock_path" title="phenotypic.tools_.checkpoint_lock_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">checkpoint_lock_path</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.checkpoint_lock_path" title="phenotypic.tools_.checkpoint_lock_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">checkpoint_lock_path</span></code></a></p></td>
 <td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;progress&gt;/.{checkpoint_type}_lock</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.dashboard_html_path" title="phenotypic.tools_.dashboard_html_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dashboard_html_path</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.dashboard_html_path" title="phenotypic.tools_.dashboard_html_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dashboard_html_path</span></code></a></p></td>
 <td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/dashboard.html</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.dataset_hdf_dir" title="phenotypic.tools_.dataset_hdf_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dataset_hdf_dir</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.dataset_hdf_dir" title="phenotypic.tools_.dataset_hdf_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dataset_hdf_dir</span></code></a></p></td>
 <td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/results/&lt;dataset&gt;/hdf/</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.dataset_measurements_dir" title="phenotypic.tools_.dataset_measurements_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dataset_measurements_dir</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.dataset_measurements_dir" title="phenotypic.tools_.dataset_measurements_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dataset_measurements_dir</span></code></a></p></td>
 <td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/results/&lt;dataset&gt;/measurements/</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.dataset_overlays_dir" title="phenotypic.tools_.dataset_overlays_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dataset_overlays_dir</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.dataset_overlays_dir" title="phenotypic.tools_.dataset_overlays_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dataset_overlays_dir</span></code></a></p></td>
 <td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/results/&lt;dataset&gt;/overlays/</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.dataset_results_dir" title="phenotypic.tools_.dataset_results_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dataset_results_dir</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.dataset_results_dir" title="phenotypic.tools_.dataset_results_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dataset_results_dir</span></code></a></p></td>
 <td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/results/&lt;dataset&gt;/</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.default_output_dir_name" title="phenotypic.tools_.default_output_dir_name"><code class="xref py py-obj docutils literal notranslate"><span class="pre">default_output_dir_name</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.default_output_dir_name" title="phenotypic.tools_.default_output_dir_name"><code class="xref py py-obj docutils literal notranslate"><span class="pre">default_output_dir_name</span></code></a></p></td>
 <td><p>Default name for an auto-generated output directory.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.deliverables_dir" title="phenotypic.tools_.deliverables_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deliverables_dir</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.deliverables_dir" title="phenotypic.tools_.deliverables_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deliverables_dir</span></code></a></p></td>
 <td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/</span></code> — the user-facing-output folder.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.event_log_path" title="phenotypic.tools_.event_log_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">event_log_path</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.event_log_path" title="phenotypic.tools_.event_log_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">event_log_path</span></code></a></p></td>
 <td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/.phenotypic/processing_events.log</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.failures_jsonl_path" title="phenotypic.tools_.failures_jsonl_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">failures_jsonl_path</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.failures_jsonl_path" title="phenotypic.tools_.failures_jsonl_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">failures_jsonl_path</span></code></a></p></td>
 <td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/progress/failures.jsonl</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.generalization_path" title="phenotypic.tools_.generalization_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">generalization_path</span></code></a></p></td>
+<td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/generalization.json</span></code> — the held-out report.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.job_metadata_path" title="phenotypic.tools_.job_metadata_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">job_metadata_path</span></code></a></p></td>
 <td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/progress/job_metadata.json</span></code>.</p></td>
@@ -1133,83 +1204,125 @@ artifact filenames, directory names, JSON contract keys, and path helpers
 <tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.overlay_manifest_path" title="phenotypic.tools_.overlay_manifest_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">overlay_manifest_path</span></code></a></p></td>
 <td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/progress/overlay_manifest.json</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.phenotypic_cache_dir" title="phenotypic.tools_.phenotypic_cache_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">phenotypic_cache_dir</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.param_importance_path" title="phenotypic.tools_.param_importance_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">param_importance_path</span></code></a></p></td>
+<td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/param_importance.json</span></code> (the report).</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.pareto_best_pipeline_path" title="phenotypic.tools_.pareto_best_pipeline_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pareto_best_pipeline_path</span></code></a></p></td>
+<td><p>Return <code class="docutils literal notranslate"><span class="pre">deliverables/pareto/best_&lt;objective&gt;.json</span></code> (a per-axis winner).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.pareto_dir" title="phenotypic.tools_.pareto_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pareto_dir</span></code></a></p></td>
+<td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/pareto/</span></code> — the multi-objective sub-folder.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.pareto_front_parquet_path" title="phenotypic.tools_.pareto_front_parquet_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pareto_front_parquet_path</span></code></a></p></td>
+<td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/pareto/pareto_front.parquet</span></code> (the front).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.pareto_importance_path" title="phenotypic.tools_.pareto_importance_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pareto_importance_path</span></code></a></p></td>
+<td><p>Return <code class="docutils literal notranslate"><span class="pre">deliverables/pareto/param_importance_&lt;objective&gt;.json</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.phenotypic_cache_dir" title="phenotypic.tools_.phenotypic_cache_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">phenotypic_cache_dir</span></code></a></p></td>
 <td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/.phenotypic/</span></code> — the hidden machine-state root.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.phenotypic_cache_pipeline_json_path" title="phenotypic.tools_.phenotypic_cache_pipeline_json_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">phenotypic_cache_pipeline_json_path</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.phenotypic_cache_pipeline_json_path" title="phenotypic.tools_.phenotypic_cache_pipeline_json_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">phenotypic_cache_pipeline_json_path</span></code></a></p></td>
 <td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/.phenotypic/pipeline.json</span></code> — the process-only run's reproducibility copy.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.pipeline_json_path" title="phenotypic.tools_.pipeline_json_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pipeline_json_path</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.pipeline_json_path" title="phenotypic.tools_.pipeline_json_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pipeline_json_path</span></code></a></p></td>
 <td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/pipeline.json</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.processing_report_html_path" title="phenotypic.tools_.processing_report_html_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">processing_report_html_path</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.processing_report_html_path" title="phenotypic.tools_.processing_report_html_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">processing_report_html_path</span></code></a></p></td>
 <td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/processing_report.html</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.processing_state_path" title="phenotypic.tools_.processing_state_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">processing_state_path</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.processing_state_path" title="phenotypic.tools_.processing_state_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">processing_state_path</span></code></a></p></td>
 <td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/.phenotypic/processing_state.json</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.progress_dir" title="phenotypic.tools_.progress_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">progress_dir</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.progress_dir" title="phenotypic.tools_.progress_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">progress_dir</span></code></a></p></td>
 <td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/.phenotypic/progress/</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.qc_config_json_path" title="phenotypic.tools_.qc_config_json_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">qc_config_json_path</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.qc_config_json_path" title="phenotypic.tools_.qc_config_json_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">qc_config_json_path</span></code></a></p></td>
 <td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/qc/qc_config.json</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.qc_dir" title="phenotypic.tools_.qc_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">qc_dir</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.qc_dir" title="phenotypic.tools_.qc_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">qc_dir</span></code></a></p></td>
 <td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/qc/</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.qc_members_parquet_path" title="phenotypic.tools_.qc_members_parquet_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">qc_members_parquet_path</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.qc_members_parquet_path" title="phenotypic.tools_.qc_members_parquet_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">qc_members_parquet_path</span></code></a></p></td>
 <td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/qc/qc_members.parquet</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.qc_review_state_path" title="phenotypic.tools_.qc_review_state_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">qc_review_state_path</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.qc_review_state_path" title="phenotypic.tools_.qc_review_state_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">qc_review_state_path</span></code></a></p></td>
 <td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/qc/review_state.json</span></code> (GUI-owned review progress).</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.qc_summary_parquet_path" title="phenotypic.tools_.qc_summary_parquet_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">qc_summary_parquet_path</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.qc_summary_parquet_path" title="phenotypic.tools_.qc_summary_parquet_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">qc_summary_parquet_path</span></code></a></p></td>
 <td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/qc/qc_summary.parquet</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.readme_md_path" title="phenotypic.tools_.readme_md_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">readme_md_path</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.readme_md_path" title="phenotypic.tools_.readme_md_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">readme_md_path</span></code></a></p></td>
 <td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/README.md</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.read_run_manifest" title="phenotypic.tools_.read_run_manifest"><code class="xref py py-obj docutils literal notranslate"><span class="pre">read_run_manifest</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.read_run_manifest" title="phenotypic.tools_.read_run_manifest"><code class="xref py py-obj docutils literal notranslate"><span class="pre">read_run_manifest</span></code></a></p></td>
 <td><p>Read the run manifest if present, resolving legacy layouts.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.recompile_dir" title="phenotypic.tools_.recompile_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">recompile_dir</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.recompile_dir" title="phenotypic.tools_.recompile_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">recompile_dir</span></code></a></p></td>
 <td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;progress&gt;/recompile/</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.recompile_status_dir" title="phenotypic.tools_.recompile_status_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">recompile_status_dir</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.recompile_status_dir" title="phenotypic.tools_.recompile_status_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">recompile_status_dir</span></code></a></p></td>
 <td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;progress&gt;/recompile/status/</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.resolve_event_log_path" title="phenotypic.tools_.resolve_event_log_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">resolve_event_log_path</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.resolve_event_log_path" title="phenotypic.tools_.resolve_event_log_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">resolve_event_log_path</span></code></a></p></td>
 <td><p>Return the event log sibling of the resolved progress dir.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.resolve_execution_mode" title="phenotypic.tools_.resolve_execution_mode"><code class="xref py py-obj docutils literal notranslate"><span class="pre">resolve_execution_mode</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.resolve_execution_mode" title="phenotypic.tools_.resolve_execution_mode"><code class="xref py py-obj docutils literal notranslate"><span class="pre">resolve_execution_mode</span></code></a></p></td>
 <td><p>Extract <code class="xref py py-data docutils literal notranslate"><span class="pre">ExecutionMode</span></code> from job metadata, defaulting to <code class="docutils literal notranslate"><span class="pre">&quot;local&quot;</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.resolve_manifest_json_path" title="phenotypic.tools_.resolve_manifest_json_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">resolve_manifest_json_path</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.resolve_manifest_json_path" title="phenotypic.tools_.resolve_manifest_json_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">resolve_manifest_json_path</span></code></a></p></td>
 <td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;progress&gt;/manifest.json</span></code> resolving the progress dir for legacy runs.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.resolve_processing_state_path" title="phenotypic.tools_.resolve_processing_state_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">resolve_processing_state_path</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.resolve_processing_state_path" title="phenotypic.tools_.resolve_processing_state_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">resolve_processing_state_path</span></code></a></p></td>
 <td><p>Return the processing-state file that exists, preferring <code class="docutils literal notranslate"><span class="pre">.phenotypic/</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.resolve_progress_dir" title="phenotypic.tools_.resolve_progress_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">resolve_progress_dir</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.resolve_progress_dir" title="phenotypic.tools_.resolve_progress_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">resolve_progress_dir</span></code></a></p></td>
 <td><p>Return the progress dir that exists, preferring <code class="docutils literal notranslate"><span class="pre">.phenotypic/</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.results_dir" title="phenotypic.tools_.results_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">results_dir</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.resolve_split_assignment_path" title="phenotypic.tools_.resolve_split_assignment_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">resolve_split_assignment_path</span></code></a></p></td>
+<td><p>Return the split assignment that exists, preferring <code class="docutils literal notranslate"><span class="pre">.pht-tune-cache/</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.resolve_study_db_path" title="phenotypic.tools_.resolve_study_db_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">resolve_study_db_path</span></code></a></p></td>
+<td><p>Return the study DB that exists, preferring <code class="docutils literal notranslate"><span class="pre">.pht-tune-cache/</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.results_dir" title="phenotypic.tools_.results_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">results_dir</span></code></a></p></td>
 <td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/results/</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.sentinel_resubmitted_path" title="phenotypic.tools_.sentinel_resubmitted_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sentinel_resubmitted_path</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.sentinel_resubmitted_path" title="phenotypic.tools_.sentinel_resubmitted_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sentinel_resubmitted_path</span></code></a></p></td>
 <td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;progress&gt;/sentinel_resubmitted</span></code> marker file path.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.shard_parquet_filename" title="phenotypic.tools_.shard_parquet_filename"><code class="xref py py-obj docutils literal notranslate"><span class="pre">shard_parquet_filename</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.shard_parquet_filename" title="phenotypic.tools_.shard_parquet_filename"><code class="xref py py-obj docutils literal notranslate"><span class="pre">shard_parquet_filename</span></code></a></p></td>
 <td><p>Filename of a per-shard Parquet inside the recompile worker.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.slurm_scripts_dir" title="phenotypic.tools_.slurm_scripts_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">slurm_scripts_dir</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.slurm_scripts_dir" title="phenotypic.tools_.slurm_scripts_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">slurm_scripts_dir</span></code></a></p></td>
 <td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/slurm_scripts/</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.task_status_filename" title="phenotypic.tools_.task_status_filename"><code class="xref py py-obj docutils literal notranslate"><span class="pre">task_status_filename</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.task_status_filename" title="phenotypic.tools_.task_status_filename"><code class="xref py py-obj docutils literal notranslate"><span class="pre">task_status_filename</span></code></a></p></td>
 <td><p>Filename of a per-task SLURM-recompile status JSON.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.task_status_path" title="phenotypic.tools_.task_status_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">task_status_path</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.task_status_path" title="phenotypic.tools_.task_status_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">task_status_path</span></code></a></p></td>
 <td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;progress&gt;/recompile/status/task_&lt;idx&gt;.json</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.trials_parquet_path" title="phenotypic.tools_.trials_parquet_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trials_parquet_path</span></code></a></p></td>
+<td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/trials.parquet</span></code> (the trial journal; output-dir root).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.tune_cache_dir" title="phenotypic.tools_.tune_cache_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tune_cache_dir</span></code></a></p></td>
+<td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/.pht-tune-cache/</span></code> — the tune run's machine-state root.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.tune_cache_run_marker_path" title="phenotypic.tools_.tune_cache_run_marker_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tune_cache_run_marker_path</span></code></a></p></td>
+<td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/.pht-tune-cache/run.json</span></code> — the tune-run marker.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.tune_cache_split_assignment_path" title="phenotypic.tools_.tune_cache_split_assignment_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tune_cache_split_assignment_path</span></code></a></p></td>
+<td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/.pht-tune-cache/splits/split.json</span></code> — the held-out split.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.tune_cache_splits_dir" title="phenotypic.tools_.tune_cache_splits_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tune_cache_splits_dir</span></code></a></p></td>
+<td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/.pht-tune-cache/splits/</span></code> — the held-out split folder.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.tune_cache_study_db_path" title="phenotypic.tools_.tune_cache_study_db_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tune_cache_study_db_path</span></code></a></p></td>
+<td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/.pht-tune-cache/study.db</span></code> (the Optuna study DB).</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.tuning_spec_path" title="phenotypic.tools_.tuning_spec_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tuning_spec_path</span></code></a></p></td>
+<td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/tuning_spec.json</span></code> (the resolved recipe).</p></td>
 </tr>
 </tbody>
 </table>
@@ -2750,6 +2863,68 @@ facing output.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.</span></span><span class="sig-name descname"><span class="pre">atomic_write_bytes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#bytes" title="(in Python v3.14)"><span class="pre">bytes</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/tools_/_atomic_io.html#atomic_write_bytes"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Atomically write <code class="docutils literal notranslate"><span class="pre">data</span></code> to <code class="docutils literal notranslate"><span class="pre">path</span></code> (temp sibling + <code class="docutils literal notranslate"><span class="pre">os.replace</span></code>).</p>
+<p>The bytes counterpart of <a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.atomic_write_text" title="phenotypic.tools_.atomic_write_text"><code class="xref py py-func docutils literal notranslate"><span class="pre">atomic_write_text()</span></code></a> for binary payloads
+(e.g. a serialized parquet buffer). Same crash-safety guarantees: an
+all-or-nothing replace and no partial/leftover temp file on failure.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a>) – The destination file path.</p></li>
+<li><p><strong>data</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#bytes" title="(in Python v3.14)"><em>bytes</em></a>) – The full binary payload to write.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#OSError" title="(in Python v3.14)"><strong>OSError</strong></a> – If the write or rename fails (the temp file is removed first).</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.</span></span><span class="sig-name descname"><span class="pre">atomic_write_text</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">text</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">encoding</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'utf-8'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/tools_/_atomic_io.html#atomic_write_text"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Atomically write <code class="docutils literal notranslate"><span class="pre">text</span></code> to <code class="docutils literal notranslate"><span class="pre">path</span></code> (temp sibling + <code class="docutils literal notranslate"><span class="pre">os.replace</span></code>).</p>
+<p>A drop-in replacement for <code class="docutils literal notranslate"><span class="pre">Path(path).write_text(text)</span></code> that never leaves a
+half-written file: a concurrent reader sees either the old contents or the
+complete new ones, and an exception mid-write leaves any pre-existing file
+intact with no <code class="docutils literal notranslate"><span class="pre">.tmp</span></code> debris.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a>) – The destination file path.</p></li>
+<li><p><strong>text</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – The full text payload to write.</p></li>
+<li><p><strong>encoding</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – The text encoding (default <code class="docutils literal notranslate"><span class="pre">&quot;utf-8&quot;</span></code>).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#OSError" title="(in Python v3.14)"><strong>OSError</strong></a> – If the write or rename fails (the temp file is removed first).</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.</span></span><span class="sig-name descname"><span class="pre">best_pipeline_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/tools_/_io_constants.html#best_pipeline_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/best_pipeline.json</span></code> (the tuned winner).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>output_dir</strong> (<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
 <span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.</span></span><span class="sig-name descname"><span class="pre">checkpoint_lock_filename</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">checkpoint_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><span class="pre">Literal</span></a><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'manifest'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'finalize'</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/tools_/_io_constants.html#checkpoint_lock_filename"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
 <dd><p>Filename of the SLURM-sentinel exclusive lock for a checkpoint task.</p>
 <dl class="field-list simple">
@@ -3054,6 +3229,26 @@ is a one-line change.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.</span></span><span class="sig-name descname"><span class="pre">generalization_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/tools_/_io_constants.html#generalization_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/generalization.json</span></code> — the held-out report.</p>
+<p>The winner’s generalization verdict (calibration vs held-out score, the gap,
+and the pass/fail margin), a user-facing deliverable. The held-out pass that
+writes it is Phase 4.5 part 2; this helper resolves the canonical location.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>output_dir</strong> (<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a>) – The run output directory.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">&lt;output_dir&gt;/deliverables/generalization.json</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
 <span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.</span></span><span class="sig-name descname"><span class="pre">is_binary_mask</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><span class="pre">numpy.ndarray</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/tools_/funcs_.html#is_binary_mask"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -3257,6 +3452,97 @@ of on <code class="docutils literal notranslate"><span class="pre">cache.exists(
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.</span></span><span class="sig-name descname"><span class="pre">param_importance_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/tools_/_io_constants.html#param_importance_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/param_importance.json</span></code> (the report).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>output_dir</strong> (<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.</span></span><span class="sig-name descname"><span class="pre">pareto_best_pipeline_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">objective</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/tools_/_io_constants.html#pareto_best_pipeline_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">deliverables/pareto/best_&lt;objective&gt;.json</span></code> (a per-axis winner).</p>
+<p>The pipeline maximizing the single <code class="docutils literal notranslate"><span class="pre">objective</span></code> axis on the Pareto front.
+<code class="docutils literal notranslate"><span class="pre">objective</span></code> is the objective name as it appears in <code class="docutils literal notranslate"><span class="pre">objectives_json</span></code> (a
+scorer-defined label, e.g. <code class="docutils literal notranslate"><span class="pre">&quot;Dice&quot;</span></code> or a composite child handle <code class="docutils literal notranslate"><span class="pre">&quot;s0&quot;</span></code>).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>output_dir</strong> (<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a>) – The run directory.</p></li>
+<li><p><strong>objective</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – The objective-axis name (the <code class="docutils literal notranslate"><span class="pre">best_&lt;objective&gt;.json</span></code> stem).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The per-objective best-pipeline path under <a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.pareto_dir" title="phenotypic.tools_.pareto_dir"><code class="xref py py-func docutils literal notranslate"><span class="pre">pareto_dir()</span></code></a>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.</span></span><span class="sig-name descname"><span class="pre">pareto_dir</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/tools_/_io_constants.html#pareto_dir"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/pareto/</span></code> — the multi-objective sub-folder.</p>
+<p>Holds a multi-objective tune run’s Pareto front + per-objective best
+pipelines. A single-objective run never creates it (the back-compat lock).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>output_dir</strong> (<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.</span></span><span class="sig-name descname"><span class="pre">pareto_front_parquet_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/tools_/_io_constants.html#pareto_front_parquet_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/pareto/pareto_front.parquet</span></code> (the front).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>output_dir</strong> (<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.</span></span><span class="sig-name descname"><span class="pre">pareto_importance_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">objective</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/tools_/_io_constants.html#pareto_importance_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">deliverables/pareto/param_importance_&lt;objective&gt;.json</span></code>.</p>
+<p>The per-objective RF-permutation importance report (the multi-objective
+sibling of <a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.param_importance_path" title="phenotypic.tools_.param_importance_path"><code class="xref py py-func docutils literal notranslate"><span class="pre">param_importance_path()</span></code></a>). <code class="docutils literal notranslate"><span class="pre">objective</span></code> is the objective
+name as it appears in <code class="docutils literal notranslate"><span class="pre">objectives_json</span></code> (a scorer-defined label, e.g.
+<code class="docutils literal notranslate"><span class="pre">&quot;Dice&quot;</span></code> or a composite child handle <code class="docutils literal notranslate"><span class="pre">&quot;s0&quot;</span></code>).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>output_dir</strong> (<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a>) – The run directory.</p></li>
+<li><p><strong>objective</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – The objective-axis name (the filename’s <code class="docutils literal notranslate"><span class="pre">&lt;objective&gt;</span></code> slot).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The per-objective importance-report path under <a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.pareto_dir" title="phenotypic.tools_.pareto_dir"><code class="xref py py-func docutils literal notranslate"><span class="pre">pareto_dir()</span></code></a>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -3577,6 +3863,50 @@ neither exists (the default for fresh writes).</p>
 
 <dl class="py function">
 <dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.</span></span><span class="sig-name descname"><span class="pre">resolve_split_assignment_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/tools_/_io_constants.html#resolve_split_assignment_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Return the split assignment that exists, preferring <code class="docutils literal notranslate"><span class="pre">.pht-tune-cache/</span></code>.</p>
+<p>Read-only resolver mirroring <a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.resolve_progress_dir" title="phenotypic.tools_.resolve_progress_dir"><code class="xref py py-func docutils literal notranslate"><span class="pre">resolve_progress_dir()</span></code></a>. The held-out
+split is checked in the hidden tune cache FIRST, THEN at the legacy output
+root — a missing split silently RE-DERIVES a fresh held-out partition on
+resume (a reproducibility / held-out-leak bug), so resume MUST find a
+legacy-root <code class="docutils literal notranslate"><span class="pre">split.json</span></code>. Falls back to the new location when neither
+exists (the default for a fresh derive-and-write).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>output_dir</strong> (<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a>) – The run output directory.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The split-assignment path that exists, else the new cache location.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.</span></span><span class="sig-name descname"><span class="pre">resolve_study_db_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/tools_/_io_constants.html#resolve_study_db_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Return the study DB that exists, preferring <code class="docutils literal notranslate"><span class="pre">.pht-tune-cache/</span></code>.</p>
+<p>Read-only resolver: a relocated run keeps <code class="docutils literal notranslate"><span class="pre">study.db</span></code> under the hidden tune
+cache; a legacy run kept it at the output root. Falls back to the new
+location when neither exists (so a cold sampler restart from a missing
+<code class="docutils literal notranslate"><span class="pre">study.db</span></code> is harmless — no migration is performed).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>output_dir</strong> (<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a>) – The run output directory.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The study DB path that exists, else the new cache location.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
 <span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.</span></span><span class="sig-name descname"><span class="pre">results_dir</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/tools_/_io_constants.html#results_dir"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
 <dd><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/results/</span></code>.</p>
 <dl class="field-list simple">
@@ -3674,6 +4004,135 @@ neither exists (the default for fresh writes).</p>
 <dd><p>Decorator to measure and print the execution time of a function.</p>
 </dd></dl>
 
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.</span></span><span class="sig-name descname"><span class="pre">trials_parquet_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/tools_/_io_constants.html#trials_parquet_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/trials.parquet</span></code> (the trial journal; output-dir root).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>output_dir</strong> (<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.</span></span><span class="sig-name descname"><span class="pre">tune_cache_dir</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/tools_/_io_constants.html#tune_cache_dir"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/.pht-tune-cache/</span></code> — the tune run’s machine-state root.</p>
+<p>The tune-side sibling of <a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.phenotypic_cache_dir" title="phenotypic.tools_.phenotypic_cache_dir"><code class="xref py py-func docutils literal notranslate"><span class="pre">phenotypic_cache_dir()</span></code></a>. Pure path expression;
+callers <code class="docutils literal notranslate"><span class="pre">mkdir</span></code> when they intend to write.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>output_dir</strong> (<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a>) – The run output directory.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">&lt;output_dir&gt;/.pht-tune-cache/</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.</span></span><span class="sig-name descname"><span class="pre">tune_cache_run_marker_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/tools_/_io_constants.html#tune_cache_run_marker_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/.pht-tune-cache/run.json</span></code> — the tune-run marker.</p>
+<p>Written at run START (before any deliverable lands) so a live or finished
+tune output is GUI-discoverable. See <code class="xref py py-data docutils literal notranslate"><span class="pre">RUN_MARKER_JSON</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>output_dir</strong> (<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a>) – The run output directory.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">&lt;output_dir&gt;/.pht-tune-cache/run.json</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.</span></span><span class="sig-name descname"><span class="pre">tune_cache_split_assignment_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/tools_/_io_constants.html#tune_cache_split_assignment_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/.pht-tune-cache/splits/split.json</span></code> — the held-out split.</p>
+<p>The persisted calibration / held-out partition (plate names + split kind +
+dataset identity + seed entropy). Read-if-exists-else-derive on resume, so
+a re-run reuses the original partition regardless of the new master seed. A
+legacy run wrote it under <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/splits/</span></code>; use
+<a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.resolve_split_assignment_path" title="phenotypic.tools_.resolve_split_assignment_path"><code class="xref py py-func docutils literal notranslate"><span class="pre">resolve_split_assignment_path()</span></code></a> to read either location.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>output_dir</strong> (<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a>) – The run output directory.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">&lt;output_dir&gt;/.pht-tune-cache/splits/split.json</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.</span></span><span class="sig-name descname"><span class="pre">tune_cache_splits_dir</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/tools_/_io_constants.html#tune_cache_splits_dir"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/.pht-tune-cache/splits/</span></code> — the held-out split folder.</p>
+<p>Machine state that must survive a fresh-master rewrite and gate resume, so
+it lives in the hidden tune cache, <strong>not</strong> under <a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.deliverables_dir" title="phenotypic.tools_.deliverables_dir"><code class="xref py py-func docutils literal notranslate"><span class="pre">deliverables_dir()</span></code></a>.
+Pure path expression; callers <code class="docutils literal notranslate"><span class="pre">mkdir</span></code> when they intend to write.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>output_dir</strong> (<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a>) – The run output directory.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">&lt;output_dir&gt;/.pht-tune-cache/splits/</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.</span></span><span class="sig-name descname"><span class="pre">tune_cache_study_db_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/tools_/_io_constants.html#tune_cache_study_db_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/.pht-tune-cache/study.db</span></code> (the Optuna study DB).</p>
+<p>The canonical SQLite-WAL storage for the Optuna-backed
+<code class="xref py py-class docutils literal notranslate"><span class="pre">OptunaStudyStore</span></code> when the <code class="docutils literal notranslate"><span class="pre">tune</span></code> extra is installed, relocated
+into the hidden tune cache. A legacy run wrote it at the output root; use
+<a class="reference internal" href="../phenotypic.tools_.html#phenotypic.tools_.resolve_study_db_path" title="phenotypic.tools_.resolve_study_db_path"><code class="xref py py-func docutils literal notranslate"><span class="pre">resolve_study_db_path()</span></code></a> to read either location.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>output_dir</strong> (<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a>) – The run output directory.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">&lt;output_dir&gt;/.pht-tune-cache/study.db</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.</span></span><span class="sig-name descname"><span class="pre">tuning_spec_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/tools_/_io_constants.html#tuning_spec_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/tuning_spec.json</span></code> (the resolved recipe).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>output_dir</strong> (<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
 <p class="rubric">Modules</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
@@ -3689,16 +4148,13 @@ neither exists (the default for fresh writes).</p>
 <tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.napari_.html#module-phenotypic.tools_.napari_" title="phenotypic.tools_.napari_"><code class="xref py py-obj docutils literal notranslate"><span class="pre">napari_</span></code></a></p></td>
 <td><p>Napari-based interactive tools for PhenoTypic.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.panel_.html#module-phenotypic.tools_.panel_" title="phenotypic.tools_.panel_"><code class="xref py py-obj docutils literal notranslate"><span class="pre">panel_</span></code></a></p></td>
-<td><p>Shared Panel toolkit for interactive dashboards.</p></td>
-</tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.register.html#module-phenotypic.tools_.register" title="phenotypic.tools_.register"><code class="xref py py-obj docutils literal notranslate"><span class="pre">register</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.register.html#module-phenotypic.tools_.register" title="phenotypic.tools_.register"><code class="xref py py-obj docutils literal notranslate"><span class="pre">register</span></code></a></p></td>
 <td><p>Registry utilities for PhenoTypic components.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.slurm.html#module-phenotypic.tools_.slurm" title="phenotypic.tools_.slurm"><code class="xref py py-obj docutils literal notranslate"><span class="pre">slurm</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.slurm.html#module-phenotypic.tools_.slurm" title="phenotypic.tools_.slurm"><code class="xref py py-obj docutils literal notranslate"><span class="pre">slurm</span></code></a></p></td>
 <td><p>Shared SLURM utilities for array job chunking, sbatch submission, and dispatching.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.slurm_.html#module-phenotypic.tools_.slurm_" title="phenotypic.tools_.slurm_"><code class="xref py py-obj docutils literal notranslate"><span class="pre">slurm_</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.slurm_.html#module-phenotypic.tools_.slurm_" title="phenotypic.tools_.slurm_"><code class="xref py py-obj docutils literal notranslate"><span class="pre">slurm_</span></code></a></p></td>
 <td><p>SLURM headroom calculation and submission validation utilities.</p></td>
 </tr>
 </tbody>

@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -577,37 +577,40 @@
 <div class="viewcode-block" id="GridOversizedObjectRemover">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.refine.html#phenotypic.refine.GridOversizedObjectRemover">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">GridOversizedObjectRemover</span><span class="p">(</span><span class="n">GridObjectRefiner</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Remove objects whose bounding box exceeds the maximum grid cell dimension.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Discard objects whose bounding box equals or exceeds the maximum grid cell span.</span>
 
-<span class="sd">    Compares each object&#39;s width and height against the largest cell span in</span>
-<span class="sd">    the grid and discards objects that match or exceed it. Eliminates merged</span>
-<span class="sd">    colonies, agar rim intrusions, and segmentation spillover that span</span>
-<span class="sd">    entire grid cells.</span>
+<span class="sd">    Measures each detected object&#39;s bounding-box width and height and removes</span>
+<span class="sd">    any object that meets or exceeds the largest cell dimension in the grid.</span>
+<span class="sd">    This eliminates merged colonies spanning adjacent grid positions, agar-rim</span>
+<span class="sd">    intrusions, and segmentation spillover that the grid layout guarantees are</span>
+<span class="sd">    not single confined colonies.</span>
+
+<span class="sd">    For an overview of grid refinement strategies, see</span>
+<span class="sd">    :doc:`/explanation/refinement_strategies`.</span>
+
+<span class="sd">    Best For:</span>
+<span class="sd">        - Pinned colony grids (96-well, 384-well) where valid colonies should</span>
+<span class="sd">          fit within a single cell and oversized objects are always artefacts.</span>
+<span class="sd">        - Post-detection cleanup when detector outputs contain merged blobs</span>
+<span class="sd">          spanning two or more adjacent grid positions.</span>
+<span class="sd">        - Removing strong edge or rim artefacts that intrude into the grid area</span>
+<span class="sd">          and produce abnormally large detected regions.</span>
+
+<span class="sd">    Consider Also:</span>
+<span class="sd">        - :class:`KeepSectionLargest` when keeping the single largest valid</span>
+<span class="sd">          object per cell is preferable to removing oversized candidates.</span>
+<span class="sd">        - :class:`GridAlignmentRefiner` for full grid-aware dominant-object</span>
+<span class="sd">          selection with configurable strategies.</span>
+<span class="sd">        - :class:`SmallObjectRemover` when the problem is undersized debris</span>
+<span class="sd">          rather than oversized merged detections.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        Image: Input image with ``objmap`` and ``objmask`` updated to exclude</span>
-<span class="sd">        objects exceeding the grid cell size.</span>
-
-<span class="sd">    Best For:</span>
-<span class="sd">        - Dropping merged blobs that span adjacent grid positions.</span>
-<span class="sd">        - Removing strong edge artifacts near the plate rim that intrude</span>
-<span class="sd">          into the grid.</span>
-<span class="sd">        - Post-detection cleanup on pinned colony grids where each cell</span>
-<span class="sd">          should contain one confined colony.</span>
-
-<span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`KeepSectionLargest` when you want to keep the single</span>
-<span class="sd">          largest object per cell rather than removing oversized ones.</span>
-<span class="sd">        - :class:`GridAlignmentRefiner` for full grid-aware dominant-object</span>
-<span class="sd">          selection.</span>
-<span class="sd">        - :class:`SmallObjectRemover` when the problem is undersized debris</span>
-<span class="sd">          rather than oversized detections.</span>
+<span class="sd">        objects whose bounding box equals or exceeds the maximum grid cell size.</span>
 
 <span class="sd">    See Also:</span>
 <span class="sd">        :doc:`/how_to/notebooks/refine_noisy_boundaries` for grid-based</span>
-<span class="sd">        refinement workflows.</span>
-<span class="sd">        :doc:`/explanation/refinement_strategies` for an overview of</span>
-<span class="sd">        grid refinement strategies.</span>
+<span class="sd">        refinement workflows on real plate images.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">GridImage</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GridImage</span><span class="p">:</span>

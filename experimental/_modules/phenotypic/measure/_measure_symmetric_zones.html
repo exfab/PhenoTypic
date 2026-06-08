@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -583,7 +583,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">scipy.ndimage</span><span class="w"> </span><span class="kn">import</span> <span class="n">convolve</span><span class="p">,</span> <span class="n">distance_transform_edt</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">skimage.measure</span><span class="w"> </span><span class="kn">import</span> <span class="n">approximate_polygon</span><span class="p">,</span> <span class="n">find_contours</span><span class="p">,</span> <span class="n">regionprops</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasureFeatures</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">Control</span><span class="p">,</span> <span class="n">FigureProvider</span><span class="p">,</span> <span class="n">MeasureFeatures</span><span class="p">,</span> <span class="n">figure</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">OBJECT</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">SYMMETRIC_ZONES</span>
 
@@ -606,6 +606,16 @@
 <span class="n">_OI_PURPLE</span> <span class="o">=</span> <span class="s2">&quot;#CC79A7&quot;</span>
 <span class="n">_OI_VERMILION</span> <span class="o">=</span> <span class="s2">&quot;#D55E00&quot;</span>
 <span class="n">_OI_GREY</span> <span class="o">=</span> <span class="s2">&quot;#BBBBBB&quot;</span>
+
+<span class="c1"># Which image array backs the plotly overlay; a select Control bound (by identity)</span>
+<span class="c1"># to the inspect() figure&#39;s ``base_layer`` kwarg for the interactive dashboard.</span>
+<span class="n">BASE_LAYER</span> <span class="o">=</span> <span class="n">Control</span><span class="p">(</span>
+        <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Base layer&quot;</span><span class="p">,</span>
+        <span class="n">kind</span><span class="o">=</span><span class="s2">&quot;select&quot;</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="s2">&quot;gray&quot;</span><span class="p">,</span>
+        <span class="n">options</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;rgb&quot;</span><span class="p">,</span> <span class="s2">&quot;gray&quot;</span><span class="p">,</span> <span class="s2">&quot;detect_mat&quot;</span><span class="p">),</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Image array rendered behind the symmetric-radius overlay.&quot;</span><span class="p">,</span>
+<span class="p">)</span>
 
 
 <span class="nd">@dataclass</span>
@@ -656,7 +666,7 @@
 
 <div class="viewcode-block" id="MeasureSymmetricZones">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.measure.html#phenotypic.measure.MeasureSymmetricZones">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">MeasureSymmetricZones</span><span class="p">(</span><span class="n">MeasureFeatures</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">MeasureSymmetricZones</span><span class="p">(</span><span class="n">MeasureFeatures</span><span class="p">,</span> <span class="n">FigureProvider</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Measure colony radial expansion and angular symmetry from the object mask alone.</span>
 
 <span class="sd">    Quantifies each colony by four scalars derived directly from its binary</span>
@@ -1993,6 +2003,11 @@
 
 <div class="viewcode-block" id="MeasureSymmetricZones.inspect">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.measure.html#phenotypic.measure.MeasureSymmetricZones.inspect">[docs]</a>
+    <span class="nd">@figure</span><span class="p">(</span>
+            <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Symmetric-radius overlay&quot;</span><span class="p">,</span>
+            <span class="n">primary</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">controls</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;base_layer&quot;</span><span class="p">:</span> <span class="n">BASE_LAYER</span><span class="p">},</span>
+    <span class="p">)</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">inspect</span><span class="p">(</span>
             <span class="bp">self</span><span class="p">,</span>
             <span class="n">image</span><span class="p">:</span> <span class="n">Image</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -2026,6 +2041,13 @@
 
         <span class="kn">import</span><span class="w"> </span><span class="nn">plotly.graph_objects</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">go</span>
 
+        <span class="n">valid_base_layers</span> <span class="o">=</span> <span class="n">BASE_LAYER</span><span class="o">.</span><span class="n">options</span> <span class="ow">or</span> <span class="p">()</span>
+        <span class="k">if</span> <span class="n">base_layer</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">valid_base_layers</span><span class="p">:</span>
+            <span class="n">allowed</span> <span class="o">=</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">repr</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">valid_base_layers</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;base_layer must be one of </span><span class="si">{</span><span class="n">allowed</span><span class="si">}</span><span class="s2">; got </span><span class="si">{</span><span class="n">base_layer</span><span class="si">!r}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
         <span class="k">if</span> <span class="n">image</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">image</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_require_cache_image</span><span class="p">()</span>
 
@@ -2057,7 +2079,7 @@
                     <span class="n">text</span><span class="o">=</span><span class="s2">&quot;No objects found for symmetric-radius analysis.&quot;</span><span class="p">,</span>
                     <span class="n">xref</span><span class="o">=</span><span class="s2">&quot;paper&quot;</span><span class="p">,</span> <span class="n">yref</span><span class="o">=</span><span class="s2">&quot;paper&quot;</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
                     <span class="n">showarrow</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-                    <span class="n">font</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">family</span><span class="o">=</span><span class="s2">&quot;DM Sans, sans-serif&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">_OI_NAVY</span><span class="p">),</span>
+                    <span class="n">font</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="n">_OI_NAVY</span><span class="p">),</span>  <span class="c1"># family from the phenotypic template</span>
             <span class="p">)</span>
             <span class="k">return</span> <span class="n">fig</span>
 
@@ -2071,7 +2093,7 @@
         <span class="n">fig</span><span class="o">.</span><span class="n">update_layout</span><span class="p">(</span>
                 <span class="n">title</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
                         <span class="n">text</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Symmetric Radius -- </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">intermediates_cache</span><span class="p">)</span><span class="si">}</span><span class="s2"> objects&quot;</span><span class="p">,</span>
-                        <span class="n">font</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">family</span><span class="o">=</span><span class="s2">&quot;DM Sans, sans-serif&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">_OI_NAVY</span><span class="p">),</span>
+                        <span class="n">font</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="n">_OI_NAVY</span><span class="p">),</span>  <span class="c1"># family from the phenotypic template</span>
                 <span class="p">),</span>
                 <span class="n">height</span><span class="o">=</span><span class="n">overview_h</span><span class="p">,</span>
         <span class="p">)</span>

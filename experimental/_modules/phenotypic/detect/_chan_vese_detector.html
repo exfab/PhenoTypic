@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -577,83 +577,117 @@
 <div class="viewcode-block" id="ChanVeseDetector">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.detect.html#phenotypic.detect.ChanVeseDetector">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ChanVeseDetector</span><span class="p">(</span><span class="n">ObjectDetector</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Detect colonies by region-based level-set segmentation using the Chan-Vese energy functional.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Detect colonies by evolving a level-set contour that minimises region-intensity variance via the Chan-Vese method.</span>
 
-<span class="sd">    Partition the image into foreground and background by minimising an</span>
-<span class="sd">    energy functional based on intensity homogeneity within each region.</span>
-<span class="sd">    Because segmentation is driven by region statistics rather than edge</span>
-<span class="sd">    gradients, colonies with diffuse boundaries, uneven texture, or gradual</span>
-<span class="sd">    transitions into the agar background are captured cleanly. For algorithm</span>
-<span class="sd">    details see :doc:`/explanation/detection_strategies_compared`.</span>
+<span class="sd">    Partition ``detect_mat`` into foreground and background by iterating a</span>
+<span class="sd">    level-set that minimises the summed intensity variance inside and outside</span>
+<span class="sd">    the detected regions. Because the energy is driven by region statistics</span>
+<span class="sd">    rather than edge gradients, colonies with diffuse boundaries, gradual</span>
+<span class="sd">    transitions into agar, or heterogeneous surface texture are captured</span>
+<span class="sd">    cleanly as smooth, well-regularised outlines. The contour is initialised</span>
+<span class="sd">    and evolved until the per-pixel change falls below ``tol`` or</span>
+<span class="sd">    ``max_num_iter`` is reached, after which the binary mask is labelled into</span>
+<span class="sd">    individual connected-component colonies.</span>
 
-<span class="sd">    Args:</span>
-<span class="sd">        mu: Edge-length penalty weight. Higher values produce smoother,</span>
-<span class="sd">            rounder colony outlines; lower values preserve fine boundary</span>
-<span class="sd">            detail. Typical range: 0.05--1.0. Default: 0.25.</span>
-
-<span class="sd">        lambda1: Weight for intensity deviation inside detected regions.</span>
-<span class="sd">            Increase to enforce uniform colony brightness. Default: 1.0.</span>
-
-<span class="sd">        lambda2: Weight for intensity deviation outside detected regions.</span>
-<span class="sd">            Increase when the agar background is homogeneous. Default: 1.0.</span>
-
-<span class="sd">        max_num_iter: Maximum level-set iterations. Increase for complex</span>
-<span class="sd">            images where convergence is slow; decrease for faster (but</span>
-<span class="sd">            potentially incomplete) segmentation. Default: 500.</span>
-
-<span class="sd">        tol: Convergence tolerance (L2 norm of level-set change). Smaller</span>
-<span class="sd">            values require tighter convergence but more iterations.</span>
-<span class="sd">            Default: 1e-3.</span>
-
-<span class="sd">        dt: Step-size multiplier for level-set evolution. Larger values</span>
-<span class="sd">            evolve faster but risk instability. Default: 0.5.</span>
-
-<span class="sd">        init_level_set: Initialisation method for the level set. Accepted</span>
-<span class="sd">            values: ``&quot;checkerboard&quot;``, ``&quot;disk&quot;``, ``&quot;small disk&quot;``.</span>
-<span class="sd">            Checkerboard is robust for most plate images. Default:</span>
-<span class="sd">            ``&quot;checkerboard&quot;``.</span>
-
-<span class="sd">        min_size: Minimum colony area in pixels. Connected components</span>
-<span class="sd">            smaller than this are removed as noise. Default: 50.</span>
-
-<span class="sd">        connectivity: Pixel connectivity for labelling connected components.</span>
-<span class="sd">            ``1`` for 4-connectivity, ``2`` for 8-connectivity. Default: 2.</span>
-
-<span class="sd">    Returns:</span>
-<span class="sd">        Image: Input image with ``objmask`` set to binary mask and</span>
-<span class="sd">        ``objmap`` set to labeled connected components.</span>
-
-<span class="sd">    Raises:</span>
-<span class="sd">        ValueError: If ``init_level_set`` is not a recognised initialisation</span>
-<span class="sd">            method.</span>
+<span class="sd">    For a comparison of region-based and edge-based detection strategies, see</span>
+<span class="sd">    :doc:`/explanation/detection_strategies_compared`.</span>
 
 <span class="sd">    Best For:</span>
-<span class="sd">        * Mucoid or fuzzy colonies whose edges lack sharp intensity gradients.</span>
-<span class="sd">        * Plates with uneven colony pigmentation or heterogeneous surface</span>
-<span class="sd">          texture that fragments threshold-based masks.</span>
-<span class="sd">        * Low-contrast imaging where colony and agar intensities are similar.</span>
-<span class="sd">        * Morphology studies where smooth, accurate colony outlines are</span>
-<span class="sd">          required.</span>
+<span class="sd">        - Mucoid or spreading colonies whose boundaries lack sharp intensity</span>
+<span class="sd">          gradients.</span>
+<span class="sd">        - Plates with uneven colony pigmentation or sector-variant morphology</span>
+<span class="sd">          that fragments threshold-based masks.</span>
+<span class="sd">        - Low-contrast imaging conditions where colony and agar intensities</span>
+<span class="sd">          overlap in the histogram.</span>
+<span class="sd">        - Morphology studies requiring smooth, well-regularised colony outlines</span>
+<span class="sd">          rather than jagged threshold masks.</span>
 
 <span class="sd">    Consider Also:</span>
-<span class="sd">        * :class:`OtsuDetector` when colonies and background form two clear</span>
+<span class="sd">        - :class:`OtsuDetector` when colonies and background form two distinct</span>
 <span class="sd">          histogram peaks and a fast global threshold suffices.</span>
-<span class="sd">        * :class:`HysteresisDetector` when colony brightness varies but edges</span>
-<span class="sd">          are still reasonably sharp.</span>
-<span class="sd">        * :class:`CannyDetector` when colonies are best delineated by edge</span>
-<span class="sd">          contrast rather than region homogeneity.</span>
+<span class="sd">        - :class:`HysteresisDetector` when colony brightness varies but edges</span>
+<span class="sd">          remain reasonably sharp.</span>
+<span class="sd">        - :class:`CannyDetector` when colonies are best delineated by edge</span>
+<span class="sd">          contrast rather than interior region homogeneity.</span>
+<span class="sd">        - :class:`WatershedDetector` when touching, compact colonies must be</span>
+<span class="sd">          separated after an initial binary detection.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        mu: Contour-length penalty weight in the Chan-Vese energy functional.</span>
+<span class="sd">            Higher values produce shorter, smoother outlines and merge nearby</span>
+<span class="sd">            colonies; lower values allow the contour to track fine boundary</span>
+<span class="sd">            detail at the cost of noise sensitivity. Typical range: 0--1</span>
+<span class="sd">            (lower for diffuse mucoid edges, higher for noisy plates).</span>
+<span class="sd">            Default: 0.25.</span>
+<span class="sd">        lambda1: Fidelity weight for intensity deviation inside detected</span>
+<span class="sd">            regions. Increasing ``lambda1`` forces the contour to enclose</span>
+<span class="sd">            pixels whose intensity matches the estimated colony mean more</span>
+<span class="sd">            tightly. Equal weights (``lambda1`` = ``lambda2`` = 1.0) are the</span>
+<span class="sd">            standard default recommended by Chan &amp; Vese (2001); use asymmetric</span>
+<span class="sd">            weights when colony and agar intensity distributions differ</span>
+<span class="sd">            strongly. Default: 1.0.</span>
+<span class="sd">        lambda2: Fidelity weight for intensity deviation outside detected</span>
+<span class="sd">            regions (background). Increasing ``lambda2`` relative to</span>
+<span class="sd">            ``lambda1`` penalises background heterogeneity more strongly</span>
+<span class="sd">            (follows directly from the energy functional); useful when agar is</span>
+<span class="sd">            uniform but colony texture is heterogeneous. Default: 1.0.</span>
+<span class="sd">        max_num_iter: Hard cap on level-set evolution iterations. The</span>
+<span class="sd">            algorithm stops early if ``tol`` is satisfied. Increase for</span>
+<span class="sd">            complex or slowly converging shapes (mucoid, low-contrast);</span>
+<span class="sd">            decrease to trade boundary accuracy for speed. Typical range:</span>
+<span class="sd">            100--1000. Default: 500.</span>
+<span class="sd">        tol: Early-stopping criterion: per-pixel level-set change normalised</span>
+<span class="sd">            by image area. Smaller values give more precise convergence but</span>
+<span class="sd">            require more iterations; values below the noise floor exhaust</span>
+<span class="sd">            ``max_num_iter`` without improving results. Typical range:</span>
+<span class="sd">            1e-5--1e-2. Default: 1e-3.</span>
+<span class="sd">        dt: Step-size multiplier for each level-set iteration. Larger values</span>
+<span class="sd">            converge faster but may lead to convergence problems on complex or</span>
+<span class="sd">            low-contrast shapes; keep within 0.1--1.0 on real plate images.</span>
+<span class="sd">            Default: 0.5.</span>
+<span class="sd">        init_level_set: Shape used to initialise the level-set function</span>
+<span class="sd">            before evolution. Accepted values: ``&quot;checkerboard&quot;`` (sin × sin</span>
+<span class="sd">            pattern; fast multi-front convergence, well-suited to arrayed</span>
+<span class="sd">            plates with spatially distributed colonies), ``&quot;disk&quot;`` (large</span>
+<span class="sd">            circle shrinking inward; slower but more likely to detect implicit</span>
+<span class="sd">            edges), ``&quot;small disk&quot;`` (small expanding circle at the image</span>
+<span class="sd">            centre). Default: ``&quot;checkerboard&quot;``.</span>
+<span class="sd">        min_size: Minimum connected-component area in pixels. Components</span>
+<span class="sd">            smaller than this are discarded after labelling. Increase to</span>
+<span class="sd">            remove condensation droplets, debris, or noise fragments; decrease</span>
+<span class="sd">            for high-density formats where each colony occupies few pixels.</span>
+<span class="sd">            Typical range: 10--500. Default: 50.</span>
+<span class="sd">        connectivity: Pixel connectivity for connected-component labelling.</span>
+<span class="sd">            ``1`` uses 4-connectivity (orthogonal neighbours only; keeps</span>
+<span class="sd">            colonies that touch only at corners separate); ``2`` uses</span>
+<span class="sd">            8-connectivity (all neighbours including diagonals; merges</span>
+<span class="sd">            corner-touching regions). Default: 2.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Image: Input image with ``objmask`` set to the binary segmentation</span>
+<span class="sd">        mask and ``objmap`` set to consecutively labelled connected</span>
+<span class="sd">        components.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If ``init_level_set`` is not one of the recognised</span>
+<span class="sd">            initialisation strings.</span>
 
 <span class="sd">    References:</span>
 <span class="sd">        [1] T. F. Chan and L. A. Vese, &quot;Active contours without edges,&quot;</span>
-<span class="sd">        *IEEE Trans. Image Process.*, vol. 10, no. 2, pp. 266--277, 2001.</span>
+<span class="sd">        *IEEE Trans. Image Process.*, vol. 10, no. 2, pp. 266--277,</span>
+<span class="sd">        Feb. 2001.</span>
+
+<span class="sd">        [2] P. Getreuer, &quot;Chan-Vese segmentation,&quot; *Image Process. On</span>
+<span class="sd">        Line*, vol. 2, pp. 214--224, 2012.</span>
 
 <span class="sd">    See Also:</span>
 <span class="sd">        :doc:`/tutorials/notebooks/02_detecting_colonies`</span>
-<span class="sd">            Step-by-step tutorial for basic colony detection.</span>
+<span class="sd">            Step-by-step tutorial for basic colony detection on plate images.</span>
 <span class="sd">        :doc:`/how_to/notebooks/choose_detection_algorithm`</span>
-<span class="sd">            Guide for selecting the right detector for your plate images.</span>
+<span class="sd">            Guide for selecting the right detector for your imaging conditions.</span>
 <span class="sd">        :doc:`/explanation/detection_strategies_compared`</span>
-<span class="sd">            In-depth comparison of all detection strategies.</span>
+<span class="sd">            In-depth comparison of all detection strategies and their</span>
+<span class="sd">            failure modes.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">mu</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.25</span>

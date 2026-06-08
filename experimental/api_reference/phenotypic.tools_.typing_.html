@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -64,7 +64,7 @@
     <link rel="search" title="Search" href="../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -570,6 +570,108 @@
                   
   <section id="module-phenotypic.tools_.typing_">
 <span id="phenotypic-tools-typing-module"></span><h1>phenotypic.tools_.typing_ module<a class="headerlink" href="#module-phenotypic.tools_.typing_" title="Link to this heading">#</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="phenotypic.tools_.typing_.TuneSpec">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.typing_.</span></span><span class="sig-name descname"><span class="pre">TuneSpec</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">low</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">high</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">step</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">categories</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tunable</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/typing_.html#TuneSpec"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.typing_.TuneSpec" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Per-field tuning-search metadata (Tier-1 inference override).</p>
+<p><code class="docutils literal notranslate"><span class="pre">TuneSpec</span></code> mirrors the existing field-marker pattern (<code class="docutils literal notranslate"><span class="pre">_ColumnRefMarker</span></code>,
+<code class="docutils literal notranslate"><span class="pre">_OperationFieldMarker</span></code>): a frozen, slotted, <strong>non-pydantic</strong> sentinel that
+is a complete no-op at runtime and is read <em>only</em> by <code class="docutils literal notranslate"><span class="pre">infer_search_space</span></code>,
+via <code class="docutils literal notranslate"><span class="pre">op.model_fields[name].metadata</span></code> (where pydantic v2 stores
+<code class="docutils literal notranslate"><span class="pre">Annotated</span></code> extras). It rides in an <code class="docutils literal notranslate"><span class="pre">Annotated[T,</span> <span class="pre">TuneSpec(...)]</span></code> chain:</p>
+<div class="highlight-python3 notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">GaussianBlur</span><span class="p">(</span><span class="n">ImageEnhancer</span><span class="p">):</span>
+    <span class="n">sigma</span><span class="p">:</span>    <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">,</span> <span class="n">log</span><span class="o">=</span><span class="kc">True</span><span class="p">)]</span> <span class="o">=</span> <span class="mf">2.0</span>
+    <span class="n">truncate</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="n">tunable</span><span class="o">=</span><span class="kc">False</span><span class="p">)]</span>      <span class="o">=</span> <span class="mf">4.0</span>
+</pre></div>
+</div>
+<p>At runtime <code class="docutils literal notranslate"><span class="pre">sigma</span></code> is still a plain <code class="docutils literal notranslate"><span class="pre">float</span></code>; <code class="docutils literal notranslate"><span class="pre">GaussianBlur(sigma=999.0)</span></code>
+constructs exactly as before. The marker is the <strong>search</strong> domain, never the
+<strong>valid</strong> domain — validity stays the job of pydantic <code class="docutils literal notranslate"><span class="pre">Field(ge=,</span> <span class="pre">le=)</span></code>.</p>
+<p>It lives here (not in <code class="docutils literal notranslate"><span class="pre">phenotypic.tune</span></code>) so operation modules can import it
+without dragging in the tune engine — the public re-export
+<code class="docutils literal notranslate"><span class="pre">from</span> <span class="pre">phenotypic.tune</span> <span class="pre">import</span> <span class="pre">TuneSpec</span></code> still works.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>low</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em> | </em><em>None</em>) – Inclusive lower search bound (positional). <code class="docutils literal notranslate"><span class="pre">None</span></code> leaves the
+bound to Tier-2 inference / the co-located <code class="docutils literal notranslate"><span class="pre">Field</span></code> constraint.</p></li>
+<li><p><strong>high</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em> | </em><em>None</em>) – Inclusive upper search bound (positional). <code class="docutils literal notranslate"><span class="pre">None</span></code> as <code class="docutils literal notranslate"><span class="pre">low</span></code>.</p></li>
+<li><p><strong>step</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em> | </em><em>None</em>) – Discretization stride — integer step or quantized float.
+<code class="docutils literal notranslate"><span class="pre">None</span></code> means continuous (or unit-step for integers).</p></li>
+<li><p><strong>log</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – Whether to sample on a logarithmic scale (default <code class="docutils literal notranslate"><span class="pre">False</span></code>).</p></li>
+<li><p><strong>categories</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em> | </em><em>None</em>) – Override / subset the auto-derived categorical choices.
+A list is coerced to a tuple so the marker stays hashable.</p></li>
+<li><p><strong>tunable</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – <code class="docutils literal notranslate"><span class="pre">False</span></code> excludes the field from tuning outright and
+short-circuits Tier-2 (default <code class="docutils literal notranslate"><span class="pre">True</span></code>).</p></li>
+</ul>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This is <strong>not</strong> a pydantic model — it is a plain slotted sentinel so it
+can sit in an <code class="docutils literal notranslate"><span class="pre">Annotated</span></code> chain without pydantic trying to validate
+it. It carries <code class="docutils literal notranslate"><span class="pre">__eq__</span></code>/<code class="docutils literal notranslate"><span class="pre">__hash__</span></code> over the full field tuple so a
+duplicate in an <code class="docutils literal notranslate"><span class="pre">Annotated</span></code> chain de-dupes (PEP 593 chain semantics).</p>
+</div>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.tools_.typing_.TuneSpec.categories">
+<span class="sig-name descname"><span class="pre">categories</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></em><a class="headerlink" href="#phenotypic.tools_.typing_.TuneSpec.categories" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.tools_.typing_.TuneSpec.high">
+<span class="sig-name descname"><span class="pre">high</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></em><a class="headerlink" href="#phenotypic.tools_.typing_.TuneSpec.high" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.tools_.typing_.TuneSpec.log">
+<span class="sig-name descname"><span class="pre">log</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></em><a class="headerlink" href="#phenotypic.tools_.typing_.TuneSpec.log" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.tools_.typing_.TuneSpec.low">
+<span class="sig-name descname"><span class="pre">low</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></em><a class="headerlink" href="#phenotypic.tools_.typing_.TuneSpec.low" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.tools_.typing_.TuneSpec.step">
+<span class="sig-name descname"><span class="pre">step</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></em><a class="headerlink" href="#phenotypic.tools_.typing_.TuneSpec.step" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.tools_.typing_.TuneSpec.tunable">
+<span class="sig-name descname"><span class="pre">tunable</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></em><a class="headerlink" href="#phenotypic.tools_.typing_.TuneSpec.tunable" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="phenotypic.tools_.typing_.polymorphic_field">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.typing_.</span></span><span class="sig-name descname"><span class="pre">polymorphic_field</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">base</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.14)"><span class="pre">Callable</span></a><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">marker</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/typing_.html#polymorphic_field"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.typing_.polymorphic_field" title="Link to this definition">#</a></dt>
+<dd><p>A pydantic field for a polymorphic model subtree.</p>
+<p>The concrete subclass survives a JSON round-trip via the <code class="docutils literal notranslate"><span class="pre">phenotypic</span></code>
+class registry: the field serializes to <code class="docutils literal notranslate"><span class="pre">{&quot;class&quot;:</span> <span class="pre">&lt;name&gt;,</span> <span class="pre">&quot;params&quot;:</span>
+<span class="pre">{...}}</span></code> (or the pipeline-tagged form for an <code class="docutils literal notranslate"><span class="pre">ImagePipeline</span></code>) and
+reconstructs the concrete subclass on load.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>base</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><em>type</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.14)"><em>Callable</em></a><em>[</em><em>[</em><em>]</em><em>, </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><em>type</em></a><em>]</em>) – Constrains the accepted/validated type — a class or a zero-arg
+callable returning the class (the lazy form avoids import cycles,
+e.g. <code class="docutils literal notranslate"><span class="pre">OperationField</span></code> naming <code class="docutils literal notranslate"><span class="pre">BaseOperation</span></code>).</p></li>
+<li><p><strong>marker</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a>) – Optional sentinel attached to the <code class="docutils literal notranslate"><span class="pre">Annotated</span></code> chain (e.g.
+the GUI’s <code class="xref py py-class docutils literal notranslate"><span class="pre">_OperationFieldMarker</span></code>) so introspecting tools
+can recognise the field despite the <code class="docutils literal notranslate"><span class="pre">Any</span></code> core erasure.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>An <code class="docutils literal notranslate"><span class="pre">Annotated</span></code> type usable as a pydantic field annotation. Host
+models must set <code class="docutils literal notranslate"><span class="pre">model_config</span></code> with <code class="docutils literal notranslate"><span class="pre">arbitrary_types_allowed=True</span></code>.</p>
+</dd>
+</dl>
+</dd></dl>
+
 <dl class="py data">
 <dt class="sig sig-object py" id="phenotypic.tools_.typing_.CheckpointType">
 <span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.typing_.</span></span><span class="sig-name descname"><span class="pre">CheckpointType</span></span><a class="headerlink" href="#phenotypic.tools_.typing_.CheckpointType" title="Link to this definition">#</a></dt>
@@ -639,17 +741,19 @@ non-pydantic <code class="docutils literal notranslate"><span class="pre">np.nda
 <span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.typing_.</span></span><span class="sig-name descname"><span class="pre">OperationField</span></span><a class="headerlink" href="#phenotypic.tools_.typing_.OperationField" title="Link to this definition">#</a></dt>
 <dd><p>Annotated operation type usable as a pydantic field annotation for a
 parameter that holds another operation or a nested pipeline.</p>
-<p>Serializes to a class-tagged dict so the concrete subclass survives a
-JSON round-trip; deserializes by resolving the class through the
-<code class="docutils literal notranslate"><span class="pre">phenotypic</span></code> registry. Use it directly (<code class="docutils literal notranslate"><span class="pre">OperationField</span></code>) or inside
-a container — e.g. <code class="docutils literal notranslate"><span class="pre">list[OperationField]</span></code> — when the field must
-accept several operation types and round-trip each losslessly.</p>
+<p>Back-compat alias — an operation/pipeline-valued field built by
+<a class="reference internal" href="#phenotypic.tools_.typing_.polymorphic_field" title="phenotypic.tools_.typing_.polymorphic_field"><code class="xref py py-func docutils literal notranslate"><span class="pre">polymorphic_field()</span></code></a>. Serializes to a class-tagged dict so the
+concrete subclass survives a JSON round-trip; deserializes by resolving
+the class through the <code class="docutils literal notranslate"><span class="pre">phenotypic</span></code> registry. Use it directly
+(<code class="docutils literal notranslate"><span class="pre">OperationField</span></code>) or inside a container — e.g. <code class="docutils literal notranslate"><span class="pre">list[OperationField]</span></code>
+— when the field must accept several operation types and round-trip each
+losslessly.</p>
 <p>The core type is <code class="docutils literal notranslate"><span class="pre">Any</span></code> (naming the operation base classes here would
 create an import cycle through <code class="docutils literal notranslate"><span class="pre">tools_</span></code>); an <code class="docutils literal notranslate"><span class="pre">AfterValidator</span></code>
 restores the operation/pipeline type guard. The trailing
 <code class="xref py py-class docutils literal notranslate"><span class="pre">_OperationFieldMarker</span></code> lets the GUI <code class="docutils literal notranslate"><span class="pre">OperationRegistry</span></code>
 recognise the field despite the <code class="docutils literal notranslate"><span class="pre">Any</span></code> erasure.</p>
-<p>alias of <code class="xref py py-class docutils literal notranslate"><span class="pre">Annotated</span></code>[<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Any</span></code></a>, <code class="xref py py-class docutils literal notranslate"><span class="pre">BeforeValidator</span></code>(func=<code class="xref py py-class docutils literal notranslate"><span class="pre">_deserialize_operation_value</span></code>, json_schema_input_type=PydanticUndefined), <code class="xref py py-class docutils literal notranslate"><span class="pre">AfterValidator</span></code>(func=<code class="xref py py-class docutils literal notranslate"><span class="pre">_require_operation_value</span></code>), <code class="xref py py-class docutils literal notranslate"><span class="pre">PlainSerializer</span></code>(func=<code class="xref py py-class docutils literal notranslate"><span class="pre">_serialize_operation_value</span></code>, return_type=PydanticUndefined, when_used=always), _OperationFieldMarker()]</p>
+<p>alias of <code class="xref py py-class docutils literal notranslate"><span class="pre">Annotated</span></code>[<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Any</span></code></a>, <code class="xref py py-class docutils literal notranslate"><span class="pre">BeforeValidator</span></code>(func=<code class="xref py py-class docutils literal notranslate"><span class="pre">_deserialize_operation_value</span></code>, json_schema_input_type=PydanticUndefined), <code class="xref py py-class docutils literal notranslate"><span class="pre">AfterValidator</span></code>(func=<code class="xref py py-class docutils literal notranslate"><span class="pre">_require</span></code>), <code class="xref py py-class docutils literal notranslate"><span class="pre">PlainSerializer</span></code>(func=<code class="xref py py-class docutils literal notranslate"><span class="pre">_serialize_operation_value</span></code>, return_type=PydanticUndefined, when_used=always), _OperationFieldMarker()]</p>
 </dd></dl>
 
 <dl class="py data">
@@ -702,6 +806,16 @@ the bare-string <code class="docutils literal notranslate"><span class="pre">TAS
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.typing_.TuneSpec"><code class="docutils literal notranslate"><span class="pre">TuneSpec</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.typing_.TuneSpec.categories"><code class="docutils literal notranslate"><span class="pre">TuneSpec.categories</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.typing_.TuneSpec.high"><code class="docutils literal notranslate"><span class="pre">TuneSpec.high</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.typing_.TuneSpec.log"><code class="docutils literal notranslate"><span class="pre">TuneSpec.log</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.typing_.TuneSpec.low"><code class="docutils literal notranslate"><span class="pre">TuneSpec.low</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.typing_.TuneSpec.step"><code class="docutils literal notranslate"><span class="pre">TuneSpec.step</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.typing_.TuneSpec.tunable"><code class="docutils literal notranslate"><span class="pre">TuneSpec.tunable</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.typing_.polymorphic_field"><code class="docutils literal notranslate"><span class="pre">polymorphic_field()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.typing_.CheckpointType"><code class="docutils literal notranslate"><span class="pre">CheckpointType</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.typing_.ExecutionMode"><code class="docutils literal notranslate"><span class="pre">ExecutionMode</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.typing_.FailureSource"><code class="docutils literal notranslate"><span class="pre">FailureSource</span></code></a></li>

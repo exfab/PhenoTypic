@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -66,7 +66,7 @@
     <link rel="prev" title="Glossary" href="../glossary.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -559,6 +559,7 @@
 </ul>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../cli_reference.html">CLI Reference</a></li>
+
 <li class="toctree-l1"><a class="reference internal" href="../config_reference.html">Configuration Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../glossary.html">Glossary</a></li>
 </ul>
@@ -566,6 +567,7 @@
 <ul class="current nav bd-sidenav">
 <li class="toctree-l1 current active has-children"><a class="current reference internal" href="#">phenotypic.abc_</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.register_detection_mode.html">phenotypic.abc_.register_detection_mode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.figure.html">phenotypic.abc_.figure</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.MeasureFeatures.html">phenotypic.abc_.MeasureFeatures</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.ImageOperation.html">phenotypic.abc_.ImageOperation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.ImageEnhancer.html">phenotypic.abc_.ImageEnhancer</a></li>
@@ -593,6 +595,10 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.FootprintMixin.html">phenotypic.abc_.FootprintMixin</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.PostMeasurement.html">phenotypic.abc_.PostMeasurement</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.DetectionMode.html">phenotypic.abc_.DetectionMode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.Control.html">phenotypic.abc_.Control</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.FigureSpec.html">phenotypic.abc_.FigureSpec</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.FigureProvider.html">phenotypic.abc_.FigureProvider</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.BoundFigures.html">phenotypic.abc_.BoundFigures</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.analysis.html">phenotypic.analysis</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -755,6 +761,8 @@
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.tools_.html">phenotypic.tools_</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.atomic_write_bytes.html">phenotypic.tools_.atomic_write_bytes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.atomic_write_text.html">phenotypic.tools_.atomic_write_text</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.is_binary_mask.html">phenotypic.tools_.is_binary_mask</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.timed_execution.html">phenotypic.tools_.timed_execution</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.analysis_csv_path.html">phenotypic.tools_.analysis_csv_path</a></li>
@@ -762,6 +770,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.analysis_html_path.html">phenotypic.tools_.analysis_html_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.analysis_parquet_path.html">phenotypic.tools_.analysis_parquet_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.analysis_scatter_json_path.html">phenotypic.tools_.analysis_scatter_json_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.best_pipeline_path.html">phenotypic.tools_.best_pipeline_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.chunk_lock_path.html">phenotypic.tools_.chunk_lock_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.chunk_manifest_path.html">phenotypic.tools_.chunk_manifest_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.chunk_parquet_filename.html">phenotypic.tools_.chunk_parquet_filename</a></li>
@@ -779,6 +788,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.deliverables_dir.html">phenotypic.tools_.deliverables_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.event_log_path.html">phenotypic.tools_.event_log_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.failures_jsonl_path.html">phenotypic.tools_.failures_jsonl_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.generalization_path.html">phenotypic.tools_.generalization_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.job_metadata_path.html">phenotypic.tools_.job_metadata_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.load_image_from_hdf.html">phenotypic.tools_.load_image_from_hdf</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.load_master_measurements.html">phenotypic.tools_.load_master_measurements</a></li>
@@ -792,6 +802,11 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.migrate_legacy_machine_state.html">phenotypic.tools_.migrate_legacy_machine_state</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.clear_machine_state.html">phenotypic.tools_.clear_machine_state</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.overlay_manifest_path.html">phenotypic.tools_.overlay_manifest_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.param_importance_path.html">phenotypic.tools_.param_importance_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.pareto_best_pipeline_path.html">phenotypic.tools_.pareto_best_pipeline_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.pareto_dir.html">phenotypic.tools_.pareto_dir</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.pareto_front_parquet_path.html">phenotypic.tools_.pareto_front_parquet_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.pareto_importance_path.html">phenotypic.tools_.pareto_importance_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.phenotypic_cache_dir.html">phenotypic.tools_.phenotypic_cache_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.phenotypic_cache_pipeline_json_path.html">phenotypic.tools_.phenotypic_cache_pipeline_json_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.pipeline_json_path.html">phenotypic.tools_.pipeline_json_path</a></li>
@@ -812,12 +827,21 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.resolve_manifest_json_path.html">phenotypic.tools_.resolve_manifest_json_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.resolve_processing_state_path.html">phenotypic.tools_.resolve_processing_state_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.resolve_progress_dir.html">phenotypic.tools_.resolve_progress_dir</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.resolve_split_assignment_path.html">phenotypic.tools_.resolve_split_assignment_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.resolve_study_db_path.html">phenotypic.tools_.resolve_study_db_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.results_dir.html">phenotypic.tools_.results_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.sentinel_resubmitted_path.html">phenotypic.tools_.sentinel_resubmitted_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.shard_parquet_filename.html">phenotypic.tools_.shard_parquet_filename</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.slurm_scripts_dir.html">phenotypic.tools_.slurm_scripts_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.task_status_filename.html">phenotypic.tools_.task_status_filename</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.task_status_path.html">phenotypic.tools_.task_status_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.trials_parquet_path.html">phenotypic.tools_.trials_parquet_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.tune_cache_dir.html">phenotypic.tools_.tune_cache_dir</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.tune_cache_run_marker_path.html">phenotypic.tools_.tune_cache_run_marker_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.tune_cache_split_assignment_path.html">phenotypic.tools_.tune_cache_split_assignment_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.tune_cache_splits_dir.html">phenotypic.tools_.tune_cache_splits_dir</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.tune_cache_study_db_path.html">phenotypic.tools_.tune_cache_study_db_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.tuning_spec_path.html">phenotypic.tools_.tuning_spec_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.ClipControlMixin.html">phenotypic.tools_.ClipControlMixin</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.FootprintMixin.html">phenotypic.tools_.FootprintMixin</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.GridInferenceMixin.html">phenotypic.tools_.GridInferenceMixin</a></li>
@@ -888,30 +912,15 @@
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.napari_.PointPickerWidget.html">phenotypic.tools_.napari_.PointPickerWidget</a></li>
 </ul>
 </details></li>
-<li class="toctree-l2 has-children"><a class="reference internal" href="phenotypic.tools_.panel_.html">phenotypic.tools_.panel_</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.panel_.PANEL_AVAILABLE.html">phenotypic.tools_.panel_.PANEL_AVAILABLE</a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.panel_.PLOTLY_AVAILABLE.html">phenotypic.tools_.panel_.PLOTLY_AVAILABLE</a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.panel_.PANEL_IMPORT_ERROR.html">phenotypic.tools_.panel_.PANEL_IMPORT_ERROR</a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.panel_.display_or_return.html">phenotypic.tools_.panel_.display_or_return</a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.panel_.ensure_panel_extension.html">phenotypic.tools_.panel_.ensure_panel_extension</a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.panel_.in_ipython.html">phenotypic.tools_.panel_.in_ipython</a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.panel_.in_jupyter.html">phenotypic.tools_.panel_.in_jupyter</a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.panel_.require_panel.html">phenotypic.tools_.panel_.require_panel</a></li>
-</ul>
-</details></li>
 <li class="toctree-l2 has-children"><a class="reference internal" href="phenotypic.tools_.register.html">phenotypic.tools_.register</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.register.available_analysis_plugins.html">phenotypic.tools_.register.available_analysis_plugins</a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.register.available_dashboards.html">phenotypic.tools_.register.available_dashboards</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.register.available_plotters.html">phenotypic.tools_.register.available_plotters</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.register.get_analysis_plugin.html">phenotypic.tools_.register.get_analysis_plugin</a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.register.get_dashboard.html">phenotypic.tools_.register.get_dashboard</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.register.get_plotter.html">phenotypic.tools_.register.get_plotter</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.register.register_analysis.html">phenotypic.tools_.register.register_analysis</a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.register.register_dashboard.html">phenotypic.tools_.register.register_dashboard</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.register.register_plotter.html">phenotypic.tools_.register.register_plotter</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.register.AnalysisPluginRegistry.html">phenotypic.tools_.register.AnalysisPluginRegistry</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.register.BaseRegistry.html">phenotypic.tools_.register.BaseRegistry</a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.register.DashboardRegistry.html">phenotypic.tools_.register.DashboardRegistry</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.tools_.register.PlotterRegistry.html">phenotypic.tools_.register.PlotterRegistry</a></li>
 </ul>
 </details></li>
@@ -930,6 +939,56 @@
 </ul>
 </details></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.slurm_.html">phenotypic.tools_.slurm_</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.tune.html">phenotypic.tune</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.build_pipeline.html">phenotypic.tune.build_pipeline</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.infer_group_key.html">phenotypic.tune.infer_group_key</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.compute_generalization_gap.html">phenotypic.tune.compute_generalization_gap</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.run_held_out.html">phenotypic.tune.run_held_out</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.compute_param_importance.html">phenotypic.tune.compute_param_importance</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.compute_param_importance_report.html">phenotypic.tune.compute_param_importance_report</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.count_free_params.html">phenotypic.tune.count_free_params</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.screening_warmup_floor.html">phenotypic.tune.screening_warmup_floor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.select_params_to_freeze.html">phenotypic.tune.select_params_to_freeze</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.freeze_value.html">phenotypic.tune.freeze_value</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.build_reduced_space.html">phenotypic.tune.build_reduced_space</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.run_tuning.html">phenotypic.tune.run_tuning</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.infer_search_space.html">phenotypic.tune.infer_search_space</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.run_auto_space.html">phenotypic.tune.run_auto_space</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.Categorical.html">phenotypic.tune.Categorical</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.IntRange.html">phenotypic.tune.IntRange</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.FloatRange.html">phenotypic.tune.FloatRange</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.Fixed.html">phenotypic.tune.Fixed</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.Knob.html">phenotypic.tune.Knob</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.SearchSpace.html">phenotypic.tune.SearchSpace</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.StrategyConfig.html">phenotypic.tune.StrategyConfig</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.GridConfig.html">phenotypic.tune.GridConfig</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.RandomConfig.html">phenotypic.tune.RandomConfig</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.OptunaConfig.html">phenotypic.tune.OptunaConfig</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.Scorer.html">phenotypic.tune.Scorer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.QCScorer.html">phenotypic.tune.QCScorer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.ReferenceFreeScorer.html">phenotypic.tune.ReferenceFreeScorer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.GroundTruthMasks.html">phenotypic.tune.GroundTruthMasks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.SupervisedScorer.html">phenotypic.tune.SupervisedScorer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.CompositeScorer.html">phenotypic.tune.CompositeScorer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.Evaluator.html">phenotypic.tune.Evaluator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.EvaluationResult.html">phenotypic.tune.EvaluationResult</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.HeldOutConfig.html">phenotypic.tune.HeldOutConfig</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.GeneralizationReport.html">phenotypic.tune.GeneralizationReport</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.TuningEngine.html">phenotypic.tune.TuningEngine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.TuningSpec.html">phenotypic.tune.TuningSpec</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.Budget.html">phenotypic.tune.Budget</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.StudyStore.html">phenotypic.tune.StudyStore</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.JournalStudyStore.html">phenotypic.tune.JournalStudyStore</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.Trial.html">phenotypic.tune.Trial</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.ImportanceReport.html">phenotypic.tune.ImportanceReport</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.ScreeningController.html">phenotypic.tune.ScreeningController</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.ScreeningConfig.html">phenotypic.tune.ScreeningConfig</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.ScreeningResult.html">phenotypic.tune.ScreeningResult</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.TuneSpec.html">phenotypic.tune.TuneSpec</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.InferredSearchSpace.html">phenotypic.tune.InferredSearchSpace</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tune.Excluded.html">phenotypic.tune.Excluded</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.util.html">phenotypic.util</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -1018,6 +1077,9 @@ tailored to agar plate imaging, building on <cite>MeasurementInfo</cite>, <cite>
 <tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.register_detection_mode" title="phenotypic.abc_.register_detection_mode"><code class="xref py py-obj docutils literal notranslate"><span class="pre">register_detection_mode</span></code></a></p></td>
 <td><p>Class decorator that instantiates <em>cls</em> and registers it by name.</p></td>
 </tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.figure" title="phenotypic.abc_.figure"><code class="xref py py-obj docutils literal notranslate"><span class="pre">figure</span></code></a></p></td>
+<td><p>Mark a method as a figure builder and auto-apply the house Plotly theme.</p></td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -1105,6 +1167,18 @@ tailored to agar plate imaging, building on <cite>MeasurementInfo</cite>, <cite>
 <tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.DetectionMode" title="phenotypic.abc_.DetectionMode"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DetectionMode</span></code></a></p></td>
 <td><p>Base class for detection matrix source modes.</p></td>
 </tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.Control" title="phenotypic.abc_.Control"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Control</span></code></a></p></td>
+<td><p>Renderer-neutral input bound to a figure method's keyword argument.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FigureSpec" title="phenotypic.abc_.FigureSpec"><code class="xref py py-obj docutils literal notranslate"><span class="pre">FigureSpec</span></code></a></p></td>
+<td><p>Introspectable metadata attached to a <code class="docutils literal notranslate"><span class="pre">&#64;figure</span></code> method.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FigureProvider" title="phenotypic.abc_.FigureProvider"><code class="xref py py-obj docutils literal notranslate"><span class="pre">FigureProvider</span></code></a></p></td>
+<td><p>Mixin turning <code class="docutils literal notranslate"><span class="pre">&#64;figure</span></code> methods into <code class="docutils literal notranslate"><span class="pre">.inspect()</span></code> / <code class="docutils literal notranslate"><span class="pre">.dash()</span></code> / a dashboard.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.BoundFigures" title="phenotypic.abc_.BoundFigures"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BoundFigures</span></code></a></p></td>
+<td><p>A subject bound to a provider's figures — the transient renderable the GUI Dash adapter consumes.</p></td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -1123,7 +1197,7 @@ plate, with the gradient flattened. The base class adds no new abstract
 methods – it categorizes the family for documentation, GUI listing,
 and shared tooling.</p>
 <p>All <a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.BackgroundSubtraction" title="phenotypic.abc_.BackgroundSubtraction"><code class="xref py py-class docutils literal notranslate"><span class="pre">BackgroundSubtraction</span></code></a> subclasses inherit the integrity
-check from <a class="reference internal" href="../phenotypic.abc_.html#id0" title="phenotypic.abc_.ImageEnhancer.apply"><code class="xref py py-meth docutils literal notranslate"><span class="pre">ImageEnhancer.apply()</span></code></a>, which protects <code class="docutils literal notranslate"><span class="pre">image.rgb</span></code>
+check from <a class="reference internal" href="../phenotypic.abc_.html#id10" title="phenotypic.abc_.ImageEnhancer.apply"><code class="xref py py-meth docutils literal notranslate"><span class="pre">ImageEnhancer.apply()</span></code></a>, which protects <code class="docutils literal notranslate"><span class="pre">image.rgb</span></code>
 and <code class="docutils literal notranslate"><span class="pre">image.gray</span></code> from mutation. Background subtraction is therefore
 confined to <code class="docutils literal notranslate"><span class="pre">image.detect_mat</span></code>.</p>
 <p><strong>Quick Decision Guide:</strong></p>
@@ -3054,6 +3128,61 @@ string is returned instead. Accepts a <code class="docutils literal notranslate"
 
 <dl class="py class">
 <dt class="sig sig-object py">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">BoundFigures</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">provider</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FigureProvider" title="phenotypic.abc_._figure_provider.FigureProvider"><span class="pre">FigureProvider</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">subject</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/abc_/_figure_provider.html#BoundFigures"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>A subject bound to a provider’s figures — the transient renderable the GUI
+Dash adapter consumes.</p>
+<p>The per-render cache lives <strong>here</strong>, not on the provider, so a pydantic model
+stays free of transient state. Discard after use.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>provider</strong> (<a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FigureProvider" title="phenotypic.abc_.FigureProvider"><em>FigureProvider</em></a>)</p></li>
+<li><p><strong>subject</strong> (<em>Any</em>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">render</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">spec</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FigureSpec" title="phenotypic.abc_.FigureSpec"><span class="pre">FigureSpec</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">control_values</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">go.Figure</span></span></span><a class="reference internal" href="../../_modules/phenotypic/abc_/_figure_provider.html#BoundFigures.render"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Render <code class="docutils literal notranslate"><span class="pre">spec</span></code> with the given control values, caching by (name, values).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>spec</strong> (<a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FigureSpec" title="phenotypic.abc_.FigureSpec"><em>FigureSpec</em></a>) – The figure to render.</p></li>
+<li><p><strong>**control_values</strong> (<em>Any</em>) – Control keyword values (simple scalars).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The themed <code class="docutils literal notranslate"><span class="pre">plotly.graph_objects.Figure</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>go.Figure</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">specs</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FigureSpec" title="phenotypic.abc_._figure_provider.FigureSpec"><span class="pre">FigureSpec</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/phenotypic/abc_/_figure_provider.html#BoundFigures.specs"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>The provider’s figures, sorted by definition order.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)">list</a>[<a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FigureSpec" title="phenotypic.abc_._figure_provider.FigureSpec"><em>FigureSpec</em></a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">subject</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></em></dt>
+<dd><p>The bound subject (may be <code class="docutils literal notranslate"><span class="pre">None</span></code> for helpers that hold their own).</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">ContrastAdjustment</span></span><a class="reference internal" href="../../_modules/phenotypic/abc_/_enhance_markers/_contrast_adjustment.html#ContrastAdjustment"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
 <dd><p>Bases: <a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.ImageEnhancer" title="phenotypic.abc_._image_enhancer.ImageEnhancer"><code class="xref py py-class docutils literal notranslate"><span class="pre">ImageEnhancer</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/abc.html#abc.ABC" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></a></p>
 <p>Marker ABC for intensity/contrast remapping enhancers on <code class="docutils literal notranslate"><span class="pre">detect_mat</span></code>.</p>
@@ -3066,7 +3195,7 @@ plate, with contrast rebalanced. The base class adds no new abstract
 methods – it categorizes the family for documentation, GUI listing,
 and shared tooling.</p>
 <p>All <a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.ContrastAdjustment" title="phenotypic.abc_.ContrastAdjustment"><code class="xref py py-class docutils literal notranslate"><span class="pre">ContrastAdjustment</span></code></a> subclasses inherit the integrity check
-from <a class="reference internal" href="../phenotypic.abc_.html#id0" title="phenotypic.abc_.ImageEnhancer.apply"><code class="xref py py-meth docutils literal notranslate"><span class="pre">ImageEnhancer.apply()</span></code></a>, which protects <code class="docutils literal notranslate"><span class="pre">image.rgb</span></code> and
+from <a class="reference internal" href="../phenotypic.abc_.html#id10" title="phenotypic.abc_.ImageEnhancer.apply"><code class="xref py py-meth docutils literal notranslate"><span class="pre">ImageEnhancer.apply()</span></code></a>, which protects <code class="docutils literal notranslate"><span class="pre">image.rgb</span></code> and
 <code class="docutils literal notranslate"><span class="pre">image.gray</span></code> from mutation. Contrast adjustment is therefore confined
 to <code class="docutils literal notranslate"><span class="pre">image.detect_mat</span></code>.</p>
 <p><strong>Quick Decision Guide:</strong></p>
@@ -3982,6 +4111,70 @@ visualization controls will be added to the widget.</p></li>
 
 <dl class="py class">
 <dt class="sig sig-object py">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">Control</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">label</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">kind</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><span class="pre">Literal</span></a><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'float'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'select'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'bool'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'text'</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">bounds</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">step</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">options</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">help</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/abc_/_figure_provider.html#Control"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Renderer-neutral input bound to a figure method’s keyword argument.</p>
+<p>Bound <strong>by identity</strong>: the same instance referenced by several <code class="docutils literal notranslate"><span class="pre">&#64;figure</span></code>
+methods renders as one shared widget; distinct instances (even with the same
+<code class="docutils literal notranslate"><span class="pre">label</span></code>) are independent widgets. There is no global name namespace, so two
+unrelated figures may each have a <code class="docutils literal notranslate"><span class="pre">sigma</span></code> kwarg without colliding.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>label</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Human-readable widget label.</p></li>
+<li><p><strong>kind</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><em>Literal</em></a><em>[</em><em>'float'</em><em>, </em><em>'select'</em><em>, </em><em>'bool'</em><em>, </em><em>'text'</em><em>]</em>) – One of <code class="docutils literal notranslate"><span class="pre">&quot;float&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;select&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;bool&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;text&quot;</span></code>.</p></li>
+<li><p><strong>default</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a>) – Initial value. Must be consistent with <code class="docutils literal notranslate"><span class="pre">kind</span></code> (within
+<code class="docutils literal notranslate"><span class="pre">bounds</span></code> for <code class="docutils literal notranslate"><span class="pre">float</span></code>; a member of <code class="docutils literal notranslate"><span class="pre">options</span></code> for <code class="docutils literal notranslate"><span class="pre">select</span></code>; a
+<code class="docutils literal notranslate"><span class="pre">bool</span></code> for <code class="docutils literal notranslate"><span class="pre">bool</span></code>).</p></li>
+<li><p><strong>bounds</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>] </em><em>| </em><em>None</em>) – <code class="docutils literal notranslate"><span class="pre">(low,</span> <span class="pre">high)</span></code> range — <strong>required</strong> for <code class="docutils literal notranslate"><span class="pre">&quot;float&quot;</span></code>.</p></li>
+<li><p><strong>step</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em> | </em><em>None</em>) – Optional slider step for <code class="docutils literal notranslate"><span class="pre">&quot;float&quot;</span></code>.</p></li>
+<li><p><strong>options</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a><em>, </em><em>...</em><em>] </em><em>| </em><em>None</em>) – Allowed values — <strong>required</strong> for <code class="docutils literal notranslate"><span class="pre">&quot;select&quot;</span></code>.</p></li>
+<li><p><strong>help</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – Optional tooltip text.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If the kind-specific requirements are not met.</p>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">bounds</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">default</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></em></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">help</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">kind</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><span class="pre">Literal</span></a><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'float'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'select'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'bool'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'text'</span></span><span class="p"><span class="pre">]</span></span></em></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">label</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">options</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">step</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">DetectionMode</span></span><a class="reference internal" href="../../_modules/phenotypic/_core/_image_parts/detection_modes/_detection_mode.html#DetectionMode"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/abc.html#abc.ABC" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></a></p>
 <p>Base class for detection matrix source modes.</p>
@@ -4020,6 +4213,297 @@ raw image data (grayscale, individual RGB channels, etc.).</p>
 
 <dl class="py class">
 <dt class="sig sig-object py">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">FigureProvider</span></span><a class="reference internal" href="../../_modules/phenotypic/abc_/_figure_provider.html#FigureProvider"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Mixin turning <code class="docutils literal notranslate"><span class="pre">&#64;figure</span></code> methods into <code class="docutils literal notranslate"><span class="pre">.inspect()</span></code> / <code class="docutils literal notranslate"><span class="pre">.dash()</span></code> / a
+dashboard.</p>
+<p>Methods only — no fields, no <code class="docutils literal notranslate"><span class="pre">__init__</span></code>, no instance state — so it is safe
+to mix into any <code class="docutils literal notranslate"><span class="pre">pydantic.BaseModel</span></code> in any MRO position (mirrors
+<code class="docutils literal notranslate"><span class="pre">LazyWidgetMixin</span></code>). Mix it into the concrete class that owns the <code class="docutils literal notranslate"><span class="pre">&#64;figure</span></code>
+methods:</p>
+<div class="highlight-python3 notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">DiagnosticsPlotter</span><span class="p">(</span><span class="n">BasePlotter</span><span class="p">,</span> <span class="n">FigureProvider</span><span class="p">):</span> <span class="o">...</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">MeasureSymmetricZones</span><span class="p">(</span><span class="n">MeasureFeatures</span><span class="p">,</span> <span class="n">FigureProvider</span><span class="p">):</span> <span class="o">...</span>
+</pre></div>
+</div>
+<dl class="simple">
+<dt>Subject binding:</dt><dd><ul class="simple">
+<li><p><strong>Helpers</strong> hold their subject — override <code class="xref py py-meth docutils literal notranslate"><span class="pre">_figure_subject()</span></code> to
+return it; their <code class="docutils literal notranslate"><span class="pre">&#64;figure</span></code> methods read <code class="docutils literal notranslate"><span class="pre">self</span></code> and take no subject.</p></li>
+<li><p><strong>Operations</strong> pass the subject at call time (<code class="docutils literal notranslate"><span class="pre">op.dash(image)</span></code>); their
+<code class="docutils literal notranslate"><span class="pre">&#64;figure</span></code> methods take it as the first positional parameter.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">dash</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">subject</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/abc_/_figure_provider.html#FigureProvider.dash"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>The interactive view.</p>
+<ul class="simple">
+<li><p>No <code class="docutils literal notranslate"><span class="pre">Control</span></code> anywhere → a composed subplot <code class="docutils literal notranslate"><span class="pre">go.Figure</span></code> (preserving
+the repo-wide <code class="docutils literal notranslate"><span class="pre">.dash()</span> <span class="pre">-&gt;</span> <span class="pre">go.Figure</span></code> contract).</p></li>
+<li><p>Any <code class="docutils literal notranslate"><span class="pre">Control</span></code> present → the ipywidgets notebook dashboard.</p></li>
+</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>subject</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a>) – Subject to bind (operations); <code class="docutils literal notranslate"><span class="pre">None</span></code> uses the held subject.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A <code class="docutils literal notranslate"><span class="pre">go.Figure</span></code> (control-free) or an ipywidgets widget (controls).</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">figures</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">subject</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.BoundFigures" title="phenotypic.abc_._figure_provider.BoundFigures"><span class="pre">BoundFigures</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/abc_/_figure_provider.html#FigureProvider.figures"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Bind <code class="docutils literal notranslate"><span class="pre">subject</span></code> → a transient <a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.BoundFigures" title="phenotypic.abc_.BoundFigures"><code class="xref py py-class docutils literal notranslate"><span class="pre">BoundFigures</span></code></a> the Dash adapter
+consumes. The per-render cache lives on the returned object, not here.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>subject</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.BoundFigures" title="phenotypic.abc_._figure_provider.BoundFigures"><em>BoundFigures</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">inspect</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">subject</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">for_save</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">overrides</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">go.Figure</span></span></span><a class="reference internal" href="../../_modules/phenotypic/abc_/_figure_provider.html#FigureProvider.inspect"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>The primary saveable <code class="docutils literal notranslate"><span class="pre">go.Figure</span></code>.</p>
+<p>This is the default <code class="docutils literal notranslate"><span class="pre">inspect()</span></code> contract used by control-free helpers
+and by the CLI’s <code class="docutils literal notranslate"><span class="pre">--save-inspect</span></code>. Classes that hand-write their own
+<code class="docutils literal notranslate"><span class="pre">inspect</span></code> (e.g. <code class="docutils literal notranslate"><span class="pre">MeasureSymmetricZones</span></code>) override this naturally.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>subject</strong> (<em>Any</em>) – Subject to render against (operations); <code class="docutils literal notranslate"><span class="pre">None</span></code> uses the
+held subject (helpers).</p></li>
+<li><p><strong>for_save</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – Forwarded to the figure method if it accepts <code class="docutils literal notranslate"><span class="pre">for_save</span></code>
+(so legend-only layers can be flattened for a static raster).</p></li>
+<li><p><strong>**overrides</strong> (<em>Any</em>) – Override control defaults by keyword.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The themed primary <code class="docutils literal notranslate"><span class="pre">plotly.graph_objects.Figure</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>go.Figure</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">iter_figures</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FigureSpec" title="phenotypic.abc_._figure_provider.FigureSpec"><span class="pre">FigureSpec</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/phenotypic/abc_/_figure_provider.html#FigureProvider.iter_figures"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>All <code class="docutils literal notranslate"><span class="pre">&#64;figure</span></code> specs on this instance’s class, in definition order.</p>
+<p>Walks the MRO so inherited figures are included. Normal Python
+override semantics apply: a subclass method without <code class="docutils literal notranslate"><span class="pre">&#64;figure</span></code> shadows
+and removes the inherited figure, while a redecorated override keeps
+the inherited figure’s original position.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)">list</a>[<a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FigureSpec" title="phenotypic.abc_._figure_provider.FigureSpec"><em>FigureSpec</em></a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">FigureSpec</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">section</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">controls</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.Control" title="phenotypic.abc_.Control"><span class="pre">Control</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">description</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">primary</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'go.Figure'</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wants_subject</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">subject_param</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">order</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/abc_/_figure_provider.html#FigureSpec"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Introspectable metadata attached to a <code class="docutils literal notranslate"><span class="pre">&#64;figure</span></code> method.</p>
+<p>Author-supplied fields come from the decorator call; the rest are derived by
+the decorator from the wrapped method’s signature.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>title</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>)</p></li>
+<li><p><strong>section</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>)</p></li>
+<li><p><strong>controls</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.Control" title="phenotypic.abc_.Control"><em>Control</em></a><em>]</em>)</p></li>
+<li><p><strong>description</strong> (<em>Any</em>)</p></li>
+<li><p><strong>primary</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>)</p></li>
+<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>)</p></li>
+<li><p><strong>method</strong> (<em>Callable</em><em>[</em><em>...</em><em>, </em><em>'go.Figure'</em><em>]</em>)</p></li>
+<li><p><strong>wants_subject</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>)</p></li>
+<li><p><strong>subject_param</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>)</p></li>
+<li><p><strong>order</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">title</span></span></dt>
+<dd><p>Figure title (author).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">section</span></span></dt>
+<dd><p>Flat grouping tag → one collapsible card (author).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">controls</span></span></dt>
+<dd><p><code class="docutils literal notranslate"><span class="pre">{method-kwarg:</span> <span class="pre">Control}</span></code> (author).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)">dict</a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a>, <a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.Control" title="phenotypic.abc_.Control">Control</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">description</span></span></dt>
+<dd><p>Optional interpretive block, e.g. a <code class="docutils literal notranslate"><span class="pre">PanelDescription</span></code>
+(author). Typed <code class="docutils literal notranslate"><span class="pre">Any</span></code> to keep this module dependency-free.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Any</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">primary</span></span></dt>
+<dd><p>Marks the figure returned by <a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FigureProvider.inspect" title="phenotypic.abc_.FigureProvider.inspect"><code class="xref py py-meth docutils literal notranslate"><span class="pre">FigureProvider.inspect()</span></code></a>
+(author).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)">bool</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">name</span></span></dt>
+<dd><p>The method’s <code class="docutils literal notranslate"><span class="pre">__name__</span></code> (decorator).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">method</span></span></dt>
+<dd><p>The wrapped, auto-styled callable (decorator).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Callable[…, ‘go.Figure’]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">wants_subject</span></span></dt>
+<dd><p>Whether the method takes a subject as its first
+positional parameter (decorator).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)">bool</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">subject_param</span></span></dt>
+<dd><p>Name of that subject parameter, or <code class="docutils literal notranslate"><span class="pre">None</span></code> (decorator).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a> | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">order</span></span></dt>
+<dd><p>Definition-order index used to sort figures (decorator).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">controls</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.Control" title="phenotypic.abc_.Control"><span class="pre">Control</span></a><span class="p"><span class="pre">]</span></span></em></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">description</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Any</span></em></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">method</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'go.Figure'</span></span><span class="p"><span class="pre">]</span></span></em></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">order</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">primary</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></em></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">section</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">subject_param</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></em></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">title</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">wants_subject</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></em></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">FocusBlob</span></span><a class="reference internal" href="../../_modules/phenotypic/abc_/_enhance_markers/_focus_blob.html#FocusBlob"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
 <dd><p>Bases: <a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.ImageEnhancer" title="phenotypic.abc_._image_enhancer.ImageEnhancer"><code class="xref py py-class docutils literal notranslate"><span class="pre">ImageEnhancer</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/abc.html#abc.ABC" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></a></p>
 <p>Marker ABC for enhancers whose <code class="docutils literal notranslate"><span class="pre">detect_mat</span></code> output is a blob response.</p>
@@ -4032,7 +4516,7 @@ inocula – making size-invariant colony emphasis the goal. The base
 class adds no new abstract methods – it categorizes the family for
 documentation, GUI listing, and shared tooling.</p>
 <p>All <a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FocusBlob" title="phenotypic.abc_.FocusBlob"><code class="xref py py-class docutils literal notranslate"><span class="pre">FocusBlob</span></code></a> subclasses inherit the integrity check from
-<a class="reference internal" href="../phenotypic.abc_.html#id0" title="phenotypic.abc_.ImageEnhancer.apply"><code class="xref py py-meth docutils literal notranslate"><span class="pre">ImageEnhancer.apply()</span></code></a>, which protects <code class="docutils literal notranslate"><span class="pre">image.rgb</span></code> and
+<a class="reference internal" href="../phenotypic.abc_.html#id10" title="phenotypic.abc_.ImageEnhancer.apply"><code class="xref py py-meth docutils literal notranslate"><span class="pre">ImageEnhancer.apply()</span></code></a>, which protects <code class="docutils literal notranslate"><span class="pre">image.rgb</span></code> and
 <code class="docutils literal notranslate"><span class="pre">image.gray</span></code> from mutation. Blob isolation is therefore confined to
 <code class="docutils literal notranslate"><span class="pre">image.detect_mat</span></code>.</p>
 <p><strong>Quick Decision Guide:</strong></p>
@@ -4962,7 +5446,7 @@ other high-curvature structure. The base class adds no new abstract
 methods – it categorizes the family for documentation, GUI listing,
 and shared tooling.</p>
 <p>All <a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FocusEdge" title="phenotypic.abc_.FocusEdge"><code class="xref py py-class docutils literal notranslate"><span class="pre">FocusEdge</span></code></a> subclasses inherit the integrity check from
-<a class="reference internal" href="../phenotypic.abc_.html#id0" title="phenotypic.abc_.ImageEnhancer.apply"><code class="xref py py-meth docutils literal notranslate"><span class="pre">ImageEnhancer.apply()</span></code></a>, which protects <code class="docutils literal notranslate"><span class="pre">image.rgb</span></code> and
+<a class="reference internal" href="../phenotypic.abc_.html#id10" title="phenotypic.abc_.ImageEnhancer.apply"><code class="xref py py-meth docutils literal notranslate"><span class="pre">ImageEnhancer.apply()</span></code></a>, which protects <code class="docutils literal notranslate"><span class="pre">image.rgb</span></code> and
 <code class="docutils literal notranslate"><span class="pre">image.gray</span></code> from mutation. Edge isolation is therefore confined to
 <code class="docutils literal notranslate"><span class="pre">image.detect_mat</span></code>.</p>
 <p><strong>Quick Decision Guide:</strong></p>
@@ -14675,7 +15159,7 @@ primary parameter is a noise estimate (<code class="docutils literal notranslate
 methods – it categorizes the family for documentation, GUI listing,
 and shared tooling.</p>
 <p>All <a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.ImageDenoiser" title="phenotypic.abc_.ImageDenoiser"><code class="xref py py-class docutils literal notranslate"><span class="pre">ImageDenoiser</span></code></a> subclasses inherit the integrity check from
-<a class="reference internal" href="../phenotypic.abc_.html#id0" title="phenotypic.abc_.ImageEnhancer.apply"><code class="xref py py-meth docutils literal notranslate"><span class="pre">ImageEnhancer.apply()</span></code></a>, which protects <code class="docutils literal notranslate"><span class="pre">image.rgb</span></code> and
+<a class="reference internal" href="../phenotypic.abc_.html#id10" title="phenotypic.abc_.ImageEnhancer.apply"><code class="xref py py-meth docutils literal notranslate"><span class="pre">ImageEnhancer.apply()</span></code></a>, which protects <code class="docutils literal notranslate"><span class="pre">image.rgb</span></code> and
 <code class="docutils literal notranslate"><span class="pre">image.gray</span></code> from mutation. Denoising is therefore confined to
 <code class="docutils literal notranslate"><span class="pre">image.detect_mat</span></code>.</p>
 <p>Concrete subclasses typically also mix in
@@ -20075,7 +20559,7 @@ colonies, glare). They typically mix in
 The base class adds no new abstract methods – it categorizes the
 family for documentation, GUI listing, and shared tooling.</p>
 <p>All <a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.MorphologicalFiltering" title="phenotypic.abc_.MorphologicalFiltering"><code class="xref py py-class docutils literal notranslate"><span class="pre">MorphologicalFiltering</span></code></a> subclasses inherit the integrity
-check from <a class="reference internal" href="../phenotypic.abc_.html#id0" title="phenotypic.abc_.ImageEnhancer.apply"><code class="xref py py-meth docutils literal notranslate"><span class="pre">ImageEnhancer.apply()</span></code></a>, which protects <code class="docutils literal notranslate"><span class="pre">image.rgb</span></code>
+check from <a class="reference internal" href="../phenotypic.abc_.html#id10" title="phenotypic.abc_.ImageEnhancer.apply"><code class="xref py py-meth docutils literal notranslate"><span class="pre">ImageEnhancer.apply()</span></code></a>, which protects <code class="docutils literal notranslate"><span class="pre">image.rgb</span></code>
 and <code class="docutils literal notranslate"><span class="pre">image.gray</span></code> from mutation. Morphological filtering is therefore
 confined to <code class="docutils literal notranslate"><span class="pre">image.detect_mat</span></code>.</p>
 <p><strong>Quick Decision Guide:</strong></p>
@@ -26279,7 +26763,7 @@ than a statistical noise estimate, which distinguishes them from
 softer. The base class adds no new abstract methods – it categorizes
 the family for documentation, GUI listing, and shared tooling.</p>
 <p>All <a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.Smoothing" title="phenotypic.abc_.Smoothing"><code class="xref py py-class docutils literal notranslate"><span class="pre">Smoothing</span></code></a> subclasses inherit the integrity check from
-<a class="reference internal" href="../phenotypic.abc_.html#id0" title="phenotypic.abc_.ImageEnhancer.apply"><code class="xref py py-meth docutils literal notranslate"><span class="pre">ImageEnhancer.apply()</span></code></a>, which protects <code class="docutils literal notranslate"><span class="pre">image.rgb</span></code> and
+<a class="reference internal" href="../phenotypic.abc_.html#id10" title="phenotypic.abc_.ImageEnhancer.apply"><code class="xref py py-meth docutils literal notranslate"><span class="pre">ImageEnhancer.apply()</span></code></a>, which protects <code class="docutils literal notranslate"><span class="pre">image.rgb</span></code> and
 <code class="docutils literal notranslate"><span class="pre">image.gray</span></code> from mutation. Smoothing is therefore confined to
 <code class="docutils literal notranslate"><span class="pre">image.detect_mat</span></code>.</p>
 <p><strong>Quick Decision Guide:</strong></p>
@@ -28362,6 +28846,44 @@ visualization controls will be added to the widget.</p></li>
 </dl>
 </dd></dl>
 
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">figure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">section</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'default'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">controls</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.Control" title="phenotypic.abc_.Control"><span class="pre">Control</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">description</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">primary</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'go.Figure'</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'go.Figure'</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/phenotypic/abc_/_figure_provider.html#figure"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Mark a method as a figure builder and auto-apply the house Plotly theme.</p>
+<p>The decorated method returns a raw <code class="docutils literal notranslate"><span class="pre">plotly.graph_objects.Figure</span></code>, accepts
+each control as a keyword argument, and <strong>may</strong> accept a subject as its first
+positional parameter (any positional-or-keyword parameter that is not itself
+a control). The decorator:</p>
+<ul class="simple">
+<li><p>validates that every <code class="docutils literal notranslate"><span class="pre">controls</span></code> key names a real parameter,</p></li>
+<li><p>detects <code class="docutils literal notranslate"><span class="pre">wants_subject</span></code> / <code class="docutils literal notranslate"><span class="pre">subject_param</span></code> from the signature,</p></li>
+<li><p>stashes a <a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FigureSpec" title="phenotypic.abc_.FigureSpec"><code class="xref py py-class docutils literal notranslate"><span class="pre">FigureSpec</span></code></a> on <code class="docutils literal notranslate"><span class="pre">fn.__figure_spec__</span></code> (invisible to
+pydantic), and</p></li>
+<li><p>wraps the method so its returned figure is restyled via the <code class="docutils literal notranslate"><span class="pre">&quot;phenotypic&quot;</span></code>
+template (imported lazily, so this module stays UI-toolkit-free).</p></li>
+</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>title</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Figure title.</p></li>
+<li><p><strong>section</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Flat grouping tag for collapsible cards.</p></li>
+<li><p><strong>controls</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.Control" title="phenotypic.abc_.Control"><em>Control</em></a><em>] </em><em>| </em><em>None</em>) – <code class="docutils literal notranslate"><span class="pre">{method-kwarg:</span> <span class="pre">Control}</span></code> recompute inputs.</p></li>
+<li><p><strong>description</strong> (<em>Any</em>) – Optional interpretive block.</p></li>
+<li><p><strong>primary</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – Mark this as the <code class="docutils literal notranslate"><span class="pre">inspect()</span></code> figure.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A decorator that returns the wrapped, theme-applying method.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If a <code class="docutils literal notranslate"><span class="pre">controls</span></code> key is not a parameter of the method.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Callable[[Callable[…, ‘go.Figure’]], Callable[…, ‘go.Figure’]]</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">

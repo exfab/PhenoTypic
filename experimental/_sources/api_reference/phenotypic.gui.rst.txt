@@ -17,4 +17,4 @@ Subpackages
    phenotypic.gui.results_viewer
    phenotypic.gui.run_console
    phenotypic.gui.shell
-   phenotypic.gui.sweep
+   phenotypic.gui.tune

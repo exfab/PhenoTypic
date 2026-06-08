@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -66,7 +66,7 @@
     <link rel="prev" title="The _operate() Contract" href="operate_contract.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -631,11 +631,12 @@ enabling JSON serialization and dynamic pipeline construction.</p>
 <p>When loading a pipeline that contains <code class="docutils literal notranslate"><span class="pre">MyCustomEnhancer</span></code>, ensure
 <code class="docutils literal notranslate"><span class="pre">my_package</span></code> is installed and importable.</p>
 </section>
-<section id="plot-and-dashboard-registry">
-<h2>Plot and Dashboard Registry<a class="headerlink" href="#plot-and-dashboard-registry" title="Link to this heading">#</a></h2>
-<p>Plotters and dashboards follow a similar pattern — they register
-through Python’s class system and are accessible via the <code class="docutils literal notranslate"><span class="pre">image.plot</span></code>
-and <code class="docutils literal notranslate"><span class="pre">image.panel</span></code> accessors.</p>
+<section id="plot-registry">
+<h2>Plot Registry<a class="headerlink" href="#plot-registry" title="Link to this heading">#</a></h2>
+<p>Plotters follow a similar pattern — they register through Python’s
+class system and are accessible via the <code class="docutils literal notranslate"><span class="pre">image.plot</span></code> accessor. Static
+figures come from <code class="docutils literal notranslate"><span class="pre">image.plot.&lt;name&gt;()</span></code>; interactive views are served
+through the <code class="docutils literal notranslate"><span class="pre">image.plot.dash.&lt;name&gt;()</span></code> sub-namespace.</p>
 </section>
 <section id="naming-conventions">
 <h2>Naming Conventions<a class="headerlink" href="#naming-conventions" title="Link to this heading">#</a></h2>
@@ -674,7 +675,7 @@ pipeline JSON files and should be self-documenting</p></li>
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#how-it-works">How It Works</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#registering-custom-operations">Registering Custom Operations</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#plot-and-dashboard-registry">Plot and Dashboard Registry</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#plot-registry">Plot Registry</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#naming-conventions">Naming Conventions</a></li>
 </ul>
   </nav></div>

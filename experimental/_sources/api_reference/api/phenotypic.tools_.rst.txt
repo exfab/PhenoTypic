@@ -16,6 +16,8 @@
       :toctree:
       :nosignatures:
    
+      atomic_write_bytes
+      atomic_write_text
       is_binary_mask
       timed_execution
       analysis_csv_path
@@ -23,6 +25,7 @@
       analysis_html_path
       analysis_parquet_path
       analysis_scatter_json_path
+      best_pipeline_path
       chunk_lock_path
       chunk_manifest_path
       chunk_parquet_filename
@@ -40,6 +43,7 @@
       deliverables_dir
       event_log_path
       failures_jsonl_path
+      generalization_path
       job_metadata_path
       load_image_from_hdf
       load_master_measurements
@@ -53,6 +57,11 @@
       migrate_legacy_machine_state
       clear_machine_state
       overlay_manifest_path
+      param_importance_path
+      pareto_best_pipeline_path
+      pareto_dir
+      pareto_front_parquet_path
+      pareto_importance_path
       phenotypic_cache_dir
       phenotypic_cache_pipeline_json_path
       pipeline_json_path
@@ -73,12 +82,21 @@
       resolve_manifest_json_path
       resolve_processing_state_path
       resolve_progress_dir
+      resolve_split_assignment_path
+      resolve_study_db_path
       results_dir
       sentinel_resubmitted_path
       shard_parquet_filename
       slurm_scripts_dir
       task_status_filename
       task_status_path
+      trials_parquet_path
+      tune_cache_dir
+      tune_cache_run_marker_path
+      tune_cache_split_assignment_path
+      tune_cache_splits_dir
+      tune_cache_study_db_path
+      tuning_spec_path
    
    
 
@@ -125,7 +143,6 @@
    constants_
    exceptions_
    napari_
-   panel_
    register
    slurm
    slurm_

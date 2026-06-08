@@ -1,0 +1,65 @@
+phenotypic.tune.TuningSpec
+==========================
+
+.. currentmodule:: phenotypic.tune
+
+.. autoclass:: TuningSpec
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~TuningSpec.__init__
+      ~TuningSpec.construct
+      ~TuningSpec.copy
+      ~TuningSpec.dict
+      ~TuningSpec.from_orm
+      ~TuningSpec.json
+      ~TuningSpec.model_construct
+      ~TuningSpec.model_copy
+      ~TuningSpec.model_dump
+      ~TuningSpec.model_dump_json
+      ~TuningSpec.model_json_schema
+      ~TuningSpec.model_parametrized_name
+      ~TuningSpec.model_post_init
+      ~TuningSpec.model_rebuild
+      ~TuningSpec.model_validate
+      ~TuningSpec.model_validate_json
+      ~TuningSpec.model_validate_strings
+      ~TuningSpec.parse_file
+      ~TuningSpec.parse_obj
+      ~TuningSpec.parse_raw
+      ~TuningSpec.schema
+      ~TuningSpec.schema_json
+      ~TuningSpec.update_forward_refs
+      ~TuningSpec.validate
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~TuningSpec.model_computed_fields
+      ~TuningSpec.model_config
+      ~TuningSpec.model_extra
+      ~TuningSpec.model_fields
+      ~TuningSpec.model_fields_set
+      ~TuningSpec.pipeline
+      ~TuningSpec.search_space
+      ~TuningSpec.scorer
+      ~TuningSpec.evaluator
+      ~TuningSpec.strategy
+      ~TuningSpec.budget
+      ~TuningSpec.held_out
+   
+   

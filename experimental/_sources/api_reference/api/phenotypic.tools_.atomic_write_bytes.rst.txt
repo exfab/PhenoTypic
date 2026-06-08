@@ -1,0 +1,6 @@
+phenotypic.tools\_.atomic\_write\_bytes
+=======================================
+
+.. currentmodule:: phenotypic.tools_
+
+.. autofunction:: atomic_write_bytes

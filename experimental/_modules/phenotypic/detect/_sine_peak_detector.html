@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -567,15 +567,17 @@
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">gc</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Literal</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Annotated</span><span class="p">,</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">Optional</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">scipy.ndimage</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">ndimage</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Field</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">scipy.ndimage</span><span class="w"> </span><span class="kn">import</span> <span class="n">gaussian_filter1d</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">scipy.signal</span><span class="w"> </span><span class="kn">import</span> <span class="n">find_peaks</span><span class="p">,</span> <span class="n">fftconvolve</span><span class="p">,</span> <span class="n">medfilt</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">scipy.stats</span><span class="w"> </span><span class="kn">import</span> <span class="n">rankdata</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ObjectDetector</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">TuneSpec</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.mixin</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridInferenceMixin</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">skimage.filters</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">filters</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">skimage.morphology</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">morphology</span>
@@ -595,84 +597,82 @@
 <span class="sd">    growth. For a full comparison see</span>
 <span class="sd">    :doc:`/explanation/detection_strategies_compared`.</span>
 
+<span class="sd">    Best For:</span>
+<span class="sd">        - Gridded plates (96-well, 384-well, pinned arrays) where colonies</span>
+<span class="sd">          are arranged in a regular periodic pattern.</span>
+<span class="sd">        - Plates with heterogeneous colony sizes or uneven growth where</span>
+<span class="sd">          rank-based correlation outperforms intensity-based peak finding.</span>
+<span class="sd">        - High-throughput batch processing of arrayed plates without</span>
+<span class="sd">          manual grid specification.</span>
+<span class="sd">        - Plates where a small number of empty or very faint wells would</span>
+<span class="sd">          mislead direct intensity peak detection.</span>
+
+<span class="sd">    Consider Also:</span>
+<span class="sd">        - :class:`RoundPeaksDetector` for a simpler grid detector when</span>
+<span class="sd">          colony intensities are uniform and direct peak finding suffices.</span>
+<span class="sd">        - :class:`OtsuDetector` when colonies are not gridded and a global</span>
+<span class="sd">          threshold is appropriate.</span>
+<span class="sd">        - :class:`RankOtsuDetector` when spatial illumination variation is</span>
+<span class="sd">          the primary challenge rather than grid localisation.</span>
+
 <span class="sd">    Args:</span>
 <span class="sd">        thresh_method: Thresholding method for binary mask creation.</span>
-<span class="sd">            Accepted values: ``&#39;otsu&#39;``, ``&#39;mean&#39;``, ``&#39;local&#39;``,</span>
+<span class="sd">            Accepted values: ``&#39;otsu&#39;`` (default), ``&#39;mean&#39;``, ``&#39;local&#39;``,</span>
 <span class="sd">            ``&#39;triangle&#39;``, ``&#39;minimum&#39;``, ``&#39;isodata&#39;``, ``&#39;li&#39;``.</span>
-<span class="sd">            Default: ``&#39;otsu&#39;``.</span>
-
-<span class="sd">        subtract_background: Apply white tophat transform to remove</span>
-<span class="sd">            uneven illumination before thresholding. Default: True.</span>
-
+<span class="sd">            ``&#39;otsu&#39;`` works well for most standardised setups; ``&#39;local&#39;``</span>
+<span class="sd">            adapts to spatial illumination gradients. Default: ``&#39;otsu&#39;``.</span>
+<span class="sd">        subtract_background: Apply white tophat transform to remove uneven</span>
+<span class="sd">            illumination before thresholding. Default: True.</span>
 <span class="sd">        remove_noise: Apply morphological opening to remove small noise</span>
-<span class="sd">            artifacts from the binary mask. Default: True.</span>
-
+<span class="sd">            artefacts from the binary mask. Default: True.</span>
 <span class="sd">        footprint_width: Width in pixels for the background subtraction</span>
 <span class="sd">            kernel. When a GridImage is provided, an adaptive kernel sized</span>
-<span class="sd">            to 1.5x colony spacing is used instead. Default: 6.</span>
-
+<span class="sd">            to 1.5x colony spacing is used instead, making this a fallback</span>
+<span class="sd">            for plain Image inputs. Typical range: 4--20. Default: 6.</span>
 <span class="sd">        noise_radius: Radius of the diamond structuring element for</span>
-<span class="sd">            morphological noise removal. Default: 1.</span>
-
-<span class="sd">        smoothing_sigma: Standard deviation for Gaussian smoothing of</span>
+<span class="sd">            morphological noise removal. Typical range: 1--3. Default: 1.</span>
+<span class="sd">        smoothing_sigma: Gaussian standard deviation for smoothing</span>
 <span class="sd">            row/column intensity profiles before cross-correlation. Higher</span>
-<span class="sd">            values smooth noise but may merge adjacent peaks. Set to 0 to</span>
-<span class="sd">            disable. Default: 2.0.</span>
-
+<span class="sd">            values suppress noise but may merge adjacent peaks. Set to 0 to</span>
+<span class="sd">            disable. Typical range: 0.0--5.0. Default: 2.0.</span>
 <span class="sd">        min_peak_distance: Minimum pixel distance between detected peaks.</span>
-<span class="sd">            If ``None``, automatically estimated from grid dimensions.</span>
+<span class="sd">            When ``None``, automatically estimated from grid dimensions.</span>
 <span class="sd">            Default: None.</span>
-
-<span class="sd">        peak_prominence: Minimum prominence for peak detection. If</span>
-<span class="sd">            ``None``, auto-calculated as 0.1 * signal range. Higher values</span>
+<span class="sd">        peak_prominence: Minimum prominence for peak detection. When</span>
+<span class="sd">            ``None``, auto-calculated as 0.1 × signal range. Higher values</span>
 <span class="sd">            are more selective. Default: None.</span>
-
 <span class="sd">        edge_refinement: Refine grid edges using weighted local intensity</span>
 <span class="sd">            profiles for improved accuracy. Default: True.</span>
-
-<span class="sd">        correlation_threshold: Minimum normalised cross-correlation for a</span>
-<span class="sd">            peak to be valid. Lower values accept weaker matches; higher</span>
-<span class="sd">            values are more selective. Typical range: 0.1--0.5. Default:</span>
-<span class="sd">            0.3.</span>
-
+<span class="sd">        correlation_threshold: Minimum normalised cross-correlation score</span>
+<span class="sd">            for a sinusoidal template peak to be accepted as a valid grid</span>
+<span class="sd">            position. Lower values recover grid cells with weak colony</span>
+<span class="sd">            signal (sparse plates); higher values reject false grid</span>
+<span class="sd">            positions at the cost of missing faint wells. Typical range:</span>
+<span class="sd">            0.1--0.5. Default: 0.3.</span>
 <span class="sd">        selection_mode: Strategy for choosing one object per grid cell.</span>
 <span class="sd">            ``&quot;dominant&quot;`` keeps the largest object by pixel count.</span>
-<span class="sd">            ``&quot;centered&quot;`` keeps the object closest to the cell centre.</span>
-<span class="sd">            ``&quot;regularized&quot;`` fits a global regular-grid model from median</span>
-<span class="sd">            centroids, then re-selects per cell. Default: ``&quot;dominant&quot;``.</span>
-
+<span class="sd">            ``&quot;centered&quot;`` keeps the object whose centroid is closest to</span>
+<span class="sd">            the cell centre. ``&quot;regularized&quot;`` fits a global regular-grid</span>
+<span class="sd">            model from median centroids, then re-selects per cell — best</span>
+<span class="sd">            for pinned arrays. Default: ``&quot;dominant&quot;``.</span>
 <span class="sd">        split_merged: Pre-split merged colonies spanning multiple grid</span>
-<span class="sd">            cells using EDT watershed before grid assignment. Default:</span>
-<span class="sd">            True.</span>
+<span class="sd">            cells using EDT watershed before grid assignment. Set to False</span>
+<span class="sd">            when colonies are well-separated. Default: True.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        Image: Input image with ``objmask`` set to binary mask and</span>
-<span class="sd">        ``objmap`` set to labeled connected components.</span>
+<span class="sd">        ``objmap`` set to labeled connected components with one label per</span>
+<span class="sd">        grid cell.</span>
 
 <span class="sd">    Raises:</span>
 <span class="sd">        ValueError: If ``thresh_method`` is not one of the accepted</span>
 <span class="sd">            values.</span>
 
-<span class="sd">    Best For:</span>
-<span class="sd">        * Gridded plates (96-well, 384-well, pinned arrays) where colonies</span>
-<span class="sd">          are arranged in a regular periodic pattern.</span>
-<span class="sd">        * Plates with heterogeneous colony sizes or uneven growth where</span>
-<span class="sd">          rank-based correlation outperforms intensity-based peak finding.</span>
-<span class="sd">        * High-throughput batch processing of arrayed plates without</span>
-<span class="sd">          manual grid specification.</span>
-
-<span class="sd">    Consider Also:</span>
-<span class="sd">        * :class:`RoundPeaksDetector` for a simpler grid detector when</span>
-<span class="sd">          colony intensities are uniform and direct peak finding suffices.</span>
-<span class="sd">        * :class:`OtsuDetector` when colonies are not gridded and a global</span>
-<span class="sd">          threshold is appropriate.</span>
-<span class="sd">        * :class:`RankOtsuDetector` when spatial illumination variation is</span>
-<span class="sd">          the primary challenge rather than grid localisation.</span>
-
 <span class="sd">    References:</span>
 <span class="sd">        [1] O. Wagih and L. Parts, &quot;gitter: a robust and accurate method</span>
 <span class="sd">        for quantification of colony sizes from plate images,&quot;</span>
 <span class="sd">        *G3 (Bethesda)*, vol. 4, no. 3, pp. 547--552, 2014.</span>
+<span class="sd">        doi: 10.1534/g3.113.009431.</span>
 
 <span class="sd">    See Also:</span>
 <span class="sd">        :doc:`/tutorials/notebooks/02_detecting_colonies`</span>
@@ -688,13 +688,15 @@
     <span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;otsu&quot;</span>
     <span class="n">subtract_background</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
     <span class="n">remove_noise</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
-    <span class="n">footprint_width</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">6</span>
-    <span class="n">noise_radius</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span>
-    <span class="n">smoothing_sigma</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.0</span>
-    <span class="n">min_peak_distance</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">peak_prominence</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="c1"># TODO: review bound (unverified vs literature)</span>
+    <span class="n">footprint_width</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">20</span><span class="p">)]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="n">ge</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">noise_radius</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">)]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">ge</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">smoothing_sigma</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">)]</span> <span class="o">=</span> <span class="mf">2.0</span>
+    <span class="n">min_peak_distance</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="n">tunable</span><span class="o">=</span><span class="kc">False</span><span class="p">)]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">peak_prominence</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="n">tunable</span><span class="o">=</span><span class="kc">False</span><span class="p">)]</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">edge_refinement</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
-    <span class="n">correlation_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.3</span>
+    <span class="c1"># TODO: review bound (unverified vs literature)</span>
+    <span class="n">correlation_threshold</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">)]</span> <span class="o">=</span> <span class="mf">0.3</span>
     <span class="n">selection_mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;dominant&quot;</span><span class="p">,</span> <span class="s2">&quot;centered&quot;</span><span class="p">,</span> <span class="s2">&quot;regularized&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;dominant&quot;</span>
     <span class="n">split_merged</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
 
@@ -871,12 +873,14 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">_estimate_edges</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">binary_image</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">axis</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">n_bins</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="nb">object</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>  <span class="c1"># type: ignore[override]</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Estimate grid edges using sinusoidal cross-correlation.</span>
 
-<span class="sd">        Overrides GridInferenceMixin._estimate_edges with a gitter-faithful</span>
+<span class="sd">        Overrides GridInferenceMixin._estimate_edges with a projection-based</span>
 <span class="sd">        approach: generates a sine template matching expected colony periodicity,</span>
 <span class="sd">        computes FFT-based normalized cross-correlation against the projection</span>
 <span class="sd">        signal, and selects peaks from the correlation output. Rank-based</span>
-<span class="sd">        (Spearman) correlation provides robustness to outliers and monotonic</span>
-<span class="sd">        intensity transformations.</span>
+<span class="sd">        (Spearman-style) correlation provides robustness to outliers and</span>
+<span class="sd">        monotonic intensity transformations. The sinusoidal template and</span>
+<span class="sd">        rank-transform steps are project-specific extensions rather than</span>
+<span class="sd">        steps from the gitter paper cited above.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            binary_image: Binary mask of detected colonies.</span>

@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -562,7 +562,7 @@
   <h1>Source code for phenotypic.enhance._subtract_opening</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">TYPE_CHECKING</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Annotated</span><span class="p">,</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">TYPE_CHECKING</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">cv2</span>
 
@@ -571,6 +571,7 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">BackgroundSubtraction</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.mixin</span><span class="w"> </span><span class="kn">import</span> <span class="n">FootprintMixin</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">TuneSpec</span>
 
 
 <div class="viewcode-block" id="SubtractOpening">
@@ -580,42 +581,48 @@
 
 <span class="sd">    Computes the white top-hat transform (original minus morphological</span>
 <span class="sd">    opening) using OpenCV&#39;s C++/SIMD backend, isolating bright foreground</span>
-<span class="sd">    structures smaller than the structuring element while removing</span>
+<span class="sd">    structures smaller than the structuring element while discarding</span>
 <span class="sd">    slow-varying background intensity. Significantly faster than</span>
 <span class="sd">    scikit-image equivalents for high-throughput workflows.</span>
 
 <span class="sd">    For algorithm details, see :doc:`/explanation/what_enhancement_does`.</span>
 
+<span class="sd">    Best For:</span>
+<span class="sd">        - Fast background subtraction for high-throughput plate screening</span>
+<span class="sd">          or parameter sweeps.</span>
+<span class="sd">        - Removing uneven illumination gradients and agar shading before</span>
+<span class="sd">          colony detection.</span>
+<span class="sd">        - Large-batch pipelines where speed is a priority and a flat</span>
+<span class="sd">          structuring element is acceptable.</span>
+<span class="sd">        - Drop-in acceleration when :class:`SubtractRollingBall` is the</span>
+<span class="sd">          accuracy reference but runtime is the constraint.</span>
+
+<span class="sd">    Consider Also:</span>
+<span class="sd">        - :class:`SubtractRollingBall` for parabolic background estimation</span>
+<span class="sd">          that handles gradual, non-uniform intensity ramps more</span>
+<span class="sd">          accurately.</span>
+<span class="sd">        - :class:`SubtractGaussian` for Gaussian-based subtraction with</span>
+<span class="sd">          continuous control over the background scale.</span>
+<span class="sd">        - :class:`WhiteTophatEnhance` when you want to retain only the</span>
+<span class="sd">          extracted small bright structures rather than a corrected image.</span>
+
 <span class="sd">    Args:</span>
-<span class="sd">        shape: Structuring element geometry. ``&#39;disk&#39;`` (default) gives</span>
-<span class="sd">            isotropic removal suited to round colonies; ``&#39;square&#39;`` is</span>
-<span class="sd">            fastest; ``&#39;diamond&#39;`` is a compromise.</span>
-<span class="sd">        width: Diameter of the structuring element in pixels. Must be</span>
-<span class="sd">            larger than colony diameter to avoid subtracting colony</span>
-<span class="sd">            signal. Typical range: 31--101. Default: 51.</span>
-<span class="sd">        n_iter: Number of morphological iterations. Higher values</span>
-<span class="sd">            intensify background removal. Default: 1.</span>
+<span class="sd">        shape: Structuring element geometry. Accepted values: ``&#39;disk&#39;``</span>
+<span class="sd">            (default) for isotropic removal suited to round colonies;</span>
+<span class="sd">            ``&#39;square&#39;`` for fastest computation; ``&#39;diamond&#39;`` as a</span>
+<span class="sd">            compromise between the two.</span>
+<span class="sd">        width: Diameter of the structuring element in pixels. Must exceed</span>
+<span class="sd">            the largest colony diameter to avoid including colony pixels</span>
+<span class="sd">            in the background estimate. Typical range: 31--101. Default:</span>
+<span class="sd">            51.</span>
+<span class="sd">        n_iter: Number of morphological opening iterations. Additional</span>
+<span class="sd">            iterations intensify background removal at the cost of</span>
+<span class="sd">            eroding fine colony structure. Default: 1.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        Image: Input image with ``detect_mat`` containing only foreground</span>
 <span class="sd">        structures smaller than the structuring element. ``rgb`` and</span>
 <span class="sd">        ``gray`` are unchanged.</span>
-
-<span class="sd">    Best For:</span>
-<span class="sd">        - Fast background subtraction for high-throughput plate screening.</span>
-<span class="sd">        - Removing uneven illumination gradients and agar shading before</span>
-<span class="sd">          colony detection.</span>
-<span class="sd">        - Pipelines where speed matters (large batches, parameter sweeps).</span>
-<span class="sd">        - Drop-in performance upgrade over :class:`SubtractRollingBall`</span>
-<span class="sd">          when a flat structuring element is acceptable.</span>
-
-<span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`SubtractRollingBall` for parabolic background estimation</span>
-<span class="sd">          that handles gradual intensity ramps more accurately.</span>
-<span class="sd">        - :class:`SubtractGaussian` for Gaussian-based background</span>
-<span class="sd">          subtraction with continuous control over the background scale.</span>
-<span class="sd">        - :class:`WhiteTophatEnhance` when you want to keep only the</span>
-<span class="sd">          extracted small bright structures.</span>
 
 <span class="sd">    See Also:</span>
 <span class="sd">        :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a</span>
@@ -625,8 +632,9 @@
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">shape</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;square&quot;</span><span class="p">,</span> <span class="s2">&quot;diamond&quot;</span><span class="p">,</span> <span class="s2">&quot;disk&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;disk&quot;</span>
-    <span class="n">width</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">51</span>
-    <span class="n">n_iter</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="c1"># TODO: review bound (unverified vs literature)</span>
+    <span class="n">width</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mi">31</span><span class="p">,</span> <span class="mi">101</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="mi">2</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">51</span>
+    <span class="n">n_iter</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">1</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
         <span class="n">image</span><span class="o">.</span><span class="n">detect_mat</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">morphologyEx</span><span class="p">(</span>

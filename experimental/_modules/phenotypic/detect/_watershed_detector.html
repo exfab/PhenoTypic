@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -567,17 +567,17 @@
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._grid_image</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridImage</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Literal</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Annotated</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Literal</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">gc</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy.ma</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">ma</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">field_validator</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Field</span><span class="p">,</span> <span class="n">field_validator</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">scipy.ndimage</span><span class="w"> </span><span class="kn">import</span> <span class="n">distance_transform_edt</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">skimage</span><span class="w"> </span><span class="kn">import</span> <span class="n">feature</span><span class="p">,</span> <span class="n">filters</span><span class="p">,</span> <span class="n">morphology</span><span class="p">,</span> <span class="n">segmentation</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ThresholdDetector</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">NdArrayField</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">NdArrayField</span><span class="p">,</span> <span class="n">TuneSpec</span>
 
 
 <div class="viewcode-block" id="WatershedDetector">
@@ -585,90 +585,100 @@
 <span class="k">class</span><span class="w"> </span><span class="nc">WatershedDetector</span><span class="p">(</span><span class="n">ThresholdDetector</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Detect and separate touching colonies by watershed segmentation on a distance-transform surface.</span>
 
-<span class="sd">    Threshold the plate image to a binary mask, compute a Euclidean distance</span>
-<span class="sd">    transform to locate colony centres, seed markers at local maxima, and</span>
-<span class="sd">    propagate labelled regions via watershed on the Sobel gradient. This</span>
-<span class="sd">    region-growing approach individually labels colonies that are in physical</span>
-<span class="sd">    contact -- a scenario where global thresholding merges them into a single</span>
-<span class="sd">    object. For a full comparison see</span>
+<span class="sd">    Thresholds the plate image to a binary mask, computes a Euclidean distance</span>
+<span class="sd">    transform to locate colony centres, seeds markers at local maxima of that</span>
+<span class="sd">    surface, and propagates labelled regions via compact watershed on the Sobel</span>
+<span class="sd">    gradient. This region-growing approach individually labels colonies that are</span>
+<span class="sd">    in physical contact — a scenario where global thresholding merges them into</span>
+<span class="sd">    a single object. For a full comparison of detection strategies, see</span>
 <span class="sd">    :doc:`/explanation/detection_strategies_compared`.</span>
 
-<span class="sd">    Args:</span>
-<span class="sd">        footprint: Structuring element for peak detection. ``&#39;auto&#39;``</span>
-<span class="sd">            infers size from grid spacing (GridImage only); an int creates a</span>
-<span class="sd">            diamond of that radius; an ndarray supplies a custom footprint;</span>
-<span class="sd">            None (default) lets scikit-image choose. Larger footprints merge</span>
-<span class="sd">            nearby peaks into fewer seeds; smaller footprints yield finer</span>
-<span class="sd">            segmentation. Typical range: 5--50 (diamond radius in pixels).</span>
-
-<span class="sd">        min_size: Minimum object area in pixels (default 50). Objects</span>
-<span class="sd">            smaller than this are removed as dust or debris. Typical range:</span>
-<span class="sd">            20--200 depending on image resolution and colony size.</span>
-
-<span class="sd">        compactness: Watershed compactness parameter (default 0.001). Higher</span>
-<span class="sd">            values enforce more regularly shaped segments; lower values let</span>
-<span class="sd">            regions follow intensity gradients freely. Typical range:</span>
-<span class="sd">            0.0001--0.1. Increase if colonies are round and over-segmented;</span>
-<span class="sd">            decrease for irregular morphologies.</span>
-
-<span class="sd">        connectivity: Connectivity for region labelling (1 = 4-connected,</span>
-<span class="sd">            2 = 8-connected; default 1). Higher connectivity merges</span>
-<span class="sd">            diagonally adjacent pixels.</span>
-
-<span class="sd">        relabel: If True (default), relabel segments to consecutive IDs</span>
-<span class="sd">            after watershed.</span>
-
-<span class="sd">        ignore_zeros: If True (default), exclude zero-intensity pixels from</span>
-<span class="sd">            threshold computation. Enable for plates with black borders or</span>
-<span class="sd">            masked regions.</span>
-
-<span class="sd">    Returns:</span>
-<span class="sd">        Image: Input image with ``objmap`` set to a labelled colony map</span>
-<span class="sd">        where each colony receives a unique integer label. ``objmask`` is</span>
-<span class="sd">        derived from the non-zero region of the label map.</span>
-
-<span class="sd">    Raises:</span>
-<span class="sd">        ValueError: If invalid parameters are provided or if the distance</span>
-<span class="sd">            transform / watershed computation fails.</span>
-
 <span class="sd">    Best For:</span>
-<span class="sd">        * Dense plates where colonies touch or overlap and must be counted</span>
-<span class="sd">          individually.</span>
-<span class="sd">        * Plates with variable colony sizes (e.g., mutant libraries) where</span>
-<span class="sd">          the distance transform naturally adapts seed placement.</span>
-<span class="sd">        * Irregular colony morphologies that follow local intensity</span>
-<span class="sd">          gradients better than geometric assumptions.</span>
-<span class="sd">        * Post-incubation plates where colony crowding is the primary</span>
+<span class="sd">        - Dense plates where yeast or bacterial colonies touch or overlap and</span>
+<span class="sd">          must be counted individually.</span>
+<span class="sd">        - Mutant-library plates with variable colony sizes where the distance</span>
+<span class="sd">          transform naturally adapts seed placement to each colony&#39;s footprint.</span>
+<span class="sd">        - Post-incubation plates where colony crowding is the primary</span>
 <span class="sd">          segmentation challenge.</span>
+<span class="sd">        - Round, compact colonies on rich-media agar where compactness</span>
+<span class="sd">          regularisation reinforces the expected shape.</span>
 
 <span class="sd">    Consider Also:</span>
-<span class="sd">        * :class:`OtsuDetector` when colonies are well-separated and a</span>
-<span class="sd">          simple binary mask suffices.</span>
-<span class="sd">        * :class:`RoundPeaksDetector` when colonies sit on a regular</span>
-<span class="sd">          pinned grid and peak-based assignment is more efficient.</span>
-<span class="sd">        * :class:`FilamentousFungiDetector` when colonies exhibit spreading,</span>
-<span class="sd">          filamentous growth rather than compact morphology.</span>
-<span class="sd">        * :class:`CannyDetector` when edge contrast is stronger than</span>
-<span class="sd">          intensity contrast for delineating colony boundaries.</span>
+<span class="sd">        - :class:`OtsuDetector` when colonies are well-separated and a simple</span>
+<span class="sd">          global threshold suffices without region-growing.</span>
+<span class="sd">        - :class:`RoundPeaksDetector` when colonies sit on a regular pinned</span>
+<span class="sd">          grid and peak-based grid-cell assignment is more efficient.</span>
+<span class="sd">        - :class:`FilamentousFungiDetector` when colonies exhibit spreading</span>
+<span class="sd">          hyphal growth rather than compact morphology.</span>
+<span class="sd">        - :class:`CannyDetector` when edge contrast is stronger than intensity</span>
+<span class="sd">          contrast for delineating colony boundaries.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        footprint: Structuring element for peak suppression on the</span>
+<span class="sd">            distance-transform surface. ``&#39;auto&#39;`` infers the diamond radius</span>
+<span class="sd">            from grid spacing (GridImage only, half the well pitch); an</span>
+<span class="sd">            ``int`` is expanded to a diamond of that radius in pixels; an</span>
+<span class="sd">            ``ndarray`` supplies a custom binary footprint; ``None`` (default)</span>
+<span class="sd">            lets scikit-image use a 1-px minimum distance, which typically</span>
+<span class="sd">            over-seeds dense images. Larger footprints merge nearby peaks into</span>
+<span class="sd">            fewer seeds; smaller footprints allow finer segmentation. Typical</span>
+<span class="sd">            diamond radius range: 5--50 px. Default: None. A reasonable</span>
+<span class="sd">            starting point for pinned-array plates is ``&#39;auto&#39;``, which sets</span>
+<span class="sd">            the radius to approximately half the well pitch.</span>
+<span class="sd">        min_size: Minimum object area in pixels. Objects smaller than this</span>
+<span class="sd">            are removed from the binary mask before distance-transform</span>
+<span class="sd">            computation (to reduce noise) and from the final labelled map.</span>
+<span class="sd">            Typical range: 20--200 px, scaling with image resolution and</span>
+<span class="sd">            colony size. Default: 50.</span>
+<span class="sd">        compactness: Compact-watershed shape-regularisation penalty. Higher</span>
+<span class="sd">            values produce more geometrically regular, convex segments; lower</span>
+<span class="sd">            values let region boundaries follow the Sobel gradient freely,</span>
+<span class="sd">            fitting irregular colony morphologies. Typical range:</span>
+<span class="sd">            0.0001--0.1. Increase toward 0.01--0.05 for round yeast colonies</span>
+<span class="sd">            on rich agar; decrease toward 0.0001 for mucoid, sectored, or</span>
+<span class="sd">            spreading morphologies. Default: 0.001.</span>
+<span class="sd">        connectivity: Pixel connectivity for watershed flooding and final</span>
+<span class="sd">            region labelling. ``1`` for 4-connectivity (default); ``2`` for</span>
+<span class="sd">            8-connectivity. 4-connectivity avoids false merges at diagonal</span>
+<span class="sd">            colony contact points. Default: 1.</span>
+<span class="sd">        relabel: When ``True`` (default), relabels segments to consecutive</span>
+<span class="sd">            integer IDs starting at 1 after watershed. Set to ``False`` only</span>
+<span class="sd">            when downstream code depends on the raw marker indices. Default:</span>
+<span class="sd">            True.</span>
+<span class="sd">        ignore_zeros: When ``True``, Otsu threshold is computed only from</span>
+<span class="sd">            non-zero pixels and zero-valued pixels are forced to background.</span>
+<span class="sd">            Enable for images with black borders, scanner shadow, or</span>
+<span class="sd">            pre-masked regions outside the plate area where structural zeros</span>
+<span class="sd">            would otherwise bias the Otsu histogram. Default: False.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Image: Input image with ``objmap`` set to a labelled colony map where</span>
+<span class="sd">        each colony receives a unique integer label, and ``objmask`` derived</span>
+<span class="sd">        from the non-zero entries of that map.</span>
 
 <span class="sd">    References:</span>
-<span class="sd">        [1] S. Beucher and C. Lantuejoul, &quot;Use of watersheds in contour</span>
-<span class="sd">        detection,&quot; in *Proc. Int. Workshop on Image Processing*, CCETT,</span>
-<span class="sd">        Rennes, France, 1979.</span>
+<span class="sd">        [1] P. Neubert and P. Protzel, &quot;Compact watershed and preemptive SLIC:</span>
+<span class="sd">        On improving trade-offs of superpixel segmentation algorithms,&quot; in</span>
+<span class="sd">        *Proc. 22nd Int. Conf. Pattern Recognit. (ICPR)*, Stockholm, Sweden,</span>
+<span class="sd">        2014, pp. 996--1001.</span>
+<span class="sd">        [2] N. Otsu, &quot;A threshold selection method from gray-level</span>
+<span class="sd">        histograms,&quot; *IEEE Trans. Syst., Man, Cybern.*, vol. 9, no. 1,</span>
+<span class="sd">        pp. 62--66, Jan. 1979.</span>
 
 <span class="sd">    See Also:</span>
-<span class="sd">        :doc:`/tutorials/notebooks/02_detecting_colonies`</span>
-<span class="sd">            Step-by-step tutorial for basic colony detection.</span>
-<span class="sd">        :doc:`/how_to/notebooks/choose_detection_algorithm`</span>
-<span class="sd">            Guide for selecting the right detector for your plate images.</span>
-<span class="sd">        :doc:`/explanation/detection_strategies_compared`</span>
-<span class="sd">            In-depth comparison of all detection strategies.</span>
+<span class="sd">        :doc:`/tutorials/notebooks/02_detecting_colonies` for a step-by-step</span>
+<span class="sd">        tutorial demonstrating colony detection on real plate images.</span>
+<span class="sd">        :doc:`/how_to/notebooks/choose_detection_algorithm` for a guide to</span>
+<span class="sd">        selecting the right detector for your plate images.</span>
+<span class="sd">        :doc:`/explanation/detection_strategies_compared` for an in-depth</span>
+<span class="sd">        comparison of all detection strategies and their failure modes.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">footprint</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;auto&quot;</span><span class="p">]</span> <span class="o">|</span> <span class="n">NdArrayField</span> <span class="o">|</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">min_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">50</span>
-    <span class="n">compactness</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.001</span>
-    <span class="n">connectivity</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="c1"># TODO: review bound (unverified vs literature)</span>
+    <span class="n">min_size</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">200</span><span class="p">)]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="mi">50</span><span class="p">,</span> <span class="n">ge</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">compactness</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">0.0001</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="n">log</span><span class="o">=</span><span class="kc">True</span><span class="p">)]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="mf">0.001</span><span class="p">,</span> <span class="n">ge</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
+    <span class="n">connectivity</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="n">categories</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">])]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">ge</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">le</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
     <span class="n">relabel</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
     <span class="n">ignore_zeros</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
 
@@ -799,11 +809,12 @@
 
         <span class="n">objmap</span> <span class="o">=</span> <span class="n">morphology</span><span class="o">.</span><span class="n">remove_small_objects</span><span class="p">(</span><span class="n">objmap</span><span class="p">,</span> <span class="n">min_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">min_size</span><span class="p">)</span>
         <span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">objmap</span>
-        <span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="o">.</span><span class="n">relabel</span><span class="p">(</span><span class="n">connectivity</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">connectivity</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">relabel</span><span class="p">:</span>
+            <span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="o">.</span><span class="n">relabel</span><span class="p">(</span><span class="n">connectivity</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">connectivity</span><span class="p">)</span>
 
         <span class="c1"># Final comprehensive memory report</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_log_memory_usage</span><span class="p">(</span>
-                <span class="s2">&quot;final cleanup and relabeling&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;final cleanup and optional relabeling&quot;</span><span class="p">,</span>
                 <span class="n">include_process</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
                 <span class="n">include_tracemalloc</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="p">)</span>

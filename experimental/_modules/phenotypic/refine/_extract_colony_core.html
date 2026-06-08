@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -577,61 +577,68 @@
 <div class="viewcode-block" id="ExtractColonyCore">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.refine.html#phenotypic.refine.ExtractColonyCore">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ExtractColonyCore</span><span class="p">(</span><span class="n">ObjectRefiner</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Extract compact bright cores from labeled colonies using Gaussian mixture modeling.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Extract the bright inoculum core from each colony using Gaussian mixture modeling.</span>
 
-<span class="sd">    Fits a two-component GMM to each colony&#39;s intensity histogram, separating</span>
-<span class="sd">    the bright inoculum core from the dimmer surrounding halo. Regions with</span>
-<span class="sd">    insufficient intensity contrast are left unchanged. Morphological</span>
-<span class="sd">    opening and closing refine the extracted core shape.</span>
+<span class="sd">    Fits a two-component Gaussian mixture model to each labeled colony&#39;s intensity</span>
+<span class="sd">    histogram, separating the bright inoculum core from the dimmer surrounding halo.</span>
+<span class="sd">    Regions with insufficient intensity contrast are left unchanged; morphological</span>
+<span class="sd">    opening and closing refine the extracted core shape. Returns an image whose</span>
+<span class="sd">    ``objmap`` contains core-only masks rather than full colony footprints.</span>
 
-<span class="sd">    For algorithm details, see :doc:`/explanation/refinement_strategies`.</span>
+<span class="sd">    For an overview of refinement strategies, see</span>
+<span class="sd">    :doc:`/explanation/refinement_strategies`.</span>
+
+<span class="sd">    Best For:</span>
+<span class="sd">        - Rich-media plates (YPD, LB) where pinned inocula develop dense bright</span>
+<span class="sd">          centers surrounded by a dimmer outgrowth halo.</span>
+<span class="sd">        - High-density 96-well or 384-well arrays where core isolation reduces</span>
+<span class="sd">          measurement spillover between adjacent wells.</span>
+<span class="sd">        - Time-course experiments where inoculum mass is the feature of interest,</span>
+<span class="sd">          so size and intensity reflect the growth core rather than diffusion halos.</span>
+
+<span class="sd">    Consider Also:</span>
+<span class="sd">        - :class:`MaskErosion` for uniform inward shrinking when inoculum cores</span>
+<span class="sd">          are not intensity-distinct from the surrounding halo.</span>
+<span class="sd">        - :class:`InoculumDetector` when core detection is needed as a standalone</span>
+<span class="sd">          detection step rather than a post-detection refinement.</span>
+<span class="sd">        - :class:`RemoveLowCircularity` for shape-based filtering when halos distort</span>
+<span class="sd">          circularity measurements without requiring intensity separation.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        n_components: Number of Gaussian components per region. Keep at 2</span>
-<span class="sd">            for canonical core-vs-surround splitting; higher values risk</span>
-<span class="sd">            over-segmentation. Default: 2.</span>
-<span class="sd">        separation_threshold: Normalized mean separation below which the</span>
-<span class="sd">            original region is left unchanged. Typical range: 0.5--1.2.</span>
-<span class="sd">            Higher values extract only high-confidence cores. Default: 0.8.</span>
-<span class="sd">        min_core_area: Minimum core area in pixels. Regions or extracted</span>
-<span class="sd">            cores smaller than this are kept as-is. Typical range: 10--500,</span>
-<span class="sd">            scale with resolution. Default: 30.</span>
-<span class="sd">        morph_open_radius: Radius of elliptical opening kernel. Removes</span>
-<span class="sd">            thin protrusions; 0 disables. Typical range: 0--5. Default: 1.</span>
-<span class="sd">        morph_close_radius: Radius of elliptical closing kernel. Fills</span>
-<span class="sd">            small gaps within cores; 0 disables. Typical range: 0--5.</span>
+<span class="sd">        n_components: Number of Gaussian mixture components fitted per colony.</span>
+<span class="sd">            Use 2 for the canonical bright-core versus dim-halo split; higher</span>
+<span class="sd">            values add intermediate intensity modes but increase fitting cost and</span>
+<span class="sd">            risk over-segmentation. Default: 2.</span>
+<span class="sd">        separation_threshold: Normalized mean separation (|mu_1 - mu_0| /</span>
+<span class="sd">            (sigma_0 + sigma_1)) below which a colony is left unchanged. Typical</span>
+<span class="sd">            range: 0.5--1.2. Higher values require a more bimodal histogram before</span>
+<span class="sd">            any core is extracted; lower values extract cores from subtler intensity</span>
+<span class="sd">            gradients. Default: 0.8.</span>
+<span class="sd">        min_core_area: Minimum extracted core area in pixels. Colonies smaller than</span>
+<span class="sd">            this are kept as-is without attempting GMM fitting; extracted cores</span>
+<span class="sd">            smaller than this fall back to the original mask. Scale proportionally</span>
+<span class="sd">            with image resolution. Typical range: 10--500. Default: 30.</span>
+<span class="sd">        morph_open_radius: Radius of the elliptical structuring element for</span>
+<span class="sd">            morphological opening applied after GMM classification. Removes thin</span>
+<span class="sd">            protrusions and isolated noise specks from the core mask. Set to 0 to</span>
+<span class="sd">            disable. Typical range: 0--5. Default: 1.</span>
+<span class="sd">        morph_close_radius: Radius of the elliptical structuring element for</span>
+<span class="sd">            morphological closing applied after opening. Fills small gaps and</span>
+<span class="sd">            holes within the core mask. Set to 0 to disable. Typical range: 0--5.</span>
 <span class="sd">            Default: 2.</span>
 
 <span class="sd">    Returns:</span>
-<span class="sd">        Image: Input image with ``objmap`` refined to bright-core masks.</span>
+<span class="sd">        Image: Input image with ``objmap`` updated so each labeled region</span>
+<span class="sd">        contains only the bright core pixels; ``objmask`` is updated from</span>
+<span class="sd">        the non-zero entries of the rebuilt object map.</span>
 
 <span class="sd">    Raises:</span>
-<span class="sd">        ValueError: If ``n_components`` is not a positive integer or if</span>
-<span class="sd">            ``separation_threshold`` is negative.</span>
-
-<span class="sd">    Best For:</span>
-<span class="sd">        - Rich media plates (YPD, LB) where colonies develop dense bright</span>
-<span class="sd">          centers with obvious halos.</span>
-<span class="sd">        - Pinned-array inoculation where sharp bright cores need to be</span>
-<span class="sd">          isolated from thin outgrowth.</span>
-<span class="sd">        - High-density plates (96-well, 384-well) where core extraction</span>
-<span class="sd">          reduces inter-well spillover.</span>
-<span class="sd">        - Pre-measurement cleanup to ensure features reflect the primary</span>
-<span class="sd">          growth mass rather than diffusion halos.</span>
-
-<span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`MaskErosion` for uniform inward shrinking when cores are</span>
-<span class="sd">          not intensity-distinct from halos.</span>
-<span class="sd">        - :class:`MaskWhiteTophat` for removing small bright artifacts without</span>
-<span class="sd">          full core extraction.</span>
-<span class="sd">        - :class:`RemoveLowCircularity` for shape-based filtering when</span>
-<span class="sd">          halos distort circularity measurements.</span>
+<span class="sd">        pydantic.ValidationError: If a parameter is given a value of the wrong</span>
+<span class="sd">            type (e.g. a non-numeric ``separation_threshold``).</span>
 
 <span class="sd">    See Also:</span>
-<span class="sd">        :doc:`/how_to/notebooks/refine_noisy_boundaries` for core</span>
-<span class="sd">        extraction workflows.</span>
-<span class="sd">        :doc:`/explanation/refinement_strategies` for a comparison of</span>
-<span class="sd">        refinement approaches including GMM-based extraction.</span>
+<span class="sd">        :doc:`/how_to/notebooks/refine_noisy_boundaries` for core extraction</span>
+<span class="sd">        workflows on real plate images.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">n_components</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span>

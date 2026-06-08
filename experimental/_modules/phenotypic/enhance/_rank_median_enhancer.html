@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -586,35 +586,47 @@
 
 <span class="sd">    For algorithm details, see :doc:`/explanation/what_enhancement_does`.</span>
 
+<span class="sd">    Best For:</span>
+<span class="sd">        - Salt-and-pepper or impulsive noise from sensor defects or scanner</span>
+<span class="sd">          CCD artifacts.</span>
+<span class="sd">        - Dust speckles and pixel-level artifacts on scanned plates.</span>
+<span class="sd">        - Grid-like imaging artifacts where a ``&#39;square&#39;`` footprint aligns</span>
+<span class="sd">          with the noise geometry.</span>
+<span class="sd">        - Pre-detection cleanup before applying a threshold-based detector.</span>
+
+<span class="sd">    Consider Also:</span>
+<span class="sd">        - :class:`LocalEdgeDenoise` for edge-preserving smoothing of</span>
+<span class="sd">          Gaussian noise without the uint8 conversion required by rank</span>
+<span class="sd">          filters.</span>
+<span class="sd">        - :class:`NonLocalMeansDenoiser` for patch-based denoising that</span>
+<span class="sd">          preserves fine colony texture better on noisy plates.</span>
+<span class="sd">        - :class:`GrayOpening` for morphological artifact removal that</span>
+<span class="sd">          does not require uint8 quantization.</span>
+
 <span class="sd">    Args:</span>
-<span class="sd">        shape: Footprint geometry. ``&#39;disk&#39;`` for isotropic smoothing;</span>
-<span class="sd">            ``&#39;square&#39;`` (default) to align with grid artifacts.</span>
+<span class="sd">        shape: Footprint geometry. Accepted values: ``&#39;disk&#39;`` for</span>
+<span class="sd">            isotropic smoothing suited to round colonies; ``&#39;square&#39;``</span>
+<span class="sd">            (default) to align with grid-pattern sensor artifacts.</span>
 <span class="sd">        width: Footprint width in pixels. Set smaller than the minimum</span>
 <span class="sd">            colony diameter to preserve colony edges. ``None`` (default)</span>
-<span class="sd">            derives a small value from image size.</span>
-<span class="sd">        shift_x: Horizontal footprint offset. Typically 0. Default: 0.</span>
-<span class="sd">        shift_y: Vertical footprint offset. Typically 0. Default: 0.</span>
+<span class="sd">            auto-derives a small value as approximately 0.2 % of the</span>
+<span class="sd">            shorter image dimension.</span>
+<span class="sd">        shift_x: Horizontal offset of the footprint centre in pixels.</span>
+<span class="sd">            Non-zero values shift the filter kernel to correct for</span>
+<span class="sd">            directional streak artefacts. Default: 0.</span>
+<span class="sd">        shift_y: Vertical offset of the footprint centre in pixels.</span>
+<span class="sd">            Non-zero values shift the filter kernel to correct for</span>
+<span class="sd">            directional streak artefacts. Default: 0.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        Image: Input image with ``detect_mat`` median-filtered. ``rgb``</span>
 <span class="sd">        and ``gray`` are unchanged.</span>
 
-<span class="sd">    Best For:</span>
-<span class="sd">        - Salt-and-pepper or impulsive noise from sensor defects.</span>
-<span class="sd">        - Dust speckles and pixel-level artifacts on scanned plates.</span>
-<span class="sd">        - Grid-like imaging artifacts when using a ``&#39;square&#39;`` footprint.</span>
-
-<span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`LocalEdgeDenoise` for edge-preserving Gaussian noise</span>
-<span class="sd">          removal without the intensity quantization of rank filters.</span>
-<span class="sd">        - :class:`NonLocalMeansDenoiser` for patch-based denoising that</span>
-<span class="sd">          preserves texture better on noisy plates.</span>
-<span class="sd">        - :class:`GrayOpening` for morphological artifact removal that</span>
-<span class="sd">          does not require uint8 conversion.</span>
-
 <span class="sd">    See Also:</span>
 <span class="sd">        :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a</span>
 <span class="sd">        visual walkthrough of denoising pipelines on plate images.</span>
+<span class="sd">        :doc:`/explanation/what_enhancement_does` for background on rank</span>
+<span class="sd">        filtering and its role in colony detection pipelines.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">shape</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;square&quot;</span>

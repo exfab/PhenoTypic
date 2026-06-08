@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -578,64 +578,110 @@
 <span class="k">class</span><span class="w"> </span><span class="nc">VisuShrinkEnhancer</span><span class="p">(</span><span class="n">_GATSupportMixin</span><span class="p">,</span> <span class="n">ImageDenoiser</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Denoise ``detect_mat`` with universal VisuShrink wavelet thresholding.</span>
 
-<span class="sd">    Applies wavelet-domain denoising with a single universal threshold across</span>
-<span class="sd">    all subbands, designed to remove all Gaussian noise with high probability.</span>
-<span class="sd">    Faster than :class:`BayesShrinkEnhancer` but may over-smooth regions with</span>
-<span class="sd">    low noise. Preserves colony edges better than Gaussian blur.</span>
+<span class="sd">    Decomposes the image into wavelet subbands and zeros all coefficients</span>
+<span class="sd">    below the universal threshold T = sigma * sqrt(2 * log(N)), which is</span>
+<span class="sd">    near-minimax optimal for Gaussian white noise. The universal threshold</span>
+<span class="sd">    with the auto-estimated sigma is conservative and can over-smooth; the</span>
+<span class="sd">    skimage gallery recommends supplying a manual sigma below the</span>
+<span class="sd">    auto-estimate (e.g. half) for better visual quality.</span>
 
 <span class="sd">    For algorithm details, see :doc:`/explanation/what_enhancement_does`.</span>
 
-<span class="sd">    Args:</span>
-<span class="sd">        sigma: Noise standard deviation in [0, 1] scale. ``None`` (default)</span>
-<span class="sd">            auto-estimates via MAD. Typical range: 0.01--0.05 for moderate</span>
-<span class="sd">            scanner/camera noise. Too high causes over-smoothing. Ignored</span>
-<span class="sd">            when ``use_gat=True`` (the stabilized-domain value 1.0 is used</span>
-<span class="sd">            internally).</span>
-<span class="sd">        wavelet: Wavelet family. ``&#39;db2&#39;`` (default) balances smoothness and</span>
-<span class="sd">            locality; ``&#39;db4&#39;`` captures more detail. Must be orthogonal.</span>
-<span class="sd">        mode: Thresholding mode. ``&#39;soft&#39;`` (default) produces smoother</span>
-<span class="sd">            results for additive noise; ``&#39;hard&#39;`` preserves edges more.</span>
-<span class="sd">        wavelet_levels: Decomposition depth. ``None`` (default) uses max-3</span>
-<span class="sd">            automatically. Higher values give finer denoising.</span>
-<span class="sd">        clip: Clip output to [0, 1]. Default: ``True``. Automatically</span>
-<span class="sd">            deferred when ``use_gat=True``.</span>
-<span class="sd">        rescale_sigma: skimage&#39;s internal rescale flag. Default ``True``.</span>
-<span class="sd">            Automatically forced to ``False`` when ``use_gat=True``.</span>
-<span class="sd">        use_gat: Wrap denoising in the Generalized Anscombe Transform.</span>
-<span class="sd">            Default: ``False``. See</span>
-<span class="sd">            :class:`phenotypic.tools_.mixin._GATSupportMixin`.</span>
-<span class="sd">        gat_gain, gat_mu, gat_read_sigma, gat_scale_factor: GAT parameters.</span>
-
-<span class="sd">    Returns:</span>
-<span class="sd">        Image: Input image with ``detect_mat`` denoised via universal</span>
-<span class="sd">        wavelet thresholding. ``rgb`` and ``gray`` are unchanged.</span>
-
 <span class="sd">    Best For:</span>
-<span class="sd">        - Scanner banding and flatbed scanner noise removal.</span>
-<span class="sd">        - High-ISO camera images where colony boundaries must remain sharp.</span>
-<span class="sd">        - Agar granularity and condensation speckle suppression before</span>
-<span class="sd">          detection.</span>
-<span class="sd">        - Pre-filtering before edge detection to avoid noise amplification.</span>
-<span class="sd">        - Poisson-Gaussian noise via ``use_gat=True``.</span>
+<span class="sd">        - Flatbed scanner banding and CCD read-noise removal before detection.</span>
+<span class="sd">        - High-ISO camera plate images where colony boundaries must remain</span>
+<span class="sd">          sharp after denoising.</span>
+<span class="sd">        - Agar granularity and condensation speckle suppression before edge</span>
+<span class="sd">          detection or thresholding.</span>
+<span class="sd">        - Batch pipelines where a single universal threshold is preferred</span>
+<span class="sd">          over per-subband tuning.</span>
 
 <span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`BayesShrinkEnhancer` for adaptive thresholding that</span>
-<span class="sd">          preserves more detail in regions with varying noise levels.</span>
-<span class="sd">        - :class:`BM3DDenoiser` for state-of-the-art structured noise</span>
-<span class="sd">          removal at higher computational cost.</span>
-<span class="sd">        - :class:`LocalEdgeDenoise` for edge-preserving smoothing without</span>
-<span class="sd">          wavelet decomposition.</span>
+<span class="sd">        - :class:`BayesShrinkEnhancer` for adaptive per-subband thresholding</span>
+<span class="sd">          that preserves more colony texture detail at variable noise levels.</span>
+<span class="sd">        - :class:`BM3DDenoiser` for state-of-the-art structured noise removal</span>
+<span class="sd">          at higher computational cost.</span>
+<span class="sd">        - :class:`LocalEdgeDenoise` for edge-preserving spatial smoothing</span>
+<span class="sd">          without wavelet decomposition.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        sigma: Noise standard deviation on the [0, 1] intensity scale.</span>
+<span class="sd">            Controls the universal threshold T = sigma * sqrt(2 * log(N)).</span>
+<span class="sd">            ``None`` (default) auto-estimates via MAD of finest-scale wavelet</span>
+<span class="sd">            detail coefficients; the universal threshold with this estimate</span>
+<span class="sd">            is conservative and often over-smooths — the skimage gallery</span>
+<span class="sd">            recommends a manual sigma below the auto-estimate (e.g. half)</span>
+<span class="sd">            for better visual quality. Typical range: 0.01--0.05 for</span>
+<span class="sd">            standard scanner/camera</span>
+<span class="sd">            noise. Has no effect when ``use_gat=True`` (the threshold is set</span>
+<span class="sd">            using the stabilized-domain value 1.0 internally).</span>
+<span class="sd">        wavelet: Wavelet family name (PyWavelets string). Use only orthogonal</span>
+<span class="sd">            families: ``&#39;db2&#39;`` (default, compact support, good edge</span>
+<span class="sd">            localisation), ``&#39;db4&#39;`` (more vanishing moments, suppresses</span>
+<span class="sd">            smooth background gradients better), ``&#39;sym4&#39;`` or ``&#39;sym6&#39;``</span>
+<span class="sd">            (near-symmetric, reduced Gibbs ringing). Biorthogonal wavelets</span>
+<span class="sd">            produce coloured noise in subbands and are not recommended.</span>
+<span class="sd">        mode: Thresholding mode. ``&#39;soft&#39;`` (default) subtracts the</span>
+<span class="sd">            threshold from surviving coefficients, producing continuous</span>
+<span class="sd">            output without ringing; recommended for Gaussian noise removal</span>
+<span class="sd">            before detection. ``&#39;hard&#39;`` preserves coefficient amplitudes</span>
+<span class="sd">            above the threshold exactly, retaining sharper edges at the cost</span>
+<span class="sd">            of Gibbs-like artefacts at the threshold boundary.</span>
+<span class="sd">        wavelet_levels: Number of decomposition levels. ``None`` (default)</span>
+<span class="sd">            uses the library heuristic (max levels minus 3). Higher values</span>
+<span class="sd">            denoise at larger spatial scales, risking removal of genuine</span>
+<span class="sd">            low-contrast colony signal; lower values leave coarse banding</span>
+<span class="sd">            intact. Valid range: 1 to floor(log2(min_image_dimension)).</span>
+<span class="sd">        clip: Clip output to [0, 1]. Default: ``True``. Soft thresholding</span>
+<span class="sd">            on float inputs can produce slightly negative values near dark</span>
+<span class="sd">            edges; clipping eliminates these. Automatically deferred to</span>
+<span class="sd">            ``False`` when ``use_gat=True``.</span>
+<span class="sd">        rescale_sigma: Allow skimage to rescale the user-supplied sigma</span>
+<span class="sd">            proportionally when it converts integer-dtype inputs to float</span>
+<span class="sd">            internally. Default: ``True``. Has no observable effect on the</span>
+<span class="sd">            float32 ``detect_mat`` used in this project. Automatically</span>
+<span class="sd">            forced to ``False`` when ``use_gat=True``.</span>
+
+<span class="sd">        # GAT parameters (active only when use_gat=True)</span>
+<span class="sd">        use_gat: Wrap denoising in the Generalized Anscombe Transform to</span>
+<span class="sd">            handle Poisson-Gaussian noise (e.g., low-light fluorescence or</span>
+<span class="sd">            high-ISO DSLR images of colonies). Default: ``False``.</span>
+<span class="sd">        gat_gain: Camera gain in electrons per ADU. Scales the Poisson</span>
+<span class="sd">            noise component in the GAT model. Typical range 0.1--10.0</span>
+<span class="sd">            (consumer DSLR ~0.5--3.0, scientific CCD ~1.0--10.0). Leave at</span>
+<span class="sd">            1.0 for normalized images without calibrated gain. Default: 1.0.</span>
+<span class="sd">        gat_mu: Read-noise mean (baseline DC offset). Set to 0.0 if</span>
+<span class="sd">            dark-frame subtraction has been applied. Default: 0.0.</span>
+<span class="sd">        gat_read_sigma: Standard deviation of additive Gaussian read noise.</span>
+<span class="sd">            ``0.0`` (default) assumes pure Poisson noise. For scientific</span>
+<span class="sd">            cameras with measurable read noise, obtain from spec sheet in</span>
+<span class="sd">            e- RMS and convert: read_sigma_norm = read_sigma_e / (gain *</span>
+<span class="sd">            max_counts).</span>
+<span class="sd">        gat_scale_factor: Multiplier converting normalized [0, 1] data to</span>
+<span class="sd">            photon counts before the GAT forward pass. ``None`` (default)</span>
+<span class="sd">            auto-detects from image bit depth (8-bit → 255, 16-bit → 65535).</span>
+<span class="sd">            Override when the effective bit depth differs from metadata (e.g.,</span>
+<span class="sd">            14-bit sensor stored as 16-bit padded: use 16383 not 65535).</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Image: Input image with ``detect_mat`` denoised via universal wavelet</span>
+<span class="sd">        thresholding. ``rgb`` and ``gray`` are unchanged.</span>
 
 <span class="sd">    References:</span>
 <span class="sd">        [1] D. L. Donoho and I. M. Johnstone, &quot;Ideal spatial adaptation by</span>
 <span class="sd">        wavelet shrinkage,&quot; *Biometrika*, vol. 81, no. 3, pp. 425--455,</span>
 <span class="sd">        Sep. 1994.</span>
+<span class="sd">        [2] M. Mäkitalo and A. Foi, &quot;Optimal inversion of the generalized</span>
+<span class="sd">        Anscombe transformation for Poisson-Gaussian noise,&quot; *IEEE Trans.</span>
+<span class="sd">        Image Process.*, vol. 22, no. 1, pp. 91--103, Jan. 2013.</span>
 
 <span class="sd">    See Also:</span>
 <span class="sd">        :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a</span>
 <span class="sd">        visual walkthrough of denoising pipelines on plate images.</span>
-<span class="sd">        :doc:`/explanation/what_enhancement_does` for background on</span>
-<span class="sd">        wavelet denoising and threshold selection strategies.</span>
+<span class="sd">        :doc:`/how_to/notebooks/denoise_low_light` for wavelet denoising</span>
+<span class="sd">        strategies on low-light plate images.</span>
+<span class="sd">        :doc:`/explanation/what_enhancement_does` for background on wavelet</span>
+<span class="sd">        thresholding and the VisuShrink threshold derivation.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">_GAT_NOISE_PARAMS</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;sigma&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">}</span>

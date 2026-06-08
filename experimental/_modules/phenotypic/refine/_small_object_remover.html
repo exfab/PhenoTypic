@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -575,35 +575,47 @@
 <div class="viewcode-block" id="SmallObjectRemover">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.refine.html#phenotypic.refine.SmallObjectRemover">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">SmallObjectRemover</span><span class="p">(</span><span class="n">ObjectRefiner</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Remove objects smaller than a minimum area from the detection mask.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Remove detected objects below a minimum pixel area from the detection mask.</span>
 
-<span class="sd">    Eliminates dust, condensation specks, and noise fragments that appear</span>
-<span class="sd">    as tiny labeled objects after thresholding. Reduces false positives</span>
-<span class="sd">    and stabilizes colony counts.</span>
+<span class="sd">    Eliminates dust particles, condensation specks, agar debris, and</span>
+<span class="sd">    noise fragments that appear as small labeled regions after thresholding</span>
+<span class="sd">    or edge detection. Reduces false-positive colony counts and stabilizes</span>
+<span class="sd">    downstream measurements.</span>
 
-<span class="sd">    Args:</span>
-<span class="sd">        min_size: Minimum object area in pixels to keep. Objects below this</span>
-<span class="sd">            threshold are removed. Typical range: 20--200 depending on</span>
-<span class="sd">            image resolution. Default: 64.</span>
-
-<span class="sd">    Returns:</span>
-<span class="sd">        Image: Input image with ``objmask`` and ``objmap`` updated to</span>
-<span class="sd">        exclude small objects.</span>
+<span class="sd">    For guidance on choosing the right refinement sequence, see</span>
+<span class="sd">    :doc:`/explanation/refinement_strategies`.</span>
 
 <span class="sd">    Best For:</span>
-<span class="sd">        - Cleaning up salt-and-pepper artifacts after detection.</span>
-<span class="sd">        - Removing fragmented debris around large colonies.</span>
-<span class="sd">        - Post-processing after aggressive enhancement or thresholding.</span>
+<span class="sd">        - Cleaning up salt-and-pepper artefacts left after aggressive</span>
+<span class="sd">          thresholding or Frangi filtering.</span>
+<span class="sd">        - Removing fragmented debris and micro-condensation specks that</span>
+<span class="sd">          cluster around genuine colonies.</span>
+<span class="sd">        - Post-processing dense detection masks where noise fragments</span>
+<span class="sd">          inflate colony counts.</span>
+<span class="sd">        - Stabilizing counts before grid assignment or size measurement.</span>
 
 <span class="sd">    Consider Also:</span>
 <span class="sd">        - :class:`RemoveBorderObjects` for removing partial colonies at</span>
-<span class="sd">          image edges (size-independent).</span>
-<span class="sd">        - :class:`RemoveLowCircularity` for removing non-circular artifacts</span>
-<span class="sd">          regardless of size.</span>
+<span class="sd">          image edges regardless of their size.</span>
+<span class="sd">        - :class:`RemoveLowCircularity` for discarding non-circular artefacts</span>
+<span class="sd">          regardless of area.</span>
+<span class="sd">        - :class:`SmallToLargeMerger` when small fragments should be</span>
+<span class="sd">          absorbed into a nearby large colony rather than discarded.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        min_size: Minimum object area in pixels to retain. Objects whose</span>
+<span class="sd">            pixel area falls strictly below this value are removed. Scale</span>
+<span class="sd">            with image resolution, since colony area grows roughly with the</span>
+<span class="sd">            square of dpi; as a rough starting point, try 20--100 px near</span>
+<span class="sd">            300 dpi and 100--500 px near 1200 dpi. Default: 64.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Image: Input image with ``objmap`` updated to exclude objects</span>
+<span class="sd">        smaller than ``min_size``. ``objmask`` is updated to match.</span>
 
 <span class="sd">    See Also:</span>
 <span class="sd">        :doc:`/how_to/notebooks/refine_noisy_boundaries` for a walkthrough</span>
-<span class="sd">        of refinement operations.</span>
+<span class="sd">        of refinement operations on real plate images.</span>
 <span class="sd">        :doc:`/explanation/refinement_strategies` for choosing the right</span>
 <span class="sd">        refinement sequence.</span>
 <span class="sd">    &quot;&quot;&quot;</span>

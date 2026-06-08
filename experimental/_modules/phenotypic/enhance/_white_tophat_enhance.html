@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -586,40 +586,49 @@
 
 <span class="sd">    For algorithm details, see :doc:`/explanation/what_enhancement_does`.</span>
 
+<span class="sd">    Best For:</span>
+<span class="sd">        - Isolating small bright colonies from larger background structures</span>
+<span class="sd">          or broad illumination gradients.</span>
+<span class="sd">        - Highlighting faint small colonies against uneven agar</span>
+<span class="sd">          illumination.</span>
+<span class="sd">        - Extracting early-stage inocula or pinpoints for quantification.</span>
+<span class="sd">        - Preprocessing before applying a detector tuned for small colony</span>
+<span class="sd">          phenotypes.</span>
+
+<span class="sd">    Consider Also:</span>
+<span class="sd">        - :class:`SubtractWhiteTophat` when the goal is to suppress small</span>
+<span class="sd">          bright artifacts rather than isolate them.</span>
+<span class="sd">        - :class:`SubtractOpening` for OpenCV-accelerated white top-hat</span>
+<span class="sd">          background subtraction that also preserves the surrounding</span>
+<span class="sd">          image context.</span>
+<span class="sd">        - :class:`FocusBlobLoG` for scale-invariant blob detection that</span>
+<span class="sd">          responds across a range of colony sizes.</span>
+
 <span class="sd">    Args:</span>
-<span class="sd">        shape: Footprint geometry. ``&#39;disk&#39;`` (default) preserves rounded</span>
-<span class="sd">            colony shapes; ``&#39;diamond&#39;`` is computationally efficient;</span>
-<span class="sd">            ``&#39;square&#39;`` can align with sensor grid artifacts.</span>
-<span class="sd">        width: Maximum bright-object size (pixels) targeted for extraction.</span>
-<span class="sd">            Set slightly larger than the maximum size of colonies you want</span>
-<span class="sd">            to isolate. ``None`` (default) derives a small value from</span>
-<span class="sd">            image dimensions.</span>
+<span class="sd">        shape: Footprint geometry for the structuring element. Accepted</span>
+<span class="sd">            values: ``&#39;disk&#39;`` (default) for isotropic extraction that</span>
+<span class="sd">            preserves rounded colony shapes; ``&#39;diamond&#39;`` for</span>
+<span class="sd">            computational efficiency; ``&#39;square&#39;`` to align with sensor</span>
+<span class="sd">            grid artifacts.</span>
+<span class="sd">        width: Maximum bright-object size in pixels targeted for</span>
+<span class="sd">            extraction. Set slightly larger than the maximum colony</span>
+<span class="sd">            diameter you want to isolate. ``None`` (default) auto-derives</span>
+<span class="sd">            a small value as approximately 0.4 % of the shorter image</span>
+<span class="sd">            dimension.</span>
 
 <span class="sd">    Returns:</span>
-<span class="sd">        Image: Input image with ``detect_mat`` containing only the</span>
-<span class="sd">        extracted small bright structures. ``rgb`` and ``gray`` are</span>
-<span class="sd">        unchanged.</span>
+<span class="sd">        Image: Input image with ``detect_mat`` replaced by the white</span>
+<span class="sd">        top-hat result, containing only the extracted small bright</span>
+<span class="sd">        structures. ``rgb`` and ``gray`` are unchanged.</span>
 
 <span class="sd">    Raises:</span>
 <span class="sd">        ValueError: If an unsupported footprint shape is provided.</span>
 
-<span class="sd">    Best For:</span>
-<span class="sd">        - Isolating small bright colonies from larger background structures.</span>
-<span class="sd">        - Highlighting faint small colonies against uneven illumination.</span>
-<span class="sd">        - Extracting tiny bright specks for detection or quantification.</span>
-<span class="sd">        - Preprocessing before detecting small colony phenotypes.</span>
-
-<span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`SubtractWhiteTophat` when you want to suppress (not</span>
-<span class="sd">          isolate) small bright artifacts.</span>
-<span class="sd">        - :class:`SubtractOpening` for OpenCV-accelerated white top-hat</span>
-<span class="sd">          background subtraction.</span>
-<span class="sd">        - :class:`FocusBlobLoG` for scale-invariant blob detection</span>
-<span class="sd">          that responds to both small and large colonies.</span>
-
 <span class="sd">    See Also:</span>
 <span class="sd">        :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a</span>
 <span class="sd">        visual walkthrough of morphological enhancement on plate images.</span>
+<span class="sd">        :doc:`/explanation/what_enhancement_does` for background on</span>
+<span class="sd">        top-hat transforms and feature isolation strategies.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">shape</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;disk&quot;</span>

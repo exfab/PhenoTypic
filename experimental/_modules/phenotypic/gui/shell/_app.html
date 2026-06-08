@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -610,6 +610,7 @@
     <span class="n">MOUNT_BUILDER</span><span class="p">,</span>
     <span class="n">MOUNT_HOME</span><span class="p">,</span>
     <span class="n">MOUNT_RUN</span><span class="p">,</span>
+    <span class="n">MOUNT_TUNE</span><span class="p">,</span>
     <span class="n">MOUNT_VIEWER</span><span class="p">,</span>
     <span class="n">TITLE_HUB</span><span class="p">,</span>
 <span class="p">)</span>
@@ -619,6 +620,7 @@
     <span class="n">SHELL_TAB_BUILDER</span><span class="p">,</span>
     <span class="n">SHELL_TAB_HOME</span><span class="p">,</span>
     <span class="n">SHELL_TAB_RUN</span><span class="p">,</span>
+    <span class="n">SHELL_TAB_TUNE</span><span class="p">,</span>
     <span class="n">SHELL_TAB_VIEWER</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui.shell._layout</span><span class="w"> </span><span class="kn">import</span> <span class="n">wrap_in_chrome</span>
@@ -757,7 +759,7 @@
 <span class="sd">            so they don&#39;t leak background threads.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="c1"># Local imports to keep boot-time cycles minimal.</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui</span><span class="w"> </span><span class="kn">import</span> <span class="n">analysis</span><span class="p">,</span> <span class="n">builder</span><span class="p">,</span> <span class="n">results_viewer</span><span class="p">,</span> <span class="n">run_console</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui</span><span class="w"> </span><span class="kn">import</span> <span class="n">analysis</span><span class="p">,</span> <span class="n">builder</span><span class="p">,</span> <span class="n">results_viewer</span><span class="p">,</span> <span class="n">run_console</span><span class="p">,</span> <span class="n">tune</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui.results_viewer._output_root</span><span class="w"> </span><span class="kn">import</span> <span class="n">OutputRoot</span>
 
     <span class="c1"># Mutable handoff slot so the sidebar can hand a CLI output path to the</span>
@@ -854,6 +856,14 @@
     <span class="p">)</span>
     <span class="n">wrap_in_chrome</span><span class="p">(</span><span class="n">run_app</span><span class="p">,</span> <span class="n">active_tab</span><span class="o">=</span><span class="n">SHELL_TAB_RUN</span><span class="p">,</span> <span class="n">sandbox</span><span class="o">=</span><span class="n">sandbox</span><span class="p">)</span>
 
+    <span class="c1"># 4b. Tune co-pilot Dash (eager). Read-only and lightweight — no heavy</span>
+    <span class="c1">#     parquet load, so no ToolSession is needed. Mounted empty-state: the</span>
+    <span class="c1">#     user binds a tune run from the sidebar (Chunk C), at which point the</span>
+    <span class="c1">#     page re-reads the bound run. The factory stays optuna-free; the live</span>
+    <span class="c1">#     study is opened lazily inside the Monitor poll callback only.</span>
+    <span class="n">tune_app</span> <span class="o">=</span> <span class="n">tune</span><span class="o">.</span><span class="n">create_app</span><span class="p">(</span><span class="n">root</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">url_prefix</span><span class="o">=</span><span class="n">MOUNT_TUNE</span><span class="p">,</span> <span class="n">sandbox</span><span class="o">=</span><span class="n">sandbox</span><span class="p">)</span>
+    <span class="n">wrap_in_chrome</span><span class="p">(</span><span class="n">tune_app</span><span class="p">,</span> <span class="n">active_tab</span><span class="o">=</span><span class="n">SHELL_TAB_TUNE</span><span class="p">,</span> <span class="n">sandbox</span><span class="o">=</span><span class="n">sandbox</span><span class="p">)</span>
+
     <span class="c1"># Stash on the shell server too so any future cross-tool callback</span>
     <span class="c1"># (e.g. the sidebar&#39;s &quot;open in run console&quot; hand-off) can reach the</span>
     <span class="c1"># same singletons.</span>
@@ -876,16 +886,18 @@
             <span class="n">MOUNT_BUILDER</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">):</span> <span class="n">builder_app</span><span class="o">.</span><span class="n">server</span><span class="p">,</span>
             <span class="n">MOUNT_VIEWER</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">):</span> <span class="n">viewer_proxy</span><span class="p">,</span>
             <span class="n">MOUNT_RUN</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">):</span> <span class="n">run_app</span><span class="o">.</span><span class="n">server</span><span class="p">,</span>
+            <span class="n">MOUNT_TUNE</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">):</span> <span class="n">tune_app</span><span class="o">.</span><span class="n">server</span><span class="p">,</span>
             <span class="n">MOUNT_ANALYSIS</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">):</span> <span class="n">analysis_proxy</span><span class="p">,</span>
         <span class="p">},</span>
     <span class="p">)</span>
 
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-        <span class="s2">&quot;GUI hub composed: sandbox=</span><span class="si">%s</span><span class="s2"> mounts=</span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;GUI hub composed: sandbox=</span><span class="si">%s</span><span class="s2"> mounts=</span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span>
         <span class="n">sandbox</span><span class="o">.</span><span class="n">root</span><span class="p">,</span>
         <span class="n">MOUNT_BUILDER</span><span class="p">,</span>
         <span class="n">MOUNT_VIEWER</span><span class="p">,</span>
         <span class="n">MOUNT_RUN</span><span class="p">,</span>
+        <span class="n">MOUNT_TUNE</span><span class="p">,</span>
         <span class="n">MOUNT_ANALYSIS</span><span class="p">,</span>
     <span class="p">)</span>
 

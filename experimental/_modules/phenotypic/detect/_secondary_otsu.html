@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -587,35 +587,35 @@
 <div class="viewcode-block" id="SecondaryOtsuDetector">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.detect.html#phenotypic.detect.SecondaryOtsuDetector">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">SecondaryOtsuDetector</span><span class="p">(</span><span class="n">ThresholdDetector</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Detect colonies by two-stage Otsu thresholding with per-object refinement.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Detect colonies by two-stage Otsu thresholding with per-object boundary refinement.</span>
 
-<span class="sd">    Apply an initial global Otsu threshold (or reuse an existing</span>
-<span class="sd">    ``objmask``), then re-threshold each detected object independently</span>
-<span class="sd">    using its own intensity distribution. This sharpens colony boundaries</span>
-<span class="sd">    on plates where colonies vary in brightness, removing soft halos while</span>
-<span class="sd">    preserving colony cores. For a full comparison see</span>
+<span class="sd">    Apply an initial global Otsu threshold (or reuse an existing ``objmask``),</span>
+<span class="sd">    then re-threshold each detected object independently using its own intensity</span>
+<span class="sd">    distribution. This sharpens colony boundaries on plates where colonies vary</span>
+<span class="sd">    in brightness, removing soft halos while preserving colony cores. For a</span>
+<span class="sd">    full comparison of detection strategies see</span>
 <span class="sd">    :doc:`/explanation/detection_strategies_compared`.</span>
 
-<span class="sd">    Returns:</span>
-<span class="sd">        Image: Input image with ``objmask`` set to binary mask and</span>
-<span class="sd">        ``objmap`` set to labeled connected components.</span>
-
 <span class="sd">    Best For:</span>
-<span class="sd">        * Refining boundaries after an initial global threshold that leaves</span>
+<span class="sd">        - Refining boundaries after an initial global threshold that leaves</span>
 <span class="sd">          soft or blurry colony edges.</span>
-<span class="sd">        * Heterogeneous plates where colonies differ in pigmentation or</span>
-<span class="sd">          optical density across the plate surface.</span>
-<span class="sd">        * Suppressing preprocessing halos that expand colony outlines</span>
-<span class="sd">          beyond their true boundaries.</span>
+<span class="sd">        - Heterogeneous plates where colonies differ in pigmentation or optical</span>
+<span class="sd">          density across the plate surface.</span>
+<span class="sd">        - Suppressing preprocessing halos that expand colony outlines beyond</span>
+<span class="sd">          their true boundaries.</span>
 
 <span class="sd">    Consider Also:</span>
-<span class="sd">        * :class:`OtsuDetector` when a single global threshold already</span>
+<span class="sd">        - :class:`OtsuDetector` when a single global threshold already</span>
 <span class="sd">          produces clean colony boundaries.</span>
-<span class="sd">        * :class:`HysteresisDetector` when colony intensity varies</span>
-<span class="sd">          smoothly and dual-threshold expansion is more appropriate than</span>
-<span class="sd">          per-object refinement.</span>
-<span class="sd">        * :class:`RankOtsuDetector` when spatially varying illumination is</span>
-<span class="sd">          the primary cause of boundary inaccuracy.</span>
+<span class="sd">        - :class:`HysteresisDetector` when colony intensity varies smoothly</span>
+<span class="sd">          and dual-threshold expansion is more appropriate than per-object</span>
+<span class="sd">          refinement.</span>
+<span class="sd">        - :class:`RankOtsuDetector` when spatially varying illumination is the</span>
+<span class="sd">          primary cause of boundary inaccuracy.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Image: Input image with ``objmask`` set to the refined binary colony</span>
+<span class="sd">        mask and ``objmap`` set to labeled connected components.</span>
 
 <span class="sd">    References:</span>
 <span class="sd">        [1] N. Otsu, &quot;A threshold selection method from gray-level</span>
@@ -623,12 +623,12 @@
 <span class="sd">        pp. 62--66, 1979.</span>
 
 <span class="sd">    See Also:</span>
-<span class="sd">        :doc:`/tutorials/notebooks/02_detecting_colonies`</span>
-<span class="sd">            Step-by-step tutorial for basic colony detection.</span>
-<span class="sd">        :doc:`/how_to/notebooks/choose_detection_algorithm`</span>
-<span class="sd">            Guide for selecting the right detector for your plate images.</span>
-<span class="sd">        :doc:`/explanation/detection_strategies_compared`</span>
-<span class="sd">            In-depth comparison of all detection strategies.</span>
+<span class="sd">        :doc:`/tutorials/notebooks/02_detecting_colonies` for a step-by-step</span>
+<span class="sd">        tutorial on basic colony detection.</span>
+<span class="sd">        :doc:`/how_to/notebooks/choose_detection_algorithm` for guidance on</span>
+<span class="sd">        selecting the right detector for your plate images.</span>
+<span class="sd">        :doc:`/explanation/detection_strategies_compared` for an in-depth</span>
+<span class="sd">        comparison of all thresholding strategies.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>

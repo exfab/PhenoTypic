@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -576,32 +576,40 @@
 <div class="viewcode-block" id="ReduceSectionsByLine">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.refine.html#phenotypic.refine.ReduceSectionsByLine">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ReduceSectionsByLine</span><span class="p">(</span><span class="n">GridObjectRefiner</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Reduce multi-detections per grid cell by keeping the object closest to a linear-regression prediction.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Reduce multi-detections per grid cell to one by keeping the object best predicted by linear regression.</span>
 
-<span class="sd">    Models expected colony positions along each row and column using linear</span>
-<span class="sd">    regression, then iteratively removes objects with the largest positional</span>
-<span class="sd">    residuals until each grid cell contains at most one detection. Cells with</span>
-<span class="sd">    the most objects are processed first to stabilize the regression fit.</span>
+<span class="sd">    Fits linear trends to colony centroids along each row and column, then</span>
+<span class="sd">    iteratively removes objects with the largest positional residuals until</span>
+<span class="sd">    every grid cell contains at most one detection. Grid cells with the most</span>
+<span class="sd">    objects are processed first to stabilize the regression fit before</span>
+<span class="sd">    resolving cells with fewer extra detections.</span>
 
-<span class="sd">    Returns:</span>
-<span class="sd">        Image: Input image with ``objmap`` and ``objmask`` reduced to at most</span>
-<span class="sd">        one object per grid cell based on minimum residual error.</span>
+<span class="sd">    Requires a ``GridImage`` with grid metadata already populated.</span>
+
+<span class="sd">    For an overview of grid refinement strategies, see</span>
+<span class="sd">    :doc:`/explanation/refinement_strategies`.</span>
 
 <span class="sd">    Best For:</span>
-<span class="sd">        - Grid cells with multiple detections from halos, debris, or</span>
-<span class="sd">          over-segmentation.</span>
-<span class="sd">        - Condensation or glare artifacts that create extra detections near</span>
-<span class="sd">          true colonies.</span>
-<span class="sd">        - Pinned arrays where consistent spatial layout makes positional</span>
+<span class="sd">        - Grid cells with multiple detections from halos, condensation, or</span>
+<span class="sd">          agar debris that shadow nearby true colonies.</span>
+<span class="sd">        - Pinned arrays where a consistent spatial layout makes positional</span>
 <span class="sd">          prediction reliable.</span>
+<span class="sd">        - Over-segmented detections where one cell contains a genuine colony</span>
+<span class="sd">          plus one or more satellite artefacts.</span>
 
 <span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`GridAlignmentRefiner` for faster dominant-object-per-cell</span>
-<span class="sd">          selection without regression modeling.</span>
-<span class="sd">        - :class:`KeepSectionLargest` for a simpler largest-per-cell</span>
-<span class="sd">          strategy.</span>
-<span class="sd">        - :class:`RemoveGridOutliers` for removing outliers within noisy</span>
-<span class="sd">          rows or columns rather than reducing to one per cell.</span>
+<span class="sd">        - :class:`GridAlignmentRefiner` for a faster dominant-object-per-cell</span>
+<span class="sd">          approach that does not require iterative regression.</span>
+<span class="sd">        - :class:`KeepSectionLargest` for a simpler strategy that keeps only</span>
+<span class="sd">          the largest object per grid cell without position modeling.</span>
+<span class="sd">        - :class:`RemoveGridOutliers` when the goal is pruning positional</span>
+<span class="sd">          outliers within noisy rows or columns rather than enforcing one</span>
+<span class="sd">          detection per cell.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Image: Input image with ``objmap`` and ``objmask`` reduced so that</span>
+<span class="sd">        each grid cell contains at most one object, selected by minimum</span>
+<span class="sd">        linear-regression residual error.</span>
 
 <span class="sd">    See Also:</span>
 <span class="sd">        :doc:`/how_to/notebooks/refine_noisy_boundaries` for grid-based</span>

@@ -1,6 +1,0 @@
-phenotypic.tools\_.register.get\_dashboard
-==========================================
-
-.. currentmodule:: phenotypic.tools_.register
-
-.. autofunction:: get_dashboard

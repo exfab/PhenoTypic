@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -588,28 +588,6 @@
 <span class="sd">    geometry, sparse or irregular layouts, and manual annotation workflows</span>
 <span class="sd">    where each object position is known individually.</span>
 
-<span class="sd">    Args:</span>
-<span class="sd">        centers: An N x 2 array-like of ``(y, x)`` pixel coordinates</span>
-<span class="sd">            specifying each colony centre. Accepts any sequence that</span>
-<span class="sd">            ``np.asarray`` can convert (list of tuples, nested list, or</span>
-<span class="sd">            NumPy array). When *None* or empty, :meth:`apply` zeros out</span>
-<span class="sd">            ``objmask`` and ``objmap`` and returns immediately.</span>
-
-<span class="sd">        shape: Morphological footprint shape stamped at each coordinate.</span>
-<span class="sd">            ``&quot;disk&quot;`` (default) preserves round colony geometry.</span>
-<span class="sd">            ``&quot;square&quot;`` covers rectangular regions. ``&quot;diamond&quot;`` offers</span>
-<span class="sd">            a compromise between the two.</span>
-
-<span class="sd">        width: Diameter of the footprint in pixels (default 15). Larger</span>
-<span class="sd">            values cover more area per colony; smaller values produce</span>
-<span class="sd">            tighter, more precise masks. Typical range: 5--50, depending</span>
-<span class="sd">            on image resolution and colony size.</span>
-
-<span class="sd">    Returns:</span>
-<span class="sd">        Image: Input image with ``objmask`` set to the union of all</span>
-<span class="sd">        stamped footprints and ``objmap`` set to uniquely labelled regions</span>
-<span class="sd">        (1-indexed, in the order centres were supplied).</span>
-
 <span class="sd">    Best For:</span>
 <span class="sd">        * Manual annotation and ground-truth mask generation for</span>
 <span class="sd">          benchmarking detection algorithms.</span>
@@ -625,6 +603,32 @@
 <span class="sd">          and only one or two anchor coordinates are needed.</span>
 <span class="sd">        * :class:`RoundPeaksDetector` when colony centres can be inferred</span>
 <span class="sd">          automatically from intensity profiles.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        centers: An N x 2 array-like of ``(y, x)`` pixel coordinates, one</span>
+<span class="sd">            per colony, supplied by the user (purely a manual choice).</span>
+<span class="sd">            Accepts any sequence that ``np.asarray`` can convert (list of</span>
+<span class="sd">            tuples, nested list, or NumPy array). When *None* (default) or</span>
+<span class="sd">            empty, :meth:`apply` zeros out ``objmask`` and ``objmap`` and</span>
+<span class="sd">            returns immediately.</span>
+
+<span class="sd">        shape: Morphological footprint shape stamped at each coordinate.</span>
+<span class="sd">            ``&quot;disk&quot;`` (default) preserves round colony geometry.</span>
+<span class="sd">            ``&quot;square&quot;`` covers rectangular regions. ``&quot;diamond&quot;`` offers</span>
+<span class="sd">            a compromise between the two.</span>
+
+<span class="sd">        width: Diameter of the footprint in pixels. Larger values cover</span>
+<span class="sd">            more area per colony (risking overlap of touching colonies);</span>
+<span class="sd">            smaller values produce tighter, more precise masks. A</span>
+<span class="sd">            reasonable starting point is roughly the visible colony</span>
+<span class="sd">            diameter, then adjust by checking whether stamps under-cover</span>
+<span class="sd">            large colonies or spill onto neighbours. Typical range: 5--50,</span>
+<span class="sd">            depending on image resolution and colony size. Default: 15.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Image: Input image with ``objmask`` set to the union of all</span>
+<span class="sd">        stamped footprints and ``objmap`` set to uniquely labelled regions</span>
+<span class="sd">        (1-indexed, in the order centres were supplied).</span>
 
 <span class="sd">    See Also:</span>
 <span class="sd">        :doc:`/tutorials/notebooks/02_detecting_colonies`</span>

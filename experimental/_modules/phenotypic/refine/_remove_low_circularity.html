@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -580,44 +580,57 @@
 <div class="viewcode-block" id="RemoveLowCircularity">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.refine.html#phenotypic.refine.RemoveLowCircularity">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">RemoveLowCircularity</span><span class="p">(</span><span class="n">ObjectRefiner</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Remove objects whose Polsby-Popper circularity falls below a cutoff.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Remove objects whose Polsby-Popper circularity score falls below a threshold.</span>
 
-<span class="sd">    Computes circularity as ``4 * pi * area / perimeter^2`` for each labeled</span>
-<span class="sd">    object and discards those below the threshold. Keeps well-formed, roughly</span>
-<span class="sd">    circular colonies while filtering out elongated artifacts, merged blobs,</span>
-<span class="sd">    and segmentation debris.</span>
+<span class="sd">    Computes ``4π × area / perimeter²`` for each labeled object and</span>
+<span class="sd">    discards those below ``cutoff``. A perfect circle scores 1.0; elongated</span>
+<span class="sd">    or jagged shapes score lower. Well-formed round colonies are retained</span>
+<span class="sd">    while scratches, merged blobs, and irregular segmentation debris are</span>
+<span class="sd">    removed.</span>
+
+<span class="sd">    For an overview of morphological refinement strategies, see</span>
+<span class="sd">    :doc:`/explanation/refinement_strategies`.</span>
+
+<span class="sd">    Best For:</span>
+<span class="sd">        - Post-threshold cleanup to exclude elongated scratches, merged</span>
+<span class="sd">          colony blobs, or agar-edge artefacts before size or shape</span>
+<span class="sd">          measurement.</span>
+<span class="sd">        - High-throughput grid assays where all genuine colonies are</span>
+<span class="sd">          expected to be round and irregular detections indicate artefacts.</span>
+<span class="sd">        - Plates with round yeast or bacterial colonies where any</span>
+<span class="sd">          non-circular detection is reliably spurious.</span>
+
+<span class="sd">    Consider Also:</span>
+<span class="sd">        - :class:`SmallObjectRemover` when artefacts are better</span>
+<span class="sd">          distinguished by area than by shape, or when colony morphology</span>
+<span class="sd">          is legitimately non-circular.</span>
+<span class="sd">        - :class:`RemoveBorderObjects` when irregular detections cluster</span>
+<span class="sd">          near the plate edge because of partial cropping.</span>
+<span class="sd">        - :class:`MaskOpening` for smoothing jagged boundaries before</span>
+<span class="sd">          circularity filtering so that genuine colonies are not penalised</span>
+<span class="sd">          by pixelation artefacts in the perimeter measurement.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        cutoff: Minimum Polsby-Popper circularity in ``[0, 1]`` required to</span>
-<span class="sd">            retain an object. Typical range: 0.5--0.9. Higher values keep</span>
-<span class="sd">            only near-circular shapes; lower values tolerate irregular</span>
-<span class="sd">            morphologies. Default: 0.785.</span>
+<span class="sd">        cutoff: Minimum Polsby-Popper circularity score in ``[0, 1]``</span>
+<span class="sd">            required to retain an object. A perfect circle has a score of</span>
+<span class="sd">            1.0; elongated or irregular shapes score lower. The default</span>
+<span class="sd">            0.785 (π/4) is the area ratio of a circle inscribed in its</span>
+<span class="sd">            bounding square and provides a reasonable boundary between</span>
+<span class="sd">            compact colonies and elongated artefacts. Higher values enforce</span>
+<span class="sd">            stricter roundness; lower values tolerate irregular morphology.</span>
+<span class="sd">            Typical range: 0.5--0.9. Default: 0.785.</span>
 
 <span class="sd">    Returns:</span>
-<span class="sd">        Image: Input image with ``objmap`` and ``objmask`` updated to exclude</span>
-<span class="sd">        objects below the circularity cutoff.</span>
+<span class="sd">        Image: Input image with ``objmap`` and ``objmask`` updated to</span>
+<span class="sd">        exclude all objects whose circularity is at or below ``cutoff``.</span>
+<span class="sd">        ``rgb``, ``gray``, and ``detect_mat`` are unchanged.</span>
 
 <span class="sd">    Raises:</span>
 <span class="sd">        ValueError: If ``cutoff`` is outside ``[0, 1]``.</span>
 
-<span class="sd">    Best For:</span>
-<span class="sd">        - Post-threshold cleanup to exclude elongated scratches or merged</span>
-<span class="sd">          colonies before phenotyping.</span>
-<span class="sd">        - Enforcing morphology consistency in high-throughput grid assays.</span>
-<span class="sd">        - Plates with round yeast or bacterial colonies where irregular</span>
-<span class="sd">          detections indicate artifacts.</span>
-
-<span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`SmallObjectRemover` when artifacts are distinguished by</span>
-<span class="sd">          size rather than shape.</span>
-<span class="sd">        - :class:`RemoveBorderObjects` when irregular detections cluster</span>
-<span class="sd">          near plate edges.</span>
-<span class="sd">        - :class:`MaskOpening` for smoothing jagged boundaries before</span>
-<span class="sd">          circularity filtering.</span>
-
 <span class="sd">    See Also:</span>
 <span class="sd">        :doc:`/how_to/notebooks/refine_noisy_boundaries` for shape-based</span>
-<span class="sd">        cleanup workflows.</span>
+<span class="sd">        cleanup workflows on real plate images.</span>
 <span class="sd">        :doc:`/explanation/refinement_strategies` for a comparison of</span>
 <span class="sd">        morphological refinement methods.</span>
 <span class="sd">    &quot;&quot;&quot;</span>

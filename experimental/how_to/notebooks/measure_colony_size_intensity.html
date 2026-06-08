@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -69,7 +69,7 @@
     <link rel="prev" title="GPU-Accelerated Colony Detection" href="../pages/gpu_detection_setup.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -544,7 +544,8 @@
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../pages/cli_batch_processing.html">CLI Batch Processing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../pages/slurm_pipelines.html">SLURM Pipelines</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../pages/parameter_sweeps.html">Parameter Sweeps</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../pages/tuning.html">Hyperparameter Tuning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../pages/tune_distributed_hpcc.html">Distributed Tuning on HPCC Clusters</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../pages/gui_hub.html">GUI hub</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../pages/serialize_pipelines.html">Serialize and Share Pipelines</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../pages/hdf5_storage.html">Store Results in HDF5</a></li>
@@ -676,43 +677,43 @@
   <tbody>
     <tr>
       <th>count</th>
-      <td>9.000000</td>
-      <td>9.000000</td>
+      <td>7.000000</td>
+      <td>7.000000</td>
     </tr>
     <tr>
       <th>mean</th>
-      <td>13022.000000</td>
-      <td>7611.638047</td>
+      <td>16869.857143</td>
+      <td>9842.796991</td>
     </tr>
     <tr>
       <th>std</th>
-      <td>7822.634291</td>
-      <td>4614.804014</td>
+      <td>3076.517210</td>
+      <td>1929.831898</td>
     </tr>
     <tr>
       <th>min</th>
-      <td>1.000000</td>
-      <td>0.417128</td>
+      <td>13329.000000</td>
+      <td>7522.484134</td>
     </tr>
     <tr>
       <th>25%</th>
-      <td>13265.000000</td>
-      <td>7496.736641</td>
+      <td>14984.500000</td>
+      <td>8566.098591</td>
     </tr>
     <tr>
       <th>50%</th>
-      <td>15974.000000</td>
-      <td>9187.353830</td>
+      <td>17055.000000</td>
+      <td>9998.177169</td>
     </tr>
     <tr>
       <th>75%</th>
-      <td>17006.000000</td>
-      <td>9988.807085</td>
+      <td>17533.000000</td>
+      <td>10501.255212</td>
     </tr>
     <tr>
       <th>max</th>
-      <td>22337.000000</td>
-      <td>13087.327268</td>
+      <td>22670.000000</td>
+      <td>13244.210029</td>
     </tr>
   </tbody>
 </table>
@@ -762,49 +763,49 @@
       <th>count</th>
       <td>7.000000</td>
       <td>7.000000</td>
-      <td>9.000000</td>
+      <td>7.000000</td>
     </tr>
     <tr>
       <th>mean</th>
-      <td>0.645563</td>
-      <td>35.970507</td>
-      <td>0.216800</td>
+      <td>0.894006</td>
+      <td>36.400345</td>
+      <td>0.276039</td>
     </tr>
     <tr>
       <th>std</th>
-      <td>0.067261</td>
-      <td>3.078440</td>
-      <td>0.127882</td>
+      <td>0.010850</td>
+      <td>3.194938</td>
+      <td>0.041446</td>
     </tr>
     <tr>
       <th>min</th>
-      <td>0.510927</td>
-      <td>32.051948</td>
-      <td>0.000000</td>
+      <td>0.879643</td>
+      <td>32.498452</td>
+      <td>0.207857</td>
     </tr>
     <tr>
       <th>25%</th>
-      <td>0.637557</td>
-      <td>34.176161</td>
-      <td>0.214815</td>
+      <td>0.885698</td>
+      <td>34.510547</td>
+      <td>0.261318</td>
     </tr>
     <tr>
       <th>50%</th>
-      <td>0.654747</td>
-      <td>36.115014</td>
-      <td>0.265906</td>
+      <td>0.897971</td>
+      <td>36.520339</td>
+      <td>0.279115</td>
     </tr>
     <tr>
       <th>75%</th>
-      <td>0.674367</td>
-      <td>36.926526</td>
-      <td>0.281954</td>
+      <td>0.900684</td>
+      <td>37.271280</td>
+      <td>0.290936</td>
     </tr>
     <tr>
       <th>max</th>
-      <td>0.729419</td>
-      <td>41.421217</td>
-      <td>0.338132</td>
+      <td>0.907665</td>
+      <td>42.219969</td>
+      <td>0.340791</td>
     </tr>
   </tbody>
 </table>
@@ -852,51 +853,51 @@
   <tbody>
     <tr>
       <th>count</th>
-      <td>9.000000</td>
-      <td>9.000000</td>
-      <td>9.000000</td>
+      <td>7.000000</td>
+      <td>7.000000</td>
+      <td>7.000000</td>
     </tr>
     <tr>
       <th>mean</th>
-      <td>0.550580</td>
-      <td>0.557417</td>
-      <td>0.031153</td>
+      <td>0.582158</td>
+      <td>0.591675</td>
+      <td>0.041818</td>
     </tr>
     <tr>
       <th>std</th>
-      <td>0.066774</td>
-      <td>0.070707</td>
-      <td>0.017925</td>
+      <td>0.015325</td>
+      <td>0.016415</td>
+      <td>0.003861</td>
     </tr>
     <tr>
       <th>min</th>
-      <td>0.417128</td>
-      <td>0.417128</td>
-      <td>0.000000</td>
+      <td>0.564370</td>
+      <td>0.574488</td>
+      <td>0.037359</td>
     </tr>
     <tr>
       <th>25%</th>
-      <td>0.565152</td>
-      <td>0.574650</td>
-      <td>0.035816</td>
+      <td>0.571459</td>
+      <td>0.579269</td>
+      <td>0.038207</td>
     </tr>
     <tr>
       <th>50%</th>
-      <td>0.575144</td>
-      <td>0.582211</td>
-      <td>0.037242</td>
+      <td>0.583767</td>
+      <td>0.591588</td>
+      <td>0.042502</td>
     </tr>
     <tr>
       <th>75%</th>
-      <td>0.585904</td>
-      <td>0.595740</td>
-      <td>0.042424</td>
+      <td>0.586948</td>
+      <td>0.597608</td>
+      <td>0.045163</td>
     </tr>
     <tr>
       <th>max</th>
-      <td>0.611042</td>
-      <td>0.622127</td>
-      <td>0.044072</td>
+      <td>0.610154</td>
+      <td>0.621897</td>
+      <td>0.046125</td>
     </tr>
   </tbody>
 </table>

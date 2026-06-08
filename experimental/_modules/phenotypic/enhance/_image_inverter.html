@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -575,37 +575,41 @@
 <div class="viewcode-block" id="ImageInverter">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.enhance.html#phenotypic.enhance.ImageInverter">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ImageInverter</span><span class="p">(</span><span class="n">ContrastAdjustment</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Invert ``detect_mat`` pixel intensities (negate brightness).</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Invert ``detect_mat`` pixel intensities so dark colonies become bright.</span>
 
-<span class="sd">    Reverses the brightness scale so dark regions become bright and vice</span>
-<span class="sd">    versa. For uint8 data the inversion is ``255 - pixel``; for</span>
-<span class="sd">    floating-point data it is ``max_value - pixel``. Use this when</span>
-<span class="sd">    detectors expect colonies as bright regions but the source image has</span>
-<span class="sd">    colonies as dark regions.</span>
+<span class="sd">    Reverses the brightness scale so dark regions become bright and vice versa.</span>
+<span class="sd">    For uint8 data the inversion is ``255 - pixel``; for floating-point data</span>
+<span class="sd">    it is ``max_value - pixel``. Corrects for imaging systems or scan settings</span>
+<span class="sd">    that produce colonies as dark regions on a bright background, restoring the</span>
+<span class="sd">    bright-colony-on-dark-background convention expected by downstream detectors.</span>
 
-<span class="sd">    For algorithm details, see :doc:`/explanation/what_enhancement_does`.</span>
+<span class="sd">    For how polarity correction fits into the pipeline, see</span>
+<span class="sd">    :doc:`/explanation/what_enhancement_does`.</span>
+
+<span class="sd">    Best For:</span>
+<span class="sd">        - Correcting inverted scan output from imaging systems that produce</span>
+<span class="sd">          dark-on-bright colony images.</span>
+<span class="sd">        - Preprocessing before detectors that assume bright colonies on dark</span>
+<span class="sd">          agar backgrounds.</span>
+<span class="sd">        - Plates where colony boundaries are defined by dark absorption zones</span>
+<span class="sd">          on a bright background.</span>
+
+<span class="sd">    Consider Also:</span>
+<span class="sd">        - :class:`SetDetectMode` when switching the detection channel (e.g.,</span>
+<span class="sd">          to red or green) would resolve the contrast issue without polarity</span>
+<span class="sd">          inversion.</span>
+<span class="sd">        - :class:`SharpenEdgeGauss` when the issue is low contrast rather than</span>
+<span class="sd">          inverted polarity.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        Image: Input image with ``detect_mat`` intensity-inverted.</span>
 <span class="sd">        ``rgb`` and ``gray`` are unchanged.</span>
 
-<span class="sd">    Best For:</span>
-<span class="sd">        - Correcting inverted scan output from imaging systems that</span>
-<span class="sd">          produce dark-on-bright colony images.</span>
-<span class="sd">        - Preprocessing before detectors that expect bright colonies on</span>
-<span class="sd">          dark backgrounds.</span>
-<span class="sd">        - Plates where colony boundaries are defined by dark edges on a</span>
-<span class="sd">          bright background.</span>
-
-<span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`SetDetectMode` when switching the detection channel</span>
-<span class="sd">          (e.g., to red or green) would resolve the contrast issue.</span>
-<span class="sd">        - :class:`SharpenEdgeGauss` when the issue is low contrast rather</span>
-<span class="sd">          than inverted polarity.</span>
-
 <span class="sd">    See Also:</span>
-<span class="sd">        :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a</span>
-<span class="sd">        visual walkthrough of enhancement pipelines on plate images.</span>
+<span class="sd">        :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a visual</span>
+<span class="sd">        walkthrough of enhancement pipelines on plate images.</span>
+<span class="sd">        :doc:`/explanation/what_enhancement_does` for how the detect_mat</span>
+<span class="sd">        polarity convention is established.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>

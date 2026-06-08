@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -580,74 +580,93 @@
 <div class="viewcode-block" id="StableDenoise">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.correction.html#phenotypic.correction.StableDenoise">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">StableDenoise</span><span class="p">(</span><span class="n">ImageCorrector</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Denoise grayscale channels using variance-stabilized BM3D collaborative filtering.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Denoise the grayscale channel using GAT-stabilized BM3D collaborative filtering.</span>
 
-<span class="sd">    Combine the Generalized Anscombe Transform (GAT) with BM3D denoising</span>
-<span class="sd">    in a single corrector step. The GAT stabilizes Poisson-Gaussian noise</span>
-<span class="sd">    variance so that BM3D operates optimally, then the inverse GAT</span>
-<span class="sd">    restores the original intensity scale. Writing through the gray</span>
-<span class="sd">    accessor triggers a detect_mat reset, so downstream reads reflect</span>
-<span class="sd">    the denoised result.</span>
+<span class="sd">    Combine the Generalized Anscombe Transform (GAT) with BM3D block-matching</span>
+<span class="sd">    and 3D filtering in a single corrector step. The forward GAT converts</span>
+<span class="sd">    Poisson-Gaussian mixed noise to approximately unit-variance Gaussian so BM3D</span>
+<span class="sd">    operates with a theoretically correct noise model; the exact unbiased inverse</span>
+<span class="sd">    GAT then restores the original intensity scale. Writing back through the gray</span>
+<span class="sd">    accessor automatically resets ``detect_mat``, so downstream reads reflect the</span>
+<span class="sd">    denoised result.</span>
 
 <span class="sd">    For algorithm details, see :doc:`/explanation/what_enhancement_does`.</span>
 
+<span class="sd">    Best For:</span>
+<span class="sd">        - Low-light or high-ISO plate images where photon shot noise (Poisson</span>
+<span class="sd">          component) is comparable to or larger than read noise.</span>
+<span class="sd">        - Improving intensity measurement accuracy before colony size or</span>
+<span class="sd">          opacity quantification on CCD/sCMOS imaged plates.</span>
+<span class="sd">        - Fluorescence plate reader images with signal-dependent noise where</span>
+<span class="sd">          a purely Gaussian denoiser would leave structured residuals.</span>
+
+<span class="sd">    Consider Also:</span>
+<span class="sd">        - :class:`BayesShrinkCorrector` when all image components including</span>
+<span class="sd">          RGB need simultaneous wavelet denoising.</span>
+<span class="sd">        - :class:`BM3DDenoiser` for BM3D applied only to the detection matrix</span>
+<span class="sd">          without altering the grayscale channel.</span>
+<span class="sd">        - :class:`VisuShrinkCorrector` for a faster wavelet alternative when</span>
+<span class="sd">          Poisson noise modelling is not required.</span>
+
 <span class="sd">    Args:</span>
-<span class="sd">        block_size: BM3D patch side length in pixels. Larger values</span>
-<span class="sd">            capture more context but increase computation. Default: ``8``.</span>
-<span class="sd">        stage_arg: Processing stages. ``&#39;all_stages&#39;`` runs hard</span>
-<span class="sd">            thresholding followed by Wiener filtering for best quality;</span>
-<span class="sd">            ``&#39;hard_thresholding&#39;`` is faster. Default: ``&#39;all_stages&#39;``.</span>
-<span class="sd">        gain: Camera gain in electrons per ADU. Default: ``1.0``.</span>
-<span class="sd">        mu: Read-noise mean (baseline offset). Default: ``0.0``.</span>
-<span class="sd">        sigma: Read-noise standard deviation. ``0.0`` assumes pure</span>
-<span class="sd">            Poisson noise, appropriate for most plate scanners.</span>
+<span class="sd">        block_size: Side length in pixels of the 2D patches used in BM3D</span>
+<span class="sd">            block-matching. Larger values capture more spatial context and</span>
+<span class="sd">            denoise smooth agar backgrounds more effectively; smaller values</span>
+<span class="sd">            preserve fine colony texture and thin hyphal edges. Typical range:</span>
+<span class="sd">            4--16. Default: ``8``.</span>
+<span class="sd">        stage_arg: BM3D processing stages. ``&#39;all_stages&#39;`` runs the</span>
+<span class="sd">            two-stage pipeline (hard-thresholding basic estimate followed by</span>
+<span class="sd">            Wiener collaborative filtering) for best denoising quality.</span>
+<span class="sd">            ``&#39;hard_thresholding&#39;`` skips the Wiener stage for roughly</span>
+<span class="sd">            40--50% faster execution at the cost of more residual noise.</span>
+<span class="sd">            Default: ``&#39;all_stages&#39;``.</span>
+<span class="sd">        gain: Camera gain in electrons per ADU for the GAT noise model.</span>
+<span class="sd">            Scales the Poisson variance component in the forward transform.</span>
+<span class="sd">            Typical range: 0.5--10 e-/ADU depending on sensor; obtain from the</span>
+<span class="sd">            sensor datasheet or a mean-variance calibration. Must be positive.</span>
+<span class="sd">            Default: ``1.0``.</span>
+<span class="sd">        mu: Read-noise mean (dark-current baseline offset) in count units</span>
+<span class="sd">            consistent with ``scale_factor``. Set to 0.0 when the image has</span>
+<span class="sd">            been bias-subtracted, which covers most plate-scanner workflows.</span>
 <span class="sd">            Default: ``0.0``.</span>
-<span class="sd">        scale_factor: Multiplier converting normalized [0, 1] data to</span>
-<span class="sd">            photon counts. ``None`` auto-detects from image bit depth.</span>
-<span class="sd">            Default: ``None``.</span>
+<span class="sd">        sigma: Read-noise standard deviation in count units consistent with</span>
+<span class="sd">            ``scale_factor``. ``0.0`` assumes pure Poisson noise, appropriate</span>
+<span class="sd">            for most plate scanners under normal exposure. Supplying the sensor</span>
+<span class="sd">            read-noise spec (a few to a few tens of counts for typical</span>
+<span class="sd">            scientific CCDs) improves stabilization in low-signal regions. Must</span>
+<span class="sd">            be non-negative. Default: ``0.0``.</span>
+<span class="sd">        scale_factor: Multiplier converting normalized [0, 1] grayscale data</span>
+<span class="sd">            to photon counts before the forward GAT. ``None`` auto-detects</span>
+<span class="sd">            from image bit depth (8-bit: 255, 16-bit: 65535). Override for</span>
+<span class="sd">            non-standard bit depths such as 12-bit sensors stored in a 16-bit</span>
+<span class="sd">            container (4095). Must be positive when supplied. Default:</span>
+<span class="sd">            ``None``.</span>
 
 <span class="sd">    Returns:</span>
-<span class="sd">        Image: Input image with grayscale channel denoised via the</span>
-<span class="sd">        accessor cascade. RGB is unchanged.</span>
+<span class="sd">        Image: Input image with the grayscale channel replaced by the</span>
+<span class="sd">        GAT-stabilized BM3D-denoised result. ``rgb`` is unchanged; ``detect_mat``</span>
+<span class="sd">        is automatically reset via the gray accessor cascade.</span>
 
 <span class="sd">    Raises:</span>
 <span class="sd">        ValueError: If ``gain`` is not positive, ``sigma`` is negative,</span>
-<span class="sd">            ``scale_factor`` is not positive, or ``stage_arg`` is not a</span>
-<span class="sd">            recognized value.</span>
-
-<span class="sd">    Notes:</span>
-<span class="sd">        The grayscale channel is assumed sRGB-encoded: it is decoded to</span>
-<span class="sd">        linear light before the GAT and re-encoded to sRGB afterwards, so</span>
-<span class="sd">        the Poisson-Gaussian model operates on linear photon counts</span>
-<span class="sd">        rather than gamma-warped data. The channel is a luma sum of</span>
-<span class="sd">        gamma-encoded RGB, so decoding it with the per-channel sRGB curve</span>
-<span class="sd">        only approximates true linear luminance -- a close, intentional</span>
-<span class="sd">        approximation; see :meth:`_denoise_channel`.</span>
-
-<span class="sd">    Best For:</span>
-<span class="sd">        - Low-light or high-ISO plate images with photon-counting</span>
-<span class="sd">          (Poisson-Gaussian) noise.</span>
-<span class="sd">        - Improving intensity measurement accuracy before colony size</span>
-<span class="sd">          or opacity quantification.</span>
-<span class="sd">        - CCD/CMOS scanned plates where mixed noise models apply.</span>
-
-<span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`BayesShrinkCorrector` when all components (including</span>
-<span class="sd">          RGB) need denoising simultaneously.</span>
-<span class="sd">        - :class:`BM3DDenoiser` for enhancer-only BM3D on the detection</span>
-<span class="sd">          matrix without modifying grayscale.</span>
-<span class="sd">        - :class:`VisuShrinkCorrector` for a faster wavelet-based</span>
-<span class="sd">          alternative when Poisson noise modelling is not required.</span>
+<span class="sd">            ``scale_factor`` is not positive when supplied, or ``stage_arg``</span>
+<span class="sd">            is not a recognized value.</span>
 
 <span class="sd">    References:</span>
-<span class="sd">        [1] M. Makitalo and A. Foi, &quot;Optimal inversion of the</span>
-<span class="sd">        generalized Anscombe transformation for Poisson-Gaussian noise,&quot;</span>
-<span class="sd">        *IEEE Trans. Image Process.*, vol. 22, no. 1, pp. 91--103,</span>
-<span class="sd">        Jan. 2013.</span>
+<span class="sd">        [1] K. Dabov, A. Foi, V. Katkovnik, and K. Egiazarian, &quot;Image</span>
+<span class="sd">        denoising by sparse 3-D transform-domain collaborative filtering,&quot;</span>
+<span class="sd">        *IEEE Trans. Image Process.*, vol. 16, no. 8, pp. 2080--2095,</span>
+<span class="sd">        Aug. 2007.</span>
+
+<span class="sd">        [2] M. Mäkitalo and A. Foi, &quot;Optimal inversion of the generalized</span>
+<span class="sd">        Anscombe transformation for Poisson-Gaussian noise,&quot; *IEEE Trans.</span>
+<span class="sd">        Image Process.*, vol. 22, no. 1, pp. 91--103, Jan. 2013.</span>
 
 <span class="sd">    See Also:</span>
-<span class="sd">        :doc:`/how_to/notebooks/correct_color_cast` for combining</span>
-<span class="sd">        denoising with color correction workflows.</span>
+<span class="sd">        :doc:`/how_to/notebooks/denoise_low_light` for a walkthrough of</span>
+<span class="sd">        denoising low-light plate images.</span>
+<span class="sd">        :doc:`/explanation/image_quality_noise_contrast_structure` for</span>
+<span class="sd">        background on Poisson-Gaussian noise models and denoiser selection.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">block_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">8</span>

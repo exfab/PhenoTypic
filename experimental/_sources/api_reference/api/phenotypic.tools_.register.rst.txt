@@ -17,13 +17,10 @@ phenotypic.tools\_.register
       :nosignatures:
    
       available_analysis_plugins
-      available_dashboards
       available_plotters
       get_analysis_plugin
-      get_dashboard
       get_plotter
       register_analysis
-      register_dashboard
       register_plotter
    
    
@@ -39,7 +36,6 @@ phenotypic.tools\_.register
    
       AnalysisPluginRegistry
       BaseRegistry
-      DashboardRegistry
       PlotterRegistry
    
    

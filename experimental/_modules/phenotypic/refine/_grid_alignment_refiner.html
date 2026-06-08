@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -584,57 +584,67 @@
 <div class="viewcode-block" id="GridAlignmentRefiner">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.refine.html#phenotypic.refine.GridAlignmentRefiner">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">GridAlignmentRefiner</span><span class="p">(</span><span class="n">GridInferenceMixin</span><span class="p">,</span> <span class="n">ObjectRefiner</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Retain only grid-aligned colonies by keeping the dominant object per cell.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Enforce grid structure by retaining the dominant object per grid cell.</span>
 
-<span class="sd">    Infers or reads grid geometry, partitions the image into cells, and keeps</span>
-<span class="sd">    one object per cell according to the chosen selection strategy. Off-grid</span>
-<span class="sd">    artifacts, dust, and spurious detections are removed, enforcing regular</span>
-<span class="sd">    grid structure on colony detection results.</span>
+<span class="sd">    Infers or reads grid geometry from the image, partitions the detection</span>
+<span class="sd">    results into grid cells, and keeps one object per cell according to the</span>
+<span class="sd">    chosen selection strategy. Off-grid artifacts, dust, and spurious detections</span>
+<span class="sd">    outside expected colony positions are removed. For ``GridImage`` inputs the</span>
+<span class="sd">    grid layout is read directly; for plain ``Image`` inputs it is estimated</span>
+<span class="sd">    from the detected mask.</span>
 
-<span class="sd">    Args:</span>
-<span class="sd">        smoothing_sigma: Gaussian smoothing sigma for row/column intensity</span>
-<span class="sd">            profiles during grid inference. Typical range: 0.5--5.0.</span>
-<span class="sd">            Higher values smooth noise but may merge adjacent peaks.</span>
-<span class="sd">            Default: 2.0.</span>
-<span class="sd">        min_peak_distance: Minimum pixel distance between detected grid</span>
-<span class="sd">            peaks. ``None`` auto-estimates as half the expected colony</span>
-<span class="sd">            spacing. Default: None.</span>
-<span class="sd">        peak_prominence: Minimum prominence for peak detection. ``None``</span>
-<span class="sd">            auto-calculates as 10% of signal range. Default: None.</span>
-<span class="sd">        edge_refinement: Refine grid edges using local intensity minima.</span>
-<span class="sd">            Improves accuracy for unevenly lit plates. Default: True.</span>
-<span class="sd">        selection_mode: Strategy for choosing one object per cell.</span>
-<span class="sd">            ``&quot;dominant&quot;`` keeps the largest by pixel count, ``&quot;centered&quot;``</span>
-<span class="sd">            keeps the most centered, ``&quot;regularized&quot;`` fits a global</span>
-<span class="sd">            regular-grid model then re-selects. Default: ``&quot;dominant&quot;``.</span>
-
-<span class="sd">    Returns:</span>
-<span class="sd">        Image: Input image with ``objmap`` filtered to grid-aligned objects</span>
-<span class="sd">        and ``objmask`` updated to match.</span>
-
-<span class="sd">    Raises:</span>
-<span class="sd">        ValueError: If grid inference fails or image lacks detection results.</span>
+<span class="sd">    For an overview of grid refinement strategies, see</span>
+<span class="sd">    :doc:`/explanation/refinement_strategies`.</span>
 
 <span class="sd">    Best For:</span>
 <span class="sd">        - High-throughput arrayed plates (96-well, 384-well, pinned cultures)</span>
 <span class="sd">          where colonies should align with known well positions.</span>
-<span class="sd">        - Post-detection cleanup when detections contain off-grid artifacts.</span>
-<span class="sd">        - Explicit grid enforcement when used with GridImage and known grid</span>
-<span class="sd">          coordinates.</span>
+<span class="sd">        - Post-detection cleanup when results contain off-grid debris or dust</span>
+<span class="sd">          that survived threshold-based detection.</span>
+<span class="sd">        - Experiments that require exactly one colony label per grid position</span>
+<span class="sd">          before downstream measurement.</span>
 
 <span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`RefineBySineFit` when colony intensities are</span>
-<span class="sd">          heterogeneous and rank-based correlation improves grid estimation.</span>
+<span class="sd">        - :class:`RefineBySineFit` when colony intensities are heterogeneous</span>
+<span class="sd">          and sinusoidal template correlation improves grid estimation.</span>
 <span class="sd">        - :class:`KeepSectionLargest` for a simpler largest-per-cell strategy</span>
-<span class="sd">          on GridImage inputs.</span>
-<span class="sd">        - :class:`ReduceSectionsByLine` for regression-based multi-</span>
-<span class="sd">          detection reduction within grid cells.</span>
+<span class="sd">          on ``GridImage`` inputs without grid inference overhead.</span>
+<span class="sd">        - :class:`ReduceSectionsByLine` for regression-based multi-detection</span>
+<span class="sd">          reduction within grid cells.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        smoothing_sigma: Standard deviation of the Gaussian kernel applied to</span>
+<span class="sd">            row and column projection profiles before peak detection during grid</span>
+<span class="sd">            inference. Higher values merge closely spaced peaks in noisy profiles;</span>
+<span class="sd">            lower values preserve fine grid periodicity. Typical range: 0.5--5.0.</span>
+<span class="sd">            Default: 2.0.</span>
+<span class="sd">        min_peak_distance: Minimum pixel distance between adjacent detected grid</span>
+<span class="sd">            peaks. ``None`` auto-estimates as half the expected inter-colony</span>
+<span class="sd">            spacing. Default: None.</span>
+<span class="sd">        peak_prominence: Minimum peak prominence for grid peak detection. ``None``</span>
+<span class="sd">            auto-calculates as 10 % of the profile signal range. Default: None.</span>
+<span class="sd">        edge_refinement: Refine inferred grid-cell edges using local intensity</span>
+<span class="sd">            minima after initial peak detection. Improves cell boundary accuracy</span>
+<span class="sd">            for unevenly lit or slightly rotated plates. Default: True.</span>
+<span class="sd">        selection_mode: Strategy for selecting one object per grid cell.</span>
+<span class="sd">            ``&quot;dominant&quot;`` keeps the largest object by pixel count;</span>
+<span class="sd">            ``&quot;centered&quot;`` keeps the object whose centroid is closest to the</span>
+<span class="sd">            cell centre; ``&quot;regularized&quot;`` fits a global regular-grid model</span>
+<span class="sd">            then re-selects. Default: ``&quot;dominant&quot;``.</span>
+<span class="sd">        split_merged: Attempt to split merged objects within a cell before</span>
+<span class="sd">            applying the selection strategy. Useful when adjacent colonies are</span>
+<span class="sd">            partially fused in the detection result. Default: False.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Image: Input image with ``objmap`` filtered to one grid-aligned object</span>
+<span class="sd">        per cell and ``objmask`` updated to match.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If grid inference fails or the image lacks detection results.</span>
 
 <span class="sd">    See Also:</span>
-<span class="sd">        :doc:`/how_to/notebooks/refine_noisy_boundaries` for grid-based</span>
-<span class="sd">        cleanup workflows.</span>
-<span class="sd">        :doc:`/explanation/refinement_strategies` for a comparison of</span>
-<span class="sd">        grid refinement approaches.</span>
+<span class="sd">        :doc:`/how_to/notebooks/refine_noisy_boundaries` for grid-based cleanup</span>
+<span class="sd">        workflows on real plate images.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">smoothing_sigma</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.0</span>

@@ -1,0 +1,64 @@
+phenotypic.tune.IntRange
+========================
+
+.. currentmodule:: phenotypic.tune
+
+.. autoclass:: IntRange
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~IntRange.__init__
+      ~IntRange.construct
+      ~IntRange.copy
+      ~IntRange.dict
+      ~IntRange.from_orm
+      ~IntRange.json
+      ~IntRange.model_construct
+      ~IntRange.model_copy
+      ~IntRange.model_dump
+      ~IntRange.model_dump_json
+      ~IntRange.model_json_schema
+      ~IntRange.model_parametrized_name
+      ~IntRange.model_post_init
+      ~IntRange.model_rebuild
+      ~IntRange.model_validate
+      ~IntRange.model_validate_json
+      ~IntRange.model_validate_strings
+      ~IntRange.parse_file
+      ~IntRange.parse_obj
+      ~IntRange.parse_raw
+      ~IntRange.schema
+      ~IntRange.schema_json
+      ~IntRange.update_forward_refs
+      ~IntRange.validate
+      ~IntRange.values
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~IntRange.model_computed_fields
+      ~IntRange.model_config
+      ~IntRange.model_extra
+      ~IntRange.model_fields
+      ~IntRange.model_fields_set
+      ~IntRange.kind
+      ~IntRange.low
+      ~IntRange.high
+      ~IntRange.step
+      ~IntRange.log
+   
+   

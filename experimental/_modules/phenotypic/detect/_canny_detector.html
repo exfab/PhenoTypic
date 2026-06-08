@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -562,113 +562,153 @@
   <h1>Source code for phenotypic.detect._canny_detector</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Annotated</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">cast</span>
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._grid_image</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridImage</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Field</span><span class="p">,</span> <span class="n">model_validator</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">skimage</span><span class="w"> </span><span class="kn">import</span> <span class="n">feature</span><span class="p">,</span> <span class="n">morphology</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">scipy</span><span class="w"> </span><span class="kn">import</span> <span class="n">ndimage</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ThresholdDetector</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">TuneSpec</span>
 
 
 <div class="viewcode-block" id="CannyDetector">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.detect.html#phenotypic.detect.CannyDetector">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">CannyDetector</span><span class="p">(</span><span class="n">ThresholdDetector</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Detect colonies by Canny edge detection and enclosed-region labelling.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Detect colonies by tracing edges and labelling connected regions.</span>
 
-<span class="sd">    Apply multi-stage Canny edge detection (Gaussian smoothing, gradient</span>
-<span class="sd">    magnitude, non-maximum suppression, hysteresis thresholding) to produce</span>
-<span class="sd">    thin, connected boundary contours, then label the enclosed regions as</span>
-<span class="sd">    individual colonies. This edge-based approach segments colonies by</span>
-<span class="sd">    boundary contrast rather than absolute intensity, making it effective on</span>
-<span class="sd">    plates with uneven illumination or translucent colonies. For a full</span>
-<span class="sd">    comparison see :doc:`/explanation/detection_strategies_compared`.</span>
-
-<span class="sd">    Args:</span>
-<span class="sd">        sigma: Gaussian smoothing standard deviation before edge detection</span>
-<span class="sd">            (default 1.0). Higher values suppress noise and spurious edges</span>
-<span class="sd">            but may blur fine boundaries or merge nearby colonies. Typical</span>
-<span class="sd">            range: 0.5--3.0. Start with 1.0 for clean images; increase to</span>
-<span class="sd">            2.0--3.0 for noisy scans.</span>
-
-<span class="sd">        low_threshold: Lower hysteresis threshold (default 0.1). When</span>
-<span class="sd">            *use_quantiles* is True, this is a fraction (0.1 = retain edges</span>
-<span class="sd">            stronger than 10 % of gradient magnitudes). When False, an</span>
-<span class="sd">            absolute gradient value. Increase to suppress weak noise edges.</span>
-<span class="sd">            Typical quantile range: 0.05--0.2.</span>
-
-<span class="sd">        high_threshold: Upper hysteresis threshold seeding edge traces</span>
-<span class="sd">            (default 0.2). Same interpretation as *low_threshold*. Must</span>
-<span class="sd">            exceed *low_threshold*. Typical quantile range: 0.1--0.4.</span>
-
-<span class="sd">        use_quantiles: If True (default), interpret thresholds as gradient-</span>
-<span class="sd">            magnitude quantiles, adapting automatically to image contrast.</span>
-<span class="sd">            Set to False for absolute gradient values when imaging</span>
-<span class="sd">            conditions are tightly controlled.</span>
-
-<span class="sd">        min_size: Minimum object area in pixels (default 50). Increase to</span>
-<span class="sd">            filter dust, debris, and plate-edge artefacts; decrease to</span>
-<span class="sd">            retain tiny colonies. Typical range: 20--500.</span>
-
-<span class="sd">        invert_edges: If True (default), label enclosed regions as colony</span>
-<span class="sd">            objects. If False, label edge pixels themselves (useful for</span>
-<span class="sd">            debugging edge quality).</span>
-
-<span class="sd">        connectivity: Connectivity for region labelling (1 = 4-connected,</span>
-<span class="sd">            2 = 8-connected; default 2). Higher connectivity bridges</span>
-<span class="sd">            diagonal gaps in edge contours.</span>
-
-<span class="sd">    Returns:</span>
-<span class="sd">        Image: Input image with ``objmap`` set to a labelled colony map</span>
-<span class="sd">        where each enclosed region receives a unique integer label.</span>
-<span class="sd">        ``objmask`` is derived from the non-zero region of the label map.</span>
-
-<span class="sd">    Raises:</span>
-<span class="sd">        ValueError: If *high_threshold* is less than *low_threshold* or if</span>
-<span class="sd">            threshold values are outside the valid range.</span>
+<span class="sd">    Applies multi-stage Canny edge detection — Gaussian smoothing, gradient</span>
+<span class="sd">    estimation, non-maximum suppression, and dual-threshold hysteresis — to</span>
+<span class="sd">    produce thin edge pixels, then labels connected components of either the</span>
+<span class="sd">    inverted edge map or the edge map itself. This does not explicitly close</span>
+<span class="sd">    contours or fill interiors; colony-sized regions are recovered only when</span>
+<span class="sd">    edges form useful barriers and size filtering removes background regions.</span>
+<span class="sd">    Because detection relies on boundary contrast rather than absolute</span>
+<span class="sd">    intensity, it can remain useful on plates with uneven illumination or</span>
+<span class="sd">    translucent colonies. For a full comparison of detection strategies, see</span>
+<span class="sd">    :doc:`/explanation/detection_strategies_compared`.</span>
 
 <span class="sd">    Best For:</span>
-<span class="sd">        * Well-separated colonies on solid media where colony edges are</span>
-<span class="sd">          sharper than intensity differences relative to background.</span>
-<span class="sd">        * Translucent or lightly pigmented colonies that lack sufficient</span>
+<span class="sd">        - Well-separated colonies on solid media where colony edges are sharper</span>
+<span class="sd">          than the intensity difference relative to background.</span>
+<span class="sd">        - Translucent or lightly pigmented colonies that lack sufficient</span>
 <span class="sd">          intensity contrast for threshold-based methods.</span>
-<span class="sd">        * Plates with heterogeneous colony texture or pigmentation that</span>
-<span class="sd">          fragments under watershed or simple thresholding.</span>
-<span class="sd">        * Images with moderate vignetting where edge contrast is preserved</span>
-<span class="sd">          even though absolute intensity varies spatially.</span>
+<span class="sd">        - Plates with heterogeneous colony texture or pigmentation that cause</span>
+<span class="sd">          intensity-based methods to fragment objects.</span>
+<span class="sd">        - Images with moderate vignetting where edge contrast is preserved even</span>
+<span class="sd">          though absolute intensity varies across the plate.</span>
 
 <span class="sd">    Consider Also:</span>
-<span class="sd">        * :class:`OtsuDetector` when colonies differ from background</span>
-<span class="sd">          primarily in brightness rather than edge contrast.</span>
-<span class="sd">        * :class:`WatershedDetector` when touching colonies must be split</span>
-<span class="sd">          by region-growing from interior seeds.</span>
-<span class="sd">        * :class:`HysteresisDetector` when dual-threshold intensity</span>
+<span class="sd">        - :class:`OtsuDetector` when colonies differ from background primarily</span>
+<span class="sd">          in brightness rather than edge contrast.</span>
+<span class="sd">        - :class:`WatershedDetector` when touching colonies must be separated</span>
+<span class="sd">          by region-growing from interior distance-transform seeds.</span>
+<span class="sd">        - :class:`HysteresisDetector` when dual-threshold intensity</span>
 <span class="sd">          segmentation is preferred over edge-based detection.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        sigma: Standard deviation of the Gaussian pre-smoothing kernel in</span>
+<span class="sd">            pixels. Larger values suppress high-frequency noise but broaden</span>
+<span class="sd">            edge profiles and may merge boundaries of closely spaced colonies.</span>
+<span class="sd">            Typical range: 0.5--3.0. Default: 1.0. A reasonable starting point</span>
+<span class="sd">            for noisy CCD images or plates with fine colony texture is 2.0--3.0.</span>
+<span class="sd">        low_threshold: Lower hysteresis gate. When ``use_quantiles`` is</span>
+<span class="sd">            ``True``, interpreted as a fractional rank of gradient magnitudes</span>
+<span class="sd">            (0.1 retains edges stronger than 10 % of all measured gradients).</span>
+<span class="sd">            When ``False``, an absolute gradient value requiring per-setup</span>
+<span class="sd">            calibration. Raise to prune weak noise-driven edge fragments;</span>
+<span class="sd">            lower to recover faint boundaries on low-contrast colonies.</span>
+<span class="sd">            Typical quantile range: 0.05--0.2. Default: 0.1.</span>
+<span class="sd">        high_threshold: Upper hysteresis gate that seeds new edge chains. Must</span>
+<span class="sd">            exceed ``low_threshold``. A higher value seeds fewer but more</span>
+<span class="sd">            confident edge segments; a lower value seeds more chains at the</span>
+<span class="sd">            risk of noise-seeded spurious regions. A 2:1 to 3:1 high-to-low</span>
+<span class="sd">            ratio is effective for moderately noisy images. Typical quantile</span>
+<span class="sd">            range: 0.1--0.4. Default: 0.2.</span>
+<span class="sd">        use_quantiles: When ``True`` (default), thresholds are interpreted as</span>
+<span class="sd">            gradient-magnitude percentile ranks, adapting automatically to</span>
+<span class="sd">            image contrast across batches with variable scanner gain or</span>
+<span class="sd">            illumination. When ``False``, thresholds are absolute gradient</span>
+<span class="sd">            values for tightly controlled imaging conditions. Default: True.</span>
+<span class="sd">        min_size: Minimum connected-region area in pixels. Regions smaller than</span>
+<span class="sd">            this are discarded as dust, debris, or condensation droplets after</span>
+<span class="sd">            labelling. Typical range: 20--500 px, scaling with image</span>
+<span class="sd">            resolution. Default: 50.</span>
+<span class="sd">        invert_edges: When ``True`` (default), the binary edge map is inverted</span>
+<span class="sd">            before labelling so that non-edge regions can become colony objects.</span>
+<span class="sd">            Set to ``False`` to label the edge pixels themselves, which is</span>
+<span class="sd">            useful for inspecting edge closure and gap locations during</span>
+<span class="sd">            parameter tuning. Default: True.</span>
+<span class="sd">        connectivity: Pixel connectivity for connected-component labelling.</span>
+<span class="sd">            ``1`` for 4-connectivity; ``2`` for 8-connectivity. Use ``2``</span>
+<span class="sd">            (default) to bridge single-pixel diagonal gaps in Canny edge</span>
+<span class="sd">            contours, preventing spurious region splits at diagonal steps.</span>
+<span class="sd">            Default: 2.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Image: Input image with ``objmap`` set to a labelled colony map where</span>
+<span class="sd">        each retained connected region receives a unique integer label, and ``objmask``</span>
+<span class="sd">        derived from the non-zero entries of that map.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If ``high_threshold`` is less than ``low_threshold``.</span>
 
 <span class="sd">    References:</span>
 <span class="sd">        [1] J. Canny, &quot;A computational approach to edge detection,&quot; *IEEE</span>
 <span class="sd">        Trans. Pattern Anal. Mach. Intell.*, vol. 8, no. 6, pp. 679--698,</span>
-<span class="sd">        1986.</span>
+<span class="sd">        Nov. 1986.</span>
 
 <span class="sd">    See Also:</span>
-<span class="sd">        :doc:`/tutorials/notebooks/02_detecting_colonies`</span>
-<span class="sd">            Step-by-step tutorial for basic colony detection.</span>
-<span class="sd">        :doc:`/how_to/notebooks/choose_detection_algorithm`</span>
-<span class="sd">            Guide for selecting the right detector for your plate images.</span>
-<span class="sd">        :doc:`/explanation/detection_strategies_compared`</span>
-<span class="sd">            In-depth comparison of all detection strategies.</span>
+<span class="sd">        :doc:`/tutorials/notebooks/02_detecting_colonies` for a step-by-step</span>
+<span class="sd">        tutorial demonstrating colony detection on real plate images.</span>
+<span class="sd">        :doc:`/how_to/notebooks/choose_detection_algorithm` for a guide to</span>
+<span class="sd">        selecting the right detector for your plate images.</span>
+<span class="sd">        :doc:`/explanation/detection_strategies_compared` for an in-depth</span>
+<span class="sd">        comparison of all detection strategies and their failure modes.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="n">sigma</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span>
-    <span class="n">low_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span>
-    <span class="n">high_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.2</span>
+    <span class="n">sigma</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">)]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">gt</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
+    <span class="c1"># Mode-dependent: a fraction when use_quantiles=True, an absolute gradient</span>
+    <span class="c1"># value otherwise — so a TuneSpec search window only, no tight Field bound.</span>
+    <span class="n">low_threshold</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">0.05</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">)]</span> <span class="o">=</span> <span class="mf">0.1</span>
+    <span class="c1"># Search windows are deliberately NON-OVERLAPPING (low ≤ 0.2 ≤ high) so the</span>
+    <span class="c1"># optimizer can never sample ``low &gt; high`` — a degenerate Canny config. The</span>
+    <span class="c1"># constructor params are unchanged (no derived/delta field), so serialized</span>
+    <span class="c1"># pipelines keep round-tripping; the ``_check_threshold_order`` validator is a</span>
+    <span class="c1"># belt-and-suspenders guard for manually-constructed detectors.</span>
+    <span class="n">high_threshold</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">)]</span> <span class="o">=</span> <span class="mf">0.2</span>
     <span class="n">use_quantiles</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
-    <span class="n">min_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">50</span>
+    <span class="c1"># TODO: review bound (unverified vs literature)</span>
+    <span class="n">min_size</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">500</span><span class="p">)]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="mi">50</span><span class="p">,</span> <span class="n">ge</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
     <span class="n">invert_edges</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
-    <span class="n">connectivity</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span>
+    <span class="n">connectivity</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="n">categories</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">])]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">ge</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">le</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
+    <span class="nd">@model_validator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;after&quot;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_check_threshold_order</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;CannyDetector&quot;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Reject a configuration where ``high_threshold &lt;= low_threshold``.</span>
+
+<span class="sd">        Canny hysteresis requires the upper threshold to strictly exceed the</span>
+<span class="sd">        lower one; a crossed pair produces a degenerate edge map. The tuning</span>
+<span class="sd">        search windows are already non-overlapping (``low ≤ 0.2 ≤ high``), so the</span>
+<span class="sd">        optimizer can never reach this state — this guard only fires for a</span>
+<span class="sd">        hand-constructed detector. The defaults (low ``0.1``, high ``0.2``) pass.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ``self`` unchanged when the thresholds are correctly ordered.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If ``high_threshold &lt;= low_threshold``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">high_threshold</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">low_threshold</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;high_threshold (</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">high_threshold</span><span class="si">}</span><span class="s2">) must be greater than &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;low_threshold (</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">low_threshold</span><span class="si">}</span><span class="s2">)&quot;</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span> <span class="o">|</span> <span class="n">GridImage</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
 
@@ -689,11 +729,19 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="n">regions</span> <span class="o">=</span> <span class="n">edges</span>
 
-        <span class="c1"># Label connected components</span>
-        <span class="n">objmap</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">ndimage</span><span class="o">.</span><span class="n">label</span><span class="p">(</span>
-                <span class="n">regions</span><span class="p">,</span>
-                <span class="n">structure</span><span class="o">=</span><span class="n">ndimage</span><span class="o">.</span><span class="n">generate_binary_structure</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">connectivity</span><span class="p">)</span>
+        <span class="c1"># Label connected components. ``ndimage.label`` returns</span>
+        <span class="c1"># ``(labels, count)`` here (default ``output=None``); the cast pins the</span>
+        <span class="c1"># tuple branch of its overloaded return for the type checker.</span>
+        <span class="n">labeled</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span>
+                <span class="s2">&quot;tuple[Any, int]&quot;</span><span class="p">,</span>
+                <span class="n">ndimage</span><span class="o">.</span><span class="n">label</span><span class="p">(</span>
+                        <span class="n">regions</span><span class="p">,</span>
+                        <span class="n">structure</span><span class="o">=</span><span class="n">ndimage</span><span class="o">.</span><span class="n">generate_binary_structure</span><span class="p">(</span>
+                                <span class="mi">2</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">connectivity</span>
+                        <span class="p">),</span>
+                <span class="p">),</span>
         <span class="p">)</span>
+        <span class="n">objmap</span> <span class="o">=</span> <span class="n">labeled</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
 
         <span class="c1"># Remove small objects (pass a boolean array when only one label</span>
         <span class="c1"># exists to avoid skimage&#39;s &quot;single-label&quot; ambiguity warning).</span>

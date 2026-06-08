@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -575,57 +575,54 @@
 <div class="viewcode-block" id="MeanDetector">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.detect.html#phenotypic.detect.MeanDetector">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">MeanDetector</span><span class="p">(</span><span class="n">ThresholdDetector</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Detect colonies by thresholding at the mean image intensity.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Detect colonies by thresholding at the arithmetic mean pixel intensity.</span>
 
-<span class="sd">    Use the arithmetic mean of all pixel intensities as the threshold,</span>
-<span class="sd">    classifying pixels above the mean as colony foreground. This</span>
-<span class="sd">    parameter-free baseline is fast and deterministic, making it useful for</span>
-<span class="sd">    quick sanity checks or as a fallback when histogram-adaptive methods</span>
-<span class="sd">    produce unexpected results. For a full comparison see</span>
+<span class="sd">    Use the arithmetic mean of all pixel intensities as the classification</span>
+<span class="sd">    boundary, assigning pixels above the mean to colony foreground. This</span>
+<span class="sd">    parameter-free baseline is fast, deterministic, and requires no histogram</span>
+<span class="sd">    assumptions, making it a reliable fallback when adaptive methods produce</span>
+<span class="sd">    unexpected results. For a full comparison of detection strategies see</span>
 <span class="sd">    :doc:`/explanation/detection_strategies_compared`.</span>
 
-<span class="sd">    Args:</span>
-<span class="sd">        ignore_zeros: Exclude zero-intensity pixels from threshold</span>
-<span class="sd">            computation. Enable for plates with black borders or masked</span>
-<span class="sd">            regions; disable only when zero is a meaningful intensity value.</span>
-<span class="sd">            Default: True.</span>
+<span class="sd">    Best For:</span>
+<span class="sd">        - Quick baseline detection requiring no parameter tuning.</span>
+<span class="sd">        - Sanity-checking preprocessing steps before applying a more</span>
+<span class="sd">          specialised detector.</span>
+<span class="sd">        - Plates where colony and background areas are roughly equal in size,</span>
+<span class="sd">          placing the mean near the natural separation point.</span>
+<span class="sd">        - Debugging pipelines where a simple, predictable threshold is needed.</span>
 
+<span class="sd">    Consider Also:</span>
+<span class="sd">        - :class:`OtsuDetector` for a statistically optimal threshold that</span>
+<span class="sd">          adapts to the histogram shape.</span>
+<span class="sd">        - :class:`TriangleDetector` when colonies are sparse and the histogram</span>
+<span class="sd">          is strongly skewed toward the background.</span>
+<span class="sd">        - :class:`IsodataDetector` for an iterative refinement that converges</span>
+<span class="sd">          to a class-mean midpoint more robustly than the global mean.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        ignore_zeros: Exclude zero-intensity pixels from the mean calculation</span>
+<span class="sd">            before computing the threshold. Enable for plates with black</span>
+<span class="sd">            borders or masked regions. Default: False.</span>
 <span class="sd">        ignore_borders: Remove colonies touching image edges via</span>
 <span class="sd">            ``clear_border()``. Recommended for grid-based colony counting</span>
 <span class="sd">            to eliminate partial colonies at plate boundaries. Default: True.</span>
 
 <span class="sd">    Returns:</span>
-<span class="sd">        Image: Input image with ``objmask`` set to binary mask and</span>
+<span class="sd">        Image: Input image with ``objmask`` set to the binary colony mask and</span>
 <span class="sd">        ``objmap`` set to labeled connected components.</span>
 
 <span class="sd">    Raises:</span>
-<span class="sd">        ValueError: If threshold computation fails (e.g., all pixels share</span>
-<span class="sd">            the same intensity value).</span>
-
-<span class="sd">    Best For:</span>
-<span class="sd">        * Quick baseline detection requiring no parameter tuning.</span>
-<span class="sd">        * Sanity-checking preprocessing steps before applying a more</span>
-<span class="sd">          specialised detector.</span>
-<span class="sd">        * Plates where colony and background areas are roughly equal in</span>
-<span class="sd">          size.</span>
-<span class="sd">        * Debugging pipelines where a simple, predictable threshold is</span>
-<span class="sd">          needed.</span>
-
-<span class="sd">    Consider Also:</span>
-<span class="sd">        * :class:`OtsuDetector` for a statistically optimal threshold that</span>
-<span class="sd">          adapts to the histogram shape.</span>
-<span class="sd">        * :class:`TriangleDetector` when colonies are sparse and the</span>
-<span class="sd">          histogram is strongly skewed toward background.</span>
-<span class="sd">        * :class:`IsodataDetector` for an iterative refinement that</span>
-<span class="sd">          converges beyond the simple mean.</span>
+<span class="sd">        ValueError: If all pixels share the same intensity value, making</span>
+<span class="sd">            threshold computation degenerate.</span>
 
 <span class="sd">    See Also:</span>
-<span class="sd">        :doc:`/tutorials/notebooks/02_detecting_colonies`</span>
-<span class="sd">            Step-by-step tutorial for basic colony detection.</span>
-<span class="sd">        :doc:`/how_to/notebooks/choose_detection_algorithm`</span>
-<span class="sd">            Guide for selecting the right detector for your plate images.</span>
-<span class="sd">        :doc:`/explanation/detection_strategies_compared`</span>
-<span class="sd">            In-depth comparison of all detection strategies.</span>
+<span class="sd">        :doc:`/tutorials/notebooks/02_detecting_colonies` for a step-by-step</span>
+<span class="sd">        tutorial on basic colony detection.</span>
+<span class="sd">        :doc:`/how_to/notebooks/choose_detection_algorithm` for guidance on</span>
+<span class="sd">        selecting the right detector for your plate images.</span>
+<span class="sd">        :doc:`/explanation/detection_strategies_compared` for an in-depth</span>
+<span class="sd">        comparison of all thresholding strategies.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">ignore_zeros</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>

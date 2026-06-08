@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -575,46 +575,53 @@
 <div class="viewcode-block" id="Skeletonize">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.refine.html#phenotypic.refine.Skeletonize">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">Skeletonize</span><span class="p">(</span><span class="n">ObjectRefiner</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Reduce object masks to single-pixel-wide skeletons via medial axis thinning.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Reduce object masks to single-pixel-wide skeletons via medial-axis thinning.</span>
 
-<span class="sd">    Compresses each object region to its medial axis (centerline), preserving</span>
-<span class="sd">    topological connectivity while discarding boundary and interior pixels.</span>
-<span class="sd">    Useful for distilling colony morphology to its core branching structure</span>
-<span class="sd">    for filament or spreading phenotype analysis.</span>
+<span class="sd">    Compresses each detected region to its medial axis (centerline),</span>
+<span class="sd">    preserving topological connectivity while discarding all interior and</span>
+<span class="sd">    boundary pixels. The result captures the branching structure and</span>
+<span class="sd">    elongation of each colony without the area contribution of filled masks.</span>
 
-<span class="sd">    Args:</span>
-<span class="sd">        method: Thinning algorithm. ``&quot;zhang&quot;`` is fast and optimized for</span>
-<span class="sd">            clean 2D masks. ``&quot;lee&quot;`` is more robust to noise and works on</span>
-<span class="sd">            2D/3D. ``None`` auto-selects based on dimensionality. Default:</span>
-<span class="sd">            None.</span>
-
-<span class="sd">    Returns:</span>
-<span class="sd">        Image: Input image with ``objmask`` replaced by the single-pixel-wide</span>
-<span class="sd">        skeleton.</span>
-
-<span class="sd">    Raises:</span>
-<span class="sd">        ValueError: If an invalid ``method`` is provided.</span>
+<span class="sd">    For a comparison of morphological refinement methods, see</span>
+<span class="sd">    :doc:`/explanation/refinement_strategies`.</span>
 
 <span class="sd">    Best For:</span>
 <span class="sd">        - Extracting colony centerlines for elongation or orientation</span>
 <span class="sd">          analysis.</span>
 <span class="sd">        - Analyzing branching patterns in filamentous fungi or spreading</span>
 <span class="sd">          bacterial phenotypes.</span>
-<span class="sd">        - Simplifying masks for spatial graph analysis or hyphae tracking.</span>
+<span class="sd">        - Simplifying masks before spatial graph analysis or hyphal</span>
+<span class="sd">          network tracing.</span>
 <span class="sd">        - Reducing boundary noise before measuring advanced morphological</span>
-<span class="sd">          features.</span>
+<span class="sd">          features such as tortuosity or branch count.</span>
 
 <span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`Thinning` for iterative boundary peeling with control</span>
-<span class="sd">          over the number of iterations.</span>
-<span class="sd">        - :class:`MaskGradient` when you need boundary outlines rather</span>
+<span class="sd">        - :class:`Thinning` for iterative boundary peeling with explicit</span>
+<span class="sd">          control over the number of thinning steps.</span>
+<span class="sd">        - :class:`MaskGradient` when boundary outlines are needed rather</span>
 <span class="sd">          than medial axes.</span>
 <span class="sd">        - :class:`MaskErosion` for uniform inward shrinking that preserves</span>
-<span class="sd">          filled regions.</span>
+<span class="sd">          filled object interiors.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        method: Skeletonization algorithm. ``&quot;zhang&quot;`` applies Zhang--Suen</span>
+<span class="sd">            fast parallel thinning for 2-D binary masks. ``&quot;lee&quot;`` uses</span>
+<span class="sd">            Lee&#39;s octree-based algorithm, which also supports 3-D arrays.</span>
+<span class="sd">            ``None`` selects automatically based on array dimensionality.</span>
+<span class="sd">            Default: None.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Image: Input image with ``objmask`` replaced by the</span>
+<span class="sd">        single-pixel-wide medial-axis skeleton. Assigning ``objmask``</span>
+<span class="sd">        rebuilds ``objmap`` from the skeleton mask.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If ``method`` is not ``&quot;zhang&quot;``, ``&quot;lee&quot;``, or</span>
+<span class="sd">            ``None``.</span>
 
 <span class="sd">    See Also:</span>
 <span class="sd">        :doc:`/how_to/notebooks/refine_noisy_boundaries` for skeleton-based</span>
-<span class="sd">        analysis workflows.</span>
+<span class="sd">        analysis workflows on real plate images.</span>
 <span class="sd">        :doc:`/explanation/refinement_strategies` for a comparison of</span>
 <span class="sd">        morphological refinement methods.</span>
 <span class="sd">    &quot;&quot;&quot;</span>

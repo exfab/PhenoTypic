@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -562,11 +562,12 @@
   <h1>Source code for phenotypic.enhance._median_filter</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">TYPE_CHECKING</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Annotated</span><span class="p">,</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">TYPE_CHECKING</span>
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">Smoothing</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">TuneSpec</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">skimage.filters</span><span class="w"> </span><span class="kn">import</span> <span class="n">median</span>
 
@@ -574,51 +575,60 @@
 <div class="viewcode-block" id="MedianFilter">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.enhance.html#phenotypic.enhance.MedianFilter">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">MedianFilter</span><span class="p">(</span><span class="n">Smoothing</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Remove impulsive noise from detect_mat while preserving colony edges.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Remove impulsive noise from ``detect_mat`` while preserving colony edges.</span>
 
-<span class="sd">    Replaces each pixel with the median of its local neighborhood, making it</span>
-<span class="sd">    robust to outlier pixels (condensation droplets, dust specks, sensor noise).</span>
-<span class="sd">    Preserves colony boundaries better than Gaussian smoothing because it does</span>
-<span class="sd">    not average across edges.</span>
+<span class="sd">    Replaces each pixel with the median of its local neighbourhood, making it</span>
+<span class="sd">    robust to outlier pixels such as condensation droplets, dust specks, and</span>
+<span class="sd">    sensor noise spikes. Preserves colony boundaries more faithfully than</span>
+<span class="sd">    Gaussian smoothing because the median operation does not average intensity</span>
+<span class="sd">    across edges.</span>
+
+<span class="sd">    For a comparison of denoising approaches, see</span>
+<span class="sd">    :doc:`/explanation/what_enhancement_does`.</span>
+
+<span class="sd">    Best For:</span>
+<span class="sd">        - Plates with salt-and-pepper noise or isolated bright/dark speckle</span>
+<span class="sd">          artefacts from scanner CCD defects or condensation.</span>
+<span class="sd">        - Preserving sharp colony boundary edges during denoising before</span>
+<span class="sd">          edge-based detection.</span>
+<span class="sd">        - Pre-filtering before edge-based detectors (Canny, Sobel) where noise</span>
+<span class="sd">          edges must be suppressed without blurring colony margins.</span>
+
+<span class="sd">    Consider Also:</span>
+<span class="sd">        - :class:`GaussianBlur` for faster, simpler smoothing when edge</span>
+<span class="sd">          preservation is less critical and noise is Gaussian rather than</span>
+<span class="sd">          impulsive.</span>
+<span class="sd">        - :class:`LocalEdgeDenoise` for bilateral edge-preserving smoothing</span>
+<span class="sd">          with continuous intensity gradients.</span>
+<span class="sd">        - :class:`RankMedianEnhancer` for configurable rank-based filtering</span>
+<span class="sd">          with explicit footprint control.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        mode: Boundary handling. Accepted values: ``&#39;nearest&#39;``, ``&#39;reflect&#39;``,</span>
-<span class="sd">            ``&#39;constant&#39;``, ``&#39;mirror&#39;``, ``&#39;wrap&#39;``. Default: ``&#39;nearest&#39;``.</span>
-<span class="sd">        shape: Structuring element shape. Accepted values: ``&#39;disk&#39;``,</span>
-<span class="sd">            ``&#39;square&#39;``, ``&#39;diamond&#39;``, or ``None`` for library default.</span>
-<span class="sd">            Default: ``None``.</span>
+<span class="sd">        mode: Boundary handling strategy. Accepted values: ``&#39;nearest&#39;``,</span>
+<span class="sd">            ``&#39;reflect&#39;``, ``&#39;constant&#39;``, ``&#39;mirror&#39;``, ``&#39;wrap&#39;``.</span>
+<span class="sd">            Default: ``&#39;nearest&#39;``.</span>
+<span class="sd">        shape: Structuring element shape for the median neighbourhood.</span>
+<span class="sd">            Accepted values: ``&#39;disk&#39;``, ``&#39;square&#39;``, ``&#39;diamond&#39;``, or</span>
+<span class="sd">            ``None`` for the library default footprint. Default: ``None``.</span>
 <span class="sd">        width: Size of the structuring element in pixels. Larger values</span>
 <span class="sd">            smooth more aggressively. Typical range: 3--9. Default: 5.</span>
-<span class="sd">        cval: Fill value when ``mode=&#39;constant&#39;``. Default: 0.0.</span>
+<span class="sd">        cval: Fill value used when ``mode=&#39;constant&#39;``. Default: 0.0.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        Image: Input image with ``detect_mat`` filtered. ``rgb`` and ``gray``</span>
 <span class="sd">        are unchanged.</span>
 
-<span class="sd">    Best For:</span>
-<span class="sd">        - Plates with salt-and-pepper noise or bright/dark speckle artifacts.</span>
-<span class="sd">        - Preserving sharp colony edges during denoising.</span>
-<span class="sd">        - Pre-filtering before edge-based detection (Canny, Sobel).</span>
-
-<span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`GaussianBlur` for faster, simpler smoothing when edge</span>
-<span class="sd">          preservation is less critical.</span>
-<span class="sd">        - :class:`LocalEdgeDenoise` for edge-preserving smoothing with</span>
-<span class="sd">          continuous intensity gradients.</span>
-<span class="sd">        - :class:`RankMedianEnhancer` for configurable rank-based filtering</span>
-<span class="sd">          with explicit footprint control.</span>
-
 <span class="sd">    See Also:</span>
 <span class="sd">        :doc:`/how_to/notebooks/denoise_low_light` for a comparison of</span>
-<span class="sd">        denoising methods on low-light plates.</span>
+<span class="sd">        denoising methods on low-light plate images.</span>
 <span class="sd">        :doc:`/explanation/what_enhancement_does` for how enhancement fits</span>
 <span class="sd">        into the pipeline model.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;nearest&quot;</span><span class="p">,</span> <span class="s2">&quot;reflect&quot;</span><span class="p">,</span> <span class="s2">&quot;constant&quot;</span><span class="p">,</span> <span class="s2">&quot;mirror&quot;</span><span class="p">,</span> <span class="s2">&quot;wrap&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;nearest&quot;</span>
     <span class="n">shape</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;disk&quot;</span><span class="p">,</span> <span class="s2">&quot;square&quot;</span><span class="p">,</span> <span class="s2">&quot;diamond&quot;</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">width</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span>
-    <span class="n">cval</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="n">width</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="mi">2</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">5</span>
+    <span class="n">cval</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="n">tunable</span><span class="o">=</span><span class="kc">False</span><span class="p">)]</span> <span class="o">=</span> <span class="mf">0.0</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
         <span class="n">image</span><span class="o">.</span><span class="n">detect_mat</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">median</span><span class="p">(</span>

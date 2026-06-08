@@ -1,0 +1,41 @@
+phenotypic.tune.JournalStudyStore
+=================================
+
+.. currentmodule:: phenotypic.tune
+
+.. autoclass:: JournalStudyStore
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~JournalStudyStore.__init__
+      ~JournalStudyStore.append
+      ~JournalStudyStore.best
+      ~JournalStudyStore.completed_count
+      ~JournalStudyStore.from_parquet
+      ~JournalStudyStore.is_resumable_in_place
+      ~JournalStudyStore.knee_point
+      ~JournalStudyStore.param_importances
+      ~JournalStudyStore.pareto_front
+      ~JournalStudyStore.to_dataframe
+      ~JournalStudyStore.to_parquet
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~JournalStudyStore.trials
+   
+   

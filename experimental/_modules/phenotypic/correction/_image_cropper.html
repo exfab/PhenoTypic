@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -576,36 +576,61 @@
 <div class="viewcode-block" id="ImageCropper">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.correction.html#phenotypic.correction.ImageCropper">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ImageCropper</span><span class="p">(</span><span class="n">ImageCorrector</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Remove pixels from image edges by specifying crop margins.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Remove pixels from image edges by specifying per-edge crop margins.</span>
 
 <span class="sd">    Crops all image components (rgb, gray, detect_mat, objmask, objmap)</span>
-<span class="sd">    together. When applied to a GridImage, the grid structure is preserved</span>
-<span class="sd">    and grid positions are recalculated for the cropped dimensions.</span>
+<span class="sd">    simultaneously using the same margins, so every layer remains spatially</span>
+<span class="sd">    synchronised. When applied to a GridImage, the grid structure and finder</span>
+<span class="sd">    are preserved and well positions are recalculated for the reduced</span>
+<span class="sd">    dimensions.</span>
+
+<span class="sd">    For usage context, see :doc:`/how_to/notebooks/crop_and_pad`.</span>
+
+<span class="sd">    Best For:</span>
+<span class="sd">        - Removing scanner margins or plate borders that lie outside the</span>
+<span class="sd">          agar surface before detection.</span>
+<span class="sd">        - Eliminating edge artefacts such as bent agar, labelling tape, or</span>
+<span class="sd">          moisture condensation that would generate false detections.</span>
+<span class="sd">        - Standardising image dimensions across a batch of plates captured</span>
+<span class="sd">          with slightly different positioning.</span>
+<span class="sd">        - Isolating a sub-region of a large plate image for focused</span>
+<span class="sd">          analysis.</span>
+
+<span class="sd">    Consider Also:</span>
+<span class="sd">        - :class:`ImagePadder` for extending image dimensions rather than</span>
+<span class="sd">          reducing them.</span>
+<span class="sd">        - :class:`RemoveBorderObjects` when the goal is to exclude</span>
+<span class="sd">          edge-touching colonies from analysis without altering image</span>
+<span class="sd">          dimensions.</span>
+<span class="sd">        - :class:`GridAligner` when rotation correction is needed alongside</span>
+<span class="sd">          cropping.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        left: Pixels to remove from the left edge. ``None`` means no</span>
-<span class="sd">            cropping. Default: ``None``.</span>
-<span class="sd">        right: Pixels to remove from the right edge. Default: ``None``.</span>
-<span class="sd">        top: Pixels to remove from the top edge. Default: ``None``.</span>
-<span class="sd">        bottom: Pixels to remove from the bottom edge. Default: ``None``.</span>
+<span class="sd">        left: Pixels to remove from the left edge. ``None`` applies no</span>
+<span class="sd">            cropping on this edge. Size to the off-agar margin you want to</span>
+<span class="sd">            discard. Default: ``None``.</span>
+<span class="sd">        right: Pixels to remove from the right edge. ``None`` applies no</span>
+<span class="sd">            cropping on this edge. Default: ``None``.</span>
+<span class="sd">        top: Pixels to remove from the top edge. ``None`` applies no</span>
+<span class="sd">            cropping on this edge. Default: ``None``.</span>
+<span class="sd">        bottom: Pixels to remove from the bottom edge. ``None`` applies no</span>
+<span class="sd">            cropping on this edge. Default: ``None``.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        Image: Input image with all components cropped to the specified</span>
-<span class="sd">        margins.</span>
+<span class="sd">        margins. GridImage grid positions are recalculated on the cropped</span>
+<span class="sd">        dimensions.</span>
 
-<span class="sd">    Best For:</span>
-<span class="sd">        - Removing scanner margins or borders outside the agar plate.</span>
-<span class="sd">        - Eliminating edge artifacts (bent agar, labeling, moisture).</span>
-<span class="sd">        - Standardizing image dimensions across a batch of plates.</span>
-
-<span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`ImagePadder` for adding pixels instead of removing them.</span>
-<span class="sd">        - :class:`RemoveBorderObjects` for removing edge-touching colonies</span>
-<span class="sd">          without changing image dimensions.</span>
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If any margin is negative.</span>
+<span class="sd">        ValueError: If opposite margins together exceed the image dimension</span>
+<span class="sd">            (e.g., ``top`` + ``bottom`` &gt;= image height).</span>
 
 <span class="sd">    See Also:</span>
 <span class="sd">        :doc:`/how_to/notebooks/crop_and_pad` for a visual walkthrough of</span>
-<span class="sd">        cropping and padding operations.</span>
+<span class="sd">        cropping and padding operations on plate images.</span>
+<span class="sd">        :doc:`/how_to/notebooks/correct_grid_rotation` for combining</span>
+<span class="sd">        cropping with rotation correction.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">left</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>

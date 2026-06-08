@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -562,7 +562,7 @@
   <h1>Source code for phenotypic.enhance._focus_blob_log</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Annotated</span>
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
@@ -573,6 +573,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing_extensions</span><span class="w"> </span><span class="kn">import</span> <span class="n">Self</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">..abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">FocusBlob</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..tools_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">TuneSpec</span>
 
 <span class="n">_SQRT2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mf">2.0</span><span class="p">)</span>
 
@@ -583,61 +584,65 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Enhance blob-like colonies in ``detect_mat`` with scale-normalised Laplacian of Gaussian.</span>
 
 <span class="sd">    Applies LoG filtering across a geometric series of Gaussian sigmas and</span>
-<span class="sd">    returns the maximum response at each pixel. Bright blob-like structures</span>
-<span class="sd">    (colonies, inocula, droplets) produce strong peaks regardless of size,</span>
-<span class="sd">    making this a robust preprocessing step before thresholding or</span>
-<span class="sd">    GMM-based segmentation.</span>
+<span class="sd">    returns the pixel-wise maximum response across all scales. Bright blob-like</span>
+<span class="sd">    structures (colonies, inocula, droplets) produce strong peaks regardless of</span>
+<span class="sd">    size, making this a robust preprocessing step before thresholding or</span>
+<span class="sd">    GMM-based segmentation. The output ``detect_mat`` is a response map, not a</span>
+<span class="sd">    corrected grayscale image.</span>
 
 <span class="sd">    For algorithm details, see :doc:`/explanation/what_enhancement_does`.</span>
 
+<span class="sd">    Best For:</span>
+<span class="sd">        - Mixed-size colonies on mature plates where small emerging and large</span>
+<span class="sd">          mature colonies must both be detected in a single pass.</span>
+<span class="sd">        - Sparse inoculation spots that are faint and nearly invisible against</span>
+<span class="sd">          the agar background.</span>
+<span class="sd">        - Low-contrast or shadowed regions where the LoG emphasizes blob</span>
+<span class="sd">          structure over absolute intensity.</span>
+<span class="sd">        - Preprocessing before thresholding to sharpen blob boundaries and</span>
+<span class="sd">          suppress gradual illumination variation.</span>
+
+<span class="sd">    Consider Also:</span>
+<span class="sd">        - :class:`FocusEdgeSato` for elongated or filamentous colony structures</span>
+<span class="sd">          where the LoG&#39;s isotropic assumption is a poor fit.</span>
+<span class="sd">        - :class:`FocusEdgeLaplace` for simpler single-scale edge detection when</span>
+<span class="sd">          colony sizes are uniform.</span>
+<span class="sd">        - :class:`SubtractGaussian` when the primary issue is a broad</span>
+<span class="sd">          illumination gradient rather than blob emphasis.</span>
+
 <span class="sd">    Args:</span>
-<span class="sd">        min_radius: Smallest target blob radius in pixels. Blobs smaller</span>
-<span class="sd">            than this produce weaker responses. Typical range: 1.0--5.0</span>
-<span class="sd">            at 512x768 resolution. Scale proportionally for higher</span>
-<span class="sd">            resolutions. Default: 3.0.</span>
-<span class="sd">        max_radius: Largest target blob radius in pixels. Blobs larger</span>
-<span class="sd">            than this also produce weaker responses. Typical range:</span>
-<span class="sd">            8.0--50.0 at 512x768 resolution. Default: 12.0.</span>
-<span class="sd">        num_scales: Number of logarithmically spaced sigma values. More</span>
-<span class="sd">            scales improve size discrimination at higher compute cost.</span>
-<span class="sd">            Typical range: 4--20. Default: 12.</span>
+<span class="sd">        min_radius: Smallest target blob radius in pixels. Blobs smaller than</span>
+<span class="sd">            this produce weaker LoG responses. Typical range: 1.0--15.0 at</span>
+<span class="sd">            standard resolutions; scale proportionally for higher-resolution</span>
+<span class="sd">            scans. Default: 3.0.</span>
+<span class="sd">        max_radius: Largest target blob radius in pixels. Blobs larger than</span>
+<span class="sd">            this also produce weaker responses. Typical range: 8.0--60.0 at</span>
+<span class="sd">            standard resolutions. Default: 12.0.</span>
+<span class="sd">        num_scales: Number of logarithmically spaced sigma values between</span>
+<span class="sd">            ``min_radius / sqrt(2)`` and ``max_radius / sqrt(2)``. More scales</span>
+<span class="sd">            improve size discrimination across the radius range at higher</span>
+<span class="sd">            compute cost. Typical range: 4--20. Default: 12.</span>
 
 <span class="sd">    Returns:</span>
-<span class="sd">        Image: Input image with ``detect_mat`` replaced by the</span>
-<span class="sd">        scale-normalised LoG response map. ``rgb`` and ``gray`` are</span>
-<span class="sd">        unchanged.</span>
+<span class="sd">        Image: Input image with ``detect_mat`` replaced by the scale-normalised</span>
+<span class="sd">        LoG response map. ``rgb`` and ``gray`` are unchanged.</span>
 
 <span class="sd">    Raises:</span>
 <span class="sd">        ValueError: If ``min_radius`` &lt;= 0, ``min_radius`` &gt;= ``max_radius``,</span>
 <span class="sd">            or ``num_scales`` &lt; 1.</span>
 
-<span class="sd">    Best For:</span>
-<span class="sd">        - Mixed-size colonies on mature plates where small emerging and</span>
-<span class="sd">          large mature colonies must both be detected.</span>
-<span class="sd">        - Sparse inoculation spots that are faint and nearly invisible</span>
-<span class="sd">          against the agar background.</span>
-<span class="sd">        - Low-contrast or shadowed regions where LoG emphasizes blob</span>
-<span class="sd">          structure over absolute intensity.</span>
-<span class="sd">        - Preprocessing before thresholding to sharpen blob boundaries</span>
-<span class="sd">          and suppress uneven illumination.</span>
-
-<span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`FocusEdgeSato` for elongated or filamentous structures</span>
-<span class="sd">          where LoG&#39;s isotropic assumption is a poor fit.</span>
-<span class="sd">        - :class:`FocusEdgeLaplace` for simpler single-scale edge detection.</span>
-<span class="sd">        - :class:`SubtractGaussian` when the primary issue is illumination</span>
-<span class="sd">          gradients rather than blob enhancement.</span>
-
 <span class="sd">    See Also:</span>
-<span class="sd">        :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a</span>
-<span class="sd">        visual walkthrough of blob enhancement on plate images.</span>
-<span class="sd">        :doc:`/explanation/what_enhancement_does` for background on</span>
-<span class="sd">        scale-space blob detection and LoG theory.</span>
+<span class="sd">        :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a visual</span>
+<span class="sd">        walkthrough of blob enhancement on plate images.</span>
+<span class="sd">        :doc:`/explanation/what_enhancement_does` for background on scale-space</span>
+<span class="sd">        blob detection and LoG theory.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="n">min_radius</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">3.0</span>
-    <span class="n">max_radius</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">12.0</span>
-    <span class="n">num_scales</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">12</span>
+    <span class="c1"># TODO: review bound (unverified vs literature)</span>
+    <span class="n">min_radius</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">)]</span> <span class="o">=</span> <span class="mf">3.0</span>
+    <span class="c1"># TODO: review bound (unverified vs literature)</span>
+    <span class="n">max_radius</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">8.0</span><span class="p">,</span> <span class="mf">50.0</span><span class="p">)]</span> <span class="o">=</span> <span class="mf">12.0</span>
+    <span class="n">num_scales</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">20</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">12</span>
 
     <span class="nd">@model_validator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;after&quot;</span><span class="p">)</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_check_radius_range</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span><span class="p">:</span>

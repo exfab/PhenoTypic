@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -578,40 +578,50 @@
 <div class="viewcode-block" id="MaskClosing">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.refine.html#phenotypic.refine.MaskClosing">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">MaskClosing</span><span class="p">(</span><span class="n">ObjectRefiner</span><span class="p">,</span> <span class="n">FootprintMixin</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Bridge small gaps and fill holes in colony masks using morphological closing.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Bridge narrow background gaps in colony masks using morphological closing.</span>
 
-<span class="sd">    Applies binary closing (dilation then erosion) to reconnect nearby</span>
-<span class="sd">    fragments of the same colony separated by thin background channels.</span>
-<span class="sd">    Preserves overall colony shape and size while reducing fragmentation.</span>
+<span class="sd">    Applies binary closing (dilation followed by erosion) to the object mask,</span>
+<span class="sd">    reconnecting nearby fragments of the same colony that are separated by thin</span>
+<span class="sd">    background channels and filling small internal holes. Colony size is largely</span>
+<span class="sd">    preserved because the dilation and erosion nearly cancel outside solid regions.</span>
 
-<span class="sd">    Args:</span>
-<span class="sd">        shape: Structuring element. ``&#39;auto&#39;``, ``&#39;disk&#39;``, ``&#39;square&#39;``,</span>
-<span class="sd">            ``&#39;diamond&#39;``, or custom ndarray. Default: ``None``.</span>
-<span class="sd">        width: Footprint width in pixels. Larger values bridge wider gaps</span>
-<span class="sd">            but risk merging distinct colonies. Typical range: 3--9.</span>
-<span class="sd">            Default: 5.</span>
-<span class="sd">        n_iter: Number of closing iterations. Default: 1.</span>
-
-<span class="sd">    Returns:</span>
-<span class="sd">        Image: Input image with ``objmask`` and ``objmap`` morphologically</span>
-<span class="sd">        closed.</span>
+<span class="sd">    For an overview of morphological refinement methods, see</span>
+<span class="sd">    :doc:`/explanation/refinement_strategies`.</span>
 
 <span class="sd">    Best For:</span>
-<span class="sd">        - Colonies fragmented by uneven pigmentation or shadow effects.</span>
-<span class="sd">        - Small internal holes from condensation or glare.</span>
-<span class="sd">        - Reconnecting nearby fragments before measurement.</span>
+<span class="sd">        - Colonies fragmented by uneven pigmentation or shadow-induced background</span>
+<span class="sd">          channels across the colony body.</span>
+<span class="sd">        - Masks with small internal holes caused by condensation droplets or</span>
+<span class="sd">          specular glare on the agar surface.</span>
+<span class="sd">        - Pre-measurement cleanup to reconnect fragments before area or shape</span>
+<span class="sd">          features are computed.</span>
 
 <span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`MaskFill` for filling enclosed holes without bridging</span>
-<span class="sd">          separate objects.</span>
-<span class="sd">        - :class:`MaskOpening` for the opposite effect — breaking thin</span>
-<span class="sd">          connections between distinct colonies.</span>
-<span class="sd">        - :class:`NearestNeighborMerger` for merging distant fragments</span>
-<span class="sd">          based on proximity.</span>
+<span class="sd">        - :class:`MaskFill` for filling enclosed holes within objects without</span>
+<span class="sd">          bridging separately labeled colonies.</span>
+<span class="sd">        - :class:`MaskOpening` for the opposite effect — removing thin connections</span>
+<span class="sd">          between objects that should remain distinct.</span>
+<span class="sd">        - :class:`NearestNeighborMerger` for merging distant fragments that are</span>
+<span class="sd">          too far apart for morphological closing to bridge.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        shape: Structuring element shape for the closing footprint. ``&quot;auto&quot;``</span>
+<span class="sd">            scales a disk to the image size; ``&quot;disk&quot;``, ``&quot;square&quot;``, and</span>
+<span class="sd">            ``&quot;diamond&quot;`` use named shapes at the given ``width``; a NumPy</span>
+<span class="sd">            array provides a custom element; ``None`` uses the skimage library</span>
+<span class="sd">            default. Default: ``None``.</span>
+<span class="sd">        width: Footprint width in pixels when using a named shape. Larger values</span>
+<span class="sd">            bridge wider gaps but risk merging distinct adjacent colonies. Typical</span>
+<span class="sd">            range: 3--9. Default: 5.</span>
+<span class="sd">        n_iter: Number of closing iterations applied sequentially. Each additional</span>
+<span class="sd">            iteration extends the effective reach by one footprint radius. Default: 1.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Image: Input image with ``objmask`` and ``objmap`` morphologically closed.</span>
 
 <span class="sd">    See Also:</span>
 <span class="sd">        :doc:`/how_to/notebooks/merge_fragmented_detections` for fragment</span>
-<span class="sd">        merging strategies.</span>
+<span class="sd">        merging strategies including morphological closing.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">shape</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;auto&quot;</span><span class="p">,</span> <span class="s2">&quot;square&quot;</span><span class="p">,</span> <span class="s2">&quot;diamond&quot;</span><span class="p">,</span> <span class="s2">&quot;disk&quot;</span><span class="p">]</span> <span class="o">|</span> <span class="n">NdArrayField</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>

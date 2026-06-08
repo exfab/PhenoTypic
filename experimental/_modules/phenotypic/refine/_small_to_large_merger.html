@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -579,53 +579,58 @@
 <div class="viewcode-block" id="SmallToLargeMerger">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.refine.html#phenotypic.refine.SmallToLargeMerger">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">SmallToLargeMerger</span><span class="p">(</span><span class="n">ObjectRefiner</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Merge small colony fragments into their nearest large colony using hierarchical size-based merging.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Merge small colony fragments into their nearest large colony using size-partitioned merging.</span>
 
-<span class="sd">    Partitions objects into small (below size threshold) and large (at or</span>
-<span class="sd">    above), then absorbs each small fragment into the nearest large neighbor</span>
-<span class="sd">    within the distance threshold. Large colonies serve as stable anchors</span>
-<span class="sd">    and never merge with each other, preventing false consolidation of</span>
+<span class="sd">    Partitions detected objects into small fragments (below ``size_threshold``)</span>
+<span class="sd">    and large anchor colonies (at or above), then absorbs each fragment into</span>
+<span class="sd">    the nearest anchor within ``distance_threshold`` pixels. Large colonies</span>
+<span class="sd">    are never merged with each other, preventing false consolidation of</span>
 <span class="sd">    distinct colonies.</span>
+
+<span class="sd">    For a comparison of fragment merging strategies, see</span>
+<span class="sd">    :doc:`/explanation/refinement_strategies`.</span>
+
+<span class="sd">    Best For:</span>
+<span class="sd">        - Fragmented detections from heterogeneous colony pigmentation or</span>
+<span class="sd">          uneven illumination that produce satellite regions around a main</span>
+<span class="sd">          colony body.</span>
+<span class="sd">        - Post-watershed over-segmentation where one colony splits into a</span>
+<span class="sd">          large core and small peripheral fragments.</span>
+<span class="sd">        - Plates with lighting gradients that generate small spurious</span>
+<span class="sd">          detections adjacent to genuine large colonies.</span>
+<span class="sd">        - Scenarios where small isolated debris should be absorbed into</span>
+<span class="sd">          nearby real colonies rather than discarded outright.</span>
+
+<span class="sd">    Consider Also:</span>
+<span class="sd">        - :class:`MergeFragmentChains` when large-to-large merging is also</span>
+<span class="sd">          needed, not only small-to-large absorption.</span>
+<span class="sd">        - :class:`NearestNeighborMerger` for nearest-neighbor merging</span>
+<span class="sd">          without any size-based partitioning.</span>
+<span class="sd">        - :class:`SmallObjectRemover` when small fragments should be</span>
+<span class="sd">          discarded entirely rather than absorbed into a parent colony.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        distance_threshold: Maximum centroid-to-centroid distance in pixels</span>
-<span class="sd">            for merging a small fragment into a large colony. Typical</span>
-<span class="sd">            range: 10--50. Should be smaller than the minimum distance</span>
-<span class="sd">            between distinct large colonies. Default: 30.0.</span>
-<span class="sd">        size_threshold: Pixel area separating small fragments from large</span>
-<span class="sd">            anchor colonies. Objects below this are merge candidates;</span>
-<span class="sd">            objects at or above are preserved as anchors. Typical range:</span>
-<span class="sd">            50--200. Default: 100.</span>
+<span class="sd">            within which a small fragment is absorbed into the nearest large</span>
+<span class="sd">            colony. Set smaller than the minimum expected spacing between</span>
+<span class="sd">            distinct large colonies to avoid cross-colony merges. Typical</span>
+<span class="sd">            range: 10--50. Default: 30.0.</span>
+<span class="sd">        size_threshold: Pixel area boundary separating merge candidates</span>
+<span class="sd">            (below threshold) from immovable anchor colonies (at or above).</span>
+<span class="sd">            Typical range: 50--200. Scale upward for high-resolution scans</span>
+<span class="sd">            where colony areas are larger. Default: 100.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        Image: Input image with ``objmap`` updated so that small fragments</span>
-<span class="sd">        are relabeled to their nearest large colony.</span>
+<span class="sd">        within range are relabeled to match their nearest large colony.</span>
 
 <span class="sd">    Raises:</span>
 <span class="sd">        ValueError: If ``distance_threshold`` or ``size_threshold`` is not</span>
 <span class="sd">            positive.</span>
 
-<span class="sd">    Best For:</span>
-<span class="sd">        - Fragmented detections from heterogeneous pigmentation or uneven</span>
-<span class="sd">          illumination where satellites cluster around a main colony.</span>
-<span class="sd">        - Post-watershed over-segmentation where one colony splits into a</span>
-<span class="sd">          large core plus small peripheral regions.</span>
-<span class="sd">        - Removing small debris near real colonies without merging distinct</span>
-<span class="sd">          large colonies.</span>
-<span class="sd">        - Plates with severe lighting gradients that produce satellite</span>
-<span class="sd">          fragments around main detections.</span>
-
-<span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`MergeFragmentChains` when all nearby objects should</span>
-<span class="sd">          merge regardless of size, including large-to-large merging.</span>
-<span class="sd">        - :class:`NearestNeighborMerger` for simple nearest-neighbor</span>
-<span class="sd">          merging without size partitioning.</span>
-<span class="sd">        - :class:`SmallObjectRemover` when small fragments should be</span>
-<span class="sd">          discarded entirely rather than absorbed.</span>
-
 <span class="sd">    See Also:</span>
 <span class="sd">        :doc:`/how_to/notebooks/merge_fragmented_detections` for fragment</span>
-<span class="sd">        merging workflows.</span>
+<span class="sd">        merging workflows on real plate images.</span>
 <span class="sd">        :doc:`/explanation/refinement_strategies` for a comparison of</span>
 <span class="sd">        merging strategies.</span>
 <span class="sd">    &quot;&quot;&quot;</span>

@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -577,42 +577,47 @@
 <div class="viewcode-block" id="GridAligner">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.correction.html#phenotypic.correction.GridAligner">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">GridAligner</span><span class="p">(</span><span class="n">GridCorrector</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Correct grid rotation by aligning colony centroids to row or column axes.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Correct grid rotation by fitting colony centroids to the target row or column axis.</span>
 
-<span class="sd">    Compute the optimal rotation angle from linear regression of colony</span>
-<span class="sd">    centroid positions along the chosen axis, then rotate the entire image</span>
-<span class="sd">    to minimize angular misalignment. Re-detection of objects after</span>
-<span class="sd">    alignment is strongly recommended because pixel coordinates shift.</span>
+<span class="sd">    Estimates the optimal rotation angle by regressing detected colony</span>
+<span class="sd">    centroid positions along the chosen axis, then rotates every image</span>
+<span class="sd">    component together and recalculates grid positions on the corrected image.</span>
+<span class="sd">    Re-running detection after alignment is recommended, since pixel</span>
+<span class="sd">    coordinates shift once the image is rotated.</span>
 
 <span class="sd">    For algorithm details, see :doc:`/explanation/grid_vs_non_grid_detection`.</span>
 
+<span class="sd">    Best For:</span>
+<span class="sd">        - Arrayed plates scanned at a slight angle where rows or columns are</span>
+<span class="sd">          not axis-aligned.</span>
+<span class="sd">        - High-throughput setups with inconsistent plate orientation between</span>
+<span class="sd">          scans.</span>
+<span class="sd">        - Pre-processing before grid-based measurement to keep row and column</span>
+<span class="sd">          assignment accurate.</span>
+
+<span class="sd">    Consider Also:</span>
+<span class="sd">        - :class:`ImagePadder` for adding safety margins before rotation so</span>
+<span class="sd">          corner colonies are not clipped by the rotation fill.</span>
+<span class="sd">        - :class:`ImageCropper` to remove the fill border introduced after</span>
+<span class="sd">          alignment.</span>
+<span class="sd">        - :class:`RefineBySineFit` when the grid periodicity itself needs</span>
+<span class="sd">          correction rather than a global rotation.</span>
+
 <span class="sd">    Args:</span>
-<span class="sd">        axis: Alignment axis. ``0`` aligns rows (row-wise regression on</span>
-<span class="sd">            column centroid positions); ``1`` aligns columns. Default: ``0``.</span>
-<span class="sd">        mode: Edge-fill mode passed to the rotation function. ``&#39;edge&#39;``</span>
-<span class="sd">            replicates border pixels; ``&#39;constant&#39;`` fills with zeros.</span>
-<span class="sd">            Default: ``&#39;edge&#39;``.</span>
+<span class="sd">        axis: Alignment axis. ``0`` regresses centroid positions within each</span>
+<span class="sd">            row to correct horizontal skew; ``1`` regresses within each column</span>
+<span class="sd">            to correct vertical skew. Default: ``0``.</span>
+<span class="sd">        mode: Edge-fill strategy passed to the image rotation. ``&#39;edge&#39;``</span>
+<span class="sd">            replicates the nearest border pixel (avoids dark corners);</span>
+<span class="sd">            ``&#39;constant&#39;`` fills with zeros. Default: ``&#39;edge&#39;``.</span>
 
 <span class="sd">    Returns:</span>
-<span class="sd">        GridImage: Input image rotated so that colony centroids align with</span>
-<span class="sd">        the specified axis. All image components are transformed.</span>
+<span class="sd">        GridImage: Input image rotated so colony centroids align with the</span>
+<span class="sd">        chosen axis. All components (RGB, gray, detect_mat, objmask, objmap)</span>
+<span class="sd">        are transformed together.</span>
 
 <span class="sd">    Raises:</span>
 <span class="sd">        ValueError: If ``axis`` is not ``0`` or ``1``.</span>
-
-<span class="sd">    Best For:</span>
-<span class="sd">        - Arrayed plates scanned at a slight angle where grid rows or</span>
-<span class="sd">          columns are not axis-aligned.</span>
-<span class="sd">        - High-throughput imaging setups with inconsistent plate</span>
-<span class="sd">          orientation between scans.</span>
-<span class="sd">        - Pre-processing before grid-based measurement to ensure accurate</span>
-<span class="sd">          row and column assignment.</span>
-
-<span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`ImagePadder` to add safety margins before rotation so</span>
-<span class="sd">          corner colonies are not clipped.</span>
-<span class="sd">        - :class:`ImageCropper` to remove excess background after</span>
-<span class="sd">          alignment.</span>
 
 <span class="sd">    See Also:</span>
 <span class="sd">        :doc:`/how_to/notebooks/correct_grid_rotation` for a visual</span>

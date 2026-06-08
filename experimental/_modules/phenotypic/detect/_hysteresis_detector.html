@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -595,39 +595,6 @@
 <span class="sd">    stages and under uneven illumination. For a full comparison see</span>
 <span class="sd">    :doc:`/explanation/detection_strategies_compared`.</span>
 
-<span class="sd">    Args:</span>
-<span class="sd">        low: Lower threshold controlling expansion sensitivity. Accepts a</span>
-<span class="sd">            method name (``&#39;otsu&#39;``, ``&#39;triangle&#39;``, ``&#39;li&#39;``, ``&#39;yen&#39;``,</span>
-<span class="sd">            ``&#39;isodata&#39;``, ``&#39;mean&#39;``, ``&#39;minimum&#39;``) for automatic</span>
-<span class="sd">            computation, or a float for a manual value (0--255 for 8-bit,</span>
-<span class="sd">            0--65535 for 16-bit). Default ``&#39;mean&#39;``. Lower values include</span>
-<span class="sd">            more faint colony pixels but increase false positives. Typical</span>
-<span class="sd">            tuning: start with ``&#39;mean&#39;`` and switch to a numeric value if</span>
-<span class="sd">            automatic methods are too aggressive or too conservative.</span>
-
-<span class="sd">        high: Upper threshold seeding strong colony regions. Same format as</span>
-<span class="sd">            *low*. Default ``&#39;otsu&#39;``. Must be &gt;= *low* after computation.</span>
-<span class="sd">            Higher values restrict seeds to the brightest colony pixels,</span>
-<span class="sd">            producing fewer but higher-confidence detections.</span>
-
-<span class="sd">        ignore_zeros: If True (default), exclude zero-intensity pixels from</span>
-<span class="sd">            automatic threshold computation. Enable for plates with black</span>
-<span class="sd">            borders or masked regions.</span>
-
-<span class="sd">        ignore_borders: If True (default), remove colonies touching image</span>
-<span class="sd">            edges via ``clear_border()``. Recommended for grid-based colony</span>
-<span class="sd">            counting.</span>
-
-<span class="sd">    Returns:</span>
-<span class="sd">        Image: Input image with ``objmask`` set to a binary colony mask</span>
-<span class="sd">        where True pixels are colony foreground (including faint pixels</span>
-<span class="sd">        connected to strong seed regions). ``objmap`` is not modified.</span>
-
-<span class="sd">    Raises:</span>
-<span class="sd">        ValueError: If the computed high threshold is less than the computed</span>
-<span class="sd">            low threshold, or if an unrecognised threshold method name is</span>
-<span class="sd">            provided.</span>
-
 <span class="sd">    Best For:</span>
 <span class="sd">        * Plates where colony brightness varies (e.g., young versus mature</span>
 <span class="sd">          growth, or centre-to-edge intensity gradients within a colony).</span>
@@ -645,6 +612,47 @@
 <span class="sd">          into individually labelled regions.</span>
 <span class="sd">        * :class:`CannyDetector` when colonies are best delineated by edge</span>
 <span class="sd">          contrast rather than intensity.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        low: Lower threshold controlling expansion sensitivity. There is no</span>
+<span class="sd">            universal best value -- it is a user choice. Accepts a method</span>
+<span class="sd">            name (``&#39;otsu&#39;``, ``&#39;triangle&#39;``, ``&#39;li&#39;``, ``&#39;yen&#39;``,</span>
+<span class="sd">            ``&#39;isodata&#39;``, ``&#39;mean&#39;``, ``&#39;minimum&#39;``) for automatic</span>
+<span class="sd">            computation, or a float for a manual value (0--255 for 8-bit,</span>
+<span class="sd">            0--65535 for 16-bit). Default ``&#39;mean&#39;``. Lowering *low* grows</span>
+<span class="sd">            each seed outward to capture more faint marginal pixels but</span>
+<span class="sd">            risks bridging colonies into noise; raising it tightens each</span>
+<span class="sd">            colony toward its bright core. Start with ``&#39;mean&#39;`` and adjust</span>
+<span class="sd">            by observing whether faint colony edges are kept or lost.</span>
+<span class="sd">            Dense plates and filamentous fungi (thin faint margins) often</span>
+<span class="sd">            need a lower *low*; noisy agar needs it raised.</span>
+
+<span class="sd">        high: Upper threshold seeding strong colony regions. Same format and</span>
+<span class="sd">            user-choice character as *low*. Default ``&#39;otsu&#39;``. Must resolve</span>
+<span class="sd">            to a value &gt;= *low*. Raising *high* restricts seeds to the</span>
+<span class="sd">            brightest colony centres (fewer, higher-confidence detections);</span>
+<span class="sd">            lowering it admits more, dimmer seeds. Raise *high* on noisy or</span>
+<span class="sd">            textured plates so agar granularity is not seeded; lower it when</span>
+<span class="sd">            genuine faint colonies fail to seed at all.</span>
+
+<span class="sd">        ignore_zeros: If True, exclude zero-intensity pixels from automatic</span>
+<span class="sd">            threshold computation. Enable for plates with black borders or</span>
+<span class="sd">            masked regions. Default: False.</span>
+
+<span class="sd">        ignore_borders: If True (default), remove colonies touching image</span>
+<span class="sd">            edges via ``clear_border()``. Recommended for grid-based colony</span>
+<span class="sd">            counting; disable when peripheral colonies must be retained.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Image: Input image with ``objmask`` set to a binary colony mask</span>
+<span class="sd">        where True pixels are colony foreground (including faint pixels</span>
+<span class="sd">        connected to strong seed regions). Assigning ``objmask`` rebuilds</span>
+<span class="sd">        ``objmap`` from the binary mask via the accessor.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If the computed high threshold is less than the computed</span>
+<span class="sd">            low threshold, or if an unrecognised threshold method name is</span>
+<span class="sd">            provided.</span>
 
 <span class="sd">    See Also:</span>
 <span class="sd">        :doc:`/tutorials/notebooks/02_detecting_colonies`</span>

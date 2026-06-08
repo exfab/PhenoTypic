@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -579,50 +579,59 @@
 <div class="viewcode-block" id="MergeFragmentChains">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.refine.html#phenotypic.refine.MergeFragmentChains">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">MergeFragmentChains</span><span class="p">(</span><span class="n">ObjectRefiner</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Merge nearby colony fragments using transitive closure of centroid distances.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Merge groups of nearby colony fragments using transitive closure of centroid distances.</span>
 
-<span class="sd">    Finds all pairs of objects with centroids within the distance threshold,</span>
-<span class="sd">    then applies union-find with path compression to transitively merge</span>
-<span class="sd">    connected groups. If A is near B and B is near C, all three merge into</span>
-<span class="sd">    one detection even if A and C are not directly within threshold. Labels</span>
-<span class="sd">    are relabeled consecutively after merging.</span>
+<span class="sd">    Builds a KD-tree of object centroids, finds all pairs within</span>
+<span class="sd">    ``distance_threshold``, and applies union-find with path compression to</span>
+<span class="sd">    form transitive merger groups: if fragment A is near B and B is near C,</span>
+<span class="sd">    all three merge into one detection even when A and C are not directly</span>
+<span class="sd">    within threshold of each other. Labels are relabeled consecutively after</span>
+<span class="sd">    merging.</span>
+
+<span class="sd">    For a comparison of merging strategies, see</span>
+<span class="sd">    :doc:`/explanation/refinement_strategies`.</span>
+
+<span class="sd">    Best For:</span>
+<span class="sd">        - Repairing fragmented detections from watershed over-segmentation</span>
+<span class="sd">          where a single colony splits into several nearby pieces.</span>
+<span class="sd">        - Consolidating micro-fragments and satellite spots caused by</span>
+<span class="sd">          agar texture or thresholding artefacts.</span>
+<span class="sd">        - Plates with harsh internal shadows or glare that introduce voids</span>
+<span class="sd">          between mask pieces belonging to the same colony.</span>
+<span class="sd">        - Post-processing after aggressive small-object removal that leaves</span>
+<span class="sd">          fragmented colony edges.</span>
+
+<span class="sd">    Consider Also:</span>
+<span class="sd">        - :class:`SmallToLargeMerger` when only small fragments should</span>
+<span class="sd">          absorb into large anchor colonies while distinct large colonies</span>
+<span class="sd">          remain separate.</span>
+<span class="sd">        - :class:`NearestNeighborMerger` for size-selective nearest-neighbor</span>
+<span class="sd">          merging without transitive closure, preserving large colonies as</span>
+<span class="sd">          independent anchors.</span>
+<span class="sd">        - :class:`MaskClosing` for morphological closing that bridges small</span>
+<span class="sd">          gaps without relabeling objects.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        distance_threshold: Maximum centroid-to-centroid distance in pixels</span>
-<span class="sd">            for merging. Typical range: 10--30. Lower values are</span>
-<span class="sd">            conservative; higher values merge more aggressively but risk</span>
-<span class="sd">            combining distinct colonies via transitive chains. Default: 20.0.</span>
+<span class="sd">            for two objects to be considered merge candidates. Lower values</span>
+<span class="sd">            are conservative and limit merging to close fragments; higher</span>
+<span class="sd">            values merge more aggressively but increase the risk of chaining</span>
+<span class="sd">            distinct colonies. Typical range: 10--50. Default: 20.0.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        Image: Input image with ``objmap`` updated so that transitively</span>
-<span class="sd">        connected fragments share a single label, relabeled consecutively.</span>
+<span class="sd">        connected fragment groups share a single label, relabeled</span>
+<span class="sd">        consecutively from 1. ``objmask``, ``rgb``, ``gray``, and</span>
+<span class="sd">        ``detect_mat`` are unchanged.</span>
 
 <span class="sd">    Raises:</span>
 <span class="sd">        ValueError: If ``distance_threshold`` is not positive.</span>
 
-<span class="sd">    Best For:</span>
-<span class="sd">        - Repairing fragmented detections from watershed over-segmentation</span>
-<span class="sd">          where a single colony splits into multiple touching regions.</span>
-<span class="sd">        - Consolidating micro-fragments and satellite spots caused by</span>
-<span class="sd">          thresholding artifacts or agar texture.</span>
-<span class="sd">        - Correcting detections on plates with harsh shadows or glare that</span>
-<span class="sd">          create internal voids within colony masks.</span>
-<span class="sd">        - Post-processing after aggressive noise removal that leaves</span>
-<span class="sd">          fragmented edges.</span>
-
-<span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`SmallToLargeMerger` when only small fragments should</span>
-<span class="sd">          merge into large anchors, preserving distinct large colonies.</span>
-<span class="sd">        - :class:`NearestNeighborMerger` for simple pairwise nearest-</span>
-<span class="sd">          neighbor merging without transitive closure.</span>
-<span class="sd">        - :class:`MaskClosing` for morphological closing that bridges small</span>
-<span class="sd">          gaps without relabeling.</span>
-
 <span class="sd">    See Also:</span>
-<span class="sd">        :doc:`/how_to/notebooks/merge_fragmented_detections` for fragment</span>
-<span class="sd">        merging workflows.</span>
+<span class="sd">        :doc:`/how_to/notebooks/merge_fragmented_detections` for visual</span>
+<span class="sd">        fragment merging workflows on real plate images.</span>
 <span class="sd">        :doc:`/explanation/refinement_strategies` for a comparison of</span>
-<span class="sd">        merging strategies.</span>
+<span class="sd">        merging approaches.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">distance_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">20.0</span>

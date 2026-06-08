@@ -19,10 +19,13 @@ phenotypic.measure.MeasureSymmetricZones
       ~MeasureSymmetricZones.__init__
       ~MeasureSymmetricZones.construct
       ~MeasureSymmetricZones.copy
+      ~MeasureSymmetricZones.dash
       ~MeasureSymmetricZones.dict
+      ~MeasureSymmetricZones.figures
       ~MeasureSymmetricZones.from_json
       ~MeasureSymmetricZones.from_orm
       ~MeasureSymmetricZones.inspect
+      ~MeasureSymmetricZones.iter_figures
       ~MeasureSymmetricZones.json
       ~MeasureSymmetricZones.measure
       ~MeasureSymmetricZones.model_construct

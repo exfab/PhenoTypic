@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -589,55 +589,57 @@
 <div class="viewcode-block" id="ColorCorrector">
 <a class="viewcode-back" href="../../../../api_reference/phenotypic.correction.html#phenotypic.correction.ColorCorrector">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ColorCorrector</span><span class="p">(</span><span class="n">ImageCorrector</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Apply root-polynomial color correction to an entire image.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Apply root-polynomial color correction using a fitted ColorCheckerProfile.</span>
 
-<span class="sd">    Takes a fitted :class:`ColorCheckerProfile` and applies its correction</span>
-<span class="sd">    matrix to every pixel.  The pipeline is:</span>
+<span class="sd">    Decodes sRGB gamma to linear light, applies the root-polynomial expansion</span>
+<span class="sd">    and the profile&#39;s correction matrix, re-encodes to sRGB, and recomputes</span>
+<span class="sd">    grayscale and detect_mat from the corrected RGB. The correction matrix is</span>
+<span class="sd">    derived from a color checker captured under the same imaging conditions, so</span>
+<span class="sd">    colony color becomes comparable across batches and acquisition setups.</span>
 
-<span class="sd">    1. Normalise RGB to ``[0, 1]`` float.</span>
-<span class="sd">    2. Decode sRGB gamma to linear light.</span>
-<span class="sd">    3. Expand to root-polynomial features (Finlayson 2015).</span>
-<span class="sd">    4. Multiply by the correction matrix.</span>
-<span class="sd">    5. Re-encode to sRGB gamma.</span>
-<span class="sd">    6. Clip and scale back to the original integer dtype.</span>
-<span class="sd">    7. Recompute grayscale and detect_mat from corrected RGB.</span>
+<span class="sd">    For algorithm details, see :doc:`/explanation/color_spaces_for_phenotyping`.</span>
 
-<span class="sd">    Use cases (agar plates):</span>
+<span class="sd">    Best For:</span>
+<span class="sd">        - Multi-batch studies imaged across sessions or scanners where colony</span>
+<span class="sd">          color must be cross-batch comparable.</span>
+<span class="sd">        - Plates with pigmented yeast or bacterial colonies where chromatic</span>
+<span class="sd">          phenotype is the primary readout.</span>
+<span class="sd">        - Publication workflows needing perceptually accurate color</span>
+<span class="sd">          reproduction.</span>
+<span class="sd">        - Removing color casts from DSLR or flatbed-scanner illuminants that</span>
+<span class="sd">          shift colony hue relative to the agar background.</span>
 
-<span class="sd">    - Standardise plate images captured under different lighting to a common</span>
-<span class="sd">      colour space for consistent colony colour measurement.</span>
-<span class="sd">    - Remove colour casts from scanner or camera illumination so that</span>
-<span class="sd">      phenotypic colour differences between strains are comparable across</span>
-<span class="sd">      batches.</span>
-<span class="sd">    - Produce publication-ready images with accurate colour reproduction of</span>
-<span class="sd">      dyed or pigmented colonies.</span>
+<span class="sd">    Consider Also:</span>
+<span class="sd">        - :class:`FlattenIllumination` when the artifact is a spatial</span>
+<span class="sd">          brightness gradient rather than a chromatic cast.</span>
+<span class="sd">        - :class:`ColorDenoise` when high-ISO color noise obscures colony</span>
+<span class="sd">          boundaries without a systematic color-cast problem.</span>
+<span class="sd">        - :class:`BayesShrinkCorrector` or :class:`VisuShrinkCorrector` when</span>
+<span class="sd">          the goal is noise reduction rather than color accuracy.</span>
 
-<span class="sd">    Before correcting, each image&#39;s camera EXIF is compared against the</span>
-<span class="sd">    :attr:`~ColorCheckerProfile.capture_metadata` recorded when the profile was</span>
-<span class="sd">    fitted.  A different camera body or lens raises a :class:`UserWarning`</span>
-<span class="sd">    (the correction may be invalid); differing exposure settings (ISO, exposure</span>
-<span class="sd">    time, F-number, focal length) are logged at info level.  The check is</span>
-<span class="sd">    skipped silently when the profile carries no capture metadata.</span>
-
-<span class="sd">    Attributes:</span>
+<span class="sd">    Args:</span>
 <span class="sd">        profile: A fitted :class:`ColorCheckerProfile` supplying the</span>
-<span class="sd">            root-polynomial correction matrix and expansion degree. Must</span>
-<span class="sd">            already be fitted; an unfitted profile is rejected at</span>
-<span class="sd">            construction.</span>
-<span class="sd">        correction_matrix: The root-polynomial correction matrix stored as</span>
-<span class="sd">            a nested list (serialisable).</span>
-<span class="sd">        degree: Polynomial expansion degree matching the profile.</span>
-<span class="sd">        output_illuminant: Target illuminant label (informational).</span>
+<span class="sd">            root-polynomial correction matrix and expansion degree. An</span>
+<span class="sd">            unfitted profile is rejected with a ``ValueError``.</span>
+<span class="sd">        output_illuminant: Target illuminant label used when reporting the</span>
+<span class="sd">            corrected color space (informational only; does not alter the</span>
+<span class="sd">            matrix computation). Default: ``&quot;D65&quot;``.</span>
 
-<span class="sd">    Examples:</span>
-<span class="sd">        Correct an image using a pre-fitted profile:</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        Image: ``rgb`` mapped through the correction matrix; ``gray`` and</span>
+<span class="sd">        ``detect_mat`` recomputed from the corrected RGB. All three components</span>
+<span class="sd">        are updated in a single pass.</span>
 
-<span class="sd">        &gt;&gt;&gt; from phenotypic.correction import ColorCheckerProfile, ColorCorrector</span>
-<span class="sd">        &gt;&gt;&gt; import numpy as np</span>
-<span class="sd">        &gt;&gt;&gt; profile = ColorCheckerProfile(rois=[...], degree=2)  # doctest: +SKIP</span>
-<span class="sd">        &gt;&gt;&gt; profile.fit(image)  # doctest: +SKIP</span>
-<span class="sd">        &gt;&gt;&gt; corrector = ColorCorrector(profile=profile)  # doctest: +SKIP</span>
-<span class="sd">        &gt;&gt;&gt; corrected = corrector.apply(image)  # doctest: +SKIP</span>
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If ``profile`` is not yet fitted.</span>
+<span class="sd">        UserWarning: If the image&#39;s camera EXIF indicates a different camera</span>
+<span class="sd">            body or lens than the one used when the profile was fitted.</span>
+
+<span class="sd">    See Also:</span>
+<span class="sd">        :doc:`/tutorials/notebooks/01_your_first_plate_image` for an</span>
+<span class="sd">        introduction to loading and correcting full-plate images.</span>
+<span class="sd">        :doc:`/explanation/color_spaces_for_phenotyping` for a discussion of</span>
+<span class="sd">        root-polynomial color correction in phenotyping.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">profile</span><span class="p">:</span> <span class="n">ColorCheckerProfile</span>
@@ -808,15 +810,17 @@
 <div class="viewcode-block" id="ColorCorrector.dashboard">
 <a class="viewcode-back" href="../../../../api_reference/phenotypic.correction.html#phenotypic.correction.ColorCorrector.dashboard">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">dashboard</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">show</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Display an interactive diagnostic dashboard.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Build the Plotly color-correction diagnostic report.</span>
 
-<span class="sd">        Delegates to the underlying profile&#39;s dashboard method.</span>
+<span class="sd">        Delegates to the underlying profile&#39;s :meth:`ColorCheckerProfile.dashboard`.</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">            show: Auto-display the dashboard.</span>
+<span class="sd">            show: When ``True`` and running inside a Jupyter notebook, display</span>
+<span class="sd">                the figure inline before returning it.</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            The Panel layout object.</span>
+<span class="sd">            A ``plotly.graph_objects.Figure`` (always returned, even after an</span>
+<span class="sd">            inline display).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">profile</span><span class="o">.</span><span class="n">dashboard</span><span class="p">(</span><span class="n">show</span><span class="o">=</span><span class="n">show</span><span class="p">)</span></div>
 </div>

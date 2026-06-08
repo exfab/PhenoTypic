@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -578,34 +578,40 @@
 
 <span class="sd">    Resets ``detect_mat`` to a fresh copy of the chosen channel, discarding</span>
 <span class="sd">    any enhancements applied so far. Useful when different pipeline stages</span>
-<span class="sd">    need to operate on different color channels.</span>
+<span class="sd">    need to operate on different color channels or when a specific channel</span>
+<span class="sd">    provides superior colony-background contrast for downstream detection.</span>
 
-<span class="sd">    For algorithm details, see :doc:`/explanation/what_enhancement_does`.</span>
+<span class="sd">    For background on channel selection, see</span>
+<span class="sd">    :doc:`/explanation/what_enhancement_does`.</span>
+
+<span class="sd">    Best For:</span>
+<span class="sd">        - Plates where colonies are more visible in a single color channel</span>
+<span class="sd">          than in grayscale (e.g., pigmented yeast on agar).</span>
+<span class="sd">        - Switching to a specific channel (such as red or green) that</span>
+<span class="sd">          provides stronger colony-background contrast.</span>
+<span class="sd">        - Resetting enhancements mid-pipeline to start fresh on a</span>
+<span class="sd">          different channel for a later detection stage.</span>
+
+<span class="sd">    Consider Also:</span>
+<span class="sd">        - :class:`ImageInverter` when the issue is inverted intensity</span>
+<span class="sd">          polarity rather than channel selection.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        mode: Channel to use for the detection matrix. Accepted values:</span>
+<span class="sd">        mode: Channel to use as the detection matrix. Accepted values:</span>
 <span class="sd">            ``&#39;gray&#39;`` (default), ``&#39;red&#39;``, ``&#39;green&#39;``, ``&#39;blue&#39;``,</span>
-<span class="sd">            ``&#39;min_rgb&#39;``.</span>
+<span class="sd">            ``&#39;MinRGB&#39;`` (per-pixel minimum across R/G/B),</span>
+<span class="sd">            ``&#39;LabL&#39;``, ``&#39;LabA&#39;``, ``&#39;LabB&#39;``, ``&#39;HsvS&#39;``, ``&#39;HsvV&#39;``,</span>
+<span class="sd">            ``&#39;InvS&#39;``.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        Image: Input image with ``detect_mode`` and ``detect_mat``</span>
-<span class="sd">        updated to the chosen channel.</span>
-
-<span class="sd">    Best For:</span>
-<span class="sd">        - Switching to a specific color channel (e.g., red) that provides</span>
-<span class="sd">          better colony-background contrast.</span>
-<span class="sd">        - Resetting enhancements mid-pipeline to start fresh on a</span>
-<span class="sd">          different channel.</span>
-<span class="sd">        - Plates where colonies are more visible in a single color channel</span>
-<span class="sd">          than in grayscale.</span>
-
-<span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`ImageInverter` when the issue is inverted polarity</span>
-<span class="sd">          rather than channel selection.</span>
+<span class="sd">        updated to the chosen channel. Prior enhancements to</span>
+<span class="sd">        ``detect_mat`` are discarded.</span>
 
 <span class="sd">    See Also:</span>
 <span class="sd">        :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a</span>
-<span class="sd">        visual walkthrough of channel selection strategies.</span>
+<span class="sd">        visual walkthrough of channel selection strategies on plate</span>
+<span class="sd">        images.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">mode</span><span class="p">:</span> <span class="n">DetectMode</span> <span class="o">=</span> <span class="s2">&quot;gray&quot;</span>

@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -583,31 +583,6 @@
 <span class="sd">    specific imaging setup. For a full comparison see</span>
 <span class="sd">    :doc:`/explanation/detection_strategies_compared`.</span>
 
-<span class="sd">    Args:</span>
-<span class="sd">        threshold: Intensity cutoff for binary segmentation. Pixels with</span>
-<span class="sd">            intensity &gt;= *threshold* become colony (True), others become</span>
-<span class="sd">            background (False). For 8-bit images the valid range is</span>
-<span class="sd">            0--255; for 16-bit images 0--65535; for float images 0.0--1.0.</span>
-<span class="sd">            Higher values are more conservative (fewer colonies detected);</span>
-<span class="sd">            lower values are more sensitive (more colonies, more noise).</span>
-<span class="sd">            Default 0.5. Start by inspecting the image histogram to find</span>
-<span class="sd">            the valley between background and colony peaks.</span>
-
-<span class="sd">        ignore_zeros: If True (default), exclude zero-intensity pixels from</span>
-<span class="sd">            processing. Enable for plates with black borders or masked</span>
-<span class="sd">            regions.</span>
-
-<span class="sd">        ignore_borders: If True (default), remove colonies touching image</span>
-<span class="sd">            edges via ``clear_border()``. Recommended for grid-based colony</span>
-<span class="sd">            counting.</span>
-
-<span class="sd">    Returns:</span>
-<span class="sd">        Image: Input image with ``objmask`` set to a binary colony mask</span>
-<span class="sd">        (True = colony, False = background). ``objmap`` is not modified.</span>
-
-<span class="sd">    Raises:</span>
-<span class="sd">        ValueError: If *threshold* is negative.</span>
-
 <span class="sd">    Best For:</span>
 <span class="sd">        * Standardised imaging setups where the optimal threshold has been</span>
 <span class="sd">          determined empirically and remains stable across plates.</span>
@@ -626,6 +601,36 @@
 <span class="sd">          the plate and a single threshold cannot capture all colonies.</span>
 <span class="sd">        * :class:`TriangleDetector` when colonies are sparse and the</span>
 <span class="sd">          histogram is skewed toward background.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        threshold: Intensity cutoff for binary segmentation; pixels with</span>
+<span class="sd">            intensity &gt;= *threshold* become colony (True), others</span>
+<span class="sd">            background (False). This is inherently a user choice -- there is</span>
+<span class="sd">            no universal optimum, since it depends on the imaging setup and</span>
+<span class="sd">            organism contrast. Valid range is bit-depth dependent: 0--255</span>
+<span class="sd">            for 8-bit, 0--65535 for 16-bit, 0.0--1.0 for float images;</span>
+<span class="sd">            must be non-negative. Raising it is more conservative (fewer</span>
+<span class="sd">            colonies, less noise); lowering it is more sensitive (more</span>
+<span class="sd">            colonies, more noise). Default: 0.5. Start by inspecting the</span>
+<span class="sd">            histogram for the valley between the background and colony</span>
+<span class="sd">            peaks, then nudge it while watching whether faint colonies</span>
+<span class="sd">            survive or agar texture leaks in.</span>
+
+<span class="sd">        ignore_zeros: If True, exclude zero-intensity pixels from</span>
+<span class="sd">            processing. Enable for plates with black borders or masked</span>
+<span class="sd">            regions. Default: False.</span>
+
+<span class="sd">        ignore_borders: If True (default), remove colonies touching image</span>
+<span class="sd">            edges via ``clear_border()``. Recommended for grid-based colony</span>
+<span class="sd">            counting; disable to retain peripheral colonies.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Image: Input image with ``objmask`` set to a binary colony mask</span>
+<span class="sd">        (True = colony, False = background). Assigning ``objmask`` rebuilds</span>
+<span class="sd">        ``objmap`` from the binary mask via the accessor.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If *threshold* is negative.</span>
 
 <span class="sd">    See Also:</span>
 <span class="sd">        :doc:`/tutorials/notebooks/02_detecting_colonies`</span>

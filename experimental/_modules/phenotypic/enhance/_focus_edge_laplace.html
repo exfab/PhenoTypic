@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -576,43 +576,50 @@
 <div class="viewcode-block" id="FocusEdgeLaplace">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.enhance.html#phenotypic.enhance.FocusEdgeLaplace">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">FocusEdgeLaplace</span><span class="p">(</span><span class="n">FocusEdge</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Enhance colony edges in ``detect_mat`` with a Laplacian operator.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Enhance colony edges in ``detect_mat`` with a discrete Laplacian operator.</span>
 
-<span class="sd">    Applies a discrete Laplacian that responds to rapid intensity changes,</span>
-<span class="sd">    highlighting colony margins and ring-like features such as swarming</span>
-<span class="sd">    fronts. Useful as a preprocessing step for contour detection, watershed</span>
-<span class="sd">    seeding, or separating touching colonies.</span>
+<span class="sd">    Applies a discrete second-derivative Laplacian that responds strongly to</span>
+<span class="sd">    rapid intensity changes, highlighting colony margins and ring-like features</span>
+<span class="sd">    such as swarming fronts. The output is an edge-response map suitable as a</span>
+<span class="sd">    preprocessing step for contour detection, watershed seeding, or separating</span>
+<span class="sd">    touching colonies.</span>
 
 <span class="sd">    For algorithm details, see :doc:`/explanation/what_enhancement_does`.</span>
 
-<span class="sd">    Args:</span>
-<span class="sd">        kernel_size: Size of the Laplacian kernel. Smaller values (3)</span>
-<span class="sd">            capture fine edges but amplify noise; larger values (5--7)</span>
-<span class="sd">            smooth noise and emphasize broader boundaries. Default: 3.</span>
-<span class="sd">        mask: Boolean or 0/1 mask to restrict processing to regions of</span>
-<span class="sd">            interest (e.g., the circular plate area). ``None`` (default)</span>
-<span class="sd">            processes the full image.</span>
-
-<span class="sd">    Returns:</span>
-<span class="sd">        Image: Input image with ``detect_mat`` replaced by the Laplacian</span>
-<span class="sd">        edge response. ``rgb`` and ``gray`` are unchanged.</span>
-
 <span class="sd">    Best For:</span>
-<span class="sd">        - Emphasizing colony edges before edge-based segmentation.</span>
-<span class="sd">        - Detecting ring patterns around colonies for swarming phenotyping.</span>
-<span class="sd">        - Generating watershed seeds by highlighting boundary regions.</span>
+<span class="sd">        - Emphasizing colony edges before edge-based or contour-based</span>
+<span class="sd">          segmentation.</span>
+<span class="sd">        - Detecting ring patterns around swarming colonies for motility</span>
+<span class="sd">          phenotyping.</span>
+<span class="sd">        - Generating boundary seeds for watershed segmentation when colonies</span>
+<span class="sd">          are touching.</span>
 
 <span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`FocusEdgeHessian` for multi-scale edge and ridge detection</span>
-<span class="sd">          with more tuning control.</span>
+<span class="sd">        - :class:`FocusEdgeHessian` for multi-scale ridge and edge detection</span>
+<span class="sd">          with additional control over scale and background suppression.</span>
 <span class="sd">        - :class:`SharpenEdgeGauss` for edge enhancement that retains the</span>
-<span class="sd">          original intensity profile.</span>
-<span class="sd">        - :class:`FocusEdgePhase` for contrast-invariant edge</span>
-<span class="sd">          detection under uneven illumination.</span>
+<span class="sd">          original intensity profile rather than producing a pure edge map.</span>
+<span class="sd">        - :class:`FocusEdgePhase` for contrast-invariant edge detection under</span>
+<span class="sd">          uneven illumination.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        kernel_size: Size of the Laplacian convolution kernel in pixels.</span>
+<span class="sd">            Smaller values (3) capture fine colony edges but amplify noise;</span>
+<span class="sd">            larger values (5--7) smooth noise and emphasize broader colony</span>
+<span class="sd">            boundaries. Default: 3.</span>
+<span class="sd">        mask: Boolean or 0/1 array restricting processing to a region of</span>
+<span class="sd">            interest (e.g., the circular plate area). ``None`` processes the</span>
+<span class="sd">            full image. Default: ``None``.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Image: Input image with ``detect_mat`` replaced by the Laplacian edge</span>
+<span class="sd">        response. ``rgb`` and ``gray`` are unchanged.</span>
 
 <span class="sd">    See Also:</span>
-<span class="sd">        :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a</span>
-<span class="sd">        visual walkthrough of edge enhancement on plate images.</span>
+<span class="sd">        :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a visual</span>
+<span class="sd">        walkthrough of edge enhancement on plate images.</span>
+<span class="sd">        :doc:`/explanation/what_enhancement_does` for how edge-response maps</span>
+<span class="sd">        fit into the pipeline model.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">kernel_size</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">3</span>

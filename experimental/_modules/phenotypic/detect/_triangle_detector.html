@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -575,38 +575,38 @@
 <span class="k">class</span><span class="w"> </span><span class="nc">TriangleDetector</span><span class="p">(</span><span class="n">ThresholdDetector</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Detect colonies by triangle thresholding on skewed, background-dominant plate histograms.</span>
 
-<span class="sd">    Compute a threshold at the base of the triangle formed by the histogram</span>
-<span class="sd">    peak, minimum, and maximum. This method excels when colonies occupy a</span>
-<span class="sd">    small fraction of the plate so that the intensity histogram is strongly</span>
-<span class="sd">    skewed toward background. The resulting binary mask captures sparse or</span>
-<span class="sd">    faint colonies that Otsu may miss. For a full comparison see</span>
-<span class="sd">    :doc:`/explanation/detection_strategies_compared`.</span>
-
-<span class="sd">    Returns:</span>
-<span class="sd">        Image: Input image with ``objmask`` set to the thresholded binary</span>
-<span class="sd">        mask and ``objmap`` set to labeled connected components.</span>
-
-<span class="sd">    Raises:</span>
-<span class="sd">        ValueError: If threshold computation fails (e.g., degenerate</span>
-<span class="sd">            histogram with insufficient intensity variation).</span>
+<span class="sd">    Compute a threshold at the base of the triangle formed between the</span>
+<span class="sd">    histogram peak, the minimum, and the maximum. This method excels when</span>
+<span class="sd">    colonies occupy a small fraction of the plate so that the intensity</span>
+<span class="sd">    histogram is strongly skewed toward background, capturing faint colonies</span>
+<span class="sd">    that variance-based methods may miss. For a full comparison of detection</span>
+<span class="sd">    strategies see :doc:`/explanation/detection_strategies_compared`.</span>
 
 <span class="sd">    Best For:</span>
-<span class="sd">        * Plates where colonies are sparse and background dominates the</span>
-<span class="sd">          intensity histogram.</span>
-<span class="sd">        * Faintly pigmented or translucent colonies that produce a small</span>
+<span class="sd">        - Plates where colonies are sparse and the agar background dominates</span>
+<span class="sd">          the intensity histogram.</span>
+<span class="sd">        - Faintly pigmented or translucent colonies that produce a small</span>
 <span class="sd">          foreground peak relative to the background tail.</span>
-<span class="sd">        * Early time-point images where colony growth is minimal and most</span>
-<span class="sd">          pixels belong to the agar background.</span>
-<span class="sd">        * Drop-out screens with many empty grid positions and few visible</span>
+<span class="sd">        - Early time-point images where colony growth is minimal and most</span>
+<span class="sd">          pixels represent agar background.</span>
+<span class="sd">        - Drop-out screens with many empty grid positions and few visible</span>
 <span class="sd">          colonies.</span>
 
 <span class="sd">    Consider Also:</span>
-<span class="sd">        * :class:`OtsuDetector` when colonies and background occupy roughly</span>
-<span class="sd">          equal histogram areas (balanced bimodal distribution).</span>
-<span class="sd">        * :class:`HysteresisDetector` when colony brightness varies across</span>
+<span class="sd">        - :class:`OtsuDetector` when colonies and background occupy roughly</span>
+<span class="sd">          equal histogram areas, giving a balanced bimodal distribution.</span>
+<span class="sd">        - :class:`HysteresisDetector` when colony brightness varies across</span>
 <span class="sd">          the plate and a single threshold under-segments faint regions.</span>
-<span class="sd">        * :class:`UserThreshold` when an empirically determined threshold is</span>
+<span class="sd">        - :class:`UserThreshold` when an empirically determined threshold is</span>
 <span class="sd">          known to outperform automatic methods for your plate type.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Image: Input image with ``objmask`` set to the binary colony mask and</span>
+<span class="sd">        ``objmap`` set to labeled connected components.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If threshold computation fails due to a degenerate</span>
+<span class="sd">            histogram with insufficient intensity variation.</span>
 
 <span class="sd">    References:</span>
 <span class="sd">        [1] G. W. Zack, W. E. Rogers, and S. A. Latt, &quot;Automatic</span>
@@ -614,12 +614,12 @@
 <span class="sd">        Cytochem.*, vol. 25, no. 7, pp. 741--753, 1977.</span>
 
 <span class="sd">    See Also:</span>
-<span class="sd">        :doc:`/tutorials/notebooks/02_detecting_colonies`</span>
-<span class="sd">            Step-by-step tutorial for basic colony detection.</span>
-<span class="sd">        :doc:`/how_to/notebooks/choose_detection_algorithm`</span>
-<span class="sd">            Guide for selecting the right detector for your plate images.</span>
-<span class="sd">        :doc:`/explanation/detection_strategies_compared`</span>
-<span class="sd">            In-depth comparison of all detection strategies.</span>
+<span class="sd">        :doc:`/tutorials/notebooks/02_detecting_colonies` for a step-by-step</span>
+<span class="sd">        tutorial on basic colony detection.</span>
+<span class="sd">        :doc:`/how_to/notebooks/choose_detection_algorithm` for guidance on</span>
+<span class="sd">        selecting the right detector for your plate images.</span>
+<span class="sd">        :doc:`/explanation/detection_strategies_compared` for an in-depth</span>
+<span class="sd">        comparison of all thresholding strategies.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>

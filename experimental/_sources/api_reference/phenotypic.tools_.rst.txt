@@ -31,7 +31,6 @@ Submodules
    phenotypic.tools_.generate_report
    phenotypic.tools_.hdf_
    phenotypic.tools_.monitor_slurm_jobs
-   phenotypic.tools_.panel_
    phenotypic.tools_.slurm_
    phenotypic.tools_.submitit_
    phenotypic.tools_.typing_

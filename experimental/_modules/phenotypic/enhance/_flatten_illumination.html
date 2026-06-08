@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -562,45 +562,67 @@
   <h1>Source code for phenotypic.enhance._flatten_illumination</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Annotated</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">cv2</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">field_validator</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Field</span>
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">..abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">BackgroundSubtraction</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..tools_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">TuneSpec</span>
 
 
 <div class="viewcode-block" id="FlattenIllumination">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.enhance.html#phenotypic.enhance.FlattenIllumination">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">FlattenIllumination</span><span class="p">(</span><span class="n">BackgroundSubtraction</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Correct uneven illumination in detect_mat using frequency-domain filtering.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Correct uneven illumination in ``detect_mat`` using homomorphic frequency-domain filtering.</span>
 
-<span class="sd">    Separates illumination (low-frequency) and reflectance (high-frequency)</span>
+<span class="sd">    Separates the illumination (low-frequency) and reflectance (high-frequency)</span>
 <span class="sd">    components in the log domain, applies differential gains to suppress</span>
-<span class="sd">    brightness gradients while boosting colony detail, then returns to the</span>
-<span class="sd">    linear domain. Particularly effective for plates with vignetting, scanner</span>
-<span class="sd">    lighting bands, or shadow gradients.</span>
+<span class="sd">    brightness gradients while boosting colony detail, then exponentiates back</span>
+<span class="sd">    to the linear domain. The result is clipped to [0.0, 1.0]. Particularly</span>
+<span class="sd">    effective for plates with vignetting, scanner lighting bands, or shadow</span>
+<span class="sd">    gradients where spatial-domain subtraction is insufficient.</span>
 
 <span class="sd">    For how enhancement fits into the pipeline, see</span>
 <span class="sd">    :doc:`/explanation/what_enhancement_does`.</span>
 
+<span class="sd">    Best For:</span>
+<span class="sd">        - Plates with visible vignetting or radial brightness falloff from</span>
+<span class="sd">          DSLR or flatbed scanner optics.</span>
+<span class="sd">        - Scanner images with horizontal or vertical lighting bands across</span>
+<span class="sd">          the plate surface.</span>
+<span class="sd">        - Plates where uneven agar thickness causes variable background</span>
+<span class="sd">          brightness.</span>
+<span class="sd">        - Pre-conditioning before global thresholding on unevenly lit plates.</span>
+
+<span class="sd">    Consider Also:</span>
+<span class="sd">        - :class:`SubtractGaussian` for a simpler spatial-domain background</span>
+<span class="sd">          subtraction when the illumination gradient is smooth and mild.</span>
+<span class="sd">        - :class:`EnhanceLocalContrast` when the problem is local contrast</span>
+<span class="sd">          variation rather than a large-scale illumination gradient.</span>
+<span class="sd">        - :class:`SubtractRollingBall` for morphological background estimation</span>
+<span class="sd">          when the gradient is driven by colony proximity to the plate edge.</span>
+
 <span class="sd">    Args:</span>
-<span class="sd">        sigma: Gaussian sigma for illumination/reflectance cutoff. Controls</span>
-<span class="sd">            the spatial scale of the estimated illumination field. Must be</span>
-<span class="sd">            large enough that only the gradient is captured, not individual</span>
-<span class="sd">            colonies. Typical range: 40--300 (resolution-dependent). Default:</span>
-<span class="sd">            200.0.</span>
-<span class="sd">        gamma_low: Gain for illumination component. Values &lt; 1.0 suppress</span>
-<span class="sd">            illumination variation. Typical range: 0.3--0.8. Default: 0.5.</span>
-<span class="sd">        gamma_high: Gain for reflectance component. Values &gt; 1.0 enhance</span>
-<span class="sd">            colony contrast and surface detail. Typical range: 1.0--2.5.</span>
-<span class="sd">            Default: 1.5.</span>
-<span class="sd">        eps: Small constant to avoid log(0). Rarely needs adjustment.</span>
-<span class="sd">            Default: 1e-6.</span>
+<span class="sd">        sigma: Gaussian sigma controlling the spatial scale of the estimated</span>
+<span class="sd">            illumination field in pixels. Must be large enough to span entire</span>
+<span class="sd">            colonies so the low-pass captures only the gradient, not colony</span>
+<span class="sd">            signal. A reasonable starting point is several times the diameter</span>
+<span class="sd">            of the largest colony. Typical range: 40--300 (resolution-dependent).</span>
+<span class="sd">            Default: 200.0.</span>
+<span class="sd">        gamma_low: Gain applied to the illumination (low-frequency) component.</span>
+<span class="sd">            Values below 1.0 suppress illumination variation; 1.0 leaves it</span>
+<span class="sd">            unchanged. Typical range: 0.3--0.8. Default: 0.5.</span>
+<span class="sd">        gamma_high: Gain applied to the reflectance (high-frequency) component.</span>
+<span class="sd">            Values above 1.0 enhance colony contrast and surface detail; 1.0</span>
+<span class="sd">            leaves it unchanged. Typical range: 1.0--2.5. Default: 1.5.</span>
+<span class="sd">        eps: Small additive constant before the logarithm to prevent log(0)</span>
+<span class="sd">            on zero-valued pixels. Typical range: 1e-8--1e-4. Rarely needs</span>
+<span class="sd">            adjustment for standard [0, 1] normalised images. Default: 1e-6.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        Image: Input image with ``detect_mat`` illumination-corrected and</span>
@@ -609,36 +631,20 @@
 <span class="sd">    Raises:</span>
 <span class="sd">        ValueError: If ``sigma`` is not positive.</span>
 
-<span class="sd">    Best For:</span>
-<span class="sd">        - Plates with visible vignetting or radial brightness falloff.</span>
-<span class="sd">        - Flatbed scanner images with horizontal brightness bands.</span>
-<span class="sd">        - Uneven agar thickness causing variable background brightness.</span>
-<span class="sd">        - Pre-conditioning before global thresholding on unevenly lit plates.</span>
-
-<span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`SubtractGaussian` for a simpler spatial-domain background</span>
-<span class="sd">          subtraction when the gradient is smooth.</span>
-<span class="sd">        - :class:`EnhanceLocalContrast` when the problem is local contrast rather than</span>
-<span class="sd">          large-scale illumination.</span>
-<span class="sd">        - :class:`SubtractRollingBall` for morphological background estimation.</span>
-
 <span class="sd">    See Also:</span>
 <span class="sd">        :doc:`/how_to/notebooks/enhance_low_contrast` for a comparison of</span>
-<span class="sd">        contrast and illumination correction methods.</span>
+<span class="sd">        contrast and illumination correction methods on real plate images.</span>
+<span class="sd">        :doc:`/explanation/what_enhancement_does` for how homomorphic filtering</span>
+<span class="sd">        separates illumination from reflectance.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="n">sigma</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">200.0</span>
-    <span class="n">gamma_low</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span>
-    <span class="n">gamma_high</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.5</span>
-    <span class="n">eps</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-6</span>
-
-    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;sigma&quot;</span><span class="p">)</span>
-    <span class="nd">@classmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">_check_sigma_positive</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">sigma</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Reject a non-positive ``sigma`` (matches the pre-migration guard).&quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="n">sigma</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;sigma must be positive, got </span><span class="si">{</span><span class="n">sigma</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">sigma</span>
+    <span class="c1"># TODO: review bound (unverified vs literature)</span>
+    <span class="n">sigma</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">40.0</span><span class="p">,</span> <span class="mf">300.0</span><span class="p">,</span> <span class="n">log</span><span class="o">=</span><span class="kc">True</span><span class="p">)]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="mf">200.0</span><span class="p">,</span> <span class="n">gt</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
+    <span class="c1"># TODO: review bound (unverified vs literature)</span>
+    <span class="n">gamma_low</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">)]</span> <span class="o">=</span> <span class="mf">0.5</span>
+    <span class="c1"># TODO: review bound (unverified vs literature)</span>
+    <span class="n">gamma_high</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.5</span><span class="p">)]</span> <span class="o">=</span> <span class="mf">1.5</span>
+    <span class="n">eps</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="n">tunable</span><span class="o">=</span><span class="kc">False</span><span class="p">)]</span> <span class="o">=</span> <span class="mf">1e-6</span>
 
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_filter</span><span class="p">(</span>

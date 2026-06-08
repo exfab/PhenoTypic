@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -578,43 +578,59 @@
 <div class="viewcode-block" id="MaskOpening">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.refine.html#phenotypic.refine.MaskOpening">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">MaskOpening</span><span class="p">(</span><span class="n">ObjectRefiner</span><span class="p">,</span> <span class="n">FootprintMixin</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Smooth mask boundaries and break thin bridges between touching colonies.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Smooth mask boundaries and separate touching colonies using morphological opening.</span>
 
-<span class="sd">    Applies binary opening (erosion then dilation) to remove small isolated</span>
-<span class="sd">    pixels and narrow connections. Colonies linked by faint film or agar</span>
-<span class="sd">    artifacts become separated without significantly shrinking well-formed</span>
-<span class="sd">    colony masks.</span>
+<span class="sd">    Applies binary erosion followed by dilation with the chosen structuring</span>
+<span class="sd">    element, removing isolated noise pixels and narrow bridges between adjacent</span>
+<span class="sd">    colony masks. Colony bodies that survive the erosion step are restored by</span>
+<span class="sd">    dilation, so well-formed masks lose little area while thin connections are</span>
+<span class="sd">    severed.</span>
 
-<span class="sd">    Args:</span>
-<span class="sd">        shape: Structuring element. ``&#39;auto&#39;`` selects based on detected</span>
-<span class="sd">            objects. ``&#39;diamond&#39;``, ``&#39;square&#39;``, ``&#39;disk&#39;``, or a custom</span>
-<span class="sd">            ndarray. Default: ``None``.</span>
-<span class="sd">        width: Size of the structuring element in pixels. Larger values</span>
-<span class="sd">            smooth more aggressively. Typical range: 3--9. Default: 5.</span>
-<span class="sd">        n_iter: Number of opening iterations. Default: 1.</span>
-
-<span class="sd">    Returns:</span>
-<span class="sd">        Image: Input image with ``objmask`` and ``objmap`` morphologically</span>
-<span class="sd">        opened.</span>
+<span class="sd">    For an overview of morphological refinement strategies, see</span>
+<span class="sd">    :doc:`/explanation/refinement_strategies`.</span>
 
 <span class="sd">    Best For:</span>
-<span class="sd">        - Splitting colonies connected by 1--2 pixel bridges after thresholding.</span>
-<span class="sd">        - Removing tiny noise specks from the detection mask.</span>
-<span class="sd">        - Smoothing jagged mask edges before measurement.</span>
+<span class="sd">        - Colonies joined by a 1--3 pixel agar bridge after global thresholding.</span>
+<span class="sd">        - Detection masks with isolated noise specks smaller than the</span>
+<span class="sd">          structuring element.</span>
+<span class="sd">        - Plates where jagged or pixelated colony boundaries would distort</span>
+<span class="sd">          perimeter or shape measurements.</span>
+<span class="sd">        - Post-detection cleanup before :class:`RemoveLowCircularity` or area</span>
+<span class="sd">          measurement to reduce false negatives from ragged edges.</span>
 
 <span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`MaskClosing` for the opposite effect — filling small gaps</span>
-<span class="sd">          and bridging fragments.</span>
-<span class="sd">        - :class:`SmallObjectRemover` for removing small objects by area</span>
-<span class="sd">          rather than morphology.</span>
-<span class="sd">        - :class:`SeparateObjects` for splitting merged colonies using</span>
-<span class="sd">          watershed-based separation.</span>
+<span class="sd">        - :class:`MaskClosing` when the goal is filling small holes or</span>
+<span class="sd">          bridging gaps within a colony mask rather than severing connections.</span>
+<span class="sd">        - :class:`SmallObjectRemover` when small artefacts are fully</span>
+<span class="sd">          disconnected objects best removed by area threshold.</span>
+<span class="sd">        - :class:`SeparateObjects` when touching colonies share a large</span>
+<span class="sd">          overlapping region and watershed-based separation is needed.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        shape: Structuring element geometry. ``&quot;auto&quot;`` chooses a diamond</span>
+<span class="sd">            sized to 0.5% of the smaller image dimension. ``&quot;diamond&quot;``,</span>
+<span class="sd">            ``&quot;square&quot;``, or ``&quot;disk&quot;`` use the ``width`` parameter to set</span>
+<span class="sd">            the element size. A NumPy array supplies a custom footprint.</span>
+<span class="sd">            ``None`` passes no footprint to skimage, which uses a 3×3</span>
+<span class="sd">            cross. Default: ``None``.</span>
+<span class="sd">        width: Radius of the structuring element in pixels when ``shape``</span>
+<span class="sd">            is ``&quot;diamond&quot;``, ``&quot;square&quot;``, or ``&quot;disk&quot;``. Larger values</span>
+<span class="sd">            sever broader bridges and smooth rougher edges but risk eroding</span>
+<span class="sd">            thin genuine colony appendages. Typical range: 3--9. Default: 5.</span>
+<span class="sd">        n_iter: Number of opening iterations. Each iteration compounds</span>
+<span class="sd">            the erosion-dilation cycle, progressively widening the gap at</span>
+<span class="sd">            each connection point. Typical range: 1--3. Default: 1.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Image: Input image with ``objmask`` and ``objmap`` updated after</span>
+<span class="sd">        morphological opening. ``rgb``, ``gray``, and ``detect_mat`` are</span>
+<span class="sd">        unchanged.</span>
 
 <span class="sd">    See Also:</span>
 <span class="sd">        :doc:`/how_to/notebooks/refine_noisy_boundaries` for a walkthrough</span>
-<span class="sd">        of refinement operations.</span>
+<span class="sd">        of morphological refinement on real plate images.</span>
 <span class="sd">        :doc:`/explanation/refinement_strategies` for the recommended</span>
-<span class="sd">        refinement sequence.</span>
+<span class="sd">        refinement sequence and structuring element guidance.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">shape</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;auto&quot;</span><span class="p">,</span> <span class="s2">&quot;square&quot;</span><span class="p">,</span> <span class="s2">&quot;diamond&quot;</span><span class="p">,</span> <span class="s2">&quot;disk&quot;</span><span class="p">]</span> <span class="o">|</span> <span class="n">NdArrayField</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>

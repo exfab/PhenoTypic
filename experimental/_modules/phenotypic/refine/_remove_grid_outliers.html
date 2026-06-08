@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -577,43 +577,56 @@
 <div class="viewcode-block" id="RemoveGridOutliers">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.refine.html#phenotypic.refine.RemoveGridOutliers">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">RemoveGridOutliers</span><span class="p">(</span><span class="n">GridObjectRefiner</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Remove objects with large positional residuals in noisy grid rows or columns.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Remove positional outliers from noisy grid rows or columns using IQR-based residual pruning.</span>
 
 <span class="sd">    Fits linear-regression trends to colony centroids along each row and</span>
-<span class="sd">    column, identifies rows/columns with high variability (coefficient of</span>
-<span class="sd">    variance above threshold), and removes objects whose residual error</span>
-<span class="sd">    exceeds an IQR-based cutoff within those noisy lines.</span>
+<span class="sd">    column, identifies lines whose residual coefficient of variance exceeds</span>
+<span class="sd">    ``max_coeff_variance``, then removes objects whose residual error exceeds</span>
+<span class="sd">    the mean plus ``cutoff_multiplier`` times the IQR within those noisy</span>
+<span class="sd">    lines. Rows and columns with low variance are left untouched.</span>
 
-<span class="sd">    Args:</span>
-<span class="sd">        axis: Axis to analyze. ``None`` analyzes both rows and columns,</span>
-<span class="sd">            ``0`` rows only, ``1`` columns only. Restricting the axis</span>
-<span class="sd">            speeds processing and targets known problem directions.</span>
-<span class="sd">            Default: None.</span>
-<span class="sd">        stddev_multiplier: IQR-based cutoff multiplier for outlier removal.</span>
-<span class="sd">            Lower values prune more aggressively; higher values are</span>
-<span class="sd">            conservative. Typical range: 1.0--3.0. Default: 1.5.</span>
-<span class="sd">        max_coeff_variance: Maximum coefficient of variance (std/mean)</span>
-<span class="sd">            allowed before a row/column is considered noisy and eligible</span>
-<span class="sd">            for outlier pruning. Typical range: 1--5. Default: 1.</span>
+<span class="sd">    Requires a ``GridImage`` with grid metadata already populated.</span>
 
-<span class="sd">    Returns:</span>
-<span class="sd">        Image: Input image with ``objmap`` and ``objmask`` updated to exclude</span>
-<span class="sd">        positional outliers from noisy grid rows/columns.</span>
+<span class="sd">    For a comparison of grid refinement approaches, see</span>
+<span class="sd">    :doc:`/explanation/refinement_strategies`.</span>
 
 <span class="sd">    Best For:</span>
-<span class="sd">        - Cleaning rows or columns with off-grid detections from condensation,</span>
-<span class="sd">          glare, or debris before measuring growth.</span>
-<span class="sd">        - Stabilizing grid registration when a subset of positions is noisy.</span>
-<span class="sd">        - Plates where most grid lines are well-aligned but a few contain</span>
-<span class="sd">          spurious artifacts.</span>
+<span class="sd">        - Plates where most rows and columns are well-aligned but a few</span>
+<span class="sd">          contain off-grid detections from condensation, glare, or debris.</span>
+<span class="sd">        - Stabilizing grid registration before size or intensity measurement</span>
+<span class="sd">          when a subset of row or column positions is noisy.</span>
+<span class="sd">        - Batch runs where individual plates occasionally have edge rows</span>
+<span class="sd">          with aberrant detections that should not propagate to measurements.</span>
 
 <span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`ReduceSectionsByLine` for reducing multi-detections to</span>
-<span class="sd">          one per cell rather than pruning outliers within rows/columns.</span>
+<span class="sd">        - :class:`ReduceSectionsByLine` when the goal is reducing each cell</span>
+<span class="sd">          to one detection rather than pruning outliers within lines.</span>
 <span class="sd">        - :class:`GridAlignmentRefiner` for full grid-aware filtering using</span>
-<span class="sd">          dominant-object-per-cell selection.</span>
-<span class="sd">        - :class:`GridOversizedObjectRemover` when the problem is oversized</span>
-<span class="sd">          detections rather than positional outliers.</span>
+<span class="sd">          dominant-object-per-cell selection without variance-based gating.</span>
+<span class="sd">        - :class:`GridOversizedObjectRemover` when the problem is objects</span>
+<span class="sd">          spanning multiple grid sections rather than positional outliers.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        axis: Grid axis to analyze. ``None`` processes both rows and</span>
+<span class="sd">            columns; ``0`` restricts to rows; ``1`` restricts to columns.</span>
+<span class="sd">            Restricting the axis speeds processing when the problem</span>
+<span class="sd">            direction is known. Default: ``None``.</span>
+<span class="sd">        cutoff_multiplier: IQR-based residual cutoff multiplier. Objects</span>
+<span class="sd">            whose residual exceeds ``mean + cutoff_multiplier × IQR``</span>
+<span class="sd">            within a noisy line are removed. Lower values prune more</span>
+<span class="sd">            aggressively; higher values are conservative. Also accepted</span>
+<span class="sd">            as ``stddev_multiplier`` for backwards compatibility. Typical</span>
+<span class="sd">            range: 1.0--3.0. Default: 1.5.</span>
+<span class="sd">        max_coeff_variance: Maximum coefficient of variance (std / mean</span>
+<span class="sd">            of residuals) allowed for a row or column before it is</span>
+<span class="sd">            considered noisy and subjected to outlier pruning. Lines below</span>
+<span class="sd">            this threshold are left untouched. Typical range: 1--5.</span>
+<span class="sd">            Default: 1.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Image: Input image with ``objmap`` and ``objmask`` updated to</span>
+<span class="sd">        exclude positional outliers from noisy grid rows and columns.</span>
+<span class="sd">        ``rgb``, ``gray``, and ``detect_mat`` are unchanged.</span>
 
 <span class="sd">    See Also:</span>
 <span class="sd">        :doc:`/how_to/notebooks/refine_noisy_boundaries` for grid-based</span>

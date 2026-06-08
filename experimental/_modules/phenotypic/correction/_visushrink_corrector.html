@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -567,69 +567,127 @@
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
 
-<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">skimage.restoration</span><span class="w"> </span><span class="kn">import</span> <span class="n">denoise_wavelet</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">..abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageCorrector</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..tools_.mixin</span><span class="w"> </span><span class="kn">import</span> <span class="n">_GATSupportMixin</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._wavelet_rgb</span><span class="w"> </span><span class="kn">import</span> <span class="n">restore_wavelet_rgb_dtype</span>
 
 
 <div class="viewcode-block" id="VisuShrinkCorrector">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.correction.html#phenotypic.correction.VisuShrinkCorrector">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">VisuShrinkCorrector</span><span class="p">(</span><span class="n">_GATSupportMixin</span><span class="p">,</span> <span class="n">ImageCorrector</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Denoise all image components using a universal VisuShrink wavelet threshold.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Denoise all image components using the near-minimax VisuShrink universal wavelet threshold.</span>
 
 <span class="sd">    Apply VisuShrink wavelet denoising to RGB (if present), grayscale, and</span>
-<span class="sd">    detection matrix simultaneously. Unlike :class:`VisuShrinkEnhancer`,</span>
-<span class="sd">    which modifies only the detection matrix, this corrector transforms all</span>
-<span class="sd">    image representations to maintain cross-component consistency.</span>
+<span class="sd">    detection matrix simultaneously, using a single global threshold derived</span>
+<span class="sd">    from the estimated noise level and image size. All three image</span>
+<span class="sd">    representations are updated in one pass, keeping them mutually consistent.</span>
+<span class="sd">    The universal threshold is deliberately conservative and tends to over-smooth</span>
+<span class="sd">    relative to adaptive alternatives.</span>
 
 <span class="sd">    For algorithm details, see :doc:`/explanation/what_enhancement_does`.</span>
 
-<span class="sd">    Args:</span>
-<span class="sd">        sigma: Noise standard deviation. ``None`` auto-estimates from</span>
-<span class="sd">            the image. Retargeted to 1.0 when ``use_gat=True`` (applies</span>
-<span class="sd">            only to gray and detect_mat passes; RGB stays out of GAT).</span>
-<span class="sd">            Default: ``None``.</span>
-<span class="sd">        wavelet: Wavelet family name. ``&#39;db2&#39;`` is general-purpose;</span>
-<span class="sd">            ``&#39;db4&#39;`` preserves finer detail. Default: ``&#39;db2&#39;``.</span>
-<span class="sd">        mode: Thresholding mode. ``&#39;soft&#39;`` produces smoother results;</span>
-<span class="sd">            ``&#39;hard&#39;`` retains sharper edges. Default: ``&#39;soft&#39;``.</span>
-<span class="sd">        wavelet_levels: Number of decomposition levels. ``None`` uses</span>
-<span class="sd">            the maximum minus three (automatic). Default: ``None``.</span>
-<span class="sd">        convert2ycbcr: Denoise RGB in YCbCr space so luminance and</span>
-<span class="sd">            chrominance are handled separately, preserving colony color.</span>
-<span class="sd">            Only applies when RGB data is present. Default: ``True``.</span>
-<span class="sd">        rescale_sigma: skimage flag controlling internal sigma rescaling.</span>
-<span class="sd">            Default: ``True``. Auto-deferred for the gray/detect_mat</span>
-<span class="sd">            passes when ``use_gat=True``.</span>
-<span class="sd">        use_gat: Wrap gray and detect_mat denoising in the Generalized</span>
-<span class="sd">            Anscombe Transform. RGB is not transformed. Default: ``False``.</span>
-<span class="sd">        gat_gain, gat_mu, gat_read_sigma, gat_scale_factor: GAT parameters.</span>
-
-<span class="sd">    Returns:</span>
-<span class="sd">        Image: Input image with all components (RGB, gray, detect_mat)</span>
-<span class="sd">        transformed by VisuShrink wavelet denoising.</span>
-
 <span class="sd">    Best For:</span>
-<span class="sd">        - Quick, uniform denoising of raw plate scans for archival or</span>
-<span class="sd">          publication where a single threshold is acceptable.</span>
-<span class="sd">        - Removing scanner noise from all image components before</span>
-<span class="sd">          downstream multi-channel analysis.</span>
-<span class="sd">        - Plates with relatively uniform noise where adaptive subband</span>
-<span class="sd">          thresholding is not necessary.</span>
+<span class="sd">        - Quick, consistent denoising of raw plate scans before archival or</span>
+<span class="sd">          publication where a single noise level characterizes the whole image.</span>
+<span class="sd">        - Plates with uniform scanner or camera noise where per-subband</span>
+<span class="sd">          adaptation provides little additional benefit.</span>
+<span class="sd">        - Removing broad-field scanner banding or read noise from all</span>
+<span class="sd">          image components before downstream multi-channel analysis.</span>
 
 <span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`BayesShrinkCorrector` for adaptive subband thresholds</span>
-<span class="sd">          that preserve finer colony detail.</span>
-<span class="sd">        - :class:`StableDenoise` for variance-stabilized BM3D denoising</span>
-<span class="sd">          when Poisson-Gaussian noise modelling is important.</span>
-<span class="sd">        - :class:`VisuShrinkEnhancer` when only the detection matrix</span>
-<span class="sd">          should be denoised (non-destructive to RGB and gray).</span>
+<span class="sd">        - :class:`BayesShrinkCorrector` for adaptive per-subband thresholds</span>
+<span class="sd">          that preserve finer colony detail at the cost of slightly more</span>
+<span class="sd">          computation.</span>
+<span class="sd">        - :class:`StableDenoise` for GAT-stabilized BM3D collaborative</span>
+<span class="sd">          filtering when Poisson-Gaussian noise modelling is important.</span>
+<span class="sd">        - :class:`VisuShrinkEnhancer` when only the detection matrix should</span>
+<span class="sd">          be denoised and RGB and gray must remain untouched.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        sigma: Noise standard deviation on the [0, 1] intensity scale.</span>
+<span class="sd">            ``None`` auto-estimates from the median absolute deviation of</span>
+<span class="sd">            the finest wavelet detail subband (MAD / 0.6745). The universal</span>
+<span class="sd">            threshold T = sigma * sqrt(2 * log(N)) is conservative; reducing</span>
+<span class="sd">            sigma by factors of 2--4 below the auto-estimate gives sharper</span>
+<span class="sd">            output. Internally retargeted to 1.0 for gray and detect_mat</span>
+<span class="sd">            when ``use_gat=True``; RGB is not GAT-wrapped. Default: ``None``.</span>
+<span class="sd">        wavelet: PyWavelets wavelet family name. ``&#39;db2&#39;`` is general-purpose</span>
+<span class="sd">            with compact support; ``&#39;db4&#39;`` has more vanishing moments and</span>
+<span class="sd">            wider support, representing smooth colony interiors more sparsely.</span>
+<span class="sd">            Default: ``&#39;db2&#39;``.</span>
+<span class="sd">        mode: Wavelet coefficient thresholding mode. ``&#39;soft&#39;`` shrinks</span>
+<span class="sd">            surviving coefficients toward zero, producing smoother output</span>
+<span class="sd">            preferred for detection preprocessing. ``&#39;hard&#39;`` zeroes</span>
+<span class="sd">            coefficients below the threshold and leaves the rest unchanged,</span>
+<span class="sd">            retaining sharper edges but introducing discontinuities that can</span>
+<span class="sd">            appear as ringing near sharp boundaries. Default: ``&#39;soft&#39;``.</span>
+<span class="sd">        wavelet_levels: Number of wavelet decomposition levels. ``None`` uses</span>
+<span class="sd">            the library heuristic (maximum possible minus three). Practical</span>
+<span class="sd">            manual range: 2--6. More levels suppress noise at coarser spatial</span>
+<span class="sd">            scales; fewer levels restrict denoising to fine-grained noise.</span>
+<span class="sd">            Default: ``None``.</span>
+<span class="sd">        convert2ycbcr: Convert RGB to YCbCr before denoising so luminance</span>
+<span class="sd">            and chrominance channels are thresholded independently, preserving</span>
+<span class="sd">            colony hue for pigmentation assays. Applies only when RGB data is</span>
+<span class="sd">            present. Default: ``True``.</span>
+<span class="sd">        rescale_sigma: Allow skimage to internally rescale sigma when</span>
+<span class="sd">            converting between dtypes. Automatically deferred to ``False``</span>
+<span class="sd">            during the gray and detect_mat passes when ``use_gat=True`` to</span>
+<span class="sd">            prevent double-scaling the stabilized-domain noise level. Default:</span>
+<span class="sd">            ``True``.</span>
+<span class="sd">        clip: Clamp gray and detect_mat outputs to [0, 1] after denoising.</span>
+<span class="sd">            Soft thresholding can produce marginally negative values near dark</span>
+<span class="sd">            colony edges; clipping eliminates these. Automatically deferred to</span>
+<span class="sd">            ``False`` inside the GAT region so the inverse transform operates</span>
+<span class="sd">            on the full stabilized signal before the final clamp. Default:</span>
+<span class="sd">            ``True``.</span>
+
+<span class="sd">        # GAT parameters (active only when use_gat=True)</span>
+<span class="sd">        use_gat: Wrap gray and detect_mat denoising in the Generalized</span>
+<span class="sd">            Anscombe Transform, converting Poisson-Gaussian noise into</span>
+<span class="sd">            approximately unit-variance Gaussian noise so the VisuShrink</span>
+<span class="sd">            threshold is correctly scaled across intensity levels. RGB is not</span>
+<span class="sd">            transformed. Enable for fluorescence plate readers or low-light</span>
+<span class="sd">            incubator images. Default: ``False``.</span>
+<span class="sd">        gat_gain: Camera gain in electrons per ADU. Typical range: 0.5--10</span>
+<span class="sd">            e-/ADU depending on sensor. Obtain from the manufacturer datasheet</span>
+<span class="sd">            or a mean-variance calibration. Default: ``1.0``.</span>
+<span class="sd">        gat_mu: Read-noise mean (dark-current baseline offset) in count units</span>
+<span class="sd">            consistent with ``gat_scale_factor``. Set to 0.0 when the image</span>
+<span class="sd">            has been bias-subtracted, covering most flatbed-scanner workflows.</span>
+<span class="sd">            Default: ``0.0``.</span>
+<span class="sd">        gat_read_sigma: Read-noise standard deviation in count units</span>
+<span class="sd">            consistent with ``gat_scale_factor``. Zero assumes pure Poisson</span>
+<span class="sd">            noise; supplying the sensor read-noise spec (a few to a few tens of</span>
+<span class="sd">            counts for typical scientific CCDs) improves stabilization at low</span>
+<span class="sd">            signal levels. Default: ``0.0``.</span>
+<span class="sd">        gat_scale_factor: Multiplier converting normalized [0, 1] float data</span>
+<span class="sd">            to photon counts before the forward GAT. ``None`` auto-detects</span>
+<span class="sd">            from image bit depth (8-bit: 255, 16-bit: 65535). Override for</span>
+<span class="sd">            non-standard bit depths such as 12-bit sensors stored in a 16-bit</span>
+<span class="sd">            container (4095). Default: ``None``.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Image: Input image with all components (``rgb``, ``gray``,</span>
+<span class="sd">        ``detect_mat``) transformed by VisuShrink wavelet denoising. All</span>
+<span class="sd">        three representations are updated in a single pass.</span>
+
+<span class="sd">    References:</span>
+<span class="sd">        [1] D. L. Donoho and I. M. Johnstone, &quot;Ideal spatial adaptation by</span>
+<span class="sd">        wavelet shrinkage,&quot; *Biometrika*, vol. 81, no. 3, pp. 425--455,</span>
+<span class="sd">        Sep. 1994.</span>
+
+<span class="sd">        [2] M. Mäkitalo and A. Foi, &quot;Optimal inversion of the generalized</span>
+<span class="sd">        Anscombe transformation for Poisson-Gaussian noise,&quot; *IEEE Trans.</span>
+<span class="sd">        Image Process.*, vol. 22, no. 1, pp. 91--103, Jan. 2013.</span>
 
 <span class="sd">    See Also:</span>
-<span class="sd">        :doc:`/how_to/notebooks/correct_color_cast` for combining</span>
-<span class="sd">        denoising with color correction workflows.</span>
+<span class="sd">        :doc:`/how_to/notebooks/denoise_low_light` for a visual walkthrough</span>
+<span class="sd">        of wavelet denoising on plate images.</span>
+<span class="sd">        :doc:`/explanation/image_quality_noise_contrast_structure` for</span>
+<span class="sd">        background on noise models and denoising strategy selection.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">_GAT_NOISE_PARAMS</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;sigma&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">}</span>
@@ -652,8 +710,9 @@
         <span class="k">return</span> <span class="n">image</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_denoise_rgb</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">original_rgb</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">rgb</span><span class="p">[:]</span>
         <span class="n">denoised_rgb</span> <span class="o">=</span> <span class="n">denoise_wavelet</span><span class="p">(</span>
-            <span class="n">image</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">rgb</span><span class="p">[:],</span>
+            <span class="n">image</span><span class="o">=</span><span class="n">original_rgb</span><span class="p">,</span>
             <span class="n">sigma</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sigma</span><span class="p">,</span>
             <span class="n">wavelet</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">wavelet</span><span class="p">,</span>
             <span class="n">mode</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">mode</span><span class="p">,</span>
@@ -663,7 +722,7 @@
             <span class="n">channel_axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span>
             <span class="n">rescale_sigma</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">rescale_sigma</span><span class="p">,</span>
         <span class="p">)</span>
-        <span class="n">image</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">rgb</span> <span class="o">=</span> <span class="n">denoised_rgb</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">255</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+        <span class="n">image</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">rgb</span> <span class="o">=</span> <span class="n">restore_wavelet_rgb_dtype</span><span class="p">(</span><span class="n">denoised_rgb</span><span class="p">,</span> <span class="n">original_rgb</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_denoise_gray</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">denoised_gray</span> <span class="o">=</span> <span class="n">denoise_wavelet</span><span class="p">(</span>

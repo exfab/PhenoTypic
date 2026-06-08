@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -569,13 +569,14 @@
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">gc</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Literal</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Annotated</span><span class="p">,</span> <span class="n">Literal</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">field_validator</span><span class="p">,</span> <span class="n">model_validator</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Field</span><span class="p">,</span> <span class="n">model_validator</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing_extensions</span><span class="w"> </span><span class="kn">import</span> <span class="n">Self</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ObjectDetector</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">TuneSpec</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect._round_peaks_detector</span><span class="w"> </span><span class="kn">import</span> <span class="n">RoundPeaksDetector</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.enhance._contrast_streching</span><span class="w"> </span><span class="kn">import</span> <span class="n">ContrastStretching</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.enhance._gray_opening</span><span class="w"> </span><span class="kn">import</span> <span class="n">GrayOpening</span>
@@ -601,68 +602,62 @@
 <span class="sd">    that ``image.detect_mat`` is never modified. For a full comparison see</span>
 <span class="sd">    :doc:`/explanation/detection_strategies_compared`.</span>
 
+<span class="sd">    Best For:</span>
+<span class="sd">        - Pin-tool inoculation on high-density plates (96-well, 384-well)</span>
+<span class="sd">          where inocula are 30--80 pixels in diameter.</span>
+<span class="sd">        - Spot-dilution assays producing 10--150 pixel inocula across</span>
+<span class="sd">          serial dilution series.</span>
+<span class="sd">        - Pre-growth phenotyping baselines (T=0 imaging) for establishing</span>
+<span class="sd">          reference coordinates before growth measurements.</span>
+<span class="sd">        - Liquid spotting assays where GMM core extraction refines</span>
+<span class="sd">          boundaries for accurate area and circularity measurements.</span>
+
+<span class="sd">    Consider Also:</span>
+<span class="sd">        - :class:`RoundPeaksDetector` when colonies (not inocula) must be</span>
+<span class="sd">          detected on a regular grid without multi-scale blob enhancement.</span>
+<span class="sd">        - :class:`OtsuDetector` when inocula are high-contrast and a simple</span>
+<span class="sd">          global threshold is sufficient.</span>
+<span class="sd">        - :class:`FilamentousFungiDetector` when inoculation sites have</span>
+<span class="sd">          developed into filamentous fungal growth.</span>
+
 <span class="sd">    Args:</span>
 <span class="sd">        min_diameter: Smallest expected inoculum diameter in pixels. Used</span>
 <span class="sd">            to derive LoG minimum radius and GMM morphological parameters.</span>
-<span class="sd">            Set based on the smallest visible spot in your images. Default</span>
-<span class="sd">            30.0. Typical range: 5--80.</span>
-
+<span class="sd">            Set based on the smallest visible spot in your images. Typical</span>
+<span class="sd">            range: 5--80. Default: 30.0.</span>
 <span class="sd">        max_diameter: Largest expected inoculum diameter in pixels. Used</span>
 <span class="sd">            to derive Gaussian background subtraction sigma and LoG maximum</span>
-<span class="sd">            radius. Default 100.0. Typical range: 50--300. Must be greater</span>
-<span class="sd">            than *min_diameter*.</span>
-
+<span class="sd">            radius. Must be greater than ``min_diameter``. Typical range:</span>
+<span class="sd">            50--300. Default: 100.0.</span>
 <span class="sd">        thresh_method: Thresholding method for binary segmentation within</span>
-<span class="sd">            the RoundPeaksDetector step. Options: ``&#39;otsu&#39;`` (default),</span>
-<span class="sd">            ``&#39;mean&#39;``, ``&#39;local&#39;``, ``&#39;triangle&#39;``, ``&#39;minimum&#39;``,</span>
-<span class="sd">            ``&#39;isodata&#39;``, ``&#39;li&#39;``. ``&#39;otsu&#39;`` works well for most</span>
-<span class="sd">            standardised setups; ``&#39;local&#39;`` adapts to spatial illumination</span>
-<span class="sd">            gradients.</span>
-
-<span class="sd">        enable_gmm: If True (default), apply Gaussian Mixture Model core</span>
-<span class="sd">            extraction to refine detected regions to bright, compact cores.</span>
-<span class="sd">            Disable for inocula that lack clear core-surround structure.</span>
-
-<span class="sd">        gmm_n_components: GMM components per region (default 2). 2</span>
-<span class="sd">            separates core from surround; increase only for complex</span>
-<span class="sd">            multi-layered spots.</span>
-
+<span class="sd">            the RoundPeaksDetector step. Accepted values: ``&#39;otsu&#39;``</span>
+<span class="sd">            (default), ``&#39;mean&#39;``, ``&#39;local&#39;``, ``&#39;triangle&#39;``,</span>
+<span class="sd">            ``&#39;minimum&#39;``, ``&#39;isodata&#39;``, ``&#39;li&#39;``. ``&#39;otsu&#39;`` works well</span>
+<span class="sd">            for most standardised setups; ``&#39;local&#39;`` adapts to spatial</span>
+<span class="sd">            illumination gradients. Default: ``&#39;otsu&#39;``.</span>
+<span class="sd">        enable_gmm: Apply Gaussian Mixture Model core extraction to refine</span>
+<span class="sd">            detected regions to bright, compact cores. Disable for inocula</span>
+<span class="sd">            that lack clear core-surround structure. Default: True.</span>
+<span class="sd">        gmm_n_components: Number of GMM components per region. Two</span>
+<span class="sd">            components separate core from surround; increase only for</span>
+<span class="sd">            complex multi-layered spots. Default: 2.</span>
 <span class="sd">        gmm_separation_threshold: Normalised Euclidean distance between</span>
-<span class="sd">            GMM component means. Below this threshold a region is left</span>
-<span class="sd">            unmodified (no clear core). Default 0.9. Typical range:</span>
-<span class="sd">            0.8--1.2. Increase to make refinement less aggressive.</span>
-
-<span class="sd">        validate_obj_count: If True (default) and the input is a</span>
-<span class="sd">            ``GridImage``, raise ``ValueError`` when the detected object</span>
-<span class="sd">            count exceeds ``nrows * ncols``. Catches over-segmentation</span>
-<span class="sd">            early.</span>
+<span class="sd">            GMM component means below which a region is left unmodified</span>
+<span class="sd">            (no clear core). Increase to make refinement less aggressive.</span>
+<span class="sd">            Typical range: 0.8--1.2. Default: 0.9.</span>
+<span class="sd">        validate_obj_count: When True and the input is a ``GridImage``,</span>
+<span class="sd">            raise ``ValueError`` when the detected object count exceeds</span>
+<span class="sd">            ``nrows * ncols``. Catches over-segmentation early. Default:</span>
+<span class="sd">            True.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        Image: Input image with ``objmask`` (binary inoculum mask) and</span>
 <span class="sd">        ``objmap`` (labelled inoculum map) populated.</span>
 
 <span class="sd">    Raises:</span>
-<span class="sd">        ValueError: If detected object count exceeds grid capacity (when</span>
-<span class="sd">            *validate_obj_count* is True and input is a GridImage), or if</span>
-<span class="sd">            *min_diameter* &gt;= *max_diameter*.</span>
-
-<span class="sd">    Best For:</span>
-<span class="sd">        * Pin-tool inoculation on high-density plates (96-well, 384-well)</span>
-<span class="sd">          where inocula are 30--80 pixels in diameter.</span>
-<span class="sd">        * Spot-dilution assays producing 10--150 pixel inocula across</span>
-<span class="sd">          serial dilution series.</span>
-<span class="sd">        * Pre-growth phenotyping baselines (T=0 imaging) for establishing</span>
-<span class="sd">          reference coordinates before growth measurements.</span>
-<span class="sd">        * Liquid spotting assays where GMM core extraction refines</span>
-<span class="sd">          boundaries for accurate area and circularity measurements.</span>
-
-<span class="sd">    Consider Also:</span>
-<span class="sd">        * :class:`RoundPeaksDetector` when colonies (not inocula) must be</span>
-<span class="sd">          detected on a regular grid without multi-scale blob enhancement.</span>
-<span class="sd">        * :class:`OtsuDetector` when inocula are high-contrast and a simple</span>
-<span class="sd">          global threshold is sufficient.</span>
-<span class="sd">        * :class:`FilamentousFungiDetector` when inoculation sites have</span>
-<span class="sd">          developed into filamentous fungal growth.</span>
+<span class="sd">        ValueError: If ``min_diameter`` &gt;= ``max_diameter``, or if</span>
+<span class="sd">            detected object count exceeds grid capacity when</span>
+<span class="sd">            ``validate_obj_count`` is True and input is a GridImage.</span>
 
 <span class="sd">    See Also:</span>
 <span class="sd">        :doc:`/tutorials/notebooks/02_detecting_colonies`</span>
@@ -673,48 +668,27 @@
 <span class="sd">            In-depth comparison of all detection strategies.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="n">min_diameter</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">30.0</span>
-    <span class="n">max_diameter</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">100.0</span>
+    <span class="c1"># TODO: review bound (unverified vs literature)</span>
+    <span class="n">min_diameter</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">5.0</span><span class="p">,</span> <span class="mf">80.0</span><span class="p">,</span> <span class="n">log</span><span class="o">=</span><span class="kc">True</span><span class="p">)]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="mf">30.0</span><span class="p">,</span> <span class="n">gt</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
+    <span class="c1"># TODO: review bound (unverified vs literature)</span>
+    <span class="n">max_diameter</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">50.0</span><span class="p">,</span> <span class="mf">300.0</span><span class="p">,</span> <span class="n">log</span><span class="o">=</span><span class="kc">True</span><span class="p">)]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="mf">100.0</span><span class="p">,</span> <span class="n">gt</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
     <span class="n">thresh_method</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span>
         <span class="s2">&quot;otsu&quot;</span><span class="p">,</span> <span class="s2">&quot;mean&quot;</span><span class="p">,</span> <span class="s2">&quot;local&quot;</span><span class="p">,</span> <span class="s2">&quot;triangle&quot;</span><span class="p">,</span> <span class="s2">&quot;minimum&quot;</span><span class="p">,</span> <span class="s2">&quot;isodata&quot;</span><span class="p">,</span> <span class="s2">&quot;li&quot;</span>
     <span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;otsu&quot;</span>
     <span class="n">enable_gmm</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
-    <span class="n">gmm_n_components</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span>
-    <span class="n">gmm_separation_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.9</span>
+    <span class="n">gmm_n_components</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">2</span>
+    <span class="c1"># TODO: review bound (unverified vs literature)</span>
+    <span class="n">gmm_separation_threshold</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">0.8</span><span class="p">,</span> <span class="mf">1.2</span><span class="p">)]</span> <span class="o">=</span> <span class="mf">0.9</span>
     <span class="n">validate_obj_count</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
-
-    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;min_diameter&quot;</span><span class="p">)</span>
-    <span class="nd">@classmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">_check_min_diameter_positive</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Require ``min_diameter`` to be strictly positive.</span>
-
-<span class="sd">        Reproduces the ``min_diameter &lt;= 0`` guard from the pre-migration</span>
-<span class="sd">        ``__init__`` (kept as a validator, not a ``Field(gt=0)``</span>
-<span class="sd">        constraint, so the original error message is preserved).</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="n">value</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;min_diameter must be positive, got </span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">value</span>
-
-    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;max_diameter&quot;</span><span class="p">)</span>
-    <span class="nd">@classmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">_check_max_diameter_positive</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Require ``max_diameter`` to be strictly positive.</span>
-
-<span class="sd">        Reproduces the ``max_diameter &lt;= 0`` guard from the pre-migration</span>
-<span class="sd">        ``__init__``.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="n">value</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;max_diameter must be positive, got </span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">value</span>
 
     <span class="nd">@model_validator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;after&quot;</span><span class="p">)</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_check_diameter_order</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Require ``min_diameter`` to be strictly less than ``max_diameter``.</span>
 
 <span class="sd">        Reproduces the cross-field guard from the pre-migration</span>
-<span class="sd">        ``__init__``; the per-field positivity checks live in the</span>
-<span class="sd">        ``min_diameter`` / ``max_diameter`` field validators above.</span>
+<span class="sd">        ``__init__``; the per-field positivity checks are enforced by the</span>
+<span class="sd">        ``Field(gt=0.0)`` constraints on ``min_diameter`` / ``max_diameter``</span>
+<span class="sd">        above.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_diameter</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_diameter</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>

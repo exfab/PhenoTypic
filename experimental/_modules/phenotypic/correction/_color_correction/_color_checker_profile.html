@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -604,6 +604,24 @@
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
 
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_in_jupyter_notebook</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Detect whether code is running inside a Jupyter notebook kernel.</span>
+
+<span class="sd">    Returns ``True`` only for notebook kernels (``ZMQInteractiveShell``),</span>
+<span class="sd">    not plain IPython terminals — used to decide whether to inline-display</span>
+<span class="sd">    a figure via ``Figure.show()``.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        ``True`` when running in a Jupyter notebook kernel.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">IPython</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_ipython</span> <span class="k">as</span> <span class="n">_get_ipython</span>
+    <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="n">shell</span> <span class="o">=</span> <span class="n">_get_ipython</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">shell</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">shell</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;ZMQInteractiveShell&quot;</span>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">_RoiPreprocessing</span><span class="p">(</span><span class="n">NamedTuple</span><span class="p">):</span>
@@ -1472,42 +1490,44 @@
 <div class="viewcode-block" id="ColorCheckerProfile.dashboard">
 <a class="viewcode-back" href="../../../../api_reference/phenotypic.correction.html#phenotypic.correction.ColorCheckerProfile.dashboard">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">dashboard</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">show</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Display an interactive Panel dashboard for quality inspection.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Build the Plotly color-correction diagnostic report.</span>
 
-<span class="sd">        Uses the image and ROIs stored during :meth:`fit`.  If fitted via</span>
-<span class="sd">        :meth:`_fit_from_patch_colors`, pipeline and segmentation sections</span>
-<span class="sd">        are hidden.</span>
+<span class="sd">        Constructs a :class:`ColorCorrectionReport` from this fitted profile and</span>
+<span class="sd">        returns its :meth:`~phenotypic.abc_.FigureProvider.dash` rendering. The</span>
+<span class="sd">        report declares no interactive controls, so ``dash()`` composes the</span>
+<span class="sd">        per-section figures into a single ``plotly.graph_objects.Figure``.</span>
 
-<span class="sd">        In Jupyter notebooks the dashboard renders inline.  In terminals</span>
-<span class="sd">        a local web server is launched.</span>
+<span class="sd">        Uses the image and ROIs stored during :meth:`fit`. When fitted via</span>
+<span class="sd">        :meth:`_fit_from_patch_colors` (no source image), the pipeline-step and</span>
+<span class="sd">        segmentation figures are omitted.</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">            show: Auto-display the dashboard.  Set ``False`` in tests</span>
-<span class="sd">                or for programmatic use.</span>
+<span class="sd">            show: When ``True`` and running inside a Jupyter notebook, display</span>
+<span class="sd">                the figure inline before returning it. Set ``False`` in tests or</span>
+<span class="sd">                for programmatic use.</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            The Panel layout object.</span>
+<span class="sd">            A ``plotly.graph_objects.Figure`` (always returned, even after an</span>
+<span class="sd">            inline display).</span>
 
 <span class="sd">        Raises:</span>
 <span class="sd">            RuntimeError: If the profile has not been fitted.</span>
-<span class="sd">            ImportError: If Panel is not installed.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_fitted</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
                     <span class="s2">&quot;Cannot create dashboard for an unfitted profile.&quot;</span>
             <span class="p">)</span>
-        <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.panel_</span><span class="w"> </span><span class="kn">import</span> <span class="n">require_panel</span><span class="p">,</span> <span class="n">display_or_return</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">._color_correction_report</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColorCorrectionReport</span>
 
-        <span class="n">require_panel</span><span class="p">()</span>
-
-        <span class="kn">from</span><span class="w"> </span><span class="nn">._diagnostic_dashboard</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColorCorrectionDashboard</span>
-
-        <span class="n">dashboard</span> <span class="o">=</span> <span class="n">ColorCorrectionDashboard</span><span class="p">(</span>
+        <span class="n">report</span> <span class="o">=</span> <span class="n">ColorCorrectionReport</span><span class="p">(</span>
                 <span class="n">profile</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_image</span><span class="p">,</span> <span class="n">rois</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">rois</span><span class="p">,</span>
         <span class="p">)</span>
-        <span class="n">panel_layout</span> <span class="o">=</span> <span class="n">dashboard</span><span class="o">.</span><span class="n">panel</span><span class="p">()</span>
+        <span class="n">figure</span> <span class="o">=</span> <span class="n">report</span><span class="o">.</span><span class="n">dash</span><span class="p">()</span>
 
-        <span class="k">return</span> <span class="n">display_or_return</span><span class="p">(</span><span class="n">panel_layout</span><span class="p">,</span> <span class="n">show</span><span class="o">=</span><span class="n">show</span><span class="p">)</span></div>
+        <span class="k">if</span> <span class="n">show</span> <span class="ow">and</span> <span class="n">_in_jupyter_notebook</span><span class="p">():</span>
+            <span class="n">figure</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">figure</span></div>
 
 
     <span class="c1"># -- serialisation ------------------------------------------------------</span>

@@ -1,0 +1,66 @@
+phenotypic.tune.Knob
+====================
+
+.. currentmodule:: phenotypic.tune
+
+.. autoclass:: Knob
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~Knob.__init__
+      ~Knob.construct
+      ~Knob.copy
+      ~Knob.dict
+      ~Knob.from_orm
+      ~Knob.is_active
+      ~Knob.json
+      ~Knob.model_construct
+      ~Knob.model_copy
+      ~Knob.model_dump
+      ~Knob.model_dump_json
+      ~Knob.model_json_schema
+      ~Knob.model_parametrized_name
+      ~Knob.model_post_init
+      ~Knob.model_rebuild
+      ~Knob.model_validate
+      ~Knob.model_validate_json
+      ~Knob.model_validate_strings
+      ~Knob.parse_file
+      ~Knob.parse_obj
+      ~Knob.parse_raw
+      ~Knob.schema
+      ~Knob.schema_json
+      ~Knob.update_forward_refs
+      ~Knob.validate
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Knob.key
+      ~Knob.model_computed_fields
+      ~Knob.model_config
+      ~Knob.model_extra
+      ~Knob.model_fields
+      ~Knob.model_fields_set
+      ~Knob.target
+      ~Knob.domain
+      ~Knob.conditional_on
+      ~Knob.source
+      ~Knob.needs_review
+      ~Knob.description
+   
+   

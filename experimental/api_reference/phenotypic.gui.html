@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -64,7 +64,7 @@
     <link rel="search" title="Search" href="../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -572,7 +572,6 @@ ImagePipelines.  Components are lazy-loaded so that optional dependencies
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">gui.builder</span></code>        — Dash node-graph pipeline builder</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">gui.results_viewer</span></code> — Dash CLI-output results viewer</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">gui.sweep</span></code>          — napari parameter-sweep viewer</p></li>
 </ul>
 </section>
 <section id="utilities">
@@ -638,55 +637,25 @@ ImagePipelines.  Components are lazy-loaded so that optional dependencies
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.gui.shell.html#phenotypic.gui.shell.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="phenotypic.gui.sweep.html">phenotypic.gui.sweep package</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.gui.sweep.html#phenotypic.gui.sweep.IntermediateStep"><code class="docutils literal notranslate"><span class="pre">IntermediateStep</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.gui.sweep.html#phenotypic.gui.sweep.IntermediateStep.h5_path"><code class="docutils literal notranslate"><span class="pre">IntermediateStep.h5_path</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.gui.sweep.html#phenotypic.gui.sweep.IntermediateStep.index"><code class="docutils literal notranslate"><span class="pre">IntermediateStep.index</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.gui.sweep.html#phenotypic.gui.sweep.IntermediateStep.is_base"><code class="docutils literal notranslate"><span class="pre">IntermediateStep.is_base</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.gui.sweep.html#phenotypic.gui.sweep.IntermediateStep.layers"><code class="docutils literal notranslate"><span class="pre">IntermediateStep.layers</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.gui.sweep.html#phenotypic.gui.sweep.IntermediateStep.operation_name"><code class="docutils literal notranslate"><span class="pre">IntermediateStep.operation_name</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="phenotypic.gui.tune.html">phenotypic.gui.tune package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.gui.tune.html#phenotypic.gui.tune.TuneRunRootError"><code class="docutils literal notranslate"><span class="pre">TuneRunRootError</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.gui.tune.html#phenotypic.gui.tune.TuneRunRootError.add_note"><code class="docutils literal notranslate"><span class="pre">TuneRunRootError.add_note()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.gui.tune.html#phenotypic.gui.tune.TuneRunRootError.with_traceback"><code class="docutils literal notranslate"><span class="pre">TuneRunRootError.with_traceback()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.gui.tune.html#phenotypic.gui.tune.TuneRunRootError.args"><code class="docutils literal notranslate"><span class="pre">TuneRunRootError.args</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.gui.sweep.html#phenotypic.gui.sweep.PipelineConfig"><code class="docutils literal notranslate"><span class="pre">PipelineConfig</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.gui.sweep.html#phenotypic.gui.sweep.PipelineConfig.config_group"><code class="docutils literal notranslate"><span class="pre">PipelineConfig.config_group</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.gui.sweep.html#phenotypic.gui.sweep.PipelineConfig.measurements"><code class="docutils literal notranslate"><span class="pre">PipelineConfig.measurements</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.gui.sweep.html#phenotypic.gui.sweep.PipelineConfig.name"><code class="docutils literal notranslate"><span class="pre">PipelineConfig.name</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.gui.sweep.html#phenotypic.gui.sweep.PipelineConfig.operations"><code class="docutils literal notranslate"><span class="pre">PipelineConfig.operations</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.gui.sweep.html#phenotypic.gui.sweep.PipelineConfig.raw_json"><code class="docutils literal notranslate"><span class="pre">PipelineConfig.raw_json</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.gui.tune.html#phenotypic.gui.tune.TuneRunRoot"><code class="docutils literal notranslate"><span class="pre">TuneRunRoot</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.gui.tune.html#phenotypic.gui.tune.TuneRunRoot.discover"><code class="docutils literal notranslate"><span class="pre">TuneRunRoot.discover()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.gui.tune.html#phenotypic.gui.tune.TuneRunRoot.best_pipeline_path"><code class="docutils literal notranslate"><span class="pre">TuneRunRoot.best_pipeline_path</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.gui.tune.html#phenotypic.gui.tune.TuneRunRoot.directions"><code class="docutils literal notranslate"><span class="pre">TuneRunRoot.directions</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.gui.tune.html#phenotypic.gui.tune.TuneRunRoot.images_dir"><code class="docutils literal notranslate"><span class="pre">TuneRunRoot.images_dir</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.gui.tune.html#phenotypic.gui.tune.TuneRunRoot.path"><code class="docutils literal notranslate"><span class="pre">TuneRunRoot.path</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.gui.tune.html#phenotypic.gui.tune.TuneRunRoot.storage_url"><code class="docutils literal notranslate"><span class="pre">TuneRunRoot.storage_url</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.gui.tune.html#phenotypic.gui.tune.TuneRunRoot.study_name"><code class="docutils literal notranslate"><span class="pre">TuneRunRoot.study_name</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.gui.tune.html#phenotypic.gui.tune.TuneRunRoot.trials_path"><code class="docutils literal notranslate"><span class="pre">TuneRunRoot.trials_path</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.gui.sweep.html#phenotypic.gui.sweep.ResolvedLayerSources"><code class="docutils literal notranslate"><span class="pre">ResolvedLayerSources</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.gui.sweep.html#phenotypic.gui.sweep.ResolvedLayerSources.detect_mat"><code class="docutils literal notranslate"><span class="pre">ResolvedLayerSources.detect_mat</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.gui.sweep.html#phenotypic.gui.sweep.ResolvedLayerSources.gray"><code class="docutils literal notranslate"><span class="pre">ResolvedLayerSources.gray</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.gui.sweep.html#phenotypic.gui.sweep.ResolvedLayerSources.objmap"><code class="docutils literal notranslate"><span class="pre">ResolvedLayerSources.objmap</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.gui.sweep.html#phenotypic.gui.sweep.ResolvedLayerSources.rgb"><code class="docutils literal notranslate"><span class="pre">ResolvedLayerSources.rgb</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.gui.sweep.html#phenotypic.gui.sweep.SweepHDF5File"><code class="docutils literal notranslate"><span class="pre">SweepHDF5File</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.gui.sweep.html#phenotypic.gui.sweep.SweepHDF5File.image_stem"><code class="docutils literal notranslate"><span class="pre">SweepHDF5File.image_stem</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.gui.sweep.html#phenotypic.gui.sweep.SweepHDF5File.path"><code class="docutils literal notranslate"><span class="pre">SweepHDF5File.path</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.gui.sweep.html#phenotypic.gui.sweep.SweepHDF5File.pipeline_name"><code class="docutils literal notranslate"><span class="pre">SweepHDF5File.pipeline_name</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.gui.sweep.html#phenotypic.gui.sweep.SweepOutputData"><code class="docutils literal notranslate"><span class="pre">SweepOutputData</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.gui.sweep.html#phenotypic.gui.sweep.SweepOutputData.by_image"><code class="docutils literal notranslate"><span class="pre">SweepOutputData.by_image</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.gui.sweep.html#phenotypic.gui.sweep.SweepOutputData.by_pipeline"><code class="docutils literal notranslate"><span class="pre">SweepOutputData.by_pipeline</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.gui.sweep.html#phenotypic.gui.sweep.SweepOutputData.hdf5_files"><code class="docutils literal notranslate"><span class="pre">SweepOutputData.hdf5_files</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.gui.sweep.html#phenotypic.gui.sweep.SweepOutputData.image_stems"><code class="docutils literal notranslate"><span class="pre">SweepOutputData.image_stems</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.gui.sweep.html#phenotypic.gui.sweep.SweepOutputData.intermediates"><code class="docutils literal notranslate"><span class="pre">SweepOutputData.intermediates</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.gui.sweep.html#phenotypic.gui.sweep.SweepOutputData.manifest_raw"><code class="docutils literal notranslate"><span class="pre">SweepOutputData.manifest_raw</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.gui.sweep.html#phenotypic.gui.sweep.SweepOutputData.pipeline_configs"><code class="docutils literal notranslate"><span class="pre">SweepOutputData.pipeline_configs</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.gui.sweep.html#phenotypic.gui.sweep.SweepOutputData.pipeline_names"><code class="docutils literal notranslate"><span class="pre">SweepOutputData.pipeline_names</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.gui.sweep.html#phenotypic.gui.sweep.SweepOutputData.root_dir"><code class="docutils literal notranslate"><span class="pre">SweepOutputData.root_dir</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.gui.sweep.html#phenotypic.gui.sweep.SweepOutputScanner"><code class="docutils literal notranslate"><span class="pre">SweepOutputScanner</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.gui.sweep.html#phenotypic.gui.sweep.SweepOutputScanner.detect_sweep_dir"><code class="docutils literal notranslate"><span class="pre">SweepOutputScanner.detect_sweep_dir()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.gui.sweep.html#phenotypic.gui.sweep.SweepOutputScanner.scan"><code class="docutils literal notranslate"><span class="pre">SweepOutputScanner.scan()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.gui.sweep.html#phenotypic.gui.sweep.__getattr__"><code class="docutils literal notranslate"><span class="pre">__getattr__()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.gui.sweep.html#phenotypic.gui.sweep.build_layer_resolution_index"><code class="docutils literal notranslate"><span class="pre">build_layer_resolution_index()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.gui.tune.html#phenotypic.gui.tune.create_app"><code class="docutils literal notranslate"><span class="pre">create_app()</span></code></a></li>
 </ul>
 </li>
 </ul>

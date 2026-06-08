@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -562,74 +562,109 @@
   <h1>Source code for phenotypic.enhance._bm3d_denoiser</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">ClassVar</span><span class="p">,</span> <span class="n">Literal</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Annotated</span><span class="p">,</span> <span class="n">ClassVar</span><span class="p">,</span> <span class="n">Literal</span>
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">bm3d</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">bm3d.profiles</span><span class="w"> </span><span class="kn">import</span> <span class="n">BM3DStages</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">field_validator</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Field</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">..abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageDenoiser</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..tools_.mixin</span><span class="w"> </span><span class="kn">import</span> <span class="n">_GATSupportMixin</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..tools_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">TuneSpec</span>
 
 
 <div class="viewcode-block" id="BM3DDenoiser">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.enhance.html#phenotypic.enhance.BM3DDenoiser">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">BM3DDenoiser</span><span class="p">(</span><span class="n">_GATSupportMixin</span><span class="p">,</span> <span class="n">ImageDenoiser</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Denoise ``detect_mat`` with block-matching and 3D collaborative filtering.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Denoise ``detect_mat`` using block-matching and 3-D collaborative filtering.</span>
 
-<span class="sd">    Groups similar image patches and filters them jointly in the transform</span>
-<span class="sd">    domain, preserving fine colony details while removing structured noise</span>
-<span class="sd">    patterns (scanner artifacts, systematic CCD noise, imaging hardware</span>
-<span class="sd">    texture). Produces higher-quality results than simple Gaussian blur at</span>
-<span class="sd">    significantly higher computational cost.</span>
+<span class="sd">    Groups similar image patches across the plate and filters them jointly</span>
+<span class="sd">    in a 3-D transform domain, removing scanner banding, CCD read patterns,</span>
+<span class="sd">    and imaging-hardware texture while retaining colony edges and fine</span>
+<span class="sd">    morphological features. The optional second Wiener-filtering stage</span>
+<span class="sd">    further sharpens colony boundaries relative to the initial</span>
+<span class="sd">    hard-thresholding pass. For algorithm details see</span>
+<span class="sd">    :doc:`/explanation/what_enhancement_does`.</span>
 
-<span class="sd">    For algorithm details, see :doc:`/explanation/what_enhancement_does`.</span>
+<span class="sd">    Best For:</span>
+<span class="sd">        - Structured patterned noise from scanner CCD rows or camera</span>
+<span class="sd">          sensor banding visible across the plate background.</span>
+<span class="sd">        - Low-light incubator or plate-reader images where high ISO</span>
+<span class="sd">          introduces spatially correlated noise.</span>
+<span class="sd">        - Plates where fine colony morphology — wrinkle texture, satellite</span>
+<span class="sd">          colonies, rough biofilm edges — must survive denoising.</span>
+<span class="sd">        - Pipelines that already use ``&#39;all_stages&#39;`` for highest-quality</span>
+<span class="sd">          deliverables and can absorb the additional compute.</span>
+<span class="sd">        - Poisson-Gaussian mixed noise (fluorescence readers, sCMOS cameras)</span>
+<span class="sd">          via ``use_gat=True``.</span>
+
+<span class="sd">    Consider Also:</span>
+<span class="sd">        - :class:`BayesShrinkEnhancer` for per-subband adaptive wavelet</span>
+<span class="sd">          denoising with lower computational cost when structured patterns</span>
+<span class="sd">          are not the primary concern.</span>
+<span class="sd">        - :class:`NonLocalMeansDenoiser` for patch-based denoising at</span>
+<span class="sd">          moderately lower computational overhead.</span>
+<span class="sd">        - :class:`VisuShrinkEnhancer` when speed matters more than quality</span>
+<span class="sd">          and a universal wavelet threshold is acceptable.</span>
+<span class="sd">        - :class:`MedianFilter` for isolated salt-and-pepper impulse noise</span>
+<span class="sd">          rather than Gaussian or structured noise.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        sigma_psd: Noise standard deviation in [0, 1] normalized scale.</span>
-<span class="sd">            Typical range: 0.01--0.05 for moderate noise, 0.05--0.15 for</span>
-<span class="sd">            heavy noise. Too low preserves noise; too high removes colony</span>
-<span class="sd">            texture. Ignored when ``use_gat=True`` (the stabilized-domain</span>
-<span class="sd">            value 1.0 is used internally). Default: 0.02.</span>
-<span class="sd">        block_size: Block size for BM3D patch matching. Default: 8.</span>
-<span class="sd">        stage_arg: Processing mode. ``&#39;all_stages&#39;`` (default) applies both</span>
-<span class="sd">            hard thresholding and Wiener filtering for highest quality;</span>
-<span class="sd">            ``&#39;hard_thresholding&#39;`` runs only the first stage for faster</span>
-<span class="sd">            processing.</span>
-<span class="sd">        clip: Clip output to [0, 1]. Default: ``True``. Automatically</span>
-<span class="sd">            deferred when ``use_gat=True``.</span>
-<span class="sd">        use_gat: Wrap denoising in the Generalized Anscombe Transform for</span>
-<span class="sd">            Poisson-Gaussian noise. Default: ``False``. See</span>
-<span class="sd">            :class:`phenotypic.tools_.mixin._GATSupportMixin`.</span>
-<span class="sd">        gat_gain: Camera gain (e/ADU) used by the GAT. Default: 1.0.</span>
-<span class="sd">        gat_mu: Read-noise mean used by the GAT. Default: 0.0.</span>
-<span class="sd">        gat_read_sigma: Read-noise standard deviation used by the GAT.</span>
+<span class="sd">        sigma_psd: Noise standard deviation on the [0, 1] normalised</span>
+<span class="sd">            intensity scale. Acts as the noise-model oracle for both the</span>
+<span class="sd">            hard-thresholding and Wiener stages. Typical range: 0.01--0.05</span>
+<span class="sd">            for moderate scanner noise; 0.05--0.15 for heavy noise. Setting</span>
+<span class="sd">            too low leaves structured patterns intact; too high smooths away</span>
+<span class="sd">            colony texture alongside noise. Ignored when ``use_gat=True`` —</span>
+<span class="sd">            the stabilised-domain value 1.0 is used internally. Default: 0.02.</span>
+<span class="sd">        block_size: Side length (pixels) of square patches used for</span>
+<span class="sd">            block-matching. Larger blocks capture more self-similar structure</span>
+<span class="sd">            and increase denoising strength at the cost of speed and potential</span>
+<span class="sd">            over-smoothing of fine colony detail. Typical range: 4--16; integer</span>
+<span class="sd">            powers of 2 are conventional. Default: 8.</span>
+<span class="sd">        stage_arg: Processing pipeline. ``&#39;all_stages&#39;`` (default) runs the</span>
+<span class="sd">            hard-thresholding stage followed by a Wiener-filtering stage using</span>
+<span class="sd">            the HT estimate as an oracle, producing better boundary sharpness.</span>
+<span class="sd">            ``&#39;hard_thresholding&#39;`` runs only the first stage — approximately</span>
+<span class="sd">            2× faster with slightly coarser colony edges. Accepted values:</span>
+<span class="sd">            ``&#39;all_stages&#39;``, ``&#39;hard_thresholding&#39;``. Default: ``&#39;all_stages&#39;``.</span>
+<span class="sd">        clip: Clamp output to [0, 1] after BM3D aggregation. BM3D can</span>
+<span class="sd">            produce values marginally outside [0, 1] due to weighted patch</span>
+<span class="sd">            accumulation. Default: ``True``. Automatically set to ``False``</span>
+<span class="sd">            inside the GAT region when ``use_gat=True``.</span>
+
+<span class="sd">        # GAT parameters — only active when use_gat=True</span>
+<span class="sd">        use_gat: Wrap the BM3D call in a forward Generalised Anscombe</span>
+<span class="sd">            Transform (GAT) → denoise at fixed sigma_psd=1.0 → exact</span>
+<span class="sd">            unbiased inverse GAT pipeline. Enables correct denoising under</span>
+<span class="sd">            mixed Poisson-Gaussian noise from low-light sensors. Leave</span>
+<span class="sd">            ``False`` for standard flatbed scanner images where additive</span>
+<span class="sd">            Gaussian read noise dominates. Default: ``False``.</span>
+<span class="sd">        gat_gain: Camera gain in electrons per ADU, used by the GAT to model</span>
+<span class="sd">            Poisson variance scaling. Obtain from the sensor datasheet or a</span>
+<span class="sd">            photon-transfer curve. Only relevant when ``use_gat=True``.</span>
+<span class="sd">            Default: 1.0.</span>
+<span class="sd">        gat_mu: Read-noise mean (DC baseline offset) in ADU before</span>
+<span class="sd">            [0, 1] normalisation. Set to the dark-current bias level if the</span>
+<span class="sd">            image has not been background-subtracted. Only relevant when</span>
+<span class="sd">            ``use_gat=True``. Default: 0.0.</span>
+<span class="sd">        gat_read_sigma: Standard deviation of the Gaussian read-noise</span>
+<span class="sd">            component (electrons RMS). Setting this to the manufacturer&#39;s</span>
+<span class="sd">            read noise improves stabilisation accuracy under mixed</span>
+<span class="sd">            Poisson-Gaussian conditions. Only relevant when ``use_gat=True``.</span>
 <span class="sd">            Default: 0.0.</span>
-<span class="sd">        gat_scale_factor: [0, 1] -&gt; counts multiplier. ``None`` auto-detects</span>
-<span class="sd">            from image bit depth. Default: ``None``.</span>
+<span class="sd">        gat_scale_factor: Multiplier converting the [0, 1] normalised</span>
+<span class="sd">            ``detect_mat`` back to photon counts before the forward GAT.</span>
+<span class="sd">            ``None`` auto-detects from ``image.metadata.bit_depth`` (255 for</span>
+<span class="sd">            8-bit, 65535 for 16-bit). Supply an explicit value when the</span>
+<span class="sd">            ``detect_mat`` was normalised by a range other than the bit-depth</span>
+<span class="sd">            maximum. Only relevant when ``use_gat=True``. Default: ``None``.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        Image: Input image with ``detect_mat`` denoised via BM3D</span>
 <span class="sd">        collaborative filtering. ``rgb`` and ``gray`` are unchanged.</span>
-
-<span class="sd">    Best For:</span>
-<span class="sd">        - Structured camera or scanner noise on plate images.</span>
-<span class="sd">        - Low-light imaging where high ISO introduces patterned noise.</span>
-<span class="sd">        - Preserving fine morphological features (wrinkles, satellite</span>
-<span class="sd">          colonies) during denoising.</span>
-<span class="sd">        - Poisson-Gaussian noise via ``use_gat=True`` (replaces the legacy</span>
-<span class="sd">          ``AnscombeForward`` -&gt; ``BM3DDenoiser`` -&gt; ``AnscombeInverse``</span>
-<span class="sd">          three-step pipeline with one operation).</span>
-
-<span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`LocalEdgeDenoise` for faster edge-preserving denoising</span>
-<span class="sd">          when structured noise is not the primary concern.</span>
-<span class="sd">        - :class:`NonLocalMeansDenoiser` for patch-based denoising with</span>
-<span class="sd">          lower computational overhead.</span>
-<span class="sd">        - :class:`VisuShrinkEnhancer` for fast wavelet denoising when</span>
-<span class="sd">          speed matters more than quality.</span>
 
 <span class="sd">    References:</span>
 <span class="sd">        [1] K. Dabov, A. Foi, V. Katkovnik, and K. Egiazarian, &quot;Image</span>
@@ -646,23 +681,17 @@
 <span class="sd">        visual walkthrough of denoising pipelines on plate images.</span>
 <span class="sd">        :doc:`/how_to/notebooks/denoise_low_light` for BM3D and other</span>
 <span class="sd">        denoising strategies on low-light plate images.</span>
+<span class="sd">        :doc:`/explanation/what_enhancement_does` for background on</span>
+<span class="sd">        block-matching and collaborative filtering.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">_GAT_NOISE_PARAMS</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;sigma_psd&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">}</span>
     <span class="n">_GAT_DEFER_ATTRS</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]]</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;clip&quot;</span><span class="p">,)</span>
 
-    <span class="n">sigma_psd</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.02</span>
-    <span class="n">block_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">8</span>
+    <span class="n">sigma_psd</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.15</span><span class="p">,</span> <span class="n">log</span><span class="o">=</span><span class="kc">True</span><span class="p">)]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="mf">0.02</span><span class="p">,</span> <span class="n">ge</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
+    <span class="n">block_size</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="n">tunable</span><span class="o">=</span><span class="kc">False</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">8</span>
     <span class="n">stage_arg</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;all_stages&quot;</span><span class="p">,</span> <span class="s2">&quot;hard_thresholding&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;all_stages&quot;</span>
     <span class="n">clip</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
-
-    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;sigma_psd&quot;</span><span class="p">)</span>
-    <span class="nd">@classmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">_check_sigma_psd</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">sigma_psd</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Require a non-negative noise estimate (matches the legacy guard).&quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="n">sigma_psd</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;sigma_psd must be non-negative&quot;</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">sigma_psd</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
         <span class="c1"># detect_mat is guaranteed to be in [0, 1] range, which BM3D expects</span>

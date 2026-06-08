@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -579,35 +579,49 @@
 <div class="viewcode-block" id="MaskFill">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.refine.html#phenotypic.refine.MaskFill">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">MaskFill</span><span class="p">(</span><span class="n">ObjectRefiner</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Fill holes inside colony masks to produce solid, contiguous regions.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Fill enclosed holes within colony masks using binary flood fill.</span>
 
-<span class="sd">    Uses binary flood fill to close voids left by illumination gradients,</span>
-<span class="sd">    pigment heterogeneity, or glare within colonies. Produces masks that</span>
-<span class="sd">    better match the true colony footprint for area and shape measurements.</span>
+<span class="sd">    Applies ``scipy.ndimage.binary_fill_holes`` to close voids produced by</span>
+<span class="sd">    illumination gradients, pigment heterogeneity, or specular glare within</span>
+<span class="sd">    colonies. Only holes that are completely enclosed by the mask are filled;</span>
+<span class="sd">    gaps that connect to the image boundary are left unchanged. The operation</span>
+<span class="sd">    produces simply connected colony masks better suited for area and shape</span>
+<span class="sd">    measurements.</span>
 
-<span class="sd">    Args:</span>
-<span class="sd">        structure: Binary structuring element defining the fill neighborhood.</span>
-<span class="sd">            ``None`` uses the default cross-shaped element. Default: ``None``.</span>
-<span class="sd">        origin: Center offset for the structuring element. Default: 0.</span>
-
-<span class="sd">    Returns:</span>
-<span class="sd">        Image: Input image with ``objmask`` and ``objmap`` updated with</span>
-<span class="sd">        filled holes.</span>
+<span class="sd">    For an overview of morphological refinement methods, see</span>
+<span class="sd">    :doc:`/explanation/refinement_strategies`.</span>
 
 <span class="sd">    Best For:</span>
-<span class="sd">        - Donut-like masks from global thresholding on colonies with dark centers.</span>
-<span class="sd">        - Colonies with radial pigment texture that creates interior gaps.</span>
-<span class="sd">        - Pre-measurement cleanup to ensure simply connected shapes.</span>
+<span class="sd">        - Donut-shaped masks produced by global thresholding on colonies with</span>
+<span class="sd">          dark or depigmented centers.</span>
+<span class="sd">        - Colonies with radial pigment patterns or sector-level texture that</span>
+<span class="sd">          create interior gaps in the binary mask.</span>
+<span class="sd">        - Pre-measurement cleanup to ensure colony area counts every interior</span>
+<span class="sd">          pixel and circularity is not distorted by enclosed voids.</span>
 
 <span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`MaskClosing` for bridging narrow gaps *between* fragments</span>
-<span class="sd">          rather than filling holes *within* objects.</span>
-<span class="sd">        - :class:`MaskOpening` for the opposite effect — removing thin</span>
-<span class="sd">          connections between objects.</span>
+<span class="sd">        - :class:`MaskClosing` for bridging narrow gaps between separate</span>
+<span class="sd">          fragments rather than filling holes within a single object.</span>
+<span class="sd">        - :class:`MaskOpening` for removing thin protrusions and external</span>
+<span class="sd">          connections rather than filling internal holes.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        structure: Binary ndarray defining the connectivity neighbourhood for</span>
+<span class="sd">            flood fill. ``None`` uses the default cross-shaped (4-connected)</span>
+<span class="sd">            element from ``scipy.ndimage``. Default: ``None``.</span>
+<span class="sd">        origin: Integer offset applied to the structuring element centre.</span>
+<span class="sd">            Rarely needs adjustment from the default. Default: 0.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Image: Input image with ``objmask`` updated so all enclosed holes are</span>
+<span class="sd">        filled; ``objmap`` is updated to reflect the filled mask.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If ``structure`` is provided but is not a binary array.</span>
 
 <span class="sd">    See Also:</span>
 <span class="sd">        :doc:`/how_to/notebooks/refine_noisy_boundaries` for a walkthrough</span>
-<span class="sd">        of refinement operations.</span>
+<span class="sd">        of refinement operations including hole filling.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">structure</span><span class="p">:</span> <span class="n">NdArrayField</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>

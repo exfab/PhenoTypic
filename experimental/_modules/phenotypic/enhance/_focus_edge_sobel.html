@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -574,32 +574,38 @@
 <div class="viewcode-block" id="FocusEdgeSobel">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.enhance.html#phenotypic.enhance.FocusEdgeSobel">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">FocusEdgeSobel</span><span class="p">(</span><span class="n">FocusEdge</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Highlight colony edges in detect_mat using the Sobel gradient operator.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Highlight colony edges in ``detect_mat`` using the Sobel gradient operator.</span>
 
-<span class="sd">    Computes the gradient magnitude to emphasize intensity transitions at</span>
-<span class="sd">    colony boundaries. The output is an edge-strength map, not a corrected</span>
-<span class="sd">    image — useful as a preprocessing step before watershed seeds or</span>
-<span class="sd">    contour-based detectors.</span>
+<span class="sd">    Computes the gradient magnitude across both image axes to emphasize</span>
+<span class="sd">    intensity transitions at colony boundaries. The output is an edge-strength</span>
+<span class="sd">    map suitable as a preprocessing step before watershed seeding or</span>
+<span class="sd">    contour-based detectors, not a corrected grayscale image.</span>
 
-<span class="sd">    Returns:</span>
-<span class="sd">        Image: Input image with ``detect_mat`` set to gradient magnitude.</span>
-<span class="sd">        ``rgb`` and ``gray`` are unchanged.</span>
+<span class="sd">    For how edge enhancement fits into the pipeline, see</span>
+<span class="sd">    :doc:`/explanation/what_enhancement_does`.</span>
 
 <span class="sd">    Best For:</span>
-<span class="sd">        - Pre-filtering before watershed or contour-based detection.</span>
+<span class="sd">        - Pre-filtering before watershed or contour-based colony detection.</span>
 <span class="sd">        - Separating touching colonies when combined with marker-based</span>
 <span class="sd">          segmentation.</span>
-<span class="sd">        - Visualizing colony boundary sharpness for quality assessment.</span>
+<span class="sd">        - Visualizing colony boundary sharpness for image quality assessment.</span>
 
 <span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`SharpenEdgeGauss` when you want to sharpen edges without</span>
-<span class="sd">          converting to a pure edge map.</span>
-<span class="sd">        - :class:`FocusEdgeLaplace` for second-derivative edge detection</span>
-<span class="sd">          that responds to ridges and valleys.</span>
+<span class="sd">        - :class:`SharpenEdgeGauss` when sharpening colony edges while</span>
+<span class="sd">          retaining the original intensity profile rather than producing a</span>
+<span class="sd">          pure gradient map.</span>
+<span class="sd">        - :class:`FocusEdgeLaplace` for second-derivative edge detection that</span>
+<span class="sd">          responds to ridges, valleys, and ring-like swarming fronts.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Image: Input image with ``detect_mat`` set to the Sobel gradient</span>
+<span class="sd">        magnitude. ``rgb`` and ``gray`` are unchanged.</span>
 
 <span class="sd">    See Also:</span>
-<span class="sd">        :doc:`/explanation/what_enhancement_does` for how edge enhancement</span>
-<span class="sd">        fits into the pipeline model.</span>
+<span class="sd">        :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a visual</span>
+<span class="sd">        walkthrough of edge enhancement on plate images.</span>
+<span class="sd">        :doc:`/explanation/what_enhancement_does` for how edge-response maps</span>
+<span class="sd">        fit into the pipeline model.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>

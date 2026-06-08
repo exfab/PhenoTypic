@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ff8529b6"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.16.0" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -585,47 +585,52 @@
 <span class="k">class</span><span class="w"> </span><span class="nc">SeparateObjects</span><span class="p">(</span><span class="n">ObjectRefiner</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Separate touching or merged colonies using distance-transform watershed segmentation.</span>
 
-<span class="sd">    Finds peaks in the Euclidean distance transform as seed markers for</span>
-<span class="sd">    watershed region growing. For GridImages, peaks are constrained to one</span>
-<span class="sd">    per grid cell; for regular Images, peaks are detected globally with</span>
-<span class="sd">    minimum distance spacing. Effectively individualizes colonies that</span>
-<span class="sd">    were merged by thresholding.</span>
+<span class="sd">    Finds peaks in the Euclidean distance transform of the object mask and</span>
+<span class="sd">    uses them as seed markers for watershed region growing, producing a</span>
+<span class="sd">    distinct labeled region for each colony. For GridImages, one peak per</span>
+<span class="sd">    grid cell is used; for plain Images, peaks are spaced by ``min_distance``.</span>
 
-<span class="sd">    Args:</span>
-<span class="sd">        min_distance: Minimum pixel distance between peaks for regular</span>
-<span class="sd">            Images. Ignored for GridImages (one peak per cell). Typical</span>
-<span class="sd">            range: 5--50. Higher values reduce over-segmentation; lower</span>
-<span class="sd">            values detect more peaks. Default: 10.</span>
-
-<span class="sd">    Returns:</span>
-<span class="sd">        Image: Input image with ``objmap`` refined so that touching colonies</span>
-<span class="sd">        are separated into distinct labeled regions.</span>
-
-<span class="sd">    Raises:</span>
-<span class="sd">        ValueError: If no peaks are detected or the image lacks detection</span>
-<span class="sd">            results.</span>
+<span class="sd">    For a comparison of colony separation strategies, see</span>
+<span class="sd">    :doc:`/explanation/refinement_strategies`.</span>
 
 <span class="sd">    Best For:</span>
-<span class="sd">        - GridImage plates (96-well, 384-well, pinned cultures) where</span>
-<span class="sd">          touching colonies need individualization.</span>
-<span class="sd">        - Post-detection refinement when thresholding merges adjacent</span>
-<span class="sd">          colonies into a single detection.</span>
+<span class="sd">        - Pinned library plates (96-well, 384-well) where thresholding</span>
+<span class="sd">          merges adjacent colonies into a single detection.</span>
+<span class="sd">        - Dense yeast or bacterial arrays where colony boundaries are</span>
+<span class="sd">          difficult to resolve by thresholding alone.</span>
 <span class="sd">        - Variable colony sizes where the distance transform naturally</span>
-<span class="sd">          adapts peak strength to colony diameter.</span>
-<span class="sd">        - Non-grid images using global peak detection with spacing</span>
-<span class="sd">          constraints.</span>
+<span class="sd">          adapts seed strength to each colony&#39;s diameter.</span>
+<span class="sd">        - Non-grid images where a global minimum-spacing constraint is</span>
+<span class="sd">          sufficient to individualize colonies.</span>
 
 <span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`MaskOpening` for gentle separation of lightly touching</span>
-<span class="sd">          colonies without watershed.</span>
-<span class="sd">        - :class:`MaskErosion` for uniform inward shrinking that may</span>
-<span class="sd">          separate touching edges.</span>
-<span class="sd">        - :class:`GridAlignmentRefiner` when off-grid artifacts are the</span>
-<span class="sd">          main concern rather than merged colonies.</span>
+<span class="sd">        - :class:`MaskOpening` for gentle morphological separation of</span>
+<span class="sd">          lightly touching colonies without watershed.</span>
+<span class="sd">        - :class:`MaskErosion` when uniform inward shrinking is enough to</span>
+<span class="sd">          break weak contact between adjacent colony masks.</span>
+<span class="sd">        - :class:`GridAlignmentRefiner` when off-grid placement artefacts</span>
+<span class="sd">          are the primary concern rather than merged regions.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        min_distance: Minimum pixel distance between watershed seed peaks</span>
+<span class="sd">            for plain Images. Ignored for GridImages, which use one peak</span>
+<span class="sd">            per grid cell. Higher values reduce over-segmentation; lower</span>
+<span class="sd">            values detect more seeds and produce finer splits. Typical</span>
+<span class="sd">            range: 5--50. A reasonable starting point is roughly the</span>
+<span class="sd">            expected minimum colony radius, so that each colony seeds at</span>
+<span class="sd">            most one peak. Default: 10.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Image: Input image with ``objmap`` updated so that previously</span>
+<span class="sd">        merged colonies are separated into distinct labeled regions.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If no peaks are detected in the score map, or if</span>
+<span class="sd">            watershed produces an empty result.</span>
 
 <span class="sd">    See Also:</span>
-<span class="sd">        :doc:`/how_to/notebooks/merge_fragmented_detections` for separation</span>
-<span class="sd">        and merging workflows.</span>
+<span class="sd">        :doc:`/how_to/notebooks/merge_fragmented_detections` for</span>
+<span class="sd">        separation and merging workflows on real plate images.</span>
 <span class="sd">        :doc:`/explanation/refinement_strategies` for a comparison of</span>
 <span class="sd">        colony separation approaches.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
