@@ -66,12 +66,12 @@ index 3b7be862..1199d305 100644
 --- a/src/phenotypic/correction/_bayesshrink_corrector.py
 +++ b/src/phenotypic/correction/_bayesshrink_corrector.py
 @@ -13,69 +13,123 @@ from ..tools_.mixin import _GATSupportMixin
- 
- 
+
+
  class BayesShrinkCorrector(_GATSupportMixin, ImageCorrector):
 -    """Denoise all image components using adaptive BayesShrink wavelet thresholding.
 +    """Denoise all image components using per-subband adaptive BayesShrink wavelet thresholding.
- 
+
 -    Apply subband-adaptive wavelet denoising to RGB (if present), grayscale,
 -    and detection matrix simultaneously. BayesShrink estimates a separate
 -    threshold for each wavelet subband, preserving fine colony detail while
@@ -82,9 +82,9 @@ index 3b7be862..1199d305 100644
 +    selectively than the single universal threshold used by
 +    :class:`VisuShrinkCorrector`. All three image representations are updated
 +    in a single corrector step, keeping them mutually consistent.
- 
+
      For algorithm details, see :doc:`/explanation/what_enhancement_does`.
- 
+
 +    Best For:
 +        - Plates imaged with aging flatbed scanners or high-ISO cameras that
 +          introduce spatially varying sensor noise.
@@ -190,7 +190,7 @@ index 3b7be862..1199d305 100644
 +            from image bit depth (8-bit: 255, 16-bit: 65535). Override for
 +            non-standard bit depths such as 12-bit sensors (4095). Default:
 +            ``None``.
- 
+
      Returns:
 -        Image: Input image with all components (RGB, gray, detect_mat)
 -        transformed by adaptive wavelet denoising.
@@ -213,12 +213,12 @@ index 3b7be862..1199d305 100644
 +        Image: Input image with all components (``rgb``, ``gray``,
 +        ``detect_mat``) transformed by adaptive wavelet denoising. All three
 +        representations are updated in a single pass.
- 
+
      References:
          [1] S. G. Chang, B. Yu, and M. Vetterli, "Adaptive wavelet
          thresholding for image denoising and compression," *IEEE Trans.
          Image Process.*, vol. 9, no. 9, pp. 1532--1546, Sep. 2000.
- 
+
 +        [2] D. L. Donoho and I. M. Johnstone, "Ideal spatial adaptation by
 +        wavelet shrinkage," *Biometrika*, vol. 81, no. 3, pp. 425--455,
 +        Sep. 1994.
@@ -235,15 +235,15 @@ index 3b7be862..1199d305 100644
 +        :doc:`/explanation/image_quality_noise_contrast_structure` for
 +        background on noise models and denoising strategy selection.
      """
- 
+
      _GAT_NOISE_PARAMS: ClassVar[dict[str, float]] = {"sigma": 1.0}
 diff --git a/src/phenotypic/correction/_color_correction/_color_corrector.py b/src/phenotypic/correction/_color_correction/_color_corrector.py
 index 579edf0f..0a4bda9e 100644
 --- a/src/phenotypic/correction/_color_correction/_color_corrector.py
 +++ b/src/phenotypic/correction/_color_correction/_color_corrector.py
 @@ -25,55 +25,57 @@ if TYPE_CHECKING:
- 
- 
+
+
  class ColorCorrector(ImageCorrector):
 -    """Apply root-polynomial color correction to an entire image.
 -
@@ -345,19 +345,19 @@ index 579edf0f..0a4bda9e 100644
 +        :doc:`/explanation/color_spaces_for_phenotyping` for a discussion of
 +        root-polynomial color correction in phenotyping.
      """
- 
+
      profile: ColorCheckerProfile
 diff --git a/src/phenotypic/correction/_color_denoise.py b/src/phenotypic/correction/_color_denoise.py
 index f99a0789..eb874921 100644
 --- a/src/phenotypic/correction/_color_denoise.py
 +++ b/src/phenotypic/correction/_color_denoise.py
 @@ -15,56 +15,83 @@ from ..tools_.colourspace import decode_srgb, encode_srgb
- 
- 
+
+
  class ColorDenoise(ImageCorrector):
 -    """Denoise an RGB plate image with color block-matching 3D filtering (CBM3D).
 +    """Denoise an RGB plate image using color block-matching 3D filtering (CBM3D).
- 
+
 -    Run the color extension of BM3D jointly across the three RGB channels,
 -    preserving inter-channel color fidelity while removing structured
 -    sensor noise. Unlike the grayscale denoisers (:class:`BM3DDenoiser`,
@@ -376,9 +376,9 @@ index f99a0789..eb874921 100644
 +    across the chrominance channels. Writing the cleaned RGB through the accessor
 +    cascade automatically rebuilds ``gray`` and ``detect_mat`` from the corrected
 +    data.
- 
+
      For algorithm details, see :doc:`/explanation/what_enhancement_does`.
- 
+
 +    Best For:
 +        - RGB plate scans where colony color composition is subsequently
 +          measured and chrominance fidelity at colony boundaries must be
@@ -467,7 +467,7 @@ index f99a0789..eb874921 100644
 +            auto-detects from the image bit depth (8-bit: 255, 16-bit:
 +            65535). Override for non-standard bit depths such as 12-bit
 +            sensors stored in a 16-bit container (4095). Default: ``None``.
- 
+
      Returns:
 -        Image: Input image with ``rgb`` denoised by CBM3D. ``gray`` and
 -        ``detect_mat`` are recomputed from the cleaned RGB via the
@@ -475,13 +475,13 @@ index f99a0789..eb874921 100644
 +        Image: Input image with ``rgb`` replaced by the CBM3D-denoised
 +        result. ``gray`` and ``detect_mat`` are automatically recomputed
 +        from the cleaned RGB via the accessor cascade.
- 
+
      Raises:
          ValueError: If the image has no RGB data, if ``sigma_psd`` is
 @@ -72,36 +99,6 @@ class ColorDenoise(ImageCorrector):
              positive, ``gat_read_sigma`` is negative, or
              ``gat_scale_factor`` is not positive.
- 
+
 -    Best For:
 -        - RGB plate scans where colony color composition is measured and
 -          chrominance fidelity must be preserved.
@@ -538,19 +538,19 @@ index f99a0789..eb874921 100644
 +        :doc:`/explanation/image_quality_noise_contrast_structure` for
 +        background on noise models and denoiser selection.
      """
- 
+
      sigma_psd: float = 0.02
 diff --git a/src/phenotypic/correction/_grid_aligner.py b/src/phenotypic/correction/_grid_aligner.py
 index 772aa170..dfef2bf1 100644
 --- a/src/phenotypic/correction/_grid_aligner.py
 +++ b/src/phenotypic/correction/_grid_aligner.py
 @@ -13,43 +13,48 @@ from phenotypic.schema import BBOX, GRID
- 
- 
+
+
  class GridAligner(GridCorrector):
 -    """Correct grid rotation by aligning colony centroids to row or column axes.
 +    """Correct grid rotation by fitting colony centroids to the target row or column axis.
- 
+
 -    Compute the optimal rotation angle from linear regression of colony
 -    centroid positions along the chosen axis, then rotate the entire image
 -    to minimize angular misalignment. Re-detection of objects after
@@ -560,9 +560,9 @@ index 772aa170..dfef2bf1 100644
 +    component together and recalculates grid positions on the corrected image.
 +    Re-running detection after alignment is recommended, since pixel
 +    coordinates shift once the image is rotated.
- 
+
      For algorithm details, see :doc:`/explanation/grid_vs_non_grid_detection`.
- 
+
 +    Best For:
 +        - Arrayed plates scanned at a slight angle where rows or columns are
 +          not axis-aligned.
@@ -591,17 +591,17 @@ index 772aa170..dfef2bf1 100644
 +        mode: Edge-fill strategy passed to the image rotation. ``'edge'``
 +            replicates the nearest border pixel (avoids dark corners);
 +            ``'constant'`` fills with zeros. Default: ``'edge'``.
- 
+
      Returns:
 -        GridImage: Input image rotated so that colony centroids align with
 -        the specified axis. All image components are transformed.
 +        GridImage: Input image rotated so colony centroids align with the
 +        chosen axis. All components (RGB, gray, detect_mat, objmask, objmap)
 +        are transformed together.
- 
+
      Raises:
          ValueError: If ``axis`` is not ``0`` or ``1``.
- 
+
 -    Best For:
 -        - Arrayed plates scanned at a slight angle where grid rows or
 -          columns are not axis-aligned.
@@ -624,12 +624,12 @@ index 5d754036..c46ee861 100644
 --- a/src/phenotypic/correction/_image_cropper.py
 +++ b/src/phenotypic/correction/_image_cropper.py
 @@ -12,36 +12,61 @@ from phenotypic.abc_ import ImageCorrector
- 
- 
+
+
  class ImageCropper(ImageCorrector):
 -    """Remove pixels from image edges by specifying crop margins.
 +    """Remove pixels from image edges by specifying per-edge crop margins.
- 
+
      Crops all image components (rgb, gray, detect_mat, objmask, objmap)
 -    together. When applied to a GridImage, the grid structure is preserved
 -    and grid positions are recalculated for the cropped dimensions.
@@ -658,7 +658,7 @@ index 5d754036..c46ee861 100644
 +          dimensions.
 +        - :class:`GridAligner` when rotation correction is needed alongside
 +          cropping.
- 
+
      Args:
 -        left: Pixels to remove from the left edge. ``None`` means no
 -            cropping. Default: ``None``.
@@ -674,7 +674,7 @@ index 5d754036..c46ee861 100644
 +            cropping on this edge. Default: ``None``.
 +        bottom: Pixels to remove from the bottom edge. ``None`` applies no
 +            cropping on this edge. Default: ``None``.
- 
+
      Returns:
          Image: Input image with all components cropped to the specified
 -        margins.
@@ -685,7 +685,7 @@ index 5d754036..c46ee861 100644
 -        - Standardizing image dimensions across a batch of plates.
 +        margins. GridImage grid positions are recalculated on the cropped
 +        dimensions.
- 
+
 -    Consider Also:
 -        - :class:`ImagePadder` for adding pixels instead of removing them.
 -        - :class:`RemoveBorderObjects` for removing edge-touching colonies
@@ -694,7 +694,7 @@ index 5d754036..c46ee861 100644
 +        ValueError: If any margin is negative.
 +        ValueError: If opposite margins together exceed the image dimension
 +            (e.g., ``top`` + ``bottom`` >= image height).
- 
+
      See Also:
          :doc:`/how_to/notebooks/crop_and_pad` for a visual walkthrough of
 -        cropping and padding operations.
@@ -702,7 +702,7 @@ index 5d754036..c46ee861 100644
 +        :doc:`/how_to/notebooks/correct_grid_rotation` for combining
 +        cropping with rotation correction.
      """
- 
+
      left: int | None = None
 diff --git a/src/phenotypic/correction/_image_padder.py b/src/phenotypic/correction/_image_padder.py
 index 2199a36f..51cf0d1c 100644
@@ -711,7 +711,7 @@ index 2199a36f..51cf0d1c 100644
 @@ -33,53 +33,60 @@ PadMode = Literal[
  class ImagePadder(ImageCorrector):
      """Extend image dimensions by adding pixels to any combination of edges.
- 
+
 -    Pad the image on the left, right, top, and/or bottom using a
 +    Pads the image on the left, right, top, and/or bottom using a
      configurable fill mode. All image components (RGB, gray, detect_mat,
@@ -722,9 +722,9 @@ index 2199a36f..51cf0d1c 100644
 +    regardless of ``mode`` to preserve integer label integrity. When applied
 +    to a GridImage, grid structure is preserved and well positions are
 +    recalculated automatically on the extended dimensions.
- 
+
      For usage context, see :doc:`/how_to/notebooks/crop_and_pad`.
- 
+
 +    Best For:
 +        - Adding safety margins before rotation so corner colonies are not
 +          clipped by the fill boundary during rotation.
@@ -775,13 +775,13 @@ index 2199a36f..51cf0d1c 100644
 +        constant_value: Fill value used when ``mode='constant'``. Use ``0``
 +            for black borders or ``255`` for white borders matching bright-agar
 +            backgrounds. Default: ``0``.
- 
+
      Returns:
          Image: Input image with all components padded by the specified
 -        amounts. GridImage grid positions are recalculated.
 +        amounts. GridImage grid positions are recalculated on the extended
 +        dimensions.
- 
+
      Raises:
          ValueError: If any padding value is negative.
 -        ValueError: If ``mode`` is not a valid ``np.pad`` mode.
@@ -800,7 +800,7 @@ index 2199a36f..51cf0d1c 100644
 -        - :class:`GridAligner` for correcting plate rotation after
 -          padding.
 +        ValueError: If ``mode`` is not a recognised ``np.pad`` mode.
- 
+
      See Also:
          :doc:`/how_to/notebooks/crop_and_pad` for a visual walkthrough
 diff --git a/src/phenotypic/correction/_stable_denoise.py b/src/phenotypic/correction/_stable_denoise.py
@@ -808,12 +808,12 @@ index 6345c4fc..95509c03 100644
 --- a/src/phenotypic/correction/_stable_denoise.py
 +++ b/src/phenotypic/correction/_stable_denoise.py
 @@ -16,74 +16,93 @@ from ..tools_.colourspace import decode_srgb, encode_srgb
- 
- 
+
+
  class StableDenoise(ImageCorrector):
 -    """Denoise grayscale channels using variance-stabilized BM3D collaborative filtering.
 +    """Denoise the grayscale channel using GAT-stabilized BM3D collaborative filtering.
- 
+
 -    Combine the Generalized Anscombe Transform (GAT) with BM3D denoising
 -    in a single corrector step. The GAT stabilizes Poisson-Gaussian noise
 -    variance so that BM3D operates optimally, then the inverse GAT
@@ -827,9 +827,9 @@ index 6345c4fc..95509c03 100644
 +    GAT then restores the original intensity scale. Writing back through the gray
 +    accessor automatically resets ``detect_mat``, so downstream reads reflect the
 +    denoised result.
- 
+
      For algorithm details, see :doc:`/explanation/what_enhancement_does`.
- 
+
 +    Best For:
 +        - Low-light or high-ISO plate images where photon shot noise (Poisson
 +          component) is comparable to or larger than read noise.
@@ -891,14 +891,14 @@ index 6345c4fc..95509c03 100644
 +            non-standard bit depths such as 12-bit sensors stored in a 16-bit
 +            container (4095). Must be positive when supplied. Default:
 +            ``None``.
- 
+
      Returns:
 -        Image: Input image with grayscale channel denoised via the
 -        accessor cascade. RGB is unchanged.
 +        Image: Input image with the grayscale channel replaced by the
 +        GAT-stabilized BM3D-denoised result. ``rgb`` is unchanged; ``detect_mat``
 +        is automatically reset via the gray accessor cascade.
- 
+
      Raises:
          ValueError: If ``gain`` is not positive, ``sigma`` is negative,
 -            ``scale_factor`` is not positive, or ``stage_arg`` is not a
@@ -929,7 +929,7 @@ index 6345c4fc..95509c03 100644
 -          alternative when Poisson noise modelling is not required.
 +            ``scale_factor`` is not positive when supplied, or ``stage_arg``
 +            is not a recognized value.
- 
+
      References:
 -        [1] M. Makitalo and A. Foi, "Optimal inversion of the
 -        generalized Anscombe transformation for Poisson-Gaussian noise,"
@@ -943,7 +943,7 @@ index 6345c4fc..95509c03 100644
 +        [2] M. Mäkitalo and A. Foi, "Optimal inversion of the generalized
 +        Anscombe transformation for Poisson-Gaussian noise," *IEEE Trans.
 +        Image Process.*, vol. 22, no. 1, pp. 91--103, Jan. 2013.
- 
+
      See Also:
 -        :doc:`/how_to/notebooks/correct_color_cast` for combining
 -        denoising with color correction workflows.
@@ -952,19 +952,19 @@ index 6345c4fc..95509c03 100644
 +        :doc:`/explanation/image_quality_noise_contrast_structure` for
 +        background on Poisson-Gaussian noise models and denoiser selection.
      """
- 
+
      block_size: int = 8
 diff --git a/src/phenotypic/correction/_visushrink_corrector.py b/src/phenotypic/correction/_visushrink_corrector.py
 index 2ca5e16a..49d7f01d 100644
 --- a/src/phenotypic/correction/_visushrink_corrector.py
 +++ b/src/phenotypic/correction/_visushrink_corrector.py
 @@ -13,59 +13,117 @@ from ..tools_.mixin import _GATSupportMixin
- 
- 
+
+
  class VisuShrinkCorrector(_GATSupportMixin, ImageCorrector):
 -    """Denoise all image components using a universal VisuShrink wavelet threshold.
 +    """Denoise all image components using the near-minimax VisuShrink universal wavelet threshold.
- 
+
      Apply VisuShrink wavelet denoising to RGB (if present), grayscale, and
 -    detection matrix simultaneously. Unlike :class:`VisuShrinkEnhancer`,
 -    which modifies only the detection matrix, this corrector transforms all
@@ -974,9 +974,9 @@ index 2ca5e16a..49d7f01d 100644
 +    representations are updated in one pass, keeping them mutually consistent.
 +    The universal threshold is deliberately conservative and tends to over-smooth
 +    relative to adaptive alternatives.
- 
+
      For algorithm details, see :doc:`/explanation/what_enhancement_does`.
- 
+
 +    Best For:
 +        - Quick, consistent denoising of raw plate scans before archival or
 +          publication where a single noise level characterizes the whole image.
@@ -1074,14 +1074,14 @@ index 2ca5e16a..49d7f01d 100644
 +            from image bit depth (8-bit: 255, 16-bit: 65535). Override for
 +            non-standard bit depths such as 12-bit sensors stored in a 16-bit
 +            container (4095). Default: ``None``.
- 
+
      Returns:
 -        Image: Input image with all components (RGB, gray, detect_mat)
 -        transformed by VisuShrink wavelet denoising.
 +        Image: Input image with all components (``rgb``, ``gray``,
 +        ``detect_mat``) transformed by VisuShrink wavelet denoising. All
 +        three representations are updated in a single pass.
- 
+
 -    Best For:
 -        - Quick, uniform denoising of raw plate scans for archival or
 -          publication where a single threshold is acceptable.
@@ -1093,7 +1093,7 @@ index 2ca5e16a..49d7f01d 100644
 +        [1] D. L. Donoho and I. M. Johnstone, "Ideal spatial adaptation by
 +        wavelet shrinkage," *Biometrika*, vol. 81, no. 3, pp. 425--455,
 +        Sep. 1994.
- 
+
 -    Consider Also:
 -        - :class:`BayesShrinkCorrector` for adaptive subband thresholds
 -          that preserve finer colony detail.
@@ -1104,7 +1104,7 @@ index 2ca5e16a..49d7f01d 100644
 +        [2] M. Mäkitalo and A. Foi, "Optimal inversion of the generalized
 +        Anscombe transformation for Poisson-Gaussian noise," *IEEE Trans.
 +        Image Process.*, vol. 22, no. 1, pp. 91--103, Jan. 2013.
- 
+
      See Also:
 -        :doc:`/how_to/notebooks/correct_color_cast` for combining
 -        denoising with color correction workflows.
@@ -1113,19 +1113,19 @@ index 2ca5e16a..49d7f01d 100644
 +        :doc:`/explanation/image_quality_noise_contrast_structure` for
 +        background on noise models and denoising strategy selection.
      """
- 
+
      _GAT_NOISE_PARAMS: ClassVar[dict[str, float]] = {"sigma": 1.0}
 diff --git a/src/phenotypic/detect/_canny_detector.py b/src/phenotypic/detect/_canny_detector.py
 index 88cbdeb7..d44ca2f8 100644
 --- a/src/phenotypic/detect/_canny_detector.py
 +++ b/src/phenotypic/detect/_canny_detector.py
 @@ -13,89 +13,93 @@ from phenotypic.abc_ import ThresholdDetector
- 
- 
+
+
  class CannyDetector(ThresholdDetector):
 -    """Detect colonies by Canny edge detection and enclosed-region labelling.
 +    """Detect colonies by tracing edge contours and labelling enclosed regions.
- 
+
 -    Apply multi-stage Canny edge detection (Gaussian smoothing, gradient
 -    magnitude, non-maximum suppression, hysteresis thresholding) to produce
 -    thin, connected boundary contours, then label the enclosed regions as
@@ -1183,7 +1183,7 @@ index 88cbdeb7..d44ca2f8 100644
 +    than absolute intensity, the resulting mask remains stable on plates with
 +    uneven illumination or translucent colonies. For a full comparison of
 +    detection strategies, see :doc:`/explanation/detection_strategies_compared`.
- 
+
      Best For:
 -        * Well-separated colonies on solid media where colony edges are
 -          sharper than intensity differences relative to background.
@@ -1200,7 +1200,7 @@ index 88cbdeb7..d44ca2f8 100644
 +          intensity-based methods to fragment objects.
 +        - Images with moderate vignetting where edge contrast is preserved even
 +          though absolute intensity varies across the plate.
- 
+
      Consider Also:
 -        * :class:`OtsuDetector` when colonies differ from background
 -          primarily in brightness rather than edge contrast.
@@ -1213,7 +1213,7 @@ index 88cbdeb7..d44ca2f8 100644
 +          by region-growing from interior distance-transform seeds.
 +        - :class:`HysteresisDetector` when dual-threshold intensity
            segmentation is preferred over edge-based detection.
- 
+
 +    Args:
 +        sigma: Standard deviation of the Gaussian pre-smoothing kernel in
 +            pixels. Larger values suppress high-frequency noise but broaden
@@ -1266,7 +1266,7 @@ index 88cbdeb7..d44ca2f8 100644
          Trans. Pattern Anal. Mach. Intell.*, vol. 8, no. 6, pp. 679--698,
 -        1986.
 +        Nov. 1986.
- 
+
      See Also:
 -        :doc:`/tutorials/notebooks/02_detecting_colonies`
 -            Step-by-step tutorial for basic colony detection.
@@ -1281,19 +1281,19 @@ index 88cbdeb7..d44ca2f8 100644
 +        :doc:`/explanation/detection_strategies_compared` for an in-depth
 +        comparison of all detection strategies and their failure modes.
      """
- 
+
      sigma: float = 1.0
 diff --git a/src/phenotypic/detect/_chan_vese_detector.py b/src/phenotypic/detect/_chan_vese_detector.py
 index e9dc3cda..e08137b2 100644
 --- a/src/phenotypic/detect/_chan_vese_detector.py
 +++ b/src/phenotypic/detect/_chan_vese_detector.py
 @@ -13,83 +13,117 @@ from ..abc_ import ObjectDetector
- 
- 
+
+
  class ChanVeseDetector(ObjectDetector):
 -    """Detect colonies by region-based level-set segmentation using the Chan-Vese energy functional.
 +    """Detect colonies by evolving a level-set contour that minimises region-intensity variance via the Chan-Vese method.
- 
+
 -    Partition the image into foreground and background by minimising an
 -    energy functional based on intensity homogeneity within each region.
 -    Because segmentation is driven by region statistics rather than edge
@@ -1309,7 +1309,7 @@ index e9dc3cda..e08137b2 100644
 +    and evolved until the per-pixel change falls below ``tol`` or
 +    ``max_num_iter`` is reached, after which the binary mask is labelled into
 +    individual connected-component colonies.
- 
+
 -    Args:
 -        mu: Edge-length penalty weight. Higher values produce smoother,
 -            rounder colony outlines; lower values preserve fine boundary
@@ -1326,7 +1326,7 @@ index e9dc3cda..e08137b2 100644
 -            potentially incomplete) segmentation. Default: 500.
 +    For a comparison of region-based and edge-based detection strategies, see
 +    :doc:`/explanation/detection_strategies_compared`.
- 
+
 -        tol: Convergence tolerance (L2 norm of level-set change). Smaller
 -            values require tighter convergence but more iterations.
 -            Default: 1e-3.
@@ -1347,7 +1347,7 @@ index e9dc3cda..e08137b2 100644
 +          overlap in the histogram.
 +        - Morphology studies requiring smooth, well-regularised colony outlines
 +          rather than jagged threshold masks.
- 
+
 -        min_size: Minimum colony area in pixels. Connected components
 -            smaller than this are removed as noise. Default: 50.
 +    Consider Also:
@@ -1359,7 +1359,7 @@ index e9dc3cda..e08137b2 100644
 +          contrast rather than interior region homogeneity.
 +        - :class:`WatershedDetector` when touching, compact colonies must be
 +          separated after an initial binary detection.
- 
+
 -        connectivity: Pixel connectivity for labelling connected components.
 -            ``1`` for 4-connectivity, ``2`` for 8-connectivity. Default: 2.
 +    Args:
@@ -1412,14 +1412,14 @@ index e9dc3cda..e08137b2 100644
 +            colonies that touch only at corners separate); ``2`` uses
 +            8-connectivity (all neighbours including diagonals; merges
 +            corner-touching regions). Default: 2.
- 
+
      Returns:
 -        Image: Input image with ``objmask`` set to binary mask and
 -        ``objmap`` set to labeled connected components.
 +        Image: Input image with ``objmask`` set to the binary segmentation
 +        mask and ``objmap`` set to consecutively labelled connected
 +        components.
- 
+
      Raises:
 -        ValueError: If ``init_level_set`` is not a recognised initialisation
 -            method.
@@ -1441,7 +1441,7 @@ index e9dc3cda..e08137b2 100644
 -          contrast rather than region homogeneity.
 +        ValueError: If ``init_level_set`` is not one of the recognised
 +            initialisation strings.
- 
+
      References:
          [1] T. F. Chan and L. A. Vese, "Active contours without edges,"
 -        *IEEE Trans. Image Process.*, vol. 10, no. 2, pp. 266--277, 2001.
@@ -1450,7 +1450,7 @@ index e9dc3cda..e08137b2 100644
 +
 +        [2] P. Getreuer, "Chan-Vese segmentation," *Image Process. On
 +        Line*, vol. 2, pp. 214--224, 2012.
- 
+
      See Also:
          :doc:`/tutorials/notebooks/02_detecting_colonies`
 -            Step-by-step tutorial for basic colony detection.
@@ -1463,7 +1463,7 @@ index e9dc3cda..e08137b2 100644
 +            In-depth comparison of all detection strategies and their
 +            failure modes.
      """
- 
+
      mu: float = 0.25
 diff --git a/src/phenotypic/detect/_composite_detector.py b/src/phenotypic/detect/_composite_detector.py
 index 8a3248c7..d9f598a4 100644
@@ -1472,7 +1472,7 @@ index 8a3248c7..d9f598a4 100644
 @@ -23,50 +23,50 @@ class CompositeDetector(ObjectDetector):
      reliably. For a full comparison see
      :doc:`/explanation/detection_strategies_compared`.
- 
+
 +    Best For:
 +        - Plates where different colony sub-populations respond to different
 +          detection algorithms (e.g., bright colonies via Otsu, faint
@@ -1514,16 +1514,16 @@ index 8a3248c7..d9f598a4 100644
 +            object is retained. At the default 0.0 any mutually overlapping
 +            object is kept; larger values bias towards objects confirmed by
 +            more than one detector. Typical range: 0.0--0.5. Default: 0.0.
- 
+
      Returns:
          Image: Input image with ``objmask`` set to the combined binary
          colony mask and ``objmap`` derived from the merged mask.
- 
+
      Raises:
 -        ValueError: If *detectors* list is empty or *mode* is not one of
 +        ValueError: If ``detectors`` is empty or ``mode`` is not one of
              ``'union'``, ``'intersection'``, or ``'overlap'``.
- 
+
 -    Best For:
 -        * Plates where different colony sub-populations respond to different
 -          detection algorithms (e.g., bright colonies via Otsu, faint
@@ -1549,8 +1549,8 @@ index 2c64e563..746c1f1e 100644
 --- a/src/phenotypic/detect/_filamentous_fungi_detector.py
 +++ b/src/phenotypic/detect/_filamentous_fungi_detector.py
 @@ -52,119 +52,190 @@ from phenotypic.tools_.branch_pathfinding import (
- 
- 
+
+
  class FilamentousFungiDetector(GridObjectDetector):
 -    """Detect and separate filamentous fungal colonies by two-stage detection with Euclidean Voronoi partition.
 +    """Detect and individually label filamentous fungal colonies by two-stage inoculum-plus-hyphae detection with Euclidean Voronoi partition.
@@ -1568,7 +1568,7 @@ index 2c64e563..746c1f1e 100644
 +    For an algorithm overview and a comparison with other detection strategies,
 +    see :doc:`/explanation/detection_strategies_compared` and
 +    :doc:`/explanation/filamentous_fungi_algorithm`.
- 
+
 -    Segment filamentous fungi in two stages: (1) detect compact inoculation
 -    centres with an ``inoculum_detector``, (2) capture the full hyphal
 -    structure via phase-congruency-based branch detection and Dijkstra
@@ -1599,7 +1599,7 @@ index 2c64e563..746c1f1e 100644
 +          approach.
 +        - :class:`InoculumDetector` when only the compact inoculation centres
 +          are needed and full hyphal reconstruction is not required.
- 
+
      Args:
 -        inoculum_detector: ObjectDetector or ImagePipeline that identifies
 -            compact fungal centres/nuclei. Should produce small, tight
@@ -1772,7 +1772,7 @@ index 2c64e563..746c1f1e 100644
 +            Larger radius captures long-range directional consistency;
 +            reduce for highly curved or heavily branching networks. Typical
 +            range: 5--50. Default: None.
- 
+
      Returns:
 -        Image: Input image with ``objmask`` set to a binary fungal mask
 -        and ``objmap`` set to a labelled colony map where each fungal
@@ -1781,7 +1781,7 @@ index 2c64e563..746c1f1e 100644
 +        detected fungal pixels and ``objmap`` set to a labelled colony map
 +        where each fungal colony receives a unique consecutive integer label
 +        via Voronoi assignment.
- 
+
      Raises:
 -        TypeError: If *inoculum_detector* is not an ObjectDetector or
 +        TypeError: If ``inoculum_detector`` is not an ObjectDetector or
@@ -1811,7 +1811,7 @@ index 2c64e563..746c1f1e 100644
 -          strategies without the two-stage centre-plus-body approach.
 +        ValueError: If no inoculum centres are detected, or no detected
 +            centres overlap with the branch structure after filtering.
- 
+
      References:
 -        [1] P. Kovesi, "Image features from phase congruency," *Videre:
 -        J. Comput. Vis. Res.*, vol. 1, no. 3, pp. 1--26, 1999.
@@ -1820,7 +1820,7 @@ index 2c64e563..746c1f1e 100644
 +
 +        [2] E. W. Dijkstra, "A note on two problems in connexion with
 +        graphs," *Numer. Math.*, vol. 1, no. 1, pp. 269--271, 1959.
- 
+
      See Also:
          :doc:`/tutorials/notebooks/10_detecting_filamentous_fungi`
              Dedicated tutorial for filamentous fungi detection workflows.
@@ -1833,7 +1833,7 @@ index 2c64e563..746c1f1e 100644
 -            In-depth comparison of all detection strategies.
 +            Comparison of all detection strategies and their failure modes.
      """
- 
+
      @staticmethod
 diff --git a/src/phenotypic/detect/_hysteresis_detector.py b/src/phenotypic/detect/_hysteresis_detector.py
 index 92502910..27254e66 100644
@@ -1842,7 +1842,7 @@ index 92502910..27254e66 100644
 @@ -31,39 +31,6 @@ class HysteresisDetector(ThresholdDetector):
      stages and under uneven illumination. For a full comparison see
      :doc:`/explanation/detection_strategies_compared`.
- 
+
 -    Args:
 -        low: Lower threshold controlling expansion sensitivity. Accepts a
 -            method name (``'otsu'``, ``'triangle'``, ``'li'``, ``'yen'``,
@@ -1882,7 +1882,7 @@ index 92502910..27254e66 100644
 @@ -82,6 +49,46 @@ class HysteresisDetector(ThresholdDetector):
          * :class:`CannyDetector` when colonies are best delineated by edge
            contrast rather than intensity.
- 
+
 +    Args:
 +        low: Lower threshold controlling expansion sensitivity. There is no
 +            universal best value -- it is a user choice. Accepts a method
@@ -1933,7 +1933,7 @@ index 091ea452..69689228 100644
 @@ -37,68 +37,62 @@ class InoculumDetector(ObjectDetector):
      that ``image.detect_mat`` is never modified. For a full comparison see
      :doc:`/explanation/detection_strategies_compared`.
- 
+
 +    Best For:
 +        - Pin-tool inoculation on high-density plates (96-well, 384-well)
 +          where inocula are 30--80 pixels in diameter.
@@ -2009,11 +2009,11 @@ index 091ea452..69689228 100644
 +            raise ``ValueError`` when the detected object count exceeds
 +            ``nrows * ncols``. Catches over-segmentation early. Default:
 +            True.
- 
+
      Returns:
          Image: Input image with ``objmask`` (binary inoculum mask) and
          ``objmap`` (labelled inoculum map) populated.
- 
+
      Raises:
 -        ValueError: If detected object count exceeds grid capacity (when
 -            *validate_obj_count* is True and input is a GridImage), or if
@@ -2039,7 +2039,7 @@ index 091ea452..69689228 100644
 +        ValueError: If ``min_diameter`` >= ``max_diameter``, or if
 +            detected object count exceeds grid capacity when
 +            ``validate_obj_count`` is True and input is a GridImage.
- 
+
      See Also:
          :doc:`/tutorials/notebooks/02_detecting_colonies`
 diff --git a/src/phenotypic/detect/_isodata_detector.py b/src/phenotypic/detect/_isodata_detector.py
@@ -2048,7 +2048,7 @@ index 37287936..c8c7f173 100644
 +++ b/src/phenotypic/detect/_isodata_detector.py
 @@ -14,44 +14,42 @@ class IsodataDetector(ThresholdDetector):
      """Detect colonies by iterative ISODATA clustering of the intensity histogram.
- 
+
      Iteratively partition pixels into foreground and background classes by
 -    computing class means, then refine the threshold until convergence. The
 -    resulting binary mask separates colony pixels from agar background. Works
@@ -2060,7 +2060,7 @@ index 37287936..c8c7f173 100644
 +    background and works best when both pixel populations have similar variance
 +    and roughly balanced counts. For a full comparison of detection strategies
 +    see :doc:`/explanation/detection_strategies_compared`.
- 
+
 -    Args:
 -        ignore_zeros: Exclude zero-intensity pixels from threshold
 -            computation. Enable for plates with black borders or masked
@@ -2080,7 +2080,7 @@ index 37287936..c8c7f173 100644
 +          one side of the distribution.
 +        - :class:`HysteresisDetector` when colony brightness varies across the
 +          plate and a single threshold under-segments faint regions.
- 
+
 +    Args:
 +        ignore_zeros: Exclude zero-intensity pixels from the histogram before
 +            computing the threshold. Enable for plates with black borders or
@@ -2088,12 +2088,12 @@ index 37287936..c8c7f173 100644
          ignore_borders: Remove colonies touching image edges via
              ``clear_border()``. Recommended for grid-based colony counting
              to eliminate partial colonies at plate boundaries. Default: True.
- 
+
      Returns:
 -        Image: Input image with ``objmask`` set to binary mask and
 +        Image: Input image with ``objmask`` set to the binary colony mask and
          ``objmap`` set to labeled connected components.
- 
+
      Raises:
 -        ValueError: If threshold computation fails (e.g., degenerate
 -            histogram with insufficient intensity variation).
@@ -2114,12 +2114,12 @@ index 37287936..c8c7f173 100644
 -          single threshold under-segments faint regions.
 +        ValueError: If threshold computation fails due to a degenerate
 +            histogram with insufficient intensity variation.
- 
+
      References:
          [1] T. W. Ridler and S. Calvard, "Picture thresholding using an
 @@ -59,12 +57,12 @@ class IsodataDetector(ThresholdDetector):
          vol. 8, no. 8, pp. 630--632, 1978.
- 
+
      See Also:
 -        :doc:`/tutorials/notebooks/02_detecting_colonies`
 -            Step-by-step tutorial for basic colony detection.
@@ -2134,7 +2134,7 @@ index 37287936..c8c7f173 100644
 +        :doc:`/explanation/detection_strategies_compared` for an in-depth
 +        comparison of all thresholding strategies.
      """
- 
+
      ignore_zeros: bool = False
 diff --git a/src/phenotypic/detect/_li_detector.py b/src/phenotypic/detect/_li_detector.py
 index 5a532056..befda9e3 100644
@@ -2142,7 +2142,7 @@ index 5a532056..befda9e3 100644
 +++ b/src/phenotypic/detect/_li_detector.py
 @@ -14,57 +14,55 @@ class LiDetector(ThresholdDetector):
      """Detect colonies by minimising cross-entropy between the original and thresholded image.
- 
+
      Iteratively refine a threshold that minimises the information loss
 -    (cross-entropy) between the original intensity distribution and the
 -    binarised result. Performs well on low-contrast or noisy plates where
@@ -2153,7 +2153,7 @@ index 5a532056..befda9e3 100644
 +    histogram is not clearly bimodal and variance-based assumptions may not
 +    hold. For a full comparison of detection strategies see
      :doc:`/explanation/detection_strategies_compared`.
- 
+
 -    Args:
 -        ignore_zeros: Exclude zero-intensity pixels from threshold
 -            computation. Enable for plates with black borders or masked
@@ -2166,7 +2166,7 @@ index 5a532056..befda9e3 100644
 +          irregularities breaking bimodal assumptions.
 +        - Images where the intensity distribution is unimodal or only weakly
 +          bimodal.
- 
+
 +    Consider Also:
 +        - :class:`OtsuDetector` when the histogram is clearly bimodal and a
 +          single-pass variance-minimising threshold suffices.
@@ -2182,12 +2182,12 @@ index 5a532056..befda9e3 100644
          ignore_borders: Remove colonies touching image edges via
              ``clear_border()``. Recommended for grid-based colony counting
              to eliminate partial colonies at plate boundaries. Default: True.
- 
+
      Returns:
 -        Image: Input image with ``objmask`` set to binary mask and
 +        Image: Input image with ``objmask`` set to the binary colony mask and
          ``objmap`` set to labeled connected components.
- 
+
      Raises:
 -        ValueError: If threshold computation fails (e.g., degenerate
 -            histogram with insufficient intensity variation).
@@ -2209,11 +2209,11 @@ index 5a532056..befda9e3 100644
 -          the plate and a single threshold under-segments faint regions.
 +        ValueError: If threshold computation fails due to a degenerate
 +            histogram with insufficient intensity variation.
- 
+
      References:
          [1] C. H. Li and C. K. Lee, "Minimum cross entropy thresholding,"
          *Pattern Recognit.*, vol. 26, no. 4, pp. 617--625, 1993.
- 
+
      See Also:
 -        :doc:`/tutorials/notebooks/02_detecting_colonies`
 -            Step-by-step tutorial for basic colony detection.
@@ -2228,7 +2228,7 @@ index 5a532056..befda9e3 100644
 +        :doc:`/explanation/detection_strategies_compared` for an in-depth
 +        comparison of all thresholding strategies.
      """
- 
+
      ignore_zeros: bool = False
 diff --git a/src/phenotypic/detect/_mad_hysteresis_detector.py b/src/phenotypic/detect/_mad_hysteresis_detector.py
 index d7fb9544..9f4c4b03 100644
@@ -2237,7 +2237,7 @@ index d7fb9544..9f4c4b03 100644
 @@ -25,27 +25,58 @@ class MadHysteresisDetector(ThresholdDetector):
      unstable thresholds. For a full comparison see
      :doc:`/explanation/detection_strategies_compared`.
- 
+
 -    Args:
 -        k_high: High-threshold multiplier. The high threshold is
 -            ``k_high * sigma_noise``; pixels above this seed connected
@@ -2250,7 +2250,7 @@ index d7fb9544..9f4c4b03 100644
 +          background texture and MAD provides a stable noise estimate.
 +        * Standardised pipelines where multiplier-based thresholds
 +          generalise across plates with varying colony density.
- 
+
 -        k_low: Low-threshold multiplier. The low threshold is
 -            ``k_low * sigma_noise``; pixels above this are included if
 -            connected to a high-threshold seed. Must be less than
@@ -2262,7 +2262,7 @@ index d7fb9544..9f4c4b03 100644
 +          with a bimodal histogram.
 +        * :class:`ChanVeseDetector` when colonies have diffuse edges and
 +          region-based segmentation is more appropriate.
- 
+
 -        min_size: Minimum colony area in pixels. Connected components
 -            smaller than this are removed as noise. Default: 20.
 +    Args:
@@ -2291,7 +2291,7 @@ index d7fb9544..9f4c4b03 100644
 +            genuine micro-colonies; lowering it recovers faint colonies but
 +            raises false positives. Scale with resolution -- smaller for
 +            dense 384/1536 formats, larger for high-dpi scans. Default: 20.
- 
+
          connectivity: Pixel connectivity for labelling connected
 -            components. ``1`` for 4-connectivity, ``2`` for
 -            8-connectivity. Default: 2.
@@ -2299,18 +2299,18 @@ index d7fb9544..9f4c4b03 100644
 +            objects separate; ``2`` (8-connected) bridges diagonal gaps in
 +            thin or branching structures into fewer, larger regions.
 +            Default: 2.
- 
+
          ignore_zeros: Exclude zero-intensity pixels from MAD computation.
              Enable for plates with black borders or masked regions.
 -            Default: True.
 +            Default: False.
- 
+
          ignore_borders: Remove colonies touching image edges via
              ``clear_border()``. Recommended for grid-based colony counting
 @@ -59,22 +90,6 @@ class MadHysteresisDetector(ThresholdDetector):
      Raises:
          ValueError: If ``k_low`` >= ``k_high``.
- 
+
 -    Best For:
 -        * Filter response maps (CED, Hessian, LoG, Frangi) where the
 -          noise floor is approximately Gaussian.
@@ -2337,7 +2337,7 @@ index 1ef7fb5b..5eb2cef8 100644
 @@ -29,26 +29,52 @@ class ManualGridPointDetector(GridObjectDetector, FootprintMixin):
      *coord2* define cells (0, 0) and (1, 1); row and column spacing are
      derived from their difference and extrapolated across all grid cells.
- 
+
 +    Best For:
 +        * Plates where automatic grid finders fail due to low contrast,
 +          missing wells, or non-standard plate formats.
@@ -2365,7 +2365,7 @@ index 1ef7fb5b..5eb2cef8 100644
 +            calculated. Default ``(0, 0)``. Place it on the visible centre
 +            of the first colony; adjust by observing whether the stamped
 +            grid drifts off the colonies toward the far rows/columns.
- 
+
          coord2: Optional ``(y, x)`` pixel position of the diagonally
              adjacent cell (row 1, column 1). When provided, row and column
              spacing are derived from the difference between *coord2* and
@@ -2375,12 +2375,12 @@ index 1ef7fb5b..5eb2cef8 100644
 +            from two real colonies rather than assuming symmetric margins.
 +            When omitted, spacing is computed from image dimensions assuming
 +            symmetric margins. Default: None.
- 
+
          shape: Morphological footprint shape stamped at each grid position.
              ``"disk"`` (default) preserves round colony geometry.
              ``"square"`` covers rectangular well regions. ``"diamond"``
              offers a compromise between the two.
- 
+
 -        width: Diameter of the footprint in pixels (default 15). Larger
 -            values cover more area per grid cell; smaller values produce
 -            tighter, more precise masks. Typical range: 5--50, depending
@@ -2392,13 +2392,13 @@ index 1ef7fb5b..5eb2cef8 100644
 +            diameter, then shrink it if neighbouring stamps merge or grow
 +            it if colonies overflow their stamp. Typical range: 5--50,
 +            depending on image resolution and colony size. Default: 15.
- 
+
      Returns:
          GridImage: Input image with ``objmask`` set to the union of all
 @@ -59,24 +85,6 @@ class ManualGridPointDetector(GridObjectDetector, FootprintMixin):
          GridImageInputError: If a plain Image is passed instead of a
              GridImage.
- 
+
 -    Best For:
 -        * Plates where automatic grid finders fail due to low contrast,
 -          missing wells, or non-standard plate formats.
@@ -2427,7 +2427,7 @@ index 647ab9eb..a9a58aa4 100644
 @@ -24,28 +24,6 @@ class ManualPointDetector(ObjectDetector, PointPickerMixin, FootprintMixin):
      geometry, sparse or irregular layouts, and manual annotation workflows
      where each object position is known individually.
- 
+
 -    Args:
 -        centers: An N x 2 array-like of ``(y, x)`` pixel coordinates
 -            specifying each colony centre. Accepts any sequence that
@@ -2456,7 +2456,7 @@ index 647ab9eb..a9a58aa4 100644
 @@ -62,6 +40,32 @@ class ManualPointDetector(ObjectDetector, PointPickerMixin, FootprintMixin):
          * :class:`RoundPeaksDetector` when colony centres can be inferred
            automatically from intensity profiles.
- 
+
 +    Args:
 +        centers: An N x 2 array-like of ``(y, x)`` pixel coordinates, one
 +            per colony, supplied by the user (purely a manual choice).
@@ -2491,12 +2491,12 @@ index 68a14a58..8ed53321 100644
 --- a/src/phenotypic/detect/_mean_detector.py
 +++ b/src/phenotypic/detect/_mean_detector.py
 @@ -11,57 +11,54 @@ from ..abc_ import ThresholdDetector
- 
- 
+
+
  class MeanDetector(ThresholdDetector):
 -    """Detect colonies by thresholding at the mean image intensity.
 +    """Detect colonies by thresholding at the arithmetic mean pixel intensity.
- 
+
 -    Use the arithmetic mean of all pixel intensities as the threshold,
 -    classifying pixels above the mean as colony foreground. This
 -    parameter-free baseline is fast and deterministic, making it useful for
@@ -2508,7 +2508,7 @@ index 68a14a58..8ed53321 100644
 +    assumptions, making it a reliable fallback when adaptive methods produce
 +    unexpected results. For a full comparison of detection strategies see
      :doc:`/explanation/detection_strategies_compared`.
- 
+
 -    Args:
 -        ignore_zeros: Exclude zero-intensity pixels from threshold
 -            computation. Enable for plates with black borders or masked
@@ -2521,7 +2521,7 @@ index 68a14a58..8ed53321 100644
 +        - Plates where colony and background areas are roughly equal in size,
 +          placing the mean near the natural separation point.
 +        - Debugging pipelines where a simple, predictable threshold is needed.
- 
+
 +    Consider Also:
 +        - :class:`OtsuDetector` for a statistically optimal threshold that
 +          adapts to the histogram shape.
@@ -2537,12 +2537,12 @@ index 68a14a58..8ed53321 100644
          ignore_borders: Remove colonies touching image edges via
              ``clear_border()``. Recommended for grid-based colony counting
              to eliminate partial colonies at plate boundaries. Default: True.
- 
+
      Returns:
 -        Image: Input image with ``objmask`` set to binary mask and
 +        Image: Input image with ``objmask`` set to the binary colony mask and
          ``objmap`` set to labeled connected components.
- 
+
      Raises:
 -        ValueError: If threshold computation fails (e.g., all pixels share
 -            the same intensity value).
@@ -2565,7 +2565,7 @@ index 68a14a58..8ed53321 100644
 -          converges beyond the simple mean.
 +        ValueError: If all pixels share the same intensity value, making
 +            threshold computation degenerate.
- 
+
      See Also:
 -        :doc:`/tutorials/notebooks/02_detecting_colonies`
 -            Step-by-step tutorial for basic colony detection.
@@ -2580,19 +2580,19 @@ index 68a14a58..8ed53321 100644
 +        :doc:`/explanation/detection_strategies_compared` for an in-depth
 +        comparison of all thresholding strategies.
      """
- 
+
      ignore_zeros: bool = False
 diff --git a/src/phenotypic/detect/_minimum_detector.py b/src/phenotypic/detect/_minimum_detector.py
 index d35135d6..4bdd2f1a 100644
 --- a/src/phenotypic/detect/_minimum_detector.py
 +++ b/src/phenotypic/detect/_minimum_detector.py
 @@ -11,55 +11,53 @@ from ..abc_ import ThresholdDetector
- 
- 
+
+
  class MinimumDetector(ThresholdDetector):
 -    """Detect colonies by finding the valley between two histogram peaks.
 +    """Detect colonies by thresholding at the intensity valley between two histogram peaks.
- 
+
 -    Locate the intensity minimum (valley) between the two dominant peaks of
 -    the image histogram and threshold at that point. This works well when
 -    colonies and background form two clearly separated intensity populations,
@@ -2603,7 +2603,7 @@ index d35135d6..4bdd2f1a 100644
 +    mask places the colony–background boundary at the natural gap in the
 +    intensity distribution. For a full comparison of detection strategies see
 +    :doc:`/explanation/detection_strategies_compared`.
- 
+
 -    Args:
 -        ignore_zeros: Exclude zero-intensity pixels from threshold
 -            computation. Enable for plates with black borders or masked
@@ -2616,7 +2616,7 @@ index d35135d6..4bdd2f1a 100644
 +          across plates.
 +        - Images where the intensity gap between colonies and agar is wide and
 +          the valley is unambiguous.
- 
+
 +    Consider Also:
 +        - :class:`OtsuDetector` when the histogram is bimodal but peaks are
 +          broad or partially overlapping.
@@ -2632,12 +2632,12 @@ index d35135d6..4bdd2f1a 100644
          ignore_borders: Remove colonies touching image edges via
              ``clear_border()``. Recommended for grid-based colony counting
              to eliminate partial colonies at plate boundaries. Default: True.
- 
+
      Returns:
 -        Image: Input image with ``objmask`` set to binary mask and
 +        Image: Input image with ``objmask`` set to the binary colony mask and
          ``objmap`` set to labeled connected components.
- 
+
      Raises:
          ValueError: If the histogram has no clear bimodal distribution and
 -            no valley can be found.
@@ -2658,7 +2658,7 @@ index d35135d6..4bdd2f1a 100644
 -        * :class:`HysteresisDetector` when colony brightness varies and a
 -          single valley-based threshold under-segments faint regions.
 +            no valley can be identified.
- 
+
      See Also:
 -        :doc:`/tutorials/notebooks/02_detecting_colonies`
 -            Step-by-step tutorial for basic colony detection.
@@ -2673,19 +2673,19 @@ index d35135d6..4bdd2f1a 100644
 +        :doc:`/explanation/detection_strategies_compared` for an in-depth
 +        comparison of all thresholding strategies.
      """
- 
+
      ignore_zeros: bool = False
 diff --git a/src/phenotypic/detect/_otsu_detector.py b/src/phenotypic/detect/_otsu_detector.py
 index 98d7c6ee..0aa2b041 100644
 --- a/src/phenotypic/detect/_otsu_detector.py
 +++ b/src/phenotypic/detect/_otsu_detector.py
 @@ -11,50 +11,44 @@ from ..abc_ import ThresholdDetector
- 
- 
+
+
  class OtsuDetector(ThresholdDetector):
 -    """Detect colonies by global Otsu thresholding on bimodal plate histograms.
 +    """Detect colonies by minimising intra-class variance of the intensity histogram.
- 
+
 -    Automatically compute a single intensity threshold that minimises
 -    within-class variance, separating colony foreground from agar background.
 -    The resulting binary mask cleanly segments plates whose histograms are
@@ -2696,7 +2696,7 @@ index 98d7c6ee..0aa2b041 100644
 +    variance. The resulting binary mask cleanly segments plates whose histograms
 +    are bimodal. For a comparison of all available detection strategies see
      :doc:`/explanation/detection_strategies_compared`.
- 
+
 -    Args:
 -        ignore_zeros: If True (default), exclude zero-intensity pixels from
 -            threshold computation. Enable for plates with black borders or
@@ -2708,7 +2708,7 @@ index 98d7c6ee..0aa2b041 100644
 +        - High-throughput screens with uniform agar colour and colony density.
 +        - Clean plates with minimal dust, scratches, or condensation.
 +        - Quick baseline detection requiring no parameter tuning.
- 
+
 -        ignore_borders: If True (default), remove colonies touching image
 -            edges via ``clear_border()``. Recommended for grid-based colony
 -            counting to eliminate partial colonies at plate boundaries.
@@ -2727,14 +2727,14 @@ index 98d7c6ee..0aa2b041 100644
 +        ignore_borders: Remove colonies touching image edges via
 +            ``clear_border()``. Recommended for grid-based colony counting
 +            to eliminate partial colonies at plate boundaries. Default: True.
- 
+
      Returns:
 -        Image: Input image with ``objmask`` set to a binary colony mask
 -        produced by Otsu thresholding and ``objmap`` set to labeled
 -        connected components.
 +        Image: Input image with ``objmask`` set to the binary colony mask and
 +        ``objmap`` set to labeled connected components.
- 
+
      Raises:
 -        ValueError: If threshold computation fails (e.g., all pixels share
 -            the same intensity value, producing a degenerate histogram).
@@ -2757,12 +2757,12 @@ index 98d7c6ee..0aa2b041 100644
 -          into individually labelled objects.
 +        ValueError: If threshold computation fails due to a degenerate
 +            histogram (e.g., all pixels share the same intensity value).
- 
+
      References:
          [1] N. Otsu, "A threshold selection method from gray-level
 @@ -62,12 +56,12 @@ class OtsuDetector(ThresholdDetector):
          pp. 62--66, 1979.
- 
+
      See Also:
 -        :doc:`/tutorials/notebooks/02_detecting_colonies`
 -            Step-by-step tutorial for basic colony detection.
@@ -2777,7 +2777,7 @@ index 98d7c6ee..0aa2b041 100644
 +        :doc:`/explanation/detection_strategies_compared` for an in-depth
 +        comparison of all thresholding strategies.
      """
- 
+
      ignore_zeros: bool = False
 diff --git a/src/phenotypic/detect/_rank_otsu.py b/src/phenotypic/detect/_rank_otsu.py
 index ffead39a..ee756164 100644
@@ -2786,7 +2786,7 @@ index ffead39a..ee756164 100644
 @@ -21,18 +21,32 @@ class RankOtsuDetector(ObjectDetector, FootprintMixin):
      under-segment parts of the plate. For a full comparison see
      :doc:`/explanation/detection_strategies_compared`.
- 
+
 +    Best For:
 +        - Plates with vignetting, hot-spots, or centre-to-edge illumination
 +          gradients.
@@ -2826,7 +2826,7 @@ index ffead39a..ee756164 100644
 @@ -45,21 +59,6 @@ class RankOtsuDetector(ObjectDetector, FootprintMixin):
          ValueError: If ``shape`` is not one of the accepted values or
              ``width`` is not positive.
- 
+
 -    Best For:
 -        * Plates with vignetting, hot-spots, or centre-to-edge illumination
 -          gradients.
@@ -2852,7 +2852,7 @@ index e70514d3..c929682f 100644
 @@ -26,57 +26,68 @@ class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
      regular arrays (96, 384, 1536 formats). For a full comparison see
      :doc:`/explanation/detection_strategies_compared`.
- 
+
 +    Best For:
 +        - Pinned yeast or bacterial plates with colonies arranged in a
 +          regular rectangular grid.
@@ -2956,13 +2956,13 @@ index e70514d3..c929682f 100644
 +            cells using EDT watershed before grid assignment. Set to False
 +            when colonies are well-separated and splitting is unnecessary.
 +            Default: True.
- 
+
      Returns:
          Image: Input image with ``objmask`` set to a binary colony mask
 @@ -86,30 +97,11 @@ class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
      Raises:
          ValueError: If an invalid thresholding method is specified.
- 
+
 -    Best For:
 -        * Pinned yeast or bacterial plates with colonies arranged in a
 -          regular rectangular grid.
@@ -2988,7 +2988,7 @@ index e70514d3..c929682f 100644
          for quantification of colony sizes from plate images," *G3
          (Bethesda)*, vol. 4, no. 3, pp. 547--552, 2014.
 +        doi: 10.1534/g3.113.009431.
- 
+
      See Also:
          :doc:`/tutorials/notebooks/02_detecting_colonies`
 diff --git a/src/phenotypic/detect/_secondary_otsu.py b/src/phenotypic/detect/_secondary_otsu.py
@@ -2996,12 +2996,12 @@ index 35c08f82..b94af9b0 100644
 --- a/src/phenotypic/detect/_secondary_otsu.py
 +++ b/src/phenotypic/detect/_secondary_otsu.py
 @@ -23,35 +23,35 @@ def _safe_otsu(values: np.ndarray) -> float:
- 
- 
+
+
  class SecondaryOtsuDetector(ThresholdDetector):
 -    """Detect colonies by two-stage Otsu thresholding with per-object refinement.
 +    """Detect colonies by two-stage Otsu thresholding with per-object boundary refinement.
- 
+
 -    Apply an initial global Otsu threshold (or reuse an existing
 -    ``objmask``), then re-threshold each detected object independently
 -    using its own intensity distribution. This sharpens colony boundaries
@@ -3013,7 +3013,7 @@ index 35c08f82..b94af9b0 100644
 +    in brightness, removing soft halos while preserving colony cores. For a
 +    full comparison of detection strategies see
      :doc:`/explanation/detection_strategies_compared`.
- 
+
 -    Returns:
 -        Image: Input image with ``objmask`` set to binary mask and
 -        ``objmap`` set to labeled connected components.
@@ -3030,7 +3030,7 @@ index 35c08f82..b94af9b0 100644
 +          density across the plate surface.
 +        - Suppressing preprocessing halos that expand colony outlines beyond
 +          their true boundaries.
- 
+
      Consider Also:
 -        * :class:`OtsuDetector` when a single global threshold already
 +        - :class:`OtsuDetector` when a single global threshold already
@@ -3049,12 +3049,12 @@ index 35c08f82..b94af9b0 100644
 +    Returns:
 +        Image: Input image with ``objmask`` set to the refined binary colony
 +        mask and ``objmap`` set to labeled connected components.
- 
+
      References:
          [1] N. Otsu, "A threshold selection method from gray-level
 @@ -59,12 +59,12 @@ class SecondaryOtsuDetector(ThresholdDetector):
          pp. 62--66, 1979.
- 
+
      See Also:
 -        :doc:`/tutorials/notebooks/02_detecting_colonies`
 -            Step-by-step tutorial for basic colony detection.
@@ -3069,7 +3069,7 @@ index 35c08f82..b94af9b0 100644
 +        :doc:`/explanation/detection_strategies_compared` for an in-depth
 +        comparison of all thresholding strategies.
      """
- 
+
      def _operate(self, image: Image) -> Image:
 diff --git a/src/phenotypic/detect/_sine_peak_detector.py b/src/phenotypic/detect/_sine_peak_detector.py
 index ae0b779b..e086ed67 100644
@@ -3078,7 +3078,7 @@ index ae0b779b..e086ed67 100644
 @@ -31,84 +31,82 @@ class SinePeakDetector(GridInferenceMixin, ObjectDetector):
      growth. For a full comparison see
      :doc:`/explanation/detection_strategies_compared`.
- 
+
 +    Best For:
 +        - Gridded plates (96-well, 384-well, pinned arrays) where colonies
 +          are arranged in a regular periodic pattern.
@@ -3173,17 +3173,17 @@ index ae0b779b..e086ed67 100644
 -            True.
 +            cells using EDT watershed before grid assignment. Set to False
 +            when colonies are well-separated. Default: True.
- 
+
      Returns:
          Image: Input image with ``objmask`` set to binary mask and
 -        ``objmap`` set to labeled connected components.
 +        ``objmap`` set to labeled connected components with one label per
 +        grid cell.
- 
+
      Raises:
          ValueError: If ``thresh_method`` is not one of the accepted
              values.
- 
+
 -    Best For:
 -        * Gridded plates (96-well, 384-well, pinned arrays) where colonies
 -          are arranged in a regular periodic pattern.
@@ -3205,7 +3205,7 @@ index ae0b779b..e086ed67 100644
          for quantification of colony sizes from plate images,"
          *G3 (Bethesda)*, vol. 4, no. 3, pp. 547--552, 2014.
 +        doi: 10.1534/g3.113.009431.
- 
+
      See Also:
          :doc:`/tutorials/notebooks/02_detecting_colonies`
 diff --git a/src/phenotypic/detect/_triangle_detector.py b/src/phenotypic/detect/_triangle_detector.py
@@ -3215,7 +3215,7 @@ index f9abb444..c0d0f216 100644
 @@ -11,51 +11,51 @@ from ..abc_ import ThresholdDetector
  class TriangleDetector(ThresholdDetector):
      """Detect colonies by triangle thresholding on skewed, background-dominant plate histograms.
- 
+
 -    Compute a threshold at the base of the triangle formed by the histogram
 -    peak, minimum, and maximum. This method excels when colonies occupy a
 -    small fraction of the plate so that the intensity histogram is strongly
@@ -3236,7 +3236,7 @@ index f9abb444..c0d0f216 100644
 +    histogram is strongly skewed toward background, capturing faint colonies
 +    that variance-based methods may miss. For a full comparison of detection
 +    strategies see :doc:`/explanation/detection_strategies_compared`.
- 
+
      Best For:
 -        * Plates where colonies are sparse and background dominates the
 -          intensity histogram.
@@ -3252,7 +3252,7 @@ index f9abb444..c0d0f216 100644
 +          pixels represent agar background.
 +        - Drop-out screens with many empty grid positions and few visible
            colonies.
- 
+
      Consider Also:
 -        * :class:`OtsuDetector` when colonies and background occupy roughly
 -          equal histogram areas (balanced bimodal distribution).
@@ -3264,7 +3264,7 @@ index f9abb444..c0d0f216 100644
 -        * :class:`UserThreshold` when an empirically determined threshold is
 +        - :class:`UserThreshold` when an empirically determined threshold is
            known to outperform automatic methods for your plate type.
- 
+
 +    Returns:
 +        Image: Input image with ``objmask`` set to the binary colony mask and
 +        ``objmap`` set to labeled connected components.
@@ -3277,7 +3277,7 @@ index f9abb444..c0d0f216 100644
          [1] G. W. Zack, W. E. Rogers, and S. A. Latt, "Automatic
          measurement of sister chromatid exchange frequency," *J. Histochem.
          Cytochem.*, vol. 25, no. 7, pp. 741--753, 1977.
- 
+
      See Also:
 -        :doc:`/tutorials/notebooks/02_detecting_colonies`
 -            Step-by-step tutorial for basic colony detection.
@@ -3292,7 +3292,7 @@ index f9abb444..c0d0f216 100644
 +        :doc:`/explanation/detection_strategies_compared` for an in-depth
 +        comparison of all thresholding strategies.
      """
- 
+
      def _operate(self, image: Image) -> Image:
 diff --git a/src/phenotypic/detect/_user_threshold.py b/src/phenotypic/detect/_user_threshold.py
 index 49a96022..917e116c 100644
@@ -3301,7 +3301,7 @@ index 49a96022..917e116c 100644
 @@ -19,31 +19,6 @@ class UserThreshold(ThresholdDetector):
      specific imaging setup. For a full comparison see
      :doc:`/explanation/detection_strategies_compared`.
- 
+
 -    Args:
 -        threshold: Intensity cutoff for binary segmentation. Pixels with
 -            intensity >= *threshold* become colony (True), others become
@@ -3333,7 +3333,7 @@ index 49a96022..917e116c 100644
 @@ -63,6 +38,35 @@ class UserThreshold(ThresholdDetector):
          * :class:`TriangleDetector` when colonies are sparse and the
            histogram is skewed toward background.
- 
+
 +    Args:
 +        threshold: Intensity cutoff for binary segmentation; pixels with
 +            intensity >= *threshold* become colony (True), others
@@ -3373,7 +3373,7 @@ index f3ee5bcf..f86f1eeb 100644
 @@ -21,84 +21,93 @@ from phenotypic.tools_.typing_ import NdArrayField
  class WatershedDetector(ThresholdDetector):
      """Detect and separate touching colonies by watershed segmentation on a distance-transform surface.
- 
+
 -    Threshold the plate image to a binary mask, compute a Euclidean distance
 -    transform to locate colony centres, seed markers at local maxima, and
 -    propagate labelled regions via watershed on the Sobel gradient. This
@@ -3387,7 +3387,7 @@ index f3ee5bcf..f86f1eeb 100644
 +    in physical contact — a scenario where global thresholding merges them into
 +    a single object. For a full comparison of detection strategies, see
      :doc:`/explanation/detection_strategies_compared`.
- 
+
 -    Args:
 -        footprint: Structuring element for peak detection. ``'auto'``
 -            infers size from grid spacing (GridImage only); an int creates a
@@ -3442,7 +3442,7 @@ index f3ee5bcf..f86f1eeb 100644
            segmentation challenge.
 +        - Round, compact colonies on rich-media agar where compactness
 +          regularisation reinforces the expected shape.
- 
+
      Consider Also:
 -        * :class:`OtsuDetector` when colonies are well-separated and a
 -          simple binary mask suffices.
@@ -3503,7 +3503,7 @@ index f3ee5bcf..f86f1eeb 100644
 +        Image: Input image with ``objmap`` set to a labelled colony map where
 +        each colony receives a unique integer label, and ``objmask`` derived
 +        from the non-zero entries of that map.
- 
+
      References:
 -        [1] S. Beucher and C. Lantuejoul, "Use of watersheds in contour
 -        detection," in *Proc. Int. Workshop on Image Processing*, CCETT,
@@ -3515,7 +3515,7 @@ index f3ee5bcf..f86f1eeb 100644
 +        [2] N. Otsu, "A threshold selection method from gray-level
 +        histograms," *IEEE Trans. Syst., Man, Cybern.*, vol. 9, no. 1,
 +        pp. 62--66, Jan. 1979.
- 
+
      See Also:
 -        :doc:`/tutorials/notebooks/02_detecting_colonies`
 -            Step-by-step tutorial for basic colony detection.
@@ -3530,7 +3530,7 @@ index f3ee5bcf..f86f1eeb 100644
 +        :doc:`/explanation/detection_strategies_compared` for an in-depth
 +        comparison of all detection strategies and their failure modes.
      """
- 
+
      footprint: Literal["auto"] | NdArrayField | int | None = None
 diff --git a/src/phenotypic/detect/_yen_detector.py b/src/phenotypic/detect/_yen_detector.py
 index 241b6a6e..e36f64aa 100644
@@ -3539,7 +3539,7 @@ index 241b6a6e..e36f64aa 100644
 @@ -13,45 +13,43 @@ from ..abc_ import ThresholdDetector
  class YenDetector(ThresholdDetector):
      """Detect colonies by maximising the correlation between the original and binarised image.
- 
+
 -    Compute a threshold that maximises the correlation coefficient between
 -    the original intensity image and its binarised version. Handles skewed
 -    histograms better than Otsu in some scenarios, offering a middle ground
@@ -3550,7 +3550,7 @@ index 241b6a6e..e36f64aa 100644
 +    skewed histograms reliably, offering a middle ground between variance-based
 +    (Otsu) and entropy-based (Li) criteria. For a full comparison of detection
 +    strategies see :doc:`/explanation/detection_strategies_compared`.
- 
+
 -    Args:
 -        ignore_zeros: Exclude zero-intensity pixels from threshold
 -            computation. Enable for plates with black borders or masked
@@ -3571,7 +3571,7 @@ index 241b6a6e..e36f64aa 100644
 +          and entropy-based separation is more appropriate.
 +        - :class:`TriangleDetector` when colonies are very sparse and the
 +          histogram is strongly background-dominated.
- 
+
 +    Args:
 +        ignore_zeros: Exclude zero-intensity pixels from the histogram before
 +            computing the threshold. Enable for plates with black borders or
@@ -3579,12 +3579,12 @@ index 241b6a6e..e36f64aa 100644
          ignore_borders: Remove colonies touching image edges via
              ``clear_border()``. Recommended for grid-based colony counting
              to eliminate partial colonies at plate boundaries. Default: True.
- 
+
      Returns:
 -        Image: Input image with ``objmask`` set to binary mask and
 +        Image: Input image with ``objmask`` set to the binary colony mask and
          ``objmap`` set to labeled connected components.
- 
+
      Raises:
 -        ValueError: If threshold computation fails (e.g., degenerate
 -            histogram with insufficient intensity variation).
@@ -3606,12 +3606,12 @@ index 241b6a6e..e36f64aa 100644
 -          histogram is strongly background-dominated.
 +        ValueError: If threshold computation fails due to a degenerate
 +            histogram with insufficient intensity variation.
- 
+
      References:
          [1] J. C. Yen, F. J. Chang, and S. Chang, "A new criterion for
 @@ -59,12 +57,12 @@ class YenDetector(ThresholdDetector):
          vol. 4, no. 3, pp. 370--378, 1995.
- 
+
      See Also:
 -        :doc:`/tutorials/notebooks/02_detecting_colonies`
 -            Step-by-step tutorial for basic colony detection.
@@ -3626,19 +3626,19 @@ index 241b6a6e..e36f64aa 100644
 +        :doc:`/explanation/detection_strategies_compared` for an in-depth
 +        comparison of all thresholding strategies.
      """
- 
+
      ignore_zeros: bool = False
 diff --git a/src/phenotypic/enhance/_bayesshrink_enhancer.py b/src/phenotypic/enhance/_bayesshrink_enhancer.py
 index 714dc5a1..24bc9877 100644
 --- a/src/phenotypic/enhance/_bayesshrink_enhancer.py
 +++ b/src/phenotypic/enhance/_bayesshrink_enhancer.py
 @@ -12,62 +12,122 @@ from ..tools_.mixin import _GATSupportMixin
- 
- 
+
+
  class BayesShrinkEnhancer(_GATSupportMixin, ImageDenoiser):
 -    """Denoise ``detect_mat`` with adaptive BayesShrink wavelet thresholding.
 +    """Denoise ``detect_mat`` with adaptive per-subband BayesShrink wavelet thresholding.
- 
+
 -    Applies wavelet-domain denoising with per-subband adaptive thresholds
 -    computed from local statistics. Preserves more fine detail than
 -    :class:`VisuShrinkEnhancer` by denoising aggressively only where noise
@@ -3648,7 +3648,7 @@ index 714dc5a1..24bc9877 100644
 +    variances. This preserves colony texture more faithfully than a universal
 +    threshold while suppressing scanner and camera noise. For algorithm details
 +    see :doc:`/explanation/what_enhancement_does`.
- 
+
 -    For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 +    Best For:
 +        - Flatbed scanner images where CCD read noise is spatially uniform
@@ -3671,7 +3671,7 @@ index 714dc5a1..24bc9877 100644
 +          in the agar or colony texture can be exploited.
 +        - :class:`MedianFilter` for salt-and-pepper impulse noise rather
 +          than Gaussian additive noise.
- 
+
      Args:
 -        sigma: Noise standard deviation in [0, 1] scale. ``None`` (default)
 -            auto-estimates via MAD. Typical range: 0.01--0.05 for moderate
@@ -3757,11 +3757,11 @@ index 714dc5a1..24bc9877 100644
 +            ``None`` auto-detects from ``image.metadata.bit_depth`` (255 for
 +            8-bit, 65535 for 16-bit). Only relevant when ``use_gat=True``.
 +            Default: ``None``.
- 
+
      Returns:
          Image: Input image with ``detect_mat`` denoised via adaptive wavelet
          thresholding. ``rgb`` and ``gray`` are unchanged.
- 
+
 -    Best For:
 -        - Images with spatially varying noise from uneven illumination.
 -        - Preserving colony texture and internal morphology during denoising.
@@ -3773,7 +3773,7 @@ index 714dc5a1..24bc9877 100644
 +        [1] S. G. Chang, B. Yu, and M. Vetterli, "Adaptive wavelet
 +        thresholding for image denoising and compression," *IEEE Trans.
 +        Image Process.*, vol. 9, no. 9, pp. 1532--1546, Sep. 2000.
- 
+
 -    Consider Also:
 -        - :class:`VisuShrinkEnhancer` for faster denoising with a universal
 -          threshold when spatial noise uniformity is acceptable.
@@ -3788,7 +3788,7 @@ index 714dc5a1..24bc9877 100644
 +        [3] M. Mäkitalo and A. Foi, "Optimal inversion of the generalized
 +        Anscombe transformation for Poisson-Gaussian noise," *IEEE Trans.
 +        Image Process.*, vol. 22, no. 1, pp. 91--103, Jan. 2013.
- 
+
      See Also:
          :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a
          visual walkthrough of enhancement pipelines on plate images.
@@ -3802,12 +3802,12 @@ index 3e437ac0..ca44186e 100644
 --- a/src/phenotypic/enhance/_bm3d_denoiser.py
 +++ b/src/phenotypic/enhance/_bm3d_denoiser.py
 @@ -13,60 +13,94 @@ from ..tools_.mixin import _GATSupportMixin
- 
- 
+
+
  class BM3DDenoiser(_GATSupportMixin, ImageDenoiser):
 -    """Denoise ``detect_mat`` with block-matching and 3D collaborative filtering.
 +    """Denoise ``detect_mat`` using block-matching and 3-D collaborative filtering.
- 
+
 -    Groups similar image patches and filters them jointly in the transform
 -    domain, preserving fine colony details while removing structured noise
 -    patterns (scanner artifacts, systematic CCD noise, imaging hardware
@@ -3820,7 +3820,7 @@ index 3e437ac0..ca44186e 100644
 +    further sharpens colony boundaries relative to the initial
 +    hard-thresholding pass. For algorithm details see
 +    :doc:`/explanation/what_enhancement_does`.
- 
+
 -    For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 +    Best For:
 +        - Structured patterned noise from scanner CCD rows or camera
@@ -3844,7 +3844,7 @@ index 3e437ac0..ca44186e 100644
 +          and a universal wavelet threshold is acceptable.
 +        - :class:`MedianFilter` for isolated salt-and-pepper impulse noise
 +          rather than Gaussian or structured noise.
- 
+
      Args:
 -        sigma_psd: Noise standard deviation in [0, 1] normalized scale.
 -            Typical range: 0.01--0.05 for moderate noise, 0.05--0.15 for
@@ -3915,11 +3915,11 @@ index 3e437ac0..ca44186e 100644
 +            8-bit, 65535 for 16-bit). Supply an explicit value when the
 +            ``detect_mat`` was normalised by a range other than the bit-depth
 +            maximum. Only relevant when ``use_gat=True``. Default: ``None``.
- 
+
      Returns:
          Image: Input image with ``detect_mat`` denoised via BM3D
          collaborative filtering. ``rgb`` and ``gray`` are unchanged.
- 
+
 -    Best For:
 -        - Structured camera or scanner noise on plate images.
 -        - Low-light imaging where high ISO introduces patterned noise.
@@ -3947,19 +3947,19 @@ index 3e437ac0..ca44186e 100644
 +        :doc:`/explanation/what_enhancement_does` for background on
 +        block-matching and collaborative filtering.
      """
- 
+
      _GAT_NOISE_PARAMS: ClassVar[dict[str, float]] = {"sigma_psd": 1.0}
 diff --git a/src/phenotypic/enhance/_contrast_streching.py b/src/phenotypic/enhance/_contrast_streching.py
 index 48ffd298..f5c7c16a 100644
 --- a/src/phenotypic/enhance/_contrast_streching.py
 +++ b/src/phenotypic/enhance/_contrast_streching.py
 @@ -12,36 +12,44 @@ from ..abc_ import ContrastAdjustment
- 
- 
+
+
  class ContrastStretching(ContrastAdjustment):
 -    """Stretch the intensity range of detect_mat to fill the full dynamic range.
 +    """Stretch the intensity range of ``detect_mat`` to fill the full dynamic range.
- 
+
 -    Rescales pixel values based on lower and upper percentiles, compressing
 -    outliers (specular highlights, deep shadows) while expanding the range
 -    where colony intensities reside. Simpler and faster than EnhanceLocalContrast, with no
@@ -3986,7 +3986,7 @@ index 48ffd298..f5c7c16a 100644
 +          across the plate and per-tile equalization is needed.
 +        - :class:`FlattenIllumination` when the primary issue is a large-scale
 +          brightness gradient rather than a narrow dynamic range.
- 
+
      Args:
          lower_percentile: Dark clipping point. Pixels below this percentile
 -            are mapped to the minimum. Typical range: 1--5. Default: 2.
@@ -3994,11 +3994,11 @@ index 48ffd298..f5c7c16a 100644
          upper_percentile: Bright clipping point. Pixels above this percentile
 -            are mapped to the maximum. Typical range: 95--99. Default: 98.
 +            are mapped to 1. Typical range: 95--99. Default: 98.
- 
+
      Returns:
          Image: Input image with ``detect_mat`` rescaled to the full dynamic
          range. ``rgb`` and ``gray`` are unchanged.
- 
+
 -    Best For:
 -        - Plates with narrow histograms (under-exposed or low-contrast).
 -        - Normalizing exposure across different imaging sessions.
@@ -4021,12 +4021,12 @@ index c1ae1b31..2f1bd564 100644
 --- a/src/phenotypic/enhance/_enhance_local_contrast.py
 +++ b/src/phenotypic/enhance/_enhance_local_contrast.py
 @@ -11,45 +11,48 @@ from phenotypic.abc_ import ContrastAdjustment
- 
- 
+
+
  class EnhanceLocalContrast(ContrastAdjustment):
 -    """Boost local contrast in detect_mat using adaptive histogram equalization.
 +    """Boost local contrast in ``detect_mat`` using adaptive histogram equalization.
- 
+
 -    Divides detect_mat into tiles and equalizes the histogram within each tile,
 -    with a clip limit that prevents excessive noise amplification. Faint colonies
 -    become more visible and easier to threshold, even when illumination varies
@@ -4035,10 +4035,10 @@ index c1ae1b31..2f1bd564 100644
 +    within each tile, with a clip limit that caps the redistribution gain and
 +    prevents excessive noise amplification. Faint colonies become more visible
 +    and easier to threshold, even when illumination varies across the plate.
- 
+
      For a discussion of contrast enhancement strategies, see
      :doc:`/explanation/what_enhancement_does`.
- 
+
 -    Args:
 -        kernel_size: Tile size for local equalization. Smaller tiles reveal
 -            tiny colonies but amplify agar texture; larger tiles produce
@@ -4062,7 +4062,7 @@ index c1ae1b31..2f1bd564 100644
 +          plate lids.
          - Pre-conditioning before global thresholding (Otsu, Triangle).
          - Early time-point plates where colonies are barely visible.
- 
+
      Consider Also:
          - :class:`ContrastStretching` for a simpler global contrast adjustment
 -          when illumination is already uniform.
@@ -4092,11 +4092,11 @@ index c1ae1b31..2f1bd564 100644
 +    Raises:
 +        ValueError: If the ``detect_mat`` value range is invalid for
 +            equalization.
- 
+
      References:
          [1] S. M. Pizer et al., "Adaptive histogram equalization and its
 @@ -58,9 +61,9 @@ class EnhanceLocalContrast(ContrastAdjustment):
- 
+
      See Also:
          :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a
 -        visual walkthrough of EnhanceLocalContrast before detection.
@@ -4105,19 +4105,19 @@ index c1ae1b31..2f1bd564 100644
 -        contrast enhancement methods.
 +        contrast enhancement methods on real plate images.
      """
- 
+
      kernel_size: int | None = None
 diff --git a/src/phenotypic/enhance/_flatten_illumination.py b/src/phenotypic/enhance/_flatten_illumination.py
 index 5f717f6f..03f2b46c 100644
 --- a/src/phenotypic/enhance/_flatten_illumination.py
 +++ b/src/phenotypic/enhance/_flatten_illumination.py
 @@ -13,30 +13,51 @@ from ..abc_ import BackgroundSubtraction
- 
- 
+
+
  class FlattenIllumination(BackgroundSubtraction):
 -    """Correct uneven illumination in detect_mat using frequency-domain filtering.
 +    """Correct uneven illumination in ``detect_mat`` using homomorphic frequency-domain filtering.
- 
+
 -    Separates illumination (low-frequency) and reflectance (high-frequency)
 +    Separates the illumination (low-frequency) and reflectance (high-frequency)
      components in the log domain, applies differential gains to suppress
@@ -4128,10 +4128,10 @@ index 5f717f6f..03f2b46c 100644
 +    to the linear domain. The result is clipped to [0.0, 1.0]. Particularly
 +    effective for plates with vignetting, scanner lighting bands, or shadow
 +    gradients where spatial-domain subtraction is insufficient.
- 
+
      For how enhancement fits into the pipeline, see
      :doc:`/explanation/what_enhancement_does`.
- 
+
 +    Best For:
 +        - Plates with visible vignetting or radial brightness falloff from
 +          DSLR or flatbed scanner optics.
@@ -4177,13 +4177,13 @@ index 5f717f6f..03f2b46c 100644
 +        eps: Small additive constant before the logarithm to prevent log(0)
 +            on zero-valued pixels. Typical range: 1e-8--1e-4. Rarely needs
 +            adjustment for standard [0, 1] normalised images. Default: 1e-6.
- 
+
      Returns:
          Image: Input image with ``detect_mat`` illumination-corrected and
 @@ -45,22 +66,11 @@ class FlattenIllumination(BackgroundSubtraction):
      Raises:
          ValueError: If ``sigma`` is not positive.
- 
+
 -    Best For:
 -        - Plates with visible vignetting or radial brightness falloff.
 -        - Flatbed scanner images with horizontal brightness bands.
@@ -4204,7 +4204,7 @@ index 5f717f6f..03f2b46c 100644
 +        :doc:`/explanation/what_enhancement_does` for how homomorphic filtering
 +        separates illumination from reflectance.
      """
- 
+
      sigma: float = 200.0
 diff --git a/src/phenotypic/enhance/_focus_blob_log.py b/src/phenotypic/enhance/_focus_blob_log.py
 index cd97d57a..3940bfff 100644
@@ -4212,7 +4212,7 @@ index cd97d57a..3940bfff 100644
 +++ b/src/phenotypic/enhance/_focus_blob_log.py
 @@ -19,56 +19,58 @@ class FocusBlobLoG(FocusBlob):
      """Enhance blob-like colonies in ``detect_mat`` with scale-normalised Laplacian of Gaussian.
- 
+
      Applies LoG filtering across a geometric series of Gaussian sigmas and
 -    returns the maximum response at each pixel. Bright blob-like structures
 -    (colonies, inocula, droplets) produce strong peaks regardless of size,
@@ -4223,9 +4223,9 @@ index cd97d57a..3940bfff 100644
 +    size, making this a robust preprocessing step before thresholding or
 +    GMM-based segmentation. The output ``detect_mat`` is a response map, not a
 +    corrected grayscale image.
- 
+
      For algorithm details, see :doc:`/explanation/what_enhancement_does`.
- 
+
 +    Best For:
 +        - Mixed-size colonies on mature plates where small emerging and large
 +          mature colonies must both be detected in a single pass.
@@ -4266,18 +4266,18 @@ index cd97d57a..3940bfff 100644
 +            ``min_radius / sqrt(2)`` and ``max_radius / sqrt(2)``. More scales
 +            improve size discrimination across the radius range at higher
 +            compute cost. Typical range: 4--20. Default: 12.
- 
+
      Returns:
 -        Image: Input image with ``detect_mat`` replaced by the
 -        scale-normalised LoG response map. ``rgb`` and ``gray`` are
 -        unchanged.
 +        Image: Input image with ``detect_mat`` replaced by the scale-normalised
 +        LoG response map. ``rgb`` and ``gray`` are unchanged.
- 
+
      Raises:
          ValueError: If ``min_radius`` <= 0, ``min_radius`` >= ``max_radius``,
              or ``num_scales`` < 1.
- 
+
 -    Best For:
 -        - Mixed-size colonies on mature plates where small emerging and
 -          large mature colonies must both be detected.
@@ -4305,19 +4305,19 @@ index cd97d57a..3940bfff 100644
 +        :doc:`/explanation/what_enhancement_does` for background on scale-space
 +        blob detection and LoG theory.
      """
- 
+
      min_radius: float = 3.0
 diff --git a/src/phenotypic/enhance/_focus_edge_frangi.py b/src/phenotypic/enhance/_focus_edge_frangi.py
 index b292d773..63e01dfb 100644
 --- a/src/phenotypic/enhance/_focus_edge_frangi.py
 +++ b/src/phenotypic/enhance/_focus_edge_frangi.py
 @@ -11,52 +11,78 @@ from phenotypic.abc_ import FocusEdge
- 
- 
+
+
  class FocusEdgeFrangi(FocusEdge):
 -    """Enhance tubular structures in detect_mat using Hessian-based vesselness filtering.
 +    """Enhance elongated structures in ``detect_mat`` using multi-scale Frangi vesselness filtering.
- 
+
 -    Computes the Frangi vesselness measure from Hessian matrix eigenvalues at
 -    multiple scales, producing a response map that highlights elongated features
 -    (hyphae, branches, mycelial networks). The output is a probability-like map
@@ -4329,7 +4329,7 @@ index b292d773..63e01dfb 100644
 +    map that typically feeds into :class:`FilamentousFungiDetector` or a
 +    hysteresis threshold. For algorithm details see
 +    :doc:`/explanation/filamentous_fungi_algorithm`.
- 
+
 -    For algorithm details, see :doc:`/explanation/filamentous_fungi_algorithm`.
 +    Best For:
 +        - Filamentous fungi (*Neurospora*, *Aspergillus*) with branching
@@ -4350,7 +4350,7 @@ index b292d773..63e01dfb 100644
 +          on plates with uneven illumination.
 +        - :class:`StructureSmoothing` for anisotropic pre-smoothing along
 +          hyphal orientation before ridge detection.
- 
+
      Args:
 -        sigmas: Scales (standard deviations) for Hessian computation. Smaller
 -            values detect finer structures; larger values detect thicker ones.
@@ -4398,7 +4398,7 @@ index b292d773..63e01dfb 100644
 +            ``detect_mat`` convention where hyphae appear bright. ``True``
 +            detects dark ridges on a bright background (e.g. transmitted-light
 +            microscopy). Default: ``False``.
- 
+
      Returns:
 -        Image: Input image with ``detect_mat`` set to the vesselness response
 -        map. ``rgb`` and ``gray`` are unchanged.
@@ -4418,13 +4418,13 @@ index b292d773..63e01dfb 100644
 -          enhancement of filaments.
 +        Image: Input image with ``detect_mat`` replaced by the [0, 1]
 +        vesselness response map. ``rgb`` and ``gray`` are unchanged.
- 
+
      References:
          [1] A. F. Frangi, W. J. Niessen, K. L. Vincken, and M. A. Viergever,
 -        "Multiscale vessel enhancement filtering," in *MICCAI*, 1998,
 +        "Multiscale vessel enhancement filtering," in *Proc. MICCAI*, 1998,
          pp. 130--137.
- 
+
      See Also:
 @@ -64,7 +90,6 @@ class FocusEdgeFrangi(FocusEdge):
          visual walkthrough of filamentous fungi detection.
@@ -4432,19 +4432,19 @@ index b292d773..63e01dfb 100644
          Hessian-based vesselness filtering.
 -
      """
- 
+
      sigmas: tuple[float, ...] = (0.5, 1, 1.5)
 diff --git a/src/phenotypic/enhance/_focus_edge_hessian.py b/src/phenotypic/enhance/_focus_edge_hessian.py
 index d2e34474..0a30e660 100644
 --- a/src/phenotypic/enhance/_focus_edge_hessian.py
 +++ b/src/phenotypic/enhance/_focus_edge_hessian.py
 @@ -11,51 +11,80 @@ from phenotypic.abc_ import FocusEdge
- 
- 
+
+
  class FocusEdgeHessian(FocusEdge):
 -    """Enhance edges and ridge-like structures via multi-scale Hessian filtering.
 +    """Enhance colony boundaries and ridge-like structures via multi-scale Hessian filtering.
- 
+
 -    Computes eigenvalue-based Hessian responses across multiple scales to
 -    highlight colony boundaries, thin filamentous structures, and ridge-like
 -    features in ``detect_mat``. Multi-scale analysis makes detection robust
@@ -4456,7 +4456,7 @@ index d2e34474..0a30e660 100644
 +    ≤ 0) are set to 1, so the output map inverts the agar-to-colony contrast
 +    and is best interpreted as a ridge-strength mask. For algorithm details see
 +    :doc:`/explanation/what_enhancement_does`.
- 
+
 -    For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 +    Best For:
 +        - Sharp colony-agar boundaries on plates with compact bacterial or
@@ -4476,7 +4476,7 @@ index d2e34474..0a30e660 100644
 +          where the analytic shape-parameter optimum is preferred.
 +        - :class:`FocusEdgeLaplace` for simpler single-scale second-derivative
 +          edge detection without multi-scale parameter tuning.
- 
+
      Args:
 -        sigmas: Sequence of standard deviations for Gaussian derivatives.
 -            Smaller values detect finer edges; larger values detect broader
@@ -4530,11 +4530,11 @@ index d2e34474..0a30e660 100644
 +            ``'mirror'``, ``'wrap'``. Default: ``'reflect'``.
 +        cval: Fill value used when ``mode='constant'``. Has no effect for
 +            any other mode. Default: 0.
- 
+
      Returns:
          Image: Input image with ``detect_mat`` replaced by the Hessian
          ridge response map. ``rgb`` and ``gray`` are unchanged.
- 
+
 -    Best For:
 -        - Sharp boundaries between colonies and agar background.
 -        - Thin or elongated structures (filaments, branching) with poor
@@ -4552,7 +4552,7 @@ index d2e34474..0a30e660 100644
 +        [1] A. F. Frangi, W. J. Niessen, K. L. Vincken, and M. A. Viergever,
 +        "Multiscale vessel enhancement filtering," in *Proc. MICCAI*, 1998,
 +        pp. 130--137.
- 
+
      See Also:
          :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a
 diff --git a/src/phenotypic/enhance/_focus_edge_laplace.py b/src/phenotypic/enhance/_focus_edge_laplace.py
@@ -4560,12 +4560,12 @@ index a9e5fa62..5dffe352 100644
 --- a/src/phenotypic/enhance/_focus_edge_laplace.py
 +++ b/src/phenotypic/enhance/_focus_edge_laplace.py
 @@ -12,43 +12,50 @@ from phenotypic.tools_.typing_ import NdArrayField
- 
- 
+
+
  class FocusEdgeLaplace(FocusEdge):
 -    """Enhance colony edges in ``detect_mat`` with a Laplacian operator.
 +    """Enhance colony edges in ``detect_mat`` with a discrete Laplacian operator.
- 
+
 -    Applies a discrete Laplacian that responds to rapid intensity changes,
 -    highlighting colony margins and ring-like features such as swarming
 -    fronts. Useful as a preprocessing step for contour detection, watershed
@@ -4575,9 +4575,9 @@ index a9e5fa62..5dffe352 100644
 +    such as swarming fronts. The output is an edge-response map suitable as a
 +    preprocessing step for contour detection, watershed seeding, or separating
 +    touching colonies.
- 
+
      For algorithm details, see :doc:`/explanation/what_enhancement_does`.
- 
+
 -    Args:
 -        kernel_size: Size of the Laplacian kernel. Smaller values (3)
 -            capture fine edges but amplify noise; larger values (5--7)
@@ -4600,7 +4600,7 @@ index a9e5fa62..5dffe352 100644
 +          phenotyping.
 +        - Generating boundary seeds for watershed segmentation when colonies
 +          are touching.
- 
+
      Consider Also:
 -        - :class:`FocusEdgeHessian` for multi-scale edge and ridge detection
 -          with more tuning control.
@@ -4626,7 +4626,7 @@ index a9e5fa62..5dffe352 100644
 +    Returns:
 +        Image: Input image with ``detect_mat`` replaced by the Laplacian edge
 +        response. ``rgb`` and ``gray`` are unchanged.
- 
+
      See Also:
 -        :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a
 -        visual walkthrough of edge enhancement on plate images.
@@ -4635,19 +4635,19 @@ index a9e5fa62..5dffe352 100644
 +        :doc:`/explanation/what_enhancement_does` for how edge-response maps
 +        fit into the pipeline model.
      """
- 
+
      kernel_size: Optional[int] = 3
 diff --git a/src/phenotypic/enhance/_focus_edge_meijering.py b/src/phenotypic/enhance/_focus_edge_meijering.py
 index 83b9cb9c..de96ad28 100644
 --- a/src/phenotypic/enhance/_focus_edge_meijering.py
 +++ b/src/phenotypic/enhance/_focus_edge_meijering.py
 @@ -11,52 +11,77 @@ from phenotypic.abc_ import FocusEdge
- 
- 
+
+
  class FocusEdgeMeijering(FocusEdge):
 -    """Enhance fine ridge-like structures in ``detect_mat`` with the Meijering neuriteness filter.
 +    """Enhance fine filamentous ridges in ``detect_mat`` using the Meijering neuriteness filter.
- 
+
 -    Computes the Meijering neuriteness measure from Hessian matrix eigenvalues
 -    to highlight elongated, thread-like structures such as delicate filaments,
 -    thin wrinkles, and network-like features. More selective than
@@ -4659,7 +4659,7 @@ index 83b9cb9c..de96ad28 100644
 +    map suited to detecting delicate hyphae, actinomycete filaments, and
 +    fine biofilm ridge networks. For algorithm details see
 +    :doc:`/explanation/what_enhancement_does`.
- 
+
 -    For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 +    Best For:
 +        - Delicate fungal hyphae and actinomycete filaments resolved to
@@ -4681,7 +4681,7 @@ index 83b9cb9c..de96ad28 100644
 +          detection alongside filament ridges is needed.
 +        - :class:`StructureSmoothing` for anisotropic pre-smoothing along
 +          hyphal orientation before this ridge filter.
- 
+
      Args:
 -        sigmas: Sequence of standard deviations for Gaussian derivatives.
 -            Smaller values detect finer structures; larger values detect
@@ -4719,11 +4719,11 @@ index 83b9cb9c..de96ad28 100644
 +            ``'nearest'``, ``'mirror'``. Default: ``'reflect'``.
 +        cval: Fill value used when ``mode='constant'``. Has no effect for
 +            any other mode. Default: 0.
- 
+
      Returns:
          Image: Input image with ``detect_mat`` replaced by the Meijering
          neuriteness response map. ``rgb`` and ``gray`` are unchanged.
- 
+
 -    Best For:
 -        - Delicate filamentous structures too thin for standard detection
 -          (actinomycetes, fungal hyphae, bacterial networks).
@@ -4743,7 +4743,7 @@ index 83b9cb9c..de96ad28 100644
 +        and M. Unser, "Design and validation of a tool for neurite tracing
 +        and analysis in fluorescence microscopy images," *Cytometry Part A*,
 +        vol. 58, no. 2, pp. 167--176, Apr. 2004.
- 
+
      See Also:
 +        :doc:`/tutorials/notebooks/10_detecting_filamentous_fungi` for a
 +        visual walkthrough of filamentous fungi detection using ridge filters.
@@ -4758,12 +4758,12 @@ index 6a0e7de5..ac5fe0c7 100644
 --- a/src/phenotypic/enhance/_focus_edge_phase.py
 +++ b/src/phenotypic/enhance/_focus_edge_phase.py
 @@ -46,64 +46,121 @@ class _PhaseCong3Result:
- 
- 
+
+
  class FocusEdgePhase(FocusEdge):
 -    """Enhance colony edges in ``detect_mat`` with contrast-invariant phase congruency.
 +    """Enhance colony edges in ``detect_mat`` using contrast-invariant phase congruency.
- 
+
 -    Detects features where Fourier components are maximally in phase,
 -    regardless of amplitude. This makes the response invariant to image
 -    contrast and illumination changes, making it ideal for plates with
@@ -4774,7 +4774,7 @@ index 6a0e7de5..ac5fe0c7 100644
 +    scanner vignetting, making faint or translucent colony boundaries visible
 +    even where intensity-gradient methods fail. For algorithm details see
 +    :doc:`/explanation/what_enhancement_does`.
- 
+
 -    For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 +    Best For:
 +        - Colony boundaries that vary in opacity or contrast across the plate
@@ -4794,7 +4794,7 @@ index 6a0e7de5..ac5fe0c7 100644
 +          with explicit blob-sensitivity control.
 +        - :class:`SharpenEdgeGauss` for edge sharpening that preserves the
 +          original intensity profile on uniformly illuminated plates.
- 
+
      Args:
 -        n_scale: Number of wavelet scales. Typical range: 3--6. More
 -            scales capture a wider range of feature sizes. Default: 4.
@@ -4873,13 +4873,13 @@ index 6a0e7de5..ac5fe0c7 100644
 +            continuous curves). ``'m'`` is the minimum eigenvalue (corner and
 +            junction strength). Accepted values: ``'pc_sum'``, ``'M'``,
 +            ``'m'``. Default: ``'pc_sum'``.
- 
+
      Returns:
          Image: Input image with ``detect_mat`` replaced by the phase
 -        congruency map (clipped to [0, 1]). ``rgb`` and ``gray`` are
 -        unchanged.
 +        congruency map, clipped to [0, 1]. ``rgb`` and ``gray`` are unchanged.
- 
+
 -    Best For:
 -        - Colony boundaries independent of colony color or opacity.
 -        - Images with uneven illumination or scanner vignetting.
@@ -4897,7 +4897,7 @@ index 6a0e7de5..ac5fe0c7 100644
 +        ValueError: If ``n_scale`` < 1, ``n_orient`` < 1,
 +            ``min_wavelength`` < 2, ``mult`` <= 1, ``sigma_onf`` outside
 +            [0.1, 1.0], ``k`` < 0, ``cutoff`` outside (0, 1), or ``g`` <= 0.
- 
+
      References:
 -        [1] P. Kovesi, "Image features from phase congruency," *Videre:
 -        J. Comput. Vis. Res.*, vol. 1, no. 3, pp. 1--26, 1999.
@@ -4915,7 +4915,7 @@ index 6a0e7de5..ac5fe0c7 100644
 +        [4] D. J. Field, "Relations between the statistics of natural images
 +        and the response properties of cortical cells," *J. Opt. Soc. Am.
 +        A*, vol. 4, no. 12, pp. 2379--2394, Dec. 1987.
- 
+
      See Also:
          :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a
 -        visual walkthrough of contrast-invariant enhancement on plate
@@ -4929,12 +4929,12 @@ index b53c4af8..8fd56863 100644
 --- a/src/phenotypic/enhance/_focus_edge_sato.py
 +++ b/src/phenotypic/enhance/_focus_edge_sato.py
 @@ -12,52 +12,73 @@ from phenotypic.abc_ import FocusEdge
- 
- 
+
+
  class FocusEdgeSato(FocusEdge):
 -    """Enhance tubular and ridge-like structures in ``detect_mat`` with the Sato tubeness filter.
 +    """Enhance hyphal ridges and tubular colony structures in ``detect_mat`` using the Sato tubeness filter.
- 
+
 -    Computes the Sato tubeness measure from Hessian matrix eigenvalues to
 -    highlight continuous ridge structures such as filamentous colonies,
 -    mycelial networks, and branching morphologies. Less sensitive to
@@ -4945,9 +4945,9 @@ index b53c4af8..8fd56863 100644
 +    produce a response map where bright ridges correspond to continuous
 +    filamentous structures. Intermediates are deleted between scales to
 +    reduce peak memory usage.
- 
+
      For algorithm details, see :doc:`/explanation/what_enhancement_does`.
- 
+
 -    Args:
 -        sigmas: Sequence of standard deviations for Gaussian derivatives.
 -            Smaller values detect finer structures; larger values detect
@@ -4976,7 +4976,7 @@ index b53c4af8..8fd56863 100644
 +        - Branching or root-like colony forms requiring multi-scale detection.
 +        - Plates where hyphal width varies across the image and a single
 +          sigma would miss structures at one end of the size range.
- 
+
      Consider Also:
 -        - :class:`FocusEdgeMeijering` for very fine neurite-like filaments
 -          where higher selectivity is needed.
@@ -5023,7 +5023,7 @@ index b53c4af8..8fd56863 100644
 +        [1] Y. Sato et al., "Three-dimensional multi-scale line filter for
 +        segmentation and visualization of curvilinear structures in medical
 +        images," *Med. Image Anal.*, vol. 2, no. 2, pp. 143--168, Jun. 1998.
- 
+
      See Also:
          :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a
          visual walkthrough of ridge enhancement on plate images.
@@ -5032,19 +5032,19 @@ index b53c4af8..8fd56863 100644
 +        :doc:`/tutorials/notebooks/10_detecting_filamentous_fungi` for
 +        filamentous fungi detection pipelines that use this enhancer.
      """
- 
+
      sigmas: tuple[float, ...] = (1, 2, 3)
 diff --git a/src/phenotypic/enhance/_focus_edge_sobel.py b/src/phenotypic/enhance/_focus_edge_sobel.py
 index 92cbc21f..61135a7c 100644
 --- a/src/phenotypic/enhance/_focus_edge_sobel.py
 +++ b/src/phenotypic/enhance/_focus_edge_sobel.py
 @@ -10,32 +10,38 @@ from phenotypic.abc_ import FocusEdge
- 
- 
+
+
  class FocusEdgeSobel(FocusEdge):
 -    """Highlight colony edges in detect_mat using the Sobel gradient operator.
 +    """Highlight colony edges in ``detect_mat`` using the Sobel gradient operator.
- 
+
 -    Computes the gradient magnitude to emphasize intensity transitions at
 -    colony boundaries. The output is an edge-strength map, not a corrected
 -    image — useful as a preprocessing step before watershed seeds or
@@ -5053,13 +5053,13 @@ index 92cbc21f..61135a7c 100644
 +    intensity transitions at colony boundaries. The output is an edge-strength
 +    map suitable as a preprocessing step before watershed seeding or
 +    contour-based detectors, not a corrected grayscale image.
- 
+
 -    Returns:
 -        Image: Input image with ``detect_mat`` set to gradient magnitude.
 -        ``rgb`` and ``gray`` are unchanged.
 +    For how edge enhancement fits into the pipeline, see
 +    :doc:`/explanation/what_enhancement_does`.
- 
+
      Best For:
 -        - Pre-filtering before watershed or contour-based detection.
 +        - Pre-filtering before watershed or contour-based colony detection.
@@ -5067,7 +5067,7 @@ index 92cbc21f..61135a7c 100644
            segmentation.
 -        - Visualizing colony boundary sharpness for quality assessment.
 +        - Visualizing colony boundary sharpness for image quality assessment.
- 
+
      Consider Also:
 -        - :class:`SharpenEdgeGauss` when you want to sharpen edges without
 -          converting to a pure edge map.
@@ -5082,7 +5082,7 @@ index 92cbc21f..61135a7c 100644
 +    Returns:
 +        Image: Input image with ``detect_mat`` set to the Sobel gradient
 +        magnitude. ``rgb`` and ``gray`` are unchanged.
- 
+
      See Also:
 -        :doc:`/explanation/what_enhancement_does` for how edge enhancement
 -        fits into the pipeline model.
@@ -5091,19 +5091,19 @@ index 92cbc21f..61135a7c 100644
 +        :doc:`/explanation/what_enhancement_does` for how edge-response maps
 +        fit into the pipeline model.
      """
- 
+
      def _operate(self, image: Image) -> Image:
 diff --git a/src/phenotypic/enhance/_gaussian_blur.py b/src/phenotypic/enhance/_gaussian_blur.py
 index 7d3535f4..55913d25 100644
 --- a/src/phenotypic/enhance/_gaussian_blur.py
 +++ b/src/phenotypic/enhance/_gaussian_blur.py
 @@ -10,25 +10,43 @@ from ..abc_ import Smoothing
- 
- 
+
+
  class GaussianBlur(Smoothing):
 -    """Smooth noise in detect_mat using isotropic Gaussian convolution.
 +    """Smooth noise in ``detect_mat`` using isotropic Gaussian convolution.
- 
+
 -    Reduces high-frequency noise, scanner artifacts, and minor agar texture
 +    Reduces high-frequency noise, scanner artefacts, and minor agar texture
      so that downstream thresholding responds to colony signal rather than
@@ -5112,10 +5112,10 @@ index 7d3535f4..55913d25 100644
 +    local pixel variation. Colony edges become more coherent at the cost of
 +    some spatial sharpness; keeping ``sigma`` below the smallest colony radius
 +    avoids merging adjacent colonies.
- 
+
      For a comparison of denoising approaches, see
      :doc:`/explanation/what_enhancement_does`.
- 
+
 +    Best For:
 +        - Plates with visible scanner CCD noise or agar granularity that
 +          triggers false positives in thresholding.
@@ -5147,13 +5147,13 @@ index 7d3535f4..55913d25 100644
 +            ``truncate * sigma`` pixels from center. Larger values include more
 +            of the Gaussian tails with minimal quality improvement beyond 4.0.
 +            Default: 4.0.
- 
+
      Returns:
          Image: Input image with ``detect_mat`` smoothed by the Gaussian
 @@ -37,24 +55,11 @@ class GaussianBlur(Smoothing):
      Raises:
          ValueError: If ``mode`` is not one of the accepted values.
- 
+
 -    Best For:
 -        - Plates with visible scanner noise or agar granularity.
 -        - Pre-filtering before edge-based detectors (Sobel, Canny).
@@ -5176,19 +5176,19 @@ index 7d3535f4..55913d25 100644
 -        denoising methods.
 +        denoising methods on low-light plate images.
      """
- 
+
      sigma: float = 2.0
 diff --git a/src/phenotypic/enhance/_gray_opening.py b/src/phenotypic/enhance/_gray_opening.py
 index 75917d4a..afa8640c 100644
 --- a/src/phenotypic/enhance/_gray_opening.py
 +++ b/src/phenotypic/enhance/_gray_opening.py
 @@ -12,46 +12,52 @@ from phenotypic.tools_.mixin import FootprintMixin
- 
- 
+
+
  class GrayOpening(MorphologicalFiltering, FootprintMixin):
 -    """Remove small bright artifacts from ``detect_mat`` via morphological opening.
 +    """Remove small bright artefacts from ``detect_mat`` via morphological opening.
- 
+
      Applies erosion followed by dilation with a structuring element, removing
 -    bright features smaller than the element while preserving the shape of
 -    larger structures. Effectively suppresses dust particles, small noise
@@ -5197,9 +5197,9 @@ index 75917d4a..afa8640c 100644
 +    preserving larger colony structures. Effectively suppresses dust particles,
 +    small noise speckles, and tiny satellite colonies that would otherwise
 +    generate false detections.
- 
+
      For algorithm details, see :doc:`/explanation/what_enhancement_does`.
- 
+
 +    Best For:
 +        - Removing dust particles and small bright noise from plate scans
 +          before thresholding.
@@ -5234,11 +5234,11 @@ index 75917d4a..afa8640c 100644
 +        n_iter: Number of times to apply the opening in sequence. Repeated
 +            opening with a small element produces smoother suppression than a
 +            single pass with a larger element. Default: 1.
- 
+
      Returns:
          Image: Input image with ``detect_mat`` morphologically opened.
          ``rgb`` and ``gray`` are unchanged.
- 
+
 -    Best For:
 -        - Removing dust particles and small bright noise from plate scans.
 -        - Suppressing tiny satellite colonies that interfere with detection
@@ -5261,19 +5261,19 @@ index 75917d4a..afa8640c 100644
 +        :doc:`/explanation/what_enhancement_does` for how morphological
 +        filtering fits into the pipeline model.
      """
- 
+
      shape: Literal["square", "diamond", "disk"] = "square"
 diff --git a/src/phenotypic/enhance/_image_inverter.py b/src/phenotypic/enhance/_image_inverter.py
 index c4e4ce52..21d7c3c0 100644
 --- a/src/phenotypic/enhance/_image_inverter.py
 +++ b/src/phenotypic/enhance/_image_inverter.py
 @@ -11,37 +11,41 @@ from ..abc_ import ContrastAdjustment
- 
- 
+
+
  class ImageInverter(ContrastAdjustment):
 -    """Invert ``detect_mat`` pixel intensities (negate brightness).
 +    """Invert ``detect_mat`` pixel intensities so dark colonies become bright.
- 
+
 -    Reverses the brightness scale so dark regions become bright and vice
 -    versa. For uint8 data the inversion is ``255 - pixel``; for
 -    floating-point data it is ``max_value - pixel``. Use this when
@@ -5284,7 +5284,7 @@ index c4e4ce52..21d7c3c0 100644
 +    it is ``max_value - pixel``. Corrects for imaging systems or scan settings
 +    that produce colonies as dark regions on a bright background, restoring the
 +    bright-colony-on-dark-background convention expected by downstream detectors.
- 
+
 -    For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 -
 -    Returns:
@@ -5292,7 +5292,7 @@ index c4e4ce52..21d7c3c0 100644
 -        ``rgb`` and ``gray`` are unchanged.
 +    For how polarity correction fits into the pipeline, see
 +    :doc:`/explanation/what_enhancement_does`.
- 
+
      Best For:
 -        - Correcting inverted scan output from imaging systems that
 -          produce dark-on-bright colony images.
@@ -5306,7 +5306,7 @@ index c4e4ce52..21d7c3c0 100644
 +          agar backgrounds.
 +        - Plates where colony boundaries are defined by dark absorption zones
 +          on a bright background.
- 
+
      Consider Also:
 -        - :class:`SetDetectMode` when switching the detection channel
 -          (e.g., to red or green) would resolve the contrast issue.
@@ -5321,7 +5321,7 @@ index c4e4ce52..21d7c3c0 100644
 +    Returns:
 +        Image: Input image with ``detect_mat`` intensity-inverted.
 +        ``rgb`` and ``gray`` are unchanged.
- 
+
      See Also:
 -        :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a
 -        visual walkthrough of enhancement pipelines on plate images.
@@ -5330,19 +5330,19 @@ index c4e4ce52..21d7c3c0 100644
 +        :doc:`/explanation/what_enhancement_does` for how the detect_mat
 +        polarity convention is established.
      """
- 
+
      def _operate(self, image: Image) -> Image:
 diff --git a/src/phenotypic/enhance/_local_edge_denoise.py b/src/phenotypic/enhance/_local_edge_denoise.py
 index ca0ff4f3..fa9d6768 100644
 --- a/src/phenotypic/enhance/_local_edge_denoise.py
 +++ b/src/phenotypic/enhance/_local_edge_denoise.py
 @@ -13,69 +13,97 @@ from ..tools_.mixin import _GATSupportMixin
- 
- 
+
+
  class LocalEdgeDenoise(_GATSupportMixin, ImageDenoiser):
 -    """Denoise ``detect_mat`` with fast, local edge-preserving (bilateral) filtering.
 +    """Denoise ``detect_mat`` with local edge-preserving bilateral filtering.
- 
+
 -    Averages pixel values based on both spatial proximity and intensity
 -    similarity within a *local* neighborhood, preserving sharp colony
 -    boundaries while smoothing uniform regions such as agar background.
@@ -5358,9 +5358,9 @@ index ca0ff4f3..fa9d6768 100644
 +    keeping colony boundaries sharp. The optimal intensity range weight
 +    scales linearly with the image noise floor, so noisier images benefit
 +    from a larger ``sigma_color``.
- 
+
      For algorithm details, see :doc:`/explanation/what_enhancement_does`.
- 
+
 +    Best For:
 +        - Noisy or grainy agar scans from high-ISO photography or older
 +          flatbed scanners where colony edges must remain sharp.
@@ -5441,11 +5441,11 @@ index ca0ff4f3..fa9d6768 100644
 +        gat_scale_factor: Multiplier converting normalized [0, 1] data to
 +            photon counts before the GAT forward pass. ``None`` (default)
 +            auto-detects from image bit depth (8-bit → 255, 16-bit → 65535).
- 
+
      Returns:
          Image: Input image with ``detect_mat`` smoothed by bilateral
          filtering. ``rgb`` and ``gray`` are unchanged.
- 
+
 -    Best For:
 -        - Noisy or grainy agar scans from high-ISO photography or old scanners.
 -        - Plates with surface condensation, dust speckles, or uneven agar
@@ -5466,7 +5466,7 @@ index ca0ff4f3..fa9d6768 100644
 +        [2] M. Mäkitalo and A. Foi, "Optimal inversion of the generalized
 +        Anscombe transformation for Poisson-Gaussian noise," *IEEE Trans.
 +        Image Process.*, vol. 22, no. 1, pp. 91--103, Jan. 2013.
- 
+
      See Also:
          :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a
          visual walkthrough of denoising pipelines on plate images.
@@ -5475,19 +5475,19 @@ index ca0ff4f3..fa9d6768 100644
 +        :doc:`/explanation/what_enhancement_does` for bilateral filter
 +        theory and parameter selection guidance.
      """
- 
+
      _GAT_NOISE_PARAMS: ClassVar[dict[str, float]] = {"sigma_color": 1.0}
 diff --git a/src/phenotypic/enhance/_median_filter.py b/src/phenotypic/enhance/_median_filter.py
 index da6c63b8..44091d1e 100644
 --- a/src/phenotypic/enhance/_median_filter.py
 +++ b/src/phenotypic/enhance/_median_filter.py
 @@ -10,43 +10,52 @@ from skimage.filters import median
- 
- 
+
+
  class MedianFilter(Smoothing):
 -    """Remove impulsive noise from detect_mat while preserving colony edges.
 +    """Remove impulsive noise from ``detect_mat`` while preserving colony edges.
- 
+
 -    Replaces each pixel with the median of its local neighborhood, making it
 -    robust to outlier pixels (condensation droplets, dust specks, sensor noise).
 -    Preserves colony boundaries better than Gaussian smoothing because it does
@@ -5497,7 +5497,7 @@ index da6c63b8..44091d1e 100644
 +    sensor noise spikes. Preserves colony boundaries more faithfully than
 +    Gaussian smoothing because the median operation does not average intensity
 +    across edges.
- 
+
 -    Args:
 -        mode: Boundary handling. Accepted values: ``'nearest'``, ``'reflect'``,
 -            ``'constant'``, ``'mirror'``, ``'wrap'``. Default: ``'nearest'``.
@@ -5513,7 +5513,7 @@ index da6c63b8..44091d1e 100644
 -        are unchanged.
 +    For a comparison of denoising approaches, see
 +    :doc:`/explanation/what_enhancement_does`.
- 
+
      Best For:
 -        - Plates with salt-and-pepper noise or bright/dark speckle artifacts.
 -        - Preserving sharp colony edges during denoising.
@@ -5524,7 +5524,7 @@ index da6c63b8..44091d1e 100644
 +          edge-based detection.
 +        - Pre-filtering before edge-based detectors (Canny, Sobel) where noise
 +          edges must be suppressed without blurring colony margins.
- 
+
      Consider Also:
          - :class:`GaussianBlur` for faster, simpler smoothing when edge
 -          preservation is less critical.
@@ -5536,7 +5536,7 @@ index da6c63b8..44091d1e 100644
 +          with continuous intensity gradients.
          - :class:`RankMedianEnhancer` for configurable rank-based filtering
            with explicit footprint control.
- 
+
 +    Args:
 +        mode: Boundary handling strategy. Accepted values: ``'nearest'``,
 +            ``'reflect'``, ``'constant'``, ``'mirror'``, ``'wrap'``.
@@ -5566,7 +5566,7 @@ index 3c7712e4..2c59db41 100644
 @@ -14,64 +14,101 @@ from ..tools_.mixin import _GATSupportMixin
  class NonLocalMeansDenoiser(_GATSupportMixin, ImageDenoiser):
      """Denoise ``detect_mat`` with non-local means patch-based filtering.
- 
+
 -    Compares patches across the image to identify similar structures and
 -    averages them, preserving thin colony boundaries and internal texture
 -    better than simple Gaussian or median filtering. Particularly effective
@@ -5576,9 +5576,9 @@ index 3c7712e4..2c59db41 100644
 +    arrayed colony plates to remove noise while preserving thin colony
 +    boundaries. Stronger than bilateral filtering for images with repetitive
 +    agar background patterns, at higher computational cost.
- 
+
      For algorithm details, see :doc:`/explanation/what_enhancement_does`.
- 
+
 -    Args:
 -        patch_size: Size of patches used for comparison in pixels. Larger
 -            patches capture more structure but are slower. Typical range:
@@ -5620,7 +5620,7 @@ index 3c7712e4..2c59db41 100644
 +          similar patches for effective averaging.
 +        - Pre-filtering before edge detection to reduce noise without
 +          amplifying gradients.
- 
+
      Consider Also:
 -        - :class:`BM3DDenoiser` for state-of-the-art structured noise
 -          removal at higher computational cost.
@@ -5695,7 +5695,7 @@ index 3c7712e4..2c59db41 100644
 +        [3] M. Mäkitalo and A. Foi, "Optimal inversion of the generalized
 +        Anscombe transformation for Poisson-Gaussian noise," *IEEE Trans.
 +        Image Process.*, vol. 22, no. 1, pp. 91--103, Jan. 2013.
- 
+
      See Also:
          :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a
          visual walkthrough of denoising pipelines on plate images.
@@ -5704,16 +5704,16 @@ index 3c7712e4..2c59db41 100644
 +        :doc:`/explanation/what_enhancement_does` for patch-similarity
 +        denoising theory and parameter selection guidance.
      """
- 
+
      _GAT_NOISE_PARAMS: ClassVar[dict[str, float]] = {"h": 1.0, "sigma": 1.0}
 diff --git a/src/phenotypic/enhance/_rank_median_enhancer.py b/src/phenotypic/enhance/_rank_median_enhancer.py
 index 702673a4..6ec65a85 100644
 --- a/src/phenotypic/enhance/_rank_median_enhancer.py
 +++ b/src/phenotypic/enhance/_rank_median_enhancer.py
 @@ -22,35 +22,47 @@ class RankMedianEnhancer(Smoothing):
- 
+
      For algorithm details, see :doc:`/explanation/what_enhancement_does`.
- 
+
 +    Best For:
 +        - Salt-and-pepper or impulsive noise from sensor defects or scanner
 +          CCD artifacts.
@@ -5750,11 +5750,11 @@ index 702673a4..6ec65a85 100644
 +        shift_y: Vertical offset of the footprint centre in pixels.
 +            Non-zero values shift the filter kernel to correct for
 +            directional streak artefacts. Default: 0.
- 
+
      Returns:
          Image: Input image with ``detect_mat`` median-filtered. ``rgb``
          and ``gray`` are unchanged.
- 
+
 -    Best For:
 -        - Salt-and-pepper or impulsive noise from sensor defects.
 -        - Dust speckles and pixel-level artifacts on scanned plates.
@@ -5774,20 +5774,20 @@ index 702673a4..6ec65a85 100644
 +        :doc:`/explanation/what_enhancement_does` for background on rank
 +        filtering and its role in colony detection pipelines.
      """
- 
+
      shape: str = "square"
 diff --git a/src/phenotypic/enhance/_set_detect_mode.py b/src/phenotypic/enhance/_set_detect_mode.py
 index c40d8a72..ae4d8958 100644
 --- a/src/phenotypic/enhance/_set_detect_mode.py
 +++ b/src/phenotypic/enhance/_set_detect_mode.py
 @@ -14,34 +14,40 @@ class SetDetectMode(ImageOperation):
- 
+
      Resets ``detect_mat`` to a fresh copy of the chosen channel, discarding
      any enhancements applied so far. Useful when different pipeline stages
 -    need to operate on different color channels.
 +    need to operate on different color channels or when a specific channel
 +    provides superior colony-background contrast for downstream detection.
- 
+
 -    For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 +    For background on channel selection, see
 +    :doc:`/explanation/what_enhancement_does`.
@@ -5803,7 +5803,7 @@ index c40d8a72..ae4d8958 100644
 +    Consider Also:
 +        - :class:`ImageInverter` when the issue is inverted intensity
 +          polarity rather than channel selection.
- 
+
      Args:
 -        mode: Channel to use for the detection matrix. Accepted values:
 +        mode: Channel to use as the detection matrix. Accepted values:
@@ -5812,7 +5812,7 @@ index c40d8a72..ae4d8958 100644
 +            ``'MinRGB'`` (per-pixel minimum across R/G/B),
 +            ``'LabL'``, ``'LabA'``, ``'LabB'``, ``'HsvS'``, ``'HsvV'``,
 +            ``'InvS'``.
- 
+
      Returns:
          Image: Input image with ``detect_mode`` and ``detect_mat``
 -        updated to the chosen channel.
@@ -5830,14 +5830,14 @@ index c40d8a72..ae4d8958 100644
 -          rather than channel selection.
 +        updated to the chosen channel. Prior enhancements to
 +        ``detect_mat`` are discarded.
- 
+
      See Also:
          :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a
 -        visual walkthrough of channel selection strategies.
 +        visual walkthrough of channel selection strategies on plate
 +        images.
      """
- 
+
      mode: DetectMode = "gray"
 diff --git a/src/phenotypic/enhance/_sharpen_edge_gauss.py b/src/phenotypic/enhance/_sharpen_edge_gauss.py
 index c4927498..b27f0bbe 100644
@@ -5849,9 +5849,9 @@ index c4927498..b27f0bbe 100644
      indistinct colony edges more pronounced, improving thresholding and
 -    edge-detection accuracy.
 +    edge-detection accuracy downstream.
- 
+
      For algorithm details, see :doc:`/explanation/what_enhancement_does`.
- 
+
 -    Args:
 -        radius: Standard deviation of the Gaussian blur in pixels.
 -            Controls the scale of features enhanced. Small values
@@ -5885,7 +5885,7 @@ index c4927498..b27f0bbe 100644
 +          mildly blurred images.
 +        - Plates with slight lens or scanner defocus that softens colony
 +          boundaries.
- 
+
      Consider Also:
          - :class:`LocalEdgeDenoise` for denoising before sharpening on
 -          grainy images to avoid amplifying noise.
@@ -5920,7 +5920,7 @@ index c4927498..b27f0bbe 100644
 +    Raises:
 +        ValueError: If ``radius`` is not positive.
 +        ValueError: If ``n_iter`` is less than 1.
- 
+
      See Also:
          :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a
 diff --git a/src/phenotypic/enhance/_structure_smoothing.py b/src/phenotypic/enhance/_structure_smoothing.py
@@ -5928,12 +5928,12 @@ index 53f3acd3..b87cd4d9 100644
 --- a/src/phenotypic/enhance/_structure_smoothing.py
 +++ b/src/phenotypic/enhance/_structure_smoothing.py
 @@ -15,56 +15,77 @@ from ..abc_ import Smoothing
- 
- 
+
+
  class StructureSmoothing(Smoothing):
 -    """Enhance filamentous structures via anisotropic coherence-enhancing diffusion.
 +    """Enhance filamentous structures in ``detect_mat`` via coherence-enhancing anisotropic diffusion.
- 
+
 -    Smooths ``detect_mat`` preferentially along coherent structures (lines,
 -    ridges, edges) while preserving boundaries perpendicular to them. Uses the
 -    structure tensor to estimate local orientation and applies directional
@@ -5944,9 +5944,9 @@ index 53f3acd3..b87cd4d9 100644
 +    estimates local orientation at each step, and the diffusion tensor
 +    is oriented to follow elongated features such as fungal hyphae, streak
      inoculations, and branching colony morphologies.
- 
+
      For algorithm details, see :doc:`/explanation/what_enhancement_does`.
- 
+
 -    Args:
 -        num_iter: Number of diffusion iterations. Typical range: 5--100.
 -            Small values (5--10) give subtle enhancement; medium values
@@ -5984,7 +5984,7 @@ index 53f3acd3..b87cd4d9 100644
 +          or :class:`FocusEdgeMeijering` to reduce noise without erasing
 +          tubular structures.
 +        - Faint elongated features in low-contrast or noisy plate scans.
- 
+
      Consider Also:
          - :class:`LocalEdgeDenoise` for isotropic edge-preserving denoising
 -          of round colonies without directional features.
@@ -6041,7 +6041,7 @@ index 53f3acd3..b87cd4d9 100644
 +        ValueError: If ``num_iter`` < 1, ``dt`` is not in (0, 0.125],
 +            ``sigma`` <= 0, ``rho`` < ``sigma``, ``alpha`` not in (0, 1),
 +            or ``C`` not in (0, 100].
- 
+
      References:
          [1] J. Weickert, "Coherence-enhancing diffusion filtering," *Int.
 @@ -73,8 +94,10 @@ class StructureSmoothing(Smoothing):
@@ -6054,7 +6054,7 @@ index 53f3acd3..b87cd4d9 100644
 -        anisotropic diffusion and structure tensor analysis.
 +        anisotropic diffusion and the structure tensor.
      """
- 
+
      model_config = ConfigDict(populate_by_name=True)
 diff --git a/src/phenotypic/enhance/_subtract_gaussian.py b/src/phenotypic/enhance/_subtract_gaussian.py
 index 0e7a5dd7..9648fe1e 100644
@@ -6063,7 +6063,7 @@ index 0e7a5dd7..9648fe1e 100644
 @@ -15,44 +15,61 @@ from phenotypic.abc_ import BackgroundSubtraction
  class SubtractGaussian(BackgroundSubtraction):
      """Remove background from ``detect_mat`` by subtracting a Gaussian-blurred estimate.
- 
+
 -    Estimates a smooth background via Gaussian blur and subtracts it,
 -    removing gradual illumination gradients (vignetting, agar thickness,
 -    scanner shading) while retaining sharp colony features. Improves
@@ -6072,9 +6072,9 @@ index 0e7a5dd7..9648fe1e 100644
 +    vignetting, agar thickness variation, and scanner shading while retaining
 +    sharp colony features. The result is clipped to [0, 1] and improves
      downstream thresholding and edge detection.
- 
+
      For algorithm details, see :doc:`/explanation/what_enhancement_does`.
- 
+
 +    Best For:
 +        - Correcting uneven illumination gradients across the scan bed or
 +          plate.
@@ -6127,11 +6127,11 @@ index 0e7a5dd7..9648fe1e 100644
 +        n_iter: Number of successive background-subtraction passes.
 +            Additional passes remove residual gradients left after the
 +            first subtraction. Typical range: 1--3. Default: 1.
- 
+
      Returns:
          Image: Input image with ``detect_mat`` background-subtracted and
          clipped to [0, 1]. ``rgb`` and ``gray`` are unchanged.
- 
+
 -    Best For:
 -        - Correcting uneven lighting across plates or scan beds.
 -        - Flattening background to enhance dark colonies on bright agar.
@@ -6147,7 +6147,7 @@ index 0e7a5dd7..9648fe1e 100644
 -          than illumination gradients.
 +    Raises:
 +        ValueError: If ``n_iter`` is less than 1.
- 
+
      See Also:
          :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a
 diff --git a/src/phenotypic/enhance/_subtract_opening.py b/src/phenotypic/enhance/_subtract_opening.py
@@ -6155,16 +6155,16 @@ index 834b0ebd..2083503b 100644
 --- a/src/phenotypic/enhance/_subtract_opening.py
 +++ b/src/phenotypic/enhance/_subtract_opening.py
 @@ -16,42 +16,48 @@ class SubtractOpening(BackgroundSubtraction, FootprintMixin):
- 
+
      Computes the white top-hat transform (original minus morphological
      opening) using OpenCV's C++/SIMD backend, isolating bright foreground
 -    structures smaller than the structuring element while removing
 +    structures smaller than the structuring element while discarding
      slow-varying background intensity. Significantly faster than
      scikit-image equivalents for high-throughput workflows.
- 
+
      For algorithm details, see :doc:`/explanation/what_enhancement_does`.
- 
+
 -    Args:
 -        shape: Structuring element geometry. ``'disk'`` (default) gives
 -            isotropic removal suited to round colonies; ``'square'`` is
@@ -6193,7 +6193,7 @@ index 834b0ebd..2083503b 100644
 +          structuring element is acceptable.
 +        - Drop-in acceleration when :class:`SubtractRollingBall` is the
 +          accuracy reference but runtime is the constraint.
- 
+
      Consider Also:
          - :class:`SubtractRollingBall` for parabolic background estimation
 -          that handles gradual intensity ramps more accurately.
@@ -6225,7 +6225,7 @@ index 834b0ebd..2083503b 100644
 +        Image: Input image with ``detect_mat`` containing only foreground
 +        structures smaller than the structuring element. ``rgb`` and
 +        ``gray`` are unchanged.
- 
+
      See Also:
          :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a
 diff --git a/src/phenotypic/enhance/_subtract_rolling_ball.py b/src/phenotypic/enhance/_subtract_rolling_ball.py
@@ -6234,7 +6234,7 @@ index 403e1338..a6bfbd8a 100644
 +++ b/src/phenotypic/enhance/_subtract_rolling_ball.py
 @@ -15,40 +15,47 @@ class SubtractRollingBall(BackgroundSubtraction):
      """Remove background from ``detect_mat`` with ImageJ-style rolling-ball subtraction.
- 
+
      Models the background as the surface traced by rolling a parabolic ball
 -    under the image intensity landscape, then subtracts it. Effectively
 -    removes slow illumination gradients and agar shading while preserving
@@ -6244,9 +6244,9 @@ index 403e1338..a6bfbd8a 100644
 +    illumination gradients and agar shading while preserving colony
 +    structures, and handles non-Gaussian intensity ramps better than
 +    Gaussian-based subtraction.
- 
+
      For algorithm details, see :doc:`/explanation/what_enhancement_does`.
- 
+
 -    Args:
 -        radius: Rolling-ball radius in pixels. Must be larger than the
 -            typical colony diameter to avoid subtracting colony signal.
@@ -6270,7 +6270,7 @@ index 403e1338..a6bfbd8a 100644
 -          subtraction leaves residual background.
 +        - Images where Gaussian subtraction leaves residual background
 +          near plate edges or bright corners.
- 
+
      Consider Also:
 -        - :class:`SubtractGaussian` for faster Gaussian-based subtraction
 -          with continuous sigma control.
@@ -6301,7 +6301,7 @@ index 403e1338..a6bfbd8a 100644
 +    Returns:
 +        Image: Input image with ``detect_mat`` background-subtracted.
 +        ``rgb`` and ``gray`` are unchanged.
- 
+
      See Also:
          :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a
 diff --git a/src/phenotypic/enhance/_subtract_white_tophat.py b/src/phenotypic/enhance/_subtract_white_tophat.py
@@ -6314,9 +6314,9 @@ index 7bdd7f07..59f390bb 100644
      specks, glare highlights, and condensation artifacts while preserving
 -    larger colony structures.
 +    larger colony structures intact.
- 
+
      For algorithm details, see :doc:`/explanation/what_enhancement_does`.
- 
+
 -    Args:
 -        shape: Footprint geometry. ``'diamond'`` (default) or ``'disk'``
 -            provide isotropic behavior; ``'square'`` can align with sensor
@@ -6340,7 +6340,7 @@ index 7bdd7f07..59f390bb 100644
            detection.
 +        - Cleaning up dust and condensation artifacts that confuse
 +          downstream segmentation.
- 
+
      Consider Also:
 -        - :class:`WhiteTophatEnhance` when you want to isolate (not
 -          suppress) small bright structures.
@@ -6370,14 +6370,14 @@ index 7bdd7f07..59f390bb 100644
 +
 +    Raises:
 +        ValueError: If an unsupported footprint shape is provided.
- 
+
      See Also:
          :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a
          visual walkthrough of artifact removal on plate images.
 +        :doc:`/explanation/what_enhancement_does` for background on
 +        top-hat transforms and artifact suppression strategies.
      """
- 
+
      shape: str = "diamond"
 diff --git a/src/phenotypic/enhance/_visushrink_enhancer.py b/src/phenotypic/enhance/_visushrink_enhancer.py
 index 85e4c275..8a1c0aef 100644
@@ -6386,7 +6386,7 @@ index 85e4c275..8a1c0aef 100644
 @@ -14,64 +14,110 @@ from ..tools_.mixin import _GATSupportMixin
  class VisuShrinkEnhancer(_GATSupportMixin, ImageDenoiser):
      """Denoise ``detect_mat`` with universal VisuShrink wavelet thresholding.
- 
+
 -    Applies wavelet-domain denoising with a single universal threshold across
 -    all subbands, designed to remove all Gaussian noise with high probability.
 -    Faster than :class:`BayesShrinkEnhancer` but may over-smooth regions with
@@ -6397,9 +6397,9 @@ index 85e4c275..8a1c0aef 100644
 +    with the auto-estimated sigma is conservative and can over-smooth; the
 +    skimage gallery recommends supplying a manual sigma below the
 +    auto-estimate (e.g. half) for better visual quality.
- 
+
      For algorithm details, see :doc:`/explanation/what_enhancement_does`.
- 
+
 -    Args:
 -        sigma: Noise standard deviation in [0, 1] scale. ``None`` (default)
 -            auto-estimates via MAD. Typical range: 0.01--0.05 for moderate
@@ -6439,7 +6439,7 @@ index 85e4c275..8a1c0aef 100644
 +          detection or thresholding.
 +        - Batch pipelines where a single universal threshold is preferred
 +          over per-subband tuning.
- 
+
      Consider Also:
 -        - :class:`BayesShrinkEnhancer` for adaptive thresholding that
 -          preserves more detail in regions with varying noise levels.
@@ -6516,7 +6516,7 @@ index 85e4c275..8a1c0aef 100644
 +    Returns:
 +        Image: Input image with ``detect_mat`` denoised via universal wavelet
 +        thresholding. ``rgb`` and ``gray`` are unchanged.
- 
+
      References:
          [1] D. L. Donoho and I. M. Johnstone, "Ideal spatial adaptation by
          wavelet shrinkage," *Biometrika*, vol. 81, no. 3, pp. 425--455,
@@ -6524,7 +6524,7 @@ index 85e4c275..8a1c0aef 100644
 +        [2] M. Mäkitalo and A. Foi, "Optimal inversion of the generalized
 +        Anscombe transformation for Poisson-Gaussian noise," *IEEE Trans.
 +        Image Process.*, vol. 22, no. 1, pp. 91--103, Jan. 2013.
- 
+
      See Also:
          :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a
          visual walkthrough of denoising pipelines on plate images.
@@ -6535,16 +6535,16 @@ index 85e4c275..8a1c0aef 100644
 +        :doc:`/explanation/what_enhancement_does` for background on wavelet
 +        thresholding and the VisuShrink threshold derivation.
      """
- 
+
      _GAT_NOISE_PARAMS: ClassVar[dict[str, float]] = {"sigma": 1.0}
 diff --git a/src/phenotypic/enhance/_white_tophat_enhance.py b/src/phenotypic/enhance/_white_tophat_enhance.py
 index 11c0a9d0..1200b16b 100644
 --- a/src/phenotypic/enhance/_white_tophat_enhance.py
 +++ b/src/phenotypic/enhance/_white_tophat_enhance.py
 @@ -22,40 +22,49 @@ class WhiteTophatEnhance(MorphologicalFiltering):
- 
+
      For algorithm details, see :doc:`/explanation/what_enhancement_does`.
- 
+
 +    Best For:
 +        - Isolating small bright colonies from larger background structures
 +          or broad illumination gradients.
@@ -6581,7 +6581,7 @@ index 11c0a9d0..1200b16b 100644
 +            diameter you want to isolate. ``None`` (default) auto-derives
 +            a small value as approximately 0.4 % of the shorter image
 +            dimension.
- 
+
      Returns:
 -        Image: Input image with ``detect_mat`` containing only the
 -        extracted small bright structures. ``rgb`` and ``gray`` are
@@ -6589,10 +6589,10 @@ index 11c0a9d0..1200b16b 100644
 +        Image: Input image with ``detect_mat`` replaced by the white
 +        top-hat result, containing only the extracted small bright
 +        structures. ``rgb`` and ``gray`` are unchanged.
- 
+
      Raises:
          ValueError: If an unsupported footprint shape is provided.
- 
+
 -    Best For:
 -        - Isolating small bright colonies from larger background structures.
 -        - Highlighting faint small colonies against uneven illumination.
@@ -6613,19 +6613,19 @@ index 11c0a9d0..1200b16b 100644
 +        :doc:`/explanation/what_enhancement_does` for background on
 +        top-hat transforms and feature isolation strategies.
      """
- 
+
      shape: str = "disk"
 diff --git a/src/phenotypic/refine/_extract_colony_core.py b/src/phenotypic/refine/_extract_colony_core.py
 index 4c584957..a9ece572 100644
 --- a/src/phenotypic/refine/_extract_colony_core.py
 +++ b/src/phenotypic/refine/_extract_colony_core.py
 @@ -13,61 +13,67 @@ from ..abc_ import ObjectRefiner
- 
- 
+
+
  class ExtractColonyCore(ObjectRefiner):
 -    """Extract compact bright cores from labeled colonies using Gaussian mixture modeling.
 +    """Extract the bright inoculum core from each colony using Gaussian mixture modeling.
- 
+
 -    Fits a two-component GMM to each colony's intensity histogram, separating
 -    the bright inoculum core from the dimmer surrounding halo. Regions with
 -    insufficient intensity contrast are left unchanged. Morphological
@@ -6635,7 +6635,7 @@ index 4c584957..a9ece572 100644
 +    Regions with insufficient intensity contrast are left unchanged; morphological
 +    opening and closing refine the extracted core shape. Returns an image whose
 +    ``objmap`` contains core-only masks rather than full colony footprints.
- 
+
 -    For algorithm details, see :doc:`/explanation/refinement_strategies`.
 +    For an overview of refinement strategies, see
 +    :doc:`/explanation/refinement_strategies`.
@@ -6655,7 +6655,7 @@ index 4c584957..a9ece572 100644
 +          detection step rather than a post-detection refinement.
 +        - :class:`RemoveNonCircular` for shape-based filtering when halos distort
 +          circularity measurements without requiring intensity separation.
- 
+
      Args:
 -        n_components: Number of Gaussian components per region. Keep at 2
 -            for canonical core-vs-surround splitting; higher values risk
@@ -6691,12 +6691,12 @@ index 4c584957..a9ece572 100644
 +            morphological closing applied after opening. Fills small gaps and
 +            holes within the core mask. Set to 0 to disable. Typical range: 0--5.
              Default: 2.
- 
+
      Returns:
 -        Image: Input image with ``objmap`` refined to bright-core masks.
 +        Image: Input image with ``objmap`` updated so each labeled region
 +        contains only the bright core pixels; ``objmask`` is unchanged.
- 
+
      Raises:
 -        ValueError: If ``n_components`` is not a positive integer or if
 -            ``separation_threshold`` is negative.
@@ -6720,7 +6720,7 @@ index 4c584957..a9ece572 100644
 -          halos distort circularity measurements.
 +        pydantic.ValidationError: If a parameter is given a value of the wrong
 +            type (e.g. a non-numeric ``separation_threshold``).
- 
+
      See Also:
 -        :doc:`/how_to/notebooks/refine_noisy_boundaries` for core
 -        extraction workflows.
@@ -6729,19 +6729,19 @@ index 4c584957..a9ece572 100644
 +        :doc:`/how_to/notebooks/refine_noisy_boundaries` for core extraction
 +        workflows on real plate images.
      """
- 
+
      n_components: int = 2
 diff --git a/src/phenotypic/refine/_grid_alignment_refiner.py b/src/phenotypic/refine/_grid_alignment_refiner.py
 index 8c012fad..7f0e327f 100644
 --- a/src/phenotypic/refine/_grid_alignment_refiner.py
 +++ b/src/phenotypic/refine/_grid_alignment_refiner.py
 @@ -20,57 +20,67 @@ from phenotypic.tools_.funcs_ import validate_operation_integrity
- 
- 
+
+
  class GridAlignmentRefiner(GridInferenceMixin, ObjectRefiner):
 -    """Retain only grid-aligned colonies by keeping the dominant object per cell.
 +    """Enforce grid structure by retaining the dominant object per grid cell.
- 
+
 -    Infers or reads grid geometry, partitions the image into cells, and keeps
 -    one object per cell according to the chosen selection strategy. Off-grid
 -    artifacts, dust, and spurious detections are removed, enforcing regular
@@ -6752,7 +6752,7 @@ index 8c012fad..7f0e327f 100644
 +    outside expected colony positions are removed. For ``GridImage`` inputs the
 +    grid layout is read directly; for plain ``Image`` inputs it is estimated
 +    from the detected mask.
- 
+
 -    Args:
 -        smoothing_sigma: Gaussian smoothing sigma for row/column intensity
 -            profiles during grid inference. Typical range: 0.5--5.0.
@@ -6778,7 +6778,7 @@ index 8c012fad..7f0e327f 100644
 -        ValueError: If grid inference fails or image lacks detection results.
 +    For an overview of grid refinement strategies, see
 +    :doc:`/explanation/refinement_strategies`.
- 
+
      Best For:
          - High-throughput arrayed plates (96-well, 384-well, pinned cultures)
            where colonies should align with known well positions.
@@ -6789,7 +6789,7 @@ index 8c012fad..7f0e327f 100644
 +          that survived threshold-based detection.
 +        - Experiments that require exactly one colony label per grid position
 +          before downstream measurement.
- 
+
      Consider Also:
 -        - :class:`RefineBySineFit` when colony intensities are
 -          heterogeneous and rank-based correlation improves grid estimation.
@@ -6832,7 +6832,7 @@ index 8c012fad..7f0e327f 100644
 +
 +    Raises:
 +        ValueError: If grid inference fails or the image lacks detection results.
- 
+
      See Also:
 -        :doc:`/how_to/notebooks/refine_noisy_boundaries` for grid-based
 -        cleanup workflows.
@@ -6841,19 +6841,19 @@ index 8c012fad..7f0e327f 100644
 +        :doc:`/how_to/notebooks/refine_noisy_boundaries` for grid-based cleanup
 +        workflows on real plate images.
      """
- 
+
      smoothing_sigma: float = 2.0
 diff --git a/src/phenotypic/refine/_grid_oversized_object_remover.py b/src/phenotypic/refine/_grid_oversized_object_remover.py
 index a3d4c569..c726c8ce 100644
 --- a/src/phenotypic/refine/_grid_oversized_object_remover.py
 +++ b/src/phenotypic/refine/_grid_oversized_object_remover.py
 @@ -13,37 +13,40 @@ from phenotypic.schema import BBOX
- 
- 
+
+
  class GridOversizedObjectRemover(GridObjectRefiner):
 -    """Remove objects whose bounding box exceeds the maximum grid cell dimension.
 +    """Discard objects whose bounding box equals or exceeds the maximum grid cell span.
- 
+
 -    Compares each object's width and height against the largest cell span in
 -    the grid and discards objects that match or exceed it. Eliminates merged
 -    colonies, agar rim intrusions, and segmentation spillover that span
@@ -6863,13 +6863,13 @@ index a3d4c569..c726c8ce 100644
 +    This eliminates merged colonies spanning adjacent grid positions, agar-rim
 +    intrusions, and segmentation spillover that the grid layout guarantees are
 +    not single confined colonies.
- 
+
 -    Returns:
 -        Image: Input image with ``objmap`` and ``objmask`` updated to exclude
 -        objects exceeding the grid cell size.
 +    For an overview of grid refinement strategies, see
 +    :doc:`/explanation/refinement_strategies`.
- 
+
      Best For:
 -        - Dropping merged blobs that span adjacent grid positions.
 -        - Removing strong edge artifacts near the plate rim that intrude
@@ -6882,7 +6882,7 @@ index a3d4c569..c726c8ce 100644
 +          spanning two or more adjacent grid positions.
 +        - Removing strong edge or rim artefacts that intrude into the grid area
 +          and produce abnormally large detected regions.
- 
+
      Consider Also:
 -        - :class:`KeepSectionLargest` when you want to keep the single
 -          largest object per cell rather than removing oversized ones.
@@ -6898,7 +6898,7 @@ index a3d4c569..c726c8ce 100644
 +    Returns:
 +        Image: Input image with ``objmap`` and ``objmask`` updated to exclude
 +        objects whose bounding box equals or exceeds the maximum grid cell size.
- 
+
      See Also:
          :doc:`/how_to/notebooks/refine_noisy_boundaries` for grid-based
 -        refinement workflows.
@@ -6906,19 +6906,19 @@ index a3d4c569..c726c8ce 100644
 -        grid refinement strategies.
 +        refinement workflows on real plate images.
      """
- 
+
      def _operate(self, image: GridImage) -> GridImage:
 diff --git a/src/phenotypic/refine/_keep_nearest_center.py b/src/phenotypic/refine/_keep_nearest_center.py
 index 1a7dd8dd..ab61edc0 100644
 --- a/src/phenotypic/refine/_keep_nearest_center.py
 +++ b/src/phenotypic/refine/_keep_nearest_center.py
 @@ -12,35 +12,42 @@ from phenotypic.schema import BBOX
- 
- 
+
+
  class KeepNearestCenter(ObjectRefiner):
 -    """Retain only the object whose centroid is closest to the image center.
 +    """Retain only the object whose bounding-box center lies closest to the image center.
- 
+
 -    Computes the Euclidean distance from each object's centroid to the image
 -    center and keeps the single nearest object, removing all others. Useful
 -    for per-cell crops where the intended colony sits near the center and
@@ -6929,13 +6929,13 @@ index 1a7dd8dd..ab61edc0 100644
 +    produces an ``objmap`` with at most one labeled region. It is most effective on
 +    per-cell crops where the intended colony occupies the center of the field and
 +    peripheral detections are debris or bleed-through from adjacent wells.
- 
+
 -    Returns:
 -        Image: Input image with ``objmap`` reduced to the single most centered
 -        object.
 +    For an overview of refinement approaches, see
 +    :doc:`/explanation/refinement_strategies`.
- 
+
      Best For:
 -        - Single-colony crops from grid plates where debris appears near edges.
 -        - Automated pipelines that assume one colony per field-of-view.
@@ -6946,7 +6946,7 @@ index 1a7dd8dd..ab61edc0 100644
 +          and need a robust single-object guarantee.
 +        - Post-crop cleanup on images extracted from 96-well or 384-well grids
 +          where bleed-through from neighbouring cells is visible at the edges.
- 
+
      Consider Also:
          - :class:`KeepSectionLargest` when the largest object per grid cell is
 -          more reliable than the most centered.
@@ -6964,7 +6964,7 @@ index 1a7dd8dd..ab61edc0 100644
 +        Image: Input image with ``objmap`` reduced to the single object whose
 +        bounding-box center is closest to the image center; all other objects
 +        are set to background.
- 
+
      See Also:
 -        :doc:`/how_to/notebooks/refine_noisy_boundaries` for boundary cleanup
 -        workflows.
@@ -6973,19 +6973,19 @@ index 1a7dd8dd..ab61edc0 100644
 +        :doc:`/how_to/notebooks/refine_noisy_boundaries` for single-object
 +        cleanup workflows on cropped plate images.
      """
- 
+
      def _operate(self, image: Image):
 diff --git a/src/phenotypic/refine/_keep_section_largest.py b/src/phenotypic/refine/_keep_section_largest.py
 index 9b886c6f..261def5f 100644
 --- a/src/phenotypic/refine/_keep_section_largest.py
 +++ b/src/phenotypic/refine/_keep_section_largest.py
 @@ -14,35 +14,42 @@ from phenotypic.schema import OBJECT
- 
- 
+
+
  class KeepSectionLargest(GridObjectRefiner):
 -    """Retain only the largest object within each grid section by area.
 +    """Retain only the largest object by area within each grid section.
- 
+
 -    Measures the pixel area of every detected object, groups them by grid
 -    cell, and keeps only the largest per cell. Smaller fragments, debris,
 -    and secondary detections within each grid position are removed.
@@ -6994,13 +6994,13 @@ index 9b886c6f..261def5f 100644
 +    Fragments, debris, and secondary detections within each grid position are
 +    removed, yielding at most one colony label per well. Requires a
 +    ``GridImage`` input so that grid section membership is known.
- 
+
 -    Returns:
 -        Image: Input image with ``objmap`` reduced to the single largest
 -        object per grid section.
 +    For an overview of grid refinement approaches, see
 +    :doc:`/explanation/refinement_strategies`.
- 
+
      Best For:
 -        - Grid plates where the true colony is the largest detection in
 -          each cell and smaller objects are noise or debris.
@@ -7013,7 +7013,7 @@ index 9b886c6f..261def5f 100644
 +          because the grid layout is already embedded in the ``GridImage``.
 +        - Pipelines that produce multi-detection grid cells and need a simple,
 +          parameter-free reduction to one object per position.
- 
+
      Consider Also:
 -        - :class:`GridAlignmentRefiner` for full grid-aware dominant-object
 -          selection with configurable strategies.
@@ -7032,7 +7032,7 @@ index 9b886c6f..261def5f 100644
 +    Returns:
 +        Image: Input image with ``objmap`` reduced to the single largest
 +        object per grid section; all other objects are set to background.
- 
+
      See Also:
          :doc:`/how_to/notebooks/refine_noisy_boundaries` for grid-based
 -        refinement workflows.
@@ -7040,7 +7040,7 @@ index 9b886c6f..261def5f 100644
 -        grid refinement approaches.
 +        refinement workflows on real plate images.
      """
- 
+
      def _operate(self, image: GridImage) -> GridImage:
 diff --git a/src/phenotypic/refine/_manual_refine.py b/src/phenotypic/refine/_manual_refine.py
 index 06c2f99f..a6ef8962 100644
@@ -7048,7 +7048,7 @@ index 06c2f99f..a6ef8962 100644
 +++ b/src/phenotypic/refine/_manual_refine.py
 @@ -24,39 +24,13 @@ class ManualRefine(ObjectRefiner, PointPickerMixin, FootprintMixin):
      identifiers that existed before refinement.
- 
+
      Unlike :class:`ManualPointDetector`, which *produces* an ``objmap`` from
 -    scratch at picked coordinates, ``ManualSelector`` *filters* the output of
 -    an earlier detector. It is the manual-curation counterpart to automated
@@ -7087,13 +7087,13 @@ index 06c2f99f..a6ef8962 100644
 -        are allowed).
 +    on a handful of colonies. For where refinement sits in a pipeline see
 +    :doc:`/explanation/refinement_strategies`.
- 
+
      Best For:
          * Manual curation of auto-detected objects before measurement —
 @@ -77,11 +51,41 @@ class ManualRefine(ObjectRefiner, PointPickerMixin, FootprintMixin):
          * :class:`SmallObjectRemover` for size-based filtering when
            artefacts are systematically smaller than true colonies.
- 
+
 +    Args:
 +        centers: An N x 2 array-like of ``(y, x)`` pixel coordinates, one
 +            per colony to keep, supplied by the user (purely a manual
@@ -7132,7 +7132,7 @@ index 06c2f99f..a6ef8962 100644
 +        ``ManualRefine.napari(image)``, preview what is available to pick
          with ``image.objmap.show()`` or ``image.plot.show()`` so you can
          see which detections exist.
- 
+
 @@ -90,41 +94,8 @@ class ManualRefine(ObjectRefiner, PointPickerMixin, FootprintMixin):
              Step-by-step tutorial for basic colony detection.
          :doc:`/how_to/notebooks/choose_detection_algorithm`
@@ -7175,19 +7175,19 @@ index 06c2f99f..a6ef8962 100644
 +        :doc:`/explanation/refinement_strategies`
 +            How refiners fit into the detection-to-measurement pipeline.
      """
- 
+
      centers: list[tuple[int, int]] | None = None
 diff --git a/src/phenotypic/refine/_mask_closing.py b/src/phenotypic/refine/_mask_closing.py
 index 2ad4be82..0830fbc6 100644
 --- a/src/phenotypic/refine/_mask_closing.py
 +++ b/src/phenotypic/refine/_mask_closing.py
 @@ -14,40 +14,50 @@ from skimage.morphology import closing
- 
- 
+
+
  class MaskClosing(ObjectRefiner, FootprintMixin):
 -    """Bridge small gaps and fill holes in colony masks using morphological closing.
 +    """Bridge narrow background gaps in colony masks using morphological closing.
- 
+
 -    Applies binary closing (dilation then erosion) to reconnect nearby
 -    fragments of the same colony separated by thin background channels.
 -    Preserves overall colony shape and size while reducing fragmentation.
@@ -7195,7 +7195,7 @@ index 2ad4be82..0830fbc6 100644
 +    reconnecting nearby fragments of the same colony that are separated by thin
 +    background channels and filling small internal holes. Colony size is largely
 +    preserved because the dilation and erosion nearly cancel outside solid regions.
- 
+
 -    Args:
 -        shape: Structuring element. ``'auto'``, ``'disk'``, ``'square'``,
 -            ``'diamond'``, or custom ndarray. Default: ``None``.
@@ -7209,7 +7209,7 @@ index 2ad4be82..0830fbc6 100644
 -        closed.
 +    For an overview of morphological refinement methods, see
 +    :doc:`/explanation/refinement_strategies`.
- 
+
      Best For:
 -        - Colonies fragmented by uneven pigmentation or shadow effects.
 -        - Small internal holes from condensation or glare.
@@ -7220,7 +7220,7 @@ index 2ad4be82..0830fbc6 100644
 +          specular glare on the agar surface.
 +        - Pre-measurement cleanup to reconnect fragments before area or shape
 +          features are computed.
- 
+
      Consider Also:
 -        - :class:`MaskFill` for filling enclosed holes without bridging
 -          separate objects.
@@ -7249,25 +7249,25 @@ index 2ad4be82..0830fbc6 100644
 +
 +    Returns:
 +        Image: Input image with ``objmask`` and ``objmap`` morphologically closed.
- 
+
      See Also:
          :doc:`/how_to/notebooks/merge_fragmented_detections` for fragment
 -        merging strategies.
 +        merging strategies including morphological closing.
      """
- 
+
      shape: Literal["auto", "square", "diamond", "disk"] | NdArrayField | None = None
 diff --git a/src/phenotypic/refine/_mask_dilation.py b/src/phenotypic/refine/_mask_dilation.py
 index a19662f9..808c273f 100644
 --- a/src/phenotypic/refine/_mask_dilation.py
 +++ b/src/phenotypic/refine/_mask_dilation.py
 @@ -14,35 +14,49 @@ from skimage.morphology import dilation
- 
- 
+
+
  class MaskDilation(ObjectRefiner, FootprintMixin):
 -    """Expand colony masks outward using morphological dilation.
 +    """Expand colony masks outward by morphological dilation.
- 
+
 -    Adds pixels around object boundaries, bridging small gaps between
 -    nearby fragments and recovering faint halos excluded by strict
 -    thresholding. Dilation inflates area; follow with erosion (closing)
@@ -7277,7 +7277,7 @@ index a19662f9..808c273f 100644
 +    nearby fragments and recovers faint colony halos that strict thresholding
 +    excluded. Dilation permanently inflates mask area; pair with
 +    :class:`MaskErosion` or use :class:`MaskClosing` if area accuracy matters.
- 
+
 -    Args:
 -        shape: Structuring element. ``'auto'``, ``'disk'``, ``'square'``,
 -            ``'diamond'``, or custom ndarray. Default: ``None``.
@@ -7287,7 +7287,7 @@ index a19662f9..808c273f 100644
 -        Image: Input image with ``objmask`` and ``objmap`` dilated.
 +    For an overview of morphological refinement methods, see
 +    :doc:`/explanation/refinement_strategies`.
- 
+
      Best For:
 -        - Bridging thin gaps between fragments of the same colony.
 -        - Recovering faint colony halos near detection boundaries.
@@ -7298,7 +7298,7 @@ index a19662f9..808c273f 100644
 +          threshold on plates with heterogeneous colony intensity.
 +        - Expanding colony masks to include diffuse colony edges before
 +          intensity or color measurements.
- 
+
      Consider Also:
 -        - :class:`MaskClosing` for dilation-then-erosion that bridges gaps
 -          without inflating colony size.
@@ -7322,25 +7322,25 @@ index a19662f9..808c273f 100644
 +
 +    Returns:
 +        Image: Input image with ``objmask`` and ``objmap`` dilated outward.
- 
+
      See Also:
          :doc:`/explanation/refinement_strategies` for the recommended
 -        refinement sequence.
 +        morphological refinement sequence.
      """
- 
+
      shape: Literal["auto", "square", "diamond", "disk"] | NdArrayField | None = None
 diff --git a/src/phenotypic/refine/_mask_erosion.py b/src/phenotypic/refine/_mask_erosion.py
 index f4907253..fcbc2b81 100644
 --- a/src/phenotypic/refine/_mask_erosion.py
 +++ b/src/phenotypic/refine/_mask_erosion.py
 @@ -14,37 +14,51 @@ from skimage.morphology import erosion
- 
- 
+
+
  class MaskErosion(ObjectRefiner, FootprintMixin):
 -    """Shrink colony masks inward to remove thin protrusions and noise pixels.
 +    """Shrink colony masks inward by morphological erosion to remove boundary noise.
- 
+
 -    Removes outer boundary pixels from all objects, eliminating thin
 -    whiskers, isolated specks, and uncertain boundary pixels from soft
 -    edges. Leaves the core colony structure intact.
@@ -7349,7 +7349,7 @@ index f4907253..fcbc2b81 100644
 +    over-sensitive thresholding. The core colony structure is preserved but
 +    masks are permanently reduced in area; pair with :class:`MaskDilation` or
 +    use :class:`MaskOpening` if area must be recovered.
- 
+
 -    Args:
 -        shape: Structuring element. ``'auto'``, ``'disk'``, ``'square'``,
 -            ``'diamond'``, or custom ndarray. Default: ``None``.
@@ -7360,7 +7360,7 @@ index f4907253..fcbc2b81 100644
 -        Image: Input image with ``objmask`` and ``objmap`` eroded.
 +    For an overview of morphological refinement methods, see
 +    :doc:`/explanation/refinement_strategies`.
- 
+
      Best For:
 -        - Removing thin protrusions or whiskers from colony edges.
 -        - Eliminating noise specks that survived previous cleanup.
@@ -7371,7 +7371,7 @@ index f4907253..fcbc2b81 100644
 +          steps and registered as very small detections.
 +        - Excluding uncertain boundary pixels before high-precision shape or
 +          area measurements to tighten the colony footprint.
- 
+
      Consider Also:
          - :class:`MaskDilation` for the opposite effect — expanding masks
 -          outward.
@@ -7399,25 +7399,25 @@ index f4907253..fcbc2b81 100644
 +
 +    Returns:
 +        Image: Input image with ``objmask`` and ``objmap`` eroded inward.
- 
+
      See Also:
          :doc:`/explanation/refinement_strategies` for the recommended
 -        refinement sequence.
 +        morphological refinement sequence.
      """
- 
+
      shape: Literal["auto", "square", "diamond", "disk"] | NdArrayField | None = None
 diff --git a/src/phenotypic/refine/_mask_fill.py b/src/phenotypic/refine/_mask_fill.py
 index 9d2d5223..54084c07 100644
 --- a/src/phenotypic/refine/_mask_fill.py
 +++ b/src/phenotypic/refine/_mask_fill.py
 @@ -15,35 +15,49 @@ from phenotypic.tools_.typing_ import NdArrayField
- 
- 
+
+
  class MaskFill(ObjectRefiner):
 -    """Fill holes inside colony masks to produce solid, contiguous regions.
 +    """Fill enclosed holes within colony masks using binary flood fill.
- 
+
 -    Uses binary flood fill to close voids left by illumination gradients,
 -    pigment heterogeneity, or glare within colonies. Produces masks that
 -    better match the true colony footprint for area and shape measurements.
@@ -7427,7 +7427,7 @@ index 9d2d5223..54084c07 100644
 +    gaps that connect to the image boundary are left unchanged. The operation
 +    produces simply connected colony masks better suited for area and shape
 +    measurements.
- 
+
 -    Args:
 -        structure: Binary structuring element defining the fill neighborhood.
 -            ``None`` uses the default cross-shaped element. Default: ``None``.
@@ -7438,7 +7438,7 @@ index 9d2d5223..54084c07 100644
 -        filled holes.
 +    For an overview of morphological refinement methods, see
 +    :doc:`/explanation/refinement_strategies`.
- 
+
      Best For:
 -        - Donut-like masks from global thresholding on colonies with dark centers.
 -        - Colonies with radial pigment texture that creates interior gaps.
@@ -7449,7 +7449,7 @@ index 9d2d5223..54084c07 100644
 +          create interior gaps in the binary mask.
 +        - Pre-measurement cleanup to ensure colony area counts every interior
 +          pixel and circularity is not distorted by enclosed voids.
- 
+
      Consider Also:
 -        - :class:`MaskClosing` for bridging narrow gaps *between* fragments
 -          rather than filling holes *within* objects.
@@ -7473,25 +7473,25 @@ index 9d2d5223..54084c07 100644
 +
 +    Raises:
 +        ValueError: If ``structure`` is provided but is not a binary array.
- 
+
      See Also:
          :doc:`/how_to/notebooks/refine_noisy_boundaries` for a walkthrough
 -        of refinement operations.
 +        of refinement operations including hole filling.
      """
- 
+
      structure: NdArrayField | None = None
 diff --git a/src/phenotypic/refine/_mask_gradient.py b/src/phenotypic/refine/_mask_gradient.py
 index d3e935b9..ede5b429 100644
 --- a/src/phenotypic/refine/_mask_gradient.py
 +++ b/src/phenotypic/refine/_mask_gradient.py
 @@ -14,50 +14,54 @@ from skimage.morphology import dilation, erosion
- 
- 
+
+
  class MaskGradient(ObjectRefiner, FootprintMixin):
 -    """Extract object boundaries via morphological gradient (dilation minus erosion).
 +    """Extract colony boundary outlines via morphological gradient.
- 
+
 -    Computes the difference between dilation and erosion of the binary mask,
 -    producing a thin outline of each object's boundary pixels. Interior and
 -    exterior pixels are removed, leaving only the colony perimeter for
@@ -7500,7 +7500,7 @@ index d3e935b9..ede5b429 100644
 +    object mask, retaining only the pixels that lie on object boundaries. The
 +    result is a thin perimeter outline of each colony with interior and exterior
 +    pixels set to background. Boundary thickness scales with ``width``.
- 
+
 -    Args:
 -        shape: Structuring element for gradient computation. ``"auto"``
 -            selects a disk scaled to image size, ``"disk"``, ``"square"``,
@@ -7519,7 +7519,7 @@ index d3e935b9..ede5b429 100644
 -        AttributeError: If an invalid ``shape`` type is provided.
 +    For an overview of morphological refinement methods, see
 +    :doc:`/explanation/refinement_strategies`.
- 
+
      Best For:
          - Extracting colony perimeters for boundary roughness or circularity
 -          measurements.
@@ -7533,7 +7533,7 @@ index d3e935b9..ede5b429 100644
 +          top of the raw RGB image.
 +        - Isolating spreading or filamentous edges extending from colony cores
 +          as a precursor to morphological analysis.
- 
+
      Consider Also:
 -        - :class:`Skeletonize` when you need medial-axis topology rather
 -          than boundary outlines.
@@ -7563,7 +7563,7 @@ index d3e935b9..ede5b429 100644
 +
 +    Raises:
 +        AttributeError: If an unrecognised ``shape`` value is provided.
- 
+
      See Also:
          :doc:`/how_to/notebooks/refine_noisy_boundaries` for boundary
 -        extraction workflows.
@@ -7571,19 +7571,19 @@ index d3e935b9..ede5b429 100644
 -        morphological refinement methods.
 +        extraction workflows on real plate images.
      """
- 
+
      shape: Literal["auto", "square", "diamond", "disk"] | NdArrayField | None = None
 diff --git a/src/phenotypic/refine/_mask_opening.py b/src/phenotypic/refine/_mask_opening.py
 index 84ce7828..b80669bf 100644
 --- a/src/phenotypic/refine/_mask_opening.py
 +++ b/src/phenotypic/refine/_mask_opening.py
 @@ -14,43 +14,59 @@ from phenotypic.tools_.typing_ import NdArrayField
- 
- 
+
+
  class MaskOpening(ObjectRefiner, FootprintMixin):
 -    """Smooth mask boundaries and break thin bridges between touching colonies.
 +    """Smooth mask boundaries and separate touching colonies using morphological opening.
- 
+
 -    Applies binary opening (erosion then dilation) to remove small isolated
 -    pixels and narrow connections. Colonies linked by faint film or agar
 -    artifacts become separated without significantly shrinking well-formed
@@ -7593,7 +7593,7 @@ index 84ce7828..b80669bf 100644
 +    colony masks. Colony bodies that survive the erosion step are restored by
 +    dilation, so well-formed masks lose little area while thin connections are
 +    severed.
- 
+
 -    Args:
 -        shape: Structuring element. ``'auto'`` selects based on detected
 -            objects. ``'diamond'``, ``'square'``, ``'disk'``, or a custom
@@ -7607,7 +7607,7 @@ index 84ce7828..b80669bf 100644
 -        opened.
 +    For an overview of morphological refinement strategies, see
 +    :doc:`/explanation/refinement_strategies`.
- 
+
      Best For:
 -        - Splitting colonies connected by 1--2 pixel bridges after thresholding.
 -        - Removing tiny noise specks from the detection mask.
@@ -7619,7 +7619,7 @@ index 84ce7828..b80669bf 100644
 +          perimeter or shape measurements.
 +        - Post-detection cleanup before :class:`RemoveNonCircular` or area
 +          measurement to reduce false negatives from ragged edges.
- 
+
      Consider Also:
 -        - :class:`MaskClosing` for the opposite effect — filling small gaps
 -          and bridging fragments.
@@ -7653,7 +7653,7 @@ index 84ce7828..b80669bf 100644
 +        Image: Input image with ``objmask`` and ``objmap`` updated after
 +        morphological opening. ``rgb``, ``gray``, and ``detect_mat`` are
 +        unchanged.
- 
+
      See Also:
          :doc:`/how_to/notebooks/refine_noisy_boundaries` for a walkthrough
 -        of refinement operations.
@@ -7662,19 +7662,19 @@ index 84ce7828..b80669bf 100644
 -        refinement sequence.
 +        refinement sequence and structuring element guidance.
      """
- 
+
      shape: Literal["auto", "square", "diamond", "disk"] | NdArrayField | None = None
 diff --git a/src/phenotypic/refine/_mask_white_tophat.py b/src/phenotypic/refine/_mask_white_tophat.py
 index 1badb713..2103172d 100644
 --- a/src/phenotypic/refine/_mask_white_tophat.py
 +++ b/src/phenotypic/refine/_mask_white_tophat.py
 @@ -14,45 +14,56 @@ from phenotypic.tools_.typing_ import NdArrayField
- 
- 
+
+
  class MaskWhiteTophat(ObjectRefiner, FootprintMixin):
 -    """Remove small bright mask structures using white tophat subtraction.
 +    """Remove bright protrusions and thin bridges from the detection mask using white tophat subtraction.
- 
+
 -    Applies a white tophat transform to the binary mask to detect small
 -    bright features (glare bridges, dust speckles, thin connections) and
 -    subtracts them. Produces cleaner, more compact masks that better match
@@ -7684,7 +7684,7 @@ index 1badb713..2103172d 100644
 +    small bright structures that are narrower than the structuring element.
 +    Glare-induced bridges, dust speckles, and thin connections are suppressed
 +    while the main colony body is preserved.
- 
+
 -    Args:
 -        shape: Structuring element shape. ``"disk"`` preserves round
 -            features, ``"square"`` is more aggressive along axes,
@@ -7700,7 +7700,7 @@ index 1badb713..2103172d 100644
 -        white tophat result.
 +    For an overview of morphological refinement strategies, see
 +    :doc:`/explanation/refinement_strategies`.
- 
+
      Best For:
 -        - Reducing glare-induced bridges between neighboring colonies.
 -        - Removing bright speckles or dust embedded in masks after
@@ -7715,7 +7715,7 @@ index 1badb713..2103172d 100644
 +          protruding artefacts.
 +        - Images where illumination hot-spots produce narrow mask
 +          connections narrower than the structuring element width.
- 
+
      Consider Also:
          - :class:`MaskOpening` for general morphological opening that
 -          removes thin protrusions without tophat detection.
@@ -7745,7 +7745,7 @@ index 1badb713..2103172d 100644
 +        Image: Input image with ``objmask`` updated by subtracting the
 +        white tophat result. ``objmap``, ``rgb``, ``gray``, and
 +        ``detect_mat`` are unchanged.
- 
+
      See Also:
          :doc:`/how_to/notebooks/refine_noisy_boundaries` for tophat-based
 -        cleanup workflows.
@@ -7758,12 +7758,12 @@ index 5555e43c..ff6e452b 100644
 --- a/src/phenotypic/refine/_merge_fragment_chains.py
 +++ b/src/phenotypic/refine/_merge_fragment_chains.py
 @@ -15,50 +15,59 @@ from ..abc_ import ObjectRefiner
- 
- 
+
+
  class MergeFragmentChains(ObjectRefiner):
 -    """Merge nearby colony fragments using transitive closure of centroid distances.
 +    """Merge groups of nearby colony fragments using transitive closure of centroid distances.
- 
+
 -    Finds all pairs of objects with centroids within the distance threshold,
 -    then applies union-find with path compression to transitively merge
 -    connected groups. If A is near B and B is near C, all three merge into
@@ -7775,7 +7775,7 @@ index 5555e43c..ff6e452b 100644
 +    all three merge into one detection even when A and C are not directly
 +    within threshold of each other. Labels are relabeled consecutively after
 +    merging.
- 
+
 -    Args:
 -        distance_threshold: Maximum centroid-to-centroid distance in pixels
 -            for merging. Typical range: 10--30. Lower values are
@@ -7790,7 +7790,7 @@ index 5555e43c..ff6e452b 100644
 -        ValueError: If ``distance_threshold`` is not positive.
 +    For a comparison of merging strategies, see
 +    :doc:`/explanation/refinement_strategies`.
- 
+
      Best For:
          - Repairing fragmented detections from watershed over-segmentation
 -          where a single colony splits into multiple touching regions.
@@ -7806,7 +7806,7 @@ index 5555e43c..ff6e452b 100644
 +          between mask pieces belonging to the same colony.
 +        - Post-processing after aggressive small-object removal that leaves
 +          fragmented colony edges.
- 
+
      Consider Also:
          - :class:`SmallToLargeMerger` when only small fragments should
 -          merge into large anchors, preserving distinct large colonies.
@@ -7836,7 +7836,7 @@ index 5555e43c..ff6e452b 100644
 +
 +    Raises:
 +        ValueError: If ``distance_threshold`` is not positive.
- 
+
      See Also:
 -        :doc:`/how_to/notebooks/merge_fragmented_detections` for fragment
 -        merging workflows.
@@ -7846,19 +7846,19 @@ index 5555e43c..ff6e452b 100644
 -        merging strategies.
 +        merging approaches.
      """
- 
+
      distance_threshold: float = 20.0
 diff --git a/src/phenotypic/refine/_merge_within_section.py b/src/phenotypic/refine/_merge_within_section.py
 index c558f79e..62581507 100644
 --- a/src/phenotypic/refine/_merge_within_section.py
 +++ b/src/phenotypic/refine/_merge_within_section.py
 @@ -14,38 +14,46 @@ from phenotypic.schema import GRID
- 
- 
+
+
  class MergeWithinSection(GridObjectRefiner):
 -    """Merge all objects within each grid section into a single labeled region.
 +    """Consolidate all detections within each grid cell into a single labeled region.
- 
+
 -    Reassigns object labels so that every detection in the same grid cell
 -    receives a common label, effectively consolidating fragmented detections
 -    into one object per grid position. Useful when multiple fragments from a
@@ -7867,7 +7867,7 @@ index c558f79e..62581507 100644
 +    receives a common label equal to the section's row-major index. After
 +    merging, each grid cell contains at most one label, so downstream
 +    measurements treat fragmented per-cell detections as a single colony.
- 
+
 -    Returns:
 -        Image: Input image with ``objmap`` relabeled so each grid section
 -        contains at most one object label.
@@ -7875,7 +7875,7 @@ index c558f79e..62581507 100644
 +
 +    For an overview of merging strategies, see
 +    :doc:`/explanation/refinement_strategies`.
- 
+
      Best For:
 -        - Grid plates where a single colony fragments into multiple
 -          detections within the same cell.
@@ -7889,7 +7889,7 @@ index c558f79e..62581507 100644
 +          or size measurements.
 +        - Ensuring exactly one detection label per grid position for
 +          well-based phenotyping pipelines.
- 
+
      Consider Also:
 -        - :class:`KeepSectionLargest` when only the dominant fragment should
 -          be kept rather than merging all fragments.
@@ -7910,7 +7910,7 @@ index c558f79e..62581507 100644
 +        Image: Input image with ``objmap`` relabeled so each grid section
 +        contains at most one object label. ``objmask``, ``rgb``, ``gray``,
 +        and ``detect_mat`` are unchanged.
- 
+
      See Also:
          :doc:`/how_to/notebooks/merge_fragmented_detections` for merging
          workflows on grid plates.
@@ -7918,19 +7918,19 @@ index c558f79e..62581507 100644
 -        merging strategies.
 +        grid-aware merging strategies.
      """
- 
+
      def _operate(self, image: GridImage) -> GridImage:
 diff --git a/src/phenotypic/refine/_nearest_neighbor_merger.py b/src/phenotypic/refine/_nearest_neighbor_merger.py
 index 425bfd61..ea897134 100644
 --- a/src/phenotypic/refine/_nearest_neighbor_merger.py
 +++ b/src/phenotypic/refine/_nearest_neighbor_merger.py
 @@ -15,42 +15,59 @@ from ..abc_ import ObjectRefiner
- 
- 
+
+
  class NearestNeighborMerger(ObjectRefiner):
 -    """Merge small fragments into their nearest neighboring colony.
 +    """Absorb small colony fragments into their nearest neighboring detection.
- 
+
 -    Each object below ``min_size`` is absorbed into its single closest
 -    neighbor within ``distance_threshold``. Unlike transitive merging, this
 -    is one-directional and conservative — it cleans up debris without
@@ -7940,7 +7940,7 @@ index 425bfd61..ea897134 100644
 +    fragment's label to that neighbor. The merge is one-directional and
 +    non-transitive: large anchor colonies are never themselves merged,
 +    which avoids cascading chains across the plate.
- 
+
 -    Args:
 -        distance_threshold: Maximum centroid distance (pixels) for merging.
 -            Objects beyond this distance remain independent. Typical range:
@@ -7954,7 +7954,7 @@ index 425bfd61..ea897134 100644
 -        merging small objects into their nearest neighbors.
 +    For a comparison of merging strategies, see
 +    :doc:`/explanation/refinement_strategies`.
- 
+
      Best For:
 -        - Absorbing dust or noise fragments near real colonies.
 -        - Cleaning up small detection artifacts without risking cascading merges.
@@ -7965,7 +7965,7 @@ index 425bfd61..ea897134 100644
 +          threshold need merging while large colonies remain independent.
 +        - Plates with scattered micro-colonies or satellite spots that
 +          should count as part of the nearest parent colony.
- 
+
      Consider Also:
 -        - :class:`MergeFragmentChains` for chained merging of all nearby
 -          objects regardless of size.
@@ -7999,7 +7999,7 @@ index 425bfd61..ea897134 100644
 +    Raises:
 +        ValueError: If ``distance_threshold`` is not positive.
 +        ValueError: If ``min_size`` is provided and not positive.
- 
+
      See Also:
          :doc:`/how_to/notebooks/merge_fragmented_detections` for fragment
 -        merging strategies.
@@ -8008,19 +8008,19 @@ index 425bfd61..ea897134 100644
 -        refinement approach.
 +        merging approach.
      """
- 
+
      distance_threshold: float = 20.0
 diff --git a/src/phenotypic/refine/_reduce_multiple_grid_objects.py b/src/phenotypic/refine/_reduce_multiple_grid_objects.py
 index 4f280925..00cc8149 100644
 --- a/src/phenotypic/refine/_reduce_multiple_grid_objects.py
 +++ b/src/phenotypic/refine/_reduce_multiple_grid_objects.py
 @@ -12,32 +12,40 @@ from phenotypic.schema import GRID_LINREG_STATS
- 
- 
+
+
  class ReduceSectionsByLine(GridObjectRefiner):
 -    """Reduce multi-detections per grid cell by keeping the object closest to a linear-regression prediction.
 +    """Reduce multi-detections per grid cell to one by keeping the object best predicted by linear regression.
- 
+
 -    Models expected colony positions along each row and column using linear
 -    regression, then iteratively removes objects with the largest positional
 -    residuals until each grid cell contains at most one detection. Cells with
@@ -8030,7 +8030,7 @@ index 4f280925..00cc8149 100644
 +    every grid cell contains at most one detection. Grid cells with the most
 +    objects are processed first to stabilize the regression fit before
 +    resolving cells with fewer extra detections.
- 
+
 -    Returns:
 -        Image: Input image with ``objmap`` and ``objmask`` reduced to at most
 -        one object per grid cell based on minimum residual error.
@@ -8038,7 +8038,7 @@ index 4f280925..00cc8149 100644
 +
 +    For an overview of grid refinement strategies, see
 +    :doc:`/explanation/refinement_strategies`.
- 
+
      Best For:
 -        - Grid cells with multiple detections from halos, debris, or
 -          over-segmentation.
@@ -8051,7 +8051,7 @@ index 4f280925..00cc8149 100644
            prediction reliable.
 +        - Over-segmented detections where one cell contains a genuine colony
 +          plus one or more satellite artefacts.
- 
+
      Consider Also:
 -        - :class:`GridAlignmentRefiner` for faster dominant-object-per-cell
 -          selection without regression modeling.
@@ -8071,7 +8071,7 @@ index 4f280925..00cc8149 100644
 +        Image: Input image with ``objmap`` and ``objmask`` reduced so that
 +        each grid cell contains at most one object, selected by minimum
 +        linear-regression residual error.
- 
+
      See Also:
          :doc:`/how_to/notebooks/refine_noisy_boundaries` for grid-based
 diff --git a/src/phenotypic/refine/_refine_by_sine_fit.py b/src/phenotypic/refine/_refine_by_sine_fit.py
@@ -8079,12 +8079,12 @@ index 3e5f2eeb..44de8f1e 100644
 --- a/src/phenotypic/refine/_refine_by_sine_fit.py
 +++ b/src/phenotypic/refine/_refine_by_sine_fit.py
 @@ -26,65 +26,85 @@ from phenotypic.tools_.funcs_ import validate_operation_integrity
- 
- 
+
+
  class RefineBySineFit(GridInferenceMixin, ObjectRefiner):
 -    """Retain only grid-aligned colonies using sinusoidal cross-correlation for grid estimation.
 +    """Retain only grid-aligned colonies using sinusoidal cross-correlation for grid edge estimation.
- 
+
      Estimates grid edges by computing FFT-based normalized cross-correlation
 -    against a sinusoidal template of expected colony periodicity, then keeps
 -    one dominant object per cell. Rank-based (Spearman) correlation provides
@@ -8096,7 +8096,7 @@ index 3e5f2eeb..44de8f1e 100644
 +    correlation (a Spearman-style step) makes the grid estimate robust to
 +    outlier colony intensities and to monotonic intensity transformations,
 +    compared to direct peak-finding on raw intensity profiles.
- 
+
 -    Args:
 -        smoothing_sigma: Gaussian smoothing sigma for intensity profiles.
 -            Typical range: 0.5--5.0. Higher values smooth noise but may
@@ -8123,7 +8123,7 @@ index 3e5f2eeb..44de8f1e 100644
 -        ValueError: If grid inference fails or image lacks detection results.
 +    For a comparison of grid refinement approaches, see
 +    :doc:`/explanation/refinement_strategies`.
- 
+
      Best For:
          - Gridded plates (96-well, 384-well, pinned cultures) where colony
 -          intensities are heterogeneous or unevenly grown.
@@ -8136,7 +8136,7 @@ index 3e5f2eeb..44de8f1e 100644
 +          misses or misaligns grid lines due to variable colony brightness.
 +        - Plates with large empty sectors where direct intensity peak-finding
 +          loses periodicity signal.
- 
+
      Consider Also:
          - :class:`GridAlignmentRefiner` for faster grid estimation when
 -          colony intensities are relatively uniform.
@@ -8185,7 +8185,7 @@ index 3e5f2eeb..44de8f1e 100644
 +
 +    Raises:
 +        ValueError: If grid inference fails or image lacks detection results.
- 
+
      References:
          [1] O. Wagih and L. Parts, "gitter: a robust and accurate method
          for quantification of colony sizes from plate images," *G3
@@ -8194,7 +8194,7 @@ index 3e5f2eeb..44de8f1e 100644
 +        correlation-based grid-colony quantification from plate images; the
 +        sinusoidal cross-correlation and rank-transform steps used here are
 +        not drawn from this paper.
- 
+
      See Also:
          :doc:`/how_to/notebooks/refine_noisy_boundaries` for grid-based
 -        cleanup workflows.
@@ -8203,19 +8203,19 @@ index 3e5f2eeb..44de8f1e 100644
 -        grid refinement approaches.
 +        grid refinement approaches and grid inference methods.
      """
- 
+
      smoothing_sigma: float = 2.0
 diff --git a/src/phenotypic/refine/_remove_border_objects.py b/src/phenotypic/refine/_remove_border_objects.py
 index 8122b6d1..3209b617 100644
 --- a/src/phenotypic/refine/_remove_border_objects.py
 +++ b/src/phenotypic/refine/_remove_border_objects.py
 @@ -11,38 +11,52 @@ from phenotypic.abc_ import ObjectRefiner
- 
- 
+
+
  class RemoveBorderObjects(ObjectRefiner):
 -    """Remove colonies that touch the image border within a configurable margin.
 +    """Remove colonies that touch or overlap the image border within a configurable margin.
- 
+
 -    Zeroes any labeled objects in ``objmap`` whose pixels fall within a
 -    border band, ensuring only fully contained colonies are analyzed.
 -    Partial edge colonies bias size and shape measurements.
@@ -8243,7 +8243,7 @@ index 8122b6d1..3209b617 100644
 +        - :class:`GridOversizedObjectRemover` when the problem is objects
 +          that span multiple grid sections rather than partial border
 +          colonies.
- 
+
      Args:
 -        border_size: Width of the exclusion border. ``None`` uses 1% of
 -            the smaller dimension. Float in (0, 1) is a fraction of the
@@ -8254,14 +8254,14 @@ index 8122b6d1..3209b617 100644
 +            smaller image dimension. An integer or float ``>= 1`` is
 +            treated as an absolute pixel count. Typical range: 1--30 px.
 +            Default: 1.
- 
+
      Returns:
 -        Image: Input image with ``objmask`` and ``objmap`` updated to
 -        exclude border-touching objects.
 +        Image: Input image with ``objmap`` and ``objmask`` updated to
 +        exclude all labeled objects that touch the exclusion border.
 +        ``rgb``, ``gray``, and ``detect_mat`` are unchanged.
- 
+
      Raises:
 -        TypeError: If ``border_size`` type is invalid.
 -
@@ -8276,7 +8276,7 @@ index 8122b6d1..3209b617 100644
 -        - :class:`GridOversizedObjectRemover` for removing abnormally large
 -          objects that span multiple grid sections.
 +        TypeError: If ``border_size`` is not an integer, float, or ``None``.
- 
+
      See Also:
          :doc:`/how_to/notebooks/refine_noisy_boundaries` for a walkthrough
 -        of refinement operations.
@@ -8289,12 +8289,12 @@ index 5e79bfff..6315450a 100644
 --- a/src/phenotypic/refine/_remove_grid_outliers.py
 +++ b/src/phenotypic/refine/_remove_grid_outliers.py
 @@ -13,43 +13,56 @@ from phenotypic.schema import GRID_LINREG_STATS, GRID
- 
- 
+
+
  class RemoveGridOutliers(GridObjectRefiner):
 -    """Remove objects with large positional residuals in noisy grid rows or columns.
 +    """Remove positional outliers from noisy grid rows or columns using IQR-based residual pruning.
- 
+
      Fits linear-regression trends to colony centroids along each row and
 -    column, identifies rows/columns with high variability (coefficient of
 -    variance above threshold), and removes objects whose residual error
@@ -8303,7 +8303,7 @@ index 5e79bfff..6315450a 100644
 +    ``max_coeff_variance``, then removes objects whose residual error exceeds
 +    the mean plus ``cutoff_multiplier`` times the IQR within those noisy
 +    lines. Rows and columns with low variance are left untouched.
- 
+
 -    Args:
 -        axis: Axis to analyze. ``None`` analyzes both rows and columns,
 -            ``0`` rows only, ``1`` columns only. Restricting the axis
@@ -8316,13 +8316,13 @@ index 5e79bfff..6315450a 100644
 -            allowed before a row/column is considered noisy and eligible
 -            for outlier pruning. Typical range: 1--5. Default: 1.
 +    Requires a ``GridImage`` with grid metadata already populated.
- 
+
 -    Returns:
 -        Image: Input image with ``objmap`` and ``objmask`` updated to exclude
 -        positional outliers from noisy grid rows/columns.
 +    For a comparison of grid refinement approaches, see
 +    :doc:`/explanation/refinement_strategies`.
- 
+
      Best For:
 -        - Cleaning rows or columns with off-grid detections from condensation,
 -          glare, or debris before measuring growth.
@@ -8335,7 +8335,7 @@ index 5e79bfff..6315450a 100644
 +          when a subset of row or column positions is noisy.
 +        - Batch runs where individual plates occasionally have edge rows
 +          with aberrant detections that should not propagate to measurements.
- 
+
      Consider Also:
 -        - :class:`ReduceSectionsByLine` for reducing multi-detections to
 -          one per cell rather than pruning outliers within rows/columns.
@@ -8370,7 +8370,7 @@ index 5e79bfff..6315450a 100644
 +        Image: Input image with ``objmap`` and ``objmask`` updated to
 +        exclude positional outliers from noisy grid rows and columns.
 +        ``rgb``, ``gray``, and ``detect_mat`` are unchanged.
- 
+
      See Also:
          :doc:`/how_to/notebooks/refine_noisy_boundaries` for grid-based
 diff --git a/src/phenotypic/refine/_remove_non_circular.py b/src/phenotypic/refine/_remove_non_circular.py
@@ -8378,12 +8378,12 @@ index c84d9001..1ba2c13e 100644
 --- a/src/phenotypic/refine/_remove_non_circular.py
 +++ b/src/phenotypic/refine/_remove_non_circular.py
 @@ -16,44 +16,57 @@ from phenotypic.schema import OBJECT
- 
- 
+
+
  class RemoveNonCircular(ObjectRefiner):
 -    """Remove objects whose Polsby-Popper circularity falls below a cutoff.
 +    """Remove objects whose Polsby-Popper circularity score falls below a threshold.
- 
+
 -    Computes circularity as ``4 * pi * area / perimeter^2`` for each labeled
 -    object and discards those below the threshold. Keeps well-formed, roughly
 -    circular colonies while filtering out elongated artifacts, merged blobs,
@@ -8393,7 +8393,7 @@ index c84d9001..1ba2c13e 100644
 +    or jagged shapes score lower. Well-formed round colonies are retained
 +    while scratches, merged blobs, and irregular segmentation debris are
 +    removed.
- 
+
 -    Args:
 -        cutoff: Minimum Polsby-Popper circularity in ``[0, 1]`` required to
 -            retain an object. Typical range: 0.5--0.9. Higher values keep
@@ -8408,7 +8408,7 @@ index c84d9001..1ba2c13e 100644
 -        ValueError: If ``cutoff`` is outside ``[0, 1]``.
 +    For an overview of morphological refinement strategies, see
 +    :doc:`/explanation/refinement_strategies`.
- 
+
      Best For:
 -        - Post-threshold cleanup to exclude elongated scratches or merged
 -          colonies before phenotyping.
@@ -8422,7 +8422,7 @@ index c84d9001..1ba2c13e 100644
 +          expected to be round and irregular detections indicate artefacts.
 +        - Plates with round yeast or bacterial colonies where any
 +          non-circular detection is reliably spurious.
- 
+
      Consider Also:
 -        - :class:`SmallObjectRemover` when artifacts are distinguished by
 -          size rather than shape.
@@ -8454,7 +8454,7 @@ index c84d9001..1ba2c13e 100644
 +
 +    Raises:
 +        ValueError: If ``cutoff`` is outside ``[0, 1]``.
- 
+
      See Also:
          :doc:`/how_to/notebooks/refine_noisy_boundaries` for shape-based
 -        cleanup workflows.
@@ -8469,7 +8469,7 @@ index 7b5ba1da..21b4cfab 100644
 @@ -21,47 +21,52 @@ from phenotypic.abc_ import ObjectRefiner
  class SeparateObjects(ObjectRefiner):
      """Separate touching or merged colonies using distance-transform watershed segmentation.
- 
+
 -    Finds peaks in the Euclidean distance transform as seed markers for
 -    watershed region growing. For GridImages, peaks are constrained to one
 -    per grid cell; for regular Images, peaks are detected globally with
@@ -8479,7 +8479,7 @@ index 7b5ba1da..21b4cfab 100644
 +    uses them as seed markers for watershed region growing, producing a
 +    distinct labeled region for each colony. For GridImages, one peak per
 +    grid cell is used; for plain Images, peaks are spaced by ``min_distance``.
- 
+
 -    Args:
 -        min_distance: Minimum pixel distance between peaks for regular
 -            Images. Ignored for GridImages (one peak per cell). Typical
@@ -8495,7 +8495,7 @@ index 7b5ba1da..21b4cfab 100644
 -            results.
 +    For a comparison of colony separation strategies, see
 +    :doc:`/explanation/refinement_strategies`.
- 
+
      Best For:
 -        - GridImage plates (96-well, 384-well, pinned cultures) where
 -          touching colonies need individualization.
@@ -8512,7 +8512,7 @@ index 7b5ba1da..21b4cfab 100644
 +          adapts seed strength to each colony's diameter.
 +        - Non-grid images where a global minimum-spacing constraint is
 +          sufficient to individualize colonies.
- 
+
      Consider Also:
 -        - :class:`MaskOpening` for gentle separation of lightly touching
 -          colonies without watershed.
@@ -8543,7 +8543,7 @@ index 7b5ba1da..21b4cfab 100644
 +    Raises:
 +        ValueError: If no peaks are detected in the score map, or if
 +            watershed produces an empty result.
- 
+
      See Also:
 -        :doc:`/how_to/notebooks/merge_fragmented_detections` for separation
 -        and merging workflows.
@@ -8557,12 +8557,12 @@ index ce3e921b..3a21b8a8 100644
 --- a/src/phenotypic/refine/_skeletonize.py
 +++ b/src/phenotypic/refine/_skeletonize.py
 @@ -11,46 +11,52 @@ from phenotypic.abc_ import ObjectRefiner
- 
- 
+
+
  class Skeletonize(ObjectRefiner):
 -    """Reduce object masks to single-pixel-wide skeletons via medial axis thinning.
 +    """Reduce object masks to single-pixel-wide skeletons via medial-axis thinning.
- 
+
 -    Compresses each object region to its medial axis (centerline), preserving
 -    topological connectivity while discarding boundary and interior pixels.
 -    Useful for distilling colony morphology to its core branching structure
@@ -8571,7 +8571,7 @@ index ce3e921b..3a21b8a8 100644
 +    preserving topological connectivity while discarding all interior and
 +    boundary pixels. The result captures the branching structure and
 +    elongation of each colony without the area contribution of filled masks.
- 
+
 -    Args:
 -        method: Thinning algorithm. ``"zhang"`` is fast and optimized for
 -            clean 2D masks. ``"lee"`` is more robust to noise and works on
@@ -8586,7 +8586,7 @@ index ce3e921b..3a21b8a8 100644
 -        ValueError: If an invalid ``method`` is provided.
 +    For a comparison of morphological refinement methods, see
 +    :doc:`/explanation/refinement_strategies`.
- 
+
      Best For:
          - Extracting colony centerlines for elongation or orientation
            analysis.
@@ -8598,7 +8598,7 @@ index ce3e921b..3a21b8a8 100644
          - Reducing boundary noise before measuring advanced morphological
 -          features.
 +          features such as tortuosity or branch count.
- 
+
      Consider Also:
 -        - :class:`Thinning` for iterative boundary peeling with control
 -          over the number of iterations.
@@ -8625,7 +8625,7 @@ index ce3e921b..3a21b8a8 100644
 +    Raises:
 +        ValueError: If ``method`` is not ``"zhang"``, ``"lee"``, or
 +            ``None``.
- 
+
      See Also:
          :doc:`/how_to/notebooks/refine_noisy_boundaries` for skeleton-based
 -        analysis workflows.
@@ -8638,12 +8638,12 @@ index 7c54cca1..4d7961cd 100644
 --- a/src/phenotypic/refine/_small_object_remover.py
 +++ b/src/phenotypic/refine/_small_object_remover.py
 @@ -11,35 +11,47 @@ from ..abc_ import ObjectRefiner
- 
- 
+
+
  class SmallObjectRemover(ObjectRefiner):
 -    """Remove objects smaller than a minimum area from the detection mask.
 +    """Remove detected objects below a minimum pixel area from the detection mask.
- 
+
 -    Eliminates dust, condensation specks, and noise fragments that appear
 -    as tiny labeled objects after thresholding. Reduces false positives
 -    and stabilizes colony counts.
@@ -8651,7 +8651,7 @@ index 7c54cca1..4d7961cd 100644
 +    noise fragments that appear as small labeled regions after thresholding
 +    or edge detection. Reduces false-positive colony counts and stabilizes
 +    downstream measurements.
- 
+
 -    Args:
 -        min_size: Minimum object area in pixels to keep. Objects below this
 -            threshold are removed. Typical range: 20--200 depending on
@@ -8662,7 +8662,7 @@ index 7c54cca1..4d7961cd 100644
 -        exclude small objects.
 +    For guidance on choosing the right refinement sequence, see
 +    :doc:`/explanation/refinement_strategies`.
- 
+
      Best For:
 -        - Cleaning up salt-and-pepper artifacts after detection.
 -        - Removing fragmented debris around large colonies.
@@ -8674,7 +8674,7 @@ index 7c54cca1..4d7961cd 100644
 +        - Post-processing dense detection masks where noise fragments
 +          inflate colony counts.
 +        - Stabilizing counts before grid assignment or size measurement.
- 
+
      Consider Also:
          - :class:`RemoveBorderObjects` for removing partial colonies at
 -          image edges (size-independent).
@@ -8696,7 +8696,7 @@ index 7c54cca1..4d7961cd 100644
 +    Returns:
 +        Image: Input image with ``objmap`` updated to exclude objects
 +        smaller than ``min_size``. ``objmask`` is updated to match.
- 
+
      See Also:
          :doc:`/how_to/notebooks/refine_noisy_boundaries` for a walkthrough
 -        of refinement operations.
@@ -8709,12 +8709,12 @@ index aff46b38..119ff7fd 100644
 --- a/src/phenotypic/refine/_small_to_large_merger.py
 +++ b/src/phenotypic/refine/_small_to_large_merger.py
 @@ -15,53 +15,58 @@ from ..abc_ import ObjectRefiner
- 
- 
+
+
  class SmallToLargeMerger(ObjectRefiner):
 -    """Merge small colony fragments into their nearest large colony using hierarchical size-based merging.
 +    """Merge small colony fragments into their nearest large colony using size-partitioned merging.
- 
+
 -    Partitions objects into small (below size threshold) and large (at or
 -    above), then absorbs each small fragment into the nearest large neighbor
 -    within the distance threshold. Large colonies serve as stable anchors
@@ -8724,7 +8724,7 @@ index aff46b38..119ff7fd 100644
 +    the nearest anchor within ``distance_threshold`` pixels. Large colonies
 +    are never merged with each other, preventing false consolidation of
      distinct colonies.
- 
+
 +    For a comparison of fragment merging strategies, see
 +    :doc:`/explanation/refinement_strategies`.
 +
@@ -8764,16 +8764,16 @@ index aff46b38..119ff7fd 100644
 +            (below threshold) from immovable anchor colonies (at or above).
 +            Typical range: 50--200. Scale upward for high-resolution scans
 +            where colony areas are larger. Default: 100.
- 
+
      Returns:
          Image: Input image with ``objmap`` updated so that small fragments
 -        are relabeled to their nearest large colony.
 +        within range are relabeled to match their nearest large colony.
- 
+
      Raises:
          ValueError: If ``distance_threshold`` or ``size_threshold`` is not
              positive.
- 
+
 -    Best For:
 -        - Fragmented detections from heterogeneous pigmentation or uneven
 -          illumination where satellites cluster around a main colony.
@@ -8804,12 +8804,12 @@ index 51307242..3398df39 100644
 --- a/src/phenotypic/refine/_thinning.py
 +++ b/src/phenotypic/refine/_thinning.py
 @@ -11,46 +11,49 @@ from phenotypic.abc_ import ObjectRefiner
- 
- 
+
+
  class Thinning(ObjectRefiner):
 -    """Progressively thin object masks by iteratively removing outer pixels while preserving connectivity.
 +    """Progressively thin object masks by iteratively removing outer boundary pixels.
- 
+
 -    Strips away boundary pixels one layer at a time, gradually reducing object
 -    width toward single-pixel structures. Unlike skeletonization, thinning
 -    offers explicit iteration control, making it useful for gentle boundary
@@ -8818,7 +8818,7 @@ index 51307242..3398df39 100644
 +    connectivity, gradually reducing each object toward single-pixel-wide
 +    structures. Explicit iteration control makes it suitable for anything
 +    from gentle edge cleanup to full centerline extraction.
- 
+
 -    Args:
 -        max_num_iter: Maximum thinning iterations. ``None`` iterates until
 -            convergence (full skeleton). A small value (1--3) provides
@@ -8833,7 +8833,7 @@ index 51307242..3398df39 100644
 -        ValueError: If ``max_num_iter`` is negative.
 +    For a comparison of morphological refinement methods, see
 +    :doc:`/explanation/refinement_strategies`.
- 
+
      Best For:
 -        - Gradually separating touching or overlapping colonies via controlled
 -          pixel removal.
@@ -8850,7 +8850,7 @@ index 51307242..3398df39 100644
 +          single-pixel-wide structures.
 +        - Preserving the overall shape of filamentous colonies while
 +          reducing spurious boundary protrusions.
- 
+
      Consider Also:
          - :class:`Skeletonize` for direct medial-axis extraction without
 -          iterative control.
@@ -8875,7 +8875,7 @@ index 51307242..3398df39 100644
 +    Returns:
 +        Image: Input image with ``objmask`` thinned by up to
 +        ``max_num_iter`` iterations. ``objmap`` is unchanged.
- 
+
      See Also:
          :doc:`/how_to/notebooks/refine_noisy_boundaries` for thinning-based
 -        boundary cleanup workflows.
@@ -8888,12 +8888,12 @@ index 4c40d196..01a09f24 100644
 --- a/src/phenotypic/refine/_trim_asymmetry.py
 +++ b/src/phenotypic/refine/_trim_asymmetry.py
 @@ -21,93 +21,119 @@ _log = logging.getLogger(__name__)
- 
- 
+
+
  class TrimAsymmetry(ObjectRefiner):
 -    """Trim spurs and web-like noise beyond each colony's symmetric envelope.
 +    """Trim asymmetric spurs and reticulated noise beyond each colony's symmetric radius.
- 
+
 -    Reuses the symmetric-radius machinery from :class:`MeasureSymmetricZones`
 -    to locate, per colony, the radius past which growth stops being angularly
 -    symmetric (``R_sym``). Every mask pixel beyond ``R_sym`` is a candidate for
@@ -8908,12 +8908,12 @@ index 4c40d196..01a09f24 100644
 +    branched structures (genuine hyphae, zero topological holes) are preserved
 +    while web-like reticulated components are discarded based on their
 +    holes-per-pixel density.
- 
+
 -    Compared to the measurement-time version in :class:`MeasureSymmetricZones`,
 -    this refiner is deliberately less harsh:
 +    For the underlying symmetric-radius algorithm, see
 +    :doc:`/explanation/refinement_strategies`.
- 
+
 -    * The default ``symmetry_threshold`` is ``3/6`` rather than ``4/6`` so
 -      ``R_sym`` lands further from the inoculum core.
 -    * Per-CC segmentation localizes the decision — trimming one noisy spur
@@ -8939,7 +8939,7 @@ index 4c40d196..01a09f24 100644
 +          asymmetric extent is shallow and uniform around the colony perimeter.
 +        - :class:`MergeFragmentChains` when asymmetric components are genuine
 +          but fragmented, and should be reconnected rather than removed.
- 
+
      Args:
 -        symmetry_threshold: Minimum angular coverage (fraction of
 -            ``n_angular_bins`` populated) required for growth to count as
@@ -9024,7 +9024,7 @@ index 4c40d196..01a09f24 100644
 +            attempted; smaller colonies are skipped entirely to avoid
 +            degenerate geometry in the radial pipeline. Typical range:
 +            10--10 000. Default: 100.
- 
+
      Returns:
 -        Image: Input image with ``objmap`` updated; ``objmask`` refreshes
 -        automatically via the accessor.
@@ -9085,7 +9085,7 @@ index 4c40d196..01a09f24 100644
 +        :doc:`/explanation/refinement_strategies` for the symmetric-radius
 +        algorithm and per-colony topology classification.
      """
- 
+
      symmetry_threshold: float = 3 / 6
 
 ````

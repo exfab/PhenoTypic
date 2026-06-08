@@ -29,6 +29,7 @@ from phenotypic.gui._config import (
     MOUNT_BUILDER,
     MOUNT_HOME,
     MOUNT_RUN,
+    MOUNT_TUNE,
     MOUNT_VIEWER,
     RSS_INTERVAL_MS,
     SSH_TUNNEL_HINT,
@@ -49,6 +50,7 @@ from phenotypic.gui.shell._ids import (
     SHELL_TAB_BUILDER,
     SHELL_TAB_HOME,
     SHELL_TAB_RUN,
+    SHELL_TAB_TUNE,
     SHELL_TAB_VIEWER,
     SHELL_TOP_BAR,
 )
@@ -88,6 +90,7 @@ _TAB_HREFS = {
     SHELL_TAB_BUILDER: MOUNT_BUILDER,
     SHELL_TAB_VIEWER: MOUNT_VIEWER,
     SHELL_TAB_RUN: MOUNT_RUN,
+    SHELL_TAB_TUNE: MOUNT_TUNE,
     SHELL_TAB_ANALYSIS: MOUNT_ANALYSIS,
 }
 
@@ -96,15 +99,18 @@ _TAB_LABELS = {
     SHELL_TAB_BUILDER: "Pipelines",
     SHELL_TAB_VIEWER: "Viewer",
     SHELL_TAB_RUN: "Run",
+    SHELL_TAB_TUNE: "Tune",
     SHELL_TAB_ANALYSIS: "Analysis",
 }
 
 #: Display order for the top-bar tab nav. The sequence follows the user
-#: workflow: land on Home, compose a pipeline in Builder, execute it from
-#: Run, inspect the output in Viewer, and run downstream stats in Analysis.
+#: workflow: land on Home, compose a pipeline in Builder, tune its
+#: parameters in Tune, execute it from Run, inspect the output in Viewer,
+#: and run downstream stats in Analysis.
 TAB_DISPLAY_ORDER: tuple[str, ...] = (
     SHELL_TAB_HOME,
     SHELL_TAB_BUILDER,
+    SHELL_TAB_TUNE,
     SHELL_TAB_RUN,
     SHELL_TAB_VIEWER,
     SHELL_TAB_ANALYSIS,

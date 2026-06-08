@@ -104,6 +104,15 @@ torch = [
     "sam2;sys_platform!='win32'",
 ]
 
+tune = [
+    # Optuna backend for the tune engine (Phase 2). Imported lazily inside
+    # phenotypic.tune._strategies._optuna_support so the base package and the
+    # Grid/Random paths stay Optuna-free (optuna-integration.md §10).
+    "optuna>=4.0",
+    "sqlalchemy>=2.0",
+    "psycopg[binary]>=3.1",
+]
+
 [project.scripts]
 phenotypic = "phenotypic.phenotypicCLI:phenotypic_cli"
 phenotypic-gui = "phenotypic.gui.shell._launcher:main"
@@ -169,6 +178,8 @@ markers = [
     "smoke: basic operation test",
     "slow: heavy parametrize sweep, excluded from PR runs by default",
     "ci_flaky: e2e tests that pass locally but flake on shared CI runners (Playwright DOM polls); CI workflow deselects via `-m 'not ci_flaky'`. See tests/CLAUDE.md.",
+    "postgres: tune study-DB tests needing a live Postgres server; autoskipped by tests/conftest.py unless PHENOTYPIC_TEST_PG_URL is set.",
+    "slurm: distributed tune-worker-fleet tests needing the SLURM client (sbatch); autoskipped by tests/conftest.py unless sbatch is on PATH.",
 ]
 filterwarnings = [
     "ignore::SyntaxWarning:mahotas",

@@ -1,0 +1,65 @@
+{
+  "version": "0.16.0",
+  "name": "1cdaba8a-b1a5-4a83-a9ed-ba072632ce6c",
+  "desc": null,
+  "reset": false,
+  "pipe_cfgs": {
+    "FilamentousFungiDetector": {
+      "class": "FilamentousFungiDetector",
+      "params": {
+        "inoculum_detector": {
+          "__type__": "pipeline",
+          "config": {
+            "version": "0.16.0",
+            "name": "3086560f-637f-4db9-a055-4427e454e78d",
+            "desc": null,
+            "reset": false,
+            "pipe_cfgs": {
+              "InoculumDetector": {
+                "class": "InoculumDetector",
+                "params": {
+                  "min_diameter": 30.0,
+                  "max_diameter": 100.0,
+                  "thresh_method": "otsu",
+                  "enable_gmm": true,
+                  "gmm_n_components": 2,
+                  "gmm_separation_threshold": 0.9,
+                  "validate_obj_count": true
+                }
+              },
+              "KeepSectionLargest": {
+                "class": "KeepSectionLargest",
+                "params": {}
+              }
+            },
+            "meas": {},
+            "post": {},
+            "filters": {},
+            "model": null
+          }
+        },
+        "max_colony_radius_px": 250.0,
+        "min_branch_width_px": 3,
+        "ignore_borders": true,
+        "edge_noise_threshold": 6.0,
+        "reconnection_tolerance": 2.5,
+        "max_gap_length": 30,
+        "border_margin_px": 50,
+        "frag_reach_px": 10,
+        "gap_crossing_penalty": 4.0,
+        "gauss_sigma": 300.0,
+        "tile_size": 1200,
+        "tile_overlap": 600,
+        "pct_min_wavelength": 6.0,
+        "mad_window": 7,
+        "path_dilation_radius": 2,
+        "snr_margin": 2,
+        "coherence_window_radius": 15
+      }
+    }
+  },
+  "meas": {},
+  "post": {},
+  "filters": {},
+  "model": null
+}

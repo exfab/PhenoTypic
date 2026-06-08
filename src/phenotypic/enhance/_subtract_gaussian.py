@@ -1,15 +1,16 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
 import numpy as np
-from pydantic import field_validator
+from pydantic import Field
 from skimage.filters import gaussian
 
 from phenotypic.abc_ import BackgroundSubtraction
+from phenotypic.tools_.typing_ import TuneSpec
 
 
 class SubtractGaussian(BackgroundSubtraction):
@@ -80,20 +81,13 @@ class SubtractGaussian(BackgroundSubtraction):
         illumination correction strategies.
     """
 
-    sigma: float = 50.0
+    # TODO: review bound (unverified vs literature)
+    sigma: Annotated[float, TuneSpec(20.0, 100.0)] = 50.0
     mode: str = "reflect"
-    cval: float = 0.0
-    truncate: float = 4.0
+    cval: Annotated[float, TuneSpec(tunable=False)] = 0.0
+    truncate: Annotated[float, TuneSpec(tunable=False)] = 4.0
     preserve_range: bool = True
-    n_iter: int = 1
-
-    @field_validator("n_iter")
-    @classmethod
-    def _check_n_iter(cls, n_iter: int) -> int:
-        """Require at least one subtraction pass (matches the legacy guard)."""
-        if n_iter < 1:
-            raise ValueError("n_iter must be >= 1")
-        return n_iter
+    n_iter: Annotated[int, TuneSpec(1, 3)] = Field(1, ge=1)
 
     def _operate(self, image: Image) -> Image:
         for _ in range(self.n_iter):

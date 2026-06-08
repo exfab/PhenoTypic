@@ -1,15 +1,16 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, ClassVar, Literal
+from typing import TYPE_CHECKING, Annotated, ClassVar, Literal
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
 import bm3d
 from bm3d.profiles import BM3DStages
-from pydantic import field_validator
+from pydantic import Field
 
 from ..abc_ import ImageDenoiser
 from ..tools_.mixin import _GATSupportMixin
+from ..tools_.typing_ import TuneSpec
 
 
 class BM3DDenoiser(_GATSupportMixin, ImageDenoiser):
@@ -123,18 +124,10 @@ class BM3DDenoiser(_GATSupportMixin, ImageDenoiser):
     _GAT_NOISE_PARAMS: ClassVar[dict[str, float]] = {"sigma_psd": 1.0}
     _GAT_DEFER_ATTRS: ClassVar[tuple[str, ...]] = ("clip",)
 
-    sigma_psd: float = 0.02
-    block_size: int = 8
+    sigma_psd: Annotated[float, TuneSpec(0.01, 0.15, log=True)] = Field(0.02, ge=0.0)
+    block_size: Annotated[int, TuneSpec(tunable=False)] = 8
     stage_arg: Literal["all_stages", "hard_thresholding"] = "all_stages"
     clip: bool = True
-
-    @field_validator("sigma_psd")
-    @classmethod
-    def _check_sigma_psd(cls, sigma_psd: float) -> float:
-        """Require a non-negative noise estimate (matches the legacy guard)."""
-        if sigma_psd < 0:
-            raise ValueError("sigma_psd must be non-negative")
-        return sigma_psd
 
     def _operate(self, image: Image) -> Image:
         # detect_mat is guaranteed to be in [0, 1] range, which BM3D expects

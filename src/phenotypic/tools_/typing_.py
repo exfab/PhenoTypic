@@ -1,6 +1,16 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Annotated, Any, Dict, List, Literal, Tuple
+from typing import (
+    TYPE_CHECKING,
+    Annotated,
+    Any,
+    Callable,
+    Dict,
+    List,
+    Literal,
+    Optional,
+    Tuple,
+)
 
 import numpy as np
 from pydantic import (
@@ -236,35 +246,66 @@ def _deserialize_operation_value(value: Any) -> Any:
     return value
 
 
-def _require_operation_value(value: Any) -> Any:
-    """Assert a reconstructed value is an operation or a pipeline.
+def _make_require_value(base: "type | Callable[[], type]"):
+    """Build an ``AfterValidator`` guard asserting a value is a ``base`` instance.
 
-    Runs after :func:`_deserialize_operation_value`. Because
-    :data:`OperationField` carries an ``Any`` core (it cannot name the
-    operation base classes without an import cycle through ``tools_``),
-    this validator restores the type guard a plain
-    ``ObjectDetector | ImagePipeline`` annotation would otherwise provide.
+    ``base`` may be a concrete type or a zero-arg callable that returns the
+    type (resolved lazily, so ``OperationField`` can name ``BaseOperation``
+    without importing it at ``tools_`` load time — avoiding the import cycle).
 
     Args:
-        value: The (already reconstructed) field value.
+        base: The class the value must be an instance of, or a zero-arg
+            callable returning that class (resolved on first validation).
 
     Returns:
-        ``value`` unchanged when it is a ``BaseOperation`` instance
-        (``ImagePipeline`` is itself a ``BaseOperation``).
-
-    Raises:
-        ValueError: If ``value`` is not an operation/pipeline instance.
-            Raised as ``ValueError`` (not ``TypeError``) so pydantic wraps
-            it into a :class:`pydantic.ValidationError`.
+        A validator ``_require(value)`` that returns ``value`` unchanged when
+        it is a ``base`` instance, and raises ``ValueError`` otherwise. The
+        error is a ``ValueError`` (not ``TypeError``) so pydantic wraps it
+        into a :class:`pydantic.ValidationError`.
     """
-    from phenotypic.abc_ import BaseOperation
 
-    if not isinstance(value, BaseOperation):
-        raise ValueError(
-            f"expected an operation or pipeline instance, got "
-            f"{type(value).__name__}"
-        )
-    return value
+    def _require(value: Any) -> Any:
+        resolved = base if isinstance(base, type) else base()
+        if not isinstance(value, resolved):
+            raise ValueError(
+                f"expected an instance of {resolved.__name__}, got "
+                f"{type(value).__name__}"
+            )
+        return value
+
+    return _require
+
+
+def polymorphic_field(base: "type | Callable[[], type]", *, marker: Any = None):
+    """A pydantic field for a polymorphic model subtree.
+
+    The concrete subclass survives a JSON round-trip via the ``phenotypic``
+    class registry: the field serializes to ``{"class": <name>, "params":
+    {...}}`` (or the pipeline-tagged form for an ``ImagePipeline``) and
+    reconstructs the concrete subclass on load.
+
+    Args:
+        base: Constrains the accepted/validated type — a class or a zero-arg
+            callable returning the class (the lazy form avoids import cycles,
+            e.g. ``OperationField`` naming ``BaseOperation``).
+        marker: Optional sentinel attached to the ``Annotated`` chain (e.g.
+            the GUI's :class:`_OperationFieldMarker`) so introspecting tools
+            can recognise the field despite the ``Any`` core erasure.
+
+    Returns:
+        An ``Annotated`` type usable as a pydantic field annotation. Host
+        models must set ``model_config`` with ``arbitrary_types_allowed=True``.
+    """
+    core = Annotated[
+        Any,
+        BeforeValidator(_deserialize_operation_value),
+        AfterValidator(_make_require_value(base)),
+        PlainSerializer(_serialize_operation_value),
+    ]
+    if marker is None:
+        return core
+    # Annotated flattens a nested Annotated (PEP 593): the marker joins the chain.
+    return Annotated[core, marker]
 
 
 class _OperationFieldMarker:
@@ -297,24 +338,120 @@ class _OperationFieldMarker:
         return hash("_OperationFieldMarker")
 
 
+def _lazy_base_operation() -> type:
+    from phenotypic.abc_ import BaseOperation
+
+    return BaseOperation
+
+
 #: Annotated operation type usable as a pydantic field annotation for a
 #: parameter that holds another operation or a nested pipeline.
 #:
-#: Serializes to a class-tagged dict so the concrete subclass survives a
-#: JSON round-trip; deserializes by resolving the class through the
-#: ``phenotypic`` registry. Use it directly (``OperationField``) or inside
-#: a container — e.g. ``list[OperationField]`` — when the field must
-#: accept several operation types and round-trip each losslessly.
+#: Back-compat alias — an operation/pipeline-valued field built by
+#: :func:`polymorphic_field`. Serializes to a class-tagged dict so the
+#: concrete subclass survives a JSON round-trip; deserializes by resolving
+#: the class through the ``phenotypic`` registry. Use it directly
+#: (``OperationField``) or inside a container — e.g. ``list[OperationField]``
+#: — when the field must accept several operation types and round-trip each
+#: losslessly.
 #:
 #: The core type is ``Any`` (naming the operation base classes here would
 #: create an import cycle through ``tools_``); an ``AfterValidator``
 #: restores the operation/pipeline type guard. The trailing
 #: :class:`_OperationFieldMarker` lets the GUI ``OperationRegistry``
 #: recognise the field despite the ``Any`` erasure.
-OperationField = Annotated[
-    Any,
-    BeforeValidator(_deserialize_operation_value),
-    AfterValidator(_require_operation_value),
-    PlainSerializer(_serialize_operation_value),
-    _OperationFieldMarker(),
-]
+OperationField = polymorphic_field(
+    base=_lazy_base_operation, marker=_OperationFieldMarker()
+)
+
+
+class TuneSpec:
+    """Per-field tuning-search metadata (Tier-1 inference override).
+
+    ``TuneSpec`` mirrors the existing field-marker pattern (``_ColumnRefMarker``,
+    ``_OperationFieldMarker``): a frozen, slotted, **non-pydantic** sentinel that
+    is a complete no-op at runtime and is read *only* by ``infer_search_space``,
+    via ``op.model_fields[name].metadata`` (where pydantic v2 stores
+    ``Annotated`` extras). It rides in an ``Annotated[T, TuneSpec(...)]`` chain::
+
+        class GaussianBlur(ImageEnhancer):
+            sigma:    Annotated[float, TuneSpec(0.5, 5.0, log=True)] = 2.0
+            truncate: Annotated[float, TuneSpec(tunable=False)]      = 4.0
+
+    At runtime ``sigma`` is still a plain ``float``; ``GaussianBlur(sigma=999.0)``
+    constructs exactly as before. The marker is the **search** domain, never the
+    **valid** domain — validity stays the job of pydantic ``Field(ge=, le=)``.
+
+    It lives here (not in ``phenotypic.tune``) so operation modules can import it
+    without dragging in the tune engine — the public re-export
+    ``from phenotypic.tune import TuneSpec`` still works.
+
+    Args:
+        low: Inclusive lower search bound (positional). ``None`` leaves the
+            bound to Tier-2 inference / the co-located ``Field`` constraint.
+        high: Inclusive upper search bound (positional). ``None`` as ``low``.
+        step: Discretization stride — integer step or quantized float.
+            ``None`` means continuous (or unit-step for integers).
+        log: Whether to sample on a logarithmic scale (default ``False``).
+        categories: Override / subset the auto-derived categorical choices.
+            A list is coerced to a tuple so the marker stays hashable.
+        tunable: ``False`` excludes the field from tuning outright and
+            short-circuits Tier-2 (default ``True``).
+
+    Note:
+        This is **not** a pydantic model — it is a plain slotted sentinel so it
+        can sit in an ``Annotated`` chain without pydantic trying to validate
+        it. It carries ``__eq__``/``__hash__`` over the full field tuple so a
+        duplicate in an ``Annotated`` chain de-dupes (PEP 593 chain semantics).
+    """
+
+    __slots__ = ("low", "high", "step", "log", "categories", "tunable")
+
+    low: Optional[float]
+    high: Optional[float]
+    step: Optional[float]
+    log: bool
+    categories: Optional[tuple]
+    tunable: bool
+
+    def __init__(
+        self,
+        low: Optional[float] = None,
+        high: Optional[float] = None,
+        *,
+        step: Optional[float] = None,
+        log: bool = False,
+        categories: Optional[tuple] = None,
+        tunable: bool = True,
+    ) -> None:
+        self.low = low
+        self.high = high
+        self.step = step
+        self.log = log
+        self.categories = tuple(categories) if categories is not None else None
+        self.tunable = tunable
+
+    def _as_tuple(self) -> tuple:
+        return (
+            self.low,
+            self.high,
+            self.step,
+            self.log,
+            self.categories,
+            self.tunable,
+        )
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, TuneSpec):
+            return NotImplemented
+        return self._as_tuple() == other._as_tuple()
+
+    def __hash__(self) -> int:
+        return hash(self._as_tuple())
+
+    def __repr__(self) -> str:
+        return (
+            f"TuneSpec(low={self.low!r}, high={self.high!r}, "
+            f"step={self.step!r}, log={self.log!r}, "
+            f"categories={self.categories!r}, tunable={self.tunable!r})"
+        )

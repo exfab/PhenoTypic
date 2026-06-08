@@ -40,8 +40,8 @@ from . import (
     refine,
     schema,
     settings_,
-    sweep,
     tools_,
+    tune,
     util,
     prefab,
 )
@@ -64,5 +64,5 @@ __all__ = [
     "tools_",
     "util",
     "settings_",
-    "sweep",
+    "tune",
 ]

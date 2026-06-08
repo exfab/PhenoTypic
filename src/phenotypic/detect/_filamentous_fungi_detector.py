@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, ClassVar, Optional, Union
+from typing import TYPE_CHECKING, Annotated, ClassVar, Optional, Union
 import numpy as np
 import gc
 
@@ -23,7 +23,7 @@ from phenotypic.enhance import (
     ContrastStretching,
     FocusEdgePhase,
 )
-from phenotypic.tools_.typing_ import OperationField
+from phenotypic.tools_.typing_ import OperationField, TuneSpec
 
 from phenotypic.detect import HysteresisDetector
 from phenotypic.detect._inoculum_detector import InoculumDetector
@@ -280,27 +280,40 @@ class FilamentousFungiDetector(GridObjectDetector):
     inoculum_detector: Union[OperationField, None] = None
 
     # ── Scene parameters ──
-    max_colony_radius_px: float = 250.0
-    min_branch_width_px: int = 3
+    # TODO: review bound (unverified vs literature)
+    max_colony_radius_px: Annotated[float, TuneSpec(50.0, 500.0, log=True)] = 250.0
+    # TODO: review bound (unverified vs literature)
+    min_branch_width_px: Annotated[int, TuneSpec(2, 10)] = 3
 
     # ── Explicit user knobs ──
+    # Docstrings document each default + its qualitative direction but not an
+    # explicit range; the windows below are derived from the default + domain
+    # knowledge (search hints only, never validity bounds).
     ignore_borders: bool = True
-    edge_noise_threshold: float = 6.0
-    reconnection_tolerance: float = 2.5
-    max_gap_length: int = 30
-    border_margin_px: int = 50
-    frag_reach_px: int = 10
-    gap_crossing_penalty: float = 4.0
+    # TODO: review bound (unverified vs literature)
+    edge_noise_threshold: Annotated[float, TuneSpec(2.0, 12.0)] = 6.0
+    # TODO: review bound (unverified vs literature)
+    reconnection_tolerance: Annotated[float, TuneSpec(1.0, 5.0)] = 2.5
+    # TODO: review bound (unverified vs literature)
+    max_gap_length: Annotated[int, TuneSpec(10, 60)] = 30
+    # TODO: review bound (unverified vs literature)
+    border_margin_px: Annotated[int, TuneSpec(20, 100)] = 50
+    # TODO: review bound (unverified vs literature)
+    frag_reach_px: Annotated[int, TuneSpec(5, 30)] = 10
+    # TODO: review bound (unverified vs literature)
+    gap_crossing_penalty: Annotated[float, TuneSpec(1.0, 10.0)] = 4.0
 
     # ── Scene-derivation overrides (None → auto-derived by the validator) ──
-    gauss_sigma: Optional[float] = None
-    tile_size: Optional[int] = None
-    tile_overlap: Optional[int] = None
-    pct_min_wavelength: Optional[float] = None
-    mad_window: Optional[int] = None
-    path_dilation_radius: Optional[int] = None
-    snr_margin: Optional[int] = None
-    coherence_window_radius: Optional[int] = None
+    # Auto-derived from max_colony_radius_px / min_branch_width_px when left at
+    # None, so they are never independent search targets (decision: tunable=False).
+    gauss_sigma: Annotated[Optional[float], TuneSpec(tunable=False)] = None
+    tile_size: Annotated[Optional[int], TuneSpec(tunable=False)] = None
+    tile_overlap: Annotated[Optional[int], TuneSpec(tunable=False)] = None
+    pct_min_wavelength: Annotated[Optional[float], TuneSpec(tunable=False)] = None
+    mad_window: Annotated[Optional[int], TuneSpec(tunable=False)] = None
+    path_dilation_radius: Annotated[Optional[int], TuneSpec(tunable=False)] = None
+    snr_margin: Annotated[Optional[int], TuneSpec(tunable=False)] = None
+    coherence_window_radius: Annotated[Optional[int], TuneSpec(tunable=False)] = None
 
     @model_validator(mode="after")
     def _derive_scene_params(self) -> Self:

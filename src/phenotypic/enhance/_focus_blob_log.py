@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -11,6 +11,7 @@ from scipy.ndimage import gaussian_laplace
 from typing_extensions import Self
 
 from ..abc_ import FocusBlob
+from ..tools_.typing_ import TuneSpec
 
 _SQRT2 = np.sqrt(2.0)
 
@@ -73,9 +74,11 @@ class FocusBlobLoG(FocusBlob):
         blob detection and LoG theory.
     """
 
-    min_radius: float = 3.0
-    max_radius: float = 12.0
-    num_scales: int = 12
+    # TODO: review bound (unverified vs literature)
+    min_radius: Annotated[float, TuneSpec(1.0, 5.0)] = 3.0
+    # TODO: review bound (unverified vs literature)
+    max_radius: Annotated[float, TuneSpec(8.0, 50.0)] = 12.0
+    num_scales: Annotated[int, TuneSpec(4, 20)] = 12
 
     @model_validator(mode="after")
     def _check_radius_range(self) -> Self:

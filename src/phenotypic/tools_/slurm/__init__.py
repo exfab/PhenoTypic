@@ -1,7 +1,7 @@
 """Shared SLURM utilities for array job chunking, sbatch submission, and dispatching.
 
-This subpackage consolidates SLURM logic used by both the main CLI
-(``phenotypic._cli``) and the sweep CLI (``phenotypic.sweep._sweep_cli``).
+This subpackage consolidates SLURM logic used by the main CLI
+(``phenotypic._cli``).
 """
 
 from ._config import (

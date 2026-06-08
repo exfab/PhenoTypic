@@ -1,15 +1,17 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated, Any, cast
 
 if TYPE_CHECKING:
     from phenotypic._core._grid_image import GridImage
     from phenotypic._core._image import Image
 
+from pydantic import Field, model_validator
 from skimage import feature, morphology
 from scipy import ndimage
 
 from phenotypic.abc_ import ThresholdDetector
+from phenotypic.tools_.typing_ import TuneSpec
 
 
 class CannyDetector(ThresholdDetector):
@@ -105,13 +107,44 @@ class CannyDetector(ThresholdDetector):
         comparison of all detection strategies and their failure modes.
     """
 
-    sigma: float = 1.0
-    low_threshold: float = 0.1
-    high_threshold: float = 0.2
+    sigma: Annotated[float, TuneSpec(0.5, 3.0)] = Field(1.0, gt=0.0)
+    # Mode-dependent: a fraction when use_quantiles=True, an absolute gradient
+    # value otherwise — so a TuneSpec search window only, no tight Field bound.
+    low_threshold: Annotated[float, TuneSpec(0.05, 0.2)] = 0.1
+    # Search windows are deliberately NON-OVERLAPPING (low ≤ 0.2 ≤ high) so the
+    # optimizer can never sample ``low > high`` — a degenerate Canny config. The
+    # constructor params are unchanged (no derived/delta field), so serialized
+    # pipelines keep round-tripping; the ``_check_threshold_order`` validator is a
+    # belt-and-suspenders guard for manually-constructed detectors.
+    high_threshold: Annotated[float, TuneSpec(0.2, 0.4)] = 0.2
     use_quantiles: bool = True
-    min_size: int = 50
+    # TODO: review bound (unverified vs literature)
+    min_size: Annotated[int, TuneSpec(20, 500)] = Field(50, ge=1)
     invert_edges: bool = True
-    connectivity: int = 2
+    connectivity: Annotated[int, TuneSpec(categories=[1, 2])] = Field(2, ge=1, le=2)
+
+    @model_validator(mode="after")
+    def _check_threshold_order(self) -> "CannyDetector":
+        """Reject a configuration where ``high_threshold <= low_threshold``.
+
+        Canny hysteresis requires the upper threshold to strictly exceed the
+        lower one; a crossed pair produces a degenerate edge map. The tuning
+        search windows are already non-overlapping (``low ≤ 0.2 ≤ high``), so the
+        optimizer can never reach this state — this guard only fires for a
+        hand-constructed detector. The defaults (low ``0.1``, high ``0.2``) pass.
+
+        Returns:
+            ``self`` unchanged when the thresholds are correctly ordered.
+
+        Raises:
+            ValueError: If ``high_threshold <= low_threshold``.
+        """
+        if self.high_threshold <= self.low_threshold:
+            raise ValueError(
+                f"high_threshold ({self.high_threshold}) must be greater than "
+                f"low_threshold ({self.low_threshold})"
+            )
+        return self
 
     def _operate(self, image: Image | GridImage) -> Image:
 
@@ -132,11 +165,19 @@ class CannyDetector(ThresholdDetector):
         else:
             regions = edges
 
-        # Label connected components
-        objmap, _ = ndimage.label(
-                regions,
-                structure=ndimage.generate_binary_structure(2, self.connectivity)
+        # Label connected components. ``ndimage.label`` returns
+        # ``(labels, count)`` here (default ``output=None``); the cast pins the
+        # tuple branch of its overloaded return for the type checker.
+        labeled = cast(
+                "tuple[Any, int]",
+                ndimage.label(
+                        regions,
+                        structure=ndimage.generate_binary_structure(
+                                2, self.connectivity
+                        ),
+                ),
         )
+        objmap = labeled[0]
 
         # Remove small objects (pass a boolean array when only one label
         # exists to avoid skimage's "single-label" ambiguity warning).

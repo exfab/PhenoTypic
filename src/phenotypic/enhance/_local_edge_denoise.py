@@ -1,15 +1,16 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, ClassVar, Literal
+from typing import TYPE_CHECKING, Annotated, ClassVar, Literal, Optional
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
-from pydantic import field_validator
+from pydantic import Field, field_validator
 from skimage.restoration import denoise_bilateral
 
 from ..abc_ import ImageDenoiser
 from ..tools_.mixin import _GATSupportMixin
+from ..tools_.typing_ import TuneSpec
 
 
 class LocalEdgeDenoise(_GATSupportMixin, ImageDenoiser):
@@ -109,20 +110,18 @@ class LocalEdgeDenoise(_GATSupportMixin, ImageDenoiser):
     _GAT_NOISE_PARAMS: ClassVar[dict[str, float]] = {"sigma_color": 1.0}
     _GAT_DEFER_ATTRS: ClassVar[tuple[str, ...]] = ("clip",)
 
-    sigma_color: float | None = None
-    sigma_spatial: float = 15
-    win_size: int | None = None
+    # Categorical (not a float range) so the optimizer can try ``None`` — the
+    # auto-estimate (noise-std) mode — alongside representative explicit sigmas.
+    # A plain ``TuneSpec(0.02, 0.5)`` window would never sample the ``None`` arm.
+    sigma_color: Annotated[
+        Optional[float],
+        TuneSpec(categories=[None, 0.02, 0.05, 0.1, 0.2, 0.5]),
+    ] = None
+    sigma_spatial: Annotated[float, TuneSpec(1.0, 50.0, log=True)] = Field(15, gt=0.0)
+    win_size: Annotated[Optional[int], TuneSpec(tunable=False)] = None
     mode: Literal["constant", "edge", "symmetric", "reflect", "wrap"] = "constant"
-    cval: float = 0
+    cval: Annotated[float, TuneSpec(tunable=False)] = 0
     clip: bool = True
-
-    @field_validator("sigma_spatial")
-    @classmethod
-    def _check_sigma_spatial(cls, sigma_spatial: float) -> float:
-        """Require a positive spatial sigma (matches the legacy guard)."""
-        if sigma_spatial <= 0:
-            raise ValueError("sigma_spatial must be > 0")
-        return sigma_spatial
 
     @field_validator("sigma_color")
     @classmethod

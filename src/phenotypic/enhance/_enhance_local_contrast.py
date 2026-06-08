@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated, Optional
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -8,6 +8,7 @@ if TYPE_CHECKING:
 from skimage.exposure import equalize_adapthist
 
 from phenotypic.abc_ import ContrastAdjustment
+from phenotypic.tools_.typing_ import TuneSpec
 
 
 class EnhanceLocalContrast(ContrastAdjustment):
@@ -66,8 +67,8 @@ class EnhanceLocalContrast(ContrastAdjustment):
         contrast enhancement methods on real plate images.
     """
 
-    kernel_size: int | None = None
-    clip_limit: float = 0.01
+    kernel_size: Annotated[Optional[int], TuneSpec(tunable=False)] = None
+    clip_limit: Annotated[float, TuneSpec(0.005, 0.05, log=True)] = 0.01
 
     def _operate(self, image: Image) -> Image:
         try:

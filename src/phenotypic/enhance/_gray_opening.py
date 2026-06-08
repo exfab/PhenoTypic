@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Literal, TYPE_CHECKING
+from typing import Annotated, Literal, TYPE_CHECKING
 
 from skimage import morphology
 
@@ -9,6 +9,7 @@ if TYPE_CHECKING:
 
 from phenotypic.abc_ import MorphologicalFiltering
 from phenotypic.tools_.mixin import FootprintMixin
+from phenotypic.tools_.typing_ import TuneSpec
 
 
 class GrayOpening(MorphologicalFiltering, FootprintMixin):
@@ -61,8 +62,9 @@ class GrayOpening(MorphologicalFiltering, FootprintMixin):
     """
 
     shape: Literal["square", "diamond", "disk"] = "square"
-    width: int = 5
-    n_iter: int = 1
+    # TODO: review bound (unverified vs literature)
+    width: Annotated[int, TuneSpec(3, 15, step=2)] = 5
+    n_iter: Annotated[int, TuneSpec(1, 3)] = 1
 
     def _operate(self, image: Image) -> Image:
         footprint = self._make_footprint(shape=self.shape, width=self.width)

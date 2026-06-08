@@ -5,13 +5,15 @@ if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
 import gc
-from typing import Literal
+from typing import Annotated, Literal, Optional
 
 import numpy as np
 import scipy.ndimage as ndimage
+from pydantic import Field
 
 from phenotypic.abc_ import ObjectDetector
 from phenotypic.tools_.mixin import GridInferenceMixin
+from phenotypic.tools_.typing_ import TuneSpec
 import skimage.filters as filters
 import skimage.morphology as morphology
 
@@ -117,11 +119,12 @@ class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
     ] = "otsu"
     subtract_background: bool = True
     remove_noise: bool = True
-    footprint_width: int = 6
-    noise_radius: int = 1
-    smoothing_sigma: float = 2.0
-    min_peak_distance: int | None = None
-    peak_prominence: float | None = None
+    # TODO: review bound (unverified vs literature)
+    footprint_width: Annotated[int, TuneSpec(4, 20)] = Field(6, ge=1)
+    noise_radius: Annotated[int, TuneSpec(1, 3)] = Field(1, ge=1)
+    smoothing_sigma: Annotated[float, TuneSpec(0.0, 5.0)] = 2.0
+    min_peak_distance: Annotated[Optional[int], TuneSpec(tunable=False)] = None
+    peak_prominence: Annotated[Optional[float], TuneSpec(tunable=False)] = None
     edge_refinement: bool = True
     selection_mode: Literal["dominant", "centered", "regularized"] = "dominant"
     split_merged: bool = True

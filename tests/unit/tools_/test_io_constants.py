@@ -413,6 +413,90 @@ class TestDeliverablesLayout:
 
 
 # ---------------------------------------------------------------------------
+# Multi-objective Pareto deliverables (Phase 4 chunk C)
+# ---------------------------------------------------------------------------
+
+
+class TestParetoPaths:
+    """The ``deliverables/pareto/`` multi-objective artifact paths.
+
+    A multi-objective tune run writes its Pareto front + per-objective winners
+    into ``<output>/deliverables/pareto/``; these helpers resolve those paths so
+    no caller hand-joins ``"pareto"`` (plan §0b path-helper rule).
+    """
+
+    @pytest.fixture
+    def output(self) -> Path:
+        return Path("/tmp/pht_tune")
+
+    def test_dir_pareto_constant(self) -> None:
+        from phenotypic.tools_._io_constants import DIR_PARETO
+
+        assert DIR_PARETO == "pareto"
+
+    def test_pareto_front_parquet_constant(self) -> None:
+        from phenotypic.tools_._io_constants import PARETO_FRONT_PARQUET
+
+        assert PARETO_FRONT_PARQUET == "pareto_front.parquet"
+
+    def test_pareto_dir_under_deliverables(self, output: Path) -> None:
+        from phenotypic.tools_._io_constants import deliverables_dir, pareto_dir
+
+        assert pareto_dir(output) == deliverables_dir(output) / "pareto"
+
+    def test_pareto_front_parquet_path(self, output: Path) -> None:
+        from phenotypic.tools_._io_constants import (
+            pareto_dir,
+            pareto_front_parquet_path,
+        )
+
+        assert pareto_front_parquet_path(output) == (
+            pareto_dir(output) / "pareto_front.parquet"
+        )
+
+    def test_pareto_best_pipeline_path_per_objective(self, output: Path) -> None:
+        from phenotypic.tools_._io_constants import (
+            pareto_best_pipeline_path,
+            pareto_dir,
+        )
+
+        assert pareto_best_pipeline_path(output, "Dice") == (
+            pareto_dir(output) / "best_Dice.json"
+        )
+        assert pareto_best_pipeline_path(output, "s0") == (
+            pareto_dir(output) / "best_s0.json"
+        )
+
+    def test_pareto_importance_path_per_objective(self, output: Path) -> None:
+        from phenotypic.tools_._io_constants import (
+            pareto_dir,
+            pareto_importance_path,
+        )
+
+        assert pareto_importance_path(output, "Dice") == (
+            pareto_dir(output) / "param_importance_Dice.json"
+        )
+        assert pareto_importance_path(output, "s0") == (
+            pareto_dir(output) / "param_importance_s0.json"
+        )
+
+    def test_pareto_paths_root_under_deliverables(self, output: Path) -> None:
+        from phenotypic.tools_._io_constants import (
+            deliverables_dir,
+            pareto_best_pipeline_path,
+            pareto_dir,
+            pareto_front_parquet_path,
+            pareto_importance_path,
+        )
+
+        deliv = deliverables_dir(output)
+        assert deliv in pareto_dir(output).parents or pareto_dir(output).parent == deliv
+        assert deliv in pareto_front_parquet_path(output).parents
+        assert deliv in pareto_best_pipeline_path(output, "IoU").parents
+        assert deliv in pareto_importance_path(output, "IoU").parents
+
+
+# ---------------------------------------------------------------------------
 # JSON contract key namespace classes
 # ---------------------------------------------------------------------------
 
@@ -877,3 +961,181 @@ def test_phenotypic_cache_pipeline_json_path(tmp_path: Path) -> None:
         phenotypic_cache_pipeline_json_path(tmp_path)
         == tmp_path / ".phenotypic" / PIPELINE_JSON
     )
+
+
+# ---------------------------------------------------------------------------
+# Tune machine-state cache (.pht-tune-cache/) — the tune-run's hidden state root
+# ---------------------------------------------------------------------------
+
+
+class TestTuneCachePaths:
+    """The ``.pht-tune-cache/`` family relocates the tune run's machine-state.
+
+    Mirrors the forward run's ``.phenotypic/`` cache: ``study.db`` (+ WAL),
+    the held-out ``split.json``, and the GUI-discovery ``run.json`` marker live
+    under a hidden cache root so they don't clutter the user-facing output and
+    survive a fresh ``deliverables/`` rewrite. ``trials.parquet`` deliberately
+    stays at the output root (it is the user-facing journal + Optuna resume).
+    """
+
+    @pytest.fixture
+    def output(self) -> Path:
+        return Path("/tmp/pht_tune_run")
+
+    def test_dir_pht_tune_cache_constant(self) -> None:
+        from phenotypic.tools_ import DIR_PHT_TUNE_CACHE
+
+        assert DIR_PHT_TUNE_CACHE == ".pht-tune-cache"
+
+    def test_run_marker_filename_constant(self) -> None:
+        from phenotypic.tools_ import RUN_MARKER_JSON
+
+        assert RUN_MARKER_JSON == "run.json"
+
+    def test_tune_cache_dir(self, output: Path) -> None:
+        from phenotypic.tools_ import tune_cache_dir
+
+        assert tune_cache_dir(output) == output / ".pht-tune-cache"
+
+    def test_tune_cache_run_marker_path(self, output: Path) -> None:
+        from phenotypic.tools_ import tune_cache_run_marker_path
+
+        assert tune_cache_run_marker_path(output) == (
+            output / ".pht-tune-cache" / "run.json"
+        )
+
+    def test_tune_cache_study_db_path(self, output: Path) -> None:
+        from phenotypic.tools_ import tune_cache_study_db_path
+        from phenotypic.tools_._io_constants import STUDY_DB
+
+        assert tune_cache_study_db_path(output) == (
+            output / ".pht-tune-cache" / STUDY_DB
+        )
+
+    def test_tune_cache_splits_dir(self, output: Path) -> None:
+        from phenotypic.tools_ import tune_cache_splits_dir
+        from phenotypic.tools_._io_constants import DIR_SPLITS
+
+        assert tune_cache_splits_dir(output) == (
+            output / ".pht-tune-cache" / DIR_SPLITS
+        )
+
+    def test_tune_cache_split_assignment_path(self, output: Path) -> None:
+        from phenotypic.tools_ import tune_cache_split_assignment_path
+        from phenotypic.tools_._io_constants import (
+            DIR_SPLITS,
+            SPLIT_ASSIGNMENT_JSON,
+        )
+
+        assert tune_cache_split_assignment_path(output) == (
+            output / ".pht-tune-cache" / DIR_SPLITS / SPLIT_ASSIGNMENT_JSON
+        )
+
+    def test_trials_parquet_stays_at_output_root(self, output: Path) -> None:
+        """The journal is user-facing + the Optuna resume source — NOT relocated."""
+        from phenotypic.tools_._io_constants import (
+            TRIALS_PARQUET,
+            trials_parquet_path,
+        )
+
+        assert trials_parquet_path(output) == output / TRIALS_PARQUET
+
+    def test_resolve_study_db_prefers_cache_then_legacy(self, tmp_path: Path) -> None:
+        """Read-fallback: cache location wins; a legacy-root study.db is found."""
+        from phenotypic.tools_ import (
+            resolve_study_db_path,
+            tune_cache_study_db_path,
+        )
+        from phenotypic.tools_._io_constants import _legacy_study_db_path
+
+        # Neither present → defaults to the new cache location.
+        assert resolve_study_db_path(tmp_path) == tune_cache_study_db_path(tmp_path)
+        # Only the legacy root copy present → resolver finds it (no migration).
+        legacy = _legacy_study_db_path(tmp_path)
+        legacy.write_bytes(b"sqlite")
+        assert resolve_study_db_path(tmp_path) == legacy
+        # Cache copy present → it wins over the legacy copy.
+        cache = tune_cache_study_db_path(tmp_path)
+        cache.parent.mkdir(parents=True, exist_ok=True)
+        cache.write_bytes(b"sqlite")
+        assert resolve_study_db_path(tmp_path) == cache
+
+    def test_resolve_split_prefers_cache_then_legacy(self, tmp_path: Path) -> None:
+        """A missing split silently re-derives — so resume must find legacy-root."""
+        from phenotypic.tools_ import (
+            resolve_split_assignment_path,
+            tune_cache_split_assignment_path,
+        )
+        from phenotypic.tools_._io_constants import _legacy_split_assignment_path
+
+        assert resolve_split_assignment_path(tmp_path) == (
+            tune_cache_split_assignment_path(tmp_path)
+        )
+        legacy = _legacy_split_assignment_path(tmp_path)
+        legacy.parent.mkdir(parents=True, exist_ok=True)
+        legacy.write_text("{}", encoding="utf-8")
+        assert resolve_split_assignment_path(tmp_path) == legacy
+        cache = tune_cache_split_assignment_path(tmp_path)
+        cache.parent.mkdir(parents=True, exist_ok=True)
+        cache.write_text("{}", encoding="utf-8")
+        assert resolve_split_assignment_path(tmp_path) == cache
+
+
+# ---------------------------------------------------------------------------
+# Tune deliverable-path helpers + constants are re-exported at package level
+# ---------------------------------------------------------------------------
+
+
+class TestTuneReExports:
+    """``from phenotypic.tools_ import <tune helper>`` must NOT AttributeError.
+
+    Several tune deliverable-path helpers + filename/dir constants live in
+    ``_io_constants.py`` but were missing from the ``tools_/__init__`` re-export
+    surface, so a GUI reader using the conventional ``from phenotypic.tools_
+    import …`` would crash. This guards the package-level re-export contract
+    (and that each re-export is the SAME object as its ``_io_constants`` source).
+    """
+
+    _PATH_HELPERS = (
+        "trials_parquet_path",
+        "tuning_spec_path",
+        "best_pipeline_path",
+        "param_importance_path",
+        "generalization_path",
+        "pareto_dir",
+        "pareto_front_parquet_path",
+        "pareto_best_pipeline_path",
+        "pareto_importance_path",
+    )
+    _CONSTANTS = (
+        "STUDY_DB",
+        "SPLIT_ASSIGNMENT_JSON",
+        "TRIALS_PARQUET",
+        "BEST_PIPELINE_JSON",
+        "TUNING_SPEC_JSON",
+        "PARAM_IMPORTANCE_JSON",
+        "GENERALIZATION_JSON",
+        "PARETO_FRONT_PARQUET",
+        "RUN_MARKER_JSON",
+        "DIR_SPLITS",
+        "DIR_PARETO",
+        "DIR_PHT_TUNE_CACHE",
+    )
+
+    def test_path_helpers_reexported_and_identical(self) -> None:
+        import phenotypic.tools_ as tools
+        from phenotypic.tools_ import _io_constants as io
+
+        for name in self._PATH_HELPERS:
+            assert hasattr(tools, name), f"{name} missing from tools_ re-exports"
+            assert name in tools.__all__, f"{name} missing from tools_.__all__"
+            assert getattr(tools, name) is getattr(io, name)
+
+    def test_constants_reexported_and_identical(self) -> None:
+        import phenotypic.tools_ as tools
+        from phenotypic.tools_ import _io_constants as io
+
+        for name in self._CONSTANTS:
+            assert hasattr(tools, name), f"{name} missing from tools_ re-exports"
+            assert name in tools.__all__, f"{name} missing from tools_.__all__"
+            assert getattr(tools, name) == getattr(io, name)

@@ -1,0 +1,44 @@
+# Tune Engine — Implementation Plans
+
+Phased implementation of the parameter-tuning engine (`src/phenotypic/tune/`). The
+**design bundle** lives in [`../../specs/param-sweep-redesign/`](../../specs/param-sweep-redesign/)
+— start with the master spec + [`engine-architecture.md`](../../specs/param-sweep-redesign/engine-architecture.md)
+(the ABC/interface layer the plans build on).
+
+> **▶ To implement, start with [`EXECUTION.md`](EXECUTION.md)** — the execution entrypoint:
+> the implementation strategy (dispatch cadence, per-phase review/simplify), the verification
+> strategy (green-gates + cross-cutting locks), the phase DAG, and the risk register.
+
+> **Deprecation:** `tune` replaces `sweep` via a **hard cutover** — `sweep` is **deleted
+> wholesale at the end of Phase 1** (master §9). The two are not coupled; they only share
+> the extracted `_execution` module.
+
+## Phase roadmap
+
+| Phase | Scope | Plan | Status |
+|-------|-------|------|--------|
+| **0 · Prerequisites** | `polymorphic_field` factory · registry `+= tune` · `LocalExecutor` · capture the grid golden fixture | [`phase-0-prerequisites.md`](phase-0-prerequisites.md) | ✅ written |
+| **1 · Engine core** *(no new deps)* | split into 1a–1d below; **deletes `sweep`** at the end of 1d | all sub-plans written | ✅ |
+| &nbsp;&nbsp;↳ **1a · Search space** | domains (`Categorical`/`IntRange`/`FloatRange`/`Fixed`) · `Knob` · `SearchSpace` | [`phase-1a-search-space.md`](phase-1a-search-space.md) | ✅ written |
+| &nbsp;&nbsp;↳ **1b · Strategies** | `PruningChannel` · grid enumeration · `Grid`/`Random` `SearchStrategy` · `StrategyConfig` | [`phase-1b-strategies.md`](phase-1b-strategies.md) | ✅ written |
+| &nbsp;&nbsp;↳ **1c · Scoring + evaluation** | `Scorer` ABC · Count-only `QCScorer` · params→pipeline builder · `Evaluator` (CV-only MVP, `median−λ·IQR`) | [`phase-1c-scoring-evaluation.md`](phase-1c-scoring-evaluation.md) | ✅ written |
+| &nbsp;&nbsp;↳ **1d · Engine + CLI** | `TuningEngine` · `TuningSpec` (embeds `pipeline`) · StudyStore · RF-permutation importance · CLI (`-i/-o`) · **golden byte-compat lock** · **deletes `sweep`** | [`phase-1d-engine-cli.md`](phase-1d-engine-cli.md) | ✅ written |
+| **2 · Optuna backend** *(`tune` extra)* | `OptunaStrategy` (TPE/CMA-ES/NSGA-II) · ASHA pruning · SQLite persist/resume · fANOVA · two-round freeze · distributed · `SlurmExecutor` | [`phase-2-optuna-backend.md`](phase-2-optuna-backend.md) | ✅ outlined |
+| **3 · Auto-space + reference-free** | `infer_search_space` · `TuneSpec` markers · `--auto-space` · `ReferenceFreeScorer` + meta-validation gate | [`phase-3-autospace-reference-free.md`](phase-3-autospace-reference-free.md) | ✅ outlined |
+| **4 · Supervised + multi-objective** | `SupervisedScorer` · `CompositeScorer` · Pareto reporting / `--multi-objective` | [`phase-4-supervised-multiobjective.md`](phase-4-supervised-multiobjective.md) | ✅ outlined |
+| **5 · Dash co-pilot** | the `/tune/` view: 6a monitor → 6b curate → 6c space-edit; FEATURES/WORKFLOWS/screenshot gates | [`phase-5-dash-copilot.md`](phase-5-dash-copilot.md) | ✅ outlined |
+| *Parallel* · **Operation annotations** | `Field(ge,le)` + `TuneSpec` on operation fields (decoupled workstream) | [`workstream-operation-annotations.md`](workstream-operation-annotations.md) | ✅ outlined |
+| *Deferred* · **MCP** | the `tune_*` agentic surface (out of scope per the param-sweep focus) | — | 🚫 |
+
+## Dependency notes
+
+- **Phase 0 precedes Phase 1** — without `polymorphic_field` + the registry edit, `TuningSpec` can't round-trip.
+- **`infer_search_space` is Phase 3**, not Phase 1 — Phase 1 hand-authors the space (Python-first → `tuning_spec.json`); `--auto-space` is the later convenience.
+- **Phases 3–5 fan out from a working Phase 1–2**; the operation-annotations workstream is fully decoupled.
+
+## Convention
+
+Phase plans use plain `phase-N-<topic>.md` filenames (the master spec §12 owns the canonical
+phase numbering). Each plan is self-contained TDD tasks; execute via
+`superpowers:subagent-driven-development` (fresh subagent per task + review) or
+`superpowers:executing-plans` (inline with checkpoints).

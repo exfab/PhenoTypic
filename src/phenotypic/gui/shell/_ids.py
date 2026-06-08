@@ -22,7 +22,7 @@ from __future__ import annotations
 from typing import Literal
 
 #: Closed set of tool names used in release-button / release-status IDs.
-ToolName = Literal["viewer", "analysis", "builder", "run"]
+ToolName = Literal["viewer", "analysis", "builder", "run", "tune"]
 
 # ---------------------------------------------------------------------------
 # Top bar
@@ -54,6 +54,7 @@ SHELL_TAB_BUILDER = "shell-tab-builder"
 SHELL_TAB_VIEWER = "shell-tab-viewer"
 SHELL_TAB_RUN = "shell-tab-run"
 SHELL_TAB_ANALYSIS = "shell-tab-analysis"
+SHELL_TAB_TUNE = "shell-tab-tune"
 
 # ---------------------------------------------------------------------------
 # Sidebar
@@ -157,6 +158,7 @@ __all__ = [
     "SHELL_TAB_VIEWER",
     "SHELL_TAB_RUN",
     "SHELL_TAB_ANALYSIS",
+    "SHELL_TAB_TUNE",
     "SHELL_SIDEBAR",
     "SHELL_SIDEBAR_TREE",
     "SHELL_SIDEBAR_REFRESH",

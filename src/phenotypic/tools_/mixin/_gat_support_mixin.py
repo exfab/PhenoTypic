@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable, ClassVar
+from typing import TYPE_CHECKING, Annotated, Callable, ClassVar
 
 from pydantic import BaseModel, Field
 
@@ -11,6 +11,7 @@ from phenotypic.tools_._anscombe import (
     gat_inverse,
     resolve_scale_factor,
 )
+from phenotypic.tools_.typing_ import TuneSpec
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -61,7 +62,8 @@ class _GATSupportMixin(BaseModel):
 
     use_gat: bool = False
     gat_gain: float = Field(default=1.0, gt=0)
-    gat_mu: float = 0.0
+    # Camera-calibration baseline offset — not a search target (any sign valid).
+    gat_mu: Annotated[float, TuneSpec(tunable=False)] = 0.0
     gat_read_sigma: float = Field(default=0.0, ge=0)
     gat_scale_factor: float | None = Field(default=None, gt=0)
 

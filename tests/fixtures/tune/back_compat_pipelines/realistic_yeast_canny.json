@@ -1,0 +1,42 @@
+{
+  "version": "0.16.0",
+  "name": "d7f657e4-4095-4741-956c-f8470a9fd5a1",
+  "desc": null,
+  "reset": false,
+  "pipe_cfgs": {
+    "MedianFilter": {
+      "class": "MedianFilter",
+      "params": {
+        "mode": "nearest",
+        "shape": null,
+        "width": 5,
+        "cval": 0.0
+      }
+    },
+    "SharpenEdgeGauss": {
+      "class": "SharpenEdgeGauss",
+      "params": {
+        "radius": 2.0,
+        "amount": 1.0,
+        "preserve_range": false,
+        "n_iter": 1
+      }
+    },
+    "CannyDetector": {
+      "class": "CannyDetector",
+      "params": {
+        "sigma": 1.0,
+        "low_threshold": 0.1,
+        "high_threshold": 0.2,
+        "use_quantiles": true,
+        "min_size": 50,
+        "invert_edges": true,
+        "connectivity": 2
+      }
+    }
+  },
+  "meas": {},
+  "post": {},
+  "filters": {},
+  "model": null
+}

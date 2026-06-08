@@ -1,0 +1,35 @@
+{
+  "version": "0.16.0",
+  "name": "bfff2339-eeb5-450c-97c4-f889e316909f",
+  "desc": null,
+  "reset": false,
+  "pipe_cfgs": {
+    "LocalEdgeDenoise": {
+      "class": "LocalEdgeDenoise",
+      "params": {
+        "use_gat": false,
+        "gat_gain": 1.0,
+        "gat_mu": 0.0,
+        "gat_read_sigma": 0.0,
+        "gat_scale_factor": null,
+        "sigma_color": null,
+        "sigma_spatial": 1.0,
+        "win_size": null,
+        "mode": "constant",
+        "cval": 0.0,
+        "clip": true
+      }
+    },
+    "OtsuDetector": {
+      "class": "OtsuDetector",
+      "params": {
+        "ignore_zeros": false,
+        "ignore_borders": true
+      }
+    }
+  },
+  "meas": {},
+  "post": {},
+  "filters": {},
+  "model": null
+}

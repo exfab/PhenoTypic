@@ -31,6 +31,7 @@ the images aligned with the implementation.
 | [Open an embedded Pipeline aux](13_wire_pipeline_as_aux.md) | Fill a side value with `+ New Pipeline`, build the nested chain, and use breadcrumbs to return. |
 | [Fix validation issues](14_fix_validation_issues.md) | Triage the toolbar issue badge, fix missing side values, and understand unsupported development DAG states. |
 | [QC review walkthrough](15_qc_review.md) | Switch the QC tab to Review; walk worst-first groups for a module, curate in the tile gallery, mark reviewed, and watch the metric recompute in place. |
+| [Tune co-pilot](16_tune_copilot.md) | Open the `/tune/` read-only co-pilot over a tune output: monitor trials, curate A/B overlays, review the search space, and launch the next run. |
 
 ## Prerequisites
 
@@ -61,4 +62,5 @@ hub, see the [GUI hub guide](../../how_to/pages/gui_hub.md). This walkthrough is
 13_wire_pipeline_as_aux
 14_fix_validation_issues
 15_qc_review
+16_tune_copilot
 ```

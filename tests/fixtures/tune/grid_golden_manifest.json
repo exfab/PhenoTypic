@@ -1,0 +1,162 @@
+{
+  "configs": {
+    "Pipeline": {
+      "n_combinations": 6,
+      "pipelines": {
+        "Pipeline_0": {
+          "desc": null,
+          "filters": {},
+          "meas": {},
+          "model": null,
+          "name": "Pipeline_0",
+          "pipe_cfgs": {
+            "GaussianBlur": {
+              "class": "GaussianBlur",
+              "params": {
+                "cval": 0.0,
+                "mode": "reflect",
+                "sigma": 1.0,
+                "truncate": 4.0
+              }
+            },
+            "OtsuDetector": {
+              "class": "OtsuDetector",
+              "params": {
+                "ignore_borders": true,
+                "ignore_zeros": true
+              }
+            }
+          },
+          "post": {},
+          "reset": false,
+          "version": "0.16.0"
+        },
+        "Pipeline_1": {
+          "desc": null,
+          "filters": {},
+          "meas": {},
+          "model": null,
+          "name": "Pipeline_1",
+          "pipe_cfgs": {
+            "GaussianBlur": {
+              "class": "GaussianBlur",
+              "params": {
+                "cval": 0.0,
+                "mode": "reflect",
+                "sigma": 1.0,
+                "truncate": 4.0
+              }
+            },
+            "OtsuDetector": {
+              "class": "OtsuDetector",
+              "params": {
+                "ignore_borders": true,
+                "ignore_zeros": false
+              }
+            }
+          },
+          "post": {},
+          "reset": false,
+          "version": "0.16.0"
+        },
+        "Pipeline_2": {
+          "desc": null,
+          "filters": {},
+          "meas": {},
+          "model": null,
+          "name": "Pipeline_2",
+          "pipe_cfgs": {
+            "GaussianBlur": {
+              "class": "GaussianBlur",
+              "params": {
+                "cval": 0.0,
+                "mode": "reflect",
+                "sigma": 2.0,
+                "truncate": 4.0
+              }
+            },
+            "OtsuDetector": {
+              "class": "OtsuDetector",
+              "params": {
+                "ignore_borders": true,
+                "ignore_zeros": true
+              }
+            }
+          },
+          "post": {},
+          "reset": false,
+          "version": "0.16.0"
+        },
+        "Pipeline_3": {
+          "desc": null,
+          "filters": {},
+          "meas": {},
+          "model": null,
+          "name": "Pipeline_3",
+          "pipe_cfgs": {
+            "GaussianBlur": {
+              "class": "GaussianBlur",
+              "params": {
+                "cval": 0.0,
+                "mode": "reflect",
+                "sigma": 2.0,
+                "truncate": 4.0
+              }
+            },
+            "OtsuDetector": {
+              "class": "OtsuDetector",
+              "params": {
+                "ignore_borders": true,
+                "ignore_zeros": false
+              }
+            }
+          },
+          "post": {},
+          "reset": false,
+          "version": "0.16.0"
+        },
+        "Pipeline_4": {
+          "desc": null,
+          "filters": {},
+          "meas": {},
+          "model": null,
+          "name": "Pipeline_4",
+          "pipe_cfgs": {
+            "OtsuDetector": {
+              "class": "OtsuDetector",
+              "params": {
+                "ignore_borders": true,
+                "ignore_zeros": true
+              }
+            }
+          },
+          "post": {},
+          "reset": false,
+          "version": "0.16.0"
+        },
+        "Pipeline_5": {
+          "desc": null,
+          "filters": {},
+          "meas": {},
+          "model": null,
+          "name": "Pipeline_5",
+          "pipe_cfgs": {
+            "OtsuDetector": {
+              "class": "OtsuDetector",
+              "params": {
+                "ignore_borders": true,
+                "ignore_zeros": false
+              }
+            }
+          },
+          "post": {},
+          "reset": false,
+          "version": "0.16.0"
+        }
+      }
+    }
+  },
+  "description": null,
+  "total_pipelines": 6,
+  "version": "0.16.0"
+}
