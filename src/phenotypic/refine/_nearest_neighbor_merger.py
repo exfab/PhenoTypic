@@ -1,17 +1,18 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
 import numpy as np
-from pydantic import field_validator
+from pydantic import Field, field_validator
 from scipy.spatial import cKDTree
 from skimage.measure import regionprops_table
 import pandas as pd
 
 from ..abc_ import ObjectRefiner
+from ..tools_.typing_ import TuneSpec
 
 
 class NearestNeighborMerger(ObjectRefiner):
@@ -70,19 +71,10 @@ class NearestNeighborMerger(ObjectRefiner):
         merging approach.
     """
 
-    distance_threshold: float = 20.0
-    min_size: int | None = 50
-
-    @field_validator("distance_threshold")
-    @classmethod
-    def _validate_distance_threshold(cls, distance_threshold: float) -> float:
-        """Reject a non-positive ``distance_threshold``.
-
-        Reproduces the pre-migration ``__init__`` guard verbatim.
-        """
-        if distance_threshold <= 0:
-            raise ValueError("distance_threshold must be positive")
-        return distance_threshold
+    distance_threshold: Annotated[float, TuneSpec(10.0, 50.0)] = Field(
+            default=20.0, gt=0
+    )
+    min_size: Annotated[int | None, TuneSpec(20, 200, log=True)] = 50
 
     @field_validator("min_size")
     @classmethod

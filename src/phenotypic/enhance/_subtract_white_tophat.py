@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import Annotated, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -9,6 +9,7 @@ import numpy as np
 from skimage.morphology import white_tophat
 
 from phenotypic.abc_ import MorphologicalFiltering
+from phenotypic.tools_.typing_ import TuneSpec
 
 
 class SubtractWhiteTophat(MorphologicalFiltering):
@@ -64,7 +65,7 @@ class SubtractWhiteTophat(MorphologicalFiltering):
     """
 
     shape: str = "diamond"
-    width: int | None = None
+    width: Annotated[int | None, TuneSpec(3, 15, step=2)] = None
 
     def _operate(self, image: Image) -> Image:
         white_tophat_results = white_tophat(

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Literal, TYPE_CHECKING
+from typing import Annotated, Literal, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -10,7 +10,7 @@ from skimage.morphology import white_tophat
 
 from phenotypic.abc_ import ObjectRefiner
 from phenotypic.tools_.mixin import FootprintMixin
-from phenotypic.tools_.typing_ import NdArrayField
+from phenotypic.tools_.typing_ import NdArrayField, TuneSpec
 
 
 class MaskWhiteTophat(ObjectRefiner, FootprintMixin):
@@ -70,7 +70,7 @@ class MaskWhiteTophat(ObjectRefiner, FootprintMixin):
     """
 
     shape: Literal["disk", "square", "diamond"] | NdArrayField = "disk"
-    width: int | None = None
+    width: Annotated[int | None, TuneSpec(3, 10)] = None
 
     def _operate(self, image: Image) -> Image:
         white_tophat_results = white_tophat(

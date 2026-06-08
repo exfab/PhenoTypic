@@ -24,7 +24,7 @@ from pydantic import (
 )
 
 from phenotypic.tools_._json_io import read_json_source
-from phenotypic.tools_.typing_ import NdArrayField
+from phenotypic.tools_.typing_ import NdArrayField, TuneSpec
 
 from ._capture_metadata import CaptureMetadata
 from ._helpers import (
@@ -307,15 +307,15 @@ class ColorCheckerProfile(BaseModel):
 
     # -- constructor parameters --------------------------------------------
     checker_type: str = "ColorChecker24 - After November 2014"
-    degree: int = 2
+    degree: Annotated[int, TuneSpec(categories=(1, 2, 3, 4))] = 2
     target_illuminant: str = "D65"
     median_filter_size: int = 10
     stddev_mag_threshold: float = 15.0
     pad_checker: bool = False
-    min_swatch_area_frac: float = 0.3
-    core_fraction: float = 0.5
-    ridge_lambda: float = 1e-3
-    outlier_sigma: float = 2.0
+    min_swatch_area_frac: Annotated[float, TuneSpec(0.1, 0.6)] = 0.3
+    core_fraction: Annotated[float, TuneSpec(0.3, 0.8)] = 0.5
+    ridge_lambda: Annotated[float, TuneSpec(1e-4, 1e-1, log=True)] = 1e-3
+    outlier_sigma: Annotated[float, TuneSpec(1.5, 4.0)] = 2.0
     rois: list[tuple[_RoiSlice, _RoiSlice]] | None = Field(default=None, exclude=True)
 
     # -- post-fit state (defaults so an unfitted profile still constructs) --

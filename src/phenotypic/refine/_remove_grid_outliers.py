@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated
 
 if TYPE_CHECKING:
     from phenotypic._core._grid_image import GridImage
@@ -10,6 +10,7 @@ from pydantic import AliasChoices, Field
 from phenotypic.abc_ import GridObjectRefiner
 from phenotypic.measure import MeasureGridLinRegStats
 from phenotypic.schema import GRID_LINREG_STATS, GRID
+from phenotypic.tools_.typing_ import TuneSpec
 
 
 class RemoveGridOutliers(GridObjectRefiner):
@@ -72,14 +73,14 @@ class RemoveGridOutliers(GridObjectRefiner):
     """
 
     #: Axis selection — ``None`` for both, ``0`` for row, ``1`` for column.
-    axis: int | None = None
+    axis: Annotated[int | None, TuneSpec(tunable=False)] = None
     #: Robust residual cutoff multiplier. The public constructor keyword is
     #: the legacy ``stddev_multiplier``; the attribute the algorithm reads is
     #: ``cutoff_multiplier`` (the pre-migration ``__init__`` renamed the
     #: parameter on assignment). ``AliasChoices`` accepts both the legacy
     #: keyword and the field name so existing call sites and JSON
     #: round-trips keep working.
-    cutoff_multiplier: float = Field(
+    cutoff_multiplier: Annotated[float, TuneSpec(1.0, 3.0)] = Field(
             default=1.5,
             validation_alias=AliasChoices("stddev_multiplier", "cutoff_multiplier"),
             description=(
@@ -88,7 +89,7 @@ class RemoveGridOutliers(GridObjectRefiner):
                 "conservative. Typical range: 1.0--3.0. Default: 1.5."
             ),
     )
-    max_coeff_variance: int = 1
+    max_coeff_variance: Annotated[int, TuneSpec(1, 5)] = 1
 
     def _operate(self, image: GridImage) -> GridImage:
         """Identify and remove residual outliers per noisy row/column.

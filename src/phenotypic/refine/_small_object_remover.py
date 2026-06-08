@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -8,6 +8,7 @@ if TYPE_CHECKING:
 from skimage.morphology import remove_small_objects
 
 from ..abc_ import ObjectRefiner
+from ..tools_.typing_ import TuneSpec
 
 
 class SmallObjectRemover(ObjectRefiner):
@@ -56,7 +57,7 @@ class SmallObjectRemover(ObjectRefiner):
         refinement sequence.
     """
 
-    min_size: int = 64
+    min_size: Annotated[int, TuneSpec(20, 500, log=True)] = 64
 
     def _operate(self, image: Image) -> Image:
         objmap = image.objmap[:]

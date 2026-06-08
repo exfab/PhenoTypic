@@ -6,7 +6,7 @@ seeded at grid intersection points inferred from colony layout.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated
 
 if TYPE_CHECKING:
     from phenotypic._core._grid_image import GridImage
@@ -16,6 +16,7 @@ import gc
 import numpy as np
 
 from phenotypic.abc_ import ObjectRefiner
+from phenotypic.tools_.typing_ import TuneSpec
 
 
 class SeparateObjects(ObjectRefiner):
@@ -71,7 +72,7 @@ class SeparateObjects(ObjectRefiner):
         colony separation approaches.
     """
 
-    min_distance: int = 10
+    min_distance: Annotated[int, TuneSpec(5, 50, log=True)] = 10
 
     @staticmethod
     def _make_elevation_map(score_map: np.ndarray) -> np.ndarray:

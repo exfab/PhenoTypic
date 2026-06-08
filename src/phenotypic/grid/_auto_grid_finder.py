@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import warnings
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, Annotated, Any, ClassVar
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -12,6 +12,7 @@ import numpy as np
 
 from phenotypic.abc_ import GridFinder
 from phenotypic.schema import BBOX, GRID
+from phenotypic.tools_.typing_ import TuneSpec
 
 
 class AutoGridFinderFallbackWarning(UserWarning):
@@ -112,9 +113,14 @@ class AutoGridFinder(GridFinder):
     # ``AutoGridFinder`` historically defaulted them to 8 / 12 (96-well
     # plate). Pydantic allows a subclass to add a default to an inherited
     # required field, so redeclare them here with the legacy defaults.
-    nrows: int = 8
-    ncols: int = 12
-    residual_fraction: float = 0.25
+    # ``nrows`` / ``ncols`` are structural plate-geometry parameters (the
+    # array layout, e.g. 8x12 = 96-well), not accuracy knobs, so they are
+    # excluded from the tuning search.
+    nrows: Annotated[int, TuneSpec(tunable=False)] = 8
+    ncols: Annotated[int, TuneSpec(tunable=False)] = 12
+    # Outlier threshold as a fraction of pitch; a fraction in (0, 1). The
+    # search window is a sensible sub-range, not the full valid domain.
+    residual_fraction: Annotated[float, TuneSpec(0.1, 0.5)] = 0.25
     warn: bool = False
     # ``tol`` / ``max_iter`` are deprecated, accepted-but-ignored
     # constructor parameters retained for backward compatibility. They are
@@ -122,8 +128,11 @@ class AutoGridFinder(GridFinder):
     # ``extra="forbid"``, legacy callers passing them still construct; a
     # non-``None`` value triggers a ``DeprecationWarning`` in
     # ``model_post_init``. The fitter never reads them.
-    tol: float | None = None
-    max_iter: int | None = None
+    # ``tol`` / ``max_iter`` are deprecated and ignored by the deterministic
+    # robust-fit algorithm (the fitter never reads them), so they cannot
+    # affect grid-fit quality and are excluded from the tuning search.
+    tol: Annotated[float | None, TuneSpec(tunable=False)] = None
+    max_iter: Annotated[int | None, TuneSpec(tunable=False)] = None
 
     def model_post_init(self, __context: Any) -> None:
         """Warn on deprecated ``tol`` / ``max_iter`` parameters.

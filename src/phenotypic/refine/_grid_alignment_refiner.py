@@ -6,7 +6,7 @@ useful for removing off-grid artifacts and enforcing grid structure on detection
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Annotated, Literal
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -17,6 +17,7 @@ import numpy as np
 from phenotypic.abc_ import ObjectRefiner
 from phenotypic.tools_.mixin import GridInferenceMixin
 from phenotypic.tools_.funcs_ import validate_operation_integrity
+from phenotypic.tools_.typing_ import TuneSpec
 
 
 class GridAlignmentRefiner(GridInferenceMixin, ObjectRefiner):
@@ -83,8 +84,8 @@ class GridAlignmentRefiner(GridInferenceMixin, ObjectRefiner):
         workflows on real plate images.
     """
 
-    smoothing_sigma: float = 2.0
-    min_peak_distance: int | None = None
+    smoothing_sigma: Annotated[float, TuneSpec(0.5, 5.0, log=True)] = 2.0
+    min_peak_distance: Annotated[int | None, TuneSpec(5, 100, log=True)] = None
     peak_prominence: float | None = None
     edge_refinement: bool = True
     selection_mode: Literal["dominant", "centered", "regularized"] = "dominant"

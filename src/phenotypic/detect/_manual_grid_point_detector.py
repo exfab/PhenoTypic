@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Annotated, Literal
 
 import numpy as np
 
@@ -9,6 +9,7 @@ if TYPE_CHECKING:
 
 from phenotypic.abc_ import GridObjectDetector
 from phenotypic.tools_.mixin._footprint_mixin import FootprintMixin
+from phenotypic.tools_.typing_ import TuneSpec
 
 
 class ManualGridPointDetector(GridObjectDetector, FootprintMixin):
@@ -97,7 +98,7 @@ class ManualGridPointDetector(GridObjectDetector, FootprintMixin):
     coord1: tuple[int, int] = (0, 0)
     coord2: tuple[int, int] | None = None
     shape: Literal["square", "diamond", "disk"] = "disk"
-    width: int = 15
+    width: Annotated[int, TuneSpec(tunable=False)] = 15
 
     def napari(self, image: GridImage) -> ManualGridPointDetector:
         """Interactively pick 1--2 anchor coordinates using a napari viewer.

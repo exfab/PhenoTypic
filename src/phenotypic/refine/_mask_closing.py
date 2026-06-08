@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from typing import Literal, TYPE_CHECKING
+from typing import Annotated, Literal, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
 from phenotypic.abc_ import ObjectRefiner
 from phenotypic.tools_.mixin import FootprintMixin
-from phenotypic.tools_.typing_ import NdArrayField
+from phenotypic.tools_.typing_ import NdArrayField, TuneSpec
 
 import numpy as np
 from skimage.morphology import closing
@@ -61,8 +61,8 @@ class MaskClosing(ObjectRefiner, FootprintMixin):
     """
 
     shape: Literal["auto", "square", "diamond", "disk"] | NdArrayField | None = None
-    width: int = 5
-    n_iter: int = 1
+    width: Annotated[int, TuneSpec(3, 9)] = 5
+    n_iter: Annotated[int, TuneSpec(1, 3)] = 1
 
     def _operate(self, image: Image) -> Image:
         if self.shape == "auto":

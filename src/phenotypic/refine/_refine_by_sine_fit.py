@@ -8,7 +8,7 @@ and rank-transform correlation are implementation-specific extensions.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Annotated, Literal
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -23,6 +23,7 @@ from scipy.stats import rankdata
 from phenotypic.abc_ import ObjectRefiner
 from phenotypic.tools_.mixin import GridInferenceMixin
 from phenotypic.tools_.funcs_ import validate_operation_integrity
+from phenotypic.tools_.typing_ import TuneSpec
 
 
 class RefineBySineFit(GridInferenceMixin, ObjectRefiner):
@@ -107,11 +108,11 @@ class RefineBySineFit(GridInferenceMixin, ObjectRefiner):
         grid refinement approaches and grid inference methods.
     """
 
-    smoothing_sigma: float = 2.0
-    min_peak_distance: int | None = None
+    smoothing_sigma: Annotated[float, TuneSpec(0.5, 5.0, log=True)] = 2.0
+    min_peak_distance: Annotated[int | None, TuneSpec(5, 100, log=True)] = None
     peak_prominence: float | None = None
     edge_refinement: bool = True
-    correlation_threshold: float = 0.3
+    correlation_threshold: Annotated[float, TuneSpec(0.1, 0.6)] = 0.3
     selection_mode: Literal["dominant", "centered", "regularized"] = "dominant"
     split_merged: bool = False
 

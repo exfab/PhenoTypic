@@ -9,9 +9,11 @@ import numpy as np
 from pydantic import ConfigDict, model_validator
 from scipy.ndimage import gaussian_filter
 from skimage.feature import structure_tensor_eigenvalues
+from typing import Annotated
 from typing_extensions import Self
 
 from ..abc_ import Smoothing
+from ..tools_.typing_ import TuneSpec
 
 
 class StructureSmoothing(Smoothing):
@@ -102,10 +104,13 @@ class StructureSmoothing(Smoothing):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    num_iter: int = 20
-    sigma: float = 1.5
-    rho: float | None = None
-    dt: float = 0.1
+    num_iter: Annotated[int, TuneSpec(15, 30)] = 20
+    sigma: Annotated[float, TuneSpec(0.5, 5.0, log=True)] = 1.5
+    # rho left tunable=False: it must satisfy the cross-field constraint
+    # rho >= sigma (enforced in _check_diffusion_params); independent
+    # sampling against a co-tuned sigma would generate invalid combos.
+    rho: Annotated[float | None, TuneSpec(tunable=False)] = None
+    dt: Annotated[float, TuneSpec(0.05, 0.125)] = 0.1
     alpha: float = 0.001
     C: float = 99.0
 
