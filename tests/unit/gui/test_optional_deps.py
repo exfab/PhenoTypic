@@ -5,10 +5,13 @@ class TestOptionalDependencies:
     """Test that GUI module handles missing dependencies gracefully."""
 
     def test_gui_available_flag(self):
-        """Test GUI_AVAILABLE flag is accessible."""
+        """GUI_AVAILABLE reflects whether the Dash GUI stack is importable."""
+        import importlib.util
+
         from phenotypic.gui import GUI_AVAILABLE
 
         assert isinstance(GUI_AVAILABLE, bool)
+        assert GUI_AVAILABLE == (importlib.util.find_spec("dash") is not None)
 
     def test_operation_registry_no_panel_required(self):
         """Test OperationRegistry works without Panel installed."""

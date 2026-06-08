@@ -238,14 +238,16 @@ class ColorCorrector(ImageCorrector):
         return image
 
     def dashboard(self, show: bool = True) -> Any:
-        """Display an interactive diagnostic dashboard.
+        """Build the Plotly color-correction diagnostic report.
 
-        Delegates to the underlying profile's dashboard method.
+        Delegates to the underlying profile's :meth:`ColorCheckerProfile.dashboard`.
 
         Args:
-            show: Auto-display the dashboard.
+            show: When ``True`` and running inside a Jupyter notebook, display
+                the figure inline before returning it.
 
         Returns:
-            The Panel layout object.
+            A ``plotly.graph_objects.Figure`` (always returned, even after an
+            inline display).
         """
         return self.profile.dashboard(show=show)

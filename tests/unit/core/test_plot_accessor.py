@@ -352,7 +352,7 @@ class TestDiagnosticsMatplotlib:
     """Tests for DiagnosticsPlotter (always matplotlib).
 
     plot.diagnostics() always returns a matplotlib Figure.
-    For Panel dashboard, use image.panel.diagnostics() instead.
+    For an interactive dashboard, use image.plot.dash.diagnostics() instead.
     """
 
     def test_diagnostics_returns_tuple(self, sample_image_with_objects):

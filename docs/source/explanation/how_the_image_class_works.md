@@ -11,7 +11,7 @@ layer of functionality:
 
 ```
 ImageDataManager → ImageHandler → ImageObjectsHandler → ImagePlotHandler
-→ ImagePanelHandler → ImageColorSpace → ImageIOHandler → Image
+→ ImageColorSpace → ImageIOHandler → Image
 ```
 
 `GridImage` extends `Image` with grid-aware operations via

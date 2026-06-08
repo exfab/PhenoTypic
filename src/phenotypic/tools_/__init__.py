@@ -9,14 +9,14 @@ Advanced users can access GridInferenceMixin and FootprintMixin for creating cus
 grid-based operations and morphological footprints.
 
 The ``register`` submodule provides registry utilities for extensible components
-like plotters and dashboards.
+like plotters and analysis plugins.
 
 The ``_io_constants`` submodule is the single source of truth for CLI ↔ GUI
 artifact filenames, directory names, JSON contract keys, and path helpers
 (re-exported here at package level for convenience).
 """
 
-from . import colourspace, constants_, exceptions_, napari_, panel_, register, slurm, slurm_
+from . import colourspace, constants_, exceptions_, napari_, register, slurm, slurm_
 from . import _io_constants
 from ._column_ref import ColumnRef, ColumnRefList, ColumnSource
 from ._io_constants import (
@@ -160,7 +160,6 @@ __all__ = [
     "exceptions_",
     "is_binary_mask",
     "napari_",
-    "panel_",
     "register",
     "slurm",
     "slurm_",

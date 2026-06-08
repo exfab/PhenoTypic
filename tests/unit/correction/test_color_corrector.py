@@ -17,22 +17,12 @@ from phenotypic.correction import (
     ColorCheckerProfile,
     ColorCorrector,
 )
-from phenotypic.correction._color_correction._diagnostic_dashboard import (
-    PANEL_AVAILABLE,
-)
 from phenotypic.correction._color_correction._helpers import (
     compute_core_mask,
     compute_swatch_roi_mask,
     segment_chips_by_border_fill,
     trim_background_edges,
     validate_patch_shape,
-)
-
-if PANEL_AVAILABLE:
-    import panel as pn
-
-panel_required = pytest.mark.skipif(
-    not PANEL_AVAILABLE, reason="Panel/param not installed"
 )
 
 
@@ -1008,136 +998,3 @@ class TestColorCorrectorMetadataCheck:
         with pytest.warns(UserWarning, match="different camera"):
             result = corrector.apply(target)
         assert not np.array_equal(result.rgb[:], original_rgb)
-
-
-# ===========================================================================
-# TestColorCorrectionDashboard
-# ===========================================================================
-
-
-@panel_required
-class TestColorCorrectionDashboard:
-    """Test interactive Panel diagnostic dashboard."""
-
-    def test_profile_dashboard_returns_column(self, fitted_profile):
-        """profile.dashboard(show=False) returns a pn.Column."""
-        layout = fitted_profile.dashboard(show=False)
-        assert isinstance(layout, pn.Column)
-
-    def test_corrector_dashboard_delegates(self, fitted_profile):
-        """ColorCorrector.dashboard() delegates to the profile."""
-        corrector = ColorCorrector(profile=fitted_profile)
-        layout = corrector.dashboard(show=False)
-        assert isinstance(layout, pn.Column)
-
-    def test_unfitted_profile_raises(self):
-        """Unfitted profile raises RuntimeError."""
-        profile = ColorCheckerProfile()
-        with pytest.raises(RuntimeError, match="unfitted"):
-            profile.dashboard(show=False)
-
-    def test_delta_e_section_uses_diagnostics(self, fitted_profile):
-        """Delta E section renders using diagnostics data."""
-        from phenotypic.correction._color_correction._diagnostic_dashboard import (
-            ColorCorrectionDashboard,
-        )
-
-        dashboard = ColorCorrectionDashboard(profile=fitted_profile)
-        section = dashboard._delta_e_section()
-        assert isinstance(section, pn.Card)
-
-    def test_patches_section_renders(self, fitted_profile):
-        """Matched patches section renders without error."""
-        from phenotypic.correction._color_correction._diagnostic_dashboard import (
-            ColorCorrectionDashboard,
-        )
-
-        dashboard = ColorCorrectionDashboard(profile=fitted_profile)
-        section = dashboard._patches_section()
-        assert isinstance(section, pn.Card)
-
-    def test_pipeline_hidden_without_image(self, fitted_profile):
-        """Pipeline section returns empty when no image provided."""
-        from phenotypic.correction._color_correction._diagnostic_dashboard import (
-            ColorCorrectionDashboard,
-        )
-
-        dashboard = ColorCorrectionDashboard(profile=fitted_profile)
-        section = dashboard._pipeline_section()
-        assert isinstance(section, pn.Column)
-        assert len(section) == 0
-
-    def test_segmentation_hidden_without_image(self, fitted_profile):
-        """Segmentation section returns empty when no image provided."""
-        from phenotypic.correction._color_correction._diagnostic_dashboard import (
-            ColorCorrectionDashboard,
-        )
-
-        dashboard = ColorCorrectionDashboard(profile=fitted_profile)
-        section = dashboard._segmentation_section()
-        assert isinstance(section, pn.Column)
-        assert len(section) == 0
-
-    def test_show_delta_e_toggle(self, fitted_profile):
-        """Toggling show_delta_e hides the section."""
-        from phenotypic.correction._color_correction._diagnostic_dashboard import (
-            ColorCorrectionDashboard,
-        )
-
-        dashboard = ColorCorrectionDashboard(profile=fitted_profile)
-        dashboard.show_delta_e = False
-        section = dashboard._delta_e_section()
-        assert isinstance(section, pn.Column)
-        assert len(section) == 0
-
-    def test_show_patches_toggle(self, fitted_profile):
-        """Toggling show_patches hides the section."""
-        from phenotypic.correction._color_correction._diagnostic_dashboard import (
-            ColorCorrectionDashboard,
-        )
-
-        dashboard = ColorCorrectionDashboard(profile=fitted_profile)
-        dashboard.show_patches = False
-        section = dashboard._patches_section()
-        assert isinstance(section, pn.Column)
-        assert len(section) == 0
-
-    def test_pipeline_section_includes_border_mask_stage(self):
-        """The pipeline panel renders a 5th column for the border-mask overlay."""
-        from phenotypic.correction._color_correction._diagnostic_dashboard import (
-            ColorCorrectionDashboard,
-        )
-
-        img = make_synthetic_framed_checker_image()
-        image = Image(arr=img, bit_depth=8)
-        profile = ColorCheckerProfile(degree=2).fit(image)
-
-        dashboard = ColorCorrectionDashboard(
-            profile=profile, image=image, rois=profile.rois,
-        )
-        card = dashboard._pipeline_section()
-        assert isinstance(card, pn.Card)
-        # First child is the matplotlib pane wrapping the figure.
-        mpl_pane = card[0]
-        fig = mpl_pane.object
-        # The figure must have 5 columns (and at least 1 row) of axes.
-        assert len(fig.axes) >= 5
-        # Axes appear in row-major order; first 5 belong to ROI 0.
-        n_rois = len(profile.rois or [])
-        assert len(fig.axes) == 5 * n_rois
-
-    def test_segmentation_section_renders_with_border_fill(self):
-        """The segmentation panel renders via the border-fill pipeline."""
-        from phenotypic.correction._color_correction._diagnostic_dashboard import (
-            ColorCorrectionDashboard,
-        )
-
-        img = make_synthetic_framed_checker_image()
-        image = Image(arr=img, bit_depth=8)
-        profile = ColorCheckerProfile(degree=2).fit(image)
-
-        dashboard = ColorCorrectionDashboard(
-            profile=profile, image=image, rois=profile.rois,
-        )
-        section = dashboard._segmentation_section()
-        assert isinstance(section, pn.Card)

@@ -44,7 +44,7 @@ class AccessorDataInterface(ABC):
         raise NotImplementedError
 
     # Concrete override so that subclasses which do not implement
-    # _subject_arr (e.g. PlotAccessor, PanelAccessor) are not forced
+    # _subject_arr (e.g. PlotAccessor) are not forced
     # to be abstract themselves.  The original monolithic class had
     # this same pattern — an @abstractmethod declaration followed by a
     # second @property that shadowed it on the same class.

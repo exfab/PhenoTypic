@@ -8,6 +8,7 @@ to retrieve a plotter class by name.
 # Import all plotters to trigger @register_plotter decorators
 from ._all_data_plotter import AllDataPlotter
 from ._base_plotter import BasePlotter
+from ._detect_modes_plotter import DetectModesPlotter
 from ._diagnostics_plotter import DiagnosticsPlotter
 from ._diagnostics_types import PanelDescription
 from ._morphology_plotter import MorphologyPlotter
@@ -21,6 +22,7 @@ from phenotypic.tools_.register import available_plotters, get_plotter
 __all__ = [
     "AllDataPlotter",
     "BasePlotter",
+    "DetectModesPlotter",
     "DiagnosticsPlotter",
     "MorphologyPlotter",
     "PanelDescription",
