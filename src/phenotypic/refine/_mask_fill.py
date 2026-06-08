@@ -15,35 +15,49 @@ from phenotypic.tools_.typing_ import NdArrayField
 
 
 class MaskFill(ObjectRefiner):
-    """Fill holes inside colony masks to produce solid, contiguous regions.
+    """Fill enclosed holes within colony masks using binary flood fill.
 
-    Uses binary flood fill to close voids left by illumination gradients,
-    pigment heterogeneity, or glare within colonies. Produces masks that
-    better match the true colony footprint for area and shape measurements.
+    Applies ``scipy.ndimage.binary_fill_holes`` to close voids produced by
+    illumination gradients, pigment heterogeneity, or specular glare within
+    colonies. Only holes that are completely enclosed by the mask are filled;
+    gaps that connect to the image boundary are left unchanged. The operation
+    produces simply connected colony masks better suited for area and shape
+    measurements.
 
-    Args:
-        structure: Binary structuring element defining the fill neighborhood.
-            ``None`` uses the default cross-shaped element. Default: ``None``.
-        origin: Center offset for the structuring element. Default: 0.
-
-    Returns:
-        Image: Input image with ``objmask`` and ``objmap`` updated with
-        filled holes.
+    For an overview of morphological refinement methods, see
+    :doc:`/explanation/refinement_strategies`.
 
     Best For:
-        - Donut-like masks from global thresholding on colonies with dark centers.
-        - Colonies with radial pigment texture that creates interior gaps.
-        - Pre-measurement cleanup to ensure simply connected shapes.
+        - Donut-shaped masks produced by global thresholding on colonies with
+          dark or depigmented centers.
+        - Colonies with radial pigment patterns or sector-level texture that
+          create interior gaps in the binary mask.
+        - Pre-measurement cleanup to ensure colony area counts every interior
+          pixel and circularity is not distorted by enclosed voids.
 
     Consider Also:
-        - :class:`MaskClosing` for bridging narrow gaps *between* fragments
-          rather than filling holes *within* objects.
-        - :class:`MaskOpening` for the opposite effect — removing thin
-          connections between objects.
+        - :class:`MaskClosing` for bridging narrow gaps between separate
+          fragments rather than filling holes within a single object.
+        - :class:`MaskOpening` for removing thin protrusions and external
+          connections rather than filling internal holes.
+
+    Args:
+        structure: Binary ndarray defining the connectivity neighbourhood for
+            flood fill. ``None`` uses the default cross-shaped (4-connected)
+            element from ``scipy.ndimage``. Default: ``None``.
+        origin: Integer offset applied to the structuring element centre.
+            Rarely needs adjustment from the default. Default: 0.
+
+    Returns:
+        Image: Input image with ``objmask`` updated so all enclosed holes are
+        filled; ``objmap`` is updated to reflect the filled mask.
+
+    Raises:
+        ValueError: If ``structure`` is provided but is not a binary array.
 
     See Also:
         :doc:`/how_to/notebooks/refine_noisy_boundaries` for a walkthrough
-        of refinement operations.
+        of refinement operations including hole filling.
     """
 
     structure: NdArrayField | None = None

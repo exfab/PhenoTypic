@@ -24,39 +24,13 @@ class ManualRefine(ObjectRefiner, PointPickerMixin, FootprintMixin):
     identifiers that existed before refinement.
 
     Unlike :class:`ManualPointDetector`, which *produces* an ``objmap`` from
-    scratch at picked coordinates, ``ManualSelector`` *filters* the output of
-    an earlier detector. It is the manual-curation counterpart to automated
+    scratch at picked coordinates, this refiner *filters* the output of an
+    earlier detector. It is the manual-curation counterpart to automated
     refiners such as :class:`SmallObjectRemover` or
     :class:`RemoveLowCircularity`, and is suitable for ground-truth
     curation, interactive review, and correcting systematic detector misses
-    on a handful of colonies.
-
-    Args:
-        centers: An N x 2 array-like of ``(y, x)`` pixel coordinates
-            specifying each colony to keep. Accepts any sequence that
-            ``np.asarray`` can convert (list of tuples, nested list, or
-            NumPy array). When *None* or empty, :meth:`apply` returns the
-            image unchanged (no-op) rather than zeroing the map — safer
-            when the selector is chained in a pipeline before points have
-            been picked.
-
-        shape: Morphological footprint shape stamped at each coordinate
-            when locating candidate labels. ``"disk"`` (default) preserves
-            round colony geometry. ``"square"`` covers rectangular regions.
-            ``"diamond"`` offers a compromise between the two.
-
-        width: Diameter of the footprint in pixels (default 15). Larger
-            widths are more forgiving — a click near an object is still
-            captured even if it lands slightly off the colony body — but
-            risk selecting multiple touching colonies with a single pick.
-            Typical range: 5--50, depending on image resolution and colony
-            size.
-
-    Returns:
-        Image: Input image with ``objmap``/``objmask`` restricted to the
-        objects whose pixels overlap any stamped footprint. Original label
-        IDs for surviving objects are preserved (non-consecutive labels
-        are allowed).
+    on a handful of colonies. For where refinement sits in a pipeline see
+    :doc:`/explanation/refinement_strategies`.
 
     Best For:
         * Manual curation of auto-detected objects before measurement —
@@ -77,11 +51,41 @@ class ManualRefine(ObjectRefiner, PointPickerMixin, FootprintMixin):
         * :class:`SmallObjectRemover` for size-based filtering when
           artefacts are systematically smaller than true colonies.
 
+    Args:
+        centers: An N x 2 array-like of ``(y, x)`` pixel coordinates, one
+            per colony to keep, supplied by the user (purely a manual
+            choice). Accepts any sequence that ``np.asarray`` can convert
+            (list of tuples, nested list, or NumPy array). When *None*
+            (default) or empty, :meth:`apply` returns the image unchanged
+            (no-op) rather than zeroing the map — safer when this refiner is
+            chained in a pipeline before points have been picked.
+
+        shape: Morphological footprint shape stamped at each coordinate
+            when locating candidate labels. ``"disk"`` (default) preserves
+            round colony geometry. ``"square"`` covers rectangular regions.
+            ``"diamond"`` offers a compromise between the two.
+
+        width: Diameter of the stamp footprint in pixels, governing how
+            forgiving each pick is rather than the final object shape (the
+            kept object retains its detected extent). Larger widths tolerate
+            clicks that land slightly off the colony body but risk a single
+            pick selecting two touching colonies; smaller widths demand more
+            precise clicks. A reasonable starting point is a small fraction
+            of the colony spacing so one click maps to one colony, then grow
+            it if your picks routinely miss. Typical range: 5--50, depending
+            on image resolution and colony size. Default: 15.
+
+    Returns:
+        Image: Input image with ``objmap``/``objmask`` restricted to the
+        objects whose pixels overlap any stamped footprint. Original label
+        IDs for surviving objects are preserved (non-consecutive labels
+        are allowed).
+
     Note:
         The bundled :class:`PointPickerWidget` used by :meth:`napari`
         displays only ``rgb``, ``gray``, and ``detect_mat`` layers — it
         does **not** overlay the existing ``objmap``. Before calling
-        ``selector.napari(image)``, preview what is available to pick
+        ``ManualRefine.napari(image)``, preview what is available to pick
         with ``image.objmap.show()`` or ``image.plot.show()`` so you can
         see which detections exist.
 
@@ -90,41 +94,8 @@ class ManualRefine(ObjectRefiner, PointPickerMixin, FootprintMixin):
             Step-by-step tutorial for basic colony detection.
         :doc:`/how_to/notebooks/choose_detection_algorithm`
             Guide for selecting the right detector for your plate images.
-
-    Examples:
-        Drop all detections except one chosen colony:
-
-        >>> from phenotypic.data import load_synth_yeast_plate
-        >>> from phenotypic.detect import OtsuDetector
-        >>> from phenotypic.refine import ManualRefine
-        >>> from scipy.ndimage import center_of_mass
-        >>> import numpy as np
-        >>> image = load_synth_yeast_plate()
-        >>> detected = OtsuDetector().apply(image)
-        >>> # Pick the centroid of one colony — a pixel well inside its body
-        >>> # so a small footprint stamp stays on that single colony.
-        >>> target_label = int(np.unique(detected.objmap[:])[1])
-        >>> cy, cx = center_of_mass(detected.objmap[:] == target_label)
-        >>> cy, cx = int(round(cy)), int(round(cx))
-        >>> selector = ManualRefine(centers=[(cy, cx)], width=3)
-        >>> curated = selector.apply(detected)
-        >>> # Only the target label survives; its original ID is preserved
-        >>> surviving = set(np.unique(curated.objmap[:])) - {0}
-        >>> len(surviving)
-        1
-
-        Use in a pipeline for manual curation after automatic detection:
-
-        >>> from phenotypic import ImagePipeline
-        >>> from phenotypic.enhance import GaussianBlur
-        >>> pipeline = ImagePipeline(ops=[
-        ...     GaussianBlur(sigma=1.0),
-        ...     OtsuDetector(),
-        ...     ManualRefine(centers=[(cy, cx)], width=3),
-        ... ])
-        >>> result = pipeline.apply(image)
-        >>> result.objmap[:].max() > 0
-        True
+        :doc:`/explanation/refinement_strategies`
+            How refiners fit into the detection-to-measurement pipeline.
     """
 
     centers: list[tuple[int, int]] | None = None

@@ -19,56 +19,58 @@ class FocusBlobLoG(FocusBlob):
     """Enhance blob-like colonies in ``detect_mat`` with scale-normalised Laplacian of Gaussian.
 
     Applies LoG filtering across a geometric series of Gaussian sigmas and
-    returns the maximum response at each pixel. Bright blob-like structures
-    (colonies, inocula, droplets) produce strong peaks regardless of size,
-    making this a robust preprocessing step before thresholding or
-    GMM-based segmentation.
+    returns the pixel-wise maximum response across all scales. Bright blob-like
+    structures (colonies, inocula, droplets) produce strong peaks regardless of
+    size, making this a robust preprocessing step before thresholding or
+    GMM-based segmentation. The output ``detect_mat`` is a response map, not a
+    corrected grayscale image.
 
     For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 
+    Best For:
+        - Mixed-size colonies on mature plates where small emerging and large
+          mature colonies must both be detected in a single pass.
+        - Sparse inoculation spots that are faint and nearly invisible against
+          the agar background.
+        - Low-contrast or shadowed regions where the LoG emphasizes blob
+          structure over absolute intensity.
+        - Preprocessing before thresholding to sharpen blob boundaries and
+          suppress gradual illumination variation.
+
+    Consider Also:
+        - :class:`FocusEdgeSato` for elongated or filamentous colony structures
+          where the LoG's isotropic assumption is a poor fit.
+        - :class:`FocusEdgeLaplace` for simpler single-scale edge detection when
+          colony sizes are uniform.
+        - :class:`SubtractGaussian` when the primary issue is a broad
+          illumination gradient rather than blob emphasis.
+
     Args:
-        min_radius: Smallest target blob radius in pixels. Blobs smaller
-            than this produce weaker responses. Typical range: 1.0--5.0
-            at 512x768 resolution. Scale proportionally for higher
-            resolutions. Default: 3.0.
-        max_radius: Largest target blob radius in pixels. Blobs larger
-            than this also produce weaker responses. Typical range:
-            8.0--50.0 at 512x768 resolution. Default: 12.0.
-        num_scales: Number of logarithmically spaced sigma values. More
-            scales improve size discrimination at higher compute cost.
-            Typical range: 4--20. Default: 12.
+        min_radius: Smallest target blob radius in pixels. Blobs smaller than
+            this produce weaker LoG responses. Typical range: 1.0--15.0 at
+            standard resolutions; scale proportionally for higher-resolution
+            scans. Default: 3.0.
+        max_radius: Largest target blob radius in pixels. Blobs larger than
+            this also produce weaker responses. Typical range: 8.0--60.0 at
+            standard resolutions. Default: 12.0.
+        num_scales: Number of logarithmically spaced sigma values between
+            ``min_radius / sqrt(2)`` and ``max_radius / sqrt(2)``. More scales
+            improve size discrimination across the radius range at higher
+            compute cost. Typical range: 4--20. Default: 12.
 
     Returns:
-        Image: Input image with ``detect_mat`` replaced by the
-        scale-normalised LoG response map. ``rgb`` and ``gray`` are
-        unchanged.
+        Image: Input image with ``detect_mat`` replaced by the scale-normalised
+        LoG response map. ``rgb`` and ``gray`` are unchanged.
 
     Raises:
         ValueError: If ``min_radius`` <= 0, ``min_radius`` >= ``max_radius``,
             or ``num_scales`` < 1.
 
-    Best For:
-        - Mixed-size colonies on mature plates where small emerging and
-          large mature colonies must both be detected.
-        - Sparse inoculation spots that are faint and nearly invisible
-          against the agar background.
-        - Low-contrast or shadowed regions where LoG emphasizes blob
-          structure over absolute intensity.
-        - Preprocessing before thresholding to sharpen blob boundaries
-          and suppress uneven illumination.
-
-    Consider Also:
-        - :class:`FocusEdgeSato` for elongated or filamentous structures
-          where LoG's isotropic assumption is a poor fit.
-        - :class:`FocusEdgeLaplace` for simpler single-scale edge detection.
-        - :class:`SubtractGaussian` when the primary issue is illumination
-          gradients rather than blob enhancement.
-
     See Also:
-        :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a
-        visual walkthrough of blob enhancement on plate images.
-        :doc:`/explanation/what_enhancement_does` for background on
-        scale-space blob detection and LoG theory.
+        :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a visual
+        walkthrough of blob enhancement on plate images.
+        :doc:`/explanation/what_enhancement_does` for background on scale-space
+        blob detection and LoG theory.
     """
 
     min_radius: float = 3.0

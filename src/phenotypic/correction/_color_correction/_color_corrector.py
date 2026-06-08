@@ -25,55 +25,57 @@ if TYPE_CHECKING:
 
 
 class ColorCorrector(ImageCorrector):
-    """Apply root-polynomial color correction to an entire image.
+    """Apply root-polynomial color correction using a fitted ColorCheckerProfile.
 
-    Takes a fitted :class:`ColorCheckerProfile` and applies its correction
-    matrix to every pixel.  The pipeline is:
+    Decodes sRGB gamma to linear light, applies the root-polynomial expansion
+    and the profile's correction matrix, re-encodes to sRGB, and recomputes
+    grayscale and detect_mat from the corrected RGB. The correction matrix is
+    derived from a color checker captured under the same imaging conditions, so
+    colony color becomes comparable across batches and acquisition setups.
 
-    1. Normalise RGB to ``[0, 1]`` float.
-    2. Decode sRGB gamma to linear light.
-    3. Expand to root-polynomial features (Finlayson 2015).
-    4. Multiply by the correction matrix.
-    5. Re-encode to sRGB gamma.
-    6. Clip and scale back to the original integer dtype.
-    7. Recompute grayscale and detect_mat from corrected RGB.
+    For algorithm details, see :doc:`/explanation/color_spaces_for_phenotyping`.
 
-    Use cases (agar plates):
+    Best For:
+        - Multi-batch studies imaged across sessions or scanners where colony
+          color must be cross-batch comparable.
+        - Plates with pigmented yeast or bacterial colonies where chromatic
+          phenotype is the primary readout.
+        - Publication workflows needing perceptually accurate color
+          reproduction.
+        - Removing color casts from DSLR or flatbed-scanner illuminants that
+          shift colony hue relative to the agar background.
 
-    - Standardise plate images captured under different lighting to a common
-      colour space for consistent colony colour measurement.
-    - Remove colour casts from scanner or camera illumination so that
-      phenotypic colour differences between strains are comparable across
-      batches.
-    - Produce publication-ready images with accurate colour reproduction of
-      dyed or pigmented colonies.
+    Consider Also:
+        - :class:`FlattenIllumination` when the artifact is a spatial
+          brightness gradient rather than a chromatic cast.
+        - :class:`ColorDenoise` when high-ISO color noise obscures colony
+          boundaries without a systematic color-cast problem.
+        - :class:`BayesShrinkCorrector` or :class:`VisuShrinkCorrector` when
+          the goal is noise reduction rather than color accuracy.
 
-    Before correcting, each image's camera EXIF is compared against the
-    :attr:`~ColorCheckerProfile.capture_metadata` recorded when the profile was
-    fitted.  A different camera body or lens raises a :class:`UserWarning`
-    (the correction may be invalid); differing exposure settings (ISO, exposure
-    time, F-number, focal length) are logged at info level.  The check is
-    skipped silently when the profile carries no capture metadata.
-
-    Attributes:
+    Args:
         profile: A fitted :class:`ColorCheckerProfile` supplying the
-            root-polynomial correction matrix and expansion degree. Must
-            already be fitted; an unfitted profile is rejected at
-            construction.
-        correction_matrix: The root-polynomial correction matrix stored as
-            a nested list (serialisable).
-        degree: Polynomial expansion degree matching the profile.
-        output_illuminant: Target illuminant label (informational).
+            root-polynomial correction matrix and expansion degree. An
+            unfitted profile is rejected with a ``ValueError``.
+        output_illuminant: Target illuminant label used when reporting the
+            corrected color space (informational only; does not alter the
+            matrix computation). Default: ``"D65"``.
 
-    Examples:
-        Correct an image using a pre-fitted profile:
+    Returns:
+        Image: ``rgb`` mapped through the correction matrix; ``gray`` and
+        ``detect_mat`` recomputed from the corrected RGB. All three components
+        are updated in a single pass.
 
-        >>> from phenotypic.correction import ColorCheckerProfile, ColorCorrector
-        >>> import numpy as np
-        >>> profile = ColorCheckerProfile(rois=[...], degree=2)  # doctest: +SKIP
-        >>> profile.fit(image)  # doctest: +SKIP
-        >>> corrector = ColorCorrector(profile=profile)  # doctest: +SKIP
-        >>> corrected = corrector.apply(image)  # doctest: +SKIP
+    Raises:
+        ValueError: If ``profile`` is not yet fitted.
+        UserWarning: If the image's camera EXIF indicates a different camera
+            body or lens than the one used when the profile was fitted.
+
+    See Also:
+        :doc:`/tutorials/notebooks/01_your_first_plate_image` for an
+        introduction to loading and correcting full-plate images.
+        :doc:`/explanation/color_spaces_for_phenotyping` for a discussion of
+        root-polynomial color correction in phenotyping.
     """
 
     profile: ColorCheckerProfile

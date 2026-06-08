@@ -15,44 +15,63 @@ from phenotypic.abc_ import BackgroundSubtraction
 class SubtractGaussian(BackgroundSubtraction):
     """Remove background from ``detect_mat`` by subtracting a Gaussian-blurred estimate.
 
-    Estimates a smooth background via Gaussian blur and subtracts it,
-    removing gradual illumination gradients (vignetting, agar thickness,
-    scanner shading) while retaining sharp colony features. Improves
+    Estimates a smooth background by blurring the image with a wide Gaussian
+    kernel and subtracts it, removing gradual illumination gradients such as
+    vignetting, agar thickness variation, and scanner shading while retaining
+    sharp colony features. The result is clipped to [0, 1] and improves
     downstream thresholding and edge detection.
 
     For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 
+    Best For:
+        - Correcting uneven illumination gradients across the scan bed or
+          plate.
+        - Flattening background intensity so bright colonies or bright
+          colony features stand out against local background.
+        - Normalizing batches captured with varying scanner exposure or
+          lamp profiles.
+        - Plates where illumination varies smoothly and a Gaussian is a
+          reasonable background model.
+
+    Consider Also:
+        - :class:`SubtractRollingBall` for parabolic background estimation
+          that handles non-Gaussian intensity ramps and sharp gradients
+          more accurately.
+        - :class:`SubtractOpening` for OpenCV-accelerated morphological
+          background subtraction in high-throughput pipelines.
+        - :class:`FlattenIllumination` for homomorphic filtering that
+          separates illumination from reflectance in the frequency domain.
+        - :class:`ImageInverter` before this operation when colonies are
+          dark on bright agar and should be made bright explicitly.
+
     Args:
-        sigma: Gaussian standard deviation defining the background scale.
-            Must be larger than the typical colony diameter. Typical range:
-            20--100. Default: 50.0.
-        mode: Border handling. Accepted values: ``'reflect'`` (default),
-            ``'constant'``, ``'nearest'``, ``'mirror'``, ``'wrap'``.
-        cval: Fill value when ``mode='constant'``. Default: 0.0.
-        truncate: Gaussian support in standard deviations. Default: 4.0.
-        preserve_range: Preserve the input value range during filtering.
-            Default: ``True``.
-        n_iter: Number of successive subtraction passes. Multiple passes
-            remove residual background from complex gradients. Typical
-            range: 1--3. Default: 1.
+        sigma: Standard deviation of the Gaussian background kernel in
+            pixels. Set larger than the typical colony diameter so that
+            colonies are blurred into the background estimate rather than
+            surviving it; too small a sigma subtracts colony signal along
+            with the background. Typical range: 20--100 for standard plate
+            images. A reasonable starting point is a value somewhat larger
+            than the widest colony present. Default: 50.0.
+        mode: Border-handling strategy for the Gaussian convolution.
+            Accepted values: ``'reflect'`` (default), ``'constant'``,
+            ``'nearest'``, ``'mirror'``, ``'wrap'``.
+        cval: Constant fill value used when ``mode='constant'``. Has no
+            effect for other border modes. Default: 0.0.
+        truncate: Number of standard deviations at which the Gaussian
+            kernel is truncated. Larger values are more accurate but
+            increase compute time. Default: 4.0.
+        preserve_range: Preserve the input pixel value range during
+            Gaussian filtering. Default: ``True``.
+        n_iter: Number of successive background-subtraction passes.
+            Additional passes remove residual gradients left after the
+            first subtraction. Typical range: 1--3. Default: 1.
 
     Returns:
         Image: Input image with ``detect_mat`` background-subtracted and
         clipped to [0, 1]. ``rgb`` and ``gray`` are unchanged.
 
-    Best For:
-        - Correcting uneven lighting across plates or scan beds.
-        - Flattening background to enhance dark colonies on bright agar.
-        - Normalizing batches captured with varying exposure or
-          illumination profiles.
-
-    Consider Also:
-        - :class:`SubtractRollingBall` for parabolic background estimation
-          that adapts to non-Gaussian intensity ramps.
-        - :class:`SubtractOpening` for faster morphological background
-          subtraction in high-throughput pipelines.
-        - :class:`LocalEdgeDenoise` when the primary issue is noise rather
-          than illumination gradients.
+    Raises:
+        ValueError: If ``n_iter`` is less than 1.
 
     See Also:
         :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a

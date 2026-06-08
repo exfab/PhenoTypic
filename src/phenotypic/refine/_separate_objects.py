@@ -21,47 +21,52 @@ from phenotypic.abc_ import ObjectRefiner
 class SeparateObjects(ObjectRefiner):
     """Separate touching or merged colonies using distance-transform watershed segmentation.
 
-    Finds peaks in the Euclidean distance transform as seed markers for
-    watershed region growing. For GridImages, peaks are constrained to one
-    per grid cell; for regular Images, peaks are detected globally with
-    minimum distance spacing. Effectively individualizes colonies that
-    were merged by thresholding.
+    Finds peaks in the Euclidean distance transform of the object mask and
+    uses them as seed markers for watershed region growing, producing a
+    distinct labeled region for each colony. For GridImages, one peak per
+    grid cell is used; for plain Images, peaks are spaced by ``min_distance``.
 
-    Args:
-        min_distance: Minimum pixel distance between peaks for regular
-            Images. Ignored for GridImages (one peak per cell). Typical
-            range: 5--50. Higher values reduce over-segmentation; lower
-            values detect more peaks. Default: 10.
-
-    Returns:
-        Image: Input image with ``objmap`` refined so that touching colonies
-        are separated into distinct labeled regions.
-
-    Raises:
-        ValueError: If no peaks are detected or the image lacks detection
-            results.
+    For a comparison of colony separation strategies, see
+    :doc:`/explanation/refinement_strategies`.
 
     Best For:
-        - GridImage plates (96-well, 384-well, pinned cultures) where
-          touching colonies need individualization.
-        - Post-detection refinement when thresholding merges adjacent
-          colonies into a single detection.
+        - Pinned library plates (96-well, 384-well) where thresholding
+          merges adjacent colonies into a single detection.
+        - Dense yeast or bacterial arrays where colony boundaries are
+          difficult to resolve by thresholding alone.
         - Variable colony sizes where the distance transform naturally
-          adapts peak strength to colony diameter.
-        - Non-grid images using global peak detection with spacing
-          constraints.
+          adapts seed strength to each colony's diameter.
+        - Non-grid images where a global minimum-spacing constraint is
+          sufficient to individualize colonies.
 
     Consider Also:
-        - :class:`MaskOpening` for gentle separation of lightly touching
-          colonies without watershed.
-        - :class:`MaskErosion` for uniform inward shrinking that may
-          separate touching edges.
-        - :class:`GridAlignmentRefiner` when off-grid artifacts are the
-          main concern rather than merged colonies.
+        - :class:`MaskOpening` for gentle morphological separation of
+          lightly touching colonies without watershed.
+        - :class:`MaskErosion` when uniform inward shrinking is enough to
+          break weak contact between adjacent colony masks.
+        - :class:`GridAlignmentRefiner` when off-grid placement artefacts
+          are the primary concern rather than merged regions.
+
+    Args:
+        min_distance: Minimum pixel distance between watershed seed peaks
+            for plain Images. Ignored for GridImages, which use one peak
+            per grid cell. Higher values reduce over-segmentation; lower
+            values detect more seeds and produce finer splits. Typical
+            range: 5--50. A reasonable starting point is roughly the
+            expected minimum colony radius, so that each colony seeds at
+            most one peak. Default: 10.
+
+    Returns:
+        Image: Input image with ``objmap`` updated so that previously
+        merged colonies are separated into distinct labeled regions.
+
+    Raises:
+        ValueError: If no peaks are detected in the score map, or if
+            watershed produces an empty result.
 
     See Also:
-        :doc:`/how_to/notebooks/merge_fragmented_detections` for separation
-        and merging workflows.
+        :doc:`/how_to/notebooks/merge_fragmented_detections` for
+        separation and merging workflows on real plate images.
         :doc:`/explanation/refinement_strategies` for a comparison of
         colony separation approaches.
     """

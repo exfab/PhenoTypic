@@ -52,119 +52,190 @@ from phenotypic.tools_.branch_pathfinding import (
 
 
 class FilamentousFungiDetector(GridObjectDetector):
-    """Detect and separate filamentous fungal colonies by two-stage detection with Euclidean Voronoi partition.
+    """Detect and individually label filamentous fungal colonies by two-stage inoculum-plus-hyphae detection with Euclidean Voronoi partition.
 
-    Segment filamentous fungi in two stages: (1) detect compact inoculation
-    centres with an ``inoculum_detector``, (2) capture the full hyphal
-    structure via phase-congruency-based branch detection and Dijkstra
-    reconnection. Filtered centre centroids seed a Euclidean Voronoi
-    partition that assigns every fungal pixel to its nearest colony, with
-    connectivity-based correction ensuring uniform labelling within
-    connected components. For a full comparison see
-    :doc:`/explanation/detection_strategies_compared`.
+    First detect compact inoculation centres with ``inoculum_detector``, then
+    capture the full hyphal network using phase-congruency edge detection
+    combined with Gaussian background subtraction. Disconnected branch
+    fragments are reconnected to their parent colonies via quality-filtered
+    Dijkstra pathfinding on a composite cost surface derived from phase
+    congruency energy, local texture, and orientation coherence. Inoculum
+    centroids seed a Euclidean Voronoi partition that assigns every fungal
+    pixel to its nearest colony, with connectivity-based correction enforcing
+    uniform labelling within each connected component.
 
-    Args:
-        inoculum_detector: ObjectDetector or ImagePipeline that identifies
-            compact fungal centres/nuclei. Should produce small, tight
-            regions at inoculation points. Default uses an internal
-            InoculumDetector + KeepSectionLargest pipeline.
-
-        max_colony_radius_px: Largest colony radius (in pixels) the
-            detector should handle. Sizes scene-derived spatial
-            parameters (``gauss_sigma``, ``tile_size``, ``tile_overlap``)
-            for this worst case. Default 250.
-        min_branch_width_px: Narrowest hyphal branch width (in pixels) to
-            detect. Sizes signal-scale parameters
-            (``pct_min_wavelength``, ``mad_window``,
-            ``path_dilation_radius``, ``snr_margin``,
-            ``coherence_window_radius``). Default 3.
-
-        ignore_borders: If True, drops objects touching the image border
-            during hysteresis-threshold branch detection. Default True.
-        edge_noise_threshold: Noise threshold scaling factor for phase
-            congruency edge detection. Higher values are stricter
-            (reject more pixels as noise; preserve fewer thin hyphae).
-            Default 6.0.
-        reconnection_tolerance: IQR multiplier for path quality threshold
-            calibration. Higher values accept more reconnection paths
-            (may bridge genuinely-missing hyphae but risks over-merging).
-            Default 2.5.
-        max_gap_length: Maximum acceptable length (pixels) of a
-            suspicious cost stretch along a reconnection path. Paths
-            with longer bad stretches are rejected. Default 30.
-        border_margin_px: Border penalty buffer width in pixels.
-            Prevents reconnection paths from routing along image
-            borders. Default 50.
-        frag_reach_px: Maximum 2D distance (pixels) from a fragment's
-            boundary to the nearest routable (low-cost) pixel. Fragments
-            more isolated than this are dropped before Dijkstra routing,
-            since no plausible path could connect them. Default 10.
-        gap_crossing_penalty: Distance-gap penalty strength during
-            Dijkstra routing. Higher values make paths route around
-            low-PCT-energy gaps more aggressively. Default 4.0.
-
-        gauss_sigma: Override for SubtractGaussian sigma. If None
-            (default), derived from ``max_colony_radius_px``.
-        tile_size: Override for tile side length. If None (default),
-            derived from ``max_colony_radius_px``.
-        tile_overlap: Override for tile overlap. If None (default),
-            derived from ``max_colony_radius_px``.
-        pct_min_wavelength: Override for log-Gabor minimum wavelength.
-            If None (default), derived from ``min_branch_width_px``.
-        mad_window: Override for local MAD window size (must be odd).
-            If None (default), derived from ``min_branch_width_px``.
-        path_dilation_radius: Override for dilating reconnection paths.
-            If None (default), derived from ``min_branch_width_px``.
-        snr_margin: Override for SNR background ring radius beyond
-            ``path_dilation_radius``. If None (default), derived from
-            ``min_branch_width_px``.
-        coherence_window_radius: Override for orientation coherence
-            computation radius. If None (default), derived from
-            ``min_branch_width_px``.
-
-    Returns:
-        Image: Input image with ``objmask`` set to a binary fungal mask
-        and ``objmap`` set to a labelled colony map where each fungal
-        colony receives a unique integer label via Voronoi assignment.
-
-    Raises:
-        TypeError: If *inoculum_detector* is not an ObjectDetector or
-            ImagePipeline instance.
-        ValueError: If no centres are detected, no branch structure is
-            detected, or no centres overlap with the branch structure
-            after filtering.
+    For an algorithm overview and a comparison with other detection strategies,
+    see :doc:`/explanation/detection_strategies_compared` and
+    :doc:`/explanation/filamentous_fungi_algorithm`.
 
     Best For:
-        * Filamentous fungal colonies (e.g., *Aspergillus*, *Neurospora*,
+        - Filamentous fungal colonies (*Aspergillus*, *Neurospora*,
           *Trichoderma*) with irregular, spreading hyphal morphologies.
-        * Dense plates where neighbouring fungal colonies touch or overlap
+        - Dense plates where neighbouring fungal colonies touch or overlap
           and must be individually labelled.
-        * Time-course experiments tracking hyphal extension from compact
-          inoculation sites.
-        * Grid-based fungal culture plates (GridImage) where one colony per
-          well must be quantified.
-        * High-throughput fungal phenotyping screens requiring consistent
+        - Time-course experiments tracking hyphal extension radially outward
+          from compact inoculation sites.
+        - Grid-based fungal culture plates where one colony per well must be
+          quantified separately.
+        - High-throughput fungal phenotyping screens requiring consistent
           separation quality across hundreds of plates.
 
     Consider Also:
-        * :class:`WatershedDetector` when colonies are compact and roughly
-          circular (yeast-like morphology).
-        * :class:`OtsuDetector` when fungi are well-separated and a simple
-          binary mask suffices without individual labelling.
-        * :class:`CompositeDetector` when combining multiple detection
-          strategies without the two-stage centre-plus-body approach.
+        - :class:`WatershedDetector` when colonies are compact and roughly
+          circular (yeast or bacterial morphology).
+        - :class:`OtsuDetector` when fungi are well-separated and a single
+          binary mask suffices without individual colony labelling.
+        - :class:`CompositeDetector` when combining multiple detection
+          strategies is preferred over the two-stage centre-plus-hyphae
+          approach.
+        - :class:`InoculumDetector` when only the compact inoculation centres
+          are needed and full hyphal reconstruction is not required.
+
+    Args:
+        inoculum_detector: ObjectDetector or ImagePipeline used to locate
+            compact fungal centres. Should produce small, tight regions at
+            inoculation points; centroids from this detector seed the final
+            Voronoi partition. When ``None`` (default), an internal
+            ``InoculumDetector`` + ``KeepSectionLargest`` pipeline is used.
+            Default: None.
+
+        # Scene-scale parameters — set these first; derived params follow
+        max_colony_radius_px: Expected maximum colony radius in pixels.
+            Acts as the master scene knob: proportionally scales
+            ``gauss_sigma``, ``tile_size``, and ``tile_overlap`` when those
+            are left at ``None``. A reasonable starting point is the radius
+            of the largest colony in pixels at your imaging resolution (e.g.
+            measure colony extent in your image viewer before setting this).
+            Reduce for short-incubation plates or high-well-count formats;
+            increase for slow-growing species with extensive radial growth.
+            Typical range: 50--400. Default: 250.0.
+        min_branch_width_px: Expected narrowest hyphal branch width in
+            pixels. Scales signal-detection parameters
+            (``pct_min_wavelength``, ``mad_window``, ``path_dilation_radius``,
+            ``snr_margin``, ``coherence_window_radius``) when those are left
+            at ``None``. Set to the thinnest hyphae visible at your imaging
+            resolution; the derived ``pct_min_wavelength``
+            (``2 × min_branch_width_px``) is clamped at the Nyquist floor
+            of 2 px. Typical range: 2--8. Default: 3.
+
+        # Detection control
+        ignore_borders: Drop objects touching the image border during
+            hysteresis-threshold branch detection. Enable (default) to avoid
+            partial colonies at plate edges; disable when genuine peripheral
+            hyphal growth must be retained. Default: True.
+        edge_noise_threshold: Noise-suppression multiplier ``k`` for the
+            phase congruency detector. Only features whose phase energy
+            exceeds the estimated noise mean plus ``k`` standard deviations of
+            the noise energy are accepted as real edges. Higher values suppress
+            agar texture artefacts at the cost of rejecting weak peripheral
+            hyphae; lower values recover fine structure but may pass background
+            noise on textured media. Typical range: 2.0--10.0. Default: 6.0.
+
+        # Reconnection quality
+        reconnection_tolerance: IQR multiplier for calibrating reconnection
+            path quality thresholds from confirmed calibration branches.
+            Thresholds are set at median ± ``reconnection_tolerance`` × IQR
+            across five quality metrics. Higher values accept more candidate
+            paths (permissive); lower values require paths to closely resemble
+            calibration branches (conservative). Typical range: 1.5--4.0.
+            Default: 2.5.
+        max_gap_length: Maximum contiguous stretch of high-cost pixels
+            tolerated along a reconnection path, in pixels. Paths containing
+            a window worse than the calibrated threshold are rejected as
+            routing through bare agar. Increase to bridge longer hyphal gaps;
+            decrease to reject longer detours through background. Typical
+            range: 10--100. Default: 30.
+        border_margin_px: Width of the border penalty ramp applied to
+            image-edge pixels in the Dijkstra cost surface. Prevents
+            reconnection paths from routing along plate borders instead of
+            through genuine hyphal corridors. Set to 0 to disable. Typical
+            range: 0--150. Default: 50.
+        frag_reach_px: Pre-screening radius in pixels. Fragments whose
+            nearest routable pixel exceeds this distance from the colony
+            boundary are discarded before Dijkstra, saving computation.
+            Fragments within this radius are forwarded for full
+            quality-filtered reconnection. Typical range: 5--40. Default: 10.
+        gap_crossing_penalty: Scaling factor for the distance-weighted gap
+            penalty applied to Dijkstra path costs. Higher values strongly
+            penalise traversal of bare agar far from the colony, keeping
+            paths near established structure; lower values allow longer
+            background detours. Typical range: 1.0--10.0. Default: 4.0.
+
+        # Scene-derivation overrides (leave at None to auto-derive)
+        gauss_sigma: Gaussian sigma for background subtraction, in pixels.
+            When ``None``, set to ``1.2 × max_colony_radius_px`` (300 px at
+            the default radius). Must exceed the largest colony radius so the
+            Gaussian estimates only the illumination gradient, not colony
+            signal. Typical range: 50--600. Default: None.
+        tile_size: Side length of square processing tiles in pixels. When
+            ``None``, set to ``int(round(4.8 × max_colony_radius_px))``
+            (1200 px at the default radius). Must be large enough to contain
+            an entire colony and its satellite fragments within one tile.
+            Typical range: 200--3000. Default: None.
+        tile_overlap: Overlap between adjacent tiles in pixels. When
+            ``None``, set to ``int(round(2.4 × max_colony_radius_px))``
+            (600 px at the default radius). Larger overlap ensures fragments
+            near tile boundaries are co-located with their parent colony in
+            at least one tile. Typical range: 50--1500. Default: None.
+        pct_min_wavelength: Minimum log-Gabor filter wavelength in pixels
+            for phase congruency detection. When ``None``, set to
+            ``2.0 × min_branch_width_px`` (6 px at the default width).
+            Must be ≥ 2 (Nyquist). Match to the thinnest hyphae width at
+            your imaging resolution. Typical range: 2--20. Default: None.
+        mad_window: Side length of the square median-filter kernel for local
+            MAD texture computation (must be odd). When ``None``, set to
+            ``2 × min_branch_width_px + 1`` forced odd (7 at the default
+            width). Should span approximately one branch diameter plus
+            background buffer on each side. Typical range: 3--21.
+            Default: None.
+        path_dilation_radius: Disk radius for dilating accepted reconnection
+            paths before painting colony labels. When ``None``, set to
+            ``max(1, round(0.5 × min_branch_width_px))`` (2 at the default
+            width). Also sets the inner band radius for path quality metrics.
+            Match to half the expected hyphal width. Typical range: 1--10.
+            Default: None.
+        snr_margin: Extra pixel margin beyond ``path_dilation_radius`` that
+            forms the background annular ring for local SNR estimation.
+            When ``None``, set to ``max(2, round(0.5 × min_branch_width_px))``
+            (2 at the default width). Keep narrow on dense hyphal networks
+            to avoid sampling adjacent hyphae as background. Typical range:
+            1--8. Default: None.
+        coherence_window_radius: Radius of the square averaging kernel for
+            orientation coherence computation. When ``None``, set to
+            ``round(5.0 × min_branch_width_px)`` (15 at the default width).
+            Larger radius captures long-range directional consistency;
+            reduce for highly curved or heavily branching networks. Typical
+            range: 5--50. Default: None.
+
+    Returns:
+        Image: Input image with ``objmask`` set to a binary mask of all
+        detected fungal pixels and ``objmap`` set to a labelled colony map
+        where each fungal colony receives a unique consecutive integer label
+        via Voronoi assignment.
+
+    Raises:
+        TypeError: If ``inoculum_detector`` is not an ObjectDetector or
+            ImagePipeline instance.
+        ValueError: If no inoculum centres are detected, or no detected
+            centres overlap with the branch structure after filtering.
 
     References:
-        [1] P. Kovesi, "Image features from phase congruency," *Videre:
-        J. Comput. Vis. Res.*, vol. 1, no. 3, pp. 1--26, 1999.
+        [1] P. Kovesi, "Phase congruency: A low-level image invariant,"
+        *Psychol. Res.*, vol. 64, no. 2, pp. 136--148, 2000.
+
+        [2] E. W. Dijkstra, "A note on two problems in connexion with
+        graphs," *Numer. Math.*, vol. 1, no. 1, pp. 269--271, 1959.
 
     See Also:
         :doc:`/tutorials/notebooks/10_detecting_filamentous_fungi`
             Dedicated tutorial for filamentous fungi detection workflows.
         :doc:`/how_to/notebooks/choose_detection_algorithm`
             Guide for selecting the right detector for your plate images.
+        :doc:`/explanation/filamentous_fungi_algorithm`
+            Algorithm details for the two-stage detection and Voronoi
+            partition approach.
         :doc:`/explanation/detection_strategies_compared`
-            In-depth comparison of all detection strategies.
+            Comparison of all detection strategies and their failure modes.
     """
 
     @staticmethod
@@ -261,6 +332,11 @@ class FilamentousFungiDetector(GridObjectDetector):
             self.tile_size = int(round(self._TILE_SIZE_PER_R * R))
         if self.tile_overlap is None:
             self.tile_overlap = int(round(self._TILE_OVERLAP_PER_R * R))
+        if self.tile_size <= self.tile_overlap:
+            raise ValueError(
+                    "tile_size must be greater than tile_overlap so "
+                    "sliding-window tiles advance by at least one pixel"
+            )
         if self.pct_min_wavelength is None:
             self.pct_min_wavelength = self._WAVELENGTH_PER_W * w
         if self.mad_window is None:

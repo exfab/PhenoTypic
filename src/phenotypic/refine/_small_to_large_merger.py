@@ -15,53 +15,58 @@ from ..abc_ import ObjectRefiner
 
 
 class SmallToLargeMerger(ObjectRefiner):
-    """Merge small colony fragments into their nearest large colony using hierarchical size-based merging.
+    """Merge small colony fragments into their nearest large colony using size-partitioned merging.
 
-    Partitions objects into small (below size threshold) and large (at or
-    above), then absorbs each small fragment into the nearest large neighbor
-    within the distance threshold. Large colonies serve as stable anchors
-    and never merge with each other, preventing false consolidation of
+    Partitions detected objects into small fragments (below ``size_threshold``)
+    and large anchor colonies (at or above), then absorbs each fragment into
+    the nearest anchor within ``distance_threshold`` pixels. Large colonies
+    are never merged with each other, preventing false consolidation of
     distinct colonies.
+
+    For a comparison of fragment merging strategies, see
+    :doc:`/explanation/refinement_strategies`.
+
+    Best For:
+        - Fragmented detections from heterogeneous colony pigmentation or
+          uneven illumination that produce satellite regions around a main
+          colony body.
+        - Post-watershed over-segmentation where one colony splits into a
+          large core and small peripheral fragments.
+        - Plates with lighting gradients that generate small spurious
+          detections adjacent to genuine large colonies.
+        - Scenarios where small isolated debris should be absorbed into
+          nearby real colonies rather than discarded outright.
+
+    Consider Also:
+        - :class:`MergeFragmentChains` when large-to-large merging is also
+          needed, not only small-to-large absorption.
+        - :class:`NearestNeighborMerger` for nearest-neighbor merging
+          without any size-based partitioning.
+        - :class:`SmallObjectRemover` when small fragments should be
+          discarded entirely rather than absorbed into a parent colony.
 
     Args:
         distance_threshold: Maximum centroid-to-centroid distance in pixels
-            for merging a small fragment into a large colony. Typical
-            range: 10--50. Should be smaller than the minimum distance
-            between distinct large colonies. Default: 30.0.
-        size_threshold: Pixel area separating small fragments from large
-            anchor colonies. Objects below this are merge candidates;
-            objects at or above are preserved as anchors. Typical range:
-            50--200. Default: 100.
+            within which a small fragment is absorbed into the nearest large
+            colony. Set smaller than the minimum expected spacing between
+            distinct large colonies to avoid cross-colony merges. Typical
+            range: 10--50. Default: 30.0.
+        size_threshold: Pixel area boundary separating merge candidates
+            (below threshold) from immovable anchor colonies (at or above).
+            Typical range: 50--200. Scale upward for high-resolution scans
+            where colony areas are larger. Default: 100.
 
     Returns:
         Image: Input image with ``objmap`` updated so that small fragments
-        are relabeled to their nearest large colony.
+        within range are relabeled to match their nearest large colony.
 
     Raises:
         ValueError: If ``distance_threshold`` or ``size_threshold`` is not
             positive.
 
-    Best For:
-        - Fragmented detections from heterogeneous pigmentation or uneven
-          illumination where satellites cluster around a main colony.
-        - Post-watershed over-segmentation where one colony splits into a
-          large core plus small peripheral regions.
-        - Removing small debris near real colonies without merging distinct
-          large colonies.
-        - Plates with severe lighting gradients that produce satellite
-          fragments around main detections.
-
-    Consider Also:
-        - :class:`MergeFragmentChains` when all nearby objects should
-          merge regardless of size, including large-to-large merging.
-        - :class:`NearestNeighborMerger` for simple nearest-neighbor
-          merging without size partitioning.
-        - :class:`SmallObjectRemover` when small fragments should be
-          discarded entirely rather than absorbed.
-
     See Also:
         :doc:`/how_to/notebooks/merge_fragmented_detections` for fragment
-        merging workflows.
+        merging workflows on real plate images.
         :doc:`/explanation/refinement_strategies` for a comparison of
         merging strategies.
     """

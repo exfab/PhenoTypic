@@ -20,57 +20,67 @@ from phenotypic.tools_.funcs_ import validate_operation_integrity
 
 
 class GridAlignmentRefiner(GridInferenceMixin, ObjectRefiner):
-    """Retain only grid-aligned colonies by keeping the dominant object per cell.
+    """Enforce grid structure by retaining the dominant object per grid cell.
 
-    Infers or reads grid geometry, partitions the image into cells, and keeps
-    one object per cell according to the chosen selection strategy. Off-grid
-    artifacts, dust, and spurious detections are removed, enforcing regular
-    grid structure on colony detection results.
+    Infers or reads grid geometry from the image, partitions the detection
+    results into grid cells, and keeps one object per cell according to the
+    chosen selection strategy. Off-grid artifacts, dust, and spurious detections
+    outside expected colony positions are removed. For ``GridImage`` inputs the
+    grid layout is read directly; for plain ``Image`` inputs it is estimated
+    from the detected mask.
 
-    Args:
-        smoothing_sigma: Gaussian smoothing sigma for row/column intensity
-            profiles during grid inference. Typical range: 0.5--5.0.
-            Higher values smooth noise but may merge adjacent peaks.
-            Default: 2.0.
-        min_peak_distance: Minimum pixel distance between detected grid
-            peaks. ``None`` auto-estimates as half the expected colony
-            spacing. Default: None.
-        peak_prominence: Minimum prominence for peak detection. ``None``
-            auto-calculates as 10% of signal range. Default: None.
-        edge_refinement: Refine grid edges using local intensity minima.
-            Improves accuracy for unevenly lit plates. Default: True.
-        selection_mode: Strategy for choosing one object per cell.
-            ``"dominant"`` keeps the largest by pixel count, ``"centered"``
-            keeps the most centered, ``"regularized"`` fits a global
-            regular-grid model then re-selects. Default: ``"dominant"``.
-
-    Returns:
-        Image: Input image with ``objmap`` filtered to grid-aligned objects
-        and ``objmask`` updated to match.
-
-    Raises:
-        ValueError: If grid inference fails or image lacks detection results.
+    For an overview of grid refinement strategies, see
+    :doc:`/explanation/refinement_strategies`.
 
     Best For:
         - High-throughput arrayed plates (96-well, 384-well, pinned cultures)
           where colonies should align with known well positions.
-        - Post-detection cleanup when detections contain off-grid artifacts.
-        - Explicit grid enforcement when used with GridImage and known grid
-          coordinates.
+        - Post-detection cleanup when results contain off-grid debris or dust
+          that survived threshold-based detection.
+        - Experiments that require exactly one colony label per grid position
+          before downstream measurement.
 
     Consider Also:
-        - :class:`RefineBySineFit` when colony intensities are
-          heterogeneous and rank-based correlation improves grid estimation.
+        - :class:`RefineBySineFit` when colony intensities are heterogeneous
+          and sinusoidal template correlation improves grid estimation.
         - :class:`KeepSectionLargest` for a simpler largest-per-cell strategy
-          on GridImage inputs.
-        - :class:`ReduceSectionsByLine` for regression-based multi-
-          detection reduction within grid cells.
+          on ``GridImage`` inputs without grid inference overhead.
+        - :class:`ReduceSectionsByLine` for regression-based multi-detection
+          reduction within grid cells.
+
+    Args:
+        smoothing_sigma: Standard deviation of the Gaussian kernel applied to
+            row and column projection profiles before peak detection during grid
+            inference. Higher values merge closely spaced peaks in noisy profiles;
+            lower values preserve fine grid periodicity. Typical range: 0.5--5.0.
+            Default: 2.0.
+        min_peak_distance: Minimum pixel distance between adjacent detected grid
+            peaks. ``None`` auto-estimates as half the expected inter-colony
+            spacing. Default: None.
+        peak_prominence: Minimum peak prominence for grid peak detection. ``None``
+            auto-calculates as 10 % of the profile signal range. Default: None.
+        edge_refinement: Refine inferred grid-cell edges using local intensity
+            minima after initial peak detection. Improves cell boundary accuracy
+            for unevenly lit or slightly rotated plates. Default: True.
+        selection_mode: Strategy for selecting one object per grid cell.
+            ``"dominant"`` keeps the largest object by pixel count;
+            ``"centered"`` keeps the object whose centroid is closest to the
+            cell centre; ``"regularized"`` fits a global regular-grid model
+            then re-selects. Default: ``"dominant"``.
+        split_merged: Attempt to split merged objects within a cell before
+            applying the selection strategy. Useful when adjacent colonies are
+            partially fused in the detection result. Default: False.
+
+    Returns:
+        Image: Input image with ``objmap`` filtered to one grid-aligned object
+        per cell and ``objmask`` updated to match.
+
+    Raises:
+        ValueError: If grid inference fails or the image lacks detection results.
 
     See Also:
-        :doc:`/how_to/notebooks/refine_noisy_boundaries` for grid-based
-        cleanup workflows.
-        :doc:`/explanation/refinement_strategies` for a comparison of
-        grid refinement approaches.
+        :doc:`/how_to/notebooks/refine_noisy_boundaries` for grid-based cleanup
+        workflows on real plate images.
     """
 
     smoothing_sigma: float = 2.0

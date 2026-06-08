@@ -14,40 +14,50 @@ from skimage.morphology import closing
 
 
 class MaskClosing(ObjectRefiner, FootprintMixin):
-    """Bridge small gaps and fill holes in colony masks using morphological closing.
+    """Bridge narrow background gaps in colony masks using morphological closing.
 
-    Applies binary closing (dilation then erosion) to reconnect nearby
-    fragments of the same colony separated by thin background channels.
-    Preserves overall colony shape and size while reducing fragmentation.
+    Applies binary closing (dilation followed by erosion) to the object mask,
+    reconnecting nearby fragments of the same colony that are separated by thin
+    background channels and filling small internal holes. Colony size is largely
+    preserved because the dilation and erosion nearly cancel outside solid regions.
 
-    Args:
-        shape: Structuring element. ``'auto'``, ``'disk'``, ``'square'``,
-            ``'diamond'``, or custom ndarray. Default: ``None``.
-        width: Footprint width in pixels. Larger values bridge wider gaps
-            but risk merging distinct colonies. Typical range: 3--9.
-            Default: 5.
-        n_iter: Number of closing iterations. Default: 1.
-
-    Returns:
-        Image: Input image with ``objmask`` and ``objmap`` morphologically
-        closed.
+    For an overview of morphological refinement methods, see
+    :doc:`/explanation/refinement_strategies`.
 
     Best For:
-        - Colonies fragmented by uneven pigmentation or shadow effects.
-        - Small internal holes from condensation or glare.
-        - Reconnecting nearby fragments before measurement.
+        - Colonies fragmented by uneven pigmentation or shadow-induced background
+          channels across the colony body.
+        - Masks with small internal holes caused by condensation droplets or
+          specular glare on the agar surface.
+        - Pre-measurement cleanup to reconnect fragments before area or shape
+          features are computed.
 
     Consider Also:
-        - :class:`MaskFill` for filling enclosed holes without bridging
-          separate objects.
-        - :class:`MaskOpening` for the opposite effect — breaking thin
-          connections between distinct colonies.
-        - :class:`NearestNeighborMerger` for merging distant fragments
-          based on proximity.
+        - :class:`MaskFill` for filling enclosed holes within objects without
+          bridging separately labeled colonies.
+        - :class:`MaskOpening` for the opposite effect — removing thin connections
+          between objects that should remain distinct.
+        - :class:`NearestNeighborMerger` for merging distant fragments that are
+          too far apart for morphological closing to bridge.
+
+    Args:
+        shape: Structuring element shape for the closing footprint. ``"auto"``
+            scales a disk to the image size; ``"disk"``, ``"square"``, and
+            ``"diamond"`` use named shapes at the given ``width``; a NumPy
+            array provides a custom element; ``None`` uses the skimage library
+            default. Default: ``None``.
+        width: Footprint width in pixels when using a named shape. Larger values
+            bridge wider gaps but risk merging distinct adjacent colonies. Typical
+            range: 3--9. Default: 5.
+        n_iter: Number of closing iterations applied sequentially. Each additional
+            iteration extends the effective reach by one footprint radius. Default: 1.
+
+    Returns:
+        Image: Input image with ``objmask`` and ``objmap`` morphologically closed.
 
     See Also:
         :doc:`/how_to/notebooks/merge_fragmented_detections` for fragment
-        merging strategies.
+        merging strategies including morphological closing.
     """
 
     shape: Literal["auto", "square", "diamond", "disk"] | NdArrayField | None = None

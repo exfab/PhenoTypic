@@ -25,40 +25,6 @@ class MadHysteresisDetector(ThresholdDetector):
     unstable thresholds. For a full comparison see
     :doc:`/explanation/detection_strategies_compared`.
 
-    Args:
-        k_high: High-threshold multiplier. The high threshold is
-            ``k_high * sigma_noise``; pixels above this seed connected
-            regions. Higher values are more conservative. Typical range:
-            3.0--8.0. Default: 5.0.
-
-        k_low: Low-threshold multiplier. The low threshold is
-            ``k_low * sigma_noise``; pixels above this are included if
-            connected to a high-threshold seed. Must be less than
-            ``k_high``. Typical range: 1.5--4.0. Default: 2.5.
-
-        min_size: Minimum colony area in pixels. Connected components
-            smaller than this are removed as noise. Default: 20.
-
-        connectivity: Pixel connectivity for labelling connected
-            components. ``1`` for 4-connectivity, ``2`` for
-            8-connectivity. Default: 2.
-
-        ignore_zeros: Exclude zero-intensity pixels from MAD computation.
-            Enable for plates with black borders or masked regions.
-            Default: True.
-
-        ignore_borders: Remove colonies touching image edges via
-            ``clear_border()``. Recommended for grid-based colony counting
-            to eliminate partial colonies at plate boundaries. Default:
-            True.
-
-    Returns:
-        Image: Input image with ``objmask`` set to binary mask and
-        ``objmap`` set to labeled connected components.
-
-    Raises:
-        ValueError: If ``k_low`` >= ``k_high``.
-
     Best For:
         * Filter response maps (CED, Hessian, LoG, Frangi) where the
           noise floor is approximately Gaussian.
@@ -74,6 +40,55 @@ class MadHysteresisDetector(ThresholdDetector):
           with a bimodal histogram.
         * :class:`ChanVeseDetector` when colonies have diffuse edges and
           region-based segmentation is more appropriate.
+
+    Args:
+        k_high: High-threshold multiplier setting the seed threshold at
+            ``k_high * sigma_noise`` standard deviations above the noise
+            floor. There is no universal best value -- it is tuned to the
+            scene. Raising *k_high* accepts only the most prominent
+            colonies as seeds (more conservative); lowering it seeds dimmer
+            structures. Typical range: 3.0--8.0. Default: 5.0. On noisy or
+            strongly textured plates raise toward 6--8 so agar granularity
+            is not seeded; on faint enhancer outputs (e.g. Frangi on weak
+            hyphae) lower toward 3--4 so genuine signal seeds at all.
+
+        k_low: Low-threshold multiplier setting the growth threshold at
+            ``k_low * sigma_noise``; pixels above this join a seed if
+            connected to it. Must be strictly less than *k_high*. The ratio
+            *k_high* / *k_low* trades selectivity against coverage: a wider
+            gap grows seeds further into faint margins. Typical range:
+            1.5--4.0. Default: 2.5. Lower toward 1.5--2.0 to recover the
+            faint edges of filamentous or low-contrast colonies; raise it
+            on clean high-contrast maps.
+
+        min_size: Minimum colony area in pixels; connected components
+            smaller than this are removed as noise, debris, or condensation.
+            Raising it silences small artefacts at the cost of missing
+            genuine micro-colonies; lowering it recovers faint colonies but
+            raises false positives. Scale with resolution -- smaller for
+            dense 384/1536 formats, larger for high-dpi scans. Default: 20.
+
+        connectivity: Pixel connectivity for labelling connected
+            components. ``1`` (4-connected) keeps diagonally touching
+            objects separate; ``2`` (8-connected) bridges diagonal gaps in
+            thin or branching structures into fewer, larger regions.
+            Default: 2.
+
+        ignore_zeros: Exclude zero-intensity pixels from MAD computation.
+            Enable for plates with black borders or masked regions.
+            Default: False.
+
+        ignore_borders: Remove colonies touching image edges via
+            ``clear_border()``. Recommended for grid-based colony counting
+            to eliminate partial colonies at plate boundaries. Default:
+            True.
+
+    Returns:
+        Image: Input image with ``objmask`` set to binary mask and
+        ``objmap`` set to labeled connected components.
+
+    Raises:
+        ValueError: If ``k_low`` >= ``k_high``.
 
     See Also:
         :doc:`/tutorials/notebooks/02_detecting_colonies`

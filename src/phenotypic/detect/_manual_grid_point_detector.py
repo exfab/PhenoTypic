@@ -29,36 +29,6 @@ class ManualGridPointDetector(GridObjectDetector, FootprintMixin):
     *coord2* define cells (0, 0) and (1, 1); row and column spacing are
     derived from their difference and extrapolated across all grid cells.
 
-    Args:
-        coord1: ``(y, x)`` pixel position of the top-left grid cell centre
-            (row 0, column 0). This is the anchor point from which all
-            other positions are calculated. Default ``(0, 0)``.
-
-        coord2: Optional ``(y, x)`` pixel position of the diagonally
-            adjacent cell (row 1, column 1). When provided, row and column
-            spacing are derived from the difference between *coord2* and
-            *coord1*. When omitted, spacing is computed from image
-            dimensions assuming symmetric margins.
-
-        shape: Morphological footprint shape stamped at each grid position.
-            ``"disk"`` (default) preserves round colony geometry.
-            ``"square"`` covers rectangular well regions. ``"diamond"``
-            offers a compromise between the two.
-
-        width: Diameter of the footprint in pixels (default 15). Larger
-            values cover more area per grid cell; smaller values produce
-            tighter, more precise masks. Typical range: 5--50, depending
-            on image resolution and colony size.
-
-    Returns:
-        GridImage: Input image with ``objmask`` set to the union of all
-        stamped footprints and ``objmap`` set to uniquely labelled regions
-        (1-indexed, row-major order).
-
-    Raises:
-        GridImageInputError: If a plain Image is passed instead of a
-            GridImage.
-
     Best For:
         * Plates where automatic grid finders fail due to low contrast,
           missing wells, or non-standard plate formats.
@@ -76,6 +46,44 @@ class ManualGridPointDetector(GridObjectDetector, FootprintMixin):
           grid and must be separated by region growing.
         * :class:`InoculumDetector` when inoculation sites must be detected
           from image content rather than geometric templates.
+
+    Args:
+        coord1: ``(y, x)`` pixel position of the top-left grid cell centre
+            (row 0, column 0), picked by the user (no universal value).
+            This is the anchor from which all other positions are
+            calculated. Default ``(0, 0)``. Place it on the visible centre
+            of the first colony; adjust by observing whether the stamped
+            grid drifts off the colonies toward the far rows/columns.
+
+        coord2: Optional ``(y, x)`` pixel position of the diagonally
+            adjacent cell (row 1, column 1). When provided, row and column
+            spacing are derived from the difference between *coord2* and
+            *coord1* -- the most reliable mode, since it pins the true pitch
+            from two real colonies rather than assuming symmetric margins.
+            When omitted, spacing is computed from image dimensions assuming
+            symmetric margins. Default: None.
+
+        shape: Morphological footprint shape stamped at each grid position.
+            ``"disk"`` (default) preserves round colony geometry.
+            ``"square"`` covers rectangular well regions. ``"diamond"``
+            offers a compromise between the two.
+
+        width: Diameter of the footprint in pixels. Larger values cover
+            more area per grid cell (risking overlap of adjacent cells);
+            smaller values produce tighter, more precise masks. A
+            reasonable starting point is roughly the visible colony
+            diameter, then shrink it if neighbouring stamps merge or grow
+            it if colonies overflow their stamp. Typical range: 5--50,
+            depending on image resolution and colony size. Default: 15.
+
+    Returns:
+        GridImage: Input image with ``objmask`` set to the union of all
+        stamped footprints and ``objmap`` set to uniquely labelled regions
+        (1-indexed, row-major order).
+
+    Raises:
+        GridImageInputError: If a plain Image is passed instead of a
+            GridImage.
 
     See Also:
         :doc:`/tutorials/notebooks/02_detecting_colonies`
