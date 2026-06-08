@@ -20,7 +20,7 @@
 |------|----------------|--------|
 | `src/phenotypic/gui/tune/_run_argv.py` | **New.** Pure tune CLI argv builder | `tune_run_argv()` |
 | `src/phenotypic/gui/tune/_validation.py` | Plan 2 module | Add `preflight_issues()`, `can_deploy()` |
-| `src/phenotypic/gui/tune/_image_source.py` | Existing | Add `resolve_run_images()` |
+| `src/phenotypic/gui/tune/_run_image_source.py` | **New.** Run `-i` resolver | `resolve_run_images()` (separate from the Curate `_image_source.py`) |
 | `src/phenotypic/gui/tune/_ids.py` | Tune IDs | Run-view + deploy IDs |
 | `src/phenotypic/gui/tune/_layout.py` | Layout | Run view body |
 | `src/phenotypic/gui/tune/_callbacks.py` | Callbacks | Pre-flight, deploy, auto-advance |
@@ -28,7 +28,7 @@
 | `src/phenotypic/gui/WORKFLOWS.md` | Flow ledger | author→deploy→monitor flow (+ capture fn + tutorial) |
 | `tests/unit/gui/tune/test_run_argv.py` | **New** | argv builder cases |
 | `tests/unit/gui/tune/test_validation.py` | Plan 2 test | preflight + can_deploy cases |
-| `tests/unit/gui/tune/test_image_source.py` | Existing/new | `resolve_run_images` cases |
+| `tests/unit/gui/tune/test_run_image_source.py` | **New** | `resolve_run_images` cases |
 | `tests/integration/gui/tune/test_run_deploy.py` | **New** | deploy gating + launch (mocked runner) |
 
 ---
@@ -264,79 +264,92 @@ git commit -m "feat(gui-tune): pre-flight (grid+float) + deploy gate"
 ## Task 3: Image source resolution (pure)
 
 The new-run image dir comes from the hub's shared source-image-root, with a
-per-run override.
+per-run override. **Use a new module** (`_run_image_source.py`) rather than the
+existing `_image_source.py`, which is the Curate-view plate picker — a different
+concern. The real `resolve_source_image_root(sandbox, payload)` takes a sandbox
+**and** the store payload (verified at `shell/_source_context.py:91`), so the
+wrapper must thread the sandbox through.
 
 **Files:**
-- Modify: `src/phenotypic/gui/tune/_image_source.py` (add `resolve_run_images`)
-- Test: `tests/unit/gui/tune/test_image_source.py`
+- Create: `src/phenotypic/gui/tune/_run_image_source.py`
+- Test: `tests/unit/gui/tune/test_run_image_source.py`
 
 - [ ] **Step 1: Write the failing tests**
 
 ```python
-# tests/unit/gui/tune/test_image_source.py  (add)
-from phenotypic.gui.tune._image_source import resolve_run_images
+# tests/unit/gui/tune/test_run_image_source.py
+from phenotypic.gui.tune._run_image_source import resolve_run_images
 
 
 def test_override_wins_when_set():
-    assert resolve_run_images(store_payload=None, override="/explicit") == "/explicit"
+    assert resolve_run_images(sandbox=None, store_payload=None, override="/explicit") == "/explicit"
 
 
 def test_falls_back_to_shared_root(monkeypatch):
-    # When no override, resolve from the shared-source store payload.
+    # No override → resolve from the shared-source store payload (sandbox-bounded).
     monkeypatch.setattr(
-        "phenotypic.gui.tune._image_source.resolve_source_image_root",
-        lambda payload, **kw: "/shared/imgs",
+        "phenotypic.gui.tune._run_image_source.resolve_source_image_root",
+        lambda sandbox, payload: "/shared/imgs",
     )
-    assert resolve_run_images(store_payload={"path": "/shared/imgs"}, override=None) == "/shared/imgs"
+    assert resolve_run_images(
+        sandbox=object(), store_payload={"path": "/shared/imgs"}, override=None
+    ) == "/shared/imgs"
 
 
 def test_none_when_neither_available(monkeypatch):
     monkeypatch.setattr(
-        "phenotypic.gui.tune._image_source.resolve_source_image_root",
-        lambda payload, **kw: None,
+        "phenotypic.gui.tune._run_image_source.resolve_source_image_root",
+        lambda sandbox, payload: None,
     )
-    assert resolve_run_images(store_payload=None, override=None) is None
+    assert resolve_run_images(sandbox=object(), store_payload=None, override=None) is None
 ```
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `uv run pytest tests/unit/gui/tune/test_image_source.py -k resolve_run_images -v`
-Expected: FAIL — function not defined (and `resolve_source_image_root` may not be imported in this module yet).
+Run: `uv run pytest tests/unit/gui/tune/test_run_image_source.py -v`
+Expected: FAIL — module does not exist.
 
 - [ ] **Step 3: Implement**
 
-Append to `src/phenotypic/gui/tune/_image_source.py` (add the import at top):
-
 ```python
+# src/phenotypic/gui/tune/_run_image_source.py
+"""Resolve the ``-i`` images dir for a tune run.
+
+Precedence: an explicit per-run override wins; otherwise resolve the hub's
+shared source-image-root (sandbox-bounded) from its store payload.
+"""
+from __future__ import annotations
+
 from phenotypic.gui.shell._source_context import resolve_source_image_root
 
 
-def resolve_run_images(*, store_payload, override):
-    """Resolve the ``-i`` images dir for a tune run.
+def resolve_run_images(*, sandbox, store_payload, override):
+    """Return the images dir string, or ``None`` when neither source resolves.
 
-    Precedence: an explicit per-run ``override`` wins; otherwise resolve the
-    hub's shared source-image-root from its store payload. Returns a path string
-    or ``None`` when neither is available.
+    Args:
+        sandbox: The frozen sandbox boundary (required by
+            ``resolve_source_image_root(sandbox, payload)``).
+        store_payload: The value from ``SHELL_SOURCE_IMAGE_ROOT_STORE``.
+        override: An explicit per-run image dir (wins when set).
     """
     if override:
         return override
-    resolved = resolve_source_image_root(store_payload)
+    resolved = resolve_source_image_root(sandbox, store_payload)
     return str(resolved) if resolved else None
 ```
 
-Match `resolve_source_image_root`'s real signature (open
-`shell/_source_context.py:91`); if it takes keyword-only context args, thread
-them through. The contract under test is the precedence: override → shared → None.
+The deploy callback (Task 5) threads its `sandbox` (from
+`app.server.config[CFG_SANDBOX_ROOT]` / the bound `SandboxRoot`) into this.
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `uv run pytest tests/unit/gui/tune/test_image_source.py -k resolve_run_images -v`
+Run: `uv run pytest tests/unit/gui/tune/test_run_image_source.py -v`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/phenotypic/gui/tune/_image_source.py tests/unit/gui/tune/test_image_source.py
+git add src/phenotypic/gui/tune/_run_image_source.py tests/unit/gui/tune/test_run_image_source.py
 git commit -m "feat(gui-tune): resolve run images from shared source-root + override"
 ```
 
@@ -417,9 +430,16 @@ git commit -m "feat(gui-tune): Run view (strategy/budget/compute, image source, 
 ## Task 5: Wire Deploy (Dash) — launch + auto-advance
 
 **Files:**
+- Modify: `src/phenotypic/gui/tune/_app.py` (`create_app` gains `runner=None`, `registry=None` params and sets `app.server.config[CFG_RUNNER]` / `[CFG_RUN_REGISTRY]`, mirroring `run_console/_app.py:103-104`)
+- Modify: `src/phenotypic/gui/shell/_app.py` (the hub composer passes the **shared** runner + registry into `tune.create_app(runner=…, registry=…)` — the same instances it already gives run-console, so a tune run and a pipeline run share one registry)
 - Modify: `src/phenotypic/gui/tune/_callbacks.py` (deploy callback)
-- Modify: `src/phenotypic/gui/tune/_app.py` (inject the shared `LocalRunner` + `RunRegistry` from `app.server.config[CFG_RUNNER]`/`CFG_RUN_REGISTRY`, matching run-console)
 - Test: `tests/integration/gui/tune/test_run_deploy.py` (deploy half, mocked runner)
+
+**Why injection is required:** the tune app is a *separate* Flask app behind
+`DispatcherMiddleware`. `app.server.config[CFG_RUNNER]` inside a tune callback
+reads the **tune** app's config, which is empty unless `create_app` sets it. So
+`create_app` must accept and store the shared instances, and the shell composer
+must pass them — exactly as run-console does.
 
 - [ ] **Step 1: Write the failing test (deploy half)**
 
@@ -469,18 +489,27 @@ In `register_callbacks`, add the Deploy callback. Logic (hard-guarded):
 4. Build argv: `argv = tune_run_argv(spec_path=…, images_dir=images,
    output_dir=…, strategy=…, n_trials=…, storage_url=…, n_workers=…,
    slurm=(target=="slurm"), screen=…)`.
-5. Launch:
-   - Local → `runner.start(run_id, argv, output_dir=Path(output_dir))` where
-     `runner = app.server.config[CFG_RUNNER]`.
-   - SLURM → `submit_slurm(...)` from `run_console/_slurm.py` (it builds the
-     batch script + sbatch); record the returned `SlurmSubmitResult.job_id`.
-   - Register the run in `RunRegistry` (`app.server.config[CFG_RUN_REGISTRY]`)
-     with its mode + job id/storage so Monitor (Plan 4) can render the right
-     live view even when the store is unreachable.
+5. Launch — **both targets use `LocalRunner.start`**, because the tune CLI's own
+   `--slurm` flag (already appended by `tune_run_argv` when `slurm=True`) makes
+   the subprocess *submit the SLURM worker fleet itself* (`phenotypic.tune run
+   … --slurm` → `sbatch`), then exit. So there is **no** dependency on
+   `run_console/_slurm.submit_slurm` (whose signature takes a `RunConsoleState`
+   and would not fit). Concretely:
+   - `runner = app.server.config[CFG_RUNNER]`;
+     `runner.start(run_id, argv, output_dir=Path(output_dir))`.
+   - For SLURM, the subprocess is short-lived (dispatches sbatch then returns);
+     parse the array job id from its stdout (or read it back from the run's
+     `.pht-tune-cache/run.json` marker the CLI writes) for the registry record.
+   - Register the run in the shared `RunRegistry`
+     (`app.server.config[CFG_RUN_REGISTRY]`) as a `RunRecord` with
+     `mode` ("local"/"slurm"), `slurm_job_id`, and `output_dir`, so Monitor
+     (Plan 4) renders the right live view even when the study store is
+     unreachable.
 6. Bump the live-runs `dcc.Store(storage_type="session")` and set the active
    destination to `monitor` (auto-advance).
 
-Import `optuna` nowhere here — deploy shells out to the CLI subprocess.
+Import `optuna` nowhere here — deploy shells out to the CLI subprocess, which
+owns the engine (and, for SLURM, the sbatch submission).
 
 - [ ] **Step 4: Run to verify it passes**
 
@@ -491,8 +520,20 @@ Expected: PASS.
 
 - `FEATURES.md`: rows for strategy/sampler/pruning/budget/seed inputs, advanced
   inputs, Local/SLURM toggle, image-source row + override picker, output picker,
-  storage input, command preview, pre-flight banner, **Deploy button**, save-spec
-  button — each with a `Test ref`.
+  storage input, command preview, pre-flight banner, **Deploy button** — each
+  with a `Test ref`.
+- **Save / open-from-library (D12).** Each FEATURES row needs a backing test, so
+  add two tiny pure helpers (TDD, before the buttons): `save_spec_to_library(
+  spec, *, sandbox, name) -> Path` (writes to `tune_presets_dir(sandbox)/name`
+  via `spec.to_json` + `ensure_typed_json_suffix`) and `list_library_specs(
+  sandbox) -> list[Path]` (globs the library, matched with
+  `matches_any_suffix(p, TUNING_CONFIG_SUFFIXES)` so both `.json.pht-tune` and
+  legacy `.json` show). Wire the **Save spec** button → `save_spec_to_library`,
+  **Open from library** → `list_library_specs` + `TuningSpec.model_validate_json`,
+  and **Browse…** → the directory-picker modal. Put the helpers in
+  `tune/_spec_library.py` with `tests/unit/gui/tune/test_spec_library.py`. (Only
+  then add the corresponding FEATURES rows — the `features-md-gate` requires a
+  real `Test ref` per row.)
 - `WORKFLOWS.md`: add the end-to-end **author → deploy → monitor** flow row. This
   REQUIRES a matching `_capture_tune_author_deploy` function in
   `scripts/capture_gui_tutorial_screenshots.py` and a walkthrough page under

@@ -107,16 +107,20 @@ def scorer_operation_info(scorer_cls: Type) -> OperationInfo:
     registry = OperationRegistry()
     params = registry._extract_parameters(scorer_cls)
     return OperationInfo(
-        class_name=scorer_cls.__name__,
+        cls=scorer_cls,
+        name=scorer_cls.__name__,
         category="scorer",
+        module=scorer_cls.__module__,
+        docstring=scorer_cls.__doc__ or "",
         parameters=params,
     )
 ```
 
-If `OperationInfo`'s required fields differ (open the dataclass at
-`_operation_registry.py:120`), match its actual constructor — keep `parameters`
-from the extractor; supply whatever name/category fields it declares. Do not add
-fields the dataclass lacks.
+`OperationInfo`'s real fields (verified at `_operation_registry.py:118`) are
+`cls, name, category, module, docstring, parameters, is_point_pickable,
+point_picker_param`; `is_point_pickable`/`point_picker_param` default, so the
+call above supplies every non-defaulted field. Do not use `class_name` (that
+keyword does not exist).
 
 - [ ] **Step 4: Run test to verify it passes**
 
@@ -454,7 +458,9 @@ def domain_from_editor(
         is_int: Whether the knob's underlying field is integer-typed.
     """
     if mode == "choices":
-        return Categorical(choices=tuple(choices or ()))
+        if not choices:
+            raise ValueError("Choices mode requires at least one value")
+        return Categorical(choices=tuple(choices))
     if is_int:
         return IntRange(
             low=int(low), high=int(high), step=int(step) if step else 1, log=log
@@ -692,10 +698,63 @@ def test_search_space_locked_until_pipeline_chosen(tune_setup_state):
     assert tune_setup_state.search_space_locked is False
 ```
 
-Model these on the existing `tests/integration/gui/tune/` tests (run
-`ls tests/integration/gui/tune/` and copy the app + callback-driving fixture).
-The two assertions to land: (a) Setup renders as the active destination; (b) the
-pipeline gate flips the locked state and footer-disabled state.
+**`tests/integration/gui/tune/` does not exist yet — create it (with `__init__.py`)
+and add this `conftest.py` first.** It is the harness Plans 2–4 all reuse, so
+build it once here. Skeleton (fill the `_State` methods as you wire callbacks):
+
+```python
+# tests/integration/gui/tune/conftest.py
+import pytest
+
+from phenotypic.gui.shell._sandbox import SandboxRoot  # match the real import
+from phenotypic.gui.tune._app import create_app
+
+
+class _FakeRunner:
+    """Stand-in for LocalRunner: records start/stop instead of spawning."""
+    def __init__(self): self.last_start = None; self.stopped = []
+    def start(self, run_id, argv, *, output_dir, cwd=None, env=None):
+        self.last_start = type("S", (), {"run_id": run_id, "argv": argv,
+                                         "output_dir": output_dir})()
+        return self.last_start
+    def stop(self, run_id, *, grace_seconds=10.0): self.stopped.append(run_id); return True
+    def is_running(self, run_id): return self.last_start is not None
+
+
+@pytest.fixture
+def fake_runner():
+    return _FakeRunner()
+
+
+@pytest.fixture
+def tune_app(tmp_path, fake_runner):
+    """A tune Dash app with the shared runner/registry injected (see Plan 3 Task 5
+    for the create_app(runner=, registry=) parameters this fixture relies on)."""
+    sandbox = SandboxRoot(tmp_path)  # match the real SandboxRoot constructor
+    app = create_app(sandbox=sandbox)
+    app.server.config["pheno_runner"] = fake_runner  # CFG_RUNNER value
+    return app
+
+
+class _SetupState:
+    """Drives the Setup callbacks directly (call the extracted pure helpers +
+    the registered callback functions). Expose the attributes the tests assert:
+    `search_space_locked`, and `choose_pipeline(path)`."""
+    def __init__(self, app): self.app = app; self.search_space_locked = True
+    def choose_pipeline(self, path): self.search_space_locked = False
+
+
+@pytest.fixture
+def tune_setup_state(tune_app):
+    return _SetupState(tune_app)
+```
+
+This is the contract: a `create_app`-built app with a `_FakeRunner` injected,
+and a `_State` object exposing the asserted attributes by calling the registered
+callbacks / pure helpers. Plans 3 and 4 extend this file with `tune_run_state`,
+`tune_monitor_state`, and `seed_*` helpers. The two assertions to land here:
+(a) Setup renders as the active destination; (b) the pipeline gate flips the
+locked + footer-disabled state.
 
 - [ ] **Step 2: Run to verify it fails**
 

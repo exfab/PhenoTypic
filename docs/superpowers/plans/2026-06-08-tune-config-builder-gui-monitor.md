@@ -195,9 +195,8 @@ from phenotypic.tools_._io_constants import (
 
 
 def _base() -> ImagePipeline:
-    pipe = ImagePipeline()
-    pipe.add(GaussianBlur(sigma=1.0))
-    return pipe
+    # ImagePipeline is keyword-only constructed; there is no .add() method.
+    return ImagePipeline(ops=[GaussianBlur(sigma=1.0)])
 
 
 def test_export_winning_writes_typed_pipeline(tmp_path):
@@ -217,10 +216,9 @@ def test_export_pareto_writes_per_objective(tmp_path):
     assert str(out).endswith(CONFIG_SUFFIX_PIPELINE)
 ```
 
-(If `ImagePipeline().add(...)` is not the construction API used elsewhere in the
-tests, copy the one-op pipeline builder from a neighbor in `tests/unit/tune/` —
-the contract under test is "build_pipeline(base, params) → write to the canonical
-typed path".)
+(Construction is keyword-only: `ImagePipeline(ops=[...])` — confirmed in
+`tests/unit/tune/test_build_pipeline_nested.py`. The contract under test is
+"`build_pipeline(base, params)` → write to the canonical typed path".)
 
 - [ ] **Step 2: Run tests to verify they fail**
 
@@ -435,7 +433,9 @@ Expected: FAIL — export zone not wired.
 
 - [ ] **Step 3: Implement**
 
-- Choose the result zone from `is_multi_objective(spec.scorer)`:
+- Choose the result zone from `is_multi_objective(spec.scorer)` (import from
+  `phenotypic.tune._multi_objective`, alongside `objective_names`; **not**
+  `_evaluation`):
   - **single** → a "Best so far" card (trial id, score, params, "may still
     improve" while running); **Export best** → `export_winning_pipeline(base,
     best_params, output_dir)`; plus **Open in Builder** / **Send to Run Console**
