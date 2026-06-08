@@ -170,7 +170,7 @@ def execute_dry_run(
 
     # Input/output info
     click.echo("\nConfiguration:")
-    click.echo(f"  Pipeline JSON: {config.pipeline_json}")
+    click.echo(f"  Pipeline config: {config.pipeline_json}")
     click.echo(f"  Input path:    {config.input_path}")
     click.echo(f"  Output dir:    {output_dir}")
 

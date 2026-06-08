@@ -453,14 +453,14 @@ def _load_space_source(
         The loaded ``TuningSpec`` (preferred), the ``ImagePipeline`` (fallback),
         or ``None`` when neither resolves.
     """
-    from phenotypic.tools_ import pipeline_json_path, tuning_spec_path
+    from phenotypic.tools_ import resolve_pipeline_config_path, resolve_tuning_spec_path
 
-    spec_path = tuning_spec_path(root.path)
+    spec_path = resolve_tuning_spec_path(root.path)
     if spec_path.is_file():
         spec = _try_load_spec(spec_path)
         if spec is not None:
             return spec
-    pipe_path = pipeline_json_path(root.path)
+    pipe_path = resolve_pipeline_config_path(root.path)
     if pipe_path.is_file():
         return _try_load_pipeline(pipe_path)
     return None

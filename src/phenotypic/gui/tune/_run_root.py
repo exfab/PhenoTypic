@@ -27,9 +27,9 @@ from pathlib import Path
 
 from phenotypic.tools_ import (
     best_pipeline_path,
+    resolve_tuning_spec_path,
     trials_parquet_path,
     tune_cache_run_marker_path,
-    tuning_spec_path,
 )
 
 #: The study name every tune run uses (mirrors ``_tune_cli._run._STUDY_NAME``).
@@ -204,7 +204,7 @@ class TuneRunRoot:
         Returns:
             ``(storage_url, directions)`` when the spec exists, else ``None``.
         """
-        spec_path = tuning_spec_path(path)
+        spec_path = resolve_tuning_spec_path(path)
         if not spec_path.exists():
             return None
         # Lazy, function-local imports keep module import optuna-free and cheap:

@@ -75,6 +75,22 @@ def test_discover_reads_storage_url_and_trials(tmp_path):
     assert root.directions is None
 
 
+def test_discover_reads_legacy_tuning_spec_json(tmp_path):
+    """Legacy plain JSON tuning specs still seed tune-run discovery."""
+    out = tmp_path / "out"
+    deliverables = out / "deliverables"
+    deliverables.mkdir(parents=True)
+    spec = _optuna_spec(tmp_path, storage_url="sqlite:///legacy.db")
+    (deliverables / "tuning_spec.json").write_text(spec.model_dump_json())
+    trials_parquet_path(out).write_bytes(b"")
+
+    root = TuneRunRoot.discover(out)
+
+    assert root.storage_url == "sqlite:///legacy.db"
+    assert root.study_name == "tune"
+    assert root.best_pipeline_path == best_pipeline_path(out)
+
+
 def test_discover_reads_run_marker_first(tmp_path):
     """``run.json`` wins: its URL + images_dir + study_name are authoritative."""
     out = tmp_path / "out"

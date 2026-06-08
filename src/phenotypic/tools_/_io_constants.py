@@ -72,7 +72,7 @@ import json
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Final, Optional
+from typing import TYPE_CHECKING, Final, Iterable, Optional
 
 from .typing_ import (
     CheckpointType,
@@ -92,6 +92,60 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # CLI artifact filenames
 # ---------------------------------------------------------------------------
+
+LEGACY_JSON_SUFFIX: Final[str] = ".json"
+CONFIG_SUFFIX_PIPELINE: Final[str] = ".json.pht-pipe"
+CONFIG_SUFFIX_OPERATION: Final[str] = ".json.pht-op"
+CONFIG_SUFFIX_COLOR_CHECKER: Final[str] = ".json.pht-cc"
+CONFIG_SUFFIX_TUNING: Final[str] = ".json.pht-tune"
+CONFIG_SUFFIXES: Final[frozenset[str]] = frozenset(
+    {
+        CONFIG_SUFFIX_PIPELINE,
+        CONFIG_SUFFIX_OPERATION,
+        CONFIG_SUFFIX_COLOR_CHECKER,
+        CONFIG_SUFFIX_TUNING,
+    }
+)
+PIPELINE_CONFIG_SUFFIXES: Final[frozenset[str]] = frozenset(
+    {CONFIG_SUFFIX_PIPELINE, LEGACY_JSON_SUFFIX}
+)
+TUNING_CONFIG_SUFFIXES: Final[frozenset[str]] = frozenset(
+    {CONFIG_SUFFIX_TUNING, LEGACY_JSON_SUFFIX}
+)
+
+
+def has_config_suffix(path: str | Path, suffixes: Iterable[str]) -> bool:
+    """Return whether ``path`` ends with any configured suffix.
+
+    Matching is case-insensitive so callers can discover user-provided files
+    from case-preserving filesystems without rewriting their names.
+    """
+    text = str(path).lower()
+    return any(text.endswith(suffix.lower()) for suffix in suffixes)
+
+
+def matches_any_suffix(path: str | Path, suffixes: Iterable[str]) -> bool:
+    """Return whether ``path`` ends with any suffix in ``suffixes``."""
+    return has_config_suffix(path, suffixes)
+
+
+def ensure_typed_json_suffix(path: str | Path, suffix: str) -> Path:
+    """Return ``path`` with the canonical typed JSON suffix appended.
+
+    Bare stems receive the full typed suffix. Legacy ``.json`` paths receive
+    only the typed tail, preserving the user-provided stem and case.
+    """
+    target = Path(path)
+    text = str(target)
+    lowered = text.lower()
+    canonical_suffix = suffix.lower()
+    if lowered.endswith(canonical_suffix):
+        return target
+    if lowered.endswith(LEGACY_JSON_SUFFIX):
+        typed_tail = suffix.removeprefix(LEGACY_JSON_SUFFIX)
+        return Path(f"{text}{typed_tail}")
+    return Path(f"{text}{suffix}")
+
 
 #: Master archive of all aggregated measurements (clean, pre-post). Written by
 #: :func:`phenotypic._cli._cli_output_manager.aggregate_measurements` after
@@ -129,7 +183,8 @@ ANALYSIS_PARQUET: Final[str] = "analysis.parquet"
 #: CLI (and rewritten by the analysis GUI on every recipe edit). Captures
 #: operations, measurements, post, filters, and model — i.e. the whole
 #: reproducibility surface.
-PIPELINE_JSON: Final[str] = "pipeline.json"
+PIPELINE_JSON: Final[str] = f"pipeline{CONFIG_SUFFIX_PIPELINE}"
+_LEGACY_PIPELINE_JSON: Final[str] = f"pipeline{LEGACY_JSON_SUFFIX}"
 
 #: Resume-state JSON written by ``ProcessingState.save`` and read by
 #: ``ProcessingState.load`` when ``--resume`` is passed.
@@ -141,13 +196,15 @@ PROCESSING_STATE_JSON: Final[str] = "processing_state.json"
 #: :func:`readme_md_path`.
 README_MD: Final[str] = "README.md"
 
-#: The resolved ``tuning_spec.json`` echoed by ``python -m phenotypic.tune``
+#: The resolved tuning spec echoed by ``python -m phenotypic.tune``
 #: into :data:`DIR_DELIVERABLES` — the self-contained, re-runnable recipe.
-TUNING_SPEC_JSON: Final[str] = "tuning_spec.json"
+TUNING_SPEC_JSON: Final[str] = f"tuning_spec{CONFIG_SUFFIX_TUNING}"
+_LEGACY_TUNING_SPEC_JSON: Final[str] = f"tuning_spec{LEGACY_JSON_SUFFIX}"
 
-#: The winning ``best_pipeline.json`` written by the tune CLI into
+#: The winning best pipeline written by the tune CLI into
 #: :data:`DIR_DELIVERABLES`; reloads as a runnable ``ImagePipeline``.
-BEST_PIPELINE_JSON: Final[str] = "best_pipeline.json"
+BEST_PIPELINE_JSON: Final[str] = f"best_pipeline{CONFIG_SUFFIX_PIPELINE}"
+_LEGACY_BEST_PIPELINE_JSON: Final[str] = f"best_pipeline{LEGACY_JSON_SUFFIX}"
 
 #: The RF-permutation ``param_importance.json`` report written by the tune
 #: CLI into :data:`DIR_DELIVERABLES`.
@@ -189,11 +246,13 @@ GENERALIZATION_JSON: Final[str] = "generalization.json"
 PARETO_FRONT_PARQUET: Final[str] = "pareto_front.parquet"
 
 #: Per-objective best-pipeline filename template written into :data:`DIR_PARETO`:
-#: ``best_<objective>.json`` (e.g. ``best_Dice.json``, ``best_s0.json``). One per
+#: ``best_<objective>`` with the pipeline config suffix. One per
 #: objective axis — the pipeline maximizing that single objective on the front.
 #: Rendered by :func:`pareto_best_pipeline_path`; kept private (a parameterized
 #: string is not an enumeration — see the code-style note on render functions).
-_PARETO_BEST_PIPELINE_FILENAME_TEMPLATE: Final[str] = "best_{objective}.json"
+_PARETO_BEST_PIPELINE_FILENAME_TEMPLATE: Final[str] = (
+    f"best_{{objective}}{CONFIG_SUFFIX_PIPELINE}"
+)
 
 #: Per-objective param-importance filename template written into :data:`DIR_PARETO`:
 #: ``param_importance_<objective>.json`` (e.g. ``param_importance_s0.json``). The
@@ -703,18 +762,71 @@ def measurements_parquet_path(output_dir: Path) -> Path:
 
 
 def pipeline_json_path(output_dir: Path) -> Path:
-    """Return ``<output>/deliverables/pipeline.json``."""
+    """Return the canonical typed pipeline config path under ``deliverables/``."""
     return deliverables_dir(output_dir) / PIPELINE_JSON
 
 
+def _legacy_pipeline_json_path(output_dir: Path) -> Path:
+    """Return the legacy plain-JSON pipeline config path under ``deliverables/``."""
+    return deliverables_dir(output_dir) / _LEGACY_PIPELINE_JSON
+
+
+def resolve_pipeline_config_path(output_dir: Path) -> Path:
+    """Return the best existing pipeline config path for ``output_dir``.
+
+    Resolution prefers the canonical typed path, falls back to legacy
+    ``pipeline.json`` when present, and returns the canonical path when neither
+    exists so writers naturally create typed config files.
+    """
+    canonical = pipeline_json_path(output_dir)
+    if canonical.exists():
+        return canonical
+    legacy = _legacy_pipeline_json_path(output_dir)
+    if legacy.exists():
+        return legacy
+    return canonical
+
+
 def tuning_spec_path(output_dir: Path) -> Path:
-    """Return ``<output>/deliverables/tuning_spec.json`` (the resolved recipe)."""
+    """Return the canonical typed tuning spec path under ``deliverables/``."""
     return deliverables_dir(output_dir) / TUNING_SPEC_JSON
 
 
+def _legacy_tuning_spec_path(output_dir: Path) -> Path:
+    """Return the legacy plain-JSON tuning spec path under ``deliverables/``."""
+    return deliverables_dir(output_dir) / _LEGACY_TUNING_SPEC_JSON
+
+
+def resolve_tuning_spec_path(output_dir: Path) -> Path:
+    """Return the best existing tuning spec path for ``output_dir``."""
+    canonical = tuning_spec_path(output_dir)
+    if canonical.exists():
+        return canonical
+    legacy = _legacy_tuning_spec_path(output_dir)
+    if legacy.exists():
+        return legacy
+    return canonical
+
+
 def best_pipeline_path(output_dir: Path) -> Path:
-    """Return ``<output>/deliverables/best_pipeline.json`` (the tuned winner)."""
+    """Return the canonical typed tuned-winner pipeline path."""
     return deliverables_dir(output_dir) / BEST_PIPELINE_JSON
+
+
+def _legacy_best_pipeline_path(output_dir: Path) -> Path:
+    """Return the legacy plain-JSON tuned-winner pipeline path."""
+    return deliverables_dir(output_dir) / _LEGACY_BEST_PIPELINE_JSON
+
+
+def resolve_best_pipeline_path(output_dir: Path) -> Path:
+    """Return the best existing tuned-winner pipeline path for ``output_dir``."""
+    canonical = best_pipeline_path(output_dir)
+    if canonical.exists():
+        return canonical
+    legacy = _legacy_best_pipeline_path(output_dir)
+    if legacy.exists():
+        return legacy
+    return canonical
 
 
 def param_importance_path(output_dir: Path) -> Path:

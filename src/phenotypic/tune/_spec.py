@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import difflib
 import json
+from pathlib import Path
 from typing import Any, Optional, TypeAlias
 
 from pydantic import (
@@ -15,6 +16,10 @@ from pydantic import (
 )
 
 from phenotypic import ImagePipeline
+from phenotypic.tools_._io_constants import (
+    CONFIG_SUFFIX_TUNING,
+    ensure_typed_json_suffix,
+)
 from phenotypic.tools_.typing_ import polymorphic_field
 
 from ._evaluation import Evaluator, HeldOutConfig
@@ -148,6 +153,31 @@ class TuningSpec(BaseModel):
     strategy: StrategyConfigField
     budget: Budget
     held_out: HeldOutConfig = HeldOutConfig()
+
+    def to_json(
+        self,
+        filepath: str | Path | None = None,
+        *,
+        indent: int | None = 2,
+    ) -> str | None:
+        """Serialize this tuning spec to JSON.
+
+        Args:
+            filepath: Optional path to write. When provided, legacy ``.json``
+                names are normalized to the typed tuning config suffix.
+            indent: Indentation passed to
+                :meth:`~pydantic.BaseModel.model_dump_json`. Defaults to 2.
+
+        Returns:
+            The JSON string when ``filepath`` is None, otherwise None.
+        """
+        payload = self.model_dump_json(indent=indent)
+        if filepath is not None:
+            ensure_typed_json_suffix(filepath, CONFIG_SUFFIX_TUNING).write_text(
+                payload
+            )
+            return None
+        return payload
 
     @field_validator("pipeline", mode="before")
     @classmethod

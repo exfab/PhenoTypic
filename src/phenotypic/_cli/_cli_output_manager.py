@@ -44,6 +44,7 @@ from phenotypic.tools_ import (
     measurements_csv_path,
     measurements_parquet_path,
     pipeline_json_path,
+    resolve_pipeline_config_path,
     resolve_processing_state_path,
 )
 
@@ -280,7 +281,7 @@ def _load_pipeline_from_output_dir(
 ) -> Optional["ImagePipeline"]:
     """Recover the pipeline used for a run from the files left in *output_dir*.
 
-    Prefers the canonical ``<output>/pipeline.json`` written by
+    Prefers the canonical typed pipeline config written by
     :func:`_persist_pipeline_to_output_dir` during aggregate finalize.
     Falls back to the legacy lookup via ``processing_state.json`` ->
     ``output_dir / <original-name>.json`` so older outputs created before
@@ -289,13 +290,13 @@ def _load_pipeline_from_output_dir(
     """
     from phenotypic._core._image_pipeline import ImagePipeline
 
-    canonical = pipeline_json_path(output_dir)
+    canonical = resolve_pipeline_config_path(output_dir)
     if canonical.exists():
         try:
             return ImagePipeline.from_json(canonical)
         except Exception:
             logger.warning(
-                "Could not load canonical pipeline.json from %s",
+                "Could not load canonical pipeline config from %s",
                 output_dir,
                 exc_info=True,
             )

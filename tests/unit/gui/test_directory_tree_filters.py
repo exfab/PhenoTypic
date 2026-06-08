@@ -35,6 +35,7 @@ from phenotypic.gui.builder._directory_browser import (  # noqa: E402
     PIPELINE_EXTS,
     directory_tree,
 )
+from phenotypic.tools_ import matches_any_suffix  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -101,21 +102,23 @@ def test_default_extensions_match_image_exts(tmp_path: Path) -> None:
 
 
 def test_explicit_pipeline_exts_filter(tmp_path: Path) -> None:
-    """``extensions=PIPELINE_EXTS`` narrows files to pipeline JSONs only."""
+    """``extensions=PIPELINE_EXTS`` shows typed pipeline configs and legacy JSON."""
     _make_mixed_tree(tmp_path)
     (tmp_path / "pipeline.json").write_text("{}")
+    (tmp_path / "recipe.json.pht-pipe").write_text("{}")
+    (tmp_path / "tuning_spec.json.pht-tune").write_text("{}")
     # An extra .txt was already created by _make_mixed_tree; create no dup.
 
     tree = directory_tree(tmp_path, extensions=PIPELINE_EXTS)
     ids = _collect_item_ids(tree)
 
     file_paths = {Path(e["path"]).name for e in ids if e["kind"] == "file"}
-    assert file_paths == {"pipeline.json"}
+    assert file_paths == {"pipeline.json", "recipe.json.pht-pipe"}
 
     # No tif/png/txt/csv files should appear.
     for entry in ids:
         if entry["kind"] == "file":
-            assert Path(entry["path"]).suffix.lower() in PIPELINE_EXTS
+            assert matches_any_suffix(entry["path"], PIPELINE_EXTS)
 
     # Folder filtering is independent of the file-extension filter.
     dir_names = {Path(e["path"]).name for e in ids if e["kind"] == "dir"}

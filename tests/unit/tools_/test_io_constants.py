@@ -22,9 +22,19 @@ from phenotypic.tools_ import (
     MASTER_MEASUREMENTS_PARQUET,
     MEASUREMENTS_CSV,
     MEASUREMENTS_PARQUET,
+    BEST_PIPELINE_JSON,
+    CONFIG_SUFFIX_COLOR_CHECKER,
+    CONFIG_SUFFIX_OPERATION,
+    CONFIG_SUFFIX_PIPELINE,
+    CONFIG_SUFFIX_TUNING,
+    CONFIG_SUFFIXES,
+    LEGACY_JSON_SUFFIX,
     PIPELINE_JSON,
+    PIPELINE_CONFIG_SUFFIXES,
     PROCESSING_EVENTS_LOG,
     PROCESSING_STATE_JSON,
+    TUNING_CONFIG_SUFFIXES,
+    TUNING_SPEC_JSON,
     ChunkManifestKey,
     ChunkStateKey,
     DashboardManifestKey,
@@ -44,8 +54,11 @@ from phenotypic.tools_ import (
     default_output_dir_name,
     deliverables_dir,
     event_log_path,
+    ensure_typed_json_suffix,
+    has_config_suffix,
     job_metadata_path,
     manifest_json_path,
+    matches_any_suffix,
     master_measurements_csv_path,
     master_measurements_parquet_path,
     measurements_by_feature_dir,
@@ -55,7 +68,10 @@ from phenotypic.tools_ import (
     processing_state_path,
     progress_dir,
     readme_md_path,
+    resolve_best_pipeline_path,
     resolve_execution_mode,
+    resolve_pipeline_config_path,
+    resolve_tuning_spec_path,
     results_dir,
     shard_parquet_filename,
     task_status_filename,
@@ -160,13 +176,72 @@ class TestFilenameConstants:
         assert ANALYSIS_PARQUET == "analysis.parquet"
 
     def test_pipeline_state_filenames(self) -> None:
-        assert PIPELINE_JSON == "pipeline.json"
+        assert PIPELINE_JSON == "pipeline.json.pht-pipe"
+        assert TUNING_SPEC_JSON == "tuning_spec.json.pht-tune"
+        assert BEST_PIPELINE_JSON == "best_pipeline.json.pht-pipe"
         assert PROCESSING_STATE_JSON == "processing_state.json"
 
     def test_progress_sidecar_filenames(self) -> None:
         assert PROCESSING_EVENTS_LOG == "processing_events.log"
         assert JOB_METADATA_JSON == "job_metadata.json"
         assert MANIFEST_JSON == "manifest.json"
+
+
+class TestConfigSuffixConstants:
+    def test_config_suffix_values(self) -> None:
+        assert LEGACY_JSON_SUFFIX == ".json"
+        assert CONFIG_SUFFIX_PIPELINE == ".json.pht-pipe"
+        assert CONFIG_SUFFIX_OPERATION == ".json.pht-op"
+        assert CONFIG_SUFFIX_COLOR_CHECKER == ".json.pht-cc"
+        assert CONFIG_SUFFIX_TUNING == ".json.pht-tune"
+
+    def test_config_suffix_groups(self) -> None:
+        assert CONFIG_SUFFIXES == frozenset(
+            {
+                CONFIG_SUFFIX_PIPELINE,
+                CONFIG_SUFFIX_OPERATION,
+                CONFIG_SUFFIX_COLOR_CHECKER,
+                CONFIG_SUFFIX_TUNING,
+            }
+        )
+        assert PIPELINE_CONFIG_SUFFIXES == frozenset(
+            {CONFIG_SUFFIX_PIPELINE, LEGACY_JSON_SUFFIX}
+        )
+        assert TUNING_CONFIG_SUFFIXES == frozenset(
+            {CONFIG_SUFFIX_TUNING, LEGACY_JSON_SUFFIX}
+        )
+
+
+class TestConfigSuffixHelpers:
+    @pytest.mark.parametrize(
+        ("raw", "expected"),
+        [
+            ("x", "x.json.pht-pipe"),
+            ("x.json", "x.json.pht-pipe"),
+            ("x.JSON", "x.JSON.pht-pipe"),
+            ("x.json.pht-pipe", "x.json.pht-pipe"),
+            ("x.JSON.PHT-PIPE", "x.JSON.PHT-PIPE"),
+        ],
+    )
+    def test_ensure_typed_json_suffix(self, raw: str, expected: str) -> None:
+        assert str(ensure_typed_json_suffix(raw, CONFIG_SUFFIX_PIPELINE)) == expected
+
+    @pytest.mark.parametrize(
+        "raw",
+        [
+            "x.json",
+            "x.JSON",
+            "x.json.pht-pipe",
+            "x.JSON.PHT-PIPE",
+        ],
+    )
+    def test_has_config_suffix_is_case_insensitive(self, raw: str) -> None:
+        assert has_config_suffix(raw, PIPELINE_CONFIG_SUFFIXES)
+
+    def test_matches_any_suffix_rejects_wrong_typed_config(self) -> None:
+        assert matches_any_suffix("pipeline.json.pht-pipe", PIPELINE_CONFIG_SUFFIXES)
+        assert matches_any_suffix("legacy.json", PIPELINE_CONFIG_SUFFIXES)
+        assert not matches_any_suffix("tuning_spec.json.pht-tune", PIPELINE_CONFIG_SUFFIXES)
 
 
 class TestDirectoryConstants:
@@ -253,7 +328,62 @@ class TestPathHelpers:
         assert analysis_parquet_path(output) == deliv / "analysis.parquet"
 
     def test_pipeline_json_path(self, output: Path) -> None:
-        assert pipeline_json_path(output) == output / "deliverables" / "pipeline.json"
+        assert pipeline_json_path(output) == output / "deliverables" / PIPELINE_JSON
+
+    def test_tuning_spec_path(self, output: Path) -> None:
+        from phenotypic.tools_ import tuning_spec_path
+
+        assert tuning_spec_path(output) == output / "deliverables" / TUNING_SPEC_JSON
+
+    def test_best_pipeline_path(self, output: Path) -> None:
+        from phenotypic.tools_ import best_pipeline_path
+
+        assert best_pipeline_path(output) == output / "deliverables" / BEST_PIPELINE_JSON
+
+    def test_resolve_pipeline_config_path_prefers_typed_existing_file(
+        self, tmp_path: Path
+    ) -> None:
+        typed = tmp_path / "deliverables" / PIPELINE_JSON
+        legacy = tmp_path / "deliverables" / "pipeline.json"
+        typed.parent.mkdir(parents=True)
+        legacy.write_text("legacy", encoding="utf-8")
+        typed.write_text("typed", encoding="utf-8")
+
+        assert resolve_pipeline_config_path(tmp_path) == typed
+
+    def test_resolve_pipeline_config_path_falls_back_to_legacy_file(
+        self, tmp_path: Path
+    ) -> None:
+        legacy = tmp_path / "deliverables" / "pipeline.json"
+        legacy.parent.mkdir(parents=True)
+        legacy.write_text("legacy", encoding="utf-8")
+
+        assert resolve_pipeline_config_path(tmp_path) == legacy
+
+    def test_resolve_pipeline_config_path_returns_typed_path_when_missing(
+        self, tmp_path: Path
+    ) -> None:
+        assert resolve_pipeline_config_path(tmp_path) == (
+            tmp_path / "deliverables" / PIPELINE_JSON
+        )
+
+    def test_resolve_tuning_spec_path_falls_back_to_legacy_file(
+        self, tmp_path: Path
+    ) -> None:
+        legacy = tmp_path / "deliverables" / "tuning_spec.json"
+        legacy.parent.mkdir(parents=True)
+        legacy.write_text("legacy", encoding="utf-8")
+
+        assert resolve_tuning_spec_path(tmp_path) == legacy
+
+    def test_resolve_best_pipeline_path_falls_back_to_legacy_file(
+        self, tmp_path: Path
+    ) -> None:
+        legacy = tmp_path / "deliverables" / "best_pipeline.json"
+        legacy.parent.mkdir(parents=True)
+        legacy.write_text("legacy", encoding="utf-8")
+
+        assert resolve_best_pipeline_path(tmp_path) == legacy
 
     def test_dashboard_html_path(self, output: Path) -> None:
         assert dashboard_html_path(output) == output / "deliverables" / "dashboard.html"
@@ -461,10 +591,10 @@ class TestParetoPaths:
         )
 
         assert pareto_best_pipeline_path(output, "Dice") == (
-            pareto_dir(output) / "best_Dice.json"
+            pareto_dir(output) / "best_Dice.json.pht-pipe"
         )
         assert pareto_best_pipeline_path(output, "s0") == (
-            pareto_dir(output) / "best_s0.json"
+            pareto_dir(output) / "best_s0.json.pht-pipe"
         )
 
     def test_pareto_importance_path_per_objective(self, output: Path) -> None:

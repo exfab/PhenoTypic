@@ -15,6 +15,7 @@ import pytest
 from phenotypic import Image
 from phenotypic.measure import MeasureSymmetricZones
 from phenotypic.measure._measure_symmetric_zones import BASE_LAYER
+from phenotypic.tools_ import CONFIG_SUFFIX_OPERATION, ensure_typed_json_suffix
 from phenotypic.viz.figures._theme import OKABE_ITO
 
 
@@ -105,6 +106,20 @@ def test_pydantic_schema_and_serialization_unchanged():
     assert "base_layer" not in fields and "base_layer" not in props
     op = MeasureSymmetricZones()
     again = MeasureSymmetricZones.from_json(op.to_json())
+    assert isinstance(again, MeasureSymmetricZones)
+    assert again.model_dump() == op.model_dump()
+
+
+def test_operation_to_json_file_uses_typed_suffix(tmp_path):
+    op = MeasureSymmetricZones()
+    filepath = tmp_path / "measure_symmetric_zones.json"
+    typed_filepath = ensure_typed_json_suffix(filepath, CONFIG_SUFFIX_OPERATION)
+
+    op.to_json(filepath)
+
+    assert not filepath.exists()
+    assert typed_filepath.exists()
+    again = MeasureSymmetricZones.from_json(typed_filepath)
     assert isinstance(again, MeasureSymmetricZones)
     assert again.model_dump() == op.model_dump()
 
