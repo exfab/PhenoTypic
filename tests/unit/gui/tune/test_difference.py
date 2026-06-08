@@ -113,19 +113,28 @@ def test_render_difference_max_dim_none_is_full_res() -> None:
 
 
 def test_cell_disagreement_counts_differing_cells() -> None:
-    # Two real segmentations of the synthetic plate disagree on some grid cells
-    # once a heavy blur merges neighbouring colonies.
-    sharp = ImagePipeline(ops=[GaussianBlur(sigma=1.0), OtsuDetector()]).apply(
+    # Two real segmentations of the synthetic plate that disagree on a known
+    # number of grid cells. The synthetic plate is a clean, well-separated 8x12
+    # array (one colony per cell), so blur alone never merges neighbours --
+    # removing colonies is the deterministic way to force a per-cell count
+    # difference. The baseline detects one colony per cell; the derived
+    # segmentation drops three colonies entirely, so those three cells fall to a
+    # zero count and disagree.
+    base = ImagePipeline(ops=[GaussianBlur(sigma=1.0), OtsuDetector()]).apply(
         load_synth_yeast_plate()
     )
-    blurred = ImagePipeline(ops=[GaussianBlur(sigma=6.0), OtsuDetector()]).apply(
-        load_synth_yeast_plate()
-    )
-    n = cell_disagreement(sharp, blurred)
+    dropped = base.copy()
+    objmap = dropped.objmap[:].copy()
+    for label in (1, 2, 3):
+        objmap[objmap == label] = 0
+    dropped.objmap[:] = objmap
+
+    n = cell_disagreement(base, dropped)
     assert isinstance(n, int)
-    assert n > 0
+    assert n == 3
     # A segmentation never disagrees with itself.
-    assert cell_disagreement(sharp, sharp) == 0
+    assert cell_disagreement(base, base) == 0
+    assert cell_disagreement(dropped, dropped) == 0
 
 
 def test_cell_disagreement_handles_absent_sections() -> None:
