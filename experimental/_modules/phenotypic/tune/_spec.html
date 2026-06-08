@@ -565,6 +565,7 @@
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">difflib</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">TypeAlias</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
@@ -577,6 +578,10 @@
 <span class="p">)</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImagePipeline</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_._io_constants</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">CONFIG_SUFFIX_TUNING</span><span class="p">,</span>
+    <span class="n">ensure_typed_json_suffix</span><span class="p">,</span>
+<span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">polymorphic_field</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">._evaluation</span><span class="w"> </span><span class="kn">import</span> <span class="n">Evaluator</span><span class="p">,</span> <span class="n">HeldOutConfig</span>
@@ -715,6 +720,34 @@
     <span class="n">strategy</span><span class="p">:</span> <span class="n">StrategyConfigField</span>
     <span class="n">budget</span><span class="p">:</span> <span class="n">Budget</span>
     <span class="n">held_out</span><span class="p">:</span> <span class="n">HeldOutConfig</span> <span class="o">=</span> <span class="n">HeldOutConfig</span><span class="p">()</span>
+
+<div class="viewcode-block" id="TuningSpec.to_json">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tune.html#phenotypic.tune.TuningSpec.to_json">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">to_json</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">filepath</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">indent</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Serialize this tuning spec to JSON.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            filepath: Optional path to write. When provided, legacy ``.json``</span>
+<span class="sd">                names are normalized to the typed tuning config suffix.</span>
+<span class="sd">            indent: Indentation passed to</span>
+<span class="sd">                :meth:`~pydantic.BaseModel.model_dump_json`. Defaults to 2.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The JSON string when ``filepath`` is None, otherwise None.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">payload</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_dump_json</span><span class="p">(</span><span class="n">indent</span><span class="o">=</span><span class="n">indent</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">filepath</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">ensure_typed_json_suffix</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="n">CONFIG_SUFFIX_TUNING</span><span class="p">)</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span>
+                <span class="n">payload</span>
+            <span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="n">payload</span></div>
+
 
     <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;pipeline&quot;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;before&quot;</span><span class="p">)</span>
     <span class="nd">@classmethod</span>

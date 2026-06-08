@@ -564,7 +564,7 @@
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">contextlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">contextmanager</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">ClassVar</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Annotated</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">ClassVar</span>
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
@@ -574,6 +574,7 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridFinder</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">BBOX</span><span class="p">,</span> <span class="n">GRID</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">TuneSpec</span>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">AutoGridFinderFallbackWarning</span><span class="p">(</span><span class="ne">UserWarning</span><span class="p">):</span>
@@ -676,9 +677,14 @@
     <span class="c1"># ``AutoGridFinder`` historically defaulted them to 8 / 12 (96-well</span>
     <span class="c1"># plate). Pydantic allows a subclass to add a default to an inherited</span>
     <span class="c1"># required field, so redeclare them here with the legacy defaults.</span>
-    <span class="n">nrows</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">8</span>
-    <span class="n">ncols</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">12</span>
-    <span class="n">residual_fraction</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.25</span>
+    <span class="c1"># ``nrows`` / ``ncols`` are structural plate-geometry parameters (the</span>
+    <span class="c1"># array layout, e.g. 8x12 = 96-well), not accuracy knobs, so they are</span>
+    <span class="c1"># excluded from the tuning search.</span>
+    <span class="n">nrows</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="n">tunable</span><span class="o">=</span><span class="kc">False</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">8</span>
+    <span class="n">ncols</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="n">tunable</span><span class="o">=</span><span class="kc">False</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">12</span>
+    <span class="c1"># Outlier threshold as a fraction of pitch; a fraction in (0, 1). The</span>
+    <span class="c1"># search window is a sensible sub-range, not the full valid domain.</span>
+    <span class="n">residual_fraction</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">)]</span> <span class="o">=</span> <span class="mf">0.25</span>
     <span class="n">warn</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
     <span class="c1"># ``tol`` / ``max_iter`` are deprecated, accepted-but-ignored</span>
     <span class="c1"># constructor parameters retained for backward compatibility. They are</span>
@@ -686,8 +692,11 @@
     <span class="c1"># ``extra=&quot;forbid&quot;``, legacy callers passing them still construct; a</span>
     <span class="c1"># non-``None`` value triggers a ``DeprecationWarning`` in</span>
     <span class="c1"># ``model_post_init``. The fitter never reads them.</span>
-    <span class="n">tol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">max_iter</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="c1"># ``tol`` / ``max_iter`` are deprecated and ignored by the deterministic</span>
+    <span class="c1"># robust-fit algorithm (the fitter never reads them), so they cannot</span>
+    <span class="c1"># affect grid-fit quality and are excluded from the tuning search.</span>
+    <span class="n">tol</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="n">tunable</span><span class="o">=</span><span class="kc">False</span><span class="p">)]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">max_iter</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="n">tunable</span><span class="o">=</span><span class="kc">False</span><span class="p">)]</span> <span class="o">=</span> <span class="kc">None</span>
 
 <div class="viewcode-block" id="AutoGridFinder.model_post_init">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.grid.html#phenotypic.grid.AutoGridFinder.model_post_init">[docs]</a>

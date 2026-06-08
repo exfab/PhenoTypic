@@ -42,8 +42,10 @@
       default_output_dir_name
       deliverables_dir
       event_log_path
+      ensure_typed_json_suffix
       failures_jsonl_path
       generalization_path
+      has_config_suffix
       job_metadata_path
       load_image_from_hdf
       load_master_measurements
@@ -54,6 +56,7 @@
       measurements_by_feature_dir
       measurements_csv_path
       measurements_parquet_path
+      matches_any_suffix
       migrate_legacy_machine_state
       clear_machine_state
       overlay_manifest_path
@@ -77,13 +80,16 @@
       read_run_manifest
       recompile_dir
       recompile_status_dir
+      resolve_best_pipeline_path
       resolve_event_log_path
       resolve_execution_mode
       resolve_manifest_json_path
+      resolve_pipeline_config_path
       resolve_processing_state_path
       resolve_progress_dir
       resolve_split_assignment_path
       resolve_study_db_path
+      resolve_tuning_spec_path
       results_dir
       sentinel_resubmitted_path
       shard_parquet_filename

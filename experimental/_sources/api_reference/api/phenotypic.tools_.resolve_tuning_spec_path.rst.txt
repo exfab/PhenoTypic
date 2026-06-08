@@ -1,0 +1,6 @@
+phenotypic.tools\_.resolve\_tuning\_spec\_path
+==============================================
+
+.. currentmodule:: phenotypic.tools_
+
+.. autofunction:: resolve_tuning_spec_path

@@ -586,7 +586,11 @@
 <span class="p">)</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_._json_io</span><span class="w"> </span><span class="kn">import</span> <span class="n">read_json_source</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">NdArrayField</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_._io_constants</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">CONFIG_SUFFIX_COLOR_CHECKER</span><span class="p">,</span>
+    <span class="n">ensure_typed_json_suffix</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">NdArrayField</span><span class="p">,</span> <span class="n">TuneSpec</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">._capture_metadata</span><span class="w"> </span><span class="kn">import</span> <span class="n">CaptureMetadata</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._helpers</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
@@ -871,15 +875,15 @@
 
     <span class="c1"># -- constructor parameters --------------------------------------------</span>
     <span class="n">checker_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;ColorChecker24 - After November 2014&quot;</span>
-    <span class="n">degree</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span>
+    <span class="n">degree</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="n">categories</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">))]</span> <span class="o">=</span> <span class="mi">2</span>
     <span class="n">target_illuminant</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;D65&quot;</span>
     <span class="n">median_filter_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span>
     <span class="n">stddev_mag_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">15.0</span>
     <span class="n">pad_checker</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
-    <span class="n">min_swatch_area_frac</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.3</span>
-    <span class="n">core_fraction</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span>
-    <span class="n">ridge_lambda</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-3</span>
-    <span class="n">outlier_sigma</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.0</span>
+    <span class="n">min_swatch_area_frac</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.6</span><span class="p">)]</span> <span class="o">=</span> <span class="mf">0.3</span>
+    <span class="n">core_fraction</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">)]</span> <span class="o">=</span> <span class="mf">0.5</span>
+    <span class="n">ridge_lambda</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">1e-4</span><span class="p">,</span> <span class="mf">1e-1</span><span class="p">,</span> <span class="n">log</span><span class="o">=</span><span class="kc">True</span><span class="p">)]</span> <span class="o">=</span> <span class="mf">1e-3</span>
+    <span class="n">outlier_sigma</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">1.5</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">)]</span> <span class="o">=</span> <span class="mf">2.0</span>
     <span class="n">rois</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="n">_RoiSlice</span><span class="p">,</span> <span class="n">_RoiSlice</span><span class="p">]]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">exclude</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
     <span class="c1"># -- post-fit state (defaults so an unfitted profile still constructs) --</span>
@@ -958,16 +962,20 @@
 <span class="sd">            &gt;&gt;&gt; import tempfile</span>
 <span class="sd">            &gt;&gt;&gt; from pathlib import Path</span>
 <span class="sd">            &gt;&gt;&gt; from phenotypic.correction import ColorCheckerProfile</span>
+<span class="sd">            &gt;&gt;&gt; from phenotypic.tools_ import CONFIG_SUFFIX_COLOR_CHECKER, ensure_typed_json_suffix</span>
 <span class="sd">            &gt;&gt;&gt; with tempfile.TemporaryDirectory() as d:</span>
 <span class="sd">            ...     p = Path(d) / &quot;profile.json&quot;</span>
+<span class="sd">            ...     saved = ensure_typed_json_suffix(p, CONFIG_SUFFIX_COLOR_CHECKER)</span>
 <span class="sd">            ...     ColorCheckerProfile(degree=3).to_json(p)</span>
-<span class="sd">            ...     loaded = ColorCheckerProfile.from_json(p)</span>
+<span class="sd">            ...     loaded = ColorCheckerProfile.from_json(saved)</span>
 <span class="sd">            &gt;&gt;&gt; loaded.degree</span>
 <span class="sd">            3</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">json_str</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_dump_json</span><span class="p">(</span><span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">filepath</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">Path</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">json_str</span><span class="p">)</span>
+            <span class="n">ensure_typed_json_suffix</span><span class="p">(</span>
+                <span class="n">filepath</span><span class="p">,</span> <span class="n">CONFIG_SUFFIX_COLOR_CHECKER</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">json_str</span><span class="p">)</span>
             <span class="k">return</span> <span class="kc">None</span>
         <span class="k">return</span> <span class="n">json_str</span></div>
 

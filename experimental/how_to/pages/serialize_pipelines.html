@@ -621,8 +621,8 @@
     <span class="n">name</span><span class="o">=</span><span class="s2">&quot;yeast_detection_v1&quot;</span><span class="p">,</span>
 <span class="p">)</span>
 
-<span class="c1"># Save to file</span>
-<span class="n">pipeline</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="s2">&quot;yeast_detection_v1.json&quot;</span><span class="p">)</span>
+<span class="c1"># Save to a typed pipeline config file</span>
+<span class="n">pipeline</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="s2">&quot;yeast_detection_v1.json.pht-pipe&quot;</span><span class="p">)</span>
 
 <span class="c1"># Get as string (for logging, databases, etc.)</span>
 <span class="n">json_str</span> <span class="o">=</span> <span class="n">pipeline</span><span class="o">.</span><span class="n">to_json</span><span class="p">()</span>
@@ -631,7 +631,7 @@
 </section>
 <section id="load-from-json">
 <h2>Load from JSON<a class="headerlink" href="#load-from-json" title="Link to this heading">#</a></h2>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">loaded</span> <span class="o">=</span> <span class="n">pht</span><span class="o">.</span><span class="n">ImagePipeline</span><span class="o">.</span><span class="n">from_json</span><span class="p">(</span><span class="s2">&quot;yeast_detection_v1.json&quot;</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">loaded</span> <span class="o">=</span> <span class="n">pht</span><span class="o">.</span><span class="n">ImagePipeline</span><span class="o">.</span><span class="n">from_json</span><span class="p">(</span><span class="s2">&quot;yeast_detection_v1.json.pht-pipe&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>The PhenoTypic version is recorded in the JSON. You will get a warning if

@@ -1131,7 +1131,10 @@
     <span class="s2">&quot;pipeline_json&quot;</span><span class="p">,</span>
     <span class="nb">type</span><span class="o">=</span><span class="n">click</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">exists</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">dir_okay</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">path_type</span><span class="o">=</span><span class="n">Path</span><span class="p">),</span>
     <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-    <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Pipeline JSON configuration file created with pipeline.to_json().&quot;</span><span class="p">,</span>
+    <span class="n">help</span><span class="o">=</span><span class="p">(</span>
+        <span class="s2">&quot;Pipeline config file created with pipeline.to_json(); legacy .json &quot;</span>
+        <span class="s2">&quot;files are accepted.&quot;</span>
+    <span class="p">),</span>
 <span class="p">)</span>
 <span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span>
     <span class="s2">&quot;-i&quot;</span><span class="p">,</span>
@@ -1804,7 +1807,7 @@
             <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span><span class="s2">&quot;[green]✓ Execution configuration validated&quot;</span><span class="p">)</span>
 
             <span class="c1"># Step 2: Validate pipeline loading</span>
-            <span class="k">with</span> <span class="n">console</span><span class="o">.</span><span class="n">status</span><span class="p">(</span><span class="s2">&quot;[bold cyan]Loading pipeline JSON...&quot;</span><span class="p">,</span> <span class="n">spinner</span><span class="o">=</span><span class="s2">&quot;dots&quot;</span><span class="p">):</span>
+            <span class="k">with</span> <span class="n">console</span><span class="o">.</span><span class="n">status</span><span class="p">(</span><span class="s2">&quot;[bold cyan]Loading pipeline config...&quot;</span><span class="p">,</span> <span class="n">spinner</span><span class="o">=</span><span class="s2">&quot;dots&quot;</span><span class="p">):</span>
                 <span class="n">pipeline_valid</span><span class="p">,</span> <span class="n">pipeline_error</span> <span class="o">=</span> <span class="n">validate_pipeline</span><span class="p">(</span>
                     <span class="n">config</span><span class="o">.</span><span class="n">pipeline_json</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">skip_validation</span>
                 <span class="p">)</span>
@@ -1940,7 +1943,7 @@
         <span class="k">if</span> <span class="ow">not</span> <span class="n">config</span><span class="o">.</span><span class="n">process_only_layer</span><span class="p">:</span>
             <span class="n">output_manager</span><span class="o">.</span><span class="n">create_structure</span><span class="p">(</span><span class="n">datasets</span><span class="p">)</span>
 
-        <span class="c1"># Copy pipeline JSON for reproducibility (skip in --measure mode — the</span>
+        <span class="c1"># Copy pipeline config for reproducibility (skip in --measure mode — the</span>
         <span class="c1"># forward run already copied it). Process-only writes its copy under</span>
         <span class="c1"># the hidden cache (.phenotypic/pipeline.json), not deliverables/.</span>
         <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">process_only_layer</span><span class="p">:</span>
@@ -1952,16 +1955,16 @@
                 <span class="n">cache_copy</span><span class="o">.</span><span class="n">write_bytes</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">pipeline_json</span><span class="p">)</span><span class="o">.</span><span class="n">read_bytes</span><span class="p">())</span>
                 <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Pipeline: </span><span class="si">{</span><span class="n">cache_copy</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to copy pipeline JSON: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-                <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;⚠ Warning: Could not copy pipeline JSON (</span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">,</span> <span class="n">err</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to copy pipeline config: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;⚠ Warning: Could not copy pipeline config (</span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">,</span> <span class="n">err</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="k">elif</span> <span class="ow">not</span> <span class="n">measure_only</span><span class="p">:</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="n">copied</span> <span class="o">=</span> <span class="n">_copy_pipeline_to_output</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">pipeline_json</span><span class="p">,</span> <span class="n">output_dir</span><span class="p">)</span>
                 <span class="k">if</span> <span class="n">copied</span><span class="p">:</span>
                     <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Pipeline: </span><span class="si">{</span><span class="n">copied</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to copy pipeline JSON: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-                <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;⚠ Warning: Could not copy pipeline JSON (</span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">,</span> <span class="n">err</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to copy pipeline config: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;⚠ Warning: Could not copy pipeline config (</span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">,</span> <span class="n">err</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
         <span class="c1"># Create execution strategy</span>
         <span class="n">strategy</span> <span class="o">=</span> <span class="n">create_execution_strategy</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">output_manager</span><span class="p">)</span>

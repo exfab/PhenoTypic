@@ -38,6 +38,7 @@ phenotypic.tune.TuningSpec
       ~TuningSpec.parse_raw
       ~TuningSpec.schema
       ~TuningSpec.schema_json
+      ~TuningSpec.to_json
       ~TuningSpec.update_forward_refs
       ~TuningSpec.validate
    

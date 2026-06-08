@@ -1890,7 +1890,7 @@ Can be a string or Path object.</p>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.measure</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasureShape</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">pipe</span> <span class="o">=</span> <span class="n">ImagePipeline</span><span class="p">(</span><span class="n">pipe_cfgs</span><span class="o">=</span><span class="p">[</span><span class="n">OtsuDetector</span><span class="p">()],</span> <span class="n">meas</span><span class="o">=</span><span class="p">[</span><span class="n">MeasureShape</span><span class="p">()])</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">json_str</span> <span class="o">=</span> <span class="n">pipe</span><span class="o">.</span><span class="n">to_json</span><span class="p">()</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">pipe</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="s1">&#39;my_pipeline.json&#39;</span><span class="p">)</span>  <span class="c1"># Save to file</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">pipe</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="s1">&#39;my_pipeline&#39;</span><span class="p">)</span>  <span class="c1"># Save to typed config file</span>
 </pre></div>
 </div>
 </div>
@@ -3412,7 +3412,7 @@ Can be a string or Path object.</p>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.measure</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasureShape</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">pipe</span> <span class="o">=</span> <span class="n">ImagePipeline</span><span class="p">(</span><span class="n">pipe_cfgs</span><span class="o">=</span><span class="p">[</span><span class="n">OtsuDetector</span><span class="p">()],</span> <span class="n">meas</span><span class="o">=</span><span class="p">[</span><span class="n">MeasureShape</span><span class="p">()])</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">json_str</span> <span class="o">=</span> <span class="n">pipe</span><span class="o">.</span><span class="n">to_json</span><span class="p">()</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">pipe</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="s1">&#39;my_pipeline.json&#39;</span><span class="p">)</span>  <span class="c1"># Save to file</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">pipe</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="s1">&#39;my_pipeline&#39;</span><span class="p">)</span>  <span class="c1"># Save to typed config file</span>
 </pre></div>
 </div>
 </div>
@@ -4890,7 +4890,7 @@ Can be a string or Path object.</p>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.measure</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasureShape</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">pipe</span> <span class="o">=</span> <span class="n">ImagePipeline</span><span class="p">(</span><span class="n">pipe_cfgs</span><span class="o">=</span><span class="p">[</span><span class="n">OtsuDetector</span><span class="p">()],</span> <span class="n">meas</span><span class="o">=</span><span class="p">[</span><span class="n">MeasureShape</span><span class="p">()])</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">json_str</span> <span class="o">=</span> <span class="n">pipe</span><span class="o">.</span><span class="n">to_json</span><span class="p">()</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">pipe</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="s1">&#39;my_pipeline.json&#39;</span><span class="p">)</span>  <span class="c1"># Save to file</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">pipe</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="s1">&#39;my_pipeline&#39;</span><span class="p">)</span>  <span class="c1"># Save to typed config file</span>
 </pre></div>
 </div>
 </div>
@@ -6716,7 +6716,7 @@ Can be a string or Path object.</p>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.measure</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasureShape</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">pipe</span> <span class="o">=</span> <span class="n">ImagePipeline</span><span class="p">(</span><span class="n">pipe_cfgs</span><span class="o">=</span><span class="p">[</span><span class="n">OtsuDetector</span><span class="p">()],</span> <span class="n">meas</span><span class="o">=</span><span class="p">[</span><span class="n">MeasureShape</span><span class="p">()])</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">json_str</span> <span class="o">=</span> <span class="n">pipe</span><span class="o">.</span><span class="n">to_json</span><span class="p">()</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">pipe</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="s1">&#39;my_pipeline.json&#39;</span><span class="p">)</span>  <span class="c1"># Save to file</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">pipe</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="s1">&#39;my_pipeline&#39;</span><span class="p">)</span>  <span class="c1"># Save to typed config file</span>
 </pre></div>
 </div>
 </div>
@@ -8216,7 +8216,7 @@ Can be a string or Path object.</p>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.measure</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasureShape</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">pipe</span> <span class="o">=</span> <span class="n">ImagePipeline</span><span class="p">(</span><span class="n">pipe_cfgs</span><span class="o">=</span><span class="p">[</span><span class="n">OtsuDetector</span><span class="p">()],</span> <span class="n">meas</span><span class="o">=</span><span class="p">[</span><span class="n">MeasureShape</span><span class="p">()])</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">json_str</span> <span class="o">=</span> <span class="n">pipe</span><span class="o">.</span><span class="n">to_json</span><span class="p">()</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">pipe</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="s1">&#39;my_pipeline.json&#39;</span><span class="p">)</span>  <span class="c1"># Save to file</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">pipe</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="s1">&#39;my_pipeline&#39;</span><span class="p">)</span>  <span class="c1"># Save to typed config file</span>
 </pre></div>
 </div>
 </div>
@@ -9673,7 +9673,7 @@ Can be a string or Path object.</p>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.measure</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasureShape</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">pipe</span> <span class="o">=</span> <span class="n">ImagePipeline</span><span class="p">(</span><span class="n">pipe_cfgs</span><span class="o">=</span><span class="p">[</span><span class="n">OtsuDetector</span><span class="p">()],</span> <span class="n">meas</span><span class="o">=</span><span class="p">[</span><span class="n">MeasureShape</span><span class="p">()])</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">json_str</span> <span class="o">=</span> <span class="n">pipe</span><span class="o">.</span><span class="n">to_json</span><span class="p">()</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">pipe</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="s1">&#39;my_pipeline.json&#39;</span><span class="p">)</span>  <span class="c1"># Save to file</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">pipe</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="s1">&#39;my_pipeline&#39;</span><span class="p">)</span>  <span class="c1"># Save to typed config file</span>
 </pre></div>
 </div>
 </div>
@@ -11061,7 +11061,7 @@ Can be a string or Path object.</p>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.measure</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasureShape</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">pipe</span> <span class="o">=</span> <span class="n">ImagePipeline</span><span class="p">(</span><span class="n">pipe_cfgs</span><span class="o">=</span><span class="p">[</span><span class="n">OtsuDetector</span><span class="p">()],</span> <span class="n">meas</span><span class="o">=</span><span class="p">[</span><span class="n">MeasureShape</span><span class="p">()])</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">json_str</span> <span class="o">=</span> <span class="n">pipe</span><span class="o">.</span><span class="n">to_json</span><span class="p">()</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">pipe</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="s1">&#39;my_pipeline.json&#39;</span><span class="p">)</span>  <span class="c1"># Save to file</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">pipe</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="s1">&#39;my_pipeline&#39;</span><span class="p">)</span>  <span class="c1"># Save to typed config file</span>
 </pre></div>
 </div>
 </div>

@@ -634,7 +634,7 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Final</span><span class="p">,</span> <span class="n">Optional</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Final</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">Optional</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">CheckpointType</span><span class="p">,</span>
@@ -654,6 +654,69 @@
 <span class="c1"># ---------------------------------------------------------------------------</span>
 <span class="c1"># CLI artifact filenames</span>
 <span class="c1"># ---------------------------------------------------------------------------</span>
+
+<span class="n">LEGACY_JSON_SUFFIX</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;.json&quot;</span>
+<span class="n">CONFIG_SUFFIX_PIPELINE</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;.json.pht-pipe&quot;</span>
+<span class="n">CONFIG_SUFFIX_OPERATION</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;.json.pht-op&quot;</span>
+<span class="n">CONFIG_SUFFIX_COLOR_CHECKER</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;.json.pht-cc&quot;</span>
+<span class="n">CONFIG_SUFFIX_TUNING</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;.json.pht-tune&quot;</span>
+<span class="n">CONFIG_SUFFIXES</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">frozenset</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">(</span>
+    <span class="p">{</span>
+        <span class="n">CONFIG_SUFFIX_PIPELINE</span><span class="p">,</span>
+        <span class="n">CONFIG_SUFFIX_OPERATION</span><span class="p">,</span>
+        <span class="n">CONFIG_SUFFIX_COLOR_CHECKER</span><span class="p">,</span>
+        <span class="n">CONFIG_SUFFIX_TUNING</span><span class="p">,</span>
+    <span class="p">}</span>
+<span class="p">)</span>
+<span class="n">PIPELINE_CONFIG_SUFFIXES</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">frozenset</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">(</span>
+    <span class="p">{</span><span class="n">CONFIG_SUFFIX_PIPELINE</span><span class="p">,</span> <span class="n">LEGACY_JSON_SUFFIX</span><span class="p">}</span>
+<span class="p">)</span>
+<span class="n">TUNING_CONFIG_SUFFIXES</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">frozenset</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">(</span>
+    <span class="p">{</span><span class="n">CONFIG_SUFFIX_TUNING</span><span class="p">,</span> <span class="n">LEGACY_JSON_SUFFIX</span><span class="p">}</span>
+<span class="p">)</span>
+
+
+<div class="viewcode-block" id="has_config_suffix">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.has_config_suffix">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">has_config_suffix</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">,</span> <span class="n">suffixes</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return whether ``path`` ends with any configured suffix.</span>
+
+<span class="sd">    Matching is case-insensitive so callers can discover user-provided files</span>
+<span class="sd">    from case-preserving filesystems without rewriting their names.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">text</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+    <span class="k">return</span> <span class="nb">any</span><span class="p">(</span><span class="n">text</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="n">suffix</span><span class="o">.</span><span class="n">lower</span><span class="p">())</span> <span class="k">for</span> <span class="n">suffix</span> <span class="ow">in</span> <span class="n">suffixes</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="matches_any_suffix">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.matches_any_suffix">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">matches_any_suffix</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">,</span> <span class="n">suffixes</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return whether ``path`` ends with any suffix in ``suffixes``.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">has_config_suffix</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">suffixes</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="ensure_typed_json_suffix">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.ensure_typed_json_suffix">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">ensure_typed_json_suffix</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">,</span> <span class="n">suffix</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``path`` with the canonical typed JSON suffix appended.</span>
+
+<span class="sd">    Bare stems receive the full typed suffix. Legacy ``.json`` paths receive</span>
+<span class="sd">    only the typed tail, preserving the user-provided stem and case.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">target</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+    <span class="n">text</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">target</span><span class="p">)</span>
+    <span class="n">lowered</span> <span class="o">=</span> <span class="n">text</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+    <span class="n">canonical_suffix</span> <span class="o">=</span> <span class="n">suffix</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">lowered</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="n">canonical_suffix</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">target</span>
+    <span class="k">if</span> <span class="n">lowered</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="n">LEGACY_JSON_SUFFIX</span><span class="p">):</span>
+        <span class="n">typed_tail</span> <span class="o">=</span> <span class="n">suffix</span><span class="o">.</span><span class="n">removeprefix</span><span class="p">(</span><span class="n">LEGACY_JSON_SUFFIX</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">text</span><span class="si">}{</span><span class="n">typed_tail</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">text</span><span class="si">}{</span><span class="n">suffix</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
 
 <span class="c1">#: Master archive of all aggregated measurements (clean, pre-post). Written by</span>
 <span class="c1">#: :func:`phenotypic._cli._cli_output_manager.aggregate_measurements` after</span>
@@ -691,7 +754,8 @@
 <span class="c1">#: CLI (and rewritten by the analysis GUI on every recipe edit). Captures</span>
 <span class="c1">#: operations, measurements, post, filters, and model — i.e. the whole</span>
 <span class="c1">#: reproducibility surface.</span>
-<span class="n">PIPELINE_JSON</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;pipeline.json&quot;</span>
+<span class="n">PIPELINE_JSON</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;pipeline</span><span class="si">{</span><span class="n">CONFIG_SUFFIX_PIPELINE</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="n">_LEGACY_PIPELINE_JSON</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;pipeline</span><span class="si">{</span><span class="n">LEGACY_JSON_SUFFIX</span><span class="si">}</span><span class="s2">&quot;</span>
 
 <span class="c1">#: Resume-state JSON written by ``ProcessingState.save`` and read by</span>
 <span class="c1">#: ``ProcessingState.load`` when ``--resume`` is passed.</span>
@@ -703,13 +767,15 @@
 <span class="c1">#: :func:`readme_md_path`.</span>
 <span class="n">README_MD</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;README.md&quot;</span>
 
-<span class="c1">#: The resolved ``tuning_spec.json`` echoed by ``python -m phenotypic.tune``</span>
+<span class="c1">#: The resolved tuning spec echoed by ``python -m phenotypic.tune``</span>
 <span class="c1">#: into :data:`DIR_DELIVERABLES` — the self-contained, re-runnable recipe.</span>
-<span class="n">TUNING_SPEC_JSON</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;tuning_spec.json&quot;</span>
+<span class="n">TUNING_SPEC_JSON</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;tuning_spec</span><span class="si">{</span><span class="n">CONFIG_SUFFIX_TUNING</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="n">_LEGACY_TUNING_SPEC_JSON</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;tuning_spec</span><span class="si">{</span><span class="n">LEGACY_JSON_SUFFIX</span><span class="si">}</span><span class="s2">&quot;</span>
 
-<span class="c1">#: The winning ``best_pipeline.json`` written by the tune CLI into</span>
+<span class="c1">#: The winning best pipeline written by the tune CLI into</span>
 <span class="c1">#: :data:`DIR_DELIVERABLES`; reloads as a runnable ``ImagePipeline``.</span>
-<span class="n">BEST_PIPELINE_JSON</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;best_pipeline.json&quot;</span>
+<span class="n">BEST_PIPELINE_JSON</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;best_pipeline</span><span class="si">{</span><span class="n">CONFIG_SUFFIX_PIPELINE</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="n">_LEGACY_BEST_PIPELINE_JSON</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;best_pipeline</span><span class="si">{</span><span class="n">LEGACY_JSON_SUFFIX</span><span class="si">}</span><span class="s2">&quot;</span>
 
 <span class="c1">#: The RF-permutation ``param_importance.json`` report written by the tune</span>
 <span class="c1">#: CLI into :data:`DIR_DELIVERABLES`.</span>
@@ -751,11 +817,13 @@
 <span class="n">PARETO_FRONT_PARQUET</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;pareto_front.parquet&quot;</span>
 
 <span class="c1">#: Per-objective best-pipeline filename template written into :data:`DIR_PARETO`:</span>
-<span class="c1">#: ``best_&lt;objective&gt;.json`` (e.g. ``best_Dice.json``, ``best_s0.json``). One per</span>
+<span class="c1">#: ``best_&lt;objective&gt;`` with the pipeline config suffix. One per</span>
 <span class="c1">#: objective axis — the pipeline maximizing that single objective on the front.</span>
 <span class="c1">#: Rendered by :func:`pareto_best_pipeline_path`; kept private (a parameterized</span>
 <span class="c1">#: string is not an enumeration — see the code-style note on render functions).</span>
-<span class="n">_PARETO_BEST_PIPELINE_FILENAME_TEMPLATE</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;best_</span><span class="si">{objective}</span><span class="s2">.json&quot;</span>
+<span class="n">_PARETO_BEST_PIPELINE_FILENAME_TEMPLATE</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="sa">f</span><span class="s2">&quot;best_</span><span class="se">{{</span><span class="s2">objective</span><span class="se">}}</span><span class="si">{</span><span class="n">CONFIG_SUFFIX_PIPELINE</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="p">)</span>
 
 <span class="c1">#: Per-objective param-importance filename template written into :data:`DIR_PARETO`:</span>
 <span class="c1">#: ``param_importance_&lt;objective&gt;.json`` (e.g. ``param_importance_s0.json``). The</span>
@@ -1330,24 +1398,86 @@
 <div class="viewcode-block" id="pipeline_json_path">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.pipeline_json_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">pipeline_json_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/pipeline.json``.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the canonical typed pipeline config path under ``deliverables/``.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">PIPELINE_JSON</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_legacy_pipeline_json_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the legacy plain-JSON pipeline config path under ``deliverables/``.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">_LEGACY_PIPELINE_JSON</span>
+
+
+<div class="viewcode-block" id="resolve_pipeline_config_path">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.resolve_pipeline_config_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">resolve_pipeline_config_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the best existing pipeline config path for ``output_dir``.</span>
+
+<span class="sd">    Resolution prefers the canonical typed path, falls back to legacy</span>
+<span class="sd">    ``pipeline.json`` when present, and returns the canonical path when neither</span>
+<span class="sd">    exists so writers naturally create typed config files.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">canonical</span> <span class="o">=</span> <span class="n">pipeline_json_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">canonical</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="k">return</span> <span class="n">canonical</span>
+    <span class="n">legacy</span> <span class="o">=</span> <span class="n">_legacy_pipeline_json_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">legacy</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="k">return</span> <span class="n">legacy</span>
+    <span class="k">return</span> <span class="n">canonical</span></div>
 
 
 
 <div class="viewcode-block" id="tuning_spec_path">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.tuning_spec_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">tuning_spec_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/tuning_spec.json`` (the resolved recipe).&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the canonical typed tuning spec path under ``deliverables/``.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">TUNING_SPEC_JSON</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_legacy_tuning_spec_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the legacy plain-JSON tuning spec path under ``deliverables/``.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">_LEGACY_TUNING_SPEC_JSON</span>
+
+
+<div class="viewcode-block" id="resolve_tuning_spec_path">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.resolve_tuning_spec_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">resolve_tuning_spec_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the best existing tuning spec path for ``output_dir``.&quot;&quot;&quot;</span>
+    <span class="n">canonical</span> <span class="o">=</span> <span class="n">tuning_spec_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">canonical</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="k">return</span> <span class="n">canonical</span>
+    <span class="n">legacy</span> <span class="o">=</span> <span class="n">_legacy_tuning_spec_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">legacy</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="k">return</span> <span class="n">legacy</span>
+    <span class="k">return</span> <span class="n">canonical</span></div>
 
 
 
 <div class="viewcode-block" id="best_pipeline_path">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.best_pipeline_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">best_pipeline_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/best_pipeline.json`` (the tuned winner).&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the canonical typed tuned-winner pipeline path.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">BEST_PIPELINE_JSON</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_legacy_best_pipeline_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the legacy plain-JSON tuned-winner pipeline path.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">_LEGACY_BEST_PIPELINE_JSON</span>
+
+
+<div class="viewcode-block" id="resolve_best_pipeline_path">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.resolve_best_pipeline_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">resolve_best_pipeline_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the best existing tuned-winner pipeline path for ``output_dir``.&quot;&quot;&quot;</span>
+    <span class="n">canonical</span> <span class="o">=</span> <span class="n">best_pipeline_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">canonical</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="k">return</span> <span class="n">canonical</span>
+    <span class="n">legacy</span> <span class="o">=</span> <span class="n">_legacy_best_pipeline_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">legacy</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="k">return</span> <span class="n">legacy</span>
+    <span class="k">return</span> <span class="n">canonical</span></div>
 
 
 

@@ -787,8 +787,10 @@
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.tools_.default_output_dir_name.html">phenotypic.tools_.default_output_dir_name</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.tools_.deliverables_dir.html">phenotypic.tools_.deliverables_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.tools_.event_log_path.html">phenotypic.tools_.event_log_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.tools_.ensure_typed_json_suffix.html">phenotypic.tools_.ensure_typed_json_suffix</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.tools_.failures_jsonl_path.html">phenotypic.tools_.failures_jsonl_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.tools_.generalization_path.html">phenotypic.tools_.generalization_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.tools_.has_config_suffix.html">phenotypic.tools_.has_config_suffix</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.tools_.job_metadata_path.html">phenotypic.tools_.job_metadata_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.tools_.load_image_from_hdf.html">phenotypic.tools_.load_image_from_hdf</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.tools_.load_master_measurements.html">phenotypic.tools_.load_master_measurements</a></li>
@@ -799,6 +801,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.tools_.measurements_by_feature_dir.html">phenotypic.tools_.measurements_by_feature_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.tools_.measurements_csv_path.html">phenotypic.tools_.measurements_csv_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.tools_.measurements_parquet_path.html">phenotypic.tools_.measurements_parquet_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.tools_.matches_any_suffix.html">phenotypic.tools_.matches_any_suffix</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.tools_.migrate_legacy_machine_state.html">phenotypic.tools_.migrate_legacy_machine_state</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.tools_.clear_machine_state.html">phenotypic.tools_.clear_machine_state</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.tools_.overlay_manifest_path.html">phenotypic.tools_.overlay_manifest_path</a></li>
@@ -822,13 +825,16 @@
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.tools_.read_run_manifest.html">phenotypic.tools_.read_run_manifest</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.tools_.recompile_dir.html">phenotypic.tools_.recompile_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.tools_.recompile_status_dir.html">phenotypic.tools_.recompile_status_dir</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.tools_.resolve_best_pipeline_path.html">phenotypic.tools_.resolve_best_pipeline_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.tools_.resolve_event_log_path.html">phenotypic.tools_.resolve_event_log_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.tools_.resolve_execution_mode.html">phenotypic.tools_.resolve_execution_mode</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.tools_.resolve_manifest_json_path.html">phenotypic.tools_.resolve_manifest_json_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.tools_.resolve_pipeline_config_path.html">phenotypic.tools_.resolve_pipeline_config_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.tools_.resolve_processing_state_path.html">phenotypic.tools_.resolve_processing_state_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.tools_.resolve_progress_dir.html">phenotypic.tools_.resolve_progress_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.tools_.resolve_split_assignment_path.html">phenotypic.tools_.resolve_split_assignment_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.tools_.resolve_study_db_path.html">phenotypic.tools_.resolve_study_db_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.tools_.resolve_tuning_spec_path.html">phenotypic.tools_.resolve_tuning_spec_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.tools_.results_dir.html">phenotypic.tools_.results_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.tools_.sentinel_resubmitted_path.html">phenotypic.tools_.sentinel_resubmitted_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.tools_.shard_parquet_filename.html">phenotypic.tools_.shard_parquet_filename</a></li>
@@ -1524,7 +1530,7 @@ Can be a string or Path object.</p>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.measure</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasureShape</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">pipe</span> <span class="o">=</span> <span class="n">ImagePipeline</span><span class="p">(</span><span class="n">pipe_cfgs</span><span class="o">=</span><span class="p">[</span><span class="n">OtsuDetector</span><span class="p">()],</span> <span class="n">meas</span><span class="o">=</span><span class="p">[</span><span class="n">MeasureShape</span><span class="p">()])</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">json_str</span> <span class="o">=</span> <span class="n">pipe</span><span class="o">.</span><span class="n">to_json</span><span class="p">()</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">pipe</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="s1">&#39;my_pipeline.json&#39;</span><span class="p">)</span>  <span class="c1"># Save to file</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">pipe</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="s1">&#39;my_pipeline&#39;</span><span class="p">)</span>  <span class="c1"># Save to typed config file</span>
 </pre></div>
 </div>
 </div>
@@ -1561,8 +1567,8 @@ are excluded to keep serialization clean.</p>
     <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span>
 <span class="p">)</span>
 
-<span class="c1"># Save to file</span>
-<span class="n">pipeline</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="s1">&#39;my_pipeline.json&#39;</span><span class="p">)</span>
+<span class="c1"># Save to typed pipeline config file</span>
+<span class="n">pipeline</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="s1">&#39;my_pipeline.json.pht-pipe&#39;</span><span class="p">)</span>
 
 <span class="c1"># Get JSON string</span>
 <span class="n">json_str</span> <span class="o">=</span> <span class="n">pipeline</span><span class="o">.</span><span class="n">to_json</span><span class="p">()</span>
@@ -1645,12 +1651,12 @@ whether to re-save the pruned pipeline.</p></li>
 <p>Deserialize a pipeline from JSON format:</p>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImagePipeline</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="c1"># Load from file</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">pipe</span> <span class="o">=</span> <span class="n">ImagePipeline</span><span class="o">.</span><span class="n">from_json</span><span class="p">(</span><span class="s1">&#39;my_pipeline.json&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">pipe</span> <span class="o">=</span> <span class="n">ImagePipeline</span><span class="o">.</span><span class="n">from_json</span><span class="p">(</span><span class="n">saved_path</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="c1"># Load from string</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">json_str</span> <span class="o">=</span> <span class="s1">&#39;{&quot;pipe_cfgs&quot;: {...}, &quot;meas&quot;: {...}}&#39;</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">pipe</span> <span class="o">=</span> <span class="n">ImagePipeline</span><span class="o">.</span><span class="n">from_json</span><span class="p">(</span><span class="n">json_str</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="c1"># Load with benchmarking enabled</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">pipe</span> <span class="o">=</span> <span class="n">ImagePipeline</span><span class="o">.</span><span class="n">from_json</span><span class="p">(</span><span class="s1">&#39;pipeline.json&#39;</span><span class="p">,</span> <span class="n">benchmark</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">pipe</span> <span class="o">=</span> <span class="n">ImagePipeline</span><span class="o">.</span><span class="n">from_json</span><span class="p">(</span><span class="n">saved_path</span><span class="p">,</span> <span class="n">benchmark</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -1672,7 +1678,7 @@ instantiated with their saved parameters.</p>
 </ul>
 <p><strong>Example:</strong></p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Load from file</span>
-<span class="n">loaded_pipeline</span> <span class="o">=</span> <span class="n">ImagePipeline</span><span class="o">.</span><span class="n">from_json</span><span class="p">(</span><span class="s1">&#39;my_pipeline.json&#39;</span><span class="p">)</span>
+<span class="n">loaded_pipeline</span> <span class="o">=</span> <span class="n">ImagePipeline</span><span class="o">.</span><span class="n">from_json</span><span class="p">(</span><span class="s1">&#39;my_pipeline.json.pht-pipe&#39;</span><span class="p">)</span>
 
 <span class="c1"># Load from string</span>
 <span class="n">json_str</span> <span class="o">=</span> <span class="s1">&#39;{&quot;ops&quot;: {...}, &quot;meas&quot;: {...}}&#39;</span>
@@ -1689,10 +1695,10 @@ instantiated with their saved parameters.</p>
     <span class="n">ops</span><span class="o">=</span><span class="p">[</span><span class="n">GaussianBlur</span><span class="p">(</span><span class="n">sigma</span><span class="o">=</span><span class="mf">2.0</span><span class="p">),</span> <span class="n">OtsuDetector</span><span class="p">()],</span>
     <span class="n">meas</span><span class="o">=</span><span class="p">[</span><span class="n">MeasureShape</span><span class="p">()]</span>
 <span class="p">)</span>
-<span class="n">pipeline</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="s1">&#39;colony_detection_v1.json&#39;</span><span class="p">)</span>
+<span class="n">pipeline</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="s1">&#39;colony_detection_v1.json.pht-pipe&#39;</span><span class="p">)</span>
 
 <span class="c1"># Researcher 2: Load and apply to new data</span>
-<span class="n">pipeline</span> <span class="o">=</span> <span class="n">ImagePipeline</span><span class="o">.</span><span class="n">from_json</span><span class="p">(</span><span class="s1">&#39;colony_detection_v1.json&#39;</span><span class="p">)</span>
+<span class="n">pipeline</span> <span class="o">=</span> <span class="n">ImagePipeline</span><span class="o">.</span><span class="n">from_json</span><span class="p">(</span><span class="s1">&#39;colony_detection_v1.json.pht-pipe&#39;</span><span class="p">)</span>
 <span class="n">results</span> <span class="o">=</span> <span class="p">[]</span>
 <span class="k">for</span> <span class="n">img_path</span> <span class="ow">in</span> <span class="n">image_list</span><span class="p">:</span>
     <span class="n">img</span> <span class="o">=</span> <span class="n">Image</span><span class="o">.</span><span class="n">imread</span><span class="p">(</span><span class="n">img_path</span><span class="p">)</span>

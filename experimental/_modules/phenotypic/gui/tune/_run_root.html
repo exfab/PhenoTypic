@@ -592,9 +592,9 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">best_pipeline_path</span><span class="p">,</span>
+    <span class="n">resolve_tuning_spec_path</span><span class="p">,</span>
     <span class="n">trials_parquet_path</span><span class="p">,</span>
     <span class="n">tune_cache_run_marker_path</span><span class="p">,</span>
-    <span class="n">tuning_spec_path</span><span class="p">,</span>
 <span class="p">)</span>
 
 <span class="c1">#: The study name every tune run uses (mirrors ``_tune_cli._run._STUDY_NAME``).</span>
@@ -777,7 +777,7 @@
 <span class="sd">        Returns:</span>
 <span class="sd">            ``(storage_url, directions)`` when the spec exists, else ``None``.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">spec_path</span> <span class="o">=</span> <span class="n">tuning_spec_path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="n">spec_path</span> <span class="o">=</span> <span class="n">resolve_tuning_spec_path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">spec_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
             <span class="k">return</span> <span class="kc">None</span>
         <span class="c1"># Lazy, function-local imports keep module import optuna-free and cheap:</span>
