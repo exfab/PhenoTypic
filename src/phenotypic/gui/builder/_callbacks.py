@@ -116,6 +116,8 @@ from phenotypic.gui.builder._state import (
 from phenotypic.gui.builder._conversion_dag import from_pipeline_dag, to_pipeline_dag
 from phenotypic.gui.builder._validation import validate
 from phenotypic.gui.builder._validation import Issue
+from phenotypic.gui.shell._ids import SHELL_SOURCE_IMAGE_ROOT_STORE
+from phenotypic.gui.shell._source_context import SOURCE_PAYLOAD_VERSION
 
 logger = logging.getLogger(__name__)
 
@@ -3392,6 +3394,34 @@ def _image_root() -> Optional[Any]:
     return current_app.config.get(CFG_IMAGE_ROOT)
 
 
+def _browse_seed_from_source(
+    image_root: Any,
+    source_payload: object,
+) -> str | None:
+    """Return a Builder browse seed from shared source or ``image_root``.
+
+    The returned path is always inside ``image_root`` when non-``None``.
+    """
+    if image_root is None:
+        return None
+    root = Path(image_root).resolve()
+    if (
+        isinstance(source_payload, dict)
+        and source_payload.get("version") == SOURCE_PAYLOAD_VERSION
+        and source_payload.get("validated") is True
+    ):
+        raw_path = source_payload.get("abs_path")
+        if isinstance(raw_path, str) and raw_path:
+            candidate = Path(raw_path).expanduser().resolve()
+            try:
+                candidate.relative_to(root)
+            except ValueError:
+                candidate = root
+            if candidate.is_dir():
+                return str(candidate)
+    return str(root)
+
+
 def _render_tree_body(
     dir_value: Optional[str],
     *,
@@ -5704,9 +5734,12 @@ def register_callbacks(app: dash.Dash) -> None:
         Output(ids.MODAL_SAVE, "is_open", allow_duplicate=True),
         Output(ids.STORE_BROWSE_DIR_SAVE, "data", allow_duplicate=True),
         Input(ids.BTN_SAVE, "n_clicks"),
+        State(SHELL_SOURCE_IMAGE_ROOT_STORE, "data"),
         prevent_initial_call=True,
     )
-    def open_save_modal(n_clicks: Optional[int]) -> Tuple[Any, Any]:
+    def open_save_modal(
+        n_clicks: Optional[int], source_payload: object
+    ) -> Tuple[Any, Any]:
         """Open :data:`ids.MODAL_SAVE` and seed :data:`ids.STORE_BROWSE_DIR_SAVE`.
 
         Triggered by :data:`ids.BTN_SAVE`. Seeds the browse-dir store with the
@@ -5724,7 +5757,7 @@ def register_callbacks(app: dash.Dash) -> None:
         if not n_clicks:
             return no_update, no_update
         image_root = _image_root()
-        return True, str(image_root) if image_root else None
+        return True, _browse_seed_from_source(image_root, source_payload)
 
     @app.callback(
         Output(ids.MODAL_SAVE, "is_open", allow_duplicate=True),
@@ -5910,9 +5943,12 @@ def register_callbacks(app: dash.Dash) -> None:
         Output(ids.STORE_LOAD_PICKER_PAGE, "data", allow_duplicate=True),
         Output(ids.STORE_BROWSE_DIR_JSON, "data", allow_duplicate=True),
         Input(ids.BTN_LOAD, "n_clicks"),
+        State(SHELL_SOURCE_IMAGE_ROOT_STORE, "data"),
         prevent_initial_call=True,
     )
-    def open_load_picker(n_clicks: Optional[int]) -> Tuple[Any, ...]:
+    def open_load_picker(
+        n_clicks: Optional[int], source_payload: object
+    ) -> Tuple[Any, ...]:
         """Open :data:`ids.MODAL_LOAD_PICKER` on the chooser page.
 
         Triggered by :data:`ids.BTN_LOAD`. Resets the page store to
@@ -5929,7 +5965,7 @@ def register_callbacks(app: dash.Dash) -> None:
         if not n_clicks:
             return no_update, no_update, no_update
         image_root = _image_root()
-        return True, "chooser", str(image_root) if image_root else None
+        return True, "chooser", _browse_seed_from_source(image_root, source_payload)
 
     @app.callback(
         Output(ids.STORE_LOAD_PICKER_PAGE, "data", allow_duplicate=True),
@@ -6163,9 +6199,12 @@ def register_callbacks(app: dash.Dash) -> None:
         Output(ids.MODAL_LOAD_IMAGE, "is_open", allow_duplicate=True),
         Output(ids.STORE_BROWSE_DIR_IMAGE, "data", allow_duplicate=True),
         Input(ids.BTN_LOAD_IMAGE, "n_clicks"),
+        State(SHELL_SOURCE_IMAGE_ROOT_STORE, "data"),
         prevent_initial_call=True,
     )
-    def open_load_image_modal(n_clicks: Optional[int]) -> Tuple[Any, Any]:
+    def open_load_image_modal(
+        n_clicks: Optional[int], source_payload: object
+    ) -> Tuple[Any, Any]:
         """Open :data:`ids.MODAL_LOAD_IMAGE` and seed :data:`ids.STORE_BROWSE_DIR_IMAGE`.
 
         Triggered by :data:`ids.BTN_LOAD_IMAGE`. Seeds the browse-dir store
@@ -6183,7 +6222,7 @@ def register_callbacks(app: dash.Dash) -> None:
         if not n_clicks:
             return no_update, no_update
         image_root = _image_root()
-        return True, str(image_root) if image_root else None
+        return True, _browse_seed_from_source(image_root, source_payload)
 
     @app.callback(
         Output(ids.STORE_BROWSE_DIR_IMAGE, "data", allow_duplicate=True),

@@ -42,8 +42,16 @@ from phenotypic.gui.shell._ids import (
     SHELL_SIDEBAR_SELECTION_STORE,
     SHELL_SIDEBAR_SYMLINK_TOGGLE,
     SHELL_SIDEBAR_TREE,
+    SHELL_SOURCE_IMAGE_ROOT_CLEAR,
+    SHELL_SOURCE_IMAGE_ROOT_LABEL,
+    SHELL_SOURCE_IMAGE_ROOT_STORE,
 )
 from phenotypic.gui.shell._sidebar import render_tree
+from phenotypic.gui.shell._source_context import (
+    source_label,
+    source_payload_from_path,
+    source_title,
+)
 
 if TYPE_CHECKING:
     import dash
@@ -80,6 +88,24 @@ def register_chrome_callbacks(
         except (psutil.NoSuchProcess, psutil.AccessDenied):  # pragma: no cover
             return "RSS ?"
         return f"RSS {rss_bytes / 1e6:.0f} MB"
+
+    @app.callback(
+        Output(SHELL_SOURCE_IMAGE_ROOT_LABEL, "children"),
+        Output(SHELL_SOURCE_IMAGE_ROOT_LABEL, "title"),
+        Input(SHELL_SOURCE_IMAGE_ROOT_STORE, "data"),
+    )
+    def _update_source_label(payload: object) -> tuple[str, str]:
+        return source_label(payload), source_title(payload)
+
+    @app.callback(
+        Output(SHELL_SOURCE_IMAGE_ROOT_STORE, "data", allow_duplicate=True),
+        Input(SHELL_SOURCE_IMAGE_ROOT_CLEAR, "n_clicks"),
+        prevent_initial_call=True,
+    )
+    def _clear_source_root(n_clicks: int) -> Any:
+        if not n_clicks:
+            return no_update
+        return None
 
     @app.callback(
         Output(SHELL_HELP_MODAL, "is_open"),
@@ -223,6 +249,35 @@ def register_chrome_callbacks(
             expanded_set.add(rel)
         # Sort for deterministic store payloads (helps test snapshots).
         return (sorted(expanded_set), selection)
+
+    @app.callback(
+        Output(SHELL_SOURCE_IMAGE_ROOT_STORE, "data", allow_duplicate=True),
+        Input(SHELL_SIDEBAR_SELECTION_STORE, "data"),
+        State(SHELL_SOURCE_IMAGE_ROOT_STORE, "data"),
+        prevent_initial_call=True,
+    )
+    def _source_from_sidebar_selection(
+        selection: dict[str, Any] | None,
+        current_payload: object,
+    ) -> Any:
+        """Promote image-directory sidebar selections to the shared source."""
+        if not selection or not isinstance(selection, dict):
+            return no_update
+        caps = selection.get("capabilities") or {}
+        if not isinstance(caps, dict) or not caps.get("is_image_dir"):
+            return no_update
+        path = selection.get("abs_path") or selection.get("path")
+        if not isinstance(path, str) or not path:
+            return no_update
+        payload = source_payload_from_path(sandbox, path, source="sidebar")
+        if payload is None:
+            return no_update
+        if (
+            isinstance(current_payload, dict)
+            and current_payload.get("abs_path") == payload["abs_path"]
+        ):
+            return no_update
+        return payload
 
     # ----------------------------------------------------------------------
     # Sidebar tree re-render — fires when expansion / toggles / cache
