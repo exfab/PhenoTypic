@@ -14,7 +14,7 @@ This module provides three things:
   stores in its ``qc`` list (``pipeline.get_qc()`` returns these), and the
   unit the pipeline (de)serializer reads/writes. Instantiation into a
   concrete :class:`QualityCheck` is **lazy** (see :meth:`QcRecipe.instantiate`
-  and :func:`phenotypic.qc._runner.run_qc`) so a single un-resolvable or
+  and :func:`phenotypic.tools_._qc_recipe._runner.run_qc`) so a single un-resolvable or
   un-constructable entry never blocks pipeline load or a QC run.
 * :class:`QcRecipeLoadWarning` — why an entry was skipped at load or
   instantiate time, surfaced to the GUI as a banner.
@@ -212,7 +212,7 @@ class QcRecipeEntry:
                 a bad params dict (e.g. a missing metadata file, a
                 ``KeyError`` on an absent ``groupby`` column). Callers that
                 want tolerance wrap this in try/except — see
-                :func:`phenotypic.qc._runner.run_qc` and
+                :func:`phenotypic.tools_._qc_recipe._runner.run_qc` and
                 :meth:`QcRecipe.instantiate`.
         """
         return self.cls(**self.params)
