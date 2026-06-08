@@ -6,6 +6,16 @@ from pathlib import Path
 from phenotypic.gui.shell._sandbox import SandboxRoot
 
 
+class _ExplodingSandbox:
+    """Sandbox test double whose resolver always fails."""
+
+    def __init__(self, root: Path) -> None:
+        self.root = root
+
+    def resolve(self, _candidate: object) -> Path:
+        raise RuntimeError("resolver loop")
+
+
 def test_source_payload_from_path_accepts_in_sandbox_directory(
     tmp_path: Path,
 ) -> None:
@@ -44,6 +54,16 @@ def test_source_payload_from_path_rejects_out_of_sandbox_path(
     assert (
         source_payload_from_path(sandbox, outside, source="manual") is None
     )
+
+
+def test_source_payload_from_path_rejects_resolver_errors(
+    tmp_path: Path,
+) -> None:
+    from phenotypic.gui.shell._source_context import source_payload_from_path
+
+    sandbox = _ExplodingSandbox(tmp_path)
+
+    assert source_payload_from_path(sandbox, "loop", source="manual") is None
 
 
 def test_source_payload_from_path_rejects_files_and_missing_paths(
@@ -89,6 +109,25 @@ def test_resolve_source_image_root_rejects_malformed_payloads(
     )
 
 
+def test_resolve_source_image_root_rejects_resolver_errors(
+    tmp_path: Path,
+) -> None:
+    from phenotypic.gui.shell._source_context import resolve_source_image_root
+
+    sandbox = _ExplodingSandbox(tmp_path)
+    payload = {
+        "abs_path": str(tmp_path / "loop"),
+        "rel_path": "loop",
+        "label": "loop",
+        "image_count": None,
+        "source": "manual",
+        "validated": True,
+        "version": 1,
+    }
+
+    assert resolve_source_image_root(sandbox, payload) is None
+
+
 def test_resolve_source_image_root_returns_valid_directory(
     tmp_path: Path,
 ) -> None:
@@ -123,4 +162,3 @@ def test_source_label_formats_unset_invalid_and_valid_payloads(
     assert source_label({"abs_path": 1}) == "source: invalid"
     assert payload is not None
     assert source_label(payload) == "source: batch-a"
-

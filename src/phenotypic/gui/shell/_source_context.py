@@ -58,10 +58,15 @@ def source_payload_from_path(
     """
     try:
         resolved = sandbox.resolve(path)
-    except ValueError:
-        logger.warning("source image root escapes sandbox: %r", path)
+    except (OSError, RuntimeError, ValueError):
+        logger.warning("source image root is not resolvable: %r", path)
         return None
-    if not resolved.is_dir():
+    try:
+        is_directory = resolved.is_dir()
+    except (OSError, RuntimeError):
+        logger.warning("source image root stat failed: %s", resolved)
+        return None
+    if not is_directory:
         logger.warning("source image root is not a directory: %s", resolved)
         return None
 
@@ -108,10 +113,15 @@ def resolve_source_image_root(
         return None
     try:
         resolved = sandbox.resolve(raw_path)
-    except ValueError:
-        logger.warning("stored source image root escapes sandbox: %r", raw_path)
+    except (OSError, RuntimeError, ValueError):
+        logger.warning("stored source image root is not resolvable: %r", raw_path)
         return None
-    if not resolved.is_dir():
+    try:
+        is_directory = resolved.is_dir()
+    except (OSError, RuntimeError):
+        logger.warning("stored source image root stat failed: %s", resolved)
+        return None
+    if not is_directory:
         logger.warning("stored source image root is not a directory: %s", resolved)
         return None
     return resolved

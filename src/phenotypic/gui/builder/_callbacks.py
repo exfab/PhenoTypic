@@ -3404,7 +3404,10 @@ def _browse_seed_from_source(
     """
     if image_root is None:
         return None
-    root = Path(image_root).resolve()
+    try:
+        root = Path(image_root).resolve()
+    except (OSError, RuntimeError):
+        return None
     if (
         isinstance(source_payload, dict)
         and source_payload.get("version") == SOURCE_PAYLOAD_VERSION
@@ -3412,12 +3415,19 @@ def _browse_seed_from_source(
     ):
         raw_path = source_payload.get("abs_path")
         if isinstance(raw_path, str) and raw_path:
-            candidate = Path(raw_path).expanduser().resolve()
+            try:
+                candidate = Path(raw_path).expanduser().resolve()
+            except (OSError, RuntimeError):
+                candidate = root
             try:
                 candidate.relative_to(root)
             except ValueError:
                 candidate = root
-            if candidate.is_dir():
+            try:
+                is_directory = candidate.is_dir()
+            except (OSError, RuntimeError):
+                is_directory = False
+            if is_directory:
                 return str(candidate)
     return str(root)
 
