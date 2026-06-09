@@ -1683,12 +1683,22 @@ def _heatmap_exploration_loaded_shots(page) -> None:
 _TUNE_STANDALONE_BOOT = """\
 import sys
 from pathlib import Path
+from dash import dcc
 from phenotypic.gui.shell import SandboxRoot
+from phenotypic.gui.shell._ids import TUNE_PIPELINE_PATH_STORE
 from phenotypic.gui.tune import create_app
 
 sandbox_root, port = sys.argv[1], int(sys.argv[2])
 sandbox = SandboxRoot.from_path(sandbox_root)
 app = create_app(root=None, url_prefix="/", sandbox=sandbox)
+# The Setup pipeline handoff reads the shell-provided ``tune-pipeline-path``
+# store, which lives in the SHELL layout, not the tune app. In the hub the shell
+# supplies it; for this standalone capture app we append the same store id so the
+# Setup -> Run authoring callbacks fire exactly as they do in production (a typed
+# pipeline path unlocks Continue, which authors the spec and reveals Run).
+app.layout.children = list(app.layout.children) + [
+    dcc.Store(id=TUNE_PIPELINE_PATH_STORE, data=None)
+]
 app.run(host="127.0.0.1", port=port, debug=False)
 """
 
@@ -1728,6 +1738,73 @@ def _show_tune_subtab(page, name: str) -> None:
             print(f"[shot]   tune_copilot: sub-tab {name} click skipped: {exc!r}")
 
 
+def _show_tune_destination(page, name: str) -> None:
+    """Click the ``tune-dest-<name>`` destination button and let it settle."""
+    button = page.locator(f"#tune-dest-{name}")
+    if button.count() > 0:
+        try:
+            button.click(timeout=4000)
+            page.wait_for_timeout(700)
+        except Exception as exc:  # pragma: no cover - best-effort
+            print(f"[shot]   tune_copilot: destination {name} click skipped: {exc!r}")
+
+
+def _author_tune_setup(page) -> None:
+    """Fill the Setup pipeline + metadata inputs (debounced → blur to commit).
+
+    The standalone tune app's sandbox is :data:`DATASET_DIR`, so the
+    sandbox-relative ``pipeline.json`` and ``tune_layout.csv`` paths resolve to
+    the dataset's base pipeline and the QC scorer's count layout. Both inputs
+    are ``dcc.Input(debounce=True)``, so each fill is followed by a blur to
+    commit the value into the setup stores. Best-effort: missing inputs are
+    skipped.
+    """
+    pipeline_input = page.locator("#tune-setup-pipeline-input")
+    metadata_input = page.locator("#tune-setup-metadata-input")
+    try:
+        # ``dcc.Input(debounce=True)`` commits on Enter — fill then press Enter so
+        # the value lands in the setup stores (a blur alone does not reliably
+        # commit through Playwright's synthetic fill).
+        if pipeline_input.count() > 0:
+            pipeline_input.fill(PIPELINE_JSON.name, timeout=3000)
+            pipeline_input.press("Enter")
+            page.wait_for_timeout(600)
+        if metadata_input.count() > 0:
+            metadata_input.fill(TUNE_LAYOUT_CSV.name, timeout=3000)
+            metadata_input.press("Enter")
+            page.wait_for_timeout(800)
+        # Wait for the gate to unlock (Continue enabled) so the Setup screenshot
+        # shows the authored-ready state and the Run capture can proceed.
+        page.wait_for_selector(
+            "#tune-setup-continue:not([disabled])", timeout=5000
+        )
+    except Exception as exc:  # pragma: no cover - best-effort
+        print(f"[shot]   tune_copilot: setup authoring skipped: {exc!r}")
+
+
+def _continue_tune_setup(page) -> None:
+    """Press Setup's Continue to author the spec and switch to the Run view.
+
+    Continue (:data:`ids.TUNE_SETUP_CONTINUE`) authors a path-backed spec and
+    flips the active destination to ``run`` — which is what unlocks the Run
+    destination button (it is disabled until an authored spec exists). Waits for
+    the Run view's Deploy button to render so the caller's ``01_run.png`` lands
+    on the real Run form, not the Setup view. Best-effort.
+    """
+    button = page.locator("#tune-setup-continue")
+    if button.count() == 0:
+        print("[shot]   tune_copilot: setup Continue not found — Run capture skipped")
+        return
+    try:
+        button.click(timeout=4000)
+        # The authored-spec callback flips the destination store to ``run``;
+        # wait for the Run view (Deploy button) to become visible.
+        page.wait_for_selector("#tune-run-deploy", state="visible", timeout=6000)
+        page.wait_for_timeout(700)
+    except Exception as exc:  # pragma: no cover - best-effort
+        print(f"[shot]   tune_copilot: setup Continue skipped: {exc!r}")
+
+
 def _bind_tune_run_via_picker(page, *, run_dir_name: str) -> None:
     """Drive the runtime run picker to bind ``run_dir_name`` (Chunk C).
 
@@ -1749,7 +1826,7 @@ def _bind_tune_run_via_picker(page, *, run_dir_name: str) -> None:
     except Exception as exc:  # pragma: no cover - best-effort
         print(f"[shot]   tune_copilot: run-picker open skipped: {exc!r}")
         return
-    _save(page, "tune_copilot", "00b_run_picker_modal.png")
+    _save(page, "tune_copilot", "02b_run_picker_modal.png")
 
     # Navigate INTO the run directory: clicking its folder entry sets the
     # browse-dir to that folder, which is what "Bind this run" then binds.
@@ -1776,23 +1853,44 @@ def _bind_tune_run_via_picker(page, *, run_dir_name: str) -> None:
 
 
 def _capture_tune_copilot(context, base_url: str) -> None:
-    """Drive the tune co-pilot from empty → bound → each sub-tab.
+    """Drive the tune co-pilot through Setup → Run → Monitor and its sub-tabs.
 
-    First the EMPTY state: the page mounts run-unbound with the run picker.
+    The page lands on the **Setup** destination. :func:`_author_tune_setup` fills
+    the pipeline + metadata inputs (sandbox-relative ``pipeline.json`` /
+    ``tune_layout.csv``), which unlocks the **Run** destination; Run is captured
+    with its launch form + live command card + Deploy. Then **Monitor**:
     :func:`_bind_tune_run_via_picker` opens the sandbox-bounded picker, navigates
-    into the run directory, and clicks "Bind this run" — the real runtime binding
-    path — which swaps in the loaded views. Then Monitor is the default view (its
-    3-second poll fills the objective + importance figures + the trials table);
-    Curate pins the first two shortlist cards into A / B and picks a plate so the
-    overlays render; Space and Launch are captured as-mounted (their forms render
-    from the bound run's spec).
+    into the pre-built run directory, and clicks "Bind this run" — the real
+    runtime binding path — which swaps in the loaded views. Monitor is the
+    default sub-tab (its 3-second poll fills the objective + importance figures +
+    the trials table); Curate pins the first two shortlist cards into A / B and
+    picks a plate so the overlays render; Space and Launch are captured
+    as-mounted (their forms render from the bound run's spec).
     """
     page = context.new_page()
     page.goto(base_url + "/")
     page.wait_for_load_state("networkidle")
-    # Empty state: the pick-a-run prompt + the run picker, before any view loads.
-    _save(page, "tune_copilot", "00_empty_state.png")
 
+    # --- Setup: author a spec from the dataset pipeline + count layout --------
+    _author_tune_setup(page)
+    _save(page, "tune_copilot", "00_setup.png")
+
+    # --- Run: Continue authors the spec + switches to the Run destination -----
+    _continue_tune_setup(page)
+    # Scroll the live command card + Deploy into view — the novel launch
+    # affordances sit below the form fold in the capture viewport.
+    deploy = page.locator("#tune-run-deploy")
+    if deploy.count() > 0:
+        try:
+            deploy.scroll_into_view_if_needed(timeout=2000)
+            page.wait_for_timeout(500)
+        except Exception as exc:  # pragma: no cover - best-effort
+            print(f"[shot]   tune_copilot: run-deploy scroll skipped: {exc!r}")
+    _save(page, "tune_copilot", "01_run.png")
+
+    # --- Monitor: bind the pre-built run via the picker (read-only path) ------
+    _show_tune_destination(page, "monitor")
+    page.wait_for_timeout(400)
     # Bind the run at runtime via the picker (Browse → pick run dir → Bind).
     _bind_tune_run_via_picker(page, run_dir_name=TUNE_OUTPUT_DIR.name)
 
@@ -1801,7 +1899,7 @@ def _capture_tune_copilot(context, base_url: str) -> None:
     # ``trials.parquet`` journal. Wait several cycles so a journal-backed tick
     # has rendered the objective scatter + trials table before the screenshot.
     page.wait_for_timeout(10_000)
-    _save(page, "tune_copilot", "01_monitor.png")
+    _save(page, "tune_copilot", "02_monitor.png")
 
     # --- Curate: pin two shortlist cards (A then B) + pick a plate ------------
     _show_tune_subtab(page, "curate")
@@ -1828,15 +1926,15 @@ def _capture_tune_copilot(context, base_url: str) -> None:
     # The overlays render on a background pool and a poll swaps the figure in;
     # wait a couple of poll cycles so the colony overlay is visible.
     page.wait_for_timeout(3500)
-    _save(page, "tune_copilot", "02_curate.png")
+    _save(page, "tune_copilot", "03_curate.png")
 
     # --- Space: the inferred search-space knob rows --------------------------
     _show_tune_subtab(page, "space")
-    _save(page, "tune_copilot", "03_space.png")
+    _save(page, "tune_copilot", "04_space.png")
 
     # --- Launch: the strategy form + the live command card -------------------
     _show_tune_subtab(page, "launch")
-    _save(page, "tune_copilot", "04_launch.png")
+    _save(page, "tune_copilot", "05_launch.png")
 
     page.close()
 
