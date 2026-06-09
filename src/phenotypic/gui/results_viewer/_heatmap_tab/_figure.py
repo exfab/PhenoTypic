@@ -19,10 +19,12 @@ Order of operations (spec lines 1352-1356):
      a ``go.Scatter`` of `x`-markers) so curated cells render as
      muted-color exclusions rather than just NaN holes.
 
-Color choice: ``Viridis``. Perceptually uniform, colorblind-safe, and
-the de-facto scientific default for unsigned magnitude data
-(spec lines 1010-1011 don't mandate a colorscale; OI palette is for
-discrete series, not continuous gradients).
+Color choice: the single-variable navy-to-blue ramp from DESIGN.md "06 --
+Heatmap Colorscale" / "10 -- Well-Plate Grid" (``SEQUENTIAL_COLORSCALE``:
+near-transparent navy -> sky -> full navy). A plate map and a heatmap of the
+same data therefore read identically. Removed / excluded cells render in
+vermilion (the spec's failed/null color), CB-distinct from the ramp under all
+types. Never build a sequential scale from the categorical Okabe-Ito series.
 """
 from __future__ import annotations
 
@@ -33,9 +35,13 @@ import pandas as pd
 import plotly.graph_objects as go
 import polars as pl
 
-from phenotypic.gui._design import COLOR_MUTED, COLOR_NAVY
+from phenotypic.gui._design import COLOR_MUTED, OI_VERMILION
+from phenotypic.viz.figures import SEQUENTIAL_COLORSCALE, apply_theme
 
 from .._filtered_state import KEY_OBJECT_LABEL
+
+#: Plotly-shaped copy of the brand sequential ramp (list-of-[pos, color]).
+_HEATMAP_COLORSCALE = [[pos, color] for pos, color in SEQUENTIAL_COLORSCALE]
 
 #: Closed value-set for the aggregator dropdown. Kept in lock-step with
 #: the polars expression dispatch in :func:`_aggregate_grid_bins`.
@@ -177,7 +183,7 @@ def build_heatmap_figure(
             z=matrix,
             x=col_labels,
             y=row_labels,
-            colorscale="Viridis",
+            colorscale=_HEATMAP_COLORSCALE,
             colorbar={"title": {"text": color_col}},
             hovertemplate=(
                 f"{row_col}: %{{y}}<br>"
@@ -204,6 +210,7 @@ def build_heatmap_figure(
     for trace in overlay_traces:
         fig.add_trace(trace)
 
+    apply_theme(fig)  # Okabe-Ito colorway, mono numeric axes, brand grid/fonts.
     fig.update_layout(
         xaxis={
             "title": col_col,
@@ -217,9 +224,6 @@ def build_heatmap_figure(
             "constrain": "domain",
         },
         margin={"l": 60, "r": 30, "t": 60, "b": 40},
-        plot_bgcolor="white",
-        paper_bgcolor="white",
-        font={"color": COLOR_NAVY},
     )
     return fig
 
@@ -242,12 +246,11 @@ def _empty_state_figure(message: str) -> go.Figure:
         font={"color": COLOR_MUTED, "size": 14},
         align="center",
     )
+    apply_theme(fig)
     fig.update_layout(
         xaxis={"visible": False},
         yaxis={"visible": False},
         margin={"l": 20, "r": 20, "t": 20, "b": 20},
-        plot_bgcolor="white",
-        paper_bgcolor="white",
     )
     return fig
 
@@ -365,8 +368,9 @@ def _build_removed_overlay(
     * ``go.Heatmap`` at zero opacity covering the same grid, so the
       built-in Plotly hover machinery still reports "removed" rather
       than falling through to the data trace.
-    * ``go.Scatter`` of `x`-markers in :data:`COLOR_MUTED`. Marker size
-      uses the spec's ``min(14, max(6, cell_px * 0.5))`` formula.
+    * ``go.Scatter`` of `x`-markers in vermilion (:data:`OI_VERMILION`, the
+      spec's failed/excluded color). Marker size uses the spec's
+      ``min(14, max(6, cell_px * 0.5))`` formula.
 
     The frame is scanned for rows whose ``(ImageFile, Object_Label)``
     appears in ``removed_keys``; the matching ``(row, col)`` bins drive
@@ -422,7 +426,7 @@ def _build_removed_overlay(
         z=overlay_z,
         x=list(col_labels),
         y=list(row_labels),
-        colorscale=[[0, COLOR_MUTED], [1, COLOR_MUTED]],
+        colorscale=[[0, OI_VERMILION], [1, OI_VERMILION]],
         showscale=False,
         opacity=0.0,
         hovertemplate="(removed)<extra></extra>",
@@ -435,8 +439,8 @@ def _build_removed_overlay(
         marker={
             "symbol": "x",
             "size": marker_size,
-            "color": COLOR_MUTED,
-            "line": {"width": 1.5, "color": COLOR_MUTED},
+            "color": OI_VERMILION,
+            "line": {"width": 1.5, "color": OI_VERMILION},
         },
         name="Removed",
         hovertemplate="Removed<extra></extra>",

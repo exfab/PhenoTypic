@@ -33,7 +33,7 @@ from typing import TYPE_CHECKING, Optional, Protocol
 import plotly.graph_objects as go
 
 from phenotypic.gui._design import (
-    OI_BLUE,
+    OI_NAVY,
     OI_ORANGE,
 )
 from phenotypic.gui.tune._figures import transparent_layout
@@ -207,11 +207,11 @@ transparent_layout`); per-figure axes / legend are passed through ``overrides``.
 def build_objective_figure(trials: list["Trial"]) -> go.Figure:
     """The optimization-progress figure: running-best line + raw-score scatter.
 
-    The classic tuning trace. Two series, fixed colors from the Okabe-Ito
-    data palette (never UI ``COLOR_*``): the raw per-trial scores as an orange
-    scatter, overlaid by the monotone running-best (:func:`running_best`) as a
-    blue line. An empty journal yields an empty (but valid) figure so the poll
-    callback can assign it without a special case.
+    The classic tuning trace. Two series in the fixed Okabe-Ito order (never UI
+    ``COLOR_*``): the monotone running-best (:func:`running_best`) as the
+    primary navy line (series 1), overlaid on the raw per-trial scores as an
+    orange scatter (series 2). An empty journal yields an empty (but valid)
+    figure so the poll callback can assign it without a special case.
 
     Args:
         trials: The journaled trials in order (e.g. ``store.trials``).
@@ -240,7 +240,7 @@ def build_objective_figure(trials: list["Trial"]) -> go.Figure:
             y=best,
             mode="lines",
             name="running best",
-            line={"color": OI_BLUE, "width": 2},
+            line={"color": OI_NAVY, "width": 2},
         )
     )
     fig.update_layout(
@@ -273,7 +273,7 @@ def build_importance_figure(importances: dict[str, float]) -> go.Figure:
 
     fig = go.Figure()
     fig.add_trace(
-        go.Bar(x=names, y=weights, marker={"color": OI_BLUE}, name="importance")
+        go.Bar(x=names, y=weights, marker={"color": OI_NAVY}, name="importance")
     )
     fig.update_layout(
         **_monitor_layout(

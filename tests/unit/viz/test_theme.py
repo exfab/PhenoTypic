@@ -103,7 +103,19 @@ def test_paper_bgcolor_matches_design_bg() -> None:
 
 
 def test_font_family_does_not_drift_from_gui_design() -> None:
-    """The theme font stack mirrors ``gui/_design.FONT_FAMILY_BODY`` (no drift)."""
+    """The theme body-font stack mirrors ``gui/_design.FONT_FAMILY_BODY``."""
     from phenotypic.gui._design import FONT_FAMILY_BODY
 
     assert FONT_FAMILY == FONT_FAMILY_BODY
+
+
+def test_mono_font_does_not_drift_from_gui_design() -> None:
+    """The theme mono stack mirrors ``gui/_design.FONT_FAMILY_MONO`` (no drift).
+
+    Numeric axes / hover render in mono; keeping the two stacks identical means
+    a chart's tick labels match the GUI's mono data text exactly.
+    """
+    from phenotypic.gui._design import FONT_FAMILY_MONO as GUI_FONT_FAMILY_MONO
+    from phenotypic.viz.figures._theme import FONT_FAMILY_MONO
+
+    assert FONT_FAMILY_MONO == GUI_FONT_FAMILY_MONO

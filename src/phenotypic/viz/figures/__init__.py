@@ -6,10 +6,14 @@ root.
 """
 from __future__ import annotations
 
+from ._mpl_theme import phenotypic_mpl_context, phenotypic_rc
 from ._theme import (
+    FAILED_FILL,
     FONT_FAMILY,
+    FONT_FAMILY_MONO,
     OKABE_ITO,
     PHENOTYPIC_TEMPLATE_NAME,
+    SEQUENTIAL_COLORSCALE,
     apply_theme,
     register_phenotypic_template,
 )
@@ -17,7 +21,12 @@ from ._theme import (
 __all__ = [
     "PHENOTYPIC_TEMPLATE_NAME",
     "OKABE_ITO",
+    "SEQUENTIAL_COLORSCALE",
+    "FAILED_FILL",
     "FONT_FAMILY",
+    "FONT_FAMILY_MONO",
     "register_phenotypic_template",
     "apply_theme",
+    "phenotypic_rc",
+    "phenotypic_mpl_context",
 ]

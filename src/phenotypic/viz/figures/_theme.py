@@ -42,7 +42,10 @@ __all__ = [
     "MUTED",
     "BODY",
     "OKABE_ITO",
+    "SEQUENTIAL_COLORSCALE",
+    "FAILED_FILL",
     "FONT_FAMILY",
+    "FONT_FAMILY_MONO",
     "register_phenotypic_template",
     "apply_theme",
 ]
@@ -102,17 +105,41 @@ OKABE_ITO: tuple[str, ...] = (
     "#000000",  # black     -- overflow / ink
 )
 
+#: Single-variable sequential colorscale (DESIGN.md "06 -- Heatmap Colorscale"
+#: and "12 -- Continuous Colorbar"): near-transparent navy -> sky -> full navy.
+#: The one continuous ramp for plate maps / heatmaps / intensity overlays;
+#: never build a sequential scale from the categorical ``OKABE_ITO`` order.
+SEQUENTIAL_COLORSCALE: tuple[tuple[float, str], ...] = (
+    (0.0, "rgba(0,54,96,0.08)"),
+    (0.5, "#56B4E9"),
+    (1.0, "#003660"),
+)
+
+#: Fill for failed / null / removed cells on a heatmap or plate map: vermilion
+#: at 70% opacity (DESIGN.md "06" / "10"). Reads as a non-data exclusion against
+#: the navy-to-blue ramp under every CB type.
+FAILED_FILL: str = "rgba(213,94,0,0.7)"
+
 # ---------------------------------------------------------------------------
 # Typography (DESIGN.md "02 -- Typography")
 # ---------------------------------------------------------------------------
 
 #: Body font stack (IBM Plex Sans) matching ``phenotypic.gui._design``'s
 #: ``FONT_FAMILY_BODY``. The ``test_font_family_does_not_drift_from_gui_design``
-#: guard keeps the two in sync. (Phase 2 will route numeric axis ticks to the
-#: JetBrains Mono stack per DESIGN.md "02"; titles stay on this body stack.)
+#: guard keeps the two in sync. Used for chart titles, axis titles, and legend
+#: series names.
 FONT_FAMILY: str = (
     "'IBM Plex Sans', -apple-system, BlinkMacSystemFont, "
     '"Segoe UI", "Helvetica Neue", Arial, sans-serif'
+)
+
+#: Mono font stack (JetBrains Mono) matching ``phenotypic.gui._design``'s
+#: ``FONT_FAMILY_MONO``. Per DESIGN.md "02", all numeric data -- axis tick
+#: labels, hover values, colorbar ticks, annotations -- render in mono. Kept in
+#: sync with the GUI by ``test_mono_font_does_not_drift_from_gui_design``.
+FONT_FAMILY_MONO: str = (
+    "'JetBrains Mono', ui-monospace, \"SFMono-Regular\", Menlo, "
+    'Consolas, "Liberation Mono", "Courier New", monospace'
 )
 
 
@@ -135,10 +162,13 @@ def register_phenotypic_template() -> None:
         >>> "phenotypic" in pio.templates
         True
     """
+    # Numeric data renders in mono (axis ticks, hover, colorbar, annotations);
+    # titles, axis titles, and legend series names render in the body font
+    # (DESIGN.md "02 -- Typography" / "06 -- Chart Styling Rules").
     template = go.layout.Template(
         layout=dict(
             colorway=list(OKABE_ITO),
-            font=dict(family=FONT_FAMILY, color=BODY),
+            font=dict(family=FONT_FAMILY_MONO, color=BODY),
             paper_bgcolor=BG,
             plot_bgcolor=WHITE,
             title=dict(font=dict(family=FONT_FAMILY, color=NAVY)),
@@ -146,14 +176,14 @@ def register_phenotypic_template() -> None:
                 gridcolor=GRID,
                 linecolor=AXIS,
                 zerolinecolor=GRID,
-                tickfont=dict(family=FONT_FAMILY, color=MUTED),
+                tickfont=dict(family=FONT_FAMILY_MONO, color=MUTED),
                 title=dict(font=dict(family=FONT_FAMILY, color=BODY)),
             ),
             yaxis=dict(
                 gridcolor=GRID,
                 linecolor=AXIS,
                 zerolinecolor=GRID,
-                tickfont=dict(family=FONT_FAMILY, color=MUTED),
+                tickfont=dict(family=FONT_FAMILY_MONO, color=MUTED),
                 title=dict(font=dict(family=FONT_FAMILY, color=BODY)),
             ),
             legend=dict(font=dict(family=FONT_FAMILY, color=BODY)),

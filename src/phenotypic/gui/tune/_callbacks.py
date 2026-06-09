@@ -545,6 +545,14 @@ def _build_trials_table(store: "Optional[_ReadableStore]"):  # type: ignore[no-u
     """Render the trials ``DataTable`` from ``store`` (a placeholder when empty)."""
     from dash import dash_table, html
 
+    from phenotypic.gui._design import (
+        COLOR_MUTED,
+        COLOR_NAVY,
+        FONT_FAMILY_MONO,
+        FONT_SIZE_BODY_SM,
+        FONT_SIZE_CAPTION,
+    )
+
     if store is None or not store.trials:
         return html.P("No trials yet.", className="tune-monitor-note")
 
@@ -557,11 +565,28 @@ def _build_trials_table(store: "Optional[_ReadableStore]"):  # type: ignore[no-u
         }
         for t in store.trials
     ]
+    # Numeric columns render in mono per DESIGN.md "05 -- Data Tables": header
+    # is 11px mono uppercase muted with a 2px navy underline; cells are mono.
     return dash_table.DataTable(  # type: ignore[attr-defined]
         data=rows,
         columns=[{"name": col, "id": col} for col in _TRIALS_COLUMNS],
         page_size=10,
         sort_action="native",
+        style_cell={
+            "fontFamily": FONT_FAMILY_MONO,
+            "fontSize": FONT_SIZE_BODY_SM,
+            "padding": "4px 8px",
+            "textAlign": "left",
+        },
+        style_header={
+            "fontFamily": FONT_FAMILY_MONO,
+            "fontSize": FONT_SIZE_CAPTION,
+            "fontWeight": "500",
+            "textTransform": "uppercase",
+            "letterSpacing": "0.08em",
+            "color": COLOR_MUTED,
+            "borderBottom": f"2px solid {COLOR_NAVY}",
+        },
     )
 
 

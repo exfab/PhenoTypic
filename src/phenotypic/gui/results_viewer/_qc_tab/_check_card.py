@@ -27,6 +27,7 @@ from phenotypic.gui._design import (
     FONT_SIZE_LABEL,
 )
 from phenotypic.tools_._qc_recipe import QcRecipeEntry
+from phenotypic.viz.figures import apply_theme
 from phenotypic.gui.results_viewer._qc_tab import _ids as ids
 
 
@@ -38,12 +39,11 @@ def _empty_initial_figure() -> go.Figure:
     ``Output`` shape is stable.
     """
     fig = go.Figure()
+    apply_theme(fig)
     fig.update_layout(
         xaxis={"visible": False},
         yaxis={"visible": False},
         margin={"l": 20, "r": 20, "t": 10, "b": 10},
-        plot_bgcolor="white",
-        paper_bgcolor="white",
         height=320,
     )
     return fig
