@@ -51,7 +51,9 @@ def build_release_button(
     btn = dbc.Button(
         label,
         id=button_id,
-        color="warning",
+        # Outline secondary (navy on the brand remap), not "warning":
+        # Okabe-Ito orange is a data color and never a button fill (DESIGN.md "05").
+        color="secondary",
         outline=True,
         size="sm",
         n_clicks=0,

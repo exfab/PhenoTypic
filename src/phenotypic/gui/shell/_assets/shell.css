@@ -11,9 +11,13 @@
  *   - Primary palette (navy, blue, gold) for chrome
  *   - Okabe-Ito reserved for data viz only (we use it on capability
  *     badges as small chips, which DESIGN.md explicitly allows)
- *   - Single-family stack injected from gui/_design.py (currently Roboto)
- *     accessed via var(--font-display | --font-body | --font-mono)
+ *   - Three role fonts injected from gui/_design.py (IBM Plex Serif
+ *     display, IBM Plex Sans body, JetBrains Mono mono) accessed via
+ *     var(--font-display | --font-body | --font-mono)
  *   - 8pt spacing grid, navy-tinted shadows
+ *
+ * Topbar note: the topbar is intentionally navy (white ink, gold active-tab
+ * accent) -- a documented brand deviation from DESIGN.md §13's white topbar.
  */
 
 /* All design tokens (--font-*, --color-*, --oi-*, --text-*, --sp-*,
@@ -45,7 +49,7 @@
   align-items: stretch;
   gap: var(--sp-4);
   padding: 0 var(--sp-4);
-  height: 52px;
+  height: 56px;
   background: var(--color-navy);
   color: var(--color-white);
   border-bottom: 1px solid rgba(0, 0, 0, 0.25);
@@ -226,9 +230,9 @@
 }
 
 .shell-sidebar {
-  width: 280px;
-  flex: 0 0 280px;
-  background: var(--color-bg);
+  width: 240px;
+  flex: 0 0 240px;
+  background: var(--color-white);
   border-right: 1px solid var(--color-border);
   overflow-y: auto;
   /* Allow horizontal scroll when entry names are longer than the rail —
@@ -417,7 +421,7 @@
   flex: 1 1 auto;
   overflow-y: auto;
   padding: var(--sp-4);
-  background: var(--color-surface);
+  background: var(--color-bg);
 }
 
 /* ===========================================================================
