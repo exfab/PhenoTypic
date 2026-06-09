@@ -270,12 +270,12 @@ _PARETO_IMPORTANCE_FILENAME_TEMPLATE: Final[str] = "param_importance_{objective}
 # ---------------------------------------------------------------------------
 
 #: Per-group QC summary written by
-#: :func:`phenotypic.qc._runner.run_qc`. One row per
+#: :func:`phenotypic.tools_._qc_recipe._runner.run_qc`. One row per
 #: ``(instance_id, groupby key)``: the worst-direction metric, tri-state
 #: status, flag, member/flagged counts, and a worst-first ``rank``.
 QC_SUMMARY_PARQUET: Final[str] = "qc_summary.parquet"
 
-#: Per-group member colonies written by :func:`phenotypic.qc._runner.run_qc`.
+#: Per-group member colonies written by :func:`phenotypic.tools_._qc_recipe._runner.run_qc`.
 #: One row per ``(instance_id, group member)`` carrying the curation key
 #: (``Metadata_ImageFile`` + ``Object_Label``) plus the member's
 #: contributing value, so the Review gallery can render each group's tiles.
@@ -283,12 +283,12 @@ QC_MEMBERS_PARQUET: Final[str] = "qc_members.parquet"
 
 #: Snapshot of the ``qc`` config entries (``instance_id``/``class``/
 #: ``enabled``/``params``) that produced the current ``qc/`` artifact.
-#: Written by :func:`phenotypic.qc._runner.run_qc`.
+#: Written by :func:`phenotypic.tools_._qc_recipe._runner.run_qc`.
 QC_CONFIG_JSON: Final[str] = "qc_config.json"
 
 #: Per-module GUI review progress (``instance_id`` -> reviewed group keys +
 #: last position). Written **only** by the results-viewer QC Review tab;
-#: :func:`phenotypic.qc._runner.run_qc` never touches it. The CLI finalize
+#: :func:`phenotypic.tools_._qc_recipe._runner.run_qc` never touches it. The CLI finalize
 #: path clears it on every rerun (a fresh run resets review progress).
 QC_REVIEW_STATE_JSON: Final[str] = "review_state.json"
 

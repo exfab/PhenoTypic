@@ -10,7 +10,7 @@ replicate row in the bin so downstream curation can pick up the flag
 from any row.
 
 This is the robust analogue of
-:class:`~phenotypic.analysis._replicate_agreement.ReplicateAgreement`'s
+:class:`~phenotypic.analysis.qc._replicate_agreement.ReplicateAgreement`'s
 relative standard error: where the SE check is sensitive to a single
 outlying replicate, the MAD's 50% breakdown point keeps the metric
 stable until more than half the replicates disagree.
@@ -46,7 +46,7 @@ class RelativeMAD(QualityCheck):
     single mis-segmented or contaminated colony will not inflate it the
     way it inflates the relative standard error. It is therefore the
     robust counterpart to
-    :class:`~phenotypic.analysis._replicate_agreement.ReplicateAgreement`.
+    :class:`~phenotypic.analysis.qc._replicate_agreement.ReplicateAgreement`.
 
     ``_HIGHER_IS_BAD`` is ``True``: a larger relative MAD means worse
     replicate agreement, so the base class flags rows whose metric meets

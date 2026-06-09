@@ -7,7 +7,7 @@ uses it as the per-bin metric, then broadcasts the per-bin scalars back to
 every replicate row in the bin so downstream curation can pick up the flag
 from any row.
 
-Where :class:`~phenotypic.analysis._max_modz.MaxModifiedZScore` targets the
+Where :class:`~phenotypic.analysis.qc._max_modz.MaxModifiedZScore` targets the
 single worst member, this check measures *how many* members are robust
 outliers — a high fraction signals a systematically noisy group (e.g. a
 contaminated or mis-imaged plate) rather than one stray colony.

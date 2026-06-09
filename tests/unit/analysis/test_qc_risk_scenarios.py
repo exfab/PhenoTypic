@@ -16,7 +16,7 @@ any one check's internals:
   surface and via ``OperationRegistry.get_by_category("quality_check")``.
 
 The shipped check used for the *higher-is-bad* path is
-:class:`~phenotypic.analysis._replicate_agreement.ReplicateAgreement`,
+:class:`~phenotypic.analysis.qc._replicate_agreement.ReplicateAgreement`,
 imported from its concrete private module to be robust to ``__init__`` import
 timing. The *lower-is-bad* path is exercised here by a minimal in-file
 :class:`_LowerIsBadCheck` fixture so the abstract contract (validator,

@@ -1,4 +1,4 @@
-"""Unit tests for :func:`phenotypic.qc._runner.run_qc` artifact schema/content.
+"""Unit tests for :func:`phenotypic.tools_._qc_recipe._runner.run_qc` artifact schema/content.
 
 Verifies the compact ``qc/`` artifact:
 

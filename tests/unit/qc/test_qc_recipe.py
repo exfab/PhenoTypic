@@ -1,4 +1,4 @@
-"""Unit tests for the pipeline-backed :class:`phenotypic.qc._recipe.QcRecipe`.
+"""Unit tests for the pipeline-backed :class:`phenotypic.tools_._qc_recipe._recipe.QcRecipe`.
 
 Covers the Phase B recipe adapter contract:
 
