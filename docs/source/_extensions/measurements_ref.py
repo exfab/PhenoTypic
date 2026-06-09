@@ -1,18 +1,15 @@
-"""Sphinx extension that generates the Measurements Reference page.
+"""Sphinx extension that generates the Measurements Reference page tree.
 
-At ``builder-inited`` time, walks a registry of per-object ``MeasureFeature``
-classes paired with their ``MeasurementInfo`` enum(s) and writes
-``docs/source/measurements_ref/index.rst`` with one section per operator —
-the operator's lead docstring followed by a table of every label/description
-written to ``measurements.parquet``.
+At ``builder-inited`` time, this extension writes ``docs/source/measurements_ref``
+as a deterministic build artifact. The generated section has a compact landing
+page, separate Measurements and Metadata indexes, and one child page per public
+``phenotypic.schema.MeasurementInfo`` subclass so every schema enum participates
+in Sphinx navigation.
 
-This uses the same generate-at-build-time pattern as ``generate_downloadables_rst``
-in ``conf.py``; emitting a plain ``.rst`` (rather than a custom directive)
-guarantees Sphinx treats the section titles as real headings so the right-rail
-TOC, cross-references, and the parent toctree all work without special handling.
-
-The page is regenerated on every build, so renames or new measurements added to
-a ``MeasurementInfo`` subclass surface immediately — no manual maintenance.
+The pages are regenerated on every build, so renames or new measurements added
+to ``phenotypic.schema`` surface immediately. Do not edit generated
+``measurements_ref/*.rst`` files by hand; edit the source enums or this
+extension instead.
 """
 
 from __future__ import annotations
@@ -20,6 +17,10 @@ from __future__ import annotations
 import importlib
 import inspect
 import os
+import re
+import shutil
+from pathlib import Path
+from typing import Any
 
 from sphinx.util import logging as sphinx_logging
 
@@ -27,8 +28,8 @@ logger = sphinx_logging.getLogger(__name__)
 
 
 # (MeasureFeature qualified path, [MeasurementInfo qualified paths])
-# Per-object measurements only — QC, model metrics, and edge correction are
-# documented elsewhere. Order here drives section order on the rendered page.
+# Per-object measurements only. Order here drives the operator-oriented
+# section order on the rendered Measurements page.
 _REGISTRY: list[tuple[str, list[str]]] = [
     ("phenotypic.measure._measure_size.MeasureSize",
         ["phenotypic.schema.SIZE"]),
@@ -48,8 +49,8 @@ _REGISTRY: list[tuple[str, list[str]]] = [
             "phenotypic.schema.ColorHSV",
         ]),
     # MeasureColorComposition is commented out of ``phenotypic.measure.__all__``
-    # pending completion (see the TODO in ``measure/__init__.py``). Re-add it
-    # to the registry when it ships.
+    # pending completion (see the TODO in ``measure/__init__.py``). Its enum is
+    # still documented on the generated schema page.
     ("phenotypic.measure._measure_grid_spatial.MeasureGridSpatial",
         ["phenotypic.schema.GRID_SPATIAL"]),
     ("phenotypic.measure._measure_grid_linreg_stats.MeasureGridLinRegStats",
@@ -60,30 +61,142 @@ _REGISTRY: list[tuple[str, list[str]]] = [
         ["phenotypic.schema.SYMMETRIC_ZONES"]),
 ]
 
+_METADATA_INFO_NAMES: set[str] = {
+    "METADATA",
+    "ACQUISITION_METADATA",
+    "CONDITION_METADATA",
+    "EXPERIMENT_METADATA",
+    "GENETIC_METADATA",
+    "INCUBATION_METADATA",
+    "PLATE_METADATA",
+    "SAMPLE_METADATA",
+}
 
-_PAGE_INTRO = """\
-Measurements Reference
-======================
+_EXPERIMENTAL_TAG_NAMES: tuple[str, ...] = (
+    "ACQUISITION_METADATA",
+    "CONDITION_METADATA",
+    "EXPERIMENT_METADATA",
+    "GENETIC_METADATA",
+    "INCUBATION_METADATA",
+    "PLATE_METADATA",
+    "SAMPLE_METADATA",
+)
 
-Every column produced by PhenoTypic's per-object measurement operators,
-grouped by operator. If you've received a ``measurements.parquet`` from
-someone else and need to know what a column means, this is the page for
-you.
+_RST_ROLE_RE = re.compile(r":[a-zA-Z0-9_.:]+:`([^`]+)`")
 
-Each section below shows the operator's lead description followed by a
-table of every column it emits, with the short name (what appears in
-the parquet, prefixed with the category — e.g. ``Size_Area``) and a
-one-line description.
+_ROOT_INTRO = """\
+Measurements
+============
 
-This page is generated from the ``MeasurementInfo`` enums in
-``phenotypic.schema`` and stays in sync with the code
-automatically — do not edit ``measurements_ref/index.rst`` by hand; edit
-the docstrings or the registry in ``docs/source/_extensions/measurements_ref.py``.
+PhenoTypic uses ``MeasurementInfo`` enums to define stable column names for
+measurement outputs and metadata joins. Use this section to look up the columns
+that appear in exported DataFrames and to reuse the same names in downstream
+analysis code.
+
+.. toctree::
+   :maxdepth: 2
+   :hidden:
+
+   measurements/index
+   metadata/index
+
+.. grid:: 1 2 2 2
+   :gutter: 3
+
+   .. grid-item-card:: Measurements
+
+      Per-object measurements, analysis outputs, model metrics, quality-control
+      labels, and other non-metadata columns.
+
+      +++
+
+      .. button-ref:: measurements/index
+         :ref-type: doc
+         :click-parent:
+         :color: secondary
+         :expand:
+
+         Browse measurements
+
+   .. grid-item-card:: Metadata
+
+      Framework metadata and recommended experimental ``Metadata_*`` tags for
+      sample, plate, condition, incubation, acquisition, genetic, and experiment
+      annotations.
+
+      +++
+
+      .. button-ref:: metadata/index
+         :ref-type: doc
+         :click-parent:
+         :color: secondary
+         :expand:
+
+         Browse metadata
+
+"""
+
+_MEASUREMENTS_INTRO = """\
+Measurements
+============
+
+Every non-metadata ``MeasurementInfo`` enum exported by ``phenotypic.schema``.
+The generated pages below document each enum's full DataFrame column labels and
+descriptions.
+
+.. toctree::
+   :maxdepth: 1
+   :caption: MeasurementInfo
+   :hidden:
+
+{toctree_entries}
+
+Operator-Oriented Overview
+--------------------------
+
+The sections below retain the original operator grouping for per-object
+measurement operators. Each operator description is followed by the schema
+tables it emits.
+
+"""
+
+_METADATA_INTRO = """\
+Metadata
+========
+
+Use the ``Metadata_*`` column labels documented here when preparing external
+metadata tables for PhenoTypic. These labels streamline downstream processing
+because the package offers processing helpers based on these assumptions. If
+your input tables use different column names, provide a mapping before feeding
+them into PhenoTypic workflows.
+
+.. toctree::
+   :maxdepth: 1
+   :caption: MetadataInfo
+   :hidden:
+
+{toctree_entries}
+
+Framework Metadata
+------------------
+
+``METADATA`` covers framework-populated image bookkeeping columns.
+
+Experimental Tags
+-----------------
+
+The experimental-tag enums live under ``phenotypic.schema._experimental_tags``
+and provide a recommended vocabulary for biological and experimental
+annotations. They are recommended labels, not validators: arbitrary metadata
+columns are still accepted, but using the labels below keeps downstream
+processing simpler.
+
+{experimental_tag_list}
 
 """
 
 
-def _import(path: str):
+def _import(path: str) -> Any:
     """Import ``module.attr`` and return the attribute."""
     module_name, attr = path.rsplit(".", 1)
     module = importlib.import_module(module_name)
@@ -91,15 +204,7 @@ def _import(path: str):
 
 
 def _strip_appended_table(doc: str) -> str:
-    """Drop the auto-appended ``MeasurementInfo`` table from a docstring.
-
-    Each ``MeasureFeature`` module ends with
-    ``MeasureX.__doc__ = INFO.append_rst_to_doc(MeasureX)``, which glues
-    ``\\n\\n.. list-table::`` onto the bottom of the docstring at indent 0.
-    Strip the table *before* running ``inspect.cleandoc`` — otherwise the
-    flush-left table pins cleandoc's common margin to 0 and disables its
-    dedent on the still-indented continuation paragraphs above.
-    """
+    """Drop the auto-appended ``MeasurementInfo`` table from a docstring."""
     if not doc:
         return ""
     marker = "\n\n.. list-table::"
@@ -109,13 +214,7 @@ def _strip_appended_table(doc: str) -> str:
 
 
 def _lead_paragraphs(doc: str, max_paragraphs: int = 3) -> str:
-    """Return the first few paragraphs of a docstring.
-
-    Stops at the first Google-style section header (``Args:``, ``Returns:``,
-    ``Raises:``, ``Example:``, ``Notes:``, ``Attributes:``, etc.). This keeps
-    the reference page focused on the *what* of each operator rather than
-    its parameter table — that detail lives on the API page.
-    """
+    """Return the first few paragraphs of a docstring."""
     if not doc:
         return ""
     sections = (
@@ -143,34 +242,110 @@ def _lead_paragraphs(doc: str, max_paragraphs: int = 3) -> str:
     return "\n\n".join(paragraphs).strip()
 
 
-def _build_page(output_path: str) -> None:
-    """Assemble the full RST page and write it to ``output_path``."""
-    out: list[str] = [_PAGE_INTRO]
+def _doc_stem(info_name: str) -> str:
+    """Return the generated filename stem for a ``MeasurementInfo`` class."""
+    return info_name.lower()
 
-    # ``Object_Label`` is shared across every operator rather than owned by one
-    # ``MeasureFeature``, so it has no registry entry — emit it as a leading
-    # section above the per-operator tables.
+
+def _heading(title: str, underline: str) -> list[str]:
+    """Return an RST heading block."""
+    return [title, underline * len(title), ""]
+
+
+def _toctree_entries(info_names: list[str]) -> str:
+    """Format hidden toctree entries for generated enum pages."""
+    return "\n".join(f"   {_doc_stem(name)}" for name in info_names)
+
+
+def _experimental_tag_list() -> str:
+    """Return a bullet list of experimental-tag enum doc links."""
+    return "\n".join(
+        f"- :doc:`{name} <{_doc_stem(name)}>`"
+        for name in _EXPERIMENTAL_TAG_NAMES
+    )
+
+
+def _public_measurement_info_classes() -> dict[str, type[Any]]:
+    """Return public ``MeasurementInfo`` subclasses exported by schema."""
+    import phenotypic.schema as schema
+
+    info_base = schema.MeasurementInfo
+    infos: dict[str, type[Any]] = {}
+    for name in schema.__all__:
+        if name == "MeasurementInfo":
+            continue
+        value = getattr(schema, name, None)
+        if isinstance(value, type) and issubclass(value, info_base):
+            infos[name] = value
+    return infos
+
+
+def _full_column_table(info_cls: type[Any]) -> str:
+    """Render a table of full DataFrame column labels for an info enum."""
+    lines = [
+        f".. list-table:: Category: **{info_cls.category()}**",
+        "   :header-rows: 1",
+        "",
+        "   * - Column label",
+        "     - Description",
+    ]
+    for member in info_cls:
+        lines += [
+            f"   * - ``{member.value}``",
+            f"     - {_rst_cell_text(member.desc)}",
+        ]
+    return "\n".join(lines)
+
+
+def _rst_cell_text(text: str) -> str:
+    """Escape text that would otherwise be parsed as RST markup."""
+    normalized = _RST_ROLE_RE.sub(lambda match: f"``{match.group(1)}``", text)
+    return normalized.replace("|", r"\|")
+
+
+def _enum_page(info_cls: type[Any]) -> str:
+    """Build a standalone page for one ``MeasurementInfo`` enum."""
+    title = info_cls.__name__
+    out: list[str] = _heading(title, "=")
+    out.append(f"Python object: ``{info_cls.__module__}.{title}``")
+    out.append("")
+
+    description = _lead_paragraphs(_strip_appended_table(info_cls.__doc__ or ""))
+    if description:
+        out.append(_rst_cell_text(description))
+        out.append("")
+
+    out.append(_full_column_table(info_cls))
+    out.append("")
+    return "\n".join(out)
+
+
+def _append_object_identifier_section(out: list[str]) -> None:
+    """Append the shared object-label explanation to the measurements page."""
     try:
         object_info = _import("phenotypic.schema.OBJECT")
     except (ImportError, AttributeError) as err:
         logger.warning(
             "measurements_ref: could not import phenotypic.schema.OBJECT: %s", err
         )
-    else:
-        object_heading = "Object identifier"
-        out.append(object_heading)
-        out.append("-" * len(object_heading))
-        out.append("")
-        out.append(
-            "``Object_Label`` is the shared per-object key — the first column of "
-            "every operator's table below. Each detected colony is assigned a "
-            "unique integer label so all of its measurements line up across "
-            "operators when joined on this column."
-        )
-        out.append("")
-        out.append(object_info.rst_table())
-        out.append("")
-        out.append("")
+        return
+
+    out.extend(_heading("Object Identifier", "^"))
+    out.append(
+        "``Object_Label`` is the shared per-object key used by every "
+        "per-object measurement operator. Each detected colony is assigned a "
+        "unique integer label so its measurements line up across operators "
+        "when joined on this column."
+    )
+    out.append("")
+    out.append(object_info.rst_table())
+    out.append("")
+    out.append("")
+
+
+def _append_operator_sections(out: list[str]) -> None:
+    """Append the existing operator-oriented measurement overview."""
+    _append_object_identifier_section(out)
 
     for measure_path, info_paths in _REGISTRY:
         try:
@@ -193,9 +368,7 @@ def _build_page(output_path: str) -> None:
             continue
 
         heading = measure_cls.__name__
-        out.append(heading)
-        out.append("-" * len(heading))
-        out.append("")
+        out.extend(_heading(heading, "^"))
 
         description = _lead_paragraphs(_strip_appended_table(measure_cls.__doc__ or ""))
         if description:
@@ -203,32 +376,82 @@ def _build_page(output_path: str) -> None:
             out.append("")
 
         for info_cls in info_classes:
-            # Sub-heading per MeasurementInfo when an operator emits several
-            # (e.g. MeasureColor → XYZ / xy / Lab / HSV).
             if len(info_classes) > 1:
                 sub = info_cls.category()
-                out.append(sub)
-                out.append("^" * len(sub))
-                out.append("")
+                out.extend(_heading(sub, '"'))
             out.append(info_cls.rst_table())
             out.append("")
         out.append("")
 
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    with open(output_path, "w", encoding="utf-8") as fh:
-        fh.write("\n".join(out))
+
+def _write(path: Path, contents: str) -> None:
+    """Write a generated page, creating parent directories as needed."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(contents, encoding="utf-8")
+
+
+def _build_measurements_index(info_names: list[str]) -> str:
+    """Build the non-metadata measurements index page."""
+    out = [_MEASUREMENTS_INTRO.format(toctree_entries=_toctree_entries(info_names))]
+    _append_operator_sections(out)
+    return "\n".join(out)
+
+
+def _build_metadata_index(info_names: list[str]) -> str:
+    """Build the metadata index page."""
+    return _METADATA_INTRO.format(
+        toctree_entries=_toctree_entries(info_names),
+        experimental_tag_list=_experimental_tag_list(),
+    )
+
+
+def _build_pages(srcdir: str) -> None:
+    """Generate the complete measurements reference page tree under ``srcdir``."""
+    output_dir = Path(srcdir) / "measurements_ref"
+    if output_dir.exists():
+        shutil.rmtree(output_dir)
+
+    public_infos = _public_measurement_info_classes()
+    metadata_names = [
+        name for name in public_infos
+        if name in _METADATA_INFO_NAMES
+    ]
+    measurement_names = [
+        name for name in public_infos
+        if name not in _METADATA_INFO_NAMES
+    ]
+
+    _write(output_dir / "index.rst", _ROOT_INTRO)
+    _write(
+        output_dir / "measurements" / "index.rst",
+        _build_measurements_index(measurement_names),
+    )
+    _write(
+        output_dir / "metadata" / "index.rst",
+        _build_metadata_index(metadata_names),
+    )
+
+    for name in measurement_names:
+        _write(
+            output_dir / "measurements" / f"{_doc_stem(name)}.rst",
+            _enum_page(public_infos[name]),
+        )
+    for name in metadata_names:
+        _write(
+            output_dir / "metadata" / f"{_doc_stem(name)}.rst",
+            _enum_page(public_infos[name]),
+        )
 
 
 def _generate(app):
-    output_file = os.path.join(app.srcdir, "measurements_ref", "index.rst")
-    _build_page(output_file)
-    print(f"Generated {output_file}")
+    _build_pages(app.srcdir)
+    print(f"Generated {os.path.join(app.srcdir, 'measurements_ref')}")
 
 
 def setup(app):
     app.connect("builder-inited", _generate)
     return {
-        "version": "0.2",
+        "version": "0.3",
         "parallel_read_safe": True,
         "parallel_write_safe": True,
     }

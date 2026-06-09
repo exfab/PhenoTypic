@@ -69,9 +69,32 @@
       </ul>
     </li>
 
+    {# --- Measurements dropdown --- #}
+    {% set _measurements_active = _pn.startswith('measurements_ref/') %}
+    <li class="nav-item dropdown{% if _measurements_active %} current active{% endif %}">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal{% if _pn == 'measurements_ref/index' or _pn.startswith('measurements_ref/measurements/') %} current active{% endif %}"
+             href="{{ pathto('measurements_ref/measurements/index') }}">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal{% if _pn.startswith('measurements_ref/metadata/') %} current active{% endif %}"
+             href="{{ pathto('measurements_ref/metadata/index') }}">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
     {# --- Remaining top-level pages --- #}
     {% set _navbar_main = [
-        ('measurements_ref/index', 'Measurements Ref', 'measurements_ref/'),
         ('api_reference/index', 'API Reference', 'api_reference/'),
     ] %}
     {% for docname, title, prefix in _navbar_main %}
