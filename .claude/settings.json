@@ -1,5 +1,18 @@
 {
   "enabledPlugins": {
     "mcp-server-dev@claude-plugins-official": true
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv sync --group dev --group qt-test --group docs --all-extras",
+            "timeout": 60
+          }
+        ]
+      }
+    ]
   }
 }

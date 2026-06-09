@@ -3,4 +3,4 @@ version = 1
 name = "PhenoTypic"
 
 [setup]
-script = "uv sync --all-extras --group dev --group docs --group qt-tests"
+script = "uv sync --all-extras --group dev --group docs --group qt-test"

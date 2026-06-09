@@ -11,7 +11,6 @@
 [![Python](https://img.shields.io/pypi/pyversions/phenotypic)](https://pypi.org/project/phenotypic/)
 [![License](https://img.shields.io/github/license/exfab/PhenoTypic)](https://github.com/exfab/PhenoTypic/blob/main/LICENSE)
 [![GitHub release](https://img.shields.io/github/v/release/exfab/PhenoTypic)](https://github.com/exfab/PhenoTypic/releases)
-[![Issues](https://img.shields.io/github/issues/exfab/PhenoTypic)](https://github.com/exfab/PhenoTypic/issues)
 [![Pull requests](https://img.shields.io/github/issues-pr/exfab/PhenoTypic)](https://github.com/exfab/PhenoTypic/pulls)
 
 A modular image processing framework developed at the NSF Ex-FAB BioFoundry, focused on
@@ -171,18 +170,18 @@ Grid and random search work out of the box; the Optuna samplers
 
 # Module Overview
 
-| Module                  | Description                                                                                                                                                          |
-|-------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `phenotypic.analysis`   | Tools for downstream analysis of the data from phenotypic in various ways such as growth modeling or statistical filtering                                           |
-| `phenotypic.correction` | Different methods to improve the data quality of an image such as rotation to improve grid finding                                                                   |
-| `phenotypic.data`       | Sample images to experiment your workflow with                                                                                                                       |
-| `phenotypic.detect`     | A suite of operations to automatically detect objects in your images                                                                                                 |
-| `phenotypic.enhance`    | Preprocessing tools that alter a copy of your image and can improve the results of the detection algorithms                                                          |
-| `phenotypic.grid`       | Modules that rely on grid and object information to function                                                                                                         |
-| `phenotypic.measure`    | The various measurements PhenoTypic is capable of extracting from objects                                                                                            |
-| `phenotypic.detect.nn`  | GPU-accelerated detectors (SAM2, micro-sam) with checkpoint management — see [setup guide](https://exfab.github.io/PhenoTypic/how_to/pages/gpu_detection_setup.html) |
-| `phenotypic.refine`     | Different tools to edit the detected objects such as morphology, relabeling, joining, or removing                                                                    |
-| `phenotypic.prefab`     | Various premade image processing pipelines that are in use at ExFAB                                                                                                  |
+| Module                  | Description                                                                                                                                                                                                              |
+|-------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `phenotypic.analysis`   | Tools for downstream analysis of the data from phenotypic in various ways such as growth modeling or statistical filtering                                                                                               |
+| `phenotypic.correction` | Different methods to improve the data quality of an image such as rotation to improve grid finding                                                                                                                       |
+| `phenotypic.data`       | Sample images to experiment your workflow with                                                                                                                                                                           |
+| `phenotypic.detect`     | A suite of operations to automatically detect objects in your images                                                                                                                                                     |
+| `phenotypic.enhance`    | Preprocessing tools that alter a copy of your image and can improve the results of the detection algorithms                                                                                                              |
+| `phenotypic.grid`       | Modules that rely on grid and object information to function                                                                                                                                                             |
+| `phenotypic.measure`    | The various measurements PhenoTypic is capable of extracting from objects                                                                                                                                                |
+| `phenotypic.detect.nn`  | GPU-accelerated detectors (SAM2, micro-sam) with checkpoint management — see [setup guide](https://exfab.github.io/PhenoTypic/how_to/pages/gpu_detection_setup.html)                                                     |
+| `phenotypic.refine`     | Different tools to edit the detected objects such as morphology, relabeling, joining, or removing                                                                                                                        |
+| `phenotypic.prefab`     | Various premade image processing pipelines that are in use at ExFAB                                                                                                                                                      |
 | `phenotypic.tune`       | Hyperparameter-tuning engine: grid/random search plus Optuna samplers (behind the `tune` extra), pluggable scorers, robust held-out evaluation, distributed search over HPCC SLURM/Postgres, and a `/tune/` GUI co-pilot |
 
 # Sponsors
