@@ -1,0 +1,611 @@
+/* Tune co-pilot styles.
+ *
+ * This file declares no token block -- the design tokens (--color-*,
+ * --font-*, --sp-*, --radius*, --shadow*) are spliced into every Dash page by
+ * phenotypic.gui._design.inject_design_tokens(). This file only consumes
+ * them; it never redefines a shared value.
+ */
+
+.tune-page {
+    padding: var(--sp-4);
+    font-family: var(--font-body);
+    color: var(--color-body);
+    background: var(--color-bg);
+}
+
+/* The swappable page body — the bind callback replaces its children from the
+   pick-a-run prompt to the loaded four-view stack. A bare block; the views and
+   the empty-state prompt carry their own chrome. */
+.tune-page-body,
+.tune-body-inner {
+    display: block;
+}
+
+.tune-run-header {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--sp-3);
+    padding: var(--sp-3) var(--sp-4);
+    margin-bottom: var(--sp-4);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+    font-size: var(--font-size-header-2);
+    color: var(--color-heading);
+}
+
+.tune-run-title {
+    font-size: var(--font-size-header-2);
+    font-weight: 600;
+    color: var(--color-heading);
+}
+
+/* ---- Top-level destinations ------------------------------------------- */
+
+.tune-destination-row {
+    display: flex;
+    gap: var(--sp-2);
+    margin-bottom: var(--sp-4);
+    border-bottom: 1px solid var(--color-rule);
+}
+
+.tune-dest {
+    appearance: none;
+    border: none;
+    background: transparent;
+    color: var(--color-muted);
+    font-family: var(--font-body);
+    font-size: var(--font-size-label);
+    font-weight: 700;
+    padding: var(--sp-2) var(--sp-4);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: var(--transition);
+}
+
+.tune-dest:hover {
+    color: var(--color-body);
+}
+
+.tune-dest-active {
+    color: var(--color-blue);
+    border-bottom-color: var(--color-blue);
+}
+
+.tune-destination-views {
+    display: block;
+}
+
+.tune-setup {
+    display: grid;
+    gap: var(--sp-4);
+}
+
+.tune-setup-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+    padding: var(--sp-4);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    background: var(--color-surface);
+}
+
+.tune-setup-section h3 {
+    margin: 0;
+    font-size: var(--font-size-header-2);
+    color: var(--color-heading);
+}
+
+.tune-setup-path-input {
+    width: 100%;
+    max-width: 42rem;
+    padding: var(--sp-2) var(--sp-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    color: var(--color-body);
+    background: var(--color-surface);
+    font-family: var(--font-mono);
+    font-size: var(--font-size-caption);
+}
+
+.tune-setup-locked {
+    color: var(--color-muted);
+    background: var(--color-bg);
+    border-style: dashed;
+}
+
+.tune-setup-note {
+    color: var(--color-muted);
+    font-size: var(--font-size-body);
+}
+
+.tune-setup-footer {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.tune-setup-continue {
+    appearance: none;
+    border: 1px solid var(--color-blue);
+    border-radius: var(--radius-sm);
+    background: var(--color-blue);
+    color: var(--color-surface);
+    font-family: var(--font-body);
+    font-size: var(--font-size-label);
+    font-weight: 700;
+    padding: var(--sp-2) var(--sp-4);
+    cursor: pointer;
+}
+
+.tune-setup-continue:disabled {
+    border-color: var(--color-border);
+    background: var(--color-bg);
+    color: var(--color-muted);
+    cursor: not-allowed;
+}
+
+/* ---- Run destination ---------------------------------------------------- */
+
+.tune-run {
+    display: grid;
+    gap: var(--sp-4);
+}
+
+.tune-run-section {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: var(--sp-3);
+    padding: var(--sp-4);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    background: var(--color-surface);
+}
+
+.tune-run-section h3 {
+    flex: 1 0 100%;
+    margin: 0;
+    font-size: var(--font-size-header-2);
+    color: var(--color-heading);
+}
+
+.tune-run-field {
+    min-width: 12rem;
+}
+
+.tune-run-input {
+    min-width: 10rem;
+    padding: var(--sp-2) var(--sp-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    color: var(--color-body);
+    background: var(--color-surface);
+    font-family: var(--font-body);
+    font-size: var(--font-size-caption);
+}
+
+.tune-run-input-wide {
+    flex: 1 1 24rem;
+}
+
+.tune-run-mode {
+    min-width: 10rem;
+    font-size: var(--font-size-label);
+}
+
+.tune-run-note {
+    font-size: var(--font-size-caption);
+    color: var(--color-muted);
+}
+
+/* ---- Run picker (Chunk C — bind a tune output at runtime) -------------- */
+
+.tune-runpicker-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--sp-3);
+}
+
+.tune-runpicker-value {
+    font-family: var(--font-mono);
+    font-size: var(--font-size-caption);
+    color: var(--color-muted);
+    word-break: break-all;
+}
+
+.tune-runpicker-note {
+    font-size: var(--font-size-caption);
+    /* Vermilion is the design system's reserved error/alert color (DESIGN.md);
+       the run-picker note only ever carries a bind-failure message. */
+    color: var(--oi-vermilion);
+}
+
+/* ---- Sub-tab button row ------------------------------------------------ */
+
+.tune-subtab-row {
+    display: flex;
+    gap: var(--sp-2);
+    margin-bottom: var(--sp-4);
+    border-bottom: 1px solid var(--color-rule);
+}
+
+.tune-subtab {
+    appearance: none;
+    border: none;
+    background: transparent;
+    color: var(--color-muted);
+    font-family: var(--font-body);
+    font-size: var(--font-size-label);
+    font-weight: 600;
+    padding: var(--sp-2) var(--sp-4);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: var(--transition);
+}
+
+.tune-subtab:hover {
+    color: var(--color-body);
+}
+
+.tune-subtab-active {
+    color: var(--color-blue);
+    border-bottom-color: var(--color-blue);
+}
+
+/* ---- View containers --------------------------------------------------- */
+
+.tune-view {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+    padding: var(--sp-4);
+}
+
+.tune-view-hidden {
+    display: none;
+}
+
+/* ---- Monitor view ------------------------------------------------------ */
+
+.tune-monitor-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--sp-4);
+}
+
+.tune-monitor-full {
+    grid-column: 1 / -1;
+}
+
+.tune-gap-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-1);
+    padding: var(--sp-1) var(--sp-3);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-label);
+    font-weight: 600;
+}
+
+.tune-gap-badge-stable {
+    background: var(--color-surface);
+    color: var(--color-body);
+    border: 1px solid var(--color-border);
+}
+
+.tune-gap-badge-unstable {
+    background: var(--color-gold);
+    color: var(--color-navy);
+    border: 1px solid var(--color-gold);
+}
+
+.tune-monitor-note {
+    margin-top: var(--sp-3);
+    font-size: var(--font-size-caption);
+    color: var(--color-muted);
+}
+
+.tune-monitor-live,
+.tune-monitor-result {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--sp-3);
+    padding: var(--sp-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-bg);
+}
+
+.tune-monitor-live-card {
+    flex: 1 1 16rem;
+    min-height: 2.5rem;
+    font-family: var(--font-mono);
+    font-size: var(--font-size-caption);
+    color: var(--color-muted);
+    white-space: pre-wrap;
+}
+
+.tune-monitor-switcher-item {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+    margin: 0 var(--sp-2) var(--sp-2) 0;
+    padding: var(--sp-2) var(--sp-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    font-size: var(--font-size-caption);
+}
+
+.tune-monitor-switcher-active {
+    border-color: var(--color-blue);
+    color: var(--color-blue);
+}
+
+.tune-empty-state {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+    padding: var(--sp-8);
+    text-align: center;
+    color: var(--color-muted);
+    font-size: var(--font-size-body);
+}
+
+/* ---- Curate view ------------------------------------------------------- */
+
+.tune-curate {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-4);
+}
+
+.tune-curate-source-row {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+}
+
+.tune-curate-label {
+    font-size: var(--font-size-label);
+    font-weight: 600;
+    color: var(--color-heading);
+}
+
+.tune-curate-source-value {
+    font-family: var(--font-mono);
+    font-size: var(--font-size-caption);
+    color: var(--color-muted);
+    word-break: break-all;
+}
+
+.tune-curate-note,
+.tune-curate-prompt {
+    padding: var(--sp-3) var(--sp-4);
+    border: 1px dashed var(--color-border);
+    border-radius: var(--radius);
+    color: var(--color-muted);
+    font-size: var(--font-size-body);
+    background: var(--color-bg);
+}
+
+.tune-shortlist {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-3);
+}
+
+.tune-shortlist-card {
+    min-width: 8rem;
+    padding: var(--sp-2) var(--sp-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-sm);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.tune-shortlist-card:hover {
+    border-color: var(--color-blue);
+}
+
+.tune-shortlist-card.tune-shortlist-card-a {
+    border-color: var(--oi-sky);
+    border-width: 2px;
+}
+
+.tune-shortlist-card.tune-shortlist-card-b {
+    border-color: var(--oi-orange);
+    border-width: 2px;
+}
+
+.tune-card-title {
+    font-size: var(--font-size-label);
+    font-weight: 600;
+    color: var(--color-heading);
+}
+
+.tune-card-score {
+    font-size: var(--font-size-caption);
+    color: var(--color-muted);
+}
+
+.tune-curate-mode-toggle {
+    margin-bottom: var(--sp-3);
+}
+
+.tune-curate-sidebyside {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--sp-4);
+}
+
+/* Difference-mode hide wins over the side-by-side `display: grid`. A single
+ * `.tune-view-hidden{display:none}` class loses to the equally-specific
+ * `.tune-curate-sidebyside{display:grid}` declared later in this file, so the
+ * panels leaked through in Difference mode. These compound (two-class) rules
+ * raise specificity so the hidden state always wins. The analogous difference
+ * rule keeps the symmetry future-proof if `.tune-curate-difference` ever gains
+ * a non-`block` display. */
+.tune-curate-sidebyside.tune-view-hidden,
+.tune-curate-difference.tune-view-hidden {
+    display: none;
+}
+
+.tune-curate-winner {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    padding-top: var(--sp-3);
+    border-top: 1px solid var(--color-rule);
+}
+
+.tune-winner-note {
+    font-size: var(--font-size-caption);
+    color: var(--color-muted);
+}
+
+/* ---- Launch view ------------------------------------------------------- */
+
+.tune-launch {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-4);
+}
+
+.tune-launch-intro {
+    font-size: var(--font-size-body);
+    color: var(--color-muted);
+    margin: 0;
+}
+
+.tune-launch-form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: var(--sp-4);
+}
+
+.tune-launch-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-1);
+    min-width: 10rem;
+}
+
+.tune-launch-field-wide {
+    flex: 1 1 24rem;
+}
+
+.tune-launch-label {
+    font-size: var(--font-size-label);
+    font-weight: 600;
+    color: var(--color-heading);
+}
+
+.tune-launch-toggles {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+}
+
+.tune-launch-command {
+    display: block;
+    padding: var(--sp-3) var(--sp-4);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    background: var(--color-bg);
+    color: var(--color-body);
+    font-family: var(--font-mono);
+    font-size: var(--font-size-caption);
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+/* ---- Space view -------------------------------------------------------- */
+
+.tune-space {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-4);
+}
+
+.tune-space-intro {
+    font-size: var(--font-size-body);
+    color: var(--color-muted);
+    margin: 0;
+}
+
+.tune-space-knobs {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+}
+
+.tune-space-knob-row {
+    align-items: center;
+    gap: var(--sp-3);
+    padding: var(--sp-2) var(--sp-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+}
+
+.tune-space-key {
+    font-family: var(--font-mono);
+    font-size: var(--font-size-label);
+    font-weight: 600;
+    color: var(--color-heading);
+}
+
+.tune-space-review {
+    margin-left: var(--sp-2);
+}
+
+.tune-space-nested-note {
+    margin-left: var(--sp-2);
+    font-size: var(--font-size-caption);
+    color: var(--color-muted);
+}
+
+.tune-space-bound-label {
+    font-size: var(--font-size-caption);
+    color: var(--color-muted);
+    margin: 0 var(--sp-1);
+}
+
+.tune-space-bound {
+    max-width: 7rem;
+    display: inline-block;
+}
+
+.tune-space-fixed {
+    font-family: var(--font-mono);
+    font-size: var(--font-size-caption);
+    color: var(--color-muted);
+}
+
+.tune-space-export-bar {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    padding-top: var(--sp-3);
+    border-top: 1px solid var(--color-rule);
+}
+
+.tune-space-note {
+    font-size: var(--font-size-caption);
+    color: var(--color-muted);
+}
+
+.tune-space-empty {
+    color: var(--color-muted);
+    font-size: var(--font-size-body);
+}

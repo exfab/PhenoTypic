@@ -1,0 +1,80 @@
+{
+  "pipeline": {
+    "version": "0.16.0",
+    "name": "a348da19-84fd-4606-ad2c-bd07632c62c6",
+    "desc": null,
+    "reset": false,
+    "pipe_cfgs": {
+      "GaussianBlur": {
+        "class": "GaussianBlur",
+        "params": {
+          "sigma": 2.0,
+          "mode": "reflect",
+          "cval": 0.0,
+          "truncate": 4.0
+        }
+      },
+      "OtsuDetector": {
+        "class": "OtsuDetector",
+        "params": {
+          "ignore_zeros": false,
+          "ignore_borders": true
+        }
+      }
+    },
+    "meas": {},
+    "post": {},
+    "filters": {},
+    "model": null
+  },
+  "search_space": {
+    "knobs": [
+      {
+        "key": "1.ignore_zeros",
+        "domain": {
+          "kind": "categorical",
+          "choices": [
+            true,
+            false
+          ]
+        },
+        "conditional_on": null,
+        "source": "manual",
+        "needs_review": false,
+        "description": ""
+      }
+    ]
+  },
+  "scorer": {
+    "class": "QCScorer",
+    "params": {
+      "check": {
+        "on": "Object_Label",
+        "groupby": [
+          "Metadata_ImageName"
+        ],
+        "agg_func": "first",
+        "n_jobs": 1,
+        "warn_threshold": 0.05,
+        "fail_threshold": 0.1,
+        "unmatched_groups": [],
+        "metadata_source": "__METADATA_CSV__"
+      }
+    }
+  },
+  "evaluator": {
+    "stability_weight": 0.5,
+    "failure_score": 0.0,
+    "rung_floor": 6,
+    "rung_factor": 3,
+    "min_rungs": 2
+  },
+  "strategy": {
+    "seed": 0,
+    "kind": "grid"
+  },
+  "budget": {
+    "n_trials": null,
+    "max_failures": null
+  }
+}

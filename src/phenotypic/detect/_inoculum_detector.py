@@ -7,13 +7,14 @@ if TYPE_CHECKING:
 
 import gc
 import logging
-from typing import Literal
+from typing import Annotated, Literal
 
 import numpy as np
-from pydantic import field_validator, model_validator
+from pydantic import Field, model_validator
 from typing_extensions import Self
 
 from phenotypic.abc_ import ObjectDetector
+from phenotypic.tools_.typing_ import TuneSpec
 from phenotypic.detect._round_peaks_detector import RoundPeaksDetector
 from phenotypic.enhance._contrast_streching import ContrastStretching
 from phenotypic.enhance._gray_opening import GrayOpening
@@ -37,68 +38,62 @@ class InoculumDetector(ObjectDetector):
     that ``image.detect_mat`` is never modified. For a full comparison see
     :doc:`/explanation/detection_strategies_compared`.
 
+    Best For:
+        - Pin-tool inoculation on high-density plates (96-well, 384-well)
+          where inocula are 30--80 pixels in diameter.
+        - Spot-dilution assays producing 10--150 pixel inocula across
+          serial dilution series.
+        - Pre-growth phenotyping baselines (T=0 imaging) for establishing
+          reference coordinates before growth measurements.
+        - Liquid spotting assays where GMM core extraction refines
+          boundaries for accurate area and circularity measurements.
+
+    Consider Also:
+        - :class:`RoundPeaksDetector` when colonies (not inocula) must be
+          detected on a regular grid without multi-scale blob enhancement.
+        - :class:`OtsuDetector` when inocula are high-contrast and a simple
+          global threshold is sufficient.
+        - :class:`FilamentousFungiDetector` when inoculation sites have
+          developed into filamentous fungal growth.
+
     Args:
         min_diameter: Smallest expected inoculum diameter in pixels. Used
             to derive LoG minimum radius and GMM morphological parameters.
-            Set based on the smallest visible spot in your images. Default
-            30.0. Typical range: 5--80.
-
+            Set based on the smallest visible spot in your images. Typical
+            range: 5--80. Default: 30.0.
         max_diameter: Largest expected inoculum diameter in pixels. Used
             to derive Gaussian background subtraction sigma and LoG maximum
-            radius. Default 100.0. Typical range: 50--300. Must be greater
-            than *min_diameter*.
-
+            radius. Must be greater than ``min_diameter``. Typical range:
+            50--300. Default: 100.0.
         thresh_method: Thresholding method for binary segmentation within
-            the RoundPeaksDetector step. Options: ``'otsu'`` (default),
-            ``'mean'``, ``'local'``, ``'triangle'``, ``'minimum'``,
-            ``'isodata'``, ``'li'``. ``'otsu'`` works well for most
-            standardised setups; ``'local'`` adapts to spatial illumination
-            gradients.
-
-        enable_gmm: If True (default), apply Gaussian Mixture Model core
-            extraction to refine detected regions to bright, compact cores.
-            Disable for inocula that lack clear core-surround structure.
-
-        gmm_n_components: GMM components per region (default 2). 2
-            separates core from surround; increase only for complex
-            multi-layered spots.
-
+            the RoundPeaksDetector step. Accepted values: ``'otsu'``
+            (default), ``'mean'``, ``'local'``, ``'triangle'``,
+            ``'minimum'``, ``'isodata'``, ``'li'``. ``'otsu'`` works well
+            for most standardised setups; ``'local'`` adapts to spatial
+            illumination gradients. Default: ``'otsu'``.
+        enable_gmm: Apply Gaussian Mixture Model core extraction to refine
+            detected regions to bright, compact cores. Disable for inocula
+            that lack clear core-surround structure. Default: True.
+        gmm_n_components: Number of GMM components per region. Two
+            components separate core from surround; increase only for
+            complex multi-layered spots. Default: 2.
         gmm_separation_threshold: Normalised Euclidean distance between
-            GMM component means. Below this threshold a region is left
-            unmodified (no clear core). Default 0.9. Typical range:
-            0.8--1.2. Increase to make refinement less aggressive.
-
-        validate_obj_count: If True (default) and the input is a
-            ``GridImage``, raise ``ValueError`` when the detected object
-            count exceeds ``nrows * ncols``. Catches over-segmentation
-            early.
+            GMM component means below which a region is left unmodified
+            (no clear core). Increase to make refinement less aggressive.
+            Typical range: 0.8--1.2. Default: 0.9.
+        validate_obj_count: When True and the input is a ``GridImage``,
+            raise ``ValueError`` when the detected object count exceeds
+            ``nrows * ncols``. Catches over-segmentation early. Default:
+            True.
 
     Returns:
         Image: Input image with ``objmask`` (binary inoculum mask) and
         ``objmap`` (labelled inoculum map) populated.
 
     Raises:
-        ValueError: If detected object count exceeds grid capacity (when
-            *validate_obj_count* is True and input is a GridImage), or if
-            *min_diameter* >= *max_diameter*.
-
-    Best For:
-        * Pin-tool inoculation on high-density plates (96-well, 384-well)
-          where inocula are 30--80 pixels in diameter.
-        * Spot-dilution assays producing 10--150 pixel inocula across
-          serial dilution series.
-        * Pre-growth phenotyping baselines (T=0 imaging) for establishing
-          reference coordinates before growth measurements.
-        * Liquid spotting assays where GMM core extraction refines
-          boundaries for accurate area and circularity measurements.
-
-    Consider Also:
-        * :class:`RoundPeaksDetector` when colonies (not inocula) must be
-          detected on a regular grid without multi-scale blob enhancement.
-        * :class:`OtsuDetector` when inocula are high-contrast and a simple
-          global threshold is sufficient.
-        * :class:`FilamentousFungiDetector` when inoculation sites have
-          developed into filamentous fungal growth.
+        ValueError: If ``min_diameter`` >= ``max_diameter``, or if
+            detected object count exceeds grid capacity when
+            ``validate_obj_count`` is True and input is a GridImage.
 
     See Also:
         :doc:`/tutorials/notebooks/02_detecting_colonies`
@@ -109,48 +104,27 @@ class InoculumDetector(ObjectDetector):
             In-depth comparison of all detection strategies.
     """
 
-    min_diameter: float = 30.0
-    max_diameter: float = 100.0
+    # TODO: review bound (unverified vs literature)
+    min_diameter: Annotated[float, TuneSpec(5.0, 80.0, log=True)] = Field(30.0, gt=0.0)
+    # TODO: review bound (unverified vs literature)
+    max_diameter: Annotated[float, TuneSpec(50.0, 300.0, log=True)] = Field(100.0, gt=0.0)
     thresh_method: Literal[
         "otsu", "mean", "local", "triangle", "minimum", "isodata", "li"
     ] = "otsu"
     enable_gmm: bool = True
-    gmm_n_components: int = 2
-    gmm_separation_threshold: float = 0.9
+    gmm_n_components: Annotated[int, TuneSpec(2, 4)] = 2
+    # TODO: review bound (unverified vs literature)
+    gmm_separation_threshold: Annotated[float, TuneSpec(0.8, 1.2)] = 0.9
     validate_obj_count: bool = True
-
-    @field_validator("min_diameter")
-    @classmethod
-    def _check_min_diameter_positive(cls, value: float) -> float:
-        """Require ``min_diameter`` to be strictly positive.
-
-        Reproduces the ``min_diameter <= 0`` guard from the pre-migration
-        ``__init__`` (kept as a validator, not a ``Field(gt=0)``
-        constraint, so the original error message is preserved).
-        """
-        if value <= 0:
-            raise ValueError(f"min_diameter must be positive, got {value}")
-        return value
-
-    @field_validator("max_diameter")
-    @classmethod
-    def _check_max_diameter_positive(cls, value: float) -> float:
-        """Require ``max_diameter`` to be strictly positive.
-
-        Reproduces the ``max_diameter <= 0`` guard from the pre-migration
-        ``__init__``.
-        """
-        if value <= 0:
-            raise ValueError(f"max_diameter must be positive, got {value}")
-        return value
 
     @model_validator(mode="after")
     def _check_diameter_order(self) -> Self:
         """Require ``min_diameter`` to be strictly less than ``max_diameter``.
 
         Reproduces the cross-field guard from the pre-migration
-        ``__init__``; the per-field positivity checks live in the
-        ``min_diameter`` / ``max_diameter`` field validators above.
+        ``__init__``; the per-field positivity checks are enforced by the
+        ``Field(gt=0.0)`` constraints on ``min_diameter`` / ``max_diameter``
+        above.
         """
         if self.min_diameter >= self.max_diameter:
             raise ValueError(

@@ -1,78 +1,79 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Dict
+from typing import TYPE_CHECKING, Annotated, Dict
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
 import numpy as np
-from pydantic import field_validator
+from pydantic import Field
 from scipy.spatial import cKDTree
 from skimage.measure import regionprops_table
 import pandas as pd
 
 from ..abc_ import ObjectRefiner
+from ..tools_.typing_ import TuneSpec
 
 
 class MergeFragmentChains(ObjectRefiner):
-    """Merge nearby colony fragments using transitive closure of centroid distances.
+    """Merge groups of nearby colony fragments using transitive closure of centroid distances.
 
-    Finds all pairs of objects with centroids within the distance threshold,
-    then applies union-find with path compression to transitively merge
-    connected groups. If A is near B and B is near C, all three merge into
-    one detection even if A and C are not directly within threshold. Labels
-    are relabeled consecutively after merging.
+    Builds a KD-tree of object centroids, finds all pairs within
+    ``distance_threshold``, and applies union-find with path compression to
+    form transitive merger groups: if fragment A is near B and B is near C,
+    all three merge into one detection even when A and C are not directly
+    within threshold of each other. Labels are relabeled consecutively after
+    merging.
+
+    For a comparison of merging strategies, see
+    :doc:`/explanation/refinement_strategies`.
+
+    Best For:
+        - Repairing fragmented detections from watershed over-segmentation
+          where a single colony splits into several nearby pieces.
+        - Consolidating micro-fragments and satellite spots caused by
+          agar texture or thresholding artefacts.
+        - Plates with harsh internal shadows or glare that introduce voids
+          between mask pieces belonging to the same colony.
+        - Post-processing after aggressive small-object removal that leaves
+          fragmented colony edges.
+
+    Consider Also:
+        - :class:`SmallToLargeMerger` when only small fragments should
+          absorb into large anchor colonies while distinct large colonies
+          remain separate.
+        - :class:`NearestNeighborMerger` for size-selective nearest-neighbor
+          merging without transitive closure, preserving large colonies as
+          independent anchors.
+        - :class:`MaskClosing` for morphological closing that bridges small
+          gaps without relabeling objects.
 
     Args:
         distance_threshold: Maximum centroid-to-centroid distance in pixels
-            for merging. Typical range: 10--30. Lower values are
-            conservative; higher values merge more aggressively but risk
-            combining distinct colonies via transitive chains. Default: 20.0.
+            for two objects to be considered merge candidates. Lower values
+            are conservative and limit merging to close fragments; higher
+            values merge more aggressively but increase the risk of chaining
+            distinct colonies. Typical range: 10--50. Default: 20.0.
 
     Returns:
         Image: Input image with ``objmap`` updated so that transitively
-        connected fragments share a single label, relabeled consecutively.
+        connected fragment groups share a single label, relabeled
+        consecutively from 1. ``objmask``, ``rgb``, ``gray``, and
+        ``detect_mat`` are unchanged.
 
     Raises:
         ValueError: If ``distance_threshold`` is not positive.
 
-    Best For:
-        - Repairing fragmented detections from watershed over-segmentation
-          where a single colony splits into multiple touching regions.
-        - Consolidating micro-fragments and satellite spots caused by
-          thresholding artifacts or agar texture.
-        - Correcting detections on plates with harsh shadows or glare that
-          create internal voids within colony masks.
-        - Post-processing after aggressive noise removal that leaves
-          fragmented edges.
-
-    Consider Also:
-        - :class:`SmallToLargeMerger` when only small fragments should
-          merge into large anchors, preserving distinct large colonies.
-        - :class:`NearestNeighborMerger` for simple pairwise nearest-
-          neighbor merging without transitive closure.
-        - :class:`MaskClosing` for morphological closing that bridges small
-          gaps without relabeling.
-
     See Also:
-        :doc:`/how_to/notebooks/merge_fragmented_detections` for fragment
-        merging workflows.
+        :doc:`/how_to/notebooks/merge_fragmented_detections` for visual
+        fragment merging workflows on real plate images.
         :doc:`/explanation/refinement_strategies` for a comparison of
-        merging strategies.
+        merging approaches.
     """
 
-    distance_threshold: float = 20.0
-
-    @field_validator("distance_threshold")
-    @classmethod
-    def _validate_distance_threshold(cls, distance_threshold: float) -> float:
-        """Reject a non-positive ``distance_threshold``.
-
-        Reproduces the pre-migration ``__init__`` guard verbatim.
-        """
-        if distance_threshold <= 0:
-            raise ValueError("distance_threshold must be positive")
-        return distance_threshold
+    distance_threshold: Annotated[float, TuneSpec(10.0, 50.0)] = Field(
+            default=20.0, gt=0
+    )
 
     @staticmethod
     def _find_root(label: int, parent: Dict[int, int]) -> int:

@@ -1,55 +1,69 @@
 from __future__ import annotations
 
-from typing import Literal, TYPE_CHECKING
+from typing import Annotated, Literal, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
 from phenotypic.abc_ import ObjectRefiner
 from phenotypic.tools_.mixin import FootprintMixin
-from phenotypic.tools_.typing_ import NdArrayField
+from phenotypic.tools_.typing_ import NdArrayField, TuneSpec
 
 import numpy as np
 from skimage.morphology import erosion
 
 
 class MaskErosion(ObjectRefiner, FootprintMixin):
-    """Shrink colony masks inward to remove thin protrusions and noise pixels.
+    """Shrink colony masks inward by morphological erosion to remove boundary noise.
 
-    Removes outer boundary pixels from all objects, eliminating thin
-    whiskers, isolated specks, and uncertain boundary pixels from soft
-    edges. Leaves the core colony structure intact.
+    Removes outer boundary pixels from every detected object, eliminating thin
+    whiskers, isolated specks, and uncertain soft-edge pixels produced by
+    over-sensitive thresholding. The core colony structure is preserved but
+    masks are permanently reduced in area; pair with :class:`MaskDilation` or
+    use :class:`MaskOpening` if area must be recovered.
 
-    Args:
-        shape: Structuring element. ``'auto'``, ``'disk'``, ``'square'``,
-            ``'diamond'``, or custom ndarray. Default: ``None``.
-        width: Footprint width in pixels. Default: 3.
-        n_iter: Number of erosion iterations. Default: 1.
-
-    Returns:
-        Image: Input image with ``objmask`` and ``objmap`` eroded.
+    For an overview of morphological refinement methods, see
+    :doc:`/explanation/refinement_strategies`.
 
     Best For:
-        - Removing thin protrusions or whiskers from colony edges.
-        - Eliminating noise specks that survived previous cleanup.
-        - Excluding uncertain boundary pixels for higher-precision measurements.
+        - Removing thin protrusions or whisker artefacts extending from colony
+          edges after edge-sensitive detection.
+        - Eliminating isolated noise specks that survived previous cleanup
+          steps and registered as very small detections.
+        - Excluding uncertain boundary pixels before high-precision shape or
+          area measurements to tighten the colony footprint.
 
     Consider Also:
         - :class:`MaskDilation` for the opposite effect — expanding masks
-          outward.
-        - :class:`MaskOpening` for erosion-then-dilation that removes thin
-          features without permanently shrinking colonies.
-        - :class:`SmallObjectRemover` for removing small objects by area
-          rather than shrinking all objects.
+          outward to recover halos or bridge gaps.
+        - :class:`MaskOpening` for erosion followed by dilation that removes
+          thin protrusions without permanently shrinking the colony body.
+        - :class:`SmallObjectRemover` for discarding small objects entirely by
+          area threshold rather than shrinking all objects uniformly.
+
+    Args:
+        shape: Structuring element shape for the erosion footprint. ``"auto"``
+            scales a disk to the image size; ``"disk"``, ``"square"``, and
+            ``"diamond"`` use named shapes at the given ``width``; a NumPy
+            array provides a custom element; ``None`` uses the skimage library
+            default. Default: ``None``.
+        width: Footprint width in pixels when using a named shape. Larger values
+            erode more deeply inward. Typical range: 1--7. Default: 3.
+        n_iter: Number of erosion iterations applied sequentially. Each
+            additional iteration removes one further layer of boundary pixels.
+            Default: 1.
+
+    Returns:
+        Image: Input image with ``objmask`` and ``objmap`` eroded inward.
 
     See Also:
         :doc:`/explanation/refinement_strategies` for the recommended
-        refinement sequence.
+        morphological refinement sequence.
     """
 
     shape: Literal["auto", "square", "diamond", "disk"] | NdArrayField | None = None
-    width: int = 3
-    n_iter: int = 1
+    width: Annotated[int, TuneSpec(1, 7)] = 3
+    n_iter: Annotated[int, TuneSpec(1, 3)] = 1
 
     def _operate(self, image: Image) -> Image:
         if self.shape == "auto":

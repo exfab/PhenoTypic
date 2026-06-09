@@ -18,19 +18,20 @@ the images aligned with the implementation.
 |------|------|
 | [Setup](01_setup.md) | Generate the synthetic dataset and launch the hub. |
 | [File Explorer](02_file_explorer.md) | Navigate the sandbox sidebar and read capability badges. |
-| [Build a Pipeline](03_build_pipeline.md) | Compose a pipeline.json from the operations palette. |
+| [Build a Pipeline](03_build_pipeline.md) | Compose a pipeline.json with the fixed linear port map, side loader, and zoom controls. |
 | [Run Locally](04_run_local.md) | Submit a local subprocess run and tail the dashboard. |
 | [Run on SLURM](05_run_slurm.md) | Fill in SLURM resources and ship a submission to a cluster. |
 | [View Results](06_view_results.md) | Open the results viewer against a finished CLI output. |
 | [Pick points](07_pick_points.md) | Curate detected colonies manually with the in-builder point picker. |
 | [Analysis](08_analysis.md) | Compose `phenotypic.analysis` filters + endpoint model and emit `analysis.{csv,parquet}`. |
-| [Aux ports](09_aux_ports.md) | Wire operation-typed parameters (e.g. `FilamentousFungiDetector.inoculum_detector`) via Galaxy-style aux input ports. |
+| [Aux ports](09_aux_ports.md) | Fill operation-typed parameters (e.g. `FilamentousFungiDetector.inoculum_detector`) through side-loader port targets. |
 | [QC curation loop](10_qc_curation_loop.md) | Configure `QualityCheck` analyzers and curate flagged colonies in a tight feedback loop. |
 | [Heatmap exploration](11_heatmap_exploration.md) | Pick a measurement and walk through time on a plate to spot edge / contamination patterns. |
-| [Wire an aux in the DAG](12_aux_wire_in_dag.md) | Drag a detector block onto the canvas, draw a purple aux wire to a consumer's bottom-edge aux port (post-redesign primary aux flow). |
-| [Wire a Pipeline as aux](13_wire_pipeline_as_aux.md) | Wrap a multi-step chain inside a `Pipeline` container, then wire the container as a single aux producer. |
-| [Fix validation issues](14_fix_validation_issues.md) | Triage the toolbar issue badge — pan to the offending block, see the validator's explanation, resolve, re-enable preview. |
+| [Fill a scalar aux target](12_aux_wire_in_dag.md) | Select a gold side port, watch it turn green, and fill it with a compatible palette operation. |
+| [Open an embedded Pipeline aux](13_wire_pipeline_as_aux.md) | Fill a side value with `+ New Pipeline`, build the nested chain, and use breadcrumbs to return. |
+| [Fix validation issues](14_fix_validation_issues.md) | Triage the toolbar issue badge, fix missing side values, and understand unsupported development DAG states. |
 | [QC review walkthrough](15_qc_review.md) | Switch the QC tab to Review; walk worst-first groups for a module, curate in the tile gallery, mark reviewed, and watch the metric recompute in place. |
+| [Tune co-pilot](16_tune_copilot.md) | Open the `/tune/` read-only co-pilot over a tune output: monitor trials, curate A/B overlays, review the search space, and launch the next run. |
 
 ## Prerequisites
 
@@ -61,4 +62,5 @@ hub, see the [GUI hub guide](../../how_to/pages/gui_hub.md). This walkthrough is
 13_wire_pipeline_as_aux
 14_fix_validation_issues
 15_qc_review
+16_tune_copilot
 ```

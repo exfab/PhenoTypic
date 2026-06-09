@@ -11,50 +11,44 @@ from ..abc_ import ThresholdDetector
 
 
 class OtsuDetector(ThresholdDetector):
-    """Detect colonies by global Otsu thresholding on bimodal plate histograms.
+    """Detect colonies by minimising intra-class variance of the intensity histogram.
 
-    Automatically compute a single intensity threshold that minimises
-    within-class variance, separating colony foreground from agar background.
-    The resulting binary mask cleanly segments plates whose histograms are
-    bimodal (one peak for background, one for colonies). For a comparison of
-    all available detection strategies see
+    Automatically compute a single global threshold that separates colony
+    foreground from agar background by maximising the between-class intensity
+    variance. The resulting binary mask cleanly segments plates whose histograms
+    are bimodal. For a comparison of all available detection strategies see
     :doc:`/explanation/detection_strategies_compared`.
 
-    Args:
-        ignore_zeros: If True (default), exclude zero-intensity pixels from
-            threshold computation. Enable for plates with black borders or
-            masked regions; disable only when zero is a meaningful intensity
-            value. Typical range: True for most workflows.
-
-        ignore_borders: If True (default), remove colonies touching image
-            edges via ``clear_border()``. Recommended for grid-based colony
-            counting to eliminate partial colonies at plate boundaries.
-
-    Returns:
-        Image: Input image with ``objmask`` set to a binary colony mask
-        produced by Otsu thresholding and ``objmap`` set to labeled
-        connected components.
-
-    Raises:
-        ValueError: If threshold computation fails (e.g., all pixels share
-            the same intensity value, producing a degenerate histogram).
-
     Best For:
-        * Plates imaged under standardised lighting where the intensity
-          histogram has two well-separated peaks.
-        * Quick baseline detection requiring no parameter tuning.
-        * High-throughput screens with uniform agar colour and colony density.
-        * Comparing automatic methods -- Otsu is the standard reference
-          threshold.
-        * Clean plates with minimal dust, scratches, or condensation.
+        - Plates imaged under standardised lighting where the intensity
+          histogram shows two well-separated peaks.
+        - High-throughput screens with uniform agar colour and colony density.
+        - Clean plates with minimal dust, scratches, or condensation.
+        - Quick baseline detection requiring no parameter tuning.
 
     Consider Also:
-        * :class:`TriangleDetector` when colonies occupy a small fraction of
-          the plate and the histogram is skewed.
-        * :class:`HysteresisDetector` when colony intensity varies (e.g.,
-          young versus mature growth) and a single threshold under-segments.
-        * :class:`WatershedDetector` when touching colonies must be split
-          into individually labelled objects.
+        - :class:`TriangleDetector` when colonies occupy a small fraction of
+          the plate and the histogram is strongly skewed toward background.
+        - :class:`HysteresisDetector` when colony intensity varies across the
+          plate and a single threshold under-segments faint regions.
+        - :class:`WatershedDetector` when touching colonies must be split into
+          individually labelled objects.
+
+    Args:
+        ignore_zeros: Exclude zero-intensity pixels from the histogram before
+            computing the threshold. Enable for plates with black borders or
+            masked regions. Default: False.
+        ignore_borders: Remove colonies touching image edges via
+            ``clear_border()``. Recommended for grid-based colony counting
+            to eliminate partial colonies at plate boundaries. Default: True.
+
+    Returns:
+        Image: Input image with ``objmask`` set to the binary colony mask and
+        ``objmap`` set to labeled connected components.
+
+    Raises:
+        ValueError: If threshold computation fails due to a degenerate
+            histogram (e.g., all pixels share the same intensity value).
 
     References:
         [1] N. Otsu, "A threshold selection method from gray-level
@@ -62,12 +56,12 @@ class OtsuDetector(ThresholdDetector):
         pp. 62--66, 1979.
 
     See Also:
-        :doc:`/tutorials/notebooks/02_detecting_colonies`
-            Step-by-step tutorial for basic colony detection.
-        :doc:`/how_to/notebooks/choose_detection_algorithm`
-            Guide for selecting the right detector for your plate images.
-        :doc:`/explanation/detection_strategies_compared`
-            In-depth comparison of all detection strategies.
+        :doc:`/tutorials/notebooks/02_detecting_colonies` for a step-by-step
+        tutorial on basic colony detection.
+        :doc:`/how_to/notebooks/choose_detection_algorithm` for guidance on
+        selecting the right detector for your plate images.
+        :doc:`/explanation/detection_strategies_compared` for an in-depth
+        comparison of all thresholding strategies.
     """
 
     ignore_zeros: bool = False

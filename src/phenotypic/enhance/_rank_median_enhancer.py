@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import Annotated, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -10,6 +10,7 @@ from skimage.filters.rank import median
 from skimage.util import img_as_ubyte, img_as_float
 
 from phenotypic.abc_ import Smoothing
+from phenotypic.tools_.typing_ import TuneSpec
 
 
 class RankMedianEnhancer(Smoothing):
@@ -22,41 +23,53 @@ class RankMedianEnhancer(Smoothing):
 
     For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 
+    Best For:
+        - Salt-and-pepper or impulsive noise from sensor defects or scanner
+          CCD artifacts.
+        - Dust speckles and pixel-level artifacts on scanned plates.
+        - Grid-like imaging artifacts where a ``'square'`` footprint aligns
+          with the noise geometry.
+        - Pre-detection cleanup before applying a threshold-based detector.
+
+    Consider Also:
+        - :class:`LocalEdgeDenoise` for edge-preserving smoothing of
+          Gaussian noise without the uint8 conversion required by rank
+          filters.
+        - :class:`NonLocalMeansDenoiser` for patch-based denoising that
+          preserves fine colony texture better on noisy plates.
+        - :class:`GrayOpening` for morphological artifact removal that
+          does not require uint8 quantization.
+
     Args:
-        shape: Footprint geometry. ``'disk'`` for isotropic smoothing;
-            ``'square'`` (default) to align with grid artifacts.
+        shape: Footprint geometry. Accepted values: ``'disk'`` for
+            isotropic smoothing suited to round colonies; ``'square'``
+            (default) to align with grid-pattern sensor artifacts.
         width: Footprint width in pixels. Set smaller than the minimum
             colony diameter to preserve colony edges. ``None`` (default)
-            derives a small value from image size.
-        shift_x: Horizontal footprint offset. Typically 0. Default: 0.
-        shift_y: Vertical footprint offset. Typically 0. Default: 0.
+            auto-derives a small value as approximately 0.2 % of the
+            shorter image dimension.
+        shift_x: Horizontal offset of the footprint centre in pixels.
+            Non-zero values shift the filter kernel to correct for
+            directional streak artefacts. Default: 0.
+        shift_y: Vertical offset of the footprint centre in pixels.
+            Non-zero values shift the filter kernel to correct for
+            directional streak artefacts. Default: 0.
 
     Returns:
         Image: Input image with ``detect_mat`` median-filtered. ``rgb``
         and ``gray`` are unchanged.
 
-    Best For:
-        - Salt-and-pepper or impulsive noise from sensor defects.
-        - Dust speckles and pixel-level artifacts on scanned plates.
-        - Grid-like imaging artifacts when using a ``'square'`` footprint.
-
-    Consider Also:
-        - :class:`LocalEdgeDenoise` for edge-preserving Gaussian noise
-          removal without the intensity quantization of rank filters.
-        - :class:`NonLocalMeansDenoiser` for patch-based denoising that
-          preserves texture better on noisy plates.
-        - :class:`GrayOpening` for morphological artifact removal that
-          does not require uint8 conversion.
-
     See Also:
         :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a
         visual walkthrough of denoising pipelines on plate images.
+        :doc:`/explanation/what_enhancement_does` for background on rank
+        filtering and its role in colony detection pipelines.
     """
 
     shape: str = "square"
-    width: int | None = None
-    shift_x: int = 0
-    shift_y: int = 0
+    width: Annotated[int | None, TuneSpec(3, 15, step=2)] = None
+    shift_x: Annotated[int, TuneSpec(tunable=False)] = 0
+    shift_y: Annotated[int, TuneSpec(tunable=False)] = 0
 
     @field_validator("shape")
     @classmethod

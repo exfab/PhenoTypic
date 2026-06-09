@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal, Tuple
+from typing import TYPE_CHECKING, Annotated, Any, Literal, Tuple
 
 from pydantic import ValidationInfo, field_validator
 
@@ -10,6 +10,7 @@ if TYPE_CHECKING:
 import numpy as np
 from scipy.sparse import csr_matrix
 from phenotypic.abc_ import ImageCorrector
+from phenotypic.tools_.typing_ import TuneSpec
 
 #: The eleven fill strategies accepted by ``np.pad``. Declared as a
 #: ``Literal`` so the pre-migration ``__prescreen_params`` mode-membership
@@ -33,53 +34,60 @@ PadMode = Literal[
 class ImagePadder(ImageCorrector):
     """Extend image dimensions by adding pixels to any combination of edges.
 
-    Pad the image on the left, right, top, and/or bottom using a
+    Pads the image on the left, right, top, and/or bottom using a
     configurable fill mode. All image components (RGB, gray, detect_mat,
-    objmap) are padded in sync; the object map is always zero-padded to
-    preserve label integrity. When applied to a GridImage, grid structure
-    is preserved and positions are recalculated automatically.
+    objmap) are padded in sync; the object map is always zero-padded
+    regardless of ``mode`` to preserve integer label integrity. When applied
+    to a GridImage, grid structure is preserved and well positions are
+    recalculated automatically on the extended dimensions.
 
     For usage context, see :doc:`/how_to/notebooks/crop_and_pad`.
 
+    Best For:
+        - Adding safety margins before rotation so corner colonies are not
+          clipped by the fill boundary during rotation.
+        - Standardising image dimensions across a batch when plates were
+          positioned inconsistently in the scanner.
+        - Creating border space when colonies grow near plate edges,
+          improving subsequent grid detection accuracy.
+        - Pre-processing before convolution-based enhancers that produce
+          boundary artefacts on tight image borders.
+
+    Consider Also:
+        - :class:`ImageCropper` when the goal is to reduce image dimensions
+          rather than extend them.
+        - :class:`GridAligner` for correcting plate rotation, which is
+          typically paired with padding to protect corner colonies.
+
     Args:
-        left: Pixels to add on the left edge. ``None`` means no padding.
-            Typical range: 50--200. Default: ``None``.
-        right: Pixels to add on the right edge. ``None`` means no padding.
-            Typical range: 50--200. Default: ``None``.
-        top: Pixels to add on the top edge. ``None`` means no padding.
-            Typical range: 50--200. Default: ``None``.
-        bottom: Pixels to add on the bottom edge. ``None`` means no
-            padding. Typical range: 50--200. Default: ``None``.
+        left: Pixels to add on the left edge. ``None`` applies no padding.
+            Size to the artifact being protected (e.g. a margin wider than the
+            largest expected rotation shift). Default: ``None``.
+        right: Pixels to add on the right edge. ``None`` applies no padding.
+            Default: ``None``.
+        top: Pixels to add on the top edge. ``None`` applies no padding.
+            Default: ``None``.
+        bottom: Pixels to add on the bottom edge. ``None`` applies no padding.
+            Default: ``None``.
         mode: Fill strategy passed to ``np.pad``. Accepted values:
-            ``'constant'``, ``'reflect'``, ``'edge'``, ``'symmetric'``,
+            ``'constant'``, ``'edge'``, ``'reflect'``, ``'symmetric'``,
             ``'wrap'``, ``'linear_ramp'``, ``'maximum'``, ``'mean'``,
-            ``'median'``, ``'minimum'``, ``'empty'``. ``'edge'`` is safest
-            for colony analysis; ``'reflect'`` reduces convolution boundary
-            artifacts. Default: ``'constant'``.
-        constant_value: Fill value when ``mode='constant'``. ``0`` for
-            black borders, ``255`` for white. Default: ``0``.
+            ``'median'``, ``'minimum'``, ``'empty'``. ``'edge'`` replicates
+            the nearest border pixel (safest for colony analysis); ``'reflect'``
+            reduces convolution boundary artefacts; ``'constant'`` fills with a
+            uniform value. Default: ``'constant'``.
+        constant_value: Fill value used when ``mode='constant'``. Use ``0``
+            for black borders or ``255`` for white borders matching bright-agar
+            backgrounds. Default: ``0``.
 
     Returns:
         Image: Input image with all components padded by the specified
-        amounts. GridImage grid positions are recalculated.
+        amounts. GridImage grid positions are recalculated on the extended
+        dimensions.
 
     Raises:
         ValueError: If any padding value is negative.
-        ValueError: If ``mode`` is not a valid ``np.pad`` mode.
-
-    Best For:
-        - Adding safety margins before rotation so corner colonies are
-          not clipped.
-        - Standardizing image dimensions across a batch for pipelines
-          that require uniform size.
-        - Creating border space when colonies grow near plate edges,
-          improving grid detection accuracy.
-
-    Consider Also:
-        - :class:`ImageCropper` when the image needs to be reduced rather
-          than extended.
-        - :class:`GridAligner` for correcting plate rotation after
-          padding.
+        ValueError: If ``mode`` is not a recognised ``np.pad`` mode.
 
     See Also:
         :doc:`/how_to/notebooks/crop_and_pad` for a visual walkthrough
@@ -88,10 +96,11 @@ class ImagePadder(ImageCorrector):
         padding with rotation correction.
     """
 
-    left: int | None = None
-    right: int | None = None
-    top: int | None = None
-    bottom: int | None = None
+    # Per-edge pixel pad offsets — image-specific geometry, not a quality knob.
+    left: Annotated[int | None, TuneSpec(tunable=False)] = None
+    right: Annotated[int | None, TuneSpec(tunable=False)] = None
+    top: Annotated[int | None, TuneSpec(tunable=False)] = None
+    bottom: Annotated[int | None, TuneSpec(tunable=False)] = None
     mode: PadMode = "constant"
     constant_value: int | float = 0
 

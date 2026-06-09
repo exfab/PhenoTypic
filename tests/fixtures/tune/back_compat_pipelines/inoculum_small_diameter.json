@@ -1,0 +1,24 @@
+{
+  "version": "0.16.0",
+  "name": "12759c72-aa9a-4dba-a3d0-25b71ed04be1",
+  "desc": null,
+  "reset": false,
+  "pipe_cfgs": {
+    "InoculumDetector": {
+      "class": "InoculumDetector",
+      "params": {
+        "min_diameter": 5.0,
+        "max_diameter": 100.0,
+        "thresh_method": "otsu",
+        "enable_gmm": true,
+        "gmm_n_components": 2,
+        "gmm_separation_threshold": 0.9,
+        "validate_obj_count": true
+      }
+    }
+  },
+  "meas": {},
+  "post": {},
+  "filters": {},
+  "model": null
+}

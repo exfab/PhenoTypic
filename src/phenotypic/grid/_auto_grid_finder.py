@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import warnings
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, Annotated, Any, ClassVar
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -12,6 +12,7 @@ import numpy as np
 
 from phenotypic.abc_ import GridFinder
 from phenotypic.schema import BBOX, GRID
+from phenotypic.tools_.typing_ import TuneSpec
 
 
 class AutoGridFinderFallbackWarning(UserWarning):
@@ -112,9 +113,14 @@ class AutoGridFinder(GridFinder):
     # ``AutoGridFinder`` historically defaulted them to 8 / 12 (96-well
     # plate). Pydantic allows a subclass to add a default to an inherited
     # required field, so redeclare them here with the legacy defaults.
-    nrows: int = 8
-    ncols: int = 12
-    residual_fraction: float = 0.25
+    # ``nrows`` / ``ncols`` are structural plate-geometry parameters (the
+    # array layout, e.g. 8x12 = 96-well), not accuracy knobs, so they are
+    # excluded from the tuning search.
+    nrows: Annotated[int, TuneSpec(tunable=False)] = 8
+    ncols: Annotated[int, TuneSpec(tunable=False)] = 12
+    # Outlier threshold as a fraction of pitch; a fraction in (0, 1). The
+    # search window is a sensible sub-range, not the full valid domain.
+    residual_fraction: Annotated[float, TuneSpec(0.1, 0.5)] = 0.25
     warn: bool = False
     # ``tol`` / ``max_iter`` are deprecated, accepted-but-ignored
     # constructor parameters retained for backward compatibility. They are
@@ -122,8 +128,11 @@ class AutoGridFinder(GridFinder):
     # ``extra="forbid"``, legacy callers passing them still construct; a
     # non-``None`` value triggers a ``DeprecationWarning`` in
     # ``model_post_init``. The fitter never reads them.
-    tol: float | None = None
-    max_iter: int | None = None
+    # ``tol`` / ``max_iter`` are deprecated and ignored by the deterministic
+    # robust-fit algorithm (the fitter never reads them), so they cannot
+    # affect grid-fit quality and are excluded from the tuning search.
+    tol: Annotated[float | None, TuneSpec(tunable=False)] = None
+    max_iter: Annotated[int | None, TuneSpec(tunable=False)] = None
 
     def model_post_init(self, __context: Any) -> None:
         """Warn on deprecated ``tol`` / ``max_iter`` parameters.
@@ -1154,48 +1163,11 @@ class AutoGridFinder(GridFinder):
 
     # ------------------------------------------------------------------
     # Diagnostic dashboard() method
+    #
+    # Panels are built by the transient ``GridFitReport`` Plotly provider
+    # (``grid/_grid_fit_report.py``); ``dashboard()`` only runs the timed
+    # pipeline, computes the per-axis stats, and hands them to the report.
     # ------------------------------------------------------------------
-
-    # Okabe-Ito palette for the dashboard() diagnostic plots. Annotated
-    # ``ClassVar`` so pydantic keeps them as plain class constants — an
-    # un-annotated underscore name is otherwise collected as a
-    # ``ModelPrivateAttr`` and class-level access returns the wrapper.
-    _OI_NAVY: ClassVar[str] = "#003660"
-    _OI_ORANGE: ClassVar[str] = "#E69F00"
-    _OI_SKY: ClassVar[str] = "#56B4E9"
-    _OI_GREEN: ClassVar[str] = "#009E73"
-    _OI_VERMILION: ClassVar[str] = "#D55E00"
-    _OI_BLUE: ClassVar[str] = "#0072B2"
-    _OI_PURPLE: ClassVar[str] = "#CC79A7"
-    _OI_GREY: ClassVar[str] = "#BBBBBB"
-
-    @staticmethod
-    def _dashboard_rcparams() -> dict:
-        """Return standard dashboard matplotlib rcParams."""
-        return {
-            "axes.facecolor": "#ffffff",
-            "figure.facecolor": "#f5f7fa",
-            "axes.edgecolor": "#dde3ed",
-            "axes.grid": True,
-            "grid.color": "#e8ecf2",
-            "grid.linewidth": 0.8,
-            "axes.spines.top": False,
-            "axes.spines.right": False,
-            "axes.titlecolor": "#003660",
-            "axes.titleweight": "600",
-            "axes.titlesize": 11,
-            "axes.labelsize": 9,
-            "axes.labelcolor": "#2e3a4e",
-            "xtick.labelsize": 8,
-            "ytick.labelsize": 8,
-            "xtick.color": "#8892a4",
-            "ytick.color": "#8892a4",
-            "font.family": "sans-serif",
-            "font.sans-serif": ["DM Sans", "Helvetica Neue", "Arial"],
-            "axes.prop_cycle": __import__("matplotlib").cycler(color=[
-                "#003660", "#E69F00", "#56B4E9", "#009E73", "#0072B2", "#CC79A7",
-            ]),
-        }
 
     @staticmethod
     def _in_jupyter() -> bool:
@@ -1335,424 +1307,21 @@ class AutoGridFinder(GridFinder):
             "pipeline_path": pipeline_path,
         }
 
-    @classmethod
-    def _plot_timing_waterfall(cls, timings: dict[str, float]):
-        """Horizontal bar chart of per-step timing."""
-        import panel as pn
-        import matplotlib.pyplot as plt
+    def dashboard(self, image: Image, show_progress: bool = True) -> Any:
+        """Notebook Plotly diagnostic dashboard for grid fitting.
 
-        with plt.rc_context(cls._dashboard_rcparams()):
-            fig, ax = plt.subplots(figsize=(5, 2.5))
-            steps = list(timings.keys())
-            times = [timings[s] for s in steps]
-            total = sum(times)
+        Profiles the grid-fitting pipeline and returns a single composed
+        :class:`plotly.graph_objects.Figure` stacking the timing breakdown,
+        object-size distribution, centroid scatter with grid overlay,
+        per-axis spacing and occupancy panels, and a summary table. Useful
+        for identifying bottlenecks when ``grid.info()`` is slow (e.g. with
+        filamentous fungi images).
 
-            bars = ax.barh(steps, times, color=cls._OI_NAVY, height=0.6)
-            for bar, t in zip(bars, times):
-                ax.text(
-                    bar.get_width() + total * 0.02, bar.get_y() + bar.get_height() / 2,
-                    f"{t:.3f}s", va="center", fontsize=8,
-                    fontfamily="monospace", color="#2e3a4e",
-                )
-            ax.set_xlabel("Time (s)")
-            ax.set_title(f"Step Timing (total: {total:.3f}s)")
-            ax.invert_yaxis()
-            fig.tight_layout()
-            pane = pn.pane.Matplotlib(fig, tight=True, dpi=100)
-            plt.close(fig)
-            return pane
-
-    @classmethod
-    def _plot_object_size_dist(
-        cls, info_table: pd.DataFrame, nrows: int, ncols: int,
-        image_shape: tuple[int, ...],
-    ):
-        """Histogram of object bounding box areas with expected cell size."""
-        import panel as pn
-        import matplotlib.pyplot as plt
-
-        with plt.rc_context(cls._dashboard_rcparams()):
-            fig, ax = plt.subplots(figsize=(5, 3.5))
-
-            if info_table.empty:
-                ax.text(
-                    0.5, 0.5, "No objects detected", ha="center", va="center",
-                    fontsize=10, color="#8892a4", transform=ax.transAxes,
-                )
-                ax.set_title("Object Size Distribution")
-                fig.tight_layout()
-                pane = pn.pane.Matplotlib(fig, tight=True, dpi=100)
-                plt.close(fig)
-                return pane
-
-            heights = (
-                info_table[str(BBOX.MAX_RR)].values
-                - info_table[str(BBOX.MIN_RR)].values
-            )
-            widths = (
-                info_table[str(BBOX.MAX_CC)].values
-                - info_table[str(BBOX.MIN_CC)].values
-            )
-            areas = heights * widths
-
-            expected_cell_area = (
-                (image_shape[0] / nrows) * (image_shape[1] / ncols)
-            )
-            oversized_mask = areas > expected_cell_area
-
-            ax.hist(
-                areas[~oversized_mask], bins=50, color=cls._OI_NAVY,
-                alpha=0.8, label="Normal",
-            )
-            if oversized_mask.any():
-                ax.hist(
-                    areas[oversized_mask], bins=max(1, oversized_mask.sum() // 2),
-                    color=cls._OI_VERMILION, alpha=0.8,
-                    label=f"Oversized ({oversized_mask.sum()})",
-                )
-            ax.axvline(
-                expected_cell_area, ls="--", color=cls._OI_GREY, lw=1.5,
-                label="Expected cell area",
-            )
-            ax.set_xlabel("Bbox Area (px\u00b2)")
-            ax.set_ylabel("Count")
-            ax.set_title("Object Size Distribution")
-            ax.legend(fontsize=7, framealpha=0.8)
-            fig.tight_layout()
-            pane = pn.pane.Matplotlib(fig, tight=True, dpi=100)
-            plt.close(fig)
-            return pane
-
-    @classmethod
-    def _plot_center_scatter(
-        cls, info_table: pd.DataFrame, row_edges: np.ndarray,
-        col_edges: np.ndarray, image_shape: tuple[int, ...],
-    ):
-        """Scatter plot of weighted centroids with grid edge overlay."""
-        import panel as pn
-        import matplotlib.pyplot as plt
-
-        with plt.rc_context(cls._dashboard_rcparams()):
-            aspect = image_shape[1] / image_shape[0]
-            fig_h = 4.0
-            fig, ax = plt.subplots(figsize=(fig_h * aspect, fig_h))
-
-            if info_table.empty:
-                ax.text(
-                    0.5, 0.5, "No objects detected", ha="center", va="center",
-                    fontsize=10, color="#8892a4", transform=ax.transAxes,
-                )
-            else:
-                cc = info_table[str(BBOX.DIST_WEIGHTED_CENTER_CC)].values
-                rr = info_table[str(BBOX.DIST_WEIGHTED_CENTER_RR)].values
-                ax.scatter(
-                    cc, rr, s=4, alpha=0.5, color=cls._OI_NAVY,
-                    edgecolors="none",
-                )
-
-            for edge in row_edges:
-                ax.axhline(edge, color=cls._OI_VERMILION, lw=0.8, alpha=0.7)
-            for edge in col_edges:
-                ax.axvline(edge, color=cls._OI_VERMILION, lw=0.8, alpha=0.7)
-
-            ax.set_xlim(0, image_shape[1])
-            ax.set_ylim(image_shape[0], 0)
-            ax.set_xlabel("Column (px)")
-            ax.set_ylabel("Row (px)")
-            ax.set_title("Centroids with Grid Overlay")
-            fig.tight_layout()
-            pane = pn.pane.Matplotlib(fig, tight=True, dpi=100)
-            plt.close(fig)
-            return pane
-
-    @classmethod
-    def _plot_successive_diffs(
-        cls, row_stats: dict, col_stats: dict,
-        info_table_empty: bool,
-    ):
-        """Histogram of successive center diffs with pitch markers.
-
-        Reads ``centers``, ``image_pitch``, and ``fit_pitch`` from each
-        axis's stats dict (:meth:`_compute_axis_dashboard_stats`) — does
-        not recompute. Reference lines:
-
-        - **Green solid**: fitted pitch.
-        - **Vermilion dashed**: 1× image_pitch (structural prior).
-          When this disagrees with the green line, the plate doesn't
-          fill the image edge-to-edge.
-        - **Grey dashed/dotted**: 2× and 3× image_pitch for spotting
-          sparse-coverage peaks.
-        """
-        import panel as pn
-        import matplotlib.pyplot as plt
-
-        with plt.rc_context(cls._dashboard_rcparams()):
-            fig, axes = plt.subplots(1, 2, figsize=(8.5, 3.0))
-
-            for ax, stats in [(axes[0], row_stats), (axes[1], col_stats)]:
-                label = stats["label"]
-                image_pitch = stats["image_pitch"]
-                fit_pitch = stats["fit_pitch"]
-                centers = stats["centers"]
-
-                if info_table_empty:
-                    ax.text(
-                        0.5, 0.5, "No objects detected",
-                        ha="center", va="center", fontsize=10,
-                        color="#8892a4", transform=ax.transAxes,
-                    )
-                    ax.set_title(f"{label} diffs")
-                    continue
-
-                if len(centers) < 2:
-                    ax.text(
-                        0.5, 0.5, "<2 centers",
-                        ha="center", va="center", fontsize=10,
-                        color="#8892a4", transform=ax.transAxes,
-                    )
-                    ax.set_title(f"{label} diffs")
-                    continue
-
-                diffs = np.diff(centers)
-                diffs = diffs[diffs > 0]
-                if len(diffs) == 0:
-                    ax.text(
-                        0.5, 0.5, "No positive diffs",
-                        ha="center", va="center", fontsize=10,
-                        color="#8892a4", transform=ax.transAxes,
-                    )
-                    ax.set_title(f"{label} diffs")
-                    continue
-
-                bin_width = image_pitch / 8.0
-                upper = max(float(diffs.max()), 3.5 * image_pitch)
-                n_bins = max(int(np.ceil(upper / bin_width)), 1)
-                ax.hist(
-                    diffs, bins=n_bins, range=(0, upper + bin_width),
-                    color=cls._OI_NAVY, alpha=0.85,
-                )
-                ax.axvline(
-                    fit_pitch, color=cls._OI_GREEN, ls="-", lw=1.5,
-                    label=f"fit ({fit_pitch:.0f})",
-                )
-                ax.axvline(
-                    image_pitch, color=cls._OI_VERMILION, ls="--", lw=1.2,
-                    label=f"1x ip ({image_pitch:.0f})",
-                )
-                ax.axvline(
-                    2 * image_pitch, color=cls._OI_GREY, ls="--", lw=1.0,
-                    label="2x ip",
-                )
-                ax.axvline(
-                    3 * image_pitch, color=cls._OI_GREY, ls=":", lw=1.0,
-                    label="3x ip",
-                )
-
-                ax.set_xlabel("Δ between adjacent centers (px)")
-                ax.set_ylabel("count")
-                ax.set_title(
-                    f"{label} diffs (fit={fit_pitch:.0f}, "
-                    f"image_pitch={image_pitch:.0f})"
-                )
-                ax.legend(fontsize=7, framealpha=0.8)
-
-            fig.tight_layout()
-            pane = pn.pane.Matplotlib(fig, tight=True, dpi=100)
-            plt.close(fig)
-            return pane
-
-    @classmethod
-    def _plot_axis_occupancy(
-        cls, row_stats: dict, col_stats: dict,
-        info_table_empty: bool,
-    ):
-        """Bar chart of detection counts per cell index per axis.
-
-        Reads everything from the per-axis stats dicts produced by
-        :meth:`_compute_axis_dashboard_stats` — does **not** recompute
-        indices/counts. Primary bars (navy / vermilion) use ``fit_counts``
-        (the algorithm's decision); when ``stats["agree"]`` is False,
-        ``ip_counts`` is overlaid as horizontal grey markers for
-        comparison and the title reports both occupancies.
-        """
-        import panel as pn
-        import matplotlib.pyplot as plt
-
-        with plt.rc_context(cls._dashboard_rcparams()):
-            fig, axes = plt.subplots(1, 2, figsize=(8.5, 3.0))
-
-            for ax, stats in [(axes[0], row_stats), (axes[1], col_stats)]:
-                label = stats["label"]
-                n_expected = stats["n_expected"]
-                fit_counts = stats["fit_counts"]
-                ip_counts = stats["ip_counts"]
-                fit_occupied = stats["fit_occupied"]
-                ip_occupied = stats["ip_occupied"]
-
-                if info_table_empty:
-                    ax.text(
-                        0.5, 0.5, "No objects detected",
-                        ha="center", va="center", fontsize=10,
-                        color="#8892a4", transform=ax.transAxes,
-                    )
-                    ax.set_title(f"{label} occupancy")
-                    continue
-
-                colors = [
-                    cls._OI_VERMILION if c == 0 else cls._OI_NAVY
-                    for c in fit_counts
-                ]
-                bars = ax.bar(
-                    range(n_expected), fit_counts, color=colors,
-                    alpha=0.85, label="fitted",
-                )
-                for bar, c in zip(bars, fit_counts):
-                    if c > 0:
-                        ax.text(
-                            bar.get_x() + bar.get_width() / 2,
-                            bar.get_height(), str(int(c)),
-                            ha="center", va="bottom",
-                            fontsize=7, fontfamily="monospace",
-                            color="#2e3a4e",
-                        )
-
-                # Image-pitch counts as horizontal grey markers — only
-                # shown when they disagree with fitted (otherwise the
-                # plot stays clean).
-                if not stats["agree"]:
-                    ax.scatter(
-                        range(n_expected), ip_counts,
-                        marker="_", s=80, color=cls._OI_GREY, alpha=0.85,
-                        label="image-pitch",
-                    )
-                    ax.legend(fontsize=7, framealpha=0.8, loc="upper right")
-
-                ax.set_xticks(range(n_expected))
-                ax.set_xlabel(f"{label} index")
-                ax.set_ylabel("# detections")
-                if stats["agree"]:
-                    ax.set_title(
-                        f"{label} occupancy "
-                        f"({fit_occupied}/{n_expected} cells)"
-                    )
-                else:
-                    ax.set_title(
-                        f"{label} occupancy "
-                        f"(fit: {fit_occupied}/{n_expected}, "
-                        f"ip: {ip_occupied}/{n_expected})"
-                    )
-
-            fig.tight_layout()
-            pane = pn.pane.Matplotlib(fig, tight=True, dpi=100)
-            plt.close(fig)
-            return pane
-
-    @classmethod
-    def _build_inspect_summary(
-        cls, result: dict, row_stats: dict, col_stats: dict,
-        image_shape: tuple[int, ...],
-    ):
-        """Markdown summary panel with grid diagnostics.
-
-        Reads all per-axis numbers from the supplied stats dicts
-        (:meth:`_compute_axis_dashboard_stats`) — does not recompute.
-        """
-        import panel as pn
-
-        info_table = result["info_table"]
-        timings = result["timings"]
-        grid_df = result["grid_df"]
-        nrows = row_stats["n_expected"]
-        ncols = col_stats["n_expected"]
-
-        n_objects = len(info_table)
-        total_time = sum(timings.values())
-
-        # Objects per cell stats
-        if not grid_df.empty and str(GRID.ROW_MAJOR_IDX) in grid_df.columns:
-            counts = grid_df[str(GRID.ROW_MAJOR_IDX)].value_counts()
-            min_per_cell = int(counts.min()) if len(counts) > 0 else 0
-            med_per_cell = float(counts.median()) if len(counts) > 0 else 0
-            max_per_cell = int(counts.max()) if len(counts) > 0 else 0
-            occupied = len(counts)
-        else:
-            min_per_cell = med_per_cell = max_per_cell = occupied = 0
-
-        # Oversized objects
-        if not info_table.empty:
-            heights = (
-                info_table[str(BBOX.MAX_RR)].values
-                - info_table[str(BBOX.MIN_RR)].values
-            )
-            widths = (
-                info_table[str(BBOX.MAX_CC)].values
-                - info_table[str(BBOX.MIN_CC)].values
-            )
-            expected_cell_area = (
-                (image_shape[0] / nrows) * (image_shape[1] / ncols)
-            )
-            n_oversized = int((heights * widths > expected_cell_area).sum())
-        else:
-            n_oversized = 0
-
-        def _row_pair(label: str, fit: int, ip: int, total: int) -> str:
-            """Render a 'fit / ip' summary row, marking disagreements."""
-            same = fit == ip
-            marker = "" if same else " ⚠"
-            if same:
-                return (
-                    f"| {label} | {fit}/{total} ({fit / total:.0%}) |\n"
-                )
-            return (
-                f"| {label}{marker} | fit: {fit}/{total} "
-                f"({fit / total:.0%}), ip: {ip}/{total} "
-                f"({ip / total:.0%}) |\n"
-            )
-
-        md = (
-            f"### Summary\n\n"
-            f"| Metric | Value |\n"
-            f"|---|---|\n"
-            f"| Objects | {n_objects} |\n"
-            f"| Grid | {nrows} x {ncols} ({nrows * ncols} cells) |\n"
-            f"| Occupied cells | {occupied} |\n"
-            f"| Obj/cell (min / med / max) | {min_per_cell} / "
-            f"{med_per_cell:.1f} / {max_per_cell} |\n"
-            f"| Oversized objects | {n_oversized} |\n"
-            f"| Row pitch | {row_stats['fit_pitch']:.1f} px |\n"
-            f"| Col pitch | {col_stats['fit_pitch']:.1f} px |\n"
-            f"| Pipeline path | {result['pipeline_path']} |\n"
-            + _row_pair(
-                "Row occupancy", row_stats["fit_occupied"],
-                row_stats["ip_occupied"], nrows,
-            )
-            + _row_pair(
-                "Col occupancy", col_stats["fit_occupied"],
-                col_stats["ip_occupied"], ncols,
-            )
-            + _row_pair(
-                "Row span coverage", row_stats["fit_span"],
-                row_stats["ip_span"], nrows,
-            )
-            + _row_pair(
-                "Col span coverage", col_stats["fit_span"],
-                col_stats["ip_span"], ncols,
-            )
-            + f"| Total time | {total_time:.3f} s |\n"
-        )
-        return pn.pane.Markdown(
-            md, styles={"font-family": "'DM Sans', sans-serif"},
-        )
-
-    def dashboard(self, image: Image, show_progress: bool = True):
-        """Interactive diagnostic dashboard for grid fitting.
-
-        Profiles the grid-fitting pipeline and displays timing breakdown,
-        object size distribution, centroid scatter with grid overlay, and
-        summary statistics. Useful for identifying bottlenecks when
-        ``grid.info()`` is slow (e.g., with filamentous fungi images).
-
-        Uses an ipywidgets progress bar in Jupyter, tqdm otherwise.
+        The figures are built by the transient
+        :class:`~phenotypic.grid._grid_fit_report.GridFitReport` provider;
+        because every panel is control-free, ``report.dash()`` composes them
+        into one vertical subplot figure. Uses an ipywidgets progress bar in
+        Jupyter, tqdm otherwise.
 
         Args:
             image: Image with detected objects (must have objmap).
@@ -1760,15 +1329,15 @@ class AutoGridFinder(GridFinder):
                 profiling. Defaults to True.
 
         Returns:
-            Panel Column layout with 4 diagnostic panels.
+            A composed ``plotly.graph_objects.Figure`` with all diagnostic
+            panels stacked vertically.
 
         Notes:
             The ``inspect()`` name is reserved across the codebase for
-            methods returning a saveable matplotlib or plotly figure
-            consumed by the CLI's ``--save-inspect`` flag. This method
-            returns an interactive panel layout that does not flatten
-            to a static raster, so it is kept under the
-            :meth:`dashboard` name.
+            methods returning a saveable figure consumed by the CLI's
+            ``--save-inspect`` flag. This diagnostic surface is exposed
+            under :meth:`dashboard` instead, and ``AutoGridFinder`` does not
+            mix in ``FigureProvider`` so no ``inspect()`` is auto-discovered.
 
         Examples:
             >>> from phenotypic.data import load_synth_yeast_plate
@@ -1779,13 +1348,13 @@ class AutoGridFinder(GridFinder):
             >>> finder = AutoGridFinder(nrows=8, ncols=12)
             >>> dashboard = finder.dashboard(image)
         """
-        import panel as pn
+        from phenotypic.grid._grid_fit_report import GridFitReport
 
         result = self._run_timed_pipeline(image, show_progress=show_progress)
 
-        # Compute per-axis dashboard stats ONCE; every downstream panel
-        # consumes from these dicts so the numbers cannot drift between
-        # panels. See _compute_axis_dashboard_stats for the schema.
+        # Compute per-axis dashboard stats ONCE; the report reads from these
+        # dicts so the numbers cannot drift between panels. See
+        # _compute_axis_dashboard_stats for the schema.
         row_stats = self._compute_axis_dashboard_stats(
             result["info_table"], axis=0, n_expected=self.nrows,
             image_dim=image.shape[0], edges=result["row_edges"],
@@ -1794,41 +1363,17 @@ class AutoGridFinder(GridFinder):
             result["info_table"], axis=1, n_expected=self.ncols,
             image_dim=image.shape[1], edges=result["col_edges"],
         )
-        info_table_empty = bool(result["info_table"].empty)
 
-        header = pn.pane.Markdown(
-            f"## Grid Fitting Diagnostics -- {image.num_objects} objects, "
-            f"{self.nrows}x{self.ncols} grid",
-            styles={
-                "font-family": "'DM Sans', sans-serif",
-                "color": self._OI_NAVY,
-            },
+        report = GridFitReport(
+            result,
+            row_stats=row_stats,
+            col_stats=col_stats,
+            nrows=self.nrows,
+            ncols=self.ncols,
+            image_shape=image.shape,
+            num_objects=image.num_objects,
         )
-
-        p1 = self._plot_timing_waterfall(result["timings"])
-        p2 = self._plot_object_size_dist(
-            result["info_table"], self.nrows, self.ncols, image.shape,
-        )
-        p3 = self._plot_center_scatter(
-            result["info_table"], result["row_edges"],
-            result["col_edges"], image.shape,
-        )
-        p4 = self._build_inspect_summary(
-            result, row_stats, col_stats, image.shape,
-        )
-        p5 = self._plot_successive_diffs(
-            row_stats, col_stats, info_table_empty,
-        )
-        p6 = self._plot_axis_occupancy(
-            row_stats, col_stats, info_table_empty,
-        )
-
-        return pn.Column(
-            header,
-            pn.Row(p1, p4),
-            pn.Row(p3, p2),
-            pn.Row(p5, p6),
-        )
+        return report.dash()
 
 
 AutoGridFinder.measure.__doc__ = AutoGridFinder._operate.__doc__

@@ -38,11 +38,12 @@ class MyCustomEnhancer(ImageEnhancer):
 When loading a pipeline that contains `MyCustomEnhancer`, ensure
 `my_package` is installed and importable.
 
-## Plot and Dashboard Registry
+## Plot Registry
 
-Plotters and dashboards follow a similar pattern — they register
-through Python's class system and are accessible via the `image.plot`
-and `image.panel` accessors.
+Plotters follow a similar pattern — they register through Python's
+class system and are accessible via the `image.plot` accessor. Static
+figures come from `image.plot.<name>()`; interactive views are served
+through the `image.plot.dash.<name>()` sub-namespace.
 
 ## Naming Conventions
 

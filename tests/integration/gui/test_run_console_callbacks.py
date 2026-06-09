@@ -27,6 +27,7 @@ import pytest
 from phenotypic.gui.run_console._callbacks import _local_run_active
 from phenotypic.gui.run_console._runner import LocalRunner
 from phenotypic.gui.shell._runs_registry import RunRecord, RunRegistry
+from phenotypic.gui.shell._sandbox import SandboxRoot
 
 
 @pytest.fixture()
@@ -168,3 +169,75 @@ def test_pending_slurm_dict_takes_only_completed_futures() -> None:
     assert taken.result() == "done"
     # Already taken → next call returns None.
     assert _take_pending_slurm("slurm-pending-test") is None
+
+
+# ---------------------------------------------------------------------------
+# Shared source-image-root sync
+# ---------------------------------------------------------------------------
+
+def test_run_input_dir_builds_shared_source_payload(tmp_path: Path) -> None:
+    from phenotypic.gui.run_console._callbacks import (
+        _source_payload_for_input_dir,
+    )
+
+    plates = tmp_path / "plates"
+    plates.mkdir()
+    (plates / "plate.tif").write_bytes(b"")
+    sandbox = SandboxRoot.from_path(tmp_path)
+
+    payload = _source_payload_for_input_dir(sandbox, str(plates), None)
+
+    assert payload is not None
+    assert payload["abs_path"] == str(plates.resolve())
+    assert payload["source"] == "run-console"
+    assert payload["image_count"] == 1
+
+
+def test_run_input_dir_does_not_rewrite_matching_shared_source(
+    tmp_path: Path,
+) -> None:
+    from phenotypic.gui.run_console._callbacks import (
+        _source_payload_for_input_dir,
+    )
+    from phenotypic.gui.shell._source_context import source_payload_from_path
+
+    plates = tmp_path / "plates"
+    plates.mkdir()
+    sandbox = SandboxRoot.from_path(tmp_path)
+    current = source_payload_from_path(sandbox, plates, source="manual")
+
+    assert current is not None
+    assert _source_payload_for_input_dir(sandbox, str(plates), current) is None
+
+
+def test_shared_source_initializes_empty_run_input(tmp_path: Path) -> None:
+    from phenotypic.gui.run_console._callbacks import _input_dir_from_shared_source
+    from phenotypic.gui.shell._source_context import source_payload_from_path
+
+    plates = tmp_path / "plates"
+    plates.mkdir()
+    sandbox = SandboxRoot.from_path(tmp_path)
+    payload = source_payload_from_path(sandbox, plates, source="manual")
+
+    assert _input_dir_from_shared_source(sandbox, payload, None) == str(
+        plates.resolve()
+    )
+
+
+def test_shared_source_does_not_overwrite_non_empty_run_input(
+    tmp_path: Path,
+) -> None:
+    from phenotypic.gui.run_console._callbacks import _input_dir_from_shared_source
+    from phenotypic.gui.shell._source_context import source_payload_from_path
+
+    plates = tmp_path / "plates"
+    existing = tmp_path / "existing"
+    plates.mkdir()
+    existing.mkdir()
+    sandbox = SandboxRoot.from_path(tmp_path)
+    payload = source_payload_from_path(sandbox, plates, source="manual")
+
+    assert (
+        _input_dir_from_shared_source(sandbox, payload, str(existing))
+        is None
+    )

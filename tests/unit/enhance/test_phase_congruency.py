@@ -6,60 +6,67 @@ Tests parameter validation, output properties, and basic functionality.
 
 import pytest
 import numpy as np
+from pydantic import ValidationError
 
 from phenotypic import Image
 from phenotypic.enhance import FocusEdgePhase
 
 
 class TestPhaseCongruencyEnhancerParameterValidation:
-    """Test FocusEdgePhase parameter validation."""
+    """Test FocusEdgePhase parameter validation.
+
+    The bare-scalar bounds migrated from ``field_validator``s to
+    ``Field(ge=, le=, gt=, lt=)`` (the annotations workstream), so these assert
+    on the ``ValidationError`` *type* (a ``ValueError`` subclass) rather than the
+    old hand-rolled messages — the rejection contract is unchanged.
+    """
 
     def test_n_scale_less_than_one_raises_error(self):
-        """Test that n_scale < 1 raises ValueError."""
-        with pytest.raises(ValueError, match="n_scale must be >= 1"):
+        """Test that n_scale < 1 raises ValidationError."""
+        with pytest.raises(ValidationError):
             FocusEdgePhase(n_scale=0)
 
     def test_n_orient_less_than_one_raises_error(self):
-        """Test that n_orient < 1 raises ValueError."""
-        with pytest.raises(ValueError, match="n_orient must be >= 1"):
+        """Test that n_orient < 1 raises ValidationError."""
+        with pytest.raises(ValidationError):
             FocusEdgePhase(n_orient=0)
 
     def test_min_wavelength_less_than_two_raises_error(self):
-        """Test that min_wavelength < 2 raises ValueError."""
-        with pytest.raises(ValueError, match="min_wavelength must be >= 2"):
+        """Test that min_wavelength < 2 raises ValidationError."""
+        with pytest.raises(ValidationError):
             FocusEdgePhase(min_wavelength=1.5)
 
     def test_mult_less_than_or_equal_one_raises_error(self):
-        """Test that mult <= 1 raises ValueError."""
-        with pytest.raises(ValueError, match="mult must be > 1"):
+        """Test that mult <= 1 raises ValidationError."""
+        with pytest.raises(ValidationError):
             FocusEdgePhase(mult=1.0)
-        with pytest.raises(ValueError, match="mult must be > 1"):
+        with pytest.raises(ValidationError):
             FocusEdgePhase(mult=0.5)
 
     def test_sigma_onf_out_of_range_raises_error(self):
-        """Test that sigma_onf outside [0.1, 1.0] raises ValueError."""
-        with pytest.raises(ValueError, match="sigma_onf must be in"):
+        """Test that sigma_onf outside [0.1, 1.0] raises ValidationError."""
+        with pytest.raises(ValidationError):
             FocusEdgePhase(sigma_onf=0.05)
-        with pytest.raises(ValueError, match="sigma_onf must be in"):
+        with pytest.raises(ValidationError):
             FocusEdgePhase(sigma_onf=1.5)
 
     def test_negative_k_raises_error(self):
-        """Test that k < 0 raises ValueError."""
-        with pytest.raises(ValueError, match="k must be >= 0"):
+        """Test that k < 0 raises ValidationError."""
+        with pytest.raises(ValidationError):
             FocusEdgePhase(k=-1.0)
 
     def test_cutoff_out_of_range_raises_error(self):
-        """Test that cutoff outside (0, 1) raises ValueError."""
-        with pytest.raises(ValueError, match="cutoff must be in"):
+        """Test that cutoff outside (0, 1) raises ValidationError."""
+        with pytest.raises(ValidationError):
             FocusEdgePhase(cutoff=0.0)
-        with pytest.raises(ValueError, match="cutoff must be in"):
+        with pytest.raises(ValidationError):
             FocusEdgePhase(cutoff=1.0)
 
     def test_g_non_positive_raises_error(self):
-        """Test that g <= 0 raises ValueError."""
-        with pytest.raises(ValueError, match="g must be > 0"):
+        """Test that g <= 0 raises ValidationError."""
+        with pytest.raises(ValidationError):
             FocusEdgePhase(g=0.0)
-        with pytest.raises(ValueError, match="g must be > 0"):
+        with pytest.raises(ValidationError):
             FocusEdgePhase(g=-5.0)
 
     def test_invalid_output_raises_error(self):

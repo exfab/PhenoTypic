@@ -72,7 +72,7 @@ import json
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Final, Optional
+from typing import TYPE_CHECKING, Final, Iterable, Optional
 
 from .typing_ import (
     CheckpointType,
@@ -92,6 +92,60 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # CLI artifact filenames
 # ---------------------------------------------------------------------------
+
+LEGACY_JSON_SUFFIX: Final[str] = ".json"
+CONFIG_SUFFIX_PIPELINE: Final[str] = ".json.pht-pipe"
+CONFIG_SUFFIX_OPERATION: Final[str] = ".json.pht-op"
+CONFIG_SUFFIX_COLOR_CHECKER: Final[str] = ".json.pht-cc"
+CONFIG_SUFFIX_TUNING: Final[str] = ".json.pht-tune"
+CONFIG_SUFFIXES: Final[frozenset[str]] = frozenset(
+    {
+        CONFIG_SUFFIX_PIPELINE,
+        CONFIG_SUFFIX_OPERATION,
+        CONFIG_SUFFIX_COLOR_CHECKER,
+        CONFIG_SUFFIX_TUNING,
+    }
+)
+PIPELINE_CONFIG_SUFFIXES: Final[frozenset[str]] = frozenset(
+    {CONFIG_SUFFIX_PIPELINE, LEGACY_JSON_SUFFIX}
+)
+TUNING_CONFIG_SUFFIXES: Final[frozenset[str]] = frozenset(
+    {CONFIG_SUFFIX_TUNING, LEGACY_JSON_SUFFIX}
+)
+
+
+def has_config_suffix(path: str | Path, suffixes: Iterable[str]) -> bool:
+    """Return whether ``path`` ends with any configured suffix.
+
+    Matching is case-insensitive so callers can discover user-provided files
+    from case-preserving filesystems without rewriting their names.
+    """
+    text = str(path).lower()
+    return any(text.endswith(suffix.lower()) for suffix in suffixes)
+
+
+def matches_any_suffix(path: str | Path, suffixes: Iterable[str]) -> bool:
+    """Return whether ``path`` ends with any suffix in ``suffixes``."""
+    return has_config_suffix(path, suffixes)
+
+
+def ensure_typed_json_suffix(path: str | Path, suffix: str) -> Path:
+    """Return ``path`` with the canonical typed JSON suffix appended.
+
+    Bare stems receive the full typed suffix. Legacy ``.json`` paths receive
+    only the typed tail, preserving the user-provided stem and case.
+    """
+    target = Path(path)
+    text = str(target)
+    lowered = text.lower()
+    canonical_suffix = suffix.lower()
+    if lowered.endswith(canonical_suffix):
+        return target
+    if lowered.endswith(LEGACY_JSON_SUFFIX):
+        typed_tail = suffix.removeprefix(LEGACY_JSON_SUFFIX)
+        return Path(f"{text}{typed_tail}")
+    return Path(f"{text}{suffix}")
+
 
 #: Master archive of all aggregated measurements (clean, pre-post). Written by
 #: :func:`phenotypic._cli._cli_output_manager.aggregate_measurements` after
@@ -129,7 +183,8 @@ ANALYSIS_PARQUET: Final[str] = "analysis.parquet"
 #: CLI (and rewritten by the analysis GUI on every recipe edit). Captures
 #: operations, measurements, post, filters, and model — i.e. the whole
 #: reproducibility surface.
-PIPELINE_JSON: Final[str] = "pipeline.json"
+PIPELINE_JSON: Final[str] = f"pipeline{CONFIG_SUFFIX_PIPELINE}"
+_LEGACY_PIPELINE_JSON: Final[str] = f"pipeline{LEGACY_JSON_SUFFIX}"
 
 #: Resume-state JSON written by ``ProcessingState.save`` and read by
 #: ``ProcessingState.load`` when ``--resume`` is passed.
@@ -141,17 +196,86 @@ PROCESSING_STATE_JSON: Final[str] = "processing_state.json"
 #: :func:`readme_md_path`.
 README_MD: Final[str] = "README.md"
 
+#: The resolved tuning spec echoed by ``python -m phenotypic.tune``
+#: into :data:`DIR_DELIVERABLES` — the self-contained, re-runnable recipe.
+TUNING_SPEC_JSON: Final[str] = f"tuning_spec{CONFIG_SUFFIX_TUNING}"
+_LEGACY_TUNING_SPEC_JSON: Final[str] = f"tuning_spec{LEGACY_JSON_SUFFIX}"
+
+#: The winning best pipeline written by the tune CLI into
+#: :data:`DIR_DELIVERABLES`; reloads as a runnable ``ImagePipeline``.
+BEST_PIPELINE_JSON: Final[str] = f"best_pipeline{CONFIG_SUFFIX_PIPELINE}"
+_LEGACY_BEST_PIPELINE_JSON: Final[str] = f"best_pipeline{LEGACY_JSON_SUFFIX}"
+
+#: Sidecar with the selected headline trial's params and scores, written by the
+#: tune CLI into :data:`DIR_DELIVERABLES` for GUI Monitor display.
+BEST_PARAMS_JSON: Final[str] = "best_params.json"
+
+#: The RF-permutation ``param_importance.json`` report written by the tune
+#: CLI into :data:`DIR_DELIVERABLES`.
+PARAM_IMPORTANCE_JSON: Final[str] = "param_importance.json"
+
+#: The tune trial journal ``trials.parquet`` written at the output-dir root
+#: (powers CLI resume), not under :data:`DIR_DELIVERABLES`.
+TRIALS_PARQUET: Final[str] = "trials.parquet"
+
+#: The canonical Optuna study database ``study.db`` (SQLite WAL) written inside
+#: the hidden tune cache (:data:`DIR_PHT_TUNE_CACHE`). Holds the Optuna-backed
+#: store's persistent, resumable sampler state when the ``tune`` extra is used.
+#: A legacy run wrote it at the output root; :func:`resolve_study_db_path` reads
+#: either location (no migration).
+STUDY_DB: Final[str] = "study.db"
+
+#: The robust-eval held-out split assignment ``split.json`` written inside
+#: :data:`DIR_SPLITS`. A machine-state sidecar — it must survive a
+#: fresh-master rewrite and gate resume — so it lives in the hidden tune cache
+#: (:data:`DIR_PHT_TUNE_CACHE`), not under :data:`DIR_DELIVERABLES`. See
+#: :func:`tune_cache_split_assignment_path`.
+SPLIT_ASSIGNMENT_JSON: Final[str] = "split.json"
+
+#: The tune-run marker ``run.json`` written into :data:`DIR_PHT_TUNE_CACHE` at
+#: run START (before any deliverable exists), so the GUI shell classifier can
+#: recognise a live or finished tune output even before ``deliverables/`` lands.
+#: Carries the study identity + storage URL + run policy. See
+#: :func:`tune_cache_run_marker_path`.
+RUN_MARKER_JSON: Final[str] = "run.json"
+
+#: The robust-eval generalization report ``generalization.json`` written into
+#: :data:`DIR_DELIVERABLES` — a user-facing deliverable (the winner's held-out
+#: gap verdict). See :func:`generalization_path`.
+GENERALIZATION_JSON: Final[str] = "generalization.json"
+
+#: The Pareto-front parquet written by a **multi-objective** tune run into
+#: :data:`DIR_PARETO` (under ``deliverables/``). One row per non-dominated trial
+#: (the same schema as :data:`TRIALS_PARQUET`, with ``objectives_json`` populated).
+PARETO_FRONT_PARQUET: Final[str] = "pareto_front.parquet"
+
+#: Per-objective best-pipeline filename template written into :data:`DIR_PARETO`:
+#: ``best_<objective>`` with the pipeline config suffix. One per
+#: objective axis — the pipeline maximizing that single objective on the front.
+#: Rendered by :func:`pareto_best_pipeline_path`; kept private (a parameterized
+#: string is not an enumeration — see the code-style note on render functions).
+_PARETO_BEST_PIPELINE_FILENAME_TEMPLATE: Final[str] = (
+    f"best_{{objective}}{CONFIG_SUFFIX_PIPELINE}"
+)
+
+#: Per-objective param-importance filename template written into :data:`DIR_PARETO`:
+#: ``param_importance_<objective>.json`` (e.g. ``param_importance_s0.json``). The
+#: multi-objective sibling of :data:`PARAM_IMPORTANCE_JSON` — one RF-permutation
+#: importance report per objective axis. Rendered by :func:`pareto_importance_path`;
+#: kept private (a parameterized string is not an enumeration).
+_PARETO_IMPORTANCE_FILENAME_TEMPLATE: Final[str] = "param_importance_{objective}.json"
+
 # ---------------------------------------------------------------------------
 # QC artifact filenames (live inside DIR_QC)
 # ---------------------------------------------------------------------------
 
 #: Per-group QC summary written by
-#: :func:`phenotypic.qc._runner.run_qc`. One row per
+#: :func:`phenotypic.tools_._qc_recipe._runner.run_qc`. One row per
 #: ``(instance_id, groupby key)``: the worst-direction metric, tri-state
 #: status, flag, member/flagged counts, and a worst-first ``rank``.
 QC_SUMMARY_PARQUET: Final[str] = "qc_summary.parquet"
 
-#: Per-group member colonies written by :func:`phenotypic.qc._runner.run_qc`.
+#: Per-group member colonies written by :func:`phenotypic.tools_._qc_recipe._runner.run_qc`.
 #: One row per ``(instance_id, group member)`` carrying the curation key
 #: (``Metadata_ImageFile`` + ``Object_Label``) plus the member's
 #: contributing value, so the Review gallery can render each group's tiles.
@@ -159,12 +283,12 @@ QC_MEMBERS_PARQUET: Final[str] = "qc_members.parquet"
 
 #: Snapshot of the ``qc`` config entries (``instance_id``/``class``/
 #: ``enabled``/``params``) that produced the current ``qc/`` artifact.
-#: Written by :func:`phenotypic.qc._runner.run_qc`.
+#: Written by :func:`phenotypic.tools_._qc_recipe._runner.run_qc`.
 QC_CONFIG_JSON: Final[str] = "qc_config.json"
 
 #: Per-module GUI review progress (``instance_id`` -> reviewed group keys +
 #: last position). Written **only** by the results-viewer QC Review tab;
-#: :func:`phenotypic.qc._runner.run_qc` never touches it. The CLI finalize
+#: :func:`phenotypic.tools_._qc_recipe._runner.run_qc` never touches it. The CLI finalize
 #: path clears it on every rerun (a fresh run resets review progress).
 QC_REVIEW_STATE_JSON: Final[str] = "review_state.json"
 
@@ -304,6 +428,20 @@ DIR_QC: Final[str] = "qc"
 #: roots at :func:`deliverables_dir`.
 DIR_DELIVERABLES: Final[str] = "deliverables"
 
+#: ``splits/`` — the robust-eval held-out **split assignment** sidecar folder
+#: (holds :data:`SPLIT_ASSIGNMENT_JSON`). Lives inside the hidden tune cache
+#: (:data:`DIR_PHT_TUNE_CACHE`), **not** under :data:`DIR_DELIVERABLES`: the
+#: split is machine state that must survive a fresh-master rewrite and gate
+#: resume. See :func:`tune_cache_splits_dir`.
+DIR_SPLITS: Final[str] = "splits"
+
+#: ``<output>/deliverables/pareto/`` — the **multi-objective** sub-folder holding
+#: the Pareto front parquet (:data:`PARETO_FRONT_PARQUET`) and the per-objective
+#: best pipelines (:func:`pareto_best_pipeline_path`). Written only by a
+#: multi-objective tune run; a single-objective run never creates it (the
+#: back-compat lock — plan §0b). Rooted under :func:`deliverables_dir`.
+DIR_PARETO: Final[str] = "pareto"
+
 #: ``<output>/.phenotypic/`` — hidden machine-state cache root. Holds the
 #: run's progress/, processing_state.json, and processing_events.log. Hidden
 #: so it does not clutter the user-facing output folder and is skipped by the
@@ -311,6 +449,17 @@ DIR_DELIVERABLES: Final[str] = "deliverables"
 #: ``.phenotypic-gui`` sandbox dir (presets/state) — different root, different
 #: purpose.
 DIR_PHENOTYPIC: Final[str] = ".phenotypic"
+
+#: ``<output>/.pht-tune-cache/`` — hidden machine-state cache root for a **tune**
+#: run, the sibling of :data:`DIR_PHENOTYPIC` for the forward CLI. Holds the
+#: Optuna ``study.db`` (+ WAL), the held-out ``splits/split.json``, and the
+#: GUI-discovery ``run.json`` marker. Hidden so it does not clutter the
+#: user-facing output and is skipped by the GUI candidate scan; the tune cache
+#: is kept distinct from ``.phenotypic`` so a directory that hosts both a
+#: forward run and a tune run never collides their machine-state. Note that
+#: ``trials.parquet`` is NOT relocated here — it stays at the output root as the
+#: dual-purpose Optuna-resume + user-facing trial journal.
+DIR_PHT_TUNE_CACHE: Final[str] = ".pht-tune-cache"
 
 
 # ---------------------------------------------------------------------------
@@ -617,8 +766,294 @@ def measurements_parquet_path(output_dir: Path) -> Path:
 
 
 def pipeline_json_path(output_dir: Path) -> Path:
-    """Return ``<output>/deliverables/pipeline.json``."""
+    """Return the canonical typed pipeline config path under ``deliverables/``."""
     return deliverables_dir(output_dir) / PIPELINE_JSON
+
+
+def _legacy_pipeline_json_path(output_dir: Path) -> Path:
+    """Return the legacy plain-JSON pipeline config path under ``deliverables/``."""
+    return deliverables_dir(output_dir) / _LEGACY_PIPELINE_JSON
+
+
+def resolve_pipeline_config_path(output_dir: Path) -> Path:
+    """Return the best existing pipeline config path for ``output_dir``.
+
+    Resolution prefers the canonical typed path, falls back to legacy
+    ``pipeline.json`` when present, and returns the canonical path when neither
+    exists so writers naturally create typed config files.
+    """
+    canonical = pipeline_json_path(output_dir)
+    if canonical.exists():
+        return canonical
+    legacy = _legacy_pipeline_json_path(output_dir)
+    if legacy.exists():
+        return legacy
+    return canonical
+
+
+def tuning_spec_path(output_dir: Path) -> Path:
+    """Return the canonical typed tuning spec path under ``deliverables/``."""
+    return deliverables_dir(output_dir) / TUNING_SPEC_JSON
+
+
+def _legacy_tuning_spec_path(output_dir: Path) -> Path:
+    """Return the legacy plain-JSON tuning spec path under ``deliverables/``."""
+    return deliverables_dir(output_dir) / _LEGACY_TUNING_SPEC_JSON
+
+
+def resolve_tuning_spec_path(output_dir: Path) -> Path:
+    """Return the best existing tuning spec path for ``output_dir``."""
+    canonical = tuning_spec_path(output_dir)
+    if canonical.exists():
+        return canonical
+    legacy = _legacy_tuning_spec_path(output_dir)
+    if legacy.exists():
+        return legacy
+    return canonical
+
+
+def best_pipeline_path(output_dir: Path) -> Path:
+    """Return the canonical typed tuned-winner pipeline path."""
+    return deliverables_dir(output_dir) / BEST_PIPELINE_JSON
+
+
+def _legacy_best_pipeline_path(output_dir: Path) -> Path:
+    """Return the legacy plain-JSON tuned-winner pipeline path."""
+    return deliverables_dir(output_dir) / _LEGACY_BEST_PIPELINE_JSON
+
+
+def resolve_best_pipeline_path(output_dir: Path) -> Path:
+    """Return the best existing tuned-winner pipeline path for ``output_dir``."""
+    canonical = best_pipeline_path(output_dir)
+    if canonical.exists():
+        return canonical
+    legacy = _legacy_best_pipeline_path(output_dir)
+    if legacy.exists():
+        return legacy
+    return canonical
+
+
+def param_importance_path(output_dir: Path) -> Path:
+    """Return ``<output>/deliverables/param_importance.json`` (the report)."""
+    return deliverables_dir(output_dir) / PARAM_IMPORTANCE_JSON
+
+
+def best_params_path(output_dir: Path) -> Path:
+    """Return ``<output>/deliverables/best_params.json`` (winner params sidecar)."""
+    return deliverables_dir(output_dir) / BEST_PARAMS_JSON
+
+
+def trials_parquet_path(output_dir: Path) -> Path:
+    """Return ``<output>/trials.parquet`` (the trial journal; output-dir root)."""
+    return Path(output_dir) / TRIALS_PARQUET
+
+
+def tune_cache_dir(output_dir: Path) -> Path:
+    """Return ``<output>/.pht-tune-cache/`` — the tune run's machine-state root.
+
+    The tune-side sibling of :func:`phenotypic_cache_dir`. Pure path expression;
+    callers ``mkdir`` when they intend to write.
+
+    Args:
+        output_dir: The run output directory.
+
+    Returns:
+        ``<output_dir>/.pht-tune-cache/``.
+    """
+    return Path(output_dir) / DIR_PHT_TUNE_CACHE
+
+
+def tune_cache_run_marker_path(output_dir: Path) -> Path:
+    """Return ``<output>/.pht-tune-cache/run.json`` — the tune-run marker.
+
+    Written at run START (before any deliverable lands) so a live or finished
+    tune output is GUI-discoverable. See :data:`RUN_MARKER_JSON`.
+
+    Args:
+        output_dir: The run output directory.
+
+    Returns:
+        ``<output_dir>/.pht-tune-cache/run.json``.
+    """
+    return tune_cache_dir(output_dir) / RUN_MARKER_JSON
+
+
+def tune_cache_study_db_path(output_dir: Path) -> Path:
+    """Return ``<output>/.pht-tune-cache/study.db`` (the Optuna study DB).
+
+    The canonical SQLite-WAL storage for the Optuna-backed
+    :class:`OptunaStudyStore` when the ``tune`` extra is installed, relocated
+    into the hidden tune cache. A legacy run wrote it at the output root; use
+    :func:`resolve_study_db_path` to read either location.
+
+    Args:
+        output_dir: The run output directory.
+
+    Returns:
+        ``<output_dir>/.pht-tune-cache/study.db``.
+    """
+    return tune_cache_dir(output_dir) / STUDY_DB
+
+
+def tune_cache_splits_dir(output_dir: Path) -> Path:
+    """Return ``<output>/.pht-tune-cache/splits/`` — the held-out split folder.
+
+    Machine state that must survive a fresh-master rewrite and gate resume, so
+    it lives in the hidden tune cache, **not** under :func:`deliverables_dir`.
+    Pure path expression; callers ``mkdir`` when they intend to write.
+
+    Args:
+        output_dir: The run output directory.
+
+    Returns:
+        ``<output_dir>/.pht-tune-cache/splits/``.
+    """
+    return tune_cache_dir(output_dir) / DIR_SPLITS
+
+
+def tune_cache_split_assignment_path(output_dir: Path) -> Path:
+    """Return ``<output>/.pht-tune-cache/splits/split.json`` — the held-out split.
+
+    The persisted calibration / held-out partition (plate names + split kind +
+    dataset identity + seed entropy). Read-if-exists-else-derive on resume, so
+    a re-run reuses the original partition regardless of the new master seed. A
+    legacy run wrote it under ``<output>/splits/``; use
+    :func:`resolve_split_assignment_path` to read either location.
+
+    Args:
+        output_dir: The run output directory.
+
+    Returns:
+        ``<output_dir>/.pht-tune-cache/splits/split.json``.
+    """
+    return tune_cache_splits_dir(output_dir) / SPLIT_ASSIGNMENT_JSON
+
+
+def _legacy_study_db_path(output_dir: Path) -> Path:
+    """Pre-relocation location: ``<output>/study.db``."""
+    return Path(output_dir) / STUDY_DB
+
+
+def _legacy_split_assignment_path(output_dir: Path) -> Path:
+    """Pre-relocation location: ``<output>/splits/split.json``."""
+    return Path(output_dir) / DIR_SPLITS / SPLIT_ASSIGNMENT_JSON
+
+
+def resolve_study_db_path(output_dir: Path) -> Path:
+    """Return the study DB that exists, preferring ``.pht-tune-cache/``.
+
+    Read-only resolver: a relocated run keeps ``study.db`` under the hidden tune
+    cache; a legacy run kept it at the output root. Falls back to the new
+    location when neither exists (so a cold sampler restart from a missing
+    ``study.db`` is harmless — no migration is performed).
+
+    Args:
+        output_dir: The run output directory.
+
+    Returns:
+        The study DB path that exists, else the new cache location.
+    """
+    new = tune_cache_study_db_path(output_dir)
+    if new.exists():
+        return new
+    legacy = _legacy_study_db_path(output_dir)
+    if legacy.exists():
+        return legacy
+    return new
+
+
+def resolve_split_assignment_path(output_dir: Path) -> Path:
+    """Return the split assignment that exists, preferring ``.pht-tune-cache/``.
+
+    Read-only resolver mirroring :func:`resolve_progress_dir`. The held-out
+    split is checked in the hidden tune cache FIRST, THEN at the legacy output
+    root — a missing split silently RE-DERIVES a fresh held-out partition on
+    resume (a reproducibility / held-out-leak bug), so resume MUST find a
+    legacy-root ``split.json``. Falls back to the new location when neither
+    exists (the default for a fresh derive-and-write).
+
+    Args:
+        output_dir: The run output directory.
+
+    Returns:
+        The split-assignment path that exists, else the new cache location.
+    """
+    new = tune_cache_split_assignment_path(output_dir)
+    if new.exists():
+        return new
+    legacy = _legacy_split_assignment_path(output_dir)
+    if legacy.exists():
+        return legacy
+    return new
+
+
+def generalization_path(output_dir: Path) -> Path:
+    """Return ``<output>/deliverables/generalization.json`` — the held-out report.
+
+    The winner's generalization verdict (calibration vs held-out score, the gap,
+    and the pass/fail margin), a user-facing deliverable. The held-out pass that
+    writes it is Phase 4.5 part 2; this helper resolves the canonical location.
+
+    Args:
+        output_dir: The run output directory.
+
+    Returns:
+        ``<output_dir>/deliverables/generalization.json``.
+    """
+    return deliverables_dir(output_dir) / GENERALIZATION_JSON
+
+
+def pareto_dir(output_dir: Path) -> Path:
+    """Return ``<output>/deliverables/pareto/`` — the multi-objective sub-folder.
+
+    Holds a multi-objective tune run's Pareto front + per-objective best
+    pipelines. A single-objective run never creates it (the back-compat lock).
+    """
+    return deliverables_dir(output_dir) / DIR_PARETO
+
+
+def pareto_front_parquet_path(output_dir: Path) -> Path:
+    """Return ``<output>/deliverables/pareto/pareto_front.parquet`` (the front)."""
+    return pareto_dir(output_dir) / PARETO_FRONT_PARQUET
+
+
+def pareto_best_pipeline_path(output_dir: Path, objective: str) -> Path:
+    """Return ``deliverables/pareto/best_<objective>.json`` (a per-axis winner).
+
+    The pipeline maximizing the single ``objective`` axis on the Pareto front.
+    ``objective`` is the objective name as it appears in ``objectives_json`` (a
+    scorer-defined label, e.g. ``"Dice"`` or a composite child handle ``"s0"``).
+
+    Args:
+        output_dir: The run directory.
+        objective: The objective-axis name (the ``best_<objective>.json`` stem).
+
+    Returns:
+        The per-objective best-pipeline path under :func:`pareto_dir`.
+    """
+    return pareto_dir(output_dir) / _PARETO_BEST_PIPELINE_FILENAME_TEMPLATE.format(
+        objective=objective
+    )
+
+
+def pareto_importance_path(output_dir: Path, objective: str) -> Path:
+    """Return ``deliverables/pareto/param_importance_<objective>.json``.
+
+    The per-objective RF-permutation importance report (the multi-objective
+    sibling of :func:`param_importance_path`). ``objective`` is the objective
+    name as it appears in ``objectives_json`` (a scorer-defined label, e.g.
+    ``"Dice"`` or a composite child handle ``"s0"``).
+
+    Args:
+        output_dir: The run directory.
+        objective: The objective-axis name (the filename's ``<objective>`` slot).
+
+    Returns:
+        The per-objective importance-report path under :func:`pareto_dir`.
+    """
+    return pareto_dir(output_dir) / _PARETO_IMPORTANCE_FILENAME_TEMPLATE.format(
+        objective=objective
+    )
 
 
 def phenotypic_cache_pipeline_json_path(output_dir: Path) -> Path:

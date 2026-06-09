@@ -27,23 +27,14 @@ Two classes of guard, asserted as *distinct*:
 
 This file is intentionally focused on the **degenerate matrix**; the realistic
 ``all_meas.csv`` case lives in qc-engine's ``test_icc.py`` to avoid overlap.
-
-While qc-engine lands the restored ``_icc.py``, ``ICC`` may not be importable;
-the module-level ``importorskip`` makes this file SKIP cleanly (rather than
-collection-error) until the class is present, after which all cases are GREEN.
 """
 
 from __future__ import annotations
 
 import numpy as np
 import pandas as pd
-import pytest
 
-_icc_mod = pytest.importorskip(
-    "phenotypic.analysis._icc",
-    reason="awaiting qc-engine restore of ICC (final roster=6)",
-)
-ICC = _icc_mod.ICC
+from phenotypic.analysis.qc import ICC
 
 # Final ICC axis model: snapshot, subject = StrainID, rater = Replicate.
 _SUBJECT = "Metadata_StrainID"

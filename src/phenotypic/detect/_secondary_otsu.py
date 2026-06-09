@@ -23,35 +23,35 @@ def _safe_otsu(values: np.ndarray) -> float:
 
 
 class SecondaryOtsuDetector(ThresholdDetector):
-    """Detect colonies by two-stage Otsu thresholding with per-object refinement.
+    """Detect colonies by two-stage Otsu thresholding with per-object boundary refinement.
 
-    Apply an initial global Otsu threshold (or reuse an existing
-    ``objmask``), then re-threshold each detected object independently
-    using its own intensity distribution. This sharpens colony boundaries
-    on plates where colonies vary in brightness, removing soft halos while
-    preserving colony cores. For a full comparison see
+    Apply an initial global Otsu threshold (or reuse an existing ``objmask``),
+    then re-threshold each detected object independently using its own intensity
+    distribution. This sharpens colony boundaries on plates where colonies vary
+    in brightness, removing soft halos while preserving colony cores. For a
+    full comparison of detection strategies see
     :doc:`/explanation/detection_strategies_compared`.
 
-    Returns:
-        Image: Input image with ``objmask`` set to binary mask and
-        ``objmap`` set to labeled connected components.
-
     Best For:
-        * Refining boundaries after an initial global threshold that leaves
+        - Refining boundaries after an initial global threshold that leaves
           soft or blurry colony edges.
-        * Heterogeneous plates where colonies differ in pigmentation or
-          optical density across the plate surface.
-        * Suppressing preprocessing halos that expand colony outlines
-          beyond their true boundaries.
+        - Heterogeneous plates where colonies differ in pigmentation or optical
+          density across the plate surface.
+        - Suppressing preprocessing halos that expand colony outlines beyond
+          their true boundaries.
 
     Consider Also:
-        * :class:`OtsuDetector` when a single global threshold already
+        - :class:`OtsuDetector` when a single global threshold already
           produces clean colony boundaries.
-        * :class:`HysteresisDetector` when colony intensity varies
-          smoothly and dual-threshold expansion is more appropriate than
-          per-object refinement.
-        * :class:`RankOtsuDetector` when spatially varying illumination is
-          the primary cause of boundary inaccuracy.
+        - :class:`HysteresisDetector` when colony intensity varies smoothly
+          and dual-threshold expansion is more appropriate than per-object
+          refinement.
+        - :class:`RankOtsuDetector` when spatially varying illumination is the
+          primary cause of boundary inaccuracy.
+
+    Returns:
+        Image: Input image with ``objmask`` set to the refined binary colony
+        mask and ``objmap`` set to labeled connected components.
 
     References:
         [1] N. Otsu, "A threshold selection method from gray-level
@@ -59,12 +59,12 @@ class SecondaryOtsuDetector(ThresholdDetector):
         pp. 62--66, 1979.
 
     See Also:
-        :doc:`/tutorials/notebooks/02_detecting_colonies`
-            Step-by-step tutorial for basic colony detection.
-        :doc:`/how_to/notebooks/choose_detection_algorithm`
-            Guide for selecting the right detector for your plate images.
-        :doc:`/explanation/detection_strategies_compared`
-            In-depth comparison of all detection strategies.
+        :doc:`/tutorials/notebooks/02_detecting_colonies` for a step-by-step
+        tutorial on basic colony detection.
+        :doc:`/how_to/notebooks/choose_detection_algorithm` for guidance on
+        selecting the right detector for your plate images.
+        :doc:`/explanation/detection_strategies_compared` for an in-depth
+        comparison of all thresholding strategies.
     """
 
     def _operate(self, image: Image) -> Image:

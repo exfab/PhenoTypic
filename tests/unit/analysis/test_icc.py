@@ -16,7 +16,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from phenotypic.analysis._icc import ICC
+from phenotypic.analysis.qc import ICC
 
 
 # --------------------------------------------------------------------------- #

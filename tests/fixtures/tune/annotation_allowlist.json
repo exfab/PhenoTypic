@@ -1,0 +1,17 @@
+{
+  "_comment": "Allowlist of numeric-tunable fields across the annotated families (detect/ + enhance/ + refine/ + grid/ + correction/; see ANNOTATED_MODULES) NOT yet annotated with a TuneSpec, a Field bound, or TuneSpec(tunable=False). The coverage gate (test_annotation_coverage.py) fails if the actual uncovered set GROWS beyond this list, and a companion test fails if an allowlisted field becomes covered (forcing each migration wave to delete its entries). Shrinks to empty as the workstream completes. As of the refine/grid/correction + detect/enhance annotation pass (DEFERRED-WORK.md section 3), coverage is 231/243 (95.1%). The remaining entries are intentionally left WITHOUT a fabricated search window: they have no documented Typical range and no defensible default (ridge-filter shape params, structure-tensor diffusion constants, auto-estimated wavelet noise sigmas, signal-derived peak prominences, and ColorChecker border-detection thresholds). They are deferred to the follow-up PR that enriches and fact-checks the operation docstrings, where the actual TuneSpec windows will be set from verified sources rather than guessed.",
+  "allowlist": [
+    "BayesShrinkEnhancer.sigma",
+    "ColorCheckerProfile.median_filter_size",
+    "ColorCheckerProfile.stddev_mag_threshold",
+    "FocusEdgeFrangi.alpha",
+    "FocusEdgeFrangi.gamma",
+    "FocusEdgeHessian.alpha",
+    "FocusEdgeMeijering.alpha",
+    "GridAlignmentRefiner.peak_prominence",
+    "RefineBySineFit.peak_prominence",
+    "StructureSmoothing.C",
+    "StructureSmoothing.alpha",
+    "VisuShrinkEnhancer.sigma"
+  ]
+}

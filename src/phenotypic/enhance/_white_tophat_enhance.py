@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import Annotated, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -9,6 +9,7 @@ import numpy as np
 from skimage.morphology import white_tophat
 
 from phenotypic.abc_ import MorphologicalFiltering
+from phenotypic.tools_.typing_ import TuneSpec
 
 
 class WhiteTophatEnhance(MorphologicalFiltering):
@@ -22,44 +23,53 @@ class WhiteTophatEnhance(MorphologicalFiltering):
 
     For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 
+    Best For:
+        - Isolating small bright colonies from larger background structures
+          or broad illumination gradients.
+        - Highlighting faint small colonies against uneven agar
+          illumination.
+        - Extracting early-stage inocula or pinpoints for quantification.
+        - Preprocessing before applying a detector tuned for small colony
+          phenotypes.
+
+    Consider Also:
+        - :class:`SubtractWhiteTophat` when the goal is to suppress small
+          bright artifacts rather than isolate them.
+        - :class:`SubtractOpening` for OpenCV-accelerated white top-hat
+          background subtraction that also preserves the surrounding
+          image context.
+        - :class:`FocusBlobLoG` for scale-invariant blob detection that
+          responds across a range of colony sizes.
+
     Args:
-        shape: Footprint geometry. ``'disk'`` (default) preserves rounded
-            colony shapes; ``'diamond'`` is computationally efficient;
-            ``'square'`` can align with sensor grid artifacts.
-        width: Maximum bright-object size (pixels) targeted for extraction.
-            Set slightly larger than the maximum size of colonies you want
-            to isolate. ``None`` (default) derives a small value from
-            image dimensions.
+        shape: Footprint geometry for the structuring element. Accepted
+            values: ``'disk'`` (default) for isotropic extraction that
+            preserves rounded colony shapes; ``'diamond'`` for
+            computational efficiency; ``'square'`` to align with sensor
+            grid artifacts.
+        width: Maximum bright-object size in pixels targeted for
+            extraction. Set slightly larger than the maximum colony
+            diameter you want to isolate. ``None`` (default) auto-derives
+            a small value as approximately 0.4 % of the shorter image
+            dimension.
 
     Returns:
-        Image: Input image with ``detect_mat`` containing only the
-        extracted small bright structures. ``rgb`` and ``gray`` are
-        unchanged.
+        Image: Input image with ``detect_mat`` replaced by the white
+        top-hat result, containing only the extracted small bright
+        structures. ``rgb`` and ``gray`` are unchanged.
 
     Raises:
         ValueError: If an unsupported footprint shape is provided.
 
-    Best For:
-        - Isolating small bright colonies from larger background structures.
-        - Highlighting faint small colonies against uneven illumination.
-        - Extracting tiny bright specks for detection or quantification.
-        - Preprocessing before detecting small colony phenotypes.
-
-    Consider Also:
-        - :class:`SubtractWhiteTophat` when you want to suppress (not
-          isolate) small bright artifacts.
-        - :class:`SubtractOpening` for OpenCV-accelerated white top-hat
-          background subtraction.
-        - :class:`FocusBlobLoG` for scale-invariant blob detection
-          that responds to both small and large colonies.
-
     See Also:
         :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a
         visual walkthrough of morphological enhancement on plate images.
+        :doc:`/explanation/what_enhancement_does` for background on
+        top-hat transforms and feature isolation strategies.
     """
 
     shape: str = "disk"
-    width: int | None = None
+    width: Annotated[int | None, TuneSpec(3, 15, step=2)] = None
 
     def _operate(self, image: Image) -> Image:
         white_tophat_results = white_tophat(

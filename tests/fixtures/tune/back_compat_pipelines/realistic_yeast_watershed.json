@@ -1,0 +1,50 @@
+{
+  "version": "0.16.0",
+  "name": "899f635c-3ada-4033-99c3-b924e401b574",
+  "desc": null,
+  "reset": false,
+  "pipe_cfgs": {
+    "GaussianBlur": {
+      "class": "GaussianBlur",
+      "params": {
+        "sigma": 2.0,
+        "mode": "reflect",
+        "cval": 0.0,
+        "truncate": 4.0
+      }
+    },
+    "SubtractGaussian": {
+      "class": "SubtractGaussian",
+      "params": {
+        "sigma": 50.0,
+        "mode": "reflect",
+        "cval": 0.0,
+        "truncate": 4.0,
+        "preserve_range": true,
+        "n_iter": 1
+      }
+    },
+    "EnhanceLocalContrast": {
+      "class": "EnhanceLocalContrast",
+      "params": {
+        "kernel_size": null,
+        "clip_limit": 0.01
+      }
+    },
+    "WatershedDetector": {
+      "class": "WatershedDetector",
+      "params": {
+        "footprint": null,
+        "min_size": 50,
+        "compactness": 0.001,
+        "connectivity": 1,
+        "relabel": true,
+        "ignore_zeros": false
+      }
+    }
+  },
+  "meas": {},
+  "post": {},
+  "filters": {},
+  "model": null
+}

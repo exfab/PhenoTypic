@@ -170,9 +170,10 @@ class TestWaveletCorrectorGAT:
     )
     def test_rgb_image_use_gat_runs(self, rgb_image, cls):
         """RGB pass stays out of GAT but coexists with GATd gray/detect_mat."""
+        expected_rgb_dtype = rgb_image.rgb[:].dtype
         op = cls(use_gat=True, gat_gain=1.0, gat_scale_factor=255.0)
         out = op.apply(rgb_image, inplace=False)
-        assert out.rgb[:].dtype == np.uint8
+        assert out.rgb[:].dtype == expected_rgb_dtype
         assert 0.0 <= out.gray[:].min() <= out.gray[:].max() <= 1.0
         assert 0.0 <= out.detect_mat[:].min() <= out.detect_mat[:].max() <= 1.0
 

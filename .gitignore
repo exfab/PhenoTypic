@@ -1,6 +1,12 @@
 # Worktrees
 .worktrees/
 
+# Local environment / per-user secrets (e.g. PHENOTYPIC_TEST_PG_URL for the
+# gated Postgres tests). Never committed — see .env.example. Keeps the suite
+# user-agnostic and the DB address out of version control.
+.env
+.env.local
+
 # Python
 __pycache__/
 *.pyc
@@ -11,6 +17,11 @@ __pycache__/
 *.egg-info/
 .mypy_cache/
 phenotypic.egg-info/
+
+# Phenotypic run machine-state (normally under a user-chosen output dir,
+# but ignored defensively in case an output dir is placed inside the repo)
+.phenotypic/
+.pht-tune-cache/
 
 # Virtual environments
 .venv/

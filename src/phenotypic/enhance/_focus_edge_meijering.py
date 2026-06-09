@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Iterable, Optional, TYPE_CHECKING
+from typing import Annotated, Iterable, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -8,64 +8,93 @@ from pydantic import field_validator
 from skimage.filters import meijering
 
 from phenotypic.abc_ import FocusEdge
+from phenotypic.tools_.typing_ import TuneSpec
 
 
 class FocusEdgeMeijering(FocusEdge):
-    """Enhance fine ridge-like structures in ``detect_mat`` with the Meijering neuriteness filter.
+    """Enhance fine filamentous ridges in ``detect_mat`` using the Meijering neuriteness filter.
 
-    Computes the Meijering neuriteness measure from Hessian matrix eigenvalues
-    to highlight elongated, thread-like structures such as delicate filaments,
-    thin wrinkles, and network-like features. More selective than
-    :class:`FocusEdgeSato` for very fine, well-separated ridges.
+    Computes the Meijering neuriteness measure from Hessian eigenvalues at
+    each sigma scale, using an analytically derived shape parameter that
+    maximally suppresses blob-like and isotropic responses while favouring
+    elongated, thread-like features. The output is a [0, 1] ridge-strength
+    map suited to detecting delicate hyphae, actinomycete filaments, and
+    fine biofilm ridge networks. For algorithm details see
+    :doc:`/explanation/what_enhancement_does`.
 
-    For algorithm details, see :doc:`/explanation/what_enhancement_does`.
+    Best For:
+        - Delicate fungal hyphae and actinomycete filaments resolved to
+          2--5 px width where the analytic shape optimum provides maximum
+          elongation selectivity.
+        - Sparse mycelial networks with well-separated filaments where
+          sensitivity to thin ridges is more important than junction detection.
+        - Fine biofilm grooves or wrinkle networks in bacterial colony
+          morphology plates.
+        - Pipelines where minimising the number of parameters to tune is
+          a priority (alpha defaults to the analytic optimum).
+
+    Consider Also:
+        - :class:`FocusEdgeFrangi` for broader mycelial networks with
+          independent control over plate-like and blob-like sensitivity.
+        - :class:`FocusEdgeSato` for thicker, continuous tubular structures
+          with a different eigenvalue-combination strategy.
+        - :class:`FocusEdgeHessian` when combined edge and colony boundary
+          detection alongside filament ridges is needed.
+        - :class:`StructureSmoothing` for anisotropic pre-smoothing along
+          hyphal orientation before this ridge filter.
 
     Args:
-        sigmas: Sequence of standard deviations for Gaussian derivatives.
-            Smaller values detect finer structures; larger values detect
-            thicker features. Typical range: ``(1, 2, 3)`` to
-            ``range(1, 10)``. Default: ``(1, 2, 3)``.
-        alpha: Shape parameter controlling linearity sensitivity. ``None``
-            (default) uses ``-1/(ndim+1)`` which is ``-1/3`` for 2D
-            images. Rarely requires manual tuning.
-        black_ridges: If ``True``, detect dark ridges on bright background.
-            If ``False`` (default), detect bright ridges on dark background.
-        mode: Boundary handling. Accepted values: ``'constant'``,
-            ``'reflect'``, ``'wrap'``, ``'nearest'``, ``'mirror'``.
-            Default: ``'reflect'``.
-        cval: Fill value when ``mode='constant'``. Default: 0.
+        sigmas: Gaussian standard deviations (pixels) at which the Hessian
+            is evaluated. Each value responds most strongly to ridges whose
+            cross-sectional half-width is approximately that number of pixels;
+            the per-pixel maximum across all scales is taken. Typical range:
+            ``(1, 2, 3)`` for standard plate scans; extend the lower bound to
+            0.5 for very thin filaments at high magnification or the upper
+            bound to 5--8 for thick mycelial mats. Default: ``(1, 2, 3)``.
+        alpha: Shape parameter controlling how the Hessian eigenvalues are
+            combined into a neuriteness score. ``None`` (default) uses the
+            analytically derived optimum ``-1/(ndim+1)`` (``-1/3`` for 2-D
+            images), which maximally suppresses blob-like structures while
+            retaining elongated ridges. Manual values closer to 0 reduce blob
+            suppression; more-negative values sharpen the ridge/blob
+            discrimination. Default: ``None``.
+        black_ridges: Polarity of the target ridges. ``False`` (default)
+            detects bright ridges on a dark background, matching the
+            ``detect_mat`` convention where hyphae appear bright. ``True``
+            detects dark ridges on a bright background. Default: ``False``.
+        mode: Boundary padding mode for Gaussian derivative computation.
+            Accepted values: ``'constant'``, ``'reflect'``, ``'wrap'``,
+            ``'nearest'``, ``'mirror'``. Default: ``'reflect'``.
+        cval: Fill value used when ``mode='constant'``. Has no effect for
+            any other mode. Default: 0.
 
     Returns:
         Image: Input image with ``detect_mat`` replaced by the Meijering
         neuriteness response map. ``rgb`` and ``gray`` are unchanged.
 
-    Best For:
-        - Delicate filamentous structures too thin for standard detection
-          (actinomycetes, fungal hyphae, bacterial networks).
-        - Fine wrinkles, grooves, or network features in biofilms.
-        - Sparse mycelial networks or bacterial filaments that require
-          sensitive ridge detection.
-
-    Consider Also:
-        - :class:`FocusEdgeSato` for thicker, continuous tubular
-          structures with less sensitivity to parameter tuning.
-        - :class:`FocusEdgeHessian` for combined edge and ridge detection
-          with blob sensitivity control.
-        - :class:`StructureSmoothing` for enhancing directional
-          structures via anisotropic smoothing before ridge detection.
+    References:
+        [1] E. Meijering, M. Jacob, J.-C. F. Sarria, P. Steiner, H. Hirling,
+        and M. Unser, "Design and validation of a tool for neurite tracing
+        and analysis in fluorescence microscopy images," *Cytometry Part A*,
+        vol. 58, no. 2, pp. 167--176, Apr. 2004.
 
     See Also:
+        :doc:`/tutorials/notebooks/10_detecting_filamentous_fungi` for a
+        visual walkthrough of filamentous fungi detection using ridge filters.
         :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a
-        visual walkthrough of ridge enhancement on plate images.
+        broader enhancement pipeline walkthrough on plate images.
         :doc:`/explanation/what_enhancement_does` for background on
         Hessian-based ridge detection methods.
     """
 
     sigmas: tuple[float, ...] = (1, 2, 3)
+    # alpha left unannotated: default None selects skimage's analytic 2-D
+    # optimum (-1/3); the valid domain is negative and tuning away from the
+    # analytic optimum is rarely beneficial, so no defensible search window.
     alpha: Optional[float] = None
     black_ridges: bool = False
     mode: str = "reflect"
-    cval: float = 0
+    cval: Annotated[float, TuneSpec(tunable=False)] = 0
 
     @field_validator("sigmas", mode="before")
     @classmethod

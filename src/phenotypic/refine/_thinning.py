@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -8,54 +8,59 @@ if TYPE_CHECKING:
 from skimage.morphology import thin
 
 from phenotypic.abc_ import ObjectRefiner
+from phenotypic.tools_.typing_ import TuneSpec
 
 
 class Thinning(ObjectRefiner):
-    """Progressively thin object masks by iteratively removing outer pixels while preserving connectivity.
+    """Progressively thin object masks by iteratively removing outer boundary pixels.
 
-    Strips away boundary pixels one layer at a time, gradually reducing object
-    width toward single-pixel structures. Unlike skeletonization, thinning
-    offers explicit iteration control, making it useful for gentle boundary
-    cleanup (few iterations) or full skeleton extraction (convergence).
+    Strips boundary pixels one layer at a time while preserving topological
+    connectivity, gradually reducing each object toward single-pixel-wide
+    structures. Explicit iteration control makes it suitable for anything
+    from gentle edge cleanup to full centerline extraction.
 
-    Args:
-        max_num_iter: Maximum thinning iterations. ``None`` iterates until
-            convergence (full skeleton). A small value (1--3) provides
-            gentle boundary cleanup; a large value (10--50) thins
-            aggressively. Default: None.
-
-    Returns:
-        Image: Input image with ``objmask`` thinned by the specified number
-        of iterations.
-
-    Raises:
-        ValueError: If ``max_num_iter`` is negative.
+    For a comparison of morphological refinement methods, see
+    :doc:`/explanation/refinement_strategies`.
 
     Best For:
-        - Gradually separating touching or overlapping colonies via controlled
-          pixel removal.
-        - Clarifying diffuse colony boundaries before morphological
-          measurements.
-        - Preparing masks for graph-based analysis by converting to
-          single-pixel skeletons.
-        - De-noising colony edges while preserving filamentous structures.
+        - Gently cleaning diffuse or ragged colony boundaries before
+          morphological measurements with a small number of iterations.
+        - Gradually separating lightly touching colonies via controlled
+          pixel removal without applying a full watershed.
+        - Preparing masks for graph-based analysis by iterating to
+          single-pixel-wide structures.
+        - Preserving the overall shape of filamentous colonies while
+          reducing spurious boundary protrusions.
 
     Consider Also:
         - :class:`Skeletonize` for direct medial-axis extraction without
-          iterative control.
-        - :class:`MaskErosion` for uniform inward shrinking with a
-          configurable structuring element.
-        - :class:`SeparateObjects` for watershed-based separation of
-          touching colonies.
+          per-iteration control.
+        - :class:`MaskErosion` for uniform inward shrinking governed by a
+          configurable structuring element rather than iterative peeling.
+        - :class:`SeparateObjects` for watershed-based separation when
+          colonies are firmly merged rather than lightly touching.
+
+    Args:
+        max_num_iter: Maximum number of thinning iterations. ``None`` runs
+            until convergence, yielding a fully thinned single-pixel-wide
+            skeleton (Guo--Hall thinning, distinct from the Zhang--Suen/Lee
+            algorithms in :class:`Skeletonize`, so the output is similar but
+            not identical). Small values (1--5) provide gentle boundary
+            cleanup; larger values thin more aggressively. Default: None.
+
+    Returns:
+        Image: Input image with ``objmask`` thinned by up to
+        ``max_num_iter`` iterations. Assigning ``objmask`` rebuilds
+        ``objmap`` from the thinned mask.
 
     See Also:
         :doc:`/how_to/notebooks/refine_noisy_boundaries` for thinning-based
-        boundary cleanup workflows.
+        boundary cleanup workflows on real plate images.
         :doc:`/explanation/refinement_strategies` for a comparison of
         morphological refinement methods.
     """
 
-    max_num_iter: int | None = None
+    max_num_iter: Annotated[int | None, TuneSpec(1, 50, log=True)] = None
 
     def _operate(self, image: Image) -> Image:
         image.objmask[:] = thin(image.objmask[:], max_num_iter=self.max_num_iter)

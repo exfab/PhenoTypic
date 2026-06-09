@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated
 
 if TYPE_CHECKING:
     from phenotypic._core._grid_image import GridImage
@@ -10,52 +10,59 @@ from scipy.optimize import minimize_scalar
 
 from phenotypic.abc_ import GridCorrector
 from phenotypic.schema import BBOX, GRID
+from phenotypic.tools_.typing_ import TuneSpec
 
 
 class GridAligner(GridCorrector):
-    """Correct grid rotation by aligning colony centroids to row or column axes.
+    """Correct grid rotation by fitting colony centroids to the target row or column axis.
 
-    Compute the optimal rotation angle from linear regression of colony
-    centroid positions along the chosen axis, then rotate the entire image
-    to minimize angular misalignment. Re-detection of objects after
-    alignment is strongly recommended because pixel coordinates shift.
+    Estimates the optimal rotation angle by regressing detected colony
+    centroid positions along the chosen axis, then rotates every image
+    component together and recalculates grid positions on the corrected image.
+    Re-running detection after alignment is recommended, since pixel
+    coordinates shift once the image is rotated.
 
     For algorithm details, see :doc:`/explanation/grid_vs_non_grid_detection`.
 
+    Best For:
+        - Arrayed plates scanned at a slight angle where rows or columns are
+          not axis-aligned.
+        - High-throughput setups with inconsistent plate orientation between
+          scans.
+        - Pre-processing before grid-based measurement to keep row and column
+          assignment accurate.
+
+    Consider Also:
+        - :class:`ImagePadder` for adding safety margins before rotation so
+          corner colonies are not clipped by the rotation fill.
+        - :class:`ImageCropper` to remove the fill border introduced after
+          alignment.
+        - :class:`RefineBySineFit` when the grid periodicity itself needs
+          correction rather than a global rotation.
+
     Args:
-        axis: Alignment axis. ``0`` aligns rows (row-wise regression on
-            column centroid positions); ``1`` aligns columns. Default: ``0``.
-        mode: Edge-fill mode passed to the rotation function. ``'edge'``
-            replicates border pixels; ``'constant'`` fills with zeros.
-            Default: ``'edge'``.
+        axis: Alignment axis. ``0`` regresses centroid positions within each
+            row to correct horizontal skew; ``1`` regresses within each column
+            to correct vertical skew. Default: ``0``.
+        mode: Edge-fill strategy passed to the image rotation. ``'edge'``
+            replicates the nearest border pixel (avoids dark corners);
+            ``'constant'`` fills with zeros. Default: ``'edge'``.
 
     Returns:
-        GridImage: Input image rotated so that colony centroids align with
-        the specified axis. All image components are transformed.
+        GridImage: Input image rotated so colony centroids align with the
+        chosen axis. All components (RGB, gray, detect_mat, objmask, objmap)
+        are transformed together.
 
     Raises:
         ValueError: If ``axis`` is not ``0`` or ``1``.
-
-    Best For:
-        - Arrayed plates scanned at a slight angle where grid rows or
-          columns are not axis-aligned.
-        - High-throughput imaging setups with inconsistent plate
-          orientation between scans.
-        - Pre-processing before grid-based measurement to ensure accurate
-          row and column assignment.
-
-    Consider Also:
-        - :class:`ImagePadder` to add safety margins before rotation so
-          corner colonies are not clipped.
-        - :class:`ImageCropper` to remove excess background after
-          alignment.
 
     See Also:
         :doc:`/how_to/notebooks/correct_grid_rotation` for a visual
         walkthrough of grid alignment on real plate images.
     """
 
-    axis: int = 0
+    # Axis selector (0=row-wise, 1=column-wise), not a quality knob.
+    axis: Annotated[int, TuneSpec(tunable=False)] = 0
     mode: str = "edge"
 
     def _operate(self, image: GridImage):

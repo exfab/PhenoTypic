@@ -1,0 +1,30 @@
+{
+  "version": "0.16.0",
+  "name": "ab4a95c9-08fe-4c5a-8a9e-1bb0a9c3982a",
+  "desc": null,
+  "reset": false,
+  "pipe_cfgs": {
+    "SubtractGaussian": {
+      "class": "SubtractGaussian",
+      "params": {
+        "sigma": 50.0,
+        "mode": "reflect",
+        "cval": 0.0,
+        "truncate": 4.0,
+        "preserve_range": true,
+        "n_iter": 1
+      }
+    },
+    "OtsuDetector": {
+      "class": "OtsuDetector",
+      "params": {
+        "ignore_zeros": false,
+        "ignore_borders": true
+      }
+    }
+  },
+  "meas": {},
+  "post": {},
+  "filters": {},
+  "model": null
+}

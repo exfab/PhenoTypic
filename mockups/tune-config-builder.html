@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PhenoTypic GUI — Tune (Setup / Run / Monitor) mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<style>
+@import url("https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap");
+:root{
+  --color-navy:#003660; --color-blue:#1b75bc; --color-gold:#febc11;
+  --color-white:#fff; --color-bg:#f5f7fa; --color-surface:#fff;
+  --color-border:#dde3ed; --color-rule:#e8ecf2; --color-muted:#8892a4;
+  --color-body:#2e3a4e; --color-heading:#003660;
+  --oi-orange:#E69F00; --oi-sky:#56B4E9; --oi-green:#009E73;
+  --oi-vermilion:#D55E00; --oi-blue:#0072B2; --oi-purple:#CC79A7;
+  --font-body:'Roboto',-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --font-mono:'Roboto',ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+  --sp-1:.25rem; --sp-2:.5rem; --sp-3:.75rem; --sp-4:1rem; --sp-5:1.25rem; --sp-6:1.5rem; --sp-8:2rem;
+  --radius-sm:3px; --radius:6px; --radius-md:10px; --radius-lg:16px;
+  --shadow-sm:0 1px 3px rgba(0,54,96,.07),0 1px 2px rgba(0,54,96,.04);
+  --shadow:0 4px 12px rgba(0,54,96,.08),0 1px 3px rgba(0,54,96,.05);
+  --shadow-md:0 8px 24px rgba(0,54,96,.10),0 2px 6px rgba(0,54,96,.06);
+  --ease-out:cubic-bezier(.22,1,.36,1); --transition:180ms cubic-bezier(.22,1,.36,1);
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--font-body);background:var(--color-bg);color:var(--color-body);font-size:.9375rem;line-height:1.5;-webkit-font-smoothing:antialiased}
+.chrome{display:flex;align-items:center;gap:var(--sp-6);background:var(--color-navy);color:#fff;padding:0 var(--sp-5);height:52px;box-shadow:var(--shadow-sm)}
+.chrome .brand{font-weight:700;letter-spacing:.02em;font-size:1.0625rem;color:#fff}
+.chrome .brand .dot{color:var(--color-gold)}
+.tabs{display:flex;gap:var(--sp-1);height:100%}
+.tab{display:flex;align-items:center;gap:7px;padding:0 var(--sp-4);height:100%;color:#cfe0f0;text-decoration:none;font-size:.8125rem;font-weight:500;border-bottom:3px solid transparent;transition:var(--transition)}
+.tab:hover{color:#fff;background:rgba(255,255,255,.06)}
+.tab.active{color:#fff;border-bottom-color:var(--color-gold)}
+.tab .livedot{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 5px;border-radius:999px;background:var(--oi-green);color:#04243f;font-size:.625rem;font-weight:700}
+.chrome .spacer{flex:1}
+.chrome .hint{font-size:.6875rem;color:#9fc0dd;font-family:var(--font-mono)}
+.tune-bar{display:flex;align-items:center;gap:var(--sp-3);background:var(--color-surface);border-bottom:1px solid var(--color-border);padding:var(--sp-3) var(--sp-5);position:sticky;top:0;z-index:30}
+.hamburger{display:flex;flex-direction:column;justify-content:center;gap:4px;width:38px;height:34px;border:1px solid var(--color-border);border-radius:var(--radius);background:var(--color-surface);cursor:pointer;padding:7px 9px;transition:var(--transition)}
+.hamburger:hover{border-color:var(--color-blue);box-shadow:var(--shadow-sm)}
+.hamburger span{display:block;height:2px;background:var(--color-navy);border-radius:2px}
+.tune-bar .crumb{font-weight:700;color:var(--color-navy);font-size:1.25rem}
+.tune-bar .crumb .sub{font-weight:400;color:var(--color-muted);font-size:.8125rem;margin-left:var(--sp-2)}
+.livepill{margin-left:auto;display:flex;align-items:center;gap:var(--sp-2);font-size:.8125rem;font-weight:600;background:#eaf7f1;border:1px solid #bfe6d4;border-radius:999px;padding:5px 14px 5px 11px;color:#0a7a57;cursor:pointer;transition:var(--transition)}
+.livepill:hover{box-shadow:var(--shadow-sm);border-color:var(--oi-green)}
+.livepill.zero{background:var(--color-bg);border-color:var(--color-border);color:var(--color-muted)}
+.livepill .pulse{width:9px;height:9px;border-radius:50%;background:var(--oi-green);box-shadow:0 0 0 0 rgba(0,158,115,.55);animation:pulse 1.8s infinite}
+.livepill.zero .pulse{background:var(--color-muted);animation:none;box-shadow:none}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(0,158,115,.5)}70%{box-shadow:0 0 0 7px rgba(0,158,115,0)}100%{box-shadow:0 0 0 0 rgba(0,158,115,0)}}
+.scrim{position:fixed;inset:0;background:rgba(0,54,96,.32);opacity:0;pointer-events:none;transition:opacity 200ms var(--ease-out);z-index:40}
+.scrim.open{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;left:0;bottom:0;width:272px;background:var(--color-surface);box-shadow:var(--shadow-md);transform:translateX(-100%);transition:transform 240ms var(--ease-out);z-index:50;display:flex;flex-direction:column;padding:var(--sp-4)}
+.drawer.open{transform:translateX(0)}
+.drawer h3{margin:var(--sp-2) var(--sp-2) var(--sp-4);color:var(--color-navy);font-size:.6875rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700}
+.dnav{display:flex;flex-direction:column;gap:var(--sp-1)}
+.dnav a{display:flex;gap:var(--sp-3);align-items:flex-start;padding:var(--sp-3) var(--sp-3);border-radius:var(--radius-md);text-decoration:none;color:var(--color-body);cursor:pointer;transition:var(--transition);border:1px solid transparent}
+.dnav a:hover{background:var(--color-bg)}
+.dnav a.active{background:#eef5fb;border-color:#cfe3f4}
+.dnav .ico{width:30px;height:30px;flex:none;border-radius:var(--radius);display:flex;align-items:center;justify-content:center;font-size:15px;background:var(--color-navy);color:#fff}
+.dnav a.active .ico{background:var(--color-blue)}
+.dnav .lbl{font-weight:600;color:var(--color-navy);font-size:.9375rem;display:flex;align-items:center;gap:7px}
+.dnav .dsc{font-size:.75rem;color:var(--color-muted);line-height:1.35}
+.countpill{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:var(--oi-green);color:#04243f;font-size:.625rem;font-weight:700}
+.countpill.zero{background:var(--color-rule);color:var(--color-muted)}
+.drawer .stepwhere{margin-top:auto;font-size:.6875rem;color:var(--color-muted);padding:var(--sp-3);border-top:1px solid var(--color-rule)}
+.wrap{max-width:920px;margin:0 auto;padding:var(--sp-6) var(--sp-5) 96px}
+.view{display:none}.view.active{display:block}
+.lead{color:var(--color-muted);font-size:.875rem;margin:0 0 var(--sp-5)}
+.lead b{color:var(--color-body)}
+.section{background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-md);box-shadow:var(--shadow-sm);margin-bottom:var(--sp-4);overflow:hidden}
+.section.pop{overflow:visible}
+.section.pop>.sec-head{border-radius:var(--radius-md) var(--radius-md) 0 0}
+.sec-head{display:flex;align-items:center;gap:var(--sp-3);padding:var(--sp-4) var(--sp-5);cursor:pointer;user-select:none;transition:var(--transition)}
+.sec-head:hover{background:#fafcfe}
+.sec-head .chev{transition:transform 200ms var(--ease-out);color:var(--color-muted);font-size:14px;width:14px}
+.section.open .chev{transform:rotate(90deg)}
+.sec-head .stitle{font-weight:700;color:var(--color-navy);font-size:1.0625rem}
+.sec-head .summary{margin-left:auto;font-size:.75rem;color:var(--color-muted);text-align:right}
+.sec-head .ok{color:var(--oi-green);font-weight:600}
+.sec-body{display:none;padding:0 var(--sp-5) var(--sp-5);border-top:1px solid var(--color-rule)}
+.section.open .sec-body{display:block}
+/* locked (empty-state) section: dimmed name bar, not selectable, folded */
+.section.locked{background:#fbfcfe}
+.section.locked>.sec-head{cursor:not-allowed}
+.section.locked>.sec-head:hover{background:transparent}
+.section.locked .stitle{color:var(--color-muted);font-weight:600}
+.section.locked .chev{opacity:.35}
+.lockmsg{display:inline-flex;align-items:center;gap:6px;color:var(--color-muted)!important;font-weight:500}
+/* invalid (blocked-deploy) section state */
+.section.invalid{border-color:#f0b8a0}
+.section.invalid>.sec-head{background:#fef6f2}
+.section.invalid>.sec-head:hover{background:#fdefe8}
+.errbadge{display:none;align-items:center;gap:5px;font-size:.66rem;font-weight:700;color:var(--oi-vermilion);background:#fdeee6;border:1px solid #f3c9b1;border-radius:999px;padding:2px 9px;margin-left:var(--sp-3)}
+.section.invalid .errbadge{display:inline-flex}
+.vstat.err{color:var(--oi-vermilion)!important}
+.fielderr{font-size:.75rem;color:var(--oi-vermilion);font-weight:600;margin:var(--sp-2) 0 0}
+.badge{display:inline-block;font-size:.625rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 7px;border-radius:999px;vertical-align:middle}
+.badge.b-num{background:#eef5fb;color:var(--color-blue)}
+.badge.b-heur{background:#fff5e0;color:#a9760a}
+.badge.b-enum{background:#eaf7f1;color:#0a7a57}
+.badge.b-review{background:#fdeee6;color:var(--oi-vermilion)}
+.row{display:flex;align-items:center;gap:var(--sp-3);margin:var(--sp-3) 0}
+.row label{font-size:.8125rem;color:var(--color-body);min-width:140px;font-weight:500}
+input[type=text],input[type=number],select{font-family:var(--font-body);font-size:.8125rem;padding:7px 10px;border:1px solid var(--color-border);border-radius:var(--radius);background:#fff;color:var(--color-body)}
+input[type=number]{width:96px}
+input:focus,select:focus{outline:none;border-color:var(--color-blue);box-shadow:0 0 0 3px rgba(27,117,188,.12)}
+input:disabled{background:#f0f3f7;color:var(--color-muted);cursor:not-allowed}
+.pickbtn{display:inline-flex;align-items:center;gap:var(--sp-2);font-size:.8125rem;font-weight:500;padding:7px 12px;border:1px dashed var(--color-blue);color:var(--color-blue);background:#f4f9fd;border-radius:var(--radius);cursor:pointer}
+.filechip{font-family:var(--font-mono);font-size:.75rem;background:var(--color-bg);border:1px solid var(--color-border);border-radius:var(--radius);padding:5px 10px;color:var(--color-navy)}
+.radioset{display:flex;flex-wrap:wrap;gap:var(--sp-2)}
+.radio{display:flex;align-items:center;gap:6px;font-size:.8125rem;padding:6px 12px;border:1px solid var(--color-border);border-radius:999px;cursor:pointer;background:#fff;transition:var(--transition)}
+.radio:hover{border-color:var(--color-blue)}
+.radio.sel{background:#eef5fb;border-color:var(--color-blue);color:var(--color-navy);font-weight:600}
+.hintline{font-size:.75rem;color:var(--color-muted);margin:var(--sp-2) 0 0}
+.hintline b{color:var(--color-body)}
+.opchain{display:flex;align-items:center;gap:var(--sp-2);flex-wrap:wrap;margin-top:var(--sp-3)}
+.opnode{font-family:var(--font-mono);font-size:.75rem;background:var(--color-navy);color:#fff;padding:5px 11px;border-radius:var(--radius)}
+.oparrow{color:var(--color-muted)}
+.preflight{display:flex;align-items:center;gap:8px;font-size:.8125rem;background:#eaf7f1;border:1px solid #bfe6d4;color:#0a7a57;border-radius:var(--radius);padding:8px 12px;margin-top:var(--sp-3);font-weight:500}
+.ktable{width:100%;border-collapse:collapse;margin-top:var(--sp-3);font-size:.8125rem}
+.ktable th{text-align:left;color:var(--color-muted);font-weight:600;font-size:.6875rem;text-transform:uppercase;letter-spacing:.06em;padding:6px 8px;border-bottom:1px solid var(--color-rule)}
+.ktable td{padding:8px;border-bottom:1px solid var(--color-rule);vertical-align:middle}
+.ktable tr.off{opacity:.42}
+.ktable .target{font-family:var(--font-mono);color:var(--color-navy);font-weight:500;display:flex;align-items:center}
+.switch{position:relative;width:38px;height:21px;flex:none;cursor:pointer;display:inline-block}
+.switch input{opacity:0;width:0;height:0}
+.slider{position:absolute;inset:0;background:#cdd6e2;border-radius:999px;transition:var(--transition)}
+.slider:before{content:"";position:absolute;width:15px;height:15px;left:3px;top:3px;background:#fff;border-radius:50%;transition:var(--transition);box-shadow:var(--shadow-sm)}
+.switch input:checked + .slider{background:var(--oi-green)}
+.switch input:checked + .slider:before{transform:translateX(17px)}
+.help{position:relative;display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;border:1px solid var(--color-border);background:#fff;color:var(--color-muted);font-size:.6875rem;font-weight:700;cursor:help;margin-left:7px;flex:none}
+.help:hover,.help:focus{border-color:var(--color-blue);color:var(--color-blue);outline:none}
+.tip{display:none;position:absolute;left:23px;top:-6px;width:280px;background:#04243f;color:#dde9f5;font-weight:400;font-size:.72rem;line-height:1.5;padding:10px 12px;border-radius:var(--radius);box-shadow:var(--shadow-md);z-index:80;text-align:left;font-family:var(--font-body);letter-spacing:0;text-transform:none;white-space:normal}
+.tip:before{content:"";position:absolute;left:-6px;top:11px;border:6px solid transparent;border-right-color:#04243f;border-left:0}
+.tip code{font-family:var(--font-mono);color:var(--color-gold);font-size:.7rem}
+.tip b{color:#fff;font-weight:600}
+.help:hover .tip,.help:focus .tip{display:block}
+.tip.tleft{left:auto;right:23px}
+.tip.tleft:before{left:auto;right:-6px;border-right:0;border-right-color:transparent;border-left:6px solid #04243f}
+.tip i{color:#9fc0dd;font-style:italic}
+.domsummary{font-family:var(--font-mono);font-size:.78rem;color:var(--color-navy);background:var(--color-bg);border:1px solid var(--color-border);border-radius:var(--radius);padding:4px 10px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:var(--transition)}
+.domsummary:hover{border-color:var(--color-blue);background:#eef5fb}
+.domsummary .edit{color:var(--color-muted);font-size:.7rem}
+.edrow{display:none}
+.edrow.open{display:table-row}
+.edrow>td{background:#f8fafc;border-top:0}
+.deditor{border:1px solid var(--color-border);border-left:3px solid var(--color-blue);border-radius:var(--radius);background:#fff;padding:var(--sp-3) var(--sp-4);margin:2px 0 6px}
+.dedline{display:flex;align-items:center;gap:var(--sp-3);flex-wrap:wrap;margin:var(--sp-2) 0}
+.dlabel{font-size:.72rem;color:var(--color-muted);font-weight:600;min-width:64px;text-transform:uppercase;letter-spacing:.05em}
+.dedline input[type=number]{width:78px}
+.minilab{font-size:.75rem;color:var(--color-body);display:flex;align-items:center;gap:5px}
+.gridhint{font-size:.72rem;font-weight:500;border-radius:var(--radius);padding:6px 10px;margin-top:6px;display:inline-flex;align-items:center;gap:7px}
+.gridhint.ok{background:#eaf7f1;color:#0a7a57;border:1px solid #bfe6d4}
+.gridhint.warn{background:#fdeee6;color:#a9420a;border:1px solid #f3c9b1}
+.chip{display:inline-flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:.72rem;background:#eef5fb;border:1px solid #cfe3f4;color:var(--color-navy);border-radius:999px;padding:3px 9px}
+.chip b{cursor:pointer;color:var(--color-muted);font-weight:700}
+.footer{position:fixed;left:0;right:0;bottom:0;background:rgba(255,255,255,.96);backdrop-filter:blur(6px);border-top:1px solid var(--color-border);padding:var(--sp-3) var(--sp-5);display:none;align-items:center;gap:var(--sp-3);z-index:35;box-shadow:0 -4px 12px rgba(0,54,96,.05)}
+.footer.show{display:flex}
+.footer .vstat{font-size:.8125rem;color:var(--oi-green);font-weight:600;display:flex;align-items:center;gap:6px}
+.footer .vstat.muted{color:var(--color-muted)}
+.footer .vstat .vd{width:9px;height:9px;border-radius:50%;background:var(--oi-green)}
+.footer .grow{flex:1}
+.btn{font-family:var(--font-body);font-weight:600;font-size:.8125rem;border-radius:var(--radius);padding:9px 16px;cursor:pointer;border:1px solid var(--color-border);background:#fff;color:var(--color-navy);transition:var(--transition)}
+.btn:hover{box-shadow:var(--shadow-sm)}
+.btn.primary{background:var(--color-blue);border-color:var(--color-blue);color:#fff;box-shadow:var(--shadow)}
+.btn.primary:hover{background:#1668a8}
+.btn.gold{background:var(--color-gold);border-color:var(--color-gold);color:var(--color-navy)}
+.btn.disabled{opacity:.4;pointer-events:none}
+.cmdbox{font-family:var(--font-mono);font-size:.75rem;background:#04243f;color:#cfe6fb;border-radius:var(--radius-md);padding:var(--sp-4);line-height:1.7;white-space:pre-wrap;word-break:break-all;margin-top:var(--sp-3)}
+.cmdbox .flag{color:var(--color-gold)}.cmdbox .val{color:#9fe7c4}
+.logbox{font-family:var(--font-mono);font-size:.72rem;background:#0a1722;color:#bcd3e6;border-radius:var(--radius-md);padding:var(--sp-4);height:200px;overflow:auto;line-height:1.55;margin-top:var(--sp-3)}
+.logbox .ok{color:var(--oi-green)}.logbox .warn{color:var(--color-gold)}.logbox .dim{color:#5a7286}
+.progress{height:8px;border-radius:999px;background:var(--color-rule);overflow:hidden;margin:var(--sp-3) 0}
+.progress>i{display:block;height:100%;width:38%;background:var(--color-blue);border-radius:999px}
+.subtabs{display:flex;gap:var(--sp-1);border-bottom:1px solid var(--color-border);margin-bottom:var(--sp-5)}
+.subtab{padding:9px 16px;font-size:.8125rem;font-weight:600;color:var(--color-muted);cursor:pointer;border-bottom:3px solid transparent}
+.subtab.active{color:var(--color-navy);border-bottom-color:var(--color-blue)}
+.subview{display:none}.subview.active{display:block}
+.runtabs{display:flex;gap:var(--sp-2);flex-wrap:wrap;margin-bottom:var(--sp-4)}
+.runtab{display:flex;align-items:center;gap:7px;font-size:.8125rem;font-weight:600;padding:7px 13px;border-radius:999px;border:1px solid var(--color-border);background:#fff;cursor:pointer;color:var(--color-body)}
+.runtab.sel{background:#eef5fb;border-color:var(--color-blue);color:var(--color-navy)}
+.runtab .rdot{width:8px;height:8px;border-radius:50%;background:var(--oi-green)}
+.runtab .rdot.done{background:var(--color-muted)}
+.runtab .kill{margin-left:4px;color:var(--oi-vermilion);font-weight:700;cursor:pointer;opacity:.6}
+.runtab .kill:hover{opacity:1}
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-4)}
+.card{background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-md);box-shadow:var(--shadow-sm);padding:var(--sp-4)}
+.card.full{grid-column:1/-1}
+.card h4{margin:0 0 var(--sp-3);color:var(--color-navy);font-size:.9375rem;display:flex;align-items:center;gap:8px}
+.gapbadge{display:inline-flex;align-items:center;gap:6px;font-size:.75rem;font-weight:600;padding:4px 11px;border-radius:999px;background:#eaf7f1;color:#0a7a57}
+.runbadge{display:inline-flex;align-items:center;gap:6px;font-size:.72rem;font-weight:600;padding:3px 10px;border-radius:999px;background:#fff5e0;color:#a9760a}
+.statline{display:flex;justify-content:space-between;font-size:.8125rem;padding:5px 0;border-bottom:1px solid var(--color-rule)}
+.statline span:last-child{font-family:var(--font-mono);color:var(--color-navy);font-weight:600}
+.ab{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-3);margin-top:var(--sp-3)}
+.abpane{aspect-ratio:1;border-radius:var(--radius);background:repeating-conic-gradient(#e7eef5 0 25%,#dde7f0 0 50%) 0/22px 22px;position:relative;border:1px solid var(--color-border)}
+.abpane span{position:absolute;top:8px;left:8px;background:var(--color-navy);color:#fff;font-size:.7rem;padding:2px 8px;border-radius:var(--radius-sm);font-weight:600}
+/* best-result (export) zone */
+.bestcard{background:linear-gradient(180deg,#fffdf4,#fff);border:1px solid #f0d98a;border-left:3px solid var(--color-gold);border-radius:var(--radius-md);box-shadow:var(--shadow-sm);padding:var(--sp-4);margin-bottom:var(--sp-4)}
+.bestcard .bhead{display:flex;align-items:center;gap:10px;font-size:.95rem;color:var(--color-navy);font-weight:700;flex-wrap:wrap}
+.bestcard .bstar{color:var(--color-gold);font-size:1.15rem}
+.bestcard .bparams{font-family:var(--font-mono);font-size:.74rem;color:var(--color-body);background:var(--color-bg);border:1px solid var(--color-border);border-radius:var(--radius);padding:7px 11px;margin:var(--sp-3) 0}
+.bestcard .bactions{display:flex;gap:var(--sp-2);flex-wrap:wrap;align-items:center}
+.bestcard .bhint{font-size:.72rem;color:var(--color-muted);margin-top:var(--sp-2)}
+.toast{position:fixed;bottom:74px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--color-navy);color:#fff;padding:11px 20px;border-radius:999px;font-size:.8125rem;font-weight:600;box-shadow:var(--shadow-md);opacity:0;pointer-events:none;transition:all 280ms var(--ease-out);z-index:60;display:flex;align-items:center;gap:9px}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast .tdot{width:9px;height:9px;border-radius:50%;background:var(--oi-green)}
+/* #6 knob toolbar */
+.ksbar{display:flex;align-items:center;gap:var(--sp-2);flex-wrap:wrap;margin-top:var(--sp-3)}
+.reinfernote{display:none;font-size:.75rem;color:#0a7a57;background:#eaf7f1;border:1px solid #bfe6d4;border-radius:var(--radius);padding:7px 11px;margin-top:var(--sp-2)}
+.reinfernote.show{display:block}
+/* #5 confirm dialog */
+.scrim2{position:fixed;inset:0;background:rgba(0,54,96,.32);opacity:0;pointer-events:none;transition:opacity 180ms var(--ease-out);z-index:70}
+.scrim2.open{opacity:1;pointer-events:auto}
+.dialog{position:fixed;top:50%;left:50%;transform:translate(-50%,-46%);width:390px;max-width:92vw;background:#fff;border-radius:var(--radius-md);box-shadow:var(--shadow-md);z-index:80;padding:var(--sp-5);opacity:0;pointer-events:none;transition:all 200ms var(--ease-out)}
+.dialog.open{opacity:1;pointer-events:auto;transform:translate(-50%,-50%)}
+.dialog .dtitle{font-weight:700;color:var(--color-navy);font-size:1.0625rem;margin-bottom:var(--sp-2)}
+.dialog .dbody{font-size:.8125rem;color:var(--color-body);line-height:1.55;margin-bottom:var(--sp-4)}
+.dialog .dbody code{font-family:var(--font-mono);font-size:.75rem;color:var(--color-navy);background:var(--color-bg);padding:1px 5px;border-radius:4px}
+.dialog .dactions{display:flex;justify-content:flex-end;gap:var(--sp-2)}
+.runtab.cancelled{opacity:.5}
+/* #4 slurm live card */
+.slurmgrid{display:flex;flex-wrap:wrap;gap:6px;margin:var(--sp-3) 0}
+.stask{font-family:var(--font-mono);font-size:.68rem;padding:4px 9px;border-radius:var(--radius);border:1px solid var(--color-border);background:var(--color-bg);color:var(--color-body);display:flex;align-items:center;gap:5px}
+.stask.run{background:#eaf7f1;border-color:#bfe6d4;color:#0a7a57}
+.stask.done{opacity:.5}
+.stask.queue{background:#fff5e0;border-color:#f0d98a;color:#a9760a}
+</style>
+</head>
+<body>
+
+<div class="chrome">
+  <div class="brand">PhenoTypic<span class="dot">·</span>GUI</div>
+  <nav class="tabs">
+    <a class="tab">Home</a><a class="tab">Builder</a>
+    <a class="tab active">Tune <span class="livedot" id="chrome-live">2</span></a>
+    <a class="tab">Run</a><a class="tab">Viewer</a><a class="tab">Analysis</a>
+  </nav>
+  <div class="spacer"></div>
+  <div class="hint">mockup · not wired to a backend</div>
+</div>
+
+<div class="tune-bar">
+  <div class="hamburger" onclick="openDrawer()" title="Tune sections"><span></span><span></span><span></span></div>
+  <div class="crumb" id="crumb">Setup<span class="sub" id="crumbsub">define what to tune &amp; how to judge</span></div>
+  <div class="livepill" id="livepill" onclick="go('monitor')" title="View live tuning runs">
+    <span class="pulse"></span><b id="livecount">2</b>&nbsp;live runs</div>
+</div>
+
+<div class="scrim" id="scrim" onclick="closeDrawer()"></div>
+<aside class="drawer" id="drawer">
+  <h3>Tune</h3>
+  <nav class="dnav">
+    <a class="active" data-view="setup" onclick="go('setup')"><span class="ico">✎</span><div><div class="lbl">Setup</div>
+      <div class="dsc">Define <b>what to tune &amp; how to judge</b> — pipeline, search space, scorer.</div></div></a>
+    <a data-view="run" onclick="go('run')"><span class="ico">▶</span><div><div class="lbl">Run</div>
+      <div class="dsc">Set <b>search method, budget &amp; compute</b>, then deploy.</div></div></a>
+    <a data-view="monitor" onclick="go('monitor')"><span class="ico">📊</span><div><div class="lbl">Monitor <span class="countpill" id="drawer-live">2</span></div>
+      <div class="dsc">Inspect studies, curate trials &amp; <b>export the best pipeline</b>.</div></div></a>
+  </nav>
+  <div class="stepwhere">Three verbs: <b>what to tune</b> → <b>how to run it</b> → <b>inspect</b>.<br>
+  Old <b>Space</b> tab → Search-space section in Setup. Strategy &amp; compute → Run; the scorer (objective) stays in Setup.</div>
+</aside>
+
+<!-- ===================== SETUP ===================== -->
+<section class="view active" id="view-setup">
+<div class="wrap">
+  <p class="lead">Setup answers two questions: <b>what is tunable</b>, and <b>how is it judged?</b> Pipeline + search space + scorer.
+  Pick a pipeline first — the search space &amp; scorer stay locked until one is chosen.</p>
+
+  <!-- pipeline -->
+  <div class="section open">
+    <div class="sec-head" onclick="toggleSec(this)"><span class="chev">▶</span><span class="stitle">Pipeline</span>
+      <span class="summary" id="pipe-summary"><span style="color:var(--color-muted)">— none selected</span></span></div>
+    <div class="sec-body">
+      <div class="row"><label>Base pipeline</label>
+        <button class="pickbtn" id="pipebtn" onclick="choosePipeline()">📁 Choose pipeline…</button>
+        <span class="filechip" id="pipechip" style="display:none">~/specs/yeast_plate_pipeline.json.pht-pipe</span>
+        <button class="btn" id="pipeclear" style="display:none;padding:5px 11px" onclick="clearPipeline()">Change</button></div>
+      <div class="opchain" id="opchain" style="display:none"><span class="opnode">GaussianBlur</span><span class="oparrow">→</span>
+        <span class="opnode">OtsuDetector</span><span class="oparrow">→</span><span class="opnode">SizeFilter</span></div>
+      <p class="hintline" id="pipehint">Pick a <span style="font-family:var(--font-mono)">pipeline.json.pht-pipe</span> (or legacy <span style="font-family:var(--font-mono)">.json</span>) — its operations define what can be tuned. Or come straight from the <b>Builder</b> via "Tune this pipeline", or <b>Open spec…</b> to re-edit a saved one.</p>
+      <div class="row" style="margin-top:var(--sp-3)">
+        <button class="pickbtn" style="border-style:solid">↩ Open spec from library ▾</button>
+        <button class="btn" style="padding:7px 12px">📁 Browse…</button>
+        <span class="hintline" style="margin:0">library: <span style="font-family:var(--font-mono)">.phenotypic-gui/presets/tune/</span></span></div>
+      <p class="hintline" style="margin-top:var(--sp-3);font-style:italic">Config files are JSON, type-tagged by suffix — pipelines <b>.pht-pipe</b>, tuning specs <b>.pht-tune</b> (legacy <span style="font-family:var(--font-mono)">.json</span> still loads). Specs save to your sandbox library <span style="font-family:var(--font-mono)">.phenotypic-gui/presets/tune/</span> by default, or <b>Browse…</b> anywhere. Each is <b>stamped with the phenotypic version</b> that wrote it, so loading an old spec on a newer build warns on mismatch. <b>Deploy</b> separately writes the run's own copy to <span style="font-family:var(--font-mono)">deliverables/tuning_spec.json.pht-tune</span>.</p>
+    </div>
+  </div>
+
+  <!-- search space (locked until pipeline) -->
+  <div class="section pop locked" id="sec-space">
+    <div class="sec-head" onclick="toggleSec(this)"><span class="chev">▶</span><span class="stitle">Search space</span>
+      <span class="errbadge" id="err-space">⚠</span>
+      <span class="summary lockmsg" id="space-summary">🔒 pick a pipeline first</span></div>
+    <div class="sec-body">
+      <p class="hintline" style="margin-top:var(--sp-3)">Inferred from the pipeline's pydantic fields. Toggle a knob off to pin it; click its domain to edit. <b>Source</b> shows how it was guessed.</p>
+      <div class="ksbar">
+        <input type="text" id="kfilter" placeholder="🔍 filter knobs…" oninput="filterKnobs()" style="width:180px">
+        <label class="minilab"><input type="checkbox" id="kreview" onchange="filterKnobs()"> needs-review only</label>
+        <span class="hintline" id="kcount" style="margin:0">7 knobs · 5 active</span>
+        <span style="flex:1"></span>
+        <button class="btn" style="padding:5px 11px" onclick="reinfer()">↻ Re-infer</button>
+        <button class="btn" style="padding:5px 11px" onclick="bulkToast('Disabled 1 needs-review knob (max_area)')">Disable needs-review</button>
+        <button class="btn" style="padding:5px 11px" onclick="bulkToast('Reset all knobs to inferred defaults')">Reset to inferred</button></div>
+      <div class="reinfernote" id="reinfernote">↻ Re-inferred from the current pipeline. Knobs you manually edited (<b>sigma</b>, <b>min_area</b>) were <b>preserved</b>; untouched knobs reset to the pipeline's inferred domains. Added ops contribute new knobs; removed ops drop theirs. <span style="color:var(--color-muted)">Real pipelines reach 20–40 knobs — filter, needs-review, and bulk actions keep this manageable.</span></div>
+      <table class="ktable">
+        <thead><tr><th style="width:46px">On</th><th>Target</th><th>Domain</th><th>Source</th></tr></thead>
+        <tbody>
+          <tr id="k-sigma">
+            <td><label class="switch"><input type="checkbox" checked onchange="toggleKnob(this)"><span class="slider"></span></label></td>
+            <td><span class="target">GaussianBlur.sigma
+              <span class="help" tabindex="0">?<span class="tip"><b>sigma</b> <code>float</code><br>Standard deviation of the Gaussian kernel, in pixels. Larger values smooth noise and faint colony edges before thresholding. Typical agar-plate range 1–5; too high merges adjacent colonies.</span></span></span></td>
+            <td><span class="domsummary" id="sum-sigma" onclick="toggleEd('sigma')">1–6 · float <span class="edit">✎</span></span></td>
+            <td><span class="badge b-num">bounded</span></td></tr>
+          <tr class="edrow" id="ed-sigma"><td></td><td colspan="3"><div class="deditor">
+            <div class="dedline"><span class="dlabel">Domain</span>
+              <div class="radioset"><div class="radio sel" id="m-sigma-range" onclick="setMode('sigma','range')">Range</div>
+              <div class="radio" id="m-sigma-choices" onclick="setMode('sigma','choices')">Choices</div></div></div>
+            <div id="range-sigma">
+              <div class="dedline"><span class="dlabel">Bounds</span>
+                <span class="minilab">low <input type="number" id="lo-sigma" value="1" oninput="onDom('sigma')"></span>
+                <span class="minilab">high <input type="number" id="hi-sigma" value="6" oninput="onDom('sigma')"></span>
+                <span class="minilab">step <input type="number" id="step-sigma" data-float="1" placeholder="continuous" step="0.1" oninput="onDom('sigma')"></span>
+                <label class="minilab"><input type="checkbox" id="log-sigma" onchange="onDom('sigma')"> Sample across orders of magnitude</label>
+                <span class="help" tabindex="0">?<span class="tip tleft"><b>Sample across orders of magnitude</b><br>Also called <i>log scale</i>. Spaces trials evenly by ratio rather than by raw value — so 2k→4k gets as much attention as 25k→50k. Best for wide, positive ranges (areas, thresholds). Needs low &gt; 0 and can't combine with a step ≠ 1.</span></span></div>
+              <div class="gridhint warn" id="grid-sigma">⚠ continuous float → <b style="margin:0 3px">needs Optuna</b> · grid will reject this knob</div>
+              <div class="fielderr" id="be-sigma" style="display:none">⚠ low must be &lt; high</div></div>
+            <div id="choices-sigma" style="display:none"><div class="dedline"><span class="dlabel">Choices</span>
+              <span class="chip">0.5 <b>×</b></span><span class="chip">1 <b>×</b></span><span class="chip">2 <b>×</b></span><span class="chip">4 <b>×</b></span>
+              <input type="text" placeholder="add value…" style="width:110px"></div>
+              <div class="gridhint ok">✓ explicit set → grid-enumerable (4 values)</div></div>
+          </div></td></tr>
+
+          <tr id="k-iz">
+            <td><label class="switch"><input type="checkbox" checked onchange="toggleKnob(this)"><span class="slider"></span></label></td>
+            <td><span class="target">OtsuDetector.ignore_zeros
+              <span class="help" tabindex="0">?<span class="tip"><b>ignore_zeros</b> <code>bool</code><br>Exclude zero-valued (masked / background) pixels from Otsu's histogram. Enable when the plate has large true-black regions that would otherwise drag the threshold toward background.</span></span></span></td>
+            <td><span class="domsummary" id="sum-iz" onclick="toggleEd('iz')">{True, False} <span class="edit">✎</span></span></td>
+            <td><span class="badge b-enum">bool</span></td></tr>
+          <tr class="edrow" id="ed-iz"><td></td><td colspan="3"><div class="deditor">
+            <div class="dedline"><span class="dlabel">Choices</span><span class="chip">True <b>×</b></span><span class="chip">False <b>×</b></span></div>
+            <div class="gridhint ok">✓ categorical (2 values) — discrete sets have no step / magnitude scaling</div></div></td></tr>
+
+          <tr id="k-ib">
+            <td><label class="switch"><input type="checkbox" checked onchange="toggleKnob(this)"><span class="slider"></span></label></td>
+            <td><span class="target">OtsuDetector.ignore_borders
+              <span class="help" tabindex="0">?<span class="tip"><b>ignore_borders</b> <code>bool</code><br>Drop objects touching the image border from the detected mask, removing partial colonies clipped at the plate edge before measurement.</span></span></span></td>
+            <td><span class="domsummary" id="sum-ib" onclick="toggleEd('ib')">{True, False} <span class="edit">✎</span></span></td>
+            <td><span class="badge b-enum">bool</span></td></tr>
+          <tr class="edrow" id="ed-ib"><td></td><td colspan="3"><div class="deditor">
+            <div class="dedline"><span class="dlabel">Choices</span><span class="chip">True <b>×</b></span><span class="chip">False <b>×</b></span></div>
+            <div class="gridhint ok">✓ categorical (2 values) — discrete sets have no step / magnitude scaling</div></div></td></tr>
+
+          <tr id="k-min">
+            <td><label class="switch"><input type="checkbox" checked onchange="toggleKnob(this)"><span class="slider"></span></label></td>
+            <td><span class="target">SizeFilter.min_area
+              <span class="help" tabindex="0">?<span class="tip"><b>min_area</b> <code>int</code> (pixels)<br>Minimum object area. Connected components smaller than this are discarded as debris or noise speckles rather than counted as colonies.</span></span></span></td>
+            <td><span class="domsummary" id="sum-min" onclick="toggleEd('min')">20–400 · step 1 · by-magnitude <span class="edit">✎</span></span></td>
+            <td><span class="badge b-num">bounded</span></td></tr>
+          <tr class="edrow" id="ed-min"><td></td><td colspan="3"><div class="deditor">
+            <div class="dedline"><span class="dlabel">Domain</span>
+              <div class="radioset"><div class="radio sel" id="m-min-range" onclick="setMode('min','range')">Range</div>
+              <div class="radio" id="m-min-choices" onclick="setMode('min','choices')">Choices</div></div></div>
+            <div id="range-min">
+              <div class="dedline"><span class="dlabel">Bounds</span>
+                <span class="minilab">low <input type="number" id="lo-min" value="20" oninput="onDom('min')"></span>
+                <span class="minilab">high <input type="number" id="hi-min" value="400" oninput="onDom('min')"></span>
+                <span class="minilab">step <input type="number" id="step-min" data-float="0" value="1" min="1" oninput="onDom('min')"></span>
+                <label class="minilab"><input type="checkbox" id="log-min" checked onchange="onDom('min')"> Sample across orders of magnitude</label>
+                <span class="help" tabindex="0">?<span class="tip tleft"><b>Sample across orders of magnitude</b><br>Also called <i>log scale</i>. Spaces trials evenly by ratio rather than by raw value — so 25→50 gets as much attention as 200→400. Best for wide, positive ranges (areas, thresholds). Needs low &gt; 0 and can't combine with a step ≠ 1.</span></span></div>
+              <div class="gridhint ok" id="grid-min">✓ stepped int → grid-enumerable (381 values)</div>
+              <div class="hintline" id="ll-min" style="display:none">⚠ Optuna can't combine <b>order-of-magnitude sampling</b> with step ≠ 1 — it will force step = 1 (a warning is logged). Disable one.</div>
+              <div class="fielderr" id="be-min" style="display:none">⚠ low must be &lt; high</div></div>
+            <div id="choices-min" style="display:none"><div class="dedline"><span class="dlabel">Choices</span>
+              <span class="chip">25 <b>×</b></span><span class="chip">50 <b>×</b></span><span class="chip">100 <b>×</b></span>
+              <input type="text" placeholder="add value…" style="width:110px"></div></div>
+          </div></td></tr>
+
+          <tr id="k-max">
+            <td><label class="switch"><input type="checkbox" checked onchange="toggleKnob(this)"><span class="slider"></span></label></td>
+            <td><span class="target">SizeFilter.max_area
+              <span class="help" tabindex="0">?<span class="tip"><b>max_area</b> <code>int</code> (pixels)<br>Maximum object area. Components larger than this — merged colony clusters or plate artifacts — are dropped. Heuristic default spans 100×, so it was flagged for review.</span></span></span></td>
+            <td><span class="domsummary" id="sum-max" onclick="toggleEd('max')">2000–50000 · step 1 · by-magnitude <span class="edit">✎</span></span></td>
+            <td><span class="badge b-review">heuristic · review</span></td></tr>
+          <tr class="edrow" id="ed-max"><td></td><td colspan="3"><div class="deditor">
+            <div class="dedline"><span class="dlabel">Bounds</span>
+              <span class="minilab">low <input type="number" id="lo-max" value="2000" oninput="onDom('max')"></span>
+              <span class="minilab">high <input type="number" id="hi-max" value="50000" oninput="onDom('max')"></span>
+              <span class="minilab">step <input type="number" id="step-max" data-float="0" value="1" min="1" oninput="onDom('max')"></span>
+              <label class="minilab"><input type="checkbox" id="log-max" checked onchange="onDom('max')"> Sample across orders of magnitude</label>
+              <span class="help" tabindex="0">?<span class="tip tleft"><b>Sample across orders of magnitude</b><br>Also called <i>log scale</i>. Spaces trials evenly by ratio rather than by raw value — so 2k→4k gets as much attention as 25k→50k. Best for wide, positive ranges (areas, thresholds). Needs low &gt; 0 and can't combine with a step ≠ 1.</span></span></div>
+            <div class="gridhint ok" id="grid-max">✓ stepped int → grid-enumerable (large)</div>
+            <div class="hintline" id="ll-max" style="display:none">⚠ Optuna forces step = 1 under order-of-magnitude sampling. Disable one.</div>
+            <div class="fielderr" id="be-max" style="display:none">⚠ low must be &lt; high</div></div></td></tr>
+
+          <tr class="off" id="k-mode">
+            <td><label class="switch"><input type="checkbox" onchange="toggleKnob(this)"><span class="slider"></span></label></td>
+            <td><span class="target">GaussianBlur.mode
+              <span class="help" tabindex="0">?<span class="tip"><b>mode</b> <code>Literal["reflect","nearest",…]</code><br>How the kernel extends the image past its borders when convolving. <code>reflect</code> avoids the edge darkening that <code>constant</code> can introduce at plate margins.</span></span></span></td>
+            <td><span class="domsummary" id="sum-mode" onclick="toggleEd('mode')">{reflect, nearest, …} <span class="edit">✎</span></span></td>
+            <td><span class="badge b-enum">enum</span></td></tr>
+          <tr class="edrow" id="ed-mode"><td></td><td colspan="3"><div class="deditor">
+            <div class="dedline"><span class="dlabel">Choices</span>
+              <span class="chip">reflect <b>×</b></span><span class="chip">nearest <b>×</b></span><span class="chip">constant <b>×</b></span><span class="chip">wrap <b>×</b></span></div>
+            <div class="gridhint ok">✓ categorical from the field's Literal — pick a subset to sweep</div></div></td></tr>
+
+          <tr class="off" id="k-en">
+            <td><label class="switch"><input type="checkbox" onchange="toggleKnob(this)"><span class="slider"></span></label></td>
+            <td><span class="target">OtsuDetector.__enabled__
+              <span class="help" tabindex="0">?<span class="tip"><b>presence knob</b><br>Toggles whether <code>OtsuDetector</code> runs at all. When swept, the optimizer compares pipelines with and without this step — a structural, not numeric, choice.</span></span></span></td>
+            <td><span class="domsummary" id="sum-en" onclick="toggleEd('en')">on / off <span class="edit">✎</span></span></td>
+            <td><span class="badge b-heur">presence</span></td></tr>
+          <tr class="edrow" id="ed-en"><td></td><td colspan="3"><div class="deditor">
+            <div class="dedline"><span class="dlabel">Presence</span><span class="chip">enabled <b>×</b></span><span class="chip">disabled <b>×</b></span></div>
+            <div class="gridhint ok">✓ structural toggle — children become conditional on "enabled" (advanced, v1-deferred)</div></div></td></tr>
+        </tbody>
+      </table>
+      <p class="hintline" id="gridglobal"><b>Grid unavailable</b> — a continuous float (<span style="font-family:var(--font-mono)">GaussianBlur.sigma</span>) is active. Give it a step, pin it, or use Optuna on Run. With it stepped/pinned: <b>~640 candidates</b>.</p>
+      <p class="fielderr" id="space-err" style="display:none"></p>
+    </div>
+  </div>
+
+  <!-- scorer (back in Setup; locked until pipeline) -->
+  <div class="section locked" id="sec-scorer">
+    <div class="sec-head" onclick="toggleSec(this)"><span class="chev">▶</span><span class="stitle">Scorer</span>
+      <span class="errbadge" id="err-scorer">⚠</span>
+      <span class="summary lockmsg" id="scorer-summary">🔒 pick a pipeline first</span></div>
+    <div class="sec-body">
+      <p class="hintline" style="margin-top:var(--sp-3)">What "good" means — the objective the optimizer maximizes. It defines the experiment, so it lives with the search space in Setup.</p>
+      <div class="radioset" style="margin:var(--sp-3) 0">
+        <div class="radio sel" onclick="pickScorer(this,'qc')">QC (expected vs detected count)</div>
+        <div class="radio" onclick="pickScorer(this,'ref')">Reference-free</div>
+        <div class="radio" onclick="pickScorer(this,'sup')">Supervised (GT masks)</div>
+        <div class="radio" onclick="pickScorer(this,'comp')">Composite / multi-objective</div></div>
+      <div id="scorer-qc">
+        <div class="row"><label>Metadata CSV</label>
+          <button class="pickbtn" id="metabtn" style="display:none" onclick="setMeta(true)">📁 expected counts…</button>
+          <span class="filechip" id="metachip">plate_layout.csv <b style="cursor:pointer;color:var(--color-muted);margin-left:4px" onclick="setMeta(false)" title="remove">×</b></span>
+          <span class="fielderr" id="meta-req" style="display:none;margin:0">required for the QC scorer</span></div>
+        <div class="row"><label>Group by</label><input type="text" value="Metadata_ImageName" style="width:240px"></div>
+        <div class="row"><label>Fail threshold</label><input type="number" value="0.10" step="0.01"><span class="hintline" style="margin:0">relative count error that scores 0</span></div></div>
+      <div id="scorer-other" style="display:none"><p class="hintline" style="margin-top:var(--sp-3)">(params for the selected scorer render here — same <span style="font-family:var(--font-mono)">_param_forms</span> machinery as the Builder)</p></div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ===================== RUN ===================== -->
+<section class="view" id="view-run">
+<div class="wrap">
+  <p class="lead">Run is the <b>launch console</b>: search method, budget &amp; compute — the things you re-tweak per launch.
+  The objective (scorer) and search space live in <b>Setup</b>. Same engine as the pipeline Run Console
+  (<span style="font-family:var(--font-mono)">LocalRunner</span> / SLURM), pointed at
+  <span style="font-family:var(--font-mono)">python&nbsp;-m&nbsp;phenotypic.tune&nbsp;run</span>.</p>
+
+  <div class="section open"><div class="sec-head" onclick="toggleSec(this)"><span class="chev">▶</span><span class="stitle">Strategy &amp; budget</span>
+      <span class="summary"><b style="color:var(--color-navy)">Optuna · TPE</b> · 50 trials</span></div>
+    <div class="sec-body">
+      <div class="row" style="margin-top:var(--sp-3)"><label>Strategy</label>
+        <select id="strat" onchange="onStrat()"><option value="grid">grid (exhaustive)</option><option value="random">random</option><option value="optuna" selected>optuna (adaptive)</option></select></div>
+      <div class="row" id="samplerrow"><label>Sampler</label>
+        <select><option>tpe</option><option>cmaes</option><option>gp</option><option>nsga2 (multi-obj)</option></select>
+        <label style="min-width:auto;margin-left:var(--sp-4)"><input type="checkbox"> ASHA pruning</label></div>
+      <div class="row"><label>Trials (budget)</label><input type="number" value="50"><span class="hintline" style="margin:0">≈ 50 × ~7 s = <b>~6 min</b> on 8 workers</span></div>
+      <div class="row"><label>Max failures</label><input type="number" value="10"><span class="hintline" style="margin:0">abort after N failed trials</span></div>
+      <div class="row"><label>Seed</label><input type="number" value="0"></div>
+      <div class="preflight" id="pf">✓ Pre-flight: Optuna selected — float knob <span style="font-family:var(--font-mono)">GaussianBlur.sigma</span> is sweepable. No conflicts.</div>
+    </div></div>
+
+  <div class="section"><div class="sec-head" onclick="toggleSec(this)"><span class="chev">▶</span><span class="stitle">Advanced</span>
+      <span class="summary">held-out, stability, ASHA rungs — defaults are sane</span></div>
+    <div class="sec-body">
+      <p class="hintline" style="margin-top:var(--sp-3)">Robust-eval &amp; evaluator internals. Most users never open this.</p>
+      <div class="row"><label>Held-out fraction</label><input type="number" value="0.20" step="0.05"></div>
+      <div class="row"><label>Group key</label><input type="text" value="(auto from scorer)" style="width:200px"></div>
+      <div class="row"><label>Stability weight λ</label><input type="number" value="0.50" step="0.05"><span class="hintline" style="margin:0">median − λ·IQR across plates</span></div>
+      <div class="row"><label>ASHA rung floor</label><input type="number" value="6"></div>
+    </div></div>
+
+  <div class="section open"><div class="sec-head" onclick="toggleSec(this)"><span class="chev">▶</span><span class="stitle">Compute target &amp; output</span><span class="summary">Local · 8 workers</span></div>
+    <div class="sec-body">
+      <div class="row" style="margin-top:var(--sp-3)"><label>Deploy to</label>
+        <div class="radioset"><div class="radio sel" onclick="pickDeploy(this,'local')">Local</div><div class="radio" onclick="pickDeploy(this,'slurm')">SLURM fleet</div></div></div>
+      <div class="row"><label>Output dir</label><button class="pickbtn">📁 choose…</button><span class="filechip">~/tune_runs/yeast_qc_tpe/</span></div>
+      <div class="row"><label>Workers</label><input type="number" value="8"></div>
+      <div class="row"><label>Storage URL</label><input type="text" value="sqlite:///…/study.db" style="width:300px"><span class="hintline" style="margin:0">shared store enables resume &amp; distributed</span></div>
+      <div id="slurmfields" style="display:none">
+        <div class="row"><label>Partition</label><input type="text" value="cpu"></div>
+        <div class="row"><label>Mem / Time</label><input type="text" value="16G" style="width:90px"><input type="text" value="04:00:00" style="width:110px"></div></div>
+      <div class="cmdbox">python -m phenotypic.tune run <span class="val">spec.json.pht-tune</span> \
+  <span class="flag">-i</span> <span class="val">~/images/yeast/</span> <span class="flag">-o</span> <span class="val">~/tune_runs/yeast_qc_tpe/</span> \
+  <span class="flag">--strategy</span> <span class="val">tpe</span> <span class="flag">--n-trials</span> <span class="val">50</span> \
+  <span class="flag">--storage-url</span> <span class="val">sqlite:///…/study.db</span> <span class="flag">--n-workers</span> <span class="val">8</span></div>
+    </div></div>
+</div>
+</section>
+
+<!-- ===================== MONITOR ===================== -->
+<section class="view" id="view-monitor">
+<div class="wrap">
+  <p class="lead">The read-only co-pilot. A launch lands you here automatically. Pick a study, watch it, curate trials, and <b>export the winning pipeline</b>.</p>
+  <div class="runtabs">
+    <div class="runtab sel" onclick="selectRun(this,'local')"><span class="rdot"></span> yeast_qc_tpe <span style="color:var(--color-muted)">· Local · 34/50</span><span class="kill" title="Cancel run" onclick="askCancel(event,this,'yeast_qc_tpe','local')">✕</span></div>
+    <div class="runtab" onclick="selectRun(this,'slurm')"><span class="rdot"></span> ecoli_reffree_grid <span style="color:var(--color-muted)">· SLURM · 188/640</span><span class="kill" title="Cancel run" onclick="askCancel(event,this,'ecoli_reffree_grid','slurm')">✕</span></div>
+    <div class="runtab" onclick="selectRun(this,'local')"><span class="rdot done"></span> pilot_supervised <span style="color:var(--color-muted)">· done</span></div>
+  </div>
+  <div class="subtabs"><div class="subtab active" onclick="subtab(this,'mon')">Monitor</div><div class="subtab" onclick="subtab(this,'cur')">Curate</div></div>
+  <div class="subview active" id="sv-mon">
+
+    <!-- OQ#1 — get a tuned pipeline OUT -->
+    <div class="bestcard">
+      <div class="bhead"><span class="bstar">★</span> Best so far · trial 28 · score <b style="margin:0 2px">0.912</b>
+        <span class="runbadge">● running — may still improve</span></div>
+      <div class="bparams">GaussianBlur.sigma=2.8 · OtsuDetector.ignore_zeros=False · SizeFilter.min_area=52 · SizeFilter.max_area=18000</div>
+      <div class="bactions">
+        <button class="btn primary" onclick="exportToast()">⤓ Export best pipeline</button>
+        <button class="btn" onclick="exportToast()">Open in Builder</button>
+        <button class="btn" onclick="exportToast()">Send to Run Console</button>
+      </div>
+      <div class="bhint">Applies the winning knob values to your base pipeline (<span style="font-family:var(--font-mono)">build_pipeline(base, params)</span>) → a ready-to-run pipeline config (<span style="font-family:var(--font-mono)">best_pipeline.json.pht-pipe</span>). The tuning loop closes here.</div>
+    </div>
+
+    <div class="cards">
+      <div class="card full" id="live-slurm" style="display:none"><h4>SLURM fleet <span class="runbadge">● 8 array tasks</span></h4>
+        <div class="slurmgrid">
+          <span class="stask done">task 0 ✓</span><span class="stask done">task 1 ✓</span><span class="stask run">task 2 ●</span>
+          <span class="stask run">task 3 ●</span><span class="stask run">task 4 ●</span><span class="stask queue">task 5 …</span>
+          <span class="stask queue">task 6 …</span><span class="stask queue">task 7 …</span></div>
+        <div class="progress"><i style="width:54%"></i></div>
+        <p class="hintline" style="margin-top:0"><b>No local log</b> — workers run on the cluster and write trials to the shared study store. Monitor polls <span style="font-family:var(--font-mono)">sqlite:///…/study.db</span> every 3 s, so the charts below come from the store, not a stdout tail. Per-task output lives in <span style="font-family:var(--font-mono)">slurm-%A_%a.out</span> on the cluster.</p>
+        <div class="hintline" style="margin:0">job 4815162 · partition cpu · 16G · 04:00:00 · 188/640 trials</div></div>
+      <div class="card full" id="live-local"><h4>Live progress <span class="runbadge">● running · 34/50</span></h4>
+        <div class="progress"><i></i></div>
+        <div class="logbox">
+<span class="dim">[14:02:11]</span> tune.engine  starting study yeast_qc_tpe (optuna/tpe)
+<span class="dim">[14:02:12]</span> trial 0  <span class="dim">params</span> sigma=2.3 ignore_zeros=False min_area=64  <span class="ok">score=0.81</span>
+<span class="dim">[14:02:19]</span> trial 1  <span class="dim">params</span> sigma=1.1 ignore_zeros=True  min_area=120 <span class="ok">score=0.74</span>
+<span class="dim">[14:02:27]</span> trial 2  <span class="warn">pruned at rung 1</span> (score=0.40 &lt; floor)
+<span class="dim">[14:02:35]</span> trial 3  <span class="dim">params</span> sigma=3.0 ignore_zeros=False min_area=48  <span class="ok">score=0.88</span> ★ best
+<span class="dim">[14:02:44]</span> ... 30 more trials ...
+        </div></div>
+      <div class="card"><h4>Objective over trials</h4>
+        <svg viewBox="0 0 320 150" width="100%" height="150">
+          <polyline fill="none" stroke="#1b75bc" stroke-width="2.5" points="6,120 40,108 74,112 108,70 142,66 176,58 210,60 244,46 278,44 312,40"/>
+          <line x1="6" y1="140" x2="312" y2="140" stroke="#dde3ed"/><circle cx="312" cy="40" r="4" fill="#febc11"/></svg>
+        <div class="statline"><span>Best score</span><span>0.912</span></div><div class="statline"><span>Trials done</span><span>34 / 50</span></div></div>
+      <div class="card"><h4>Parameter importance</h4>
+        <svg viewBox="0 0 320 150" width="100%" height="150">
+          <rect x="80" y="14" width="210" height="20" rx="3" fill="#1b75bc"/><rect x="80" y="48" width="150" height="20" rx="3" fill="#56B4E9"/>
+          <rect x="80" y="82" width="92" height="20" rx="3" fill="#009E73"/><rect x="80" y="116" width="40" height="20" rx="3" fill="#CC79A7"/>
+          <text x="74" y="29" font-size="10" fill="#2e3a4e" text-anchor="end">min_area</text><text x="74" y="63" font-size="10" fill="#2e3a4e" text-anchor="end">sigma</text>
+          <text x="74" y="97" font-size="10" fill="#2e3a4e" text-anchor="end">ig_zeros</text><text x="74" y="131" font-size="10" fill="#2e3a4e" text-anchor="end">max_area</text></svg>
+        <div style="margin-top:var(--sp-3)"><span class="gapbadge">✓ generalization gap 3.1% — healthy</span></div></div>
+    </div></div>
+  <div class="subview" id="sv-cur">
+    <div class="card"><h4>Compare trials A / B</h4>
+      <p class="hintline">Pin two shortlisted trials; pan/zoom-linked overlays with a difference toggle. Export either as a pipeline from the panel above.</p>
+      <div class="ab"><div class="abpane"><span>A · trial 3 · 0.88</span></div><div class="abpane"><span>B · trial 28 · 0.91</span></div></div></div></div>
+</div>
+</section>
+
+<div class="footer" id="footer-setup">
+  <div class="vstat muted" id="setup-vstat"><span class="vd" style="background:var(--color-muted)"></span> Choose a pipeline to begin</div>
+  <div class="grow"></div><button class="btn" onclick="bulkToast('Saved to library · .phenotypic-gui/presets/tune/yeast_qc.json.pht-tune · stamped phenotypic 0.18')">💾 Save spec</button>
+  <button class="btn primary disabled" id="setup-continue" onclick="go('run')">Continue to Run →</button></div>
+<div class="footer" id="footer-run">
+  <div class="vstat" id="run-vstat"><span class="vd"></span> Spec valid · QC scorer · TPE×50 · Local·8</div>
+  <div class="grow"></div><button class="btn" onclick="bulkToast('Saved to library · .phenotypic-gui/presets/tune/yeast_qc.json.pht-tune · stamped phenotypic 0.18')">💾 Save spec</button>
+  <button class="btn gold" onclick="go('setup')">← Edit search space</button>
+  <button class="btn primary" id="run-deploy" onclick="deploy()">Deploy run ▶</button></div>
+
+<div class="toast" id="toast"><span class="tdot"></span> Run launched — now monitoring <b>yeast_qc_tpe</b></div>
+
+<!-- #5 cancel confirm -->
+<div class="scrim2" id="confirm-scrim" onclick="closeConfirm()"></div>
+<div class="dialog" id="confirm-dialog">
+  <div class="dtitle">Cancel this tuning run?</div>
+  <div class="dbody" id="confirm-body"></div>
+  <div class="dactions">
+    <button class="btn" onclick="closeConfirm()">Keep running</button>
+    <button class="btn primary" style="background:var(--oi-vermilion);border-color:var(--oi-vermilion)" onclick="confirmCancel()">Cancel run</button></div>
+</div>
+
+<script>
+const subs={setup:'define what to tune &amp; how to judge',run:'how to run it &amp; deploy',monitor:'inspect &amp; export'};
+let liveRuns=2, pipelineChosen=false, currentScorer='qc', metaPresent=true, deployTarget='local';
+function openDrawer(){drawer.classList.add('open');scrim.classList.add('open');}
+function closeDrawer(){drawer.classList.remove('open');scrim.classList.remove('open');}
+function refreshCounters(){
+  livecount.textContent=liveRuns; document.getElementById('drawer-live').textContent=liveRuns;
+  const cd=document.getElementById('chrome-live'); cd.textContent=liveRuns;
+  livepill.classList.toggle('zero',liveRuns===0); document.getElementById('drawer-live').classList.toggle('zero',liveRuns===0);
+  cd.style.display=liveRuns===0?'none':'inline-flex';
+}
+function go(v){
+  if(v==='run' && !pipelineChosen) return;          // can't launch without a pipeline
+  document.querySelectorAll('.view').forEach(e=>e.classList.remove('active'));
+  document.getElementById('view-'+v).classList.add('active');
+  document.querySelectorAll('.dnav a').forEach(a=>a.classList.toggle('active',a.dataset.view===v));
+  crumb.firstChild.textContent=v.charAt(0).toUpperCase()+v.slice(1); crumbsub.innerHTML=subs[v];
+  document.querySelectorAll('.footer').forEach(f=>f.classList.remove('show'));
+  const ft=document.getElementById('footer-'+v); if(ft) ft.classList.add('show');
+  closeDrawer(); window.scrollTo({top:0,behavior:'smooth'});
+}
+function deploy(){if(document.getElementById('run-deploy').classList.contains('disabled'))return; liveRuns+=1; refreshCounters();
+  if(deployTarget==='slurm'){toast.innerHTML='<span class="tdot"></span> Submitted <b>8 array tasks</b> to SLURM (partition cpu) — monitoring via study store'; showLive('slurm');}
+  else{toast.innerHTML='<span class="tdot"></span> Run launched — now monitoring <b>yeast_qc_tpe</b>'; showLive('local');}
+  toast.classList.add('show'); setTimeout(()=>toast.classList.remove('show'),2800); go('monitor');}
+function exportToast(){toast.innerHTML='<span class="tdot"></span> Wrote <b>best_pipeline.json.pht-pipe</b> (best params applied to base)'; toast.classList.add('show'); setTimeout(()=>toast.classList.remove('show'),2800);}
+function toggleSec(h){const s=h.parentElement; if(s.classList.contains('locked'))return; s.classList.toggle('open');}
+function toggleKnob(cb){cb.closest('tr').classList.toggle('off',!cb.checked); recomputeGlobalGrid(); validate();}
+function toggleEd(id){document.getElementById('ed-'+id).classList.toggle('open');}
+/* ---- empty-state: lock search space + scorer until a pipeline is picked ---- */
+function choosePipeline(){
+  pipelineChosen=true;
+  pipebtn.style.display='none'; pipechip.style.display='inline-block'; pipeclear.style.display='inline-block';
+  opchain.style.display='flex';
+  document.getElementById('pipe-summary').innerHTML='<span class="ok">✓ yeast_plate_pipeline.json.pht-pipe</span>';
+  pipehint.innerHTML='Changing the pipeline re-infers the search space below.';
+  const sp=document.getElementById('sec-space'), sc=document.getElementById('sec-scorer');
+  sp.classList.remove('locked'); sp.classList.add('open');
+  sc.classList.remove('locked');
+  document.getElementById('space-summary').classList.remove('lockmsg');
+  document.getElementById('space-summary').innerHTML='<b style="color:var(--color-navy)">5 of 7</b> knobs active · <span class="badge b-review">1 needs review</span>';
+  document.getElementById('scorer-summary').classList.remove('lockmsg');
+  document.getElementById('scorer-summary').innerHTML='<b style="color:var(--color-navy)">QC</b> · count objective';
+  setupReady(true); validate();
+}
+function clearPipeline(){
+  pipelineChosen=false;
+  pipebtn.style.display='inline-flex'; pipechip.style.display='none'; pipeclear.style.display='none';
+  opchain.style.display='none';
+  document.getElementById('pipe-summary').innerHTML='<span style="color:var(--color-muted)">— none selected</span>';
+  pipehint.innerHTML='Pick a <span style="font-family:var(--font-mono)">pipeline.json.pht-pipe</span> (or legacy <span style="font-family:var(--font-mono)">.json</span>) — its operations define what can be tuned. Or come from the <b>Builder</b>, or <b>Open spec…</b> to re-edit a saved one.';
+  const sp=document.getElementById('sec-space'), sc=document.getElementById('sec-scorer');
+  sp.classList.add('locked'); sp.classList.remove('open');
+  sc.classList.add('locked'); sc.classList.remove('open');
+  const ss=document.getElementById('space-summary'); ss.classList.add('lockmsg'); ss.textContent='🔒 pick a pipeline first';
+  const cs=document.getElementById('scorer-summary'); cs.classList.add('lockmsg'); cs.textContent='🔒 pick a pipeline first';
+  document.getElementById('sec-space').classList.remove('invalid'); document.getElementById('sec-scorer').classList.remove('invalid');
+  setupReady(false);
+}
+function setupReady(ready){
+  const v=document.getElementById('setup-vstat'), c=document.getElementById('setup-continue');
+  if(ready){v.className='vstat'; v.innerHTML='<span class="vd"></span> Search space + scorer ready · 5 knobs · 1 needs review'; c.classList.remove('disabled');}
+  else{v.className='vstat muted'; v.innerHTML='<span class="vd" style="background:var(--color-muted)"></span> Choose a pipeline to begin'; c.classList.add('disabled');}
+}
+/* ---- #3 validation / blocked-deploy ---- */
+function setMeta(on){metaPresent=on;
+  document.getElementById('metabtn').style.display=on?'none':'inline-flex';
+  document.getElementById('metachip').style.display=on?'inline-block':'none';
+  validate();
+}
+function setSectionInvalid(secId,issues){
+  const s=document.getElementById(secId), eb=document.getElementById('err-'+secId.replace('sec-',''));
+  if(issues.length){s.classList.add('invalid'); if(eb) eb.innerHTML='⚠ '+issues.length+' issue'+(issues.length>1?'s':'');}
+  else s.classList.remove('invalid');
+}
+function setFooterIssues(which,issues,validText){
+  const v=document.getElementById(which+'-vstat');
+  const btn=document.getElementById(which==='setup'?'setup-continue':'run-deploy');
+  if(issues.length){v.className='vstat err';
+    v.innerHTML='<span class="vd" style="background:var(--oi-vermilion)"></span> ⚠ '+issues.length+' issue'+(issues.length>1?'s':'')+' — '+issues.join(' · ');
+    if(btn) btn.classList.add('disabled');}
+  else{v.className='vstat'; v.innerHTML='<span class="vd"></span> '+validText; if(btn) btn.classList.remove('disabled');}
+}
+function validate(){
+  if(!pipelineChosen) return;
+  const spaceIssues=[], scorerIssues=[], runIssues=[];
+  let active=0;
+  document.querySelectorAll('.ktable tbody tr[id^="k-"]').forEach(tr=>{const cb=tr.querySelector('input[type=checkbox]'); if(cb&&cb.checked) active++;});
+  if(active===0) spaceIssues.push('no active knobs');
+  ['sigma','min','max'].forEach(id=>{
+    const cb=document.querySelector('#k-'+id+' input[type=checkbox]'), rng=document.getElementById('range-'+id), be=document.getElementById('be-'+id);
+    let bad=false;
+    if(cb&&cb.checked && rng && rng.style.display!=='none'){
+      const lo=parseFloat(document.getElementById('lo-'+id).value), hi=parseFloat(document.getElementById('hi-'+id).value);
+      if(!(hi>lo)){bad=true; spaceIssues.push(id+' low ≥ high');}
+    }
+    if(be) be.style.display=bad?'block':'none';
+  });
+  if(currentScorer==='qc' && !metaPresent) scorerIssues.push('QC scorer needs a metadata CSV');
+  document.getElementById('meta-req').style.display=(currentScorer==='qc'&&!metaPresent)?'inline':'none';
+  const strat=document.getElementById('strat').value;
+  const sigOn=document.querySelector('#k-sigma input[type=checkbox]').checked, ss=document.getElementById('step-sigma');
+  const sigCont=sigOn && (ss.value.trim()===''||parseFloat(ss.value)<=0) && document.getElementById('range-sigma').style.display!=='none';
+  if(strat==='grid' && sigCont) runIssues.push('grid + continuous float (sigma)');
+  setSectionInvalid('sec-space',spaceIssues); setSectionInvalid('sec-scorer',scorerIssues);
+  const se=document.getElementById('space-err');
+  se.style.display=spaceIssues.length?'block':'none'; se.innerHTML=spaceIssues.length?('⚠ '+spaceIssues.join(' · ')):'';
+  const setupIssues=spaceIssues.concat(scorerIssues);
+  setFooterIssues('setup',setupIssues,'Search space + scorer ready · '+active+' knobs');
+  setFooterIssues('run',setupIssues.concat(runIssues),'Spec valid · QC scorer · TPE×50 · Local·8');
+}
+function setMode(id,mode){
+  document.getElementById('m-'+id+'-range').classList.toggle('sel',mode==='range');
+  document.getElementById('m-'+id+'-choices').classList.toggle('sel',mode==='choices');
+  document.getElementById('range-'+id).style.display=mode==='range'?'block':'none';
+  document.getElementById('choices-'+id).style.display=mode==='choices'?'block':'none';
+  onDom(id);
+}
+function onDom(id){
+  const step=document.getElementById('step-'+id), log=document.getElementById('log-'+id);
+  const lo=document.getElementById('lo-'+id), hi=document.getElementById('hi-'+id);
+  if(!step) return;
+  const hasStep=step.value.trim()!=='' && parseFloat(step.value)>0;
+  const isFloat=step.dataset.float==='1'; const logOn=log&&log.checked;
+  if(log){ log.disabled = hasStep && (parseFloat(step.value)!==1); step.disabled = logOn && isFloat; }
+  const ll=document.getElementById('ll-'+id);
+  if(ll) ll.style.display=(!isFloat && logOn && hasStep && parseFloat(step.value)!==1)?'block':'none';
+  const gh=document.getElementById('grid-'+id);
+  if(gh){
+    const a=parseFloat(lo.value), b=parseFloat(hi.value);
+    if(isFloat){
+      if(hasStep){const n=Math.floor((b-a)/parseFloat(step.value))+1; gh.className='gridhint ok'; gh.innerHTML='✓ stepped float → <b style="margin:0 3px">grid-enumerable</b> · '+n+' values';}
+      else{gh.className='gridhint warn'; gh.innerHTML='⚠ continuous float → <b style="margin:0 3px">needs Optuna</b> · grid will reject this knob';}
+    }else{const st=hasStep?parseFloat(step.value):1; const n=Math.floor((b-a)/st)+1; gh.className='gridhint ok'; gh.innerHTML='✓ stepped int → <b style="margin:0 3px">grid-enumerable</b> · '+(n>5000?'~'+Math.round(n/1000)+'k':n)+' values';}
+  }
+  updateSummary(id); recomputeGlobalGrid(); validate();
+}
+function updateSummary(id){
+  const sum=document.getElementById('sum-'+id), step=document.getElementById('step-'+id);
+  if(!sum||!step) return;
+  const lo=document.getElementById('lo-'+id).value, hi=document.getElementById('hi-'+id).value;
+  const log=document.getElementById('log-'+id), isFloat=step.dataset.float==='1';
+  const hasStep=step.value.trim()!=='' && parseFloat(step.value)>0;
+  let t=lo+'–'+hi; if(hasStep) t+=' · step '+step.value; else t+= isFloat?' · float':' · step 1';
+  if(log&&log.checked) t+=' · by-magnitude';
+  sum.innerHTML=t+' <span class="edit">✎</span>';
+}
+function recomputeGlobalGrid(){
+  const sigOn=!document.getElementById('k-sigma').classList.contains('off');
+  const step=document.getElementById('step-sigma');
+  const sigContinuous=sigOn && (step.value.trim()===''|| parseFloat(step.value)<=0) && document.getElementById('range-sigma').style.display!=='none';
+  const g=document.getElementById('gridglobal');
+  if(sigContinuous){g.innerHTML='<b>Grid unavailable</b> — a continuous float (<span style="font-family:var(--font-mono)">GaussianBlur.sigma</span>) is active. Give it a step, pin it, or use Optuna on Run. With it stepped/pinned: <b>~640 candidates</b>.';}
+  else{g.innerHTML='✓ All active knobs are enumerable — <b>grid is available</b>. Estimated candidates: <b>~'+(sigOn?'1,920':'640')+'</b>.';}
+}
+function pickScorer(el,k){el.parentElement.querySelectorAll('.radio').forEach(r=>r.classList.remove('sel'));el.classList.add('sel');
+  currentScorer=k;
+  document.getElementById('scorer-qc').style.display=(k==='qc')?'block':'none';
+  document.getElementById('scorer-other').style.display=(k==='qc')?'none':'block';
+  validate();}
+function pickDeploy(el,k){el.parentElement.querySelectorAll('.radio').forEach(r=>r.classList.remove('sel'));el.classList.add('sel');
+  deployTarget=k;
+  document.getElementById('slurmfields').style.display=(k==='slurm')?'block':'none';}
+function onStrat(){const v=document.getElementById('strat').value;
+  document.getElementById('samplerrow').style.display=(v==='optuna')?'flex':'none';
+  const pf=document.getElementById('pf');
+  if(v==='grid'){pf.style.cssText='display:flex;align-items:center;gap:8px;font-size:.8125rem;background:#fdeee6;border:1px solid #f3c9b1;color:#a9420a;border-radius:var(--radius);padding:8px 12px;margin-top:var(--sp-3);font-weight:500';
+    pf.innerHTML='⚠ Pre-flight: grid selected, but float knob <span style="font-family:var(--font-mono);margin:0 3px">GaussianBlur.sigma</span> is continuous — give it a step in Setup or pin it.';}
+  else{pf.style.cssText='';pf.className='preflight';pf.innerHTML='✓ Pre-flight: '+v+' selected — float knob <span style="font-family:var(--font-mono)">GaussianBlur.sigma</span> is sweepable. No conflicts.';}
+  validate();}
+function subtab(el,k){el.parentElement.querySelectorAll('.subtab').forEach(s=>s.classList.remove('active'));el.classList.add('active');
+  document.getElementById('sv-mon').classList.toggle('active',k==='mon');document.getElementById('sv-cur').classList.toggle('active',k==='cur');}
+/* #4 run selection / SLURM vs Local live card */
+function showLive(mode){document.getElementById('live-local').style.display=(mode==='slurm')?'none':'block';document.getElementById('live-slurm').style.display=(mode==='slurm')?'block':'none';}
+function selectRun(el,mode){el.parentElement.querySelectorAll('.runtab').forEach(r=>r.classList.remove('sel'));el.classList.add('sel');showLive(mode);}
+/* #5 cancel a run */
+let cancelTarget=null;
+function askCancel(ev,el,name,mode){ev.stopPropagation();cancelTarget=el;
+  document.getElementById('confirm-body').innerHTML = mode==='slurm'
+    ? 'Issue <code>scancel</code> for <b>'+name+'</b> array job <code>4815162</code>? Completed trials already written to the shared study store are kept — the study can be resumed later.'
+    : 'Send <code>SIGTERM</code> to <b>'+name+'</b>? The 34 trials already recorded in the journal are kept — the study can be resumed.';
+  document.getElementById('confirm-scrim').classList.add('open');document.getElementById('confirm-dialog').classList.add('open');}
+function closeConfirm(){document.getElementById('confirm-scrim').classList.remove('open');document.getElementById('confirm-dialog').classList.remove('open');}
+function confirmCancel(){if(cancelTarget){cancelTarget.classList.add('cancelled');const d=cancelTarget.querySelector('.rdot');if(d)d.classList.add('done');const k=cancelTarget.querySelector('.kill');if(k)k.remove();cancelTarget.insertAdjacentHTML('beforeend',' <span style="color:var(--oi-vermilion);font-size:.7rem;font-weight:700">cancelled</span>');}liveRuns=Math.max(0,liveRuns-1);refreshCounters();closeConfirm();}
+/* #6 knob filtering / bulk */
+function filterKnobs(){const q=document.getElementById('kfilter').value.toLowerCase();const rev=document.getElementById('kreview').checked;let shown=0;
+  document.querySelectorAll('.ktable tbody tr[id^="k-"]').forEach(tr=>{const txt=tr.querySelector('.target').textContent.toLowerCase();const isRev=!!tr.querySelector('.b-review');const ok=txt.includes(q)&&(!rev||isRev);tr.style.display=ok?'':'none';const ed=document.getElementById('ed-'+tr.id.slice(2));if(ed){if(!ok)ed.classList.remove('open');ed.style.display=ok?'':'none';}if(ok)shown++;});
+  document.getElementById('kcount').textContent=shown+' of 7 knobs shown';}
+function reinfer(){document.getElementById('reinfernote').classList.toggle('show');}
+function bulkToast(msg){toast.innerHTML='<span class="tdot"></span> '+msg;toast.classList.add('show');setTimeout(()=>toast.classList.remove('show'),2400);}
+refreshCounters();
+document.getElementById('footer-setup').classList.add('show');
+['min','max'].forEach(onDom);
+</script>
+</body>
+</html>

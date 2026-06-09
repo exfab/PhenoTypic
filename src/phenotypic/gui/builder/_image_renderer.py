@@ -292,20 +292,23 @@ def to_data_uri(
     return bytes_to_data_uri(to_png_bytes(image, channel, max_dim=max_dim))
 
 
-def to_overlay_png_bytes(
+def to_overlay_rgb_array(
     image: "phenotypic.Image",
     *,
     max_dim: int = 512,
     alpha: float = 0.4,
-) -> bytes:
-    """Composite the objmap (alpha-blended) over the post-op detect_mat.
+) -> np.ndarray:
+    """Composite the objmap (alpha-blended) over the post-op detect_mat as RGB.
 
-    Used for detector / refiner intermediates so the inspector shows
-    *which colonies were segmented at this step* against the same grayscale
-    background the detector saw. Falls back to a plain
-    :func:`_label_map_to_rgb` colormap on the objmap when ``scikit-image``
-    isn't importable, matching the existing fallback in
-    :func:`_label_map_to_rgb` itself.
+    The array-returning core shared by the builder's overlay PNG renderer
+    (:func:`to_overlay_png_bytes`) and the ``/tune/`` Curate candidate overlay
+    (``phenotypic.gui.tune._overlays.render_candidate_overlay``). Both pass the
+    same arguments through this one ``skimage.color.label2rgb`` call so the
+    builder preview and the tune overlay stay pixel-for-pixel identical;
+    only the final encoding (raw array vs. PNG bytes) differs at the call site.
+
+    Falls back to a plain :func:`_label_map_to_rgb` colormap on the objmap when
+    ``scikit-image`` isn't importable, matching :func:`_label_map_to_rgb`.
 
     Args:
         image: PhenoTypic :class:`Image` whose ``detect_mat`` and ``objmap``
@@ -314,7 +317,8 @@ def to_overlay_png_bytes(
         alpha: Label-overlay opacity in ``[0, 1]``. Higher = more colored.
 
     Returns:
-        Raw PNG bytes encoding an ``(H, W, 3)`` uint8 overlay.
+        An ``(H, W, 3)`` uint8 overlay array (RGB, ready for ``go.Image`` or
+        :func:`_encode_png`).
     """
     detect = _read_channel(image, "detect_mat")
     objmap = _read_channel(image, "objmap")
@@ -339,11 +343,35 @@ def to_overlay_png_bytes(
             image_alpha=1.0,
             kind="overlay",
         )
-        rgb_u8 = np.clip(rgb * 255.0, 0, 255).astype(np.uint8)
+        return np.clip(rgb * 255.0, 0, 255).astype(np.uint8)
     except Exception:
-        rgb_u8 = _label_map_to_rgb(objmap)
+        return _label_map_to_rgb(objmap)
 
-    return _encode_png(rgb_u8)
+
+def to_overlay_png_bytes(
+    image: "phenotypic.Image",
+    *,
+    max_dim: int = 512,
+    alpha: float = 0.4,
+) -> bytes:
+    """Composite the objmap (alpha-blended) over the post-op detect_mat.
+
+    Used for detector / refiner intermediates so the inspector shows
+    *which colonies were segmented at this step* against the same grayscale
+    background the detector saw. Thin PNG-encoding wrapper over
+    :func:`to_overlay_rgb_array` — the shared core that the ``/tune/`` Curate
+    overlay also renders through, so the two stay visually identical.
+
+    Args:
+        image: PhenoTypic :class:`Image` whose ``detect_mat`` and ``objmap``
+            accessors should both be valid (post-detector / post-refiner).
+        max_dim: Maximum length of the longer spatial side after resizing.
+        alpha: Label-overlay opacity in ``[0, 1]``. Higher = more colored.
+
+    Returns:
+        Raw PNG bytes encoding an ``(H, W, 3)`` uint8 overlay.
+    """
+    return _encode_png(to_overlay_rgb_array(image, max_dim=max_dim, alpha=alpha))
 
 
 # ---------------------------------------------------------------------------
@@ -475,6 +503,7 @@ __all__ = [
     "to_data_uri",
     "to_png_bytes",
     "bytes_to_data_uri",
+    "to_overlay_rgb_array",
     "to_overlay_png_bytes",
     "render_node_preview",
     "dataframe_to_table",

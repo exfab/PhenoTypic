@@ -25,9 +25,11 @@ from phenotypic import ImagePipeline
 from phenotypic._core._pipeline_parts._serializable_pipeline import (
     PipelineLoadWarning,
 )
+from phenotypic.detect import OtsuDetector
 from phenotypic.gui.analysis import _ids as analysis_ids
 from phenotypic.gui.analysis._layout import _build_load_warnings_banner
 from phenotypic.gui.analysis._recipe_state import RecipeState
+from phenotypic.measure import MeasureShape
 from phenotypic.tools_ import pipeline_json_path
 
 
@@ -149,6 +151,25 @@ def test_recipe_state_load_no_warnings_when_all_classes_resolve(
     # Banner exists as a hidden placeholder so callbacks can target the id.
     assert banner.id == analysis_ids.ANALYSIS_LOAD_WARNINGS_BANNER
     assert banner.style == {"display": "none"}
+
+
+def test_recipe_state_reload_preserves_legacy_pipeline_config(tmp_path: Path) -> None:
+    """Legacy-only pipeline configs remain loaded across a recipe reload."""
+    legacy_path = tmp_path / "deliverables" / "pipeline.json"
+    legacy_path.parent.mkdir(parents=True, exist_ok=True)
+    pipe = ImagePipeline(ops=[OtsuDetector()], meas=[MeasureShape()])
+    legacy_path.write_text(pipe.to_json() or "")
+
+    state = RecipeState.load(tmp_path)
+    assert [type(op).__name__ for op in state.pipeline.get_ops().values()] == [
+        "OtsuDetector"
+    ]
+
+    state.reload()
+
+    assert [type(op).__name__ for op in state.pipeline.get_ops().values()] == [
+        "OtsuDetector"
+    ]
 
 
 def test_build_load_warnings_banner_renders_visible_div_when_warnings(

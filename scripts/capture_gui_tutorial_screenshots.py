@@ -43,6 +43,14 @@ METADATA_CSV = DATASET_DIR / "metadata.csv"
 PIPELINE_JSON = DATASET_DIR / "pipeline.json"
 OUTPUT_DIR = DATASET_DIR / "results"
 
+# The hermetic tune run output (a real ``python -m phenotypic.tune`` grid run
+# over the synthetic plates). It lives INSIDE ``DATASET_DIR`` so a tune app
+# rooted at the dataset can sandbox-reach both the run dir and the plate images
+# (``PLATES_DIR``) for the Curate overlays. ``TUNE_LAYOUT_CSV`` is the expected
+# colony-count layout the QC scorer compares against.
+TUNE_OUTPUT_DIR = DATASET_DIR / "tune_run"
+TUNE_LAYOUT_CSV = DATASET_DIR / "tune_layout.csv"
+
 VIEWPORT = {"width": 1280, "height": 900}
 
 # ---------------------------------------------------------------------------
@@ -183,6 +191,132 @@ def run_cli_once() -> None:
     print(f"[cli]   {' '.join(cmd)}")
     subprocess.run(cmd, check=True, cwd=REPO_ROOT)
     print("[cli]   done")
+
+
+def run_tune_once() -> None:
+    """Produce a hermetic ``python -m phenotypic.tune`` output for the co-pilot.
+
+    A SHORT, optuna-free **grid** tune over the synthetic plates: a base
+    ``GaussianBlur → OtsuDetector`` pipeline searched over a 3-value ``sigma`` ×
+    2-value ``ignore_zeros`` grid (6 trials, so the Curate shortlist populates).
+    The run goes through the real :func:`~phenotypic.tune._tune_cli._run.run_tuning`
+    path, so it writes the full marker set the GUI reads:
+
+    * ``.pht-tune-cache/run.json`` — the discovery marker (written at run START);
+    * ``trials.parquet`` (6 trials) + the local ``study.db``;
+    * ``deliverables/tuning_spec.json`` — the resolved recipe (drives the Space view).
+
+    The scorer is a :class:`~phenotypic.tune.QCScorer` over a layout CSV that
+    declares the synthetic plates' nominal 96-colony count, so its
+    ``ExpectedVsDetectedCount`` check round-trips from JSON (a path-backed
+    metadata source). ``images_dir`` is recorded as ``PLATES_DIR`` so the Curate
+    Image Source pre-fills and overlays render ``build_pipeline(...).apply(plate)``.
+
+    Grid (not Optuna) keeps the import surface optuna-free and the run sub-second.
+    Skips when the marker already exists (re-running is cheap but avoidable).
+    """
+    from phenotypic.tools_ import _io_constants as io
+
+    if io.tune_cache_run_marker_path(TUNE_OUTPUT_DIR).exists():
+        print(
+            f"[tune] reusing existing tune output at "
+            f"{TUNE_OUTPUT_DIR.relative_to(REPO_ROOT)}"
+        )
+        return
+
+    import pandas as pd
+
+    from phenotypic import ImagePipeline
+    from phenotypic.analysis import ExpectedVsDetectedCount
+    from phenotypic.detect import OtsuDetector
+    from phenotypic.enhance import GaussianBlur
+    from phenotypic.tune import (
+        Budget,
+        Categorical,
+        Evaluator,
+        GridConfig,
+        Knob,
+        QCScorer,
+        SearchSpace,
+        TuningSpec,
+    )
+    from phenotypic.tune._tune_cli._run import _load_images, run_tuning
+
+    print("[tune] running a 6-trial grid tune over the synthetic plates")
+    images = _load_images(PLATES_DIR)
+    if not images:
+        raise RuntimeError(
+            f"no grid images loaded from {PLATES_DIR}; build the dataset first"
+        )
+
+    # The layout: every loaded plate declares its nominal 96-colony (8x12) count
+    # so the QC count scorer has a path-backed metadata source that round-trips.
+    layout_rows = [
+        {"Metadata_ImageName": im.name, "Object_Label": label}
+        for im in images
+        for label in range(96)
+    ]
+    pd.DataFrame(layout_rows).to_csv(TUNE_LAYOUT_CSV, index=False)
+
+    pipeline = ImagePipeline(ops=[GaussianBlur(sigma=2.0), OtsuDetector()])
+    # A 3x2 categorical grid = 6 enumerated trials (>= 5 for the shortlist).
+    space = SearchSpace(
+        knobs=(
+            Knob(key="0.sigma", domain=Categorical(choices=(1.0, 1.5, 2.0))),
+            Knob(key="1.ignore_zeros", domain=Categorical(choices=(True, False))),
+        )
+    )
+    spec = TuningSpec(
+        pipeline=pipeline,
+        search_space=space,
+        scorer=QCScorer(
+            check=ExpectedVsDetectedCount(
+                metadata=str(TUNE_LAYOUT_CSV), groupby=["Metadata_ImageName"]
+            )
+        ),
+        evaluator=Evaluator(),
+        strategy=GridConfig(),
+        budget=Budget(),
+    )
+    run_tuning(spec, images, TUNE_OUTPUT_DIR, spec_path=None, images_dir=PLATES_DIR)
+    n_trials = len(pd.read_parquet(io.trials_parquet_path(TUNE_OUTPUT_DIR)))
+
+    # Present the run as a FINISHED, parquet-only run for the Monitor screenshot.
+    # A grid run journals its trials to ``trials.parquet`` but leaves an EMPTY
+    # SQLite ``study.db`` (the Optuna study schema with no trials — grid never
+    # populates it). The Monitor prefers a live store when the marker carries a
+    # ``storage_url``, so it would show that empty study instead of the 6-trial
+    # journal. Null the marker's ``storage_url`` and drop the empty study.db so
+    # discovery resolves a parquet-only run and the Monitor reads the journal —
+    # exactly the finished-run shape the tutorial depicts.
+    _finalize_tune_run_as_parquet_only()
+    print(f"[tune]   done — {n_trials} trials at "
+          f"{TUNE_OUTPUT_DIR.relative_to(REPO_ROOT)}")
+
+
+def _finalize_tune_run_as_parquet_only() -> None:
+    """Null the tune marker's ``storage_url`` + drop the empty grid study.db.
+
+    Rewrites ``.pht-tune-cache/run.json`` with ``storage_url=None`` (so
+    ``TuneRunRoot.discover`` resolves a parquet-only finished run and the
+    Monitor reads ``trials.parquet`` directly) and removes the empty SQLite
+    ``study.db`` a grid run leaves behind. Both are file-only fixups on the
+    capture's own hermetic output — no source behaviour changes.
+    """
+    import json as _json
+
+    from phenotypic.tools_ import _io_constants as io
+
+    marker_path = io.tune_cache_run_marker_path(TUNE_OUTPUT_DIR)
+    marker = _json.loads(marker_path.read_text())
+    marker["storage_url"] = None
+    marker_path.write_text(_json.dumps(marker, indent=2))
+
+    study_db = io.resolve_study_db_path(TUNE_OUTPUT_DIR)
+    try:
+        Path(study_db).unlink()
+    except OSError:
+        pass
 
 
 # ---------------------------------------------------------------------------
@@ -338,146 +472,91 @@ def _emit_empty_state_shot(
 
 
 # ---------------------------------------------------------------------------
-# DAG builder interaction helpers
+# Linear builder interaction helpers
 # ---------------------------------------------------------------------------
 #
-# The post-redesign builder canvas is a dash-cytoscape graph driven by three
-# clientside ``dcc.Store`` components (spec §5.5 "Clientside event contract"):
-#
-#   * ``store-palette-drop``  — ``block_create`` payloads (palette → canvas).
-#   * ``store-edge-event``    — ``edge_create`` / ``edge_delete`` (wire draw).
-#   * ``store-builder-state`` — ``block_select`` / ``block_delete_request`` …
-#
-# ``palette_dnd.js`` / ``wire_drawing.js`` write to these stores via
-# ``window.dash_clientside.set_props`` in response to native drag-and-drop
-# and port-mousedown gestures.  Playwright cannot faithfully replay HTML5
-# drag-and-drop against a ``<canvas>``-backed graph, so the capture helpers
-# below dispatch the *same payloads* the JS would emit — exercising the real
-# server-side dispatcher (``_dispatch_state_update``) and clientside layout
-# path, just without synthesising raw pointer events.
+# The default builder surface is a fixed HTML port map. Tutorial capture drives
+# the same click targets a user sees: palette buttons append/fill the selected
+# green target, side-loader ports select parameter targets, and breadcrumbs
+# drill back out of embedded ImagePipeline scopes. Retired Cytoscape drag/drop
+# stores are intentionally not used here.
 
 
 def _new_builder_page(context, base_url: str):
-    """Open ``/builder/`` and block until the palette has mounted.
-
-    The shared opener for the DAG-builder capture helpers: a fresh page,
-    a wait on ``#palette`` (15s — the operation registry scan is slow on
-    a cold boot), then a short settle for the canvas's first dagre pass.
-    """
+    """Open ``/builder/`` and block until the linear map has mounted."""
     page = _new_page(context, base_url, "/builder/")
     page.wait_for_selector("#palette", timeout=15_000)
+    page.wait_for_selector("#linear-map-container", timeout=15_000)
     page.wait_for_timeout(500)
     return page
 
 
 def _relayout_canvas(page) -> None:
-    """Re-run the leaf-first dagre layout and wait for it to settle.
+    """Settle the builder map before taking a screenshot.
 
-    ``viewport_ops.js`` auto-relayouts on every mutation, but it debounces
-    behind dash-cytoscape's own ``breadthfirst`` pass; calling
-    ``phenotypicRelayout()`` explicitly before a screenshot guarantees the
-    canvas shows the final dagre layout + port placement deterministically.
+    Older tutorial captures called Cytoscape's dagre relayout here. The fixed
+    map has no graph layout pass, but keeping this helper as a short settle
+    makes the capture flow deterministic after Dash callback redraws.
     """
     page.evaluate(
             "() => window.phenotypicRelayout && window.phenotypicRelayout()"
     )
+    page.wait_for_timeout(700)
+
+
+def _wait_linear_node_count(page, count: int) -> None:
+    page.wait_for_function(
+            "expected => document.querySelectorAll('.linear-node-card').length === expected",
+            arg=count,
+            timeout=15_000,
+    )
+    page.wait_for_timeout(250)
+
+
+def _select_linear_node(page, class_name: str, which: str = "last") -> None:
+    locator = page.locator(
+            f'button.linear-node-title-button:has-text("{class_name}")'
+    )
+    if locator.count() == 0:
+        print(f"[shot]   linear node {class_name} not found")
+        return
+    target = locator.first if which == "first" else locator.last
+    target.click()
+    page.wait_for_timeout(500)
+
+
+def _select_side_param_target(page, param_name: str) -> None:
+    """Select a side-loader parameter port as the active fill target."""
+
+    locator = page.locator(
+            f'button.linear-side-param-port[aria-label="Fill {param_name}"]'
+    )
+    if locator.count() == 0:
+        locator = page.locator(
+                f'button.linear-port-param[aria-label="Fill {param_name}"]'
+        )
+    if locator.count() == 0:
+        print(f"[shot]   side param port {param_name} not found")
+        return
+    locator.first.click()
+    page.wait_for_timeout(600)
+
+
+def _click_new_pipeline_button(page) -> None:
+    button = page.locator("#btn-new-pipeline-node")
+    if button.count() == 0:
+        print("[shot]   + New Pipeline button not found")
+        return
+    button.first.click()
     page.wait_for_timeout(900)
 
 
-def _dispatch_block_create(
-        page, class_name: str, *, container_block_id: str | None = None
-) -> None:
-    """Mint a DAG block via ``store-palette-drop`` (``block_create``).
-
-    Mirrors the payload ``palette_dnd.js`` emits on a palette drop.  Unlike
-    the ``palette-add`` keyboard-fallback click (which auto-wires the new
-    block onto the current scope tail), a raw ``block_create`` lands the
-    block free-floating — exactly what the aux-producer / stranded-block
-    tutorials need.  ``container_block_id`` drops the block into that
-    container's nested scope.
-    """
-    page.evaluate(
-            """([cn, cbid]) => {
-                window.dash_clientside.set_props('store-palette-drop', {
-                    data: {
-                        kind: 'block_create',
-                        class_name: cn,
-                        x: 0, y: 0,
-                        container_block_id: cbid,
-                        ts: Date.now(),
-                    },
-                });
-            }""",
-            [class_name, container_block_id],
-    )
-    page.wait_for_timeout(900)
-
-
-def _dispatch_edge_create(
-        page,
-        source_block_id: str,
-        target_block_id: str,
-        target_port: str,
-        edge_kind: str,
-) -> None:
-    """Draw a wire via ``store-edge-event`` (``edge_create``).
-
-    ``edge_kind`` is ``"image"`` (blue image-flow wire into the ``"in"``
-    port) or ``"aux"`` (purple wire into a named aux port).  Mirrors the
-    payload ``wire_drawing.js`` emits on a compatible port drop.
-    """
-    page.evaluate(
-            """([s, t, port, ek]) => {
-                window.dash_clientside.set_props('store-edge-event', {
-                    data: {
-                        kind: 'edge_create',
-                        source_block_id: s,
-                        target_block_id: t,
-                        target_port: port,
-                        edge_kind: ek,
-                        ts: Date.now(),
-                    },
-                });
-            }""",
-            [source_block_id, target_block_id, target_port, edge_kind],
-    )
-    page.wait_for_timeout(900)
-
-
-def _block_id(page, class_name: str, which: str = "last") -> str:
-    """Resolve a block's cytoscape id by ``class_name`` (``"first"`` / ``"last"``).
-
-    DAG blocks get a fresh 8-char hex id at creation time, so capture
-    helpers resolve ids from the live cy instance rather than hardcoding.
-    """
-    return page.evaluate(
-            """([cn, which]) => {
-                const cy = window.phenoGetCy && window.phenoGetCy();
-                if (!cy) return '';
-                const ns = cy.nodes('[class_name = "' + cn + '"]');
-                if (!ns || ns.length === 0) return '';
-                return (which === 'first' ? ns.first() : ns.last()).id();
-            }""",
-            [class_name, which],
-    )
-
-
-def _tap_block(page, block_id: str) -> None:
-    """Select a block by emitting a ``tap`` on its cytoscape node.
-
-    dash-cytoscape mirrors cytoscape ``tap`` events onto its ``tapNodeData``
-    prop, which the builder's canvas-tap callback routes to a
-    ``block_select`` dispatch — the same path a real click takes.
-    """
-    page.evaluate(
-            """(bid) => {
-                const cy = window.phenoGetCy && window.phenoGetCy();
-                if (!cy) return;
-                const n = cy.getElementById(bid);
-                if (n && n.length) { cy.elements().unselect(); n.emit('tap'); }
-            }""",
-            block_id,
-    )
+def _click_root_breadcrumb(page) -> None:
+    root = page.locator("#breadcrumb button").first
+    if root.count() == 0:
+        print("[shot]   root breadcrumb button not found")
+        return
+    root.click()
     page.wait_for_timeout(700)
 
 
@@ -537,12 +616,19 @@ def _capture_file_explorer(context, base_url: str) -> None:
 
 def _capture_build_pipeline(context, base_url: str) -> None:
     print("[shot] workflow=build_pipeline")
-    page = _new_page(context, base_url, "/builder/")
-    page.wait_for_selector("#palette", timeout=15_000)
-    # Settle the dagre layout so the auto-seeded Input Image block sits
-    # cleanly centred rather than at the breadthfirst fallback origin.
+    page = _new_builder_page(context, base_url)
     _relayout_canvas(page)
     _save(page, "build_pipeline", "01_builder_empty.png")
+
+    _expand_palette_accordions(page)
+    for cls in ("GaussianBlur", "OtsuDetector", "MeasureShape", "MeasureSize"):
+        _add_palette_op(page, cls)
+    _wait_linear_node_count(page, 5)
+    fit = page.locator("#linear-zoom-fit")
+    if fit.count() > 0:
+        fit.first.click()
+        page.wait_for_timeout(400)
+    _save(page, "build_pipeline", "02_builder_chain.png")
     page.close()
 
 
@@ -677,18 +763,12 @@ def _capture_pick_points(context, base_url: str) -> None:
 
     for cls in ("GaussianBlur", "OtsuDetector", "ManualRefine"):
         _add_op(cls)
-    # Re-run the leaf-first dagre layout so the ribbon shows the settled
-    # left-to-right chain rather than dash-cytoscape's breadthfirst pass.
+    _wait_linear_node_count(page, 4)
     _relayout_canvas(page)
     _save(page, "pick_points", "02_pipeline_with_selector.png")
 
-    # 3) Inspector param form for ManualRefine. Tap the block so the
-    # canvas-tap callback dispatches ``block_select`` and the inspector
-    # re-renders against it (a clientside-only ``cy ... .select()`` would
-    # not update the server-side ``selected_block_id``).
-    selector_id = _block_id(page, "ManualRefine")
-    if selector_id:
-        _tap_block(page, selector_id)
+    # 3) Inspector param form for ManualRefine.
+    _select_linear_node(page, "ManualRefine")
     page.wait_for_timeout(600)
     _save(page, "pick_points", "03_param_form.png")
 
@@ -812,33 +892,22 @@ def _capture_pick_points(context, base_url: str) -> None:
 
 
 def _capture_aux_ports(context, base_url: str) -> None:
-    """Drive the aux-port wiring + inspector workflow and capture 4 PNGs.
+    """Drive the linear side-loader aux workflow and capture 4 PNGs.
 
-    Spec §4.2 / §4.5.  Phase 7 retired the canvas-anchored popover; in the
-    post-redesign builder an operation-typed parameter (e.g.
-    ``FilamentousFungiDetector.inoculum_detector``) is a bottom-edge aux
-    port, the aux producer is a first-class canvas block, and the wired
-    aux surfaces in the inspector's **Aux ports section** (where the
-    ``Disconnect`` action now lives — it moved off the popover).
+    Operation-typed parameters render as visible ports on the map and in the
+    side loader. Selecting the side-loader port marks it green; the next
+    compatible palette click fills that slot with a hidden aux source block.
 
     Steps exercised against the real dispatcher:
 
     1. ``01_initial.png`` — empty builder canvas + palette.
     2. ``02_main_pipeline.png`` — palette clicks build the ribbon
-       ``Input Image → GaussianBlur → FilamentousFungiDetector``; FFD's
-       required ``inoculum_detector`` aux port renders as an empty
-       red-ringed square (Rule 3) on its bottom edge.
-    3. ``03_aux_wired.png`` — an ``OtsuDetector`` block is minted
-       free-floating and an ``edge_create`` of kind ``aux`` wires it into
-       ``FilamentousFungiDetector.inoculum_detector``; the aux port flips
-       to filled purple and the producer block's border turns purple.
-    4. ``04_inspector_aux.png`` — the consumer block is selected; the
-       inspector's Aux ports section shows the wired ``OtsuDetector`` row
-       with its ``Disconnect`` action.
-
-    The capture dispatches the same ``store-palette-drop`` /
-    ``store-edge-event`` payloads ``palette_dnd.js`` / ``wire_drawing.js``
-    emit — see the "DAG builder interaction helpers" section above.
+       ``Input Image -> GaussianBlur -> FilamentousFungiDetector``; the
+       detector shows a required empty ``inoculum_detector`` side value.
+    3. ``03_aux_wired.png`` — selecting that side port and clicking
+       ``OtsuDetector`` fills the value row.
+    4. ``04_inspector_aux.png`` — the consumer's side loader shows Replace,
+       Clear, and docstring actions for the filled value.
     """
     print("[shot] workflow=aux_ports")
     page = _new_builder_page(context, base_url)
@@ -849,32 +918,23 @@ def _capture_aux_ports(context, base_url: str) -> None:
 
     _expand_palette_accordions(page)
 
-    # 2) Main ribbon with the aux-consuming op (FFD) on the tail.  FFD's
-    #    ``inoculum_detector`` is a required aux port — it renders empty
-    #    (red ring) until wired.
+    # 2) Main ribbon with the aux-consuming op (FFD) on the tail.
     for cls in ("GaussianBlur", "FilamentousFungiDetector"):
         _add_palette_op(page, cls)
+    _wait_linear_node_count(page, 3)
     _relayout_canvas(page)
     _save(page, "aux_ports", "02_main_pipeline.png")
 
-    # 3) Free-floating aux producer + the purple aux wire into the
-    #    consumer's bottom-edge port.
-    _dispatch_block_create(page, "OtsuDetector")
-    otsu_id = _block_id(page, "OtsuDetector")
-    ffd_id = _block_id(page, "FilamentousFungiDetector")
-    if otsu_id and ffd_id:
-        _dispatch_edge_create(page, otsu_id, ffd_id, "inoculum_detector", "aux")
-        _relayout_canvas(page)
-    else:  # pragma: no cover - best-effort
-        print("[shot]   aux_ports: could not resolve block ids")
+    # 3) Select the side-loader target, then fill it with a compatible
+    #    detector from the palette.
+    _select_linear_node(page, "FilamentousFungiDetector")
+    _select_side_param_target(page, "inoculum_detector")
+    _add_palette_op(page, "OtsuDetector")
+    _relayout_canvas(page)
     _save(page, "aux_ports", "03_aux_wired.png")
 
-    # 4) Select the consumer so the inspector's Aux ports section renders
-    #    the wired-row + Disconnect action (spec §4.5 — the popover's
-    #    wired-row moved here).
-    if ffd_id:
-        _tap_block(page, ffd_id)
-        page.wait_for_timeout(600)
+    # 4) Keep the consumer selected so the filled side value row is visible.
+    _select_linear_node(page, "FilamentousFungiDetector")
     _save(page, "aux_ports", "04_inspector_aux.png")
     page.close()
 
@@ -1102,12 +1162,10 @@ def _expand_palette_accordions(page) -> None:
 def _add_palette_op(page, class_name: str) -> None:
     """Add an op via its palette button (keyboard-fallback click path).
 
-    The ``palette-add`` click dispatches ``block_create`` *and* auto-wires
-    the new block onto the current scope's tail (handoff fix) — so a
-    sequence of ``_add_palette_op`` calls builds a connected main ribbon
-    ``Input Image → … → tail``.  For a *free-floating* block (an aux
-    producer, a stranded orphan) use :func:`_dispatch_block_create`
-    instead.
+    The fixed linear builder routes palette clicks through the selected
+    green target. The default target is the floating continuation, so a
+    sequence of calls builds ``Input Image -> ... -> tail``. If a side-loader
+    parameter port is selected first, the same click fills that parameter.
     """
     sel = (
         f'button[id*="\\"type\\":\\"palette-add\\""]'
@@ -1122,30 +1180,22 @@ def _add_palette_op(page, class_name: str) -> None:
 
 
 def _capture_aux_wire_in_dag(context, base_url: str) -> None:
-    """Drive the post-redesign aux-wiring DAG workflow and capture 3 PNGs.
+    """Drive the linear aux-fill workflow and capture 3 PNGs.
 
-    Mirrors the post-popover aux flow in
-    ``docs/source/tutorials/gui/12_aux_wire_in_dag.md`` (spec §4.2-§4.3):
-    every operation — including the aux producer — is a first-class block
-    on the canvas, and the aux assignment is a purple wire drawn from the
-    producer's output port to the consumer's bottom-edge aux port.  There
-    is no popover class palette in v2.
+    The folder name is kept for existing tutorial links, but the default
+    builder no longer exposes DAG wire drawing. The visible flow is: select a
+    gold parameter port, click a compatible palette operation, and manage the
+    filled value from the side loader.
 
     Steps exercised against the real dispatcher:
 
     1. ``01_main_with_consumer.png`` — palette clicks build the main
-       ribbon ``Input Image → GaussianBlur → ContrastStretching →
-       FilamentousFungiDetector``.  FFD's required ``inoculum_detector``
-       aux port renders as an empty red-ringed square and the toolbar
-       issue badge lights up (Rule 3).
-    2. ``02_detector_dropped.png`` — an ``OtsuDetector`` block is minted
-       free-floating via a raw ``block_create`` (no auto-wire), ready to
-       feed the aux port.
-    3. ``03_aux_wired.png`` — an ``edge_create`` of kind ``aux`` draws
-       the purple wire ``OtsuDetector → FilamentousFungiDetector
-       .inoculum_detector``; the aux port flips to filled purple, the
-       producer's border turns purple (aux-consumed), and the issue
-       badge clears.
+       ribbon ``Input Image -> GaussianBlur -> ContrastStretching ->
+       FilamentousFungiDetector``.
+    2. ``02_detector_dropped.png`` — the ``inoculum_detector`` side port is
+       selected green as the active fill target.
+    3. ``03_aux_wired.png`` — clicking ``OtsuDetector`` fills the side value
+       and returns the active target to the floating continuation.
     """
     print("[shot] workflow=aux-wire-in-dag")
     page = _new_builder_page(context, base_url)
@@ -1154,89 +1204,62 @@ def _capture_aux_wire_in_dag(context, base_url: str) -> None:
     # 1) Main ribbon + the consumer whose aux port we will feed.
     for cls in ("GaussianBlur", "ContrastStretching", "FilamentousFungiDetector"):
         _add_palette_op(page, cls)
+    _wait_linear_node_count(page, 4)
     _relayout_canvas(page)
     _save(page, "aux-wire-in-dag", "01_main_with_consumer.png")
 
-    # 2) Free-floating aux producer — a raw block_create, NOT a palette
-    #    click, so it is not auto-wired into the main ribbon.
-    _dispatch_block_create(page, "OtsuDetector")
+    # 2) Select the side parameter port so readers can see the green target.
+    _select_linear_node(page, "FilamentousFungiDetector")
+    _select_side_param_target(page, "inoculum_detector")
     _relayout_canvas(page)
     _save(page, "aux-wire-in-dag", "02_detector_dropped.png")
 
-    # 3) Draw the purple aux wire: OtsuDetector.output →
-    #    FilamentousFungiDetector.inoculum_detector.
-    otsu_id = _block_id(page, "OtsuDetector")
-    ffd_id = _block_id(page, "FilamentousFungiDetector")
-    if otsu_id and ffd_id:
-        _dispatch_edge_create(page, otsu_id, ffd_id, "inoculum_detector", "aux")
-        _relayout_canvas(page)
-    else:  # pragma: no cover - best-effort
-        print("[shot]   aux-wire-in-dag: could not resolve block ids")
+    # 3) Fill that target with a compatible detector.
+    _add_palette_op(page, "OtsuDetector")
+    _relayout_canvas(page)
     _save(page, "aux-wire-in-dag", "03_aux_wired.png")
     page.close()
 
 
 def _capture_wire_pipeline_as_aux(context, base_url: str) -> None:
-    """Drive the Pipeline-container-as-aux workflow and capture 3 PNGs.
+    """Drive the embedded ImagePipeline side-value workflow and capture 3 PNGs.
 
-    Mirrors ``docs/source/tutorials/gui/13_wire_pipeline_as_aux.md``
-    (spec §4.4): a ``Pipeline`` container holds a multi-step chain in its
-    nested scope, and the whole container is wired as a single aux
-    producer into a consumer outside it.
+    A side parameter target can be filled with ``+ New Pipeline``. The builder
+    immediately drills into that embedded scope; breadcrumbs return to the
+    consumer that owns the side value.
 
     Steps exercised against the real dispatcher:
 
-    1. ``01_empty_container.png`` — a ``block_create`` for the
-       ``ImagePipeline`` sentinel mints an empty container; its nested
-       scope is auto-seeded with a consumer-fed ``Input Image`` dot and
-       it renders the ``+ drop ops here`` placeholder.
-    2. ``02_chain_in_container.png`` — two ops are dropped into the
-       container's nested scope (``container_block_id`` set) and wired
-       ``Input Image → GaussianBlur → OtsuDetector`` inside it.
-    3. ``03_pipeline_wired_as_aux.png`` — a free-floating
-       ``FilamentousFungiDetector`` consumer is added at the root scope
-       and an ``edge_create`` of kind ``aux`` wires the *container* into
-       its ``inoculum_detector`` port.
+    1. ``01_empty_container.png`` — the embedded pipeline has just been
+       created and the active breadcrumb is inside its empty linear scope.
+    2. ``02_chain_in_container.png`` — palette clicks build
+       ``Input Image -> GaussianBlur -> OtsuDetector`` inside that scope.
+    3. ``03_pipeline_wired_as_aux.png`` — breadcrumb returns to root and the
+       consumer side loader shows the embedded ``ImagePipeline`` value.
     """
     print("[shot] workflow=wire-pipeline-as-aux")
     page = _new_builder_page(context, base_url)
+    _expand_palette_accordions(page)
 
-    # 1) Empty Pipeline container.  ``ImagePipeline`` is the container
-    #    sentinel class (builder/_state.PIPELINE_CLASS_NAME).
-    _dispatch_block_create(page, "ImagePipeline")
+    _add_palette_op(page, "FilamentousFungiDetector")
+    _wait_linear_node_count(page, 2)
+    _select_linear_node(page, "FilamentousFungiDetector")
+    _select_side_param_target(page, "inoculum_detector")
+    _click_new_pipeline_button(page)
     _relayout_canvas(page)
     _save(page, "wire-pipeline-as-aux", "01_empty_container.png")
 
-    container_id = _block_id(page, "ImagePipeline")
-    # The container's nested scope auto-seeds its own Input Image; it is
-    # the most-recently-created InputImage block (the root one predates it).
-    nested_input = _block_id(page, "InputImage", which="last")
-
-    # 2) Drop a 2-step chain into the container's nested scope and wire
-    #    it left-to-right inside the container.
-    if container_id:
-        _dispatch_block_create(page, "GaussianBlur", container_block_id=container_id)
-        _dispatch_block_create(page, "OtsuDetector", container_block_id=container_id)
-        gb_id = _block_id(page, "GaussianBlur")
-        od_id = _block_id(page, "OtsuDetector")
-        if nested_input and gb_id:
-            _dispatch_edge_create(page, nested_input, gb_id, "in", "image")
-        if gb_id and od_id:
-            _dispatch_edge_create(page, gb_id, od_id, "in", "image")
-        _relayout_canvas(page)
-    else:  # pragma: no cover - best-effort
-        print("[shot]   wire-pipeline-as-aux: container id unresolved")
+    # 2) Build the embedded linear chain.
+    for cls in ("GaussianBlur", "OtsuDetector"):
+        _add_palette_op(page, cls)
+    _wait_linear_node_count(page, 3)
+    _relayout_canvas(page)
     _save(page, "wire-pipeline-as-aux", "02_chain_in_container.png")
 
-    # 3) Add the consumer at root scope and wire the whole container into
-    #    its aux port.
-    _dispatch_block_create(page, "FilamentousFungiDetector")
-    ffd_id = _block_id(page, "FilamentousFungiDetector")
-    if container_id and ffd_id:
-        _dispatch_edge_create(
-                page, container_id, ffd_id, "inoculum_detector", "aux"
-        )
-        _relayout_canvas(page)
+    # 3) Drill back out and show the embedded pipeline value on the consumer.
+    _click_root_breadcrumb(page)
+    _select_linear_node(page, "FilamentousFungiDetector")
+    _relayout_canvas(page)
     _save(page, "wire-pipeline-as-aux", "03_pipeline_wired_as_aux.png")
     page.close()
 
@@ -1244,35 +1267,29 @@ def _capture_wire_pipeline_as_aux(context, base_url: str) -> None:
 def _capture_fix_validation_issues(context, base_url: str) -> None:
     """Drive the validation-issue triage workflow and capture 3 PNGs.
 
-    Mirrors ``docs/source/tutorials/gui/14_fix_validation_issues.md``
-    (spec §4.6): a stranded block trips a blocking validation rule, the
-    toolbar issue badge surfaces the count, and deleting the orphan
-    clears it and re-enables ``Run preview``.
+    Mirrors ``docs/source/tutorials/gui/14_fix_validation_issues.md``:
+    a missing required side value trips a blocking validation rule, the
+    toolbar issue badge surfaces the count, and filling the side value clears
+    the issue.
 
     Steps exercised against the real dispatcher:
 
-    1. ``01_issue_introduced.png`` — palette clicks build a clean ribbon
-       ``Input Image → GaussianBlur → OtsuDetector``; then a
-       ``SmallObjectRemover`` block is minted free-floating via a raw
-       ``block_create``.  With no incoming image wire it is unreachable
-       from ``Input Image`` (Rule 2) — it renders with a dashed red
-       border + ``!`` badge and the toolbar issue badge shows the count.
-    2. ``02_issue_focused.png`` — the toolbar issue badge is clicked,
-       surfacing the issue-row tooltip listing the offender.
-    3. ``03_issue_resolved.png`` — the stranded ``SmallObjectRemover``
-       block is selected and deleted via the toolbar ``Delete selected``
-       button; the issue badge returns to ``0 issues`` and the ribbon is
-       clean.
+    1. ``01_issue_introduced.png`` — ``FilamentousFungiDetector`` is on the
+       main spine with an empty required ``inoculum_detector`` value.
+    2. ``02_issue_focused.png`` — the issue badge popover lists the missing
+       required parameter.
+    3. ``03_issue_resolved.png`` — selecting that side target and clicking
+       ``OtsuDetector`` clears the issue.
     """
     print("[shot] workflow=fix-validation-issues")
     page = _new_builder_page(context, base_url)
     _expand_palette_accordions(page)
 
-    # 1) Clean ribbon, then a stranded orphan block (raw block_create,
-    #    so it is NOT auto-wired into the ribbon).
-    for cls in ("GaussianBlur", "OtsuDetector"):
+    # 1) Build a main spine with a consumer missing a required side value.
+    for cls in ("GaussianBlur", "FilamentousFungiDetector"):
         _add_palette_op(page, cls)
-    _dispatch_block_create(page, "SmallObjectRemover")
+    _wait_linear_node_count(page, 3)
+    _select_linear_node(page, "FilamentousFungiDetector")
     _relayout_canvas(page)
     _save(page, "fix-validation-issues", "01_issue_introduced.png")
 
@@ -1286,18 +1303,10 @@ def _capture_fix_validation_issues(context, base_url: str) -> None:
             pass
     _save(page, "fix-validation-issues", "02_issue_focused.png")
 
-    # 3) Select the orphan and delete it via the toolbar button; the
-    #    validator re-runs and the badge clears.
-    orphan_id = _block_id(page, "SmallObjectRemover")
-    if orphan_id:
-        _tap_block(page, orphan_id)
-        delete_btn = page.locator("#btn-delete-node")
-        if delete_btn.count() > 0:
-            try:
-                delete_btn.first.click()
-                page.wait_for_timeout(700)
-            except Exception:  # pragma: no cover - best-effort
-                pass
+    # 3) Fill the required side value.
+    _select_linear_node(page, "FilamentousFungiDetector")
+    _select_side_param_target(page, "inoculum_detector")
+    _add_palette_op(page, "OtsuDetector")
     _relayout_canvas(page)
     _save(page, "fix-validation-issues", "03_issue_resolved.png")
     page.close()
@@ -1537,6 +1546,39 @@ def capture_standalone_viewer_screenshots(headed: bool = False) -> None:
             proc.kill()
             proc.wait(timeout=5.0)
 
+    # The loaded Tune co-pilot rides on this standalone-capture pass too: the
+    # hub mounts ``/tune/`` run-unbound (sidebar binding is a later chunk), so a
+    # LOADED co-pilot needs its own run-bound + sandbox-bound app — booted here
+    # over the hermetic ``TUNE_OUTPUT_DIR``. Dispatched from this function (one
+    # of the two WORKFLOWS.md dispatch entry points) so the round-trip gate sees
+    # ``_capture_tune_copilot`` wired in. A missing tune marker skips it.
+    from phenotypic.tools_ import _io_constants as io
+
+    if not io.tune_cache_run_marker_path(TUNE_OUTPUT_DIR).exists():
+        print("[shot]   tune_copilot: no tune output marker — capture skipped")
+        return
+
+    print("[shot] workflow=tune_copilot (loaded co-pilot over a real tune run)")
+    tune_port = _free_port()
+    tune_proc = _boot_standalone_tune(tune_port)
+    tune_url = f"http://127.0.0.1:{tune_port}"
+    try:
+        _wait_for_http_200(tune_url + "/", timeout=30.0)
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(headless=not headed)
+            try:
+                context = browser.new_context(viewport=VIEWPORT)
+                _capture_tune_copilot(context, tune_url)
+            finally:
+                browser.close()
+    finally:
+        tune_proc.terminate()
+        try:
+            tune_proc.wait(timeout=5.0)
+        except subprocess.TimeoutExpired:
+            tune_proc.kill()
+            tune_proc.wait(timeout=5.0)
+
 
 def _qc_curation_loop_loaded_shots(page) -> None:
     """Capture loaded-state QC tab screenshots inside the standalone viewer.
@@ -1620,6 +1662,186 @@ def _heatmap_exploration_loaded_shots(page) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Tune co-pilot (standalone EMPTY-STATE app — bound at runtime via the picker)
+# ---------------------------------------------------------------------------
+#
+# The hub mounts ``/tune/`` in its empty (run-unbound) state; the user binds a
+# tune output at runtime with the sandbox-bounded run picker (Chunk C). The
+# tutorial captures that real flow: a standalone tune app is booted EMPTY-STATE
+# (``create_app(root=None, sandbox=...)``) against the dataset sandbox (so the
+# picker tree can reach the hermetic ``TUNE_OUTPUT_DIR`` AND the Curate Image
+# Source can reach ``PLATES_DIR``), and the capture drives the picker to bind the
+# run before screenshotting the loaded views. The app is constructed in a child
+# process via an inline snippet (there is no ``python -m phenotypic.gui.tune``
+# launcher) that serves ``create_app`` on a port.
+
+#: The inline child-process program that boots the EMPTY-STATE tune app. Reads
+#: the sandbox root / port from argv and serves ``create_app(root=None)`` so the
+#: capture exercises the runtime run-binding path (the picker → bind → loaded
+#: views). ``TUNE_OUTPUT_DIR`` lives under the sandbox root, so it is reachable
+#: in the picker's folder tree.
+_TUNE_STANDALONE_BOOT = """\
+import sys
+from pathlib import Path
+from phenotypic.gui.shell import SandboxRoot
+from phenotypic.gui.tune import create_app
+
+sandbox_root, port = sys.argv[1], int(sys.argv[2])
+sandbox = SandboxRoot.from_path(sandbox_root)
+app = create_app(root=None, url_prefix="/", sandbox=sandbox)
+app.run(host="127.0.0.1", port=port, debug=False)
+"""
+
+
+def _boot_standalone_tune(port: int) -> subprocess.Popen[str]:
+    """Spawn the EMPTY-STATE tune co-pilot child process on ``port``.
+
+    The child runs :data:`_TUNE_STANDALONE_BOOT` with the dataset sandbox so the
+    run picker's folder tree can reach ``TUNE_OUTPUT_DIR`` and, once bound, the
+    Curate Image Source can reach ``PLATES_DIR``. The caller owns the returned
+    process's teardown. The capture (:func:`_capture_tune_copilot`) drives the
+    picker to bind the run at runtime.
+    """
+    cmd = [
+        sys.executable,
+        "-c",
+        _TUNE_STANDALONE_BOOT,
+        str(DATASET_DIR),
+        str(port),
+    ]
+    log_path = _gui_log_sink(port)
+    print(f"[shot]   standalone tune logs -> {log_path}")
+    with log_path.open("w", encoding="utf-8") as gui_log:
+        return subprocess.Popen(
+                cmd, stdout=gui_log, stderr=subprocess.STDOUT, text=True,
+        )
+
+
+def _show_tune_subtab(page, name: str) -> None:
+    """Click the ``tune-subtab-<name>`` button and let the view swap settle."""
+    button = page.locator(f"#tune-subtab-{name}")
+    if button.count() > 0:
+        try:
+            button.click(timeout=4000)
+            page.wait_for_timeout(800)
+        except Exception as exc:  # pragma: no cover - best-effort
+            print(f"[shot]   tune_copilot: sub-tab {name} click skipped: {exc!r}")
+
+
+def _bind_tune_run_via_picker(page, *, run_dir_name: str) -> None:
+    """Drive the runtime run picker to bind ``run_dir_name`` (Chunk C).
+
+    Opens the sandbox-bounded run picker, screenshots the modal, navigates into
+    the run directory (clicking its folder entry sets the browse-dir into it),
+    and clicks "Bind this run" — exercising the real runtime binding path that
+    populates ``tune-run-root-store`` and swaps in the loaded views. Best-effort:
+    a missing affordance is logged and skipped so the rest of the capture still
+    runs.
+    """
+    browse = page.locator("#tune-btn-pick-run")
+    if browse.count() == 0:
+        print("[shot]   tune_copilot: run-picker button not found — bind skipped")
+        return
+    try:
+        browse.click(timeout=4000)
+        page.wait_for_selector("#tune-run-picker-modal", timeout=4000)
+        page.wait_for_timeout(500)
+    except Exception as exc:  # pragma: no cover - best-effort
+        print(f"[shot]   tune_copilot: run-picker open skipped: {exc!r}")
+        return
+    _save(page, "tune_copilot", "00b_run_picker_modal.png")
+
+    # Navigate INTO the run directory: clicking its folder entry sets the
+    # browse-dir to that folder, which is what "Bind this run" then binds.
+    folder = page.locator(
+        f"#tune-run-picker-modal-body >> text={run_dir_name}/"
+    ).first
+    try:
+        if folder.count() > 0:
+            folder.click(timeout=3000)
+            page.wait_for_timeout(600)
+    except Exception as exc:  # pragma: no cover - best-effort
+        print(f"[shot]   tune_copilot: run-dir navigation skipped: {exc!r}")
+
+    confirm = page.locator("#tune-btn-run-picker-confirm")
+    try:
+        if confirm.count() > 0:
+            confirm.click(timeout=3000)
+            # The body swaps to the loaded views; wait for the Monitor objective
+            # figure to mount before the caller's poll-settle wait.
+            page.wait_for_selector("#tune-objective-figure", timeout=8000)
+            page.wait_for_timeout(500)
+    except Exception as exc:  # pragma: no cover - best-effort
+        print(f"[shot]   tune_copilot: run bind confirm skipped: {exc!r}")
+
+
+def _capture_tune_copilot(context, base_url: str) -> None:
+    """Drive the tune co-pilot from empty → bound → each sub-tab.
+
+    First the EMPTY state: the page mounts run-unbound with the run picker.
+    :func:`_bind_tune_run_via_picker` opens the sandbox-bounded picker, navigates
+    into the run directory, and clicks "Bind this run" — the real runtime binding
+    path — which swaps in the loaded views. Then Monitor is the default view (its
+    3-second poll fills the objective + importance figures + the trials table);
+    Curate pins the first two shortlist cards into A / B and picks a plate so the
+    overlays render; Space and Launch are captured as-mounted (their forms render
+    from the bound run's spec).
+    """
+    page = context.new_page()
+    page.goto(base_url + "/")
+    page.wait_for_load_state("networkidle")
+    # Empty state: the pick-a-run prompt + the run picker, before any view loads.
+    _save(page, "tune_copilot", "00_empty_state.png")
+
+    # Bind the run at runtime via the picker (Browse → pick run dir → Bind).
+    _bind_tune_run_via_picker(page, run_dir_name=TUNE_OUTPUT_DIR.name)
+
+    # The Monitor poll fires every 3s, and its first ticks spend ~3s each
+    # timing out the live SQLite study open before degrading to the finished
+    # ``trials.parquet`` journal. Wait several cycles so a journal-backed tick
+    # has rendered the objective scatter + trials table before the screenshot.
+    page.wait_for_timeout(10_000)
+    _save(page, "tune_copilot", "01_monitor.png")
+
+    # --- Curate: pin two shortlist cards (A then B) + pick a plate ------------
+    _show_tune_subtab(page, "curate")
+    cards = page.locator("[id*='tune-shortlist-card']")
+    try:
+        n_cards = cards.count()
+        for index in range(min(2, n_cards)):
+            cards.nth(index).click(timeout=3000)
+            page.wait_for_timeout(700)
+    except Exception as exc:  # pragma: no cover - best-effort
+        print(f"[shot]   tune_copilot: shortlist pin skipped: {exc!r}")
+
+    # Pick the first plate so the overlay render futures are submitted.
+    plate_picker = page.locator("#tune-plate-picker")
+    if plate_picker.count() > 0:
+        try:
+            plate_picker.click(timeout=3000)
+            page.wait_for_timeout(400)
+            option = page.locator("[role='option']:visible").first
+            if option.count() > 0:
+                option.click(timeout=3000)
+        except Exception as exc:  # pragma: no cover - best-effort
+            print(f"[shot]   tune_copilot: plate pick skipped: {exc!r}")
+    # The overlays render on a background pool and a poll swaps the figure in;
+    # wait a couple of poll cycles so the colony overlay is visible.
+    page.wait_for_timeout(3500)
+    _save(page, "tune_copilot", "02_curate.png")
+
+    # --- Space: the inferred search-space knob rows --------------------------
+    _show_tune_subtab(page, "space")
+    _save(page, "tune_copilot", "03_space.png")
+
+    # --- Launch: the strategy form + the live command card -------------------
+    _show_tune_subtab(page, "launch")
+    _save(page, "tune_copilot", "04_launch.png")
+
+    page.close()
+
+
+# ---------------------------------------------------------------------------
 # Entrypoint
 # ---------------------------------------------------------------------------
 
@@ -1655,6 +1877,18 @@ def main(argv: list[str] | None = None) -> int:
                     "an empty sandbox).",
                     file=sys.stderr,
             )
+
+    # Build the hermetic tune output the loaded co-pilot capture reads. A
+    # failure here is non-fatal: the standalone-tune capture skips (no marker)
+    # rather than aborting the whole screenshot run.
+    try:
+        run_tune_once()
+    except Exception as exc:  # noqa: BLE001 - capture run must not abort here
+        print(
+                f"[tune] FAILED ({exc!r}); continuing — the Tune co-pilot "
+                "screenshots will be skipped.",
+                file=sys.stderr,
+        )
 
     proc, base_url = boot_gui(DATASET_DIR)
     try:

@@ -1,0 +1,28 @@
+{
+  "version": "0.16.0",
+  "name": "0d060192-a91e-48ed-9626-2fa92a15f5f2",
+  "desc": null,
+  "reset": false,
+  "pipe_cfgs": {
+    "RoundPeaksDetector": {
+      "class": "RoundPeaksDetector",
+      "params": {
+        "thresh_method": "otsu",
+        "subtract_background": true,
+        "remove_noise": true,
+        "footprint_width": 1,
+        "noise_radius": 1,
+        "smoothing_sigma": 2.0,
+        "min_peak_distance": null,
+        "peak_prominence": null,
+        "edge_refinement": true,
+        "selection_mode": "dominant",
+        "split_merged": true
+      }
+    }
+  },
+  "meas": {},
+  "post": {},
+  "filters": {},
+  "model": null
+}

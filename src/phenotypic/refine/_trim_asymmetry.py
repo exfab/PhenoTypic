@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Annotated, Literal
 
 if TYPE_CHECKING:
     from skimage.measure._regionprops import RegionProperties
@@ -16,109 +16,136 @@ from skimage.measure import euler_number, regionprops
 
 from ..abc_ import ObjectRefiner
 from ..measure._measure_symmetric_zones import MeasureSymmetricZones
+from ..tools_.typing_ import TuneSpec
 
 _log = logging.getLogger(__name__)
 
 
 class TrimAsymmetry(ObjectRefiner):
-    """Trim spurs and web-like noise beyond each colony's symmetric envelope.
+    """Trim asymmetric spurs and reticulated noise beyond each colony's symmetric radius.
 
-    Reuses the symmetric-radius machinery from :class:`MeasureSymmetricZones`
-    to locate, per colony, the radius past which growth stops being angularly
-    symmetric (``R_sym``). Every mask pixel beyond ``R_sym`` is a candidate for
-    removal. Candidates are segmented into connected components and, when
-    ``beehive_threshold`` is provided, classified by their topology: CCs with
-    many enclosed holes per pixel (reticulated "beehive" noise) are removed,
-    while nearly linear branches (holes per pixel ≈ 0) are preserved.
+    Computes a per-colony symmetric radius (``R_sym``) using equal-area radial
+    annuli and angular-sector coverage profiling, then removes mask pixels
+    beyond that radius that belong to topologically noisy or geometrically
+    spurious connected components. When ``beehive_threshold`` is set, linearly
+    branched structures (genuine hyphae, zero topological holes) are preserved
+    while web-like reticulated components are discarded based on their
+    holes-per-pixel density.
 
-    Compared to the measurement-time version in :class:`MeasureSymmetricZones`,
-    this refiner is deliberately less harsh:
-
-    * The default ``symmetry_threshold`` is ``3/6`` rather than ``4/6`` so
-      ``R_sym`` lands further from the inoculum core.
-    * Per-CC segmentation localizes the decision — trimming one noisy spur
-      never touches a legitimate branch on the other side of the colony.
-
-    Args:
-        symmetry_threshold: Minimum angular coverage (fraction of
-            ``n_angular_bins`` populated) required for growth to count as
-            symmetric. Lower values push ``R_sym`` outward, shrinking the
-            candidate region. Defaults to ``3/6``.
-        n_angular_bins: Number of uniform angular bins used for the coverage
-            diagnostic that feeds ``R_sym``. Defaults to 6.
-        n_annuli: Target number of equal-area annuli for the radial density
-            profile. Auto-scaled down for small colonies. Defaults to 100.
-        pelt_penalty: Penalty controlling PELT changepoint sensitivity for
-            the inoculum core detection. Defaults to 5.0.
-        smoothing_window: Moving-average window (in annuli) applied to the
-            angular coverage profile before the ``R_sym`` threshold test.
-            Defaults to 3.
-        method: Inoculum-centre estimator. ``"distance"`` uses the peak of
-            the Euclidean distance transform; ``"intensity"`` uses the
-            intensity-weighted centroid. Defaults to ``"distance"``.
-        beehive_threshold: Minimum holes-per-pixel density required to trim
-            a candidate connected component. When ``None`` (default), every
-            CC past ``R_sym`` is trimmed — the "pure R_sym" mode. When a
-            float, CCs with ``(1 - euler_number) / area`` below the threshold
-            are kept as legitimate linear branches.
-        min_cc_area: Minimum candidate-CC area (pixels) required to make a
-            topological decision. Smaller CCs are kept unchanged because
-            Euler statistics are unreliable on tiny regions. Defaults to 50.
-        min_object_area: Minimum colony area (pixels) below which the
-            refiner skips the colony entirely. Defaults to 100.
-
-    Returns:
-        Image: Input image with ``objmap`` updated; ``objmask`` refreshes
-        automatically via the accessor.
+    For the underlying symmetric-radius algorithm, see
+    :doc:`/explanation/refinement_strategies`.
 
     Best For:
-        * Filamentous-fungi detections where Dijkstra-reconnected bridges
-          occasionally produce thin asymmetric spurs off a symmetric body.
-        * Plates where noise manifests as beehive / reticulated web
-          structures while legitimate hyphae remain linear.
+        - Filamentous fungi detections where Dijkstra-reconnected bridges
+          produce thin asymmetric spurs extending past the colony body.
+        - Plates where reticulated or web-like mask artefacts surround
+          otherwise symmetric colony cores.
+        - Compact yeast or bacterial colonies that acquired noise appendages
+          from high-contrast agar texture during detection.
+        - Pipeline stages after :class:`FilamentousFungiDetector` where
+          reconnection loops must be removed while linear hyphae are kept.
 
     Consider Also:
-        * :class:`SmallObjectRemover` for spurious noise distinguished by
-          size alone rather than spatial relationship to the colony body.
-        * :class:`RemoveNonCircular` when the whole colony should be
-          judged by shape, not just its outer extent.
+        - :class:`SmallObjectRemover` when spurious fragments are
+          distinguishable by size alone rather than by radial position
+          relative to the colony centre.
+        - :class:`RemoveLowCircularity` when the entire colony shape should be
+          judged against a circularity threshold rather than a radial
+          symmetric envelope.
+        - :class:`MaskErosion` for a simpler boundary retraction when the
+          asymmetric extent is shallow and uniform around the colony perimeter.
+        - :class:`MergeFragmentChains` when asymmetric components are genuine
+          but fragmented, and should be reconnected rather than removed.
 
-    Examples:
-        Pure ``R_sym`` trimming (default — every CC past the symmetric
-        envelope is removed). On the synthetic yeast plate the colonies
-        are already compact/symmetric so the op is a no-op; this example
-        simply shows that wiring the refiner into a detection pipeline
-        does not break it:
+    Args:
+        symmetry_threshold: Minimum fraction of ``n_angular_bins`` sectors
+            that must contain mask pixels for an annulus to count as symmetric.
+            Lower values push ``R_sym`` outward (less trimming); higher values
+            pull it inward (more trimming). Practical window: 0.33--0.83.
+            Default: 0.5 (3/6), intentionally looser than
+            :class:`MeasureSymmetricZones` (4/6) so ``R_sym`` stays near the
+            true colony edge rather than the inoculum core. On small colonies
+            (radius < 30 px) with a coarse 6-sector grid, consider reducing
+            ``n_angular_bins`` to 4 rather than lowering this threshold.
+        n_angular_bins: Number of equal-width angular sectors (360°/n each)
+            for the coverage diagnostic. Fewer bins (default 6, 60° each) give
+            stable coverage estimates on small colonies; more bins resolve
+            subtle sector-level asymmetry on large colonies. Typical range:
+            4--12. Default: 6.
+        n_annuli: Target number of equal-area radial annuli for profiling.
+            Auto-clamped to ``max(6, min(n_annuli, max_pixel_radius))``,
+            so increasing beyond ``max_pixel_radius`` has no effect. More
+            annuli give finer PELT changepoint and ``R_sym`` resolution at
+            proportionally higher runtime. Typical range: 10--200. Default:
+            100.
+        pelt_penalty: L2 changepoint penalty for PELT inoculum-core detection.
+            Lower values detect more changepoints and place the core boundary
+            closer to the inoculum; higher values suppress changepoints (no
+            detection sets ``core_radius=0``). The penalty is on the BIC scale,
+            of order ``log(n_annuli)`` for the mean-change (``l2``) model [1];
+            raise it on noisy or fragmented masks to suppress spurious cores
+            and lower it when a diffuse inoculum-to-colony transition needs an
+            earlier boundary. Typical range: 1.0--20.0. Default: 5.0.
+        smoothing_window: Moving-average window (annuli) applied to the
+            angular-coverage profile before the ``R_sym`` threshold test.
+            Larger windows prevent ``R_sym`` from collapsing due to isolated
+            empty annuli from thin or fragmented masks; 1 disables smoothing.
+            Typical range: 1--10. Default: 3.
+        method: Inoculum-centre estimator for the distance map. ``"distance"``
+            uses the Euclidean distance-transform peak (most inscribed point),
+            robust on any input including all-zero grayscale. ``"intensity"``
+            uses the intensity-weighted centroid of the grayscale crop, falling
+            back to the distance peak when grayscale is flat or zero. Accepted
+            values: ``"distance"``, ``"intensity"``. Default: ``"distance"``.
+        beehive_threshold: Minimum holes-per-pixel density
+            ``max(0, 1 - euler_number) / area`` required to remove a
+            candidate connected component. ``None`` removes every component
+            past ``R_sym`` regardless of topology. Positive values preserve
+            linear hyphae (zero topological holes) while removing reticulated
+            web-like components whose hole density exceeds the threshold.
+            Practical range: 0.0--0.05; a reasonable starting point is
+            ``0.002``, which removes components with roughly one hole per 500
+            pixels while protecting genuine hyphae. Default: ``None``.
+        min_cc_area: Minimum area (pixels) of an asymmetric connected
+            component for a topology-based removal decision; smaller components
+            are kept unchanged because Euler-number statistics are unreliable
+            on tiny regions. Scale to 100--200 px on high-resolution scans.
+            Typical range: 1--500. Default: 50.
+        min_object_area: Minimum colony area (pixels) before any trimming is
+            attempted; smaller colonies are skipped entirely to avoid
+            degenerate geometry in the radial pipeline. Typical range:
+            10--10 000. Default: 100.
 
-        >>> from phenotypic.data import load_synth_yeast_plate
-        >>> from phenotypic.detect import OtsuDetector
-        >>> from phenotypic.refine import TrimAsymmetry
-        >>> plate = load_synth_yeast_plate()
-        >>> detected = OtsuDetector().apply(plate)
-        >>> trimmer = TrimAsymmetry()
-        >>> refined = trimmer.apply(detected)
-        >>> bool(refined.objmap[:].max() >= 0)
-        True
+    Returns:
+        Image: Input image with ``objmap`` updated to remove asymmetric mask
+        pixels beyond ``R_sym``; ``objmask`` refreshes automatically via the
+        accessor. All other image components are unchanged.
 
-        Two-stage beehive-gated trim — legitimate linear branches past the
-        envelope are preserved; only topologically web-like regions are
-        removed:
+    Raises:
+        ValueError: If ``symmetry_threshold`` is outside ``[0, 1]``.
+        ValueError: If ``beehive_threshold`` is negative.
 
-        >>> trimmer = TrimAsymmetry(beehive_threshold=0.002)
-        >>> refined = trimmer.apply(detected)
-        >>> bool(refined.objmap[:].max() >= 0)
-        True
+    References:
+        [1] R. Killick, P. Fearnhead, and I. A. Eckley, "Optimal detection
+        of changepoints with a linear computational cost," *J. Amer. Statist.
+        Assoc.*, vol. 107, no. 500, pp. 1590--1598, Dec. 2012.
+
+    See Also:
+        :doc:`/how_to/notebooks/refine_noisy_boundaries` for a visual
+        walkthrough of spur and reticulated noise removal on real plate images.
+        :doc:`/explanation/refinement_strategies` for the symmetric-radius
+        algorithm and per-colony topology classification.
     """
 
-    symmetry_threshold: float = 3 / 6
-    n_angular_bins: int = 6
-    n_annuli: int = 100
-    pelt_penalty: float = 5.0
-    smoothing_window: int = 3
+    symmetry_threshold: Annotated[float, TuneSpec(0.33, 0.83)] = 3 / 6
+    n_angular_bins: Annotated[int, TuneSpec(4, 12)] = 6
+    n_annuli: Annotated[int, TuneSpec(10, 200, log=True)] = 100
+    pelt_penalty: Annotated[float, TuneSpec(1.0, 20.0, log=True)] = 5.0
+    smoothing_window: Annotated[int, TuneSpec(1, 10)] = 3
     method: Literal["distance", "intensity"] = "distance"
-    beehive_threshold: float | None = None
-    min_cc_area: int = 50
-    min_object_area: int = 100
+    beehive_threshold: Annotated[float | None, TuneSpec(0.0, 0.05)] = None
+    min_cc_area: Annotated[int, TuneSpec(1, 500, log=True)] = 50
+    min_object_area: Annotated[int, TuneSpec(10, 10_000, log=True)] = 100
 
     @field_validator("symmetry_threshold")
     @classmethod

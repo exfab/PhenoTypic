@@ -62,6 +62,7 @@ def test_empty_directory(tmp_path: Path) -> None:
         is_cli_output=False,
         has_dashboard=False,
         is_process_only_output=False,
+        is_tune_output=False,
         image_count=None,
         bad_perms=False,
     )
@@ -153,6 +154,16 @@ def test_mixed_images_and_dashboard(tmp_path: Path) -> None:
 
 def test_pipeline_json_detected(tmp_path: Path) -> None:
     p = tmp_path / "my_pipeline.json"
+    p.write_text(json.dumps(
+        {"name": "demo", "operations": [{"type": "GrayscaleEnhancer"}]}
+    ))
+    caps = classify(p)
+    assert caps.has_pipeline_json is True
+    assert caps.is_image_dir is False
+
+
+def test_typed_pipeline_config_detected(tmp_path: Path) -> None:
+    p = tmp_path / "my_pipeline.json.pht-pipe"
     p.write_text(json.dumps(
         {"name": "demo", "operations": [{"type": "GrayscaleEnhancer"}]}
     ))

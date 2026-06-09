@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PhenoTypic · Tune co-pilot — mockup</title>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* ---- tokens mirrored from gui/_design.py ---- */
+  :root{
+    --navy:#003660; --blue:#1b75bc; --gold:#febc11; --white:#fff;
+    --bg:#f5f7fa; --surface:#fff; --border:#dde3ed; --rule:#e8ecf2;
+    --muted:#8892a4; --body:#2e3a4e; --heading:#003660;
+    /* Okabe–Ito data palette (DATA only) */
+    --oi-orange:#E69F00; --oi-sky:#56B4E9; --oi-green:#009E73;
+    --oi-vermilion:#D55E00; --oi-blue:#0072B2; --oi-purple:#CC79A7;
+    --oi-yellow:#F0E442; --oi-grey:#BBBBBB;
+    --font:'Roboto',-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    --mono:'Roboto Mono',ui-monospace,Menlo,Consolas,monospace;
+    --radius:6px; --radius-md:10px;
+    --shadow-sm:0 1px 3px rgba(0,54,96,.07),0 1px 2px rgba(0,54,96,.04);
+    --shadow:0 4px 12px rgba(0,54,96,.08),0 1px 3px rgba(0,54,96,.05);
+    --t:180ms cubic-bezier(.22,1,.36,1);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:var(--font);background:var(--bg);color:var(--body);font-size:15px;line-height:1.45}
+  /* ---- hub chrome (shell) ---- */
+  .topbar{background:var(--navy);color:#fff;display:flex;align-items:center;gap:28px;padding:0 22px;height:52px;box-shadow:var(--shadow)}
+  .brand{font-weight:700;letter-spacing:.3px;font-size:16px;display:flex;align-items:center;gap:9px}
+  .brand .dot{width:10px;height:10px;border-radius:50%;background:var(--gold)}
+  .hubtabs{display:flex;gap:4px;height:100%}
+  .hubtab{display:flex;align-items:center;padding:0 16px;color:#c7d6e6;text-decoration:none;font-size:14px;font-weight:500;border-bottom:3px solid transparent;height:100%}
+  .hubtab:hover{color:#fff}
+  .hubtab.active{color:#fff;border-bottom-color:var(--gold)}
+  .topbar .right{margin-left:auto;font-size:12.5px;color:#9fb6cd}
+  /* ---- tune app ---- */
+  .app{max-width:1180px;margin:0 auto;padding:20px 22px 60px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);box-shadow:var(--shadow-sm)}
+  /* run header */
+  .runhdr{display:flex;align-items:center;gap:14px;padding:12px 16px;margin-bottom:16px}
+  .runhdr label{font-size:13px;color:var(--muted);font-weight:500}
+  .picker{display:flex;align-items:center;gap:8px;border:1px solid var(--border);border-radius:var(--radius);padding:7px 11px;background:#fbfcfe;font-size:14px;min-width:330px}
+  .picker .path{font-family:var(--mono);font-size:12.5px;color:var(--navy)}
+  .live{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--oi-green)}
+  .live .pulse{width:8px;height:8px;border-radius:50%;background:var(--oi-green);box-shadow:0 0 0 0 rgba(0,158,115,.5);animation:pulse 1.8s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(0,158,115,.45)}70%{box-shadow:0 0 0 7px rgba(0,158,115,0)}100%{box-shadow:0 0 0 0 rgba(0,158,115,0)}}
+  .hdr-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+  .refresh{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:var(--muted);border:1px solid var(--border);border-radius:999px;padding:5px 11px;background:#fff;cursor:pointer}
+  .refresh .spin{display:inline-block}
+  .btn{font-family:var(--font);font-size:13.5px;font-weight:600;border-radius:var(--radius);border:1px solid var(--blue);background:var(--blue);color:#fff;padding:8px 14px;cursor:pointer;transition:var(--t)}
+  .btn:hover{filter:brightness(1.06)}
+  .btn.ghost{background:#fff;color:var(--blue)}
+  .btn.gold{background:var(--gold);border-color:var(--gold);color:var(--navy)}
+  .btn.sm{padding:5px 10px;font-size:12.5px}
+  /* sub-tabs */
+  .subtabs{display:flex;gap:2px;border-bottom:2px solid var(--rule);margin-bottom:18px}
+  .subtab{appearance:none;background:none;border:none;font-family:var(--font);font-size:14.5px;font-weight:600;color:var(--muted);padding:10px 18px;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px}
+  .subtab:hover{color:var(--navy)}
+  .subtab.active{color:var(--navy);border-bottom-color:var(--gold)}
+  .subtab .badge{font-size:10px;background:var(--rule);color:var(--muted);border-radius:999px;padding:1px 7px;margin-left:7px;font-weight:700;vertical-align:middle}
+  .view{display:none}
+  .view.active{display:block;animation:fade var(--t)}
+  @keyframes fade{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
+  /* generic bits */
+  h3.section{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 10px;font-weight:700}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .pad{padding:16px}
+  .stat{display:flex;flex-direction:column;gap:2px}
+  .stat .k{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:700}
+  .stat .v{font-size:26px;font-weight:700;color:var(--navy);font-variant-numeric:tabular-nums}
+  .stat .v small{font-size:14px;color:var(--muted);font-weight:500}
+  .statrow{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px}
+  .chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;border-radius:999px;padding:3px 10px}
+  .chip.ok{background:#e7f6f1;color:#057a5b}
+  .chip.flag{background:#fdeee6;color:#b4490f}
+  .chip.run{background:#e9f2fb;color:#155a98}
+  table.tt{width:100%;border-collapse:collapse;font-size:12.5px}
+  table.tt th{text-align:left;color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.04em;padding:6px 8px;border-bottom:1px solid var(--rule)}
+  table.tt td{padding:6px 8px;border-bottom:1px solid var(--rule);font-variant-numeric:tabular-nums}
+  table.tt tr:hover td{background:#fafcff}
+  .bar-row{display:grid;grid-template-columns:120px 1fr 44px;align-items:center;gap:10px;margin-bottom:9px;font-size:12.5px}
+  .bar-track{height:13px;background:var(--rule);border-radius:3px;overflow:hidden}
+  .bar-fill{height:100%;border-radius:3px}
+  .muted{color:var(--muted)}
+  .pareto-off{display:flex;gap:10px;align-items:center;color:var(--muted);font-size:13px;padding:14px;border:1px dashed var(--border);border-radius:var(--radius);background:#fbfcfe}
+  /* curate */
+  .shortlist{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+  .cand{border:1px solid var(--border);border-radius:var(--radius);padding:9px 12px;min-width:150px;cursor:pointer;background:#fff;transition:var(--t)}
+  .cand:hover{box-shadow:var(--shadow-sm)}
+  .cand.pinA{border-color:var(--oi-sky);box-shadow:0 0 0 2px rgba(86,180,233,.25)}
+  .cand.pinB{border-color:var(--oi-orange);box-shadow:0 0 0 2px rgba(230,159,0,.25)}
+  .cand .rank{font-size:11px;font-weight:700;color:var(--muted);display:flex;justify-content:space-between}
+  .cand .pin{font-size:10px;font-weight:800;border-radius:3px;padding:1px 5px}
+  .cand .pin.A{background:var(--oi-sky);color:#04293b}
+  .cand .pin.B{background:var(--oi-orange);color:#3b2900}
+  .cand .sc{font-size:21px;font-weight:700;color:var(--navy);margin:3px 0;font-variant-numeric:tabular-nums}
+  .cand .meta{font-size:11.5px;color:var(--muted);display:flex;gap:9px}
+  .seg{display:inline-flex;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+  .seg button{appearance:none;border:none;background:#fff;font-family:var(--font);font-size:13px;font-weight:600;color:var(--muted);padding:7px 14px;cursor:pointer}
+  .seg button.on{background:var(--navy);color:#fff}
+  .ab-wrap{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .plate{position:relative;background:#10161d;border-radius:var(--radius);overflow:hidden;aspect-ratio:1/1}
+  .plate .cap{position:absolute;top:7px;left:9px;font-size:11.5px;font-weight:700;color:#fff;background:rgba(0,0,0,.4);padding:2px 8px;border-radius:4px;z-index:2}
+  .plate .cap.A{border-left:3px solid var(--oi-sky)} .plate .cap.B{border-left:3px solid var(--oi-orange)}
+  .synced{font-size:11.5px;color:var(--muted);display:flex;align-items:center;gap:6px;justify-content:center;margin-top:8px}
+  .legend{display:flex;gap:16px;font-size:12px;margin-top:10px;color:var(--body)}
+  .legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+  .winner-bar{display:flex;align-items:center;gap:14px;margin-top:16px;padding:12px 14px;background:#fbfcfe;border:1px solid var(--border);border-radius:var(--radius)}
+  /* space */
+  .knob{display:grid;grid-template-columns:230px 86px 1fr 80px;gap:12px;align-items:center;padding:9px 0;border-bottom:1px solid var(--rule);font-size:13px}
+  .knob .name{font-family:var(--mono);font-size:12.5px;color:var(--navy)}
+  .knob .kind{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase}
+  .knob input[type=text],.knob input[type=number]{width:74px;border:1px solid var(--border);border-radius:4px;padding:4px 6px;font-family:var(--mono);font-size:12px}
+  .knob.nested{opacity:.5}
+  .knob .lock{font-size:11px;color:var(--muted)}
+  .toggle{position:relative;width:34px;height:19px;border-radius:999px;background:var(--border);cursor:pointer;transition:var(--t);flex:none}
+  .toggle.on{background:var(--oi-green)}
+  .toggle::after{content:"";position:absolute;top:2px;left:2px;width:15px;height:15px;border-radius:50%;background:#fff;transition:var(--t)}
+  .toggle.on::after{left:17px}
+  /* launch */
+  .form-row{display:flex;align-items:center;gap:12px;margin-bottom:12px;font-size:13.5px}
+  .form-row label{width:130px;color:var(--muted);font-weight:600;font-size:12.5px}
+  .form-row select,.form-row input[type=text],.form-row input[type=number]{border:1px solid var(--border);border-radius:var(--radius);padding:7px 10px;font-family:var(--font);font-size:13.5px}
+  .form-row input[type=text]{width:430px;font-family:var(--mono);font-size:12.5px}
+  .cmdcard{background:#0d1b2a;color:#e8f0f8;border-radius:var(--radius-md);padding:16px 18px;font-family:var(--mono);font-size:12.8px;line-height:1.7;position:relative;white-space:pre-wrap;word-break:break-all}
+  .cmdcard .flag{color:var(--gold)} .cmdcard .val{color:var(--oi-sky)} .cmdcard .prog{color:#7fd4b0}
+  .cmdcard .copy{position:absolute;top:10px;right:10px}
+  .note{font-size:12px;color:var(--muted);margin-top:8px}
+  .hint{background:#fff8e6;border:1px solid #f4e2a8;color:#7a5a00;font-size:12.5px;border-radius:var(--radius);padding:9px 12px;margin-bottom:14px}
+</style>
+</head>
+<body>
+
+<!-- ============ HUB CHROME ============ -->
+<div class="topbar">
+  <div class="brand"><span class="dot"></span>PhenoTypic GUI</div>
+  <nav class="hubtabs">
+    <a class="hubtab" href="#">Builder</a>
+    <a class="hubtab" href="#">Results</a>
+    <a class="hubtab" href="#">Run</a>
+    <a class="hubtab active" href="#">Tune</a>
+  </nav>
+  <div class="right">mock — not the live app · matches gui/_design.py tokens</div>
+</div>
+
+<div class="app">
+
+  <!-- ============ SHARED RUN HEADER ============ -->
+  <div class="card runhdr">
+    <label>Run</label>
+    <div class="picker">
+      <span class="path">/bigdata/…/tune_live_e2e/out</span>
+      <span class="muted">▾</span>
+    </div>
+    <span class="live"><span class="pulse"></span>live · r21:54399/tune</span>
+    <span class="chip run">tpe · 47 / 100 trials</span>
+    <div class="hdr-right">
+      <span class="refresh"><span class="spin">↻</span> auto 3s</span>
+      <button class="btn ghost sm">Refresh now</button>
+    </div>
+  </div>
+
+  <!-- ============ SUB-TABS ============ -->
+  <div class="subtabs">
+    <button class="subtab active" data-view="monitor">Monitor</button>
+    <button class="subtab" data-view="curate">Curate</button>
+    <button class="subtab" data-view="space">Space</button>
+    <button class="subtab" data-view="launch">Launch</button>
+  </div>
+
+  <!-- ============ MONITOR ============ -->
+  <section id="view-monitor" class="view active">
+    <div class="statrow">
+      <div class="card pad stat"><span class="k">Trials</span><span class="v">47<small> / 100</small></span></div>
+      <div class="card pad stat"><span class="k">Best score</span><span class="v">0.913</span></div>
+      <div class="card pad stat"><span class="k">Status</span><span class="v" style="font-size:18px"><span class="chip run">running ●</span></span></div>
+      <div class="card pad stat"><span class="k">Generalization gap</span><span class="v" style="font-size:18px"><span class="chip ok">OK · 0.08</span></span></div>
+    </div>
+
+    <div class="grid2" style="margin-bottom:16px">
+      <div class="card pad">
+        <h3 class="section">Objective — running best</h3>
+        <svg viewBox="0 0 420 170" width="100%" height="170" font-family="var(--mono)">
+          <line x1="38" y1="10" x2="38" y2="145" stroke="#dde3ed"/>
+          <line x1="38" y1="145" x2="410" y2="145" stroke="#dde3ed"/>
+          <text x="6" y="20" font-size="9" fill="#8892a4">1.0</text>
+          <text x="6" y="145" font-size="9" fill="#8892a4">0.0</text>
+          <text x="200" y="165" font-size="9" fill="#8892a4">trial →</text>
+          <!-- scatter of raw scores -->
+          <g fill="#BBBBBB">
+            <circle cx="60" cy="120" r="2.4"/><circle cx="85" cy="95" r="2.4"/><circle cx="110" cy="108" r="2.4"/>
+            <circle cx="140" cy="70" r="2.4"/><circle cx="170" cy="88" r="2.4"/><circle cx="205" cy="58" r="2.4"/>
+            <circle cx="240" cy="74" r="2.4"/><circle cx="275" cy="46" r="2.4"/><circle cx="310" cy="60" r="2.4"/>
+            <circle cx="345" cy="40" r="2.4"/><circle cx="380" cy="49" r="2.4"/>
+          </g>
+          <!-- running best (monotone) -->
+          <polyline fill="none" stroke="#0072B2" stroke-width="2.4"
+            points="60,120 85,95 110,95 140,70 170,70 205,58 240,58 275,46 310,46 345,40 380,40"/>
+          <circle cx="345" cy="40" r="3.5" fill="#0072B2"/>
+        </svg>
+      </div>
+      <div class="card pad">
+        <h3 class="section">Parameter importance (fANOVA)</h3>
+        <div class="bar-row"><span class="name" style="font-family:var(--mono)">0.sigma</span><div class="bar-track"><div class="bar-fill" style="width:62%;background:var(--oi-blue)"></div></div><span>0.62</span></div>
+        <div class="bar-row"><span class="name" style="font-family:var(--mono)">1.ignore_zeros</span><div class="bar-track"><div class="bar-fill" style="width:24%;background:var(--oi-orange)"></div></div><span>0.24</span></div>
+        <div class="bar-row"><span class="name" style="font-family:var(--mono)">0.…__enabled__</span><div class="bar-track"><div class="bar-fill" style="width:14%;background:var(--oi-sky)"></div></div><span>0.14</span></div>
+        <div class="pareto-off" style="margin-top:14px">◇ Pareto front + knee — hidden (single-objective run)</div>
+      </div>
+    </div>
+
+    <div class="card pad">
+      <h3 class="section">Trials</h3>
+      <table class="tt">
+        <thead><tr><th>#</th><th>score</th><th>0.sigma</th><th>1.ignore_zeros</th><th>gap</th><th>state</th></tr></thead>
+        <tbody>
+          <tr><td>45</td><td><b>0.913</b></td><td>2.41</td><td>true</td><td>0.06</td><td><span class="chip ok">complete</span></td></tr>
+          <tr><td>44</td><td>0.871</td><td>2.18</td><td>false</td><td>0.09</td><td><span class="chip ok">complete</span></td></tr>
+          <tr><td>43</td><td>0.522</td><td>3.90</td><td>true</td><td><b style="color:#b4490f">0.27</b></td><td><span class="chip flag">gap-flag</span></td></tr>
+          <tr><td>42</td><td>0.840</td><td>2.55</td><td>false</td><td>0.11</td><td><span class="chip ok">complete</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============ CURATE ============ -->
+  <section id="view-curate" class="view">
+    <h3 class="section">Shortlist · top-5 ∪ Pareto ∪ gap-flagged — click to pin A / B</h3>
+    <div class="shortlist">
+      <div class="cand pinA"><div class="rank">#45 · knee <span class="pin A">A</span></div><div class="sc">0.913</div><div class="meta"><span>gap 0.06</span><span>Count 0.94</span></div></div>
+      <div class="cand pinB"><div class="rank">#44 · top-score <span class="pin B">B</span></div><div class="sc">0.871</div><div class="meta"><span>gap 0.09</span><span>Count 0.90</span></div></div>
+      <div class="cand"><div class="rank">#42</div><div class="sc">0.840</div><div class="meta"><span>gap 0.11</span><span>Count 0.88</span></div></div>
+      <div class="cand"><div class="rank">#38</div><div class="sc">0.815</div><div class="meta"><span>gap 0.10</span><span>Count 0.86</span></div></div>
+      <div class="cand"><div class="rank">#43 ⚠</div><div class="sc">0.522</div><div class="meta"><span class="chip flag" style="font-size:10px">gap 0.27</span></div></div>
+    </div>
+
+    <div class="card pad">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px">
+        <div class="seg" id="abseg">
+          <button class="on" data-mode="side">Side-by-side</button>
+          <button data-mode="diff">Difference</button>
+        </div>
+        <span class="muted" style="font-size:12.5px">Plate</span>
+        <div class="picker" style="min-width:0;padding:5px 9px"><span class="path">plate_03.png</span><span class="muted">▾</span></div>
+        <span class="muted" style="font-size:12px">calibration set · 5 plates</span>
+      </div>
+
+      <!-- side-by-side -->
+      <div id="ab-side">
+        <div class="ab-wrap">
+          <div><div class="plate"><span class="cap A">A · #45 knee</span><!--PLATE_A--></div></div>
+          <div><div class="plate"><span class="cap B">B · #44 top</span><!--PLATE_B--></div></div>
+        </div>
+        <div class="synced">🔗 pan / zoom synchronized · outline overlay (label2rgb of objmap)</div>
+      </div>
+
+      <!-- difference -->
+      <div id="ab-diff" style="display:none">
+        <div style="max-width:520px;margin:0 auto"><div class="plate"><span class="cap">Δ A vs B · plate_03</span><!--PLATE_DIFF--></div></div>
+        <div class="legend" style="justify-content:center">
+          <span><i style="background:var(--oi-grey)"></i>both detect (41)</span>
+          <span><i style="background:var(--oi-sky)"></i>only A (3)</span>
+          <span><i style="background:var(--oi-orange)"></i>only B (1)</span>
+          <span class="muted">· 4 / 96 grid cells disagree</span>
+        </div>
+      </div>
+
+      <div class="winner-bar">
+        <span class="chip" style="background:#eef4fb;color:var(--navy)">Winner → <b>A · #45 (knee)</b></span>
+        <span class="muted" style="font-size:12.5px">overwrites the CLI auto-pick</span>
+        <button class="btn gold" style="margin-left:auto">Set as winner → best_pipeline.json</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SPACE ============ -->
+  <section id="view-space" class="view">
+    <div class="hint">Loads a <b>pipeline.json</b> → <code>infer_search_space()</code> → editable knobs. v1 edits <b>flat + presence</b> knobs only; nested knobs are read-only.</div>
+    <div class="card pad" style="margin-bottom:14px;display:flex;align-items:center;gap:12px">
+      <span class="muted" style="font-size:12.5px">Pipeline</span>
+      <div class="picker"><span class="path">deliverables/pipeline.json</span><span class="muted">▾</span></div>
+      <span class="muted" style="font-size:12px">GaussianBlur → OtsuDetector → WatershedRefiner</span>
+    </div>
+    <div class="card pad">
+      <h3 class="section">Knobs</h3>
+      <div class="knob"><span class="name">0 · GaussianBlur · __enabled__</span><span class="kind">presence</span><span class="muted">on ↔ off</span><span class="toggle on" title="tunable"></span></div>
+      <div class="knob"><span class="name">0 · GaussianBlur · sigma</span><span class="kind">float</span><span>low <input type="text" value="0.5"> high <input type="text" value="6.0"> &nbsp;log <span class="toggle" style="display:inline-block;vertical-align:middle"></span></span><span class="toggle on"></span></div>
+      <div class="knob"><span class="name">1 · OtsuDetector · ignore_zeros</span><span class="kind">categorical</span><span class="muted">{true, false}</span><span class="toggle on"></span></div>
+      <div class="knob"><span class="name">1 · OtsuDetector · nbins</span><span class="kind">int</span><span>low <input type="text" value="64"> high <input type="text" value="512"> &nbsp;log <span class="toggle" style="display:inline-block;vertical-align:middle"></span></span><span class="toggle on"></span></div>
+      <div class="knob nested"><span class="name">2 · Watershed · markers[0].min_distance</span><span class="kind">nested</span><span class="lock">🔒 read-only (nested, v1)</span><span class="toggle"></span></div>
+      <div style="display:flex;justify-content:flex-end;margin-top:16px;gap:10px">
+        <span class="muted" style="font-size:12px;align-self:center">scorer QCScorer · strategy tpe · budget 50 (defaults — edit in Launch)</span>
+        <button class="btn gold">Export tuning_spec.json</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ LAUNCH ============ -->
+  <section id="view-launch" class="view">
+    <div class="hint">The GUI never spawns a run — it renders the exact CLI command for you to copy. Distributed runs add <code>--storage-url</code> / <code>--slurm</code>.</div>
+    <div class="card pad" style="margin-bottom:16px">
+      <h3 class="section">Run options</h3>
+      <div class="form-row"><label>Strategy</label><select id="f-strat"><option>tpe</option><option>nsga2</option><option>cmaes</option><option>gp</option><option>random</option><option>grid</option></select></div>
+      <div class="form-row"><label>Trials</label><input type="number" id="f-n" value="50" style="width:90px"></div>
+      <div class="form-row"><label>Storage URL</label><input type="text" id="f-url" value="postgresql+psycopg://anguy344@r21.ib.hpcc.ucr.edu:54399/tune"></div>
+      <div class="form-row"><label>Screening</label><span class="toggle" id="f-screen"></span><span class="muted" style="font-size:12.5px">two-round importance freeze (--screen)</span></div>
+      <div class="form-row"><label>SLURM fleet</label><span class="toggle on" id="f-slurm"></span><span class="muted" style="font-size:12.5px">distributed array workers (--slurm)</span></div>
+    </div>
+    <div class="card pad">
+      <h3 class="section">Command</h3>
+      <div class="cmdcard" id="cmd"><button class="btn ghost sm copy">Copy</button></div>
+      <div class="note">Paste into your shell (or an <code>sbatch</code> wrapper). The tab will pick the new run up via the run header once it starts writing.</div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+  // plate render: arrayed colonies as outlined circles on a dark plate
+  function plate(outlineColor, opts){
+    opts=opts||{}; const n=8, R=320, pad=26, cell=(R-2*pad)/(n-1);
+    let s=`<svg viewBox="0 0 ${R} ${R}" width="100%" height="100%">`;
+    s+=`<rect width="${R}" height="${R}" fill="#10161d"/>`;
+    let seed=7; const rnd=()=>{seed=(seed*9301+49297)%233280;return seed/233280;};
+    for(let r=0;r<n;r++)for(let c=0;c<n;c++){
+      const cx=pad+c*cell, cy=pad+r*cell, rad=6+rnd()*5;
+      // faint colony fill
+      s+=`<circle cx="${cx}" cy="${cy}" r="${rad}" fill="#c9b893" opacity="0.5"/>`;
+      // diff mode: color by agreement
+      let col=outlineColor, draw=true;
+      if(opts.diff){
+        const k=rnd();
+        if(k>0.965){col='var(--oi-sky)';}       // only A
+        else if(k>0.95){col='var(--oi-orange)';} // only B
+        else col='var(--oi-grey)';
+      }
+      if(opts.mode==='A'&&rnd()>0.985) continue; // A misses a couple differently
+      if(opts.mode==='B'&&rnd()>0.99) continue;
+      if(draw) s+=`<circle cx="${cx}" cy="${cy}" r="${rad+2}" fill="none" stroke="${col}" stroke-width="2"/>`;
+    }
+    s+='</svg>'; return s;
+  }
+  document.querySelectorAll('.plate').forEach(p=>{
+    const cap=p.querySelector('.cap');
+    if(cap&&cap.classList.contains('A')) p.insertAdjacentHTML('beforeend',plate('var(--oi-sky)',{mode:'A'}));
+    else if(cap&&cap.classList.contains('B')) p.insertAdjacentHTML('beforeend',plate('var(--oi-orange)',{mode:'B'}));
+    else p.insertAdjacentHTML('beforeend',plate('#fff',{diff:true}));
+  });
+
+  // sub-tab switching
+  document.querySelectorAll('.subtab').forEach(t=>t.addEventListener('click',()=>{
+    document.querySelectorAll('.subtab').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById('view-'+t.dataset.view).classList.add('active');
+  }));
+
+  // A/B mode segment
+  document.querySelectorAll('#abseg button').forEach(b=>b.addEventListener('click',()=>{
+    document.querySelectorAll('#abseg button').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on');
+    const diff=b.dataset.mode==='diff';
+    document.getElementById('ab-side').style.display=diff?'none':'block';
+    document.getElementById('ab-diff').style.display=diff?'block':'none';
+  }));
+
+  // toggles
+  document.querySelectorAll('.toggle').forEach(t=>t.addEventListener('click',()=>t.classList.toggle('on')));
+
+  // live launch command
+  function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;');}
+  function renderCmd(){
+    const strat=document.getElementById('f-strat').value;
+    const n=document.getElementById('f-n').value;
+    const url=document.getElementById('f-url').value;
+    const screen=document.getElementById('f-screen').classList.contains('on');
+    const slurm=document.getElementById('f-slurm').classList.contains('on');
+    let c=`<span class="prog">python -m phenotypic.tune run</span> tuning_spec.json -i ./plates -o ./out`;
+    c+=` <span class="flag">--strategy</span> <span class="val">${esc(strat)}</span>`;
+    c+=` <span class="flag">--n-trials</span> <span class="val">${esc(n)}</span>`;
+    if(url) c+=` <span class="flag">--storage-url</span> <span class="val">${esc(url)}</span>`;
+    if(screen) c+=` <span class="flag">--screen</span>`;
+    if(slurm) c+=` <span class="flag">--slurm</span>`;
+    document.getElementById('cmd').innerHTML='<button class="btn ghost sm copy">Copy</button>'+c;
+  }
+  ['f-strat','f-n','f-url'].forEach(id=>document.getElementById(id).addEventListener('input',renderCmd));
+  document.getElementById('f-screen').addEventListener('click',renderCmd);
+  document.getElementById('f-slurm').addEventListener('click',renderCmd);
+  renderCmd();
+</script>
+</body>
+</html>

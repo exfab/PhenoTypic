@@ -71,4 +71,5 @@ Modules
    phenotypic.prefab
    phenotypic.refine
    phenotypic.tools_
+   phenotypic.tune
    phenotypic.util

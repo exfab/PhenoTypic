@@ -1,0 +1,1348 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PhenoTypic Builder Linear Port Map Mockup</title>
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:ital,wght@0,400;0,500;0,600;1,400;1,500&family=JetBrains+Mono:wght@400;500;600&display=swap");
+
+    :root {
+      --font-display: "IBM Plex Serif", Georgia, "Times New Roman", Times, serif;
+      --font-body: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+      --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, "Liberation Mono", "Courier New", monospace;
+
+      --color-navy: #003660;
+      --color-blue: #1b75bc;
+      --color-gold: #febc11;
+      --color-white: #ffffff;
+      --color-bg: #FBFEF8;
+      --color-surface: #ffffff;
+      --color-border: #dde3ed;
+      --color-rule: #e8ecf2;
+      --color-muted: #8892a4;
+      --color-body: #2e3a4e;
+      --color-heading: #003660;
+
+      --oi-green: #009E73;
+      --oi-orange: #E69F00;
+      --oi-vermilion: #D55E00;
+
+      --text-2xs: 0.625rem;
+      --text-xs: 0.6875rem;
+      --text-sm: 0.8125rem;
+      --text-base: 0.9375rem;
+      --text-md: 1.0625rem;
+      --text-lg: 1.25rem;
+      --text-xl: 1.5rem;
+      --text-2xl: 1.875rem;
+
+      --font-size-title: var(--text-2xl);
+      --font-size-header-1: var(--text-xl);
+      --font-size-header-2: var(--text-lg);
+      --font-size-body: var(--text-base);
+      --font-size-body-sm: var(--text-sm);
+      --font-size-caption: var(--text-xs);
+      --font-size-micro: var(--text-2xs);
+
+      --leading-display: 1.1;
+      --leading-tight: 1.2;
+      --leading-snug: 1.3;
+      --leading-normal: 1.45;
+      --leading-relaxed: 1.6;
+
+      --tracking-tight: -0.02em;
+      --tracking-snug: -0.01em;
+      --tracking-normal: 0;
+      --tracking-button: 0.01em;
+      --tracking-wide: 0.08em;
+      --tracking-wider: 0.12em;
+
+      --sp-1: 0.25rem;
+      --sp-2: 0.5rem;
+      --sp-3: 0.75rem;
+      --sp-4: 1rem;
+      --sp-5: 1.25rem;
+      --sp-6: 1.5rem;
+      --sp-8: 2rem;
+
+      --radius-sm: 3px;
+      --radius: 6px;
+      --radius-md: 10px;
+      --button-radius: 4px;
+      --shadow-sm: 0 1px 3px rgba(0, 54, 96, 0.07), 0 1px 2px rgba(0, 54, 96, 0.04);
+      --shadow: 0 4px 12px rgba(0, 54, 96, 0.08), 0 1px 3px rgba(0, 54, 96, 0.05);
+      --shadow-md: 0 8px 24px rgba(0, 54, 96, 0.10), 0 2px 6px rgba(0, 54, 96, 0.06);
+      --transition: 180ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--color-bg);
+      color: var(--color-body);
+      font-family: var(--font-body);
+      font-size: var(--font-size-body);
+      line-height: var(--leading-relaxed);
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-4);
+      padding: var(--sp-4) var(--sp-6);
+      background: var(--color-surface);
+      border-bottom: 1px solid var(--color-rule);
+    }
+
+    .logo {
+      width: auto;
+      height: 32px;
+      max-width: 190px;
+      object-fit: contain;
+    }
+
+    .title-block {
+      min-width: 0;
+    }
+
+    h1 {
+      margin: 0;
+      color: var(--color-heading);
+      font-family: var(--font-display);
+      font-size: var(--font-size-title);
+      font-weight: 400;
+      letter-spacing: var(--tracking-snug);
+      line-height: var(--leading-snug);
+    }
+
+    .subtitle,
+    .overline,
+    .badge,
+    .metric,
+    .field-label {
+      font-family: var(--font-mono);
+    }
+
+    .subtitle {
+      margin-top: 2px;
+      color: var(--color-muted);
+      font-size: var(--font-size-caption);
+      font-weight: 500;
+      letter-spacing: var(--tracking-wider);
+      text-transform: uppercase;
+    }
+
+    .top-actions {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: var(--sp-2);
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      border: 1.5px solid var(--color-border);
+      border-radius: var(--button-radius);
+      background: transparent;
+      color: var(--color-navy);
+      cursor: pointer;
+      font-family: var(--font-body);
+      font-size: var(--font-size-body-sm);
+      font-weight: 500;
+      letter-spacing: var(--tracking-button);
+      min-height: 44px;
+      padding: 0.5rem 1.125rem;
+      transition: all var(--transition);
+      white-space: nowrap;
+    }
+
+    .btn:hover,
+    .btn:focus-visible {
+      border-color: var(--color-blue);
+      color: var(--color-blue);
+      outline: none;
+      background: rgba(27, 117, 188, 0.04);
+    }
+
+    .btn-primary {
+      background: var(--color-navy);
+      border-color: var(--color-navy);
+      color: var(--color-white);
+    }
+
+    .btn-primary:hover,
+    .btn-primary:focus-visible {
+      background: #00284a;
+      border-color: #00284a;
+      color: var(--color-white);
+      box-shadow: 0 4px 12px rgba(0, 54, 96, 0.28);
+    }
+
+    .btn-accent {
+      background: rgba(254, 188, 17, 0.12);
+      border-color: rgba(254, 188, 17, 0.65);
+      color: var(--color-navy);
+    }
+
+    .btn-accent:hover,
+    .btn-accent:focus-visible {
+      background: rgba(254, 188, 17, 0.18);
+      border-color: var(--color-gold);
+      color: var(--color-navy);
+    }
+
+    .btn-ghost {
+      border-color: transparent;
+      color: var(--color-muted);
+      padding-inline: var(--sp-2);
+    }
+
+    .workspace {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: minmax(210px, 240px) minmax(560px, 1fr) minmax(300px, 340px);
+      gap: var(--sp-4);
+      padding: var(--sp-4);
+    }
+
+    .panel {
+      min-height: 0;
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-sm);
+      overflow: hidden;
+    }
+
+    .panel-header {
+      padding: var(--sp-4) var(--sp-5) var(--sp-3);
+      border-bottom: 1px solid var(--color-rule);
+    }
+
+    .panel-title {
+      margin: 0;
+      color: var(--color-heading);
+      font-family: var(--font-body);
+      font-size: var(--font-size-body-sm);
+      font-weight: 600;
+      letter-spacing: var(--tracking-normal);
+      line-height: var(--leading-snug);
+    }
+
+    .overline {
+      color: var(--color-muted);
+      font-size: var(--font-size-caption);
+      font-weight: 500;
+      letter-spacing: var(--tracking-wider);
+      text-transform: uppercase;
+    }
+
+    .palette-body,
+    .loader-body {
+      display: grid;
+      gap: var(--sp-4);
+      padding: var(--sp-4);
+    }
+
+    .search {
+      width: 100%;
+      min-height: 36px;
+      border: 1.5px solid var(--color-border);
+      border-radius: var(--radius);
+      color: var(--color-body);
+      padding: 0.5rem 0.75rem;
+      transition: border-color var(--transition), box-shadow var(--transition);
+    }
+
+    .search:focus {
+      border-color: var(--color-blue);
+      box-shadow: 0 0 0 3px rgba(27, 117, 188, 0.12);
+      outline: none;
+    }
+
+    .operation-group {
+      display: grid;
+      gap: var(--sp-2);
+    }
+
+    .operation {
+      width: 100%;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: var(--sp-2);
+      min-height: 44px;
+      border: 1px solid var(--color-border);
+      border-radius: var(--button-radius);
+      background: var(--color-white);
+      color: var(--color-body);
+      cursor: pointer;
+      padding: 0.55rem 0.7rem;
+      text-align: left;
+      transition: all var(--transition);
+    }
+
+    .operation:hover,
+    .operation:focus-visible {
+      border-color: var(--color-blue);
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(27, 117, 188, 0.08);
+    }
+
+    .operation-name {
+      color: var(--color-heading);
+      font-weight: 600;
+      overflow-wrap: anywhere;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      border: 1px solid rgba(27, 117, 188, 0.20);
+      border-radius: 999px;
+      background: rgba(27, 117, 188, 0.08);
+      color: var(--color-blue);
+      font-size: var(--font-size-micro);
+      font-weight: 500;
+      letter-spacing: var(--tracking-wide);
+      line-height: 1;
+      padding: 0.25rem 0.5rem;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .badge-gold {
+      border-color: rgba(254, 188, 17, 0.45);
+      background: rgba(254, 188, 17, 0.14);
+      color: var(--color-navy);
+    }
+
+    .badge-green {
+      border-color: rgba(0, 158, 115, 0.20);
+      background: rgba(0, 158, 115, 0.08);
+      color: #006B4F;
+    }
+
+    .badge-warning {
+      border-color: rgba(230, 159, 0, 0.25);
+      background: rgba(230, 159, 0, 0.10);
+      color: #9A6B00;
+    }
+
+    .canvas-panel {
+      display: grid;
+      grid-template-rows: auto auto 1fr;
+    }
+
+    .canvas-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--sp-3);
+      padding: var(--sp-3) var(--sp-4);
+      border-bottom: 1px solid var(--color-rule);
+    }
+
+    .breadcrumb {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--sp-2);
+      max-width: 100%;
+      border-radius: var(--radius);
+      background: rgba(220, 226, 235, 0.85);
+      color: var(--color-muted);
+      font-family: var(--font-mono);
+      font-size: var(--font-size-caption);
+      letter-spacing: var(--tracking-wide);
+      overflow: hidden;
+      padding: 0.35rem 0.75rem;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .breadcrumb strong {
+      color: var(--color-heading);
+      font-weight: 600;
+    }
+
+    .toolbar-buttons {
+      display: flex;
+      gap: var(--sp-2);
+      flex-wrap: wrap;
+    }
+
+    .map {
+      position: relative;
+      min-height: 520px;
+      overflow: auto;
+      background:
+        linear-gradient(90deg, rgba(232, 236, 242, 0.70) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(232, 236, 242, 0.70) 1px, transparent 1px),
+        var(--color-bg);
+      background-size: 32px 32px;
+    }
+
+    .lane {
+      position: relative;
+      min-width: 680px;
+      height: 100%;
+      min-height: 520px;
+      padding: 92px 28px 120px;
+    }
+
+    .lane-label {
+      position: absolute;
+      top: 28px;
+      left: 28px;
+      color: var(--color-muted);
+      font-family: var(--font-mono);
+      font-size: var(--font-size-caption);
+      font-weight: 500;
+      letter-spacing: var(--tracking-wider);
+      text-transform: uppercase;
+    }
+
+    .pipeline-row {
+      display: flex;
+      align-items: center;
+      gap: 0;
+    }
+
+    .node {
+      position: relative;
+      width: 145px;
+      min-height: 112px;
+      display: grid;
+      align-content: start;
+      gap: var(--sp-2);
+      border: 1.5px solid var(--color-border);
+      border-radius: var(--radius);
+      background: var(--color-surface);
+      box-shadow: var(--shadow-sm);
+      padding: var(--sp-4);
+    }
+
+    .node.selected {
+      border-color: var(--color-blue);
+      box-shadow: 0 0 0 3px rgba(27, 117, 188, 0.12), var(--shadow-sm);
+    }
+
+    .node-stage {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--sp-2);
+    }
+
+    .node-title {
+      margin: 0;
+      color: var(--color-heading);
+      font-size: var(--font-size-body);
+      font-weight: 700;
+      line-height: var(--leading-tight);
+      overflow-wrap: anywhere;
+    }
+
+    .node-meta {
+      color: var(--color-muted);
+      font-family: var(--font-mono);
+      font-size: var(--font-size-caption);
+      line-height: var(--leading-normal);
+    }
+
+    .node-param {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: var(--sp-2);
+      border-top: 1px solid var(--color-rule);
+      color: var(--color-body);
+      font-family: var(--font-mono);
+      font-size: var(--font-size-caption);
+      padding-top: var(--sp-2);
+    }
+
+    .param-copy {
+      min-width: 0;
+      flex: 1 1 auto;
+      display: block;
+    }
+
+    .param-name {
+      color: var(--color-heading);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .port {
+      width: 26px;
+      height: 26px;
+      display: inline-grid;
+      place-items: center;
+      border: 2px solid var(--color-blue);
+      border-radius: 999px;
+      background: var(--color-white);
+      color: var(--color-blue);
+      cursor: pointer;
+      font-size: 0;
+      padding: 0;
+      transition: all var(--transition);
+      z-index: 4;
+    }
+
+    .port::after {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: currentColor;
+      content: "";
+    }
+
+    .port:hover,
+    .port:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 4px rgba(27, 117, 188, 0.14);
+    }
+
+    .input-port,
+    .output-port {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+
+    .input-port {
+      left: -14px;
+    }
+
+    .output-port {
+      right: -14px;
+    }
+
+    .param-port {
+      width: 24px;
+      height: 24px;
+      border-color: var(--color-gold);
+      color: var(--color-navy);
+      background: var(--color-white);
+    }
+
+    .param-port::after {
+      width: 7px;
+      height: 7px;
+      background: var(--color-navy);
+    }
+
+    .param-port:hover,
+    .param-port:focus-visible {
+      box-shadow: 0 0 0 4px rgba(254, 188, 17, 0.22);
+    }
+
+    .port.selected-target {
+      border-color: var(--oi-green);
+      background: var(--oi-green);
+      color: var(--color-white);
+      box-shadow: 0 0 0 5px rgba(0, 158, 115, 0.16), 0 0 0 1px rgba(0, 158, 115, 0.40);
+    }
+
+    .port.selected-target::after {
+      background: var(--color-white);
+    }
+
+    .port.warning {
+      border-color: var(--oi-orange);
+      box-shadow: 0 0 0 4px rgba(230, 159, 0, 0.12);
+    }
+
+    .help-button {
+      width: 22px;
+      height: 22px;
+      display: inline-grid;
+      flex: 0 0 auto;
+      place-items: center;
+      border: 1px solid rgba(27, 117, 188, 0.25);
+      border-radius: 999px;
+      background: var(--color-white);
+      color: var(--color-blue);
+      cursor: pointer;
+      font-family: var(--font-mono);
+      font-size: var(--font-size-micro);
+      font-weight: 600;
+      line-height: 1;
+      padding: 0;
+      transition: all var(--transition);
+    }
+
+    .help-button:hover,
+    .help-button:focus-visible {
+      border-color: var(--color-blue);
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(27, 117, 188, 0.12);
+    }
+
+    .doc-popover {
+      position: absolute;
+      width: 250px;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      background: var(--color-surface);
+      box-shadow: var(--shadow-md);
+      color: var(--color-body);
+      padding: var(--sp-3);
+      z-index: 9;
+    }
+
+    .doc-popover.hidden {
+      display: none;
+    }
+
+    .doc-popover.param-doc {
+      top: 278px;
+      left: 432px;
+    }
+
+    .doc-title {
+      color: var(--color-heading);
+      font-family: var(--font-body);
+      font-size: var(--font-size-body-sm);
+      font-weight: 700;
+      line-height: var(--leading-snug);
+      margin-bottom: var(--sp-2);
+    }
+
+    .doc-body {
+      color: var(--color-body);
+      font-family: var(--font-body);
+      font-size: var(--font-size-body-sm);
+      line-height: var(--leading-relaxed);
+    }
+
+    .connector {
+      position: relative;
+      width: 32px;
+      height: 2px;
+      background: var(--color-blue);
+    }
+
+    .connector::after {
+      position: absolute;
+      top: 50%;
+      right: -1px;
+      width: 8px;
+      height: 8px;
+      border-top: 2px solid var(--color-blue);
+      border-right: 2px solid var(--color-blue);
+      content: "";
+      transform: translateY(-50%) rotate(45deg);
+    }
+
+    .tail {
+      display: flex;
+      align-items: center;
+      gap: 0;
+    }
+
+    .tail-line {
+      width: 28px;
+      height: 2px;
+      background: var(--color-blue);
+    }
+
+    .floating-port {
+      position: relative;
+      width: 34px;
+      height: 34px;
+      margin-left: -1px;
+      background: var(--color-white);
+    }
+
+    .port-menu {
+      position: absolute;
+      width: 218px;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      background: var(--color-surface);
+      box-shadow: var(--shadow-md);
+      padding: var(--sp-3);
+      z-index: 8;
+    }
+
+    .port-menu.hidden {
+      display: none;
+    }
+
+    .port-menu.main {
+      top: 312px;
+      right: auto;
+      left: 454px;
+    }
+
+    .port-menu.aux {
+      top: 276px;
+      left: 396px;
+    }
+
+    .menu-title {
+      color: var(--color-heading);
+      font-size: var(--font-size-body-sm);
+      font-weight: 700;
+      margin-bottom: var(--sp-2);
+    }
+
+    .menu-actions {
+      display: grid;
+      gap: var(--sp-2);
+    }
+
+    .menu-actions .btn {
+      justify-content: flex-start;
+      min-height: 36px;
+      padding: 0.35rem 0.75rem;
+      text-align: left;
+    }
+
+    .scope-strip {
+      position: absolute;
+      right: 44px;
+      bottom: 34px;
+      left: 28px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(150px, 1fr));
+      gap: var(--sp-3);
+    }
+
+    .scope-item {
+      border: 1px solid var(--color-rule);
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, 0.84);
+      padding: var(--sp-3);
+    }
+
+    .scope-title {
+      color: var(--color-heading);
+      font-weight: 700;
+    }
+
+    .scope-meta {
+      color: var(--color-muted);
+      font-family: var(--font-mono);
+      font-size: var(--font-size-caption);
+    }
+
+    .loader-section {
+      display: grid;
+      gap: var(--sp-3);
+      border-bottom: 1px solid var(--color-rule);
+      padding-bottom: var(--sp-4);
+    }
+
+    .loader-section:last-child {
+      border-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .loader-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: var(--sp-2);
+    }
+
+    .loader-title {
+      margin: 0;
+      color: var(--color-heading);
+      font-family: var(--font-display);
+      font-size: var(--font-size-header-2);
+      font-weight: 400;
+      letter-spacing: var(--tracking-normal);
+      line-height: var(--leading-snug);
+      overflow-wrap: anywhere;
+    }
+
+    .field {
+      display: grid;
+      gap: var(--sp-1);
+    }
+
+    .field-label {
+      color: var(--color-muted);
+      font-size: var(--font-size-caption);
+      font-weight: 500;
+      letter-spacing: var(--tracking-wide);
+      text-transform: uppercase;
+    }
+
+    .field-value {
+      min-height: 36px;
+      border: 1.5px solid var(--color-border);
+      border-radius: var(--radius);
+      background: var(--color-white);
+      color: var(--color-heading);
+      font-family: var(--font-mono);
+      font-weight: 600;
+      overflow: hidden;
+      padding: 0.45rem 0.75rem;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .slot-row {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: var(--sp-2);
+      min-height: 44px;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      background: var(--color-white);
+      padding: 0.45rem 0.65rem;
+    }
+
+    .slot-index {
+      color: var(--color-muted);
+      font-family: var(--font-mono);
+      font-size: var(--font-size-caption);
+    }
+
+    .slot-main {
+      min-width: 0;
+    }
+
+    .slot-name {
+      color: var(--color-heading);
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+
+    .slot-type {
+      color: var(--color-muted);
+      font-family: var(--font-mono);
+      font-size: var(--font-size-caption);
+    }
+
+    .status-line {
+      min-height: 38px;
+      border-left: 4px solid var(--oi-green);
+      border-radius: var(--radius);
+      background: rgba(0, 158, 115, 0.07);
+      color: #005C43;
+      font-size: var(--font-size-body-sm);
+      padding: var(--sp-2) var(--sp-3);
+    }
+
+    .status-line.warning {
+      border-left-color: var(--oi-orange);
+      background: rgba(230, 159, 0, 0.10);
+      color: #7A5500;
+    }
+
+    .mini-map {
+      display: grid;
+      gap: var(--sp-2);
+    }
+
+    .mini-row {
+      display: grid;
+      grid-template-columns: 82px 1fr;
+      gap: var(--sp-2);
+      align-items: center;
+      color: var(--color-body);
+      font-size: var(--font-size-body-sm);
+    }
+
+    .metric {
+      color: var(--color-muted);
+      font-size: var(--font-size-caption);
+      letter-spacing: var(--tracking-wide);
+      text-transform: uppercase;
+    }
+
+    .mini-line {
+      height: 6px;
+      border-radius: 999px;
+      background: var(--color-rule);
+      overflow: hidden;
+    }
+
+    .mini-line span {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: var(--color-navy);
+    }
+
+    @media (max-width: 1180px) {
+      .workspace {
+        grid-template-columns: 240px minmax(580px, 1fr);
+      }
+
+      .loader-panel {
+        grid-column: 1 / -1;
+      }
+    }
+
+    @media (max-width: 860px) {
+      .topbar {
+        align-items: flex-start;
+        flex-wrap: wrap;
+      }
+
+      .top-actions {
+        width: 100%;
+        margin-left: 0;
+      }
+
+      .workspace {
+        grid-template-columns: 1fr;
+      }
+
+      .map {
+        min-height: 440px;
+      }
+
+      .lane {
+        min-height: 440px;
+        padding-inline: 28px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <img class="logo" src="../../src/phenotypic/_assets/logos/400x150/light_logo_exfab.svg" alt="PhenoTypic">
+      <div class="title-block">
+        <h1>Pipeline Builder</h1>
+        <div class="subtitle">Linear port map prototype</div>
+      </div>
+      <div class="top-actions" aria-label="Builder actions">
+        <button class="btn">Load</button>
+        <button class="btn">Preview</button>
+        <button class="btn btn-primary">Save Pipeline</button>
+      </div>
+    </header>
+
+    <section class="workspace" aria-label="Builder workspace">
+      <aside class="panel palette-panel" aria-label="Operation palette">
+        <div class="panel-header">
+          <div class="overline">Palette</div>
+          <h2 class="panel-title">Operations</h2>
+        </div>
+        <div class="palette-body">
+          <input class="search" type="search" value="detector" aria-label="Filter operations">
+
+          <div class="operation-group" aria-label="Correctors">
+            <div class="overline">Corrector</div>
+            <button class="operation" data-op="ColorDenoise">
+              <span class="operation-name">ColorDenoise</span>
+              <span class="badge">Image</span>
+            </button>
+            <button class="operation" data-op="FlatFieldCorrector">
+              <span class="operation-name">FlatFieldCorrector</span>
+              <span class="badge">Image</span>
+            </button>
+          </div>
+
+          <div class="operation-group" aria-label="Detectors">
+            <div class="overline">Detector</div>
+            <button class="operation" data-op="OtsuDetector">
+              <span class="operation-name">OtsuDetector</span>
+              <span class="badge badge-gold">Aux</span>
+            </button>
+            <button class="operation" data-op="FilamentousFungiDetector">
+              <span class="operation-name">FilamentousFungiDetector</span>
+              <span class="badge">Image</span>
+            </button>
+            <button class="operation" data-op="ImagePipeline">
+              <span class="operation-name">ImagePipeline</span>
+              <span class="badge badge-green">Nested</span>
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      <section class="panel canvas-panel" aria-label="Node map mockup">
+        <div class="panel-header">
+          <div class="overline">Map</div>
+          <h2 class="panel-title">Fixed pipeline spine</h2>
+        </div>
+        <div class="canvas-toolbar">
+          <nav class="breadcrumb" aria-label="Breadcrumb">
+            <strong>Pipeline</strong>
+            <span>&gt;</span>
+            <span id="crumb-tail">Root</span>
+          </nav>
+          <div class="toolbar-buttons" aria-label="Canvas controls">
+            <button class="btn btn-ghost">Zoom -</button>
+            <button class="btn btn-ghost">Zoom +</button>
+            <button class="btn">Fit</button>
+          </div>
+        </div>
+
+        <div class="map">
+          <div class="lane">
+            <div class="lane-label">Image flow</div>
+
+            <div class="pipeline-row" aria-label="Linear image pipeline">
+              <article class="node">
+                <div class="node-stage">
+                  <span class="badge badge-green">Input</span>
+                </div>
+                <h3 class="node-title">Input Image</h3>
+                <div class="node-meta">root image accessor</div>
+                <button class="port output-port" data-target="input-output" onclick="window.setSelectedTarget(this.dataset.target)" aria-label="Open Input Image output port menu"></button>
+              </article>
+
+              <div class="connector" aria-hidden="true"></div>
+
+              <article class="node">
+                <button class="port input-port" data-target="denoise-input" onclick="window.setSelectedTarget(this.dataset.target)" aria-label="Open ColorDenoise input port menu"></button>
+                <div class="node-stage">
+                  <span class="badge">Corrector</span>
+                </div>
+                <h3 class="node-title">ColorDenoise</h3>
+                <div class="node-meta">preserve RGB, clean detect_mat</div>
+                <button class="port output-port" data-target="denoise-output" onclick="window.setSelectedTarget(this.dataset.target)" aria-label="Open ColorDenoise output port menu"></button>
+              </article>
+
+              <div class="connector" aria-hidden="true"></div>
+
+              <article class="node selected">
+                <button class="port input-port" data-target="fungi-input" onclick="window.setSelectedTarget(this.dataset.target)" aria-label="Open FilamentousFungiDetector input port menu"></button>
+                <div class="node-stage">
+                  <span class="badge badge-warning">Detector</span>
+                </div>
+                <h3 class="node-title">FilamentousFungiDetector</h3>
+                <div class="node-meta">requires inoculum_detector</div>
+                <div class="node-param">
+                  <button class="port param-port warning" data-target="inoculum-aux" onclick="window.setSelectedTarget(this.dataset.target)" aria-label="Open inoculum_detector parameter port menu"></button>
+                  <span class="param-copy">
+                    <span class="param-name">inoculum_detector</span>
+                  </span>
+                  <button id="inoculum-help" class="help-button" type="button" aria-label="Show inoculum_detector class documentation">?</button>
+                </div>
+                <button class="port output-port" data-target="fungi-output" onclick="window.setSelectedTarget(this.dataset.target)" aria-label="Open FilamentousFungiDetector output port menu"></button>
+              </article>
+
+              <div class="tail">
+                <div class="tail-line" aria-hidden="true"></div>
+                <button class="port floating-port selected-target" data-target="main-tail" onclick="window.setSelectedTarget(this.dataset.target)" aria-label="Open continuation port menu"></button>
+              </div>
+            </div>
+
+            <div id="main-menu" class="port-menu main hidden" role="menu" aria-label="Continuation port menu">
+              <div class="menu-title">After FilamentousFungiDetector</div>
+              <div class="menu-actions">
+                <button class="btn btn-primary" data-menu-action="Add operation">Add operation</button>
+                <button class="btn" data-menu-action="Add pipeline">Add pipeline</button>
+                <button class="btn" data-menu-action="Preview here">Preview here</button>
+              </div>
+            </div>
+
+            <div id="aux-menu" class="port-menu aux hidden" role="menu" aria-label="Aux parameter port menu">
+              <div class="menu-title">inoculum_detector</div>
+              <div class="menu-actions">
+                <button class="btn btn-accent" data-menu-action="Create operation">Create operation</button>
+                <button class="btn" data-menu-action="Create pipeline">Create pipeline</button>
+                <button class="btn" data-menu-action="Clear value">Clear value</button>
+              </div>
+            </div>
+
+            <div id="doc-popover" class="doc-popover param-doc hidden" role="dialog" aria-label="Class documentation">
+              <div id="doc-title" class="doc-title">inoculum_detector</div>
+              <div id="doc-body" class="doc-body">Choose an ImageOperation that identifies the inoculum region used by FilamentousFungiDetector.</div>
+            </div>
+
+            <div class="scope-strip" aria-label="Scope summary">
+              <div class="scope-item">
+                <div class="scope-title">Root scope</div>
+                <div class="scope-meta">3 visible nodes</div>
+              </div>
+              <div class="scope-item">
+                <div class="scope-title">Aux target</div>
+                <div class="scope-meta">inoculum_detector empty</div>
+              </div>
+              <div class="scope-item">
+                <div class="scope-title">Next palette click</div>
+                <div class="scope-meta" id="next-click">adds to main spine</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <aside class="panel loader-panel" aria-label="Selection inspector">
+        <div class="panel-header">
+          <div class="overline">Inspector</div>
+          <h2 class="panel-title">Selection loader</h2>
+        </div>
+        <div class="loader-body">
+          <section class="loader-section">
+            <div class="loader-title-row">
+              <span id="loader-badge" class="badge badge-green">Selected</span>
+              <h3 id="loader-title" class="loader-title">Continuation port</h3>
+            </div>
+            <div id="loader-status" class="status-line">Palette operations insert after FilamentousFungiDetector.</div>
+          </section>
+
+          <section class="loader-section">
+            <div class="field">
+              <label class="field-label" for="target-field">Target</label>
+              <div id="target-field" class="field-value">main_tail</div>
+            </div>
+            <div class="field">
+              <label class="field-label" for="accepts-field">Accepts</label>
+              <div id="accepts-field" class="field-value">ImageOperation, ImagePipeline</div>
+            </div>
+          </section>
+
+          <section class="loader-section">
+            <div class="overline">Slots</div>
+            <div id="slot-list">
+              <div class="slot-row">
+                <span class="slot-index">01</span>
+                <div class="slot-main">
+                  <div class="slot-name">After detector</div>
+                  <div class="slot-type">linear image flow</div>
+                </div>
+                <span class="badge">Open</span>
+              </div>
+            </div>
+          </section>
+
+          <section class="loader-section">
+            <div class="overline">Scope health</div>
+            <div class="mini-map">
+              <div class="mini-row">
+                <span class="metric">Image</span>
+                <div class="mini-line"><span style="width: 78%"></span></div>
+              </div>
+              <div class="mini-row">
+                <span class="metric">Aux</span>
+                <div class="mini-line"><span id="aux-health" style="width: 22%; background: var(--oi-orange)"></span></div>
+              </div>
+              <div class="mini-row">
+                <span class="metric">Issues</span>
+                <div class="mini-line"><span id="issue-health" style="width: 18%; background: var(--oi-vermilion)"></span></div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </aside>
+    </section>
+  </main>
+
+  <script>
+    const ports = document.querySelectorAll(".port[data-target]");
+    const mainMenu = document.getElementById("main-menu");
+    const auxMenu = document.getElementById("aux-menu");
+    const loaderTitle = document.getElementById("loader-title");
+    const loaderBadge = document.getElementById("loader-badge");
+    const loaderStatus = document.getElementById("loader-status");
+    const targetField = document.getElementById("target-field");
+    const acceptsField = document.getElementById("accepts-field");
+    const slotList = document.getElementById("slot-list");
+    const crumbTail = document.getElementById("crumb-tail");
+    const nextClick = document.getElementById("next-click");
+    const auxHealth = document.getElementById("aux-health");
+    const issueHealth = document.getElementById("issue-health");
+    const docPopover = document.getElementById("doc-popover");
+    const docTitle = document.getElementById("doc-title");
+    const docBody = document.getElementById("doc-body");
+    const inoculumHelp = document.getElementById("inoculum-help");
+
+    const paramDoc = {
+      title: "inoculum_detector",
+      body: "Choose an ImageOperation that identifies the inoculum region used by FilamentousFungiDetector."
+    };
+    const classDocs = {
+      OtsuDetector: "Detects foreground colonies by thresholding the active detection matrix with Otsu's method. Useful as a compact, reproducible detector for simple masks.",
+      ColorDenoise: "Reduces color noise before downstream detection while preserving the source image for later inspection.",
+      FlatFieldCorrector: "Corrects uneven illumination across the plate so colony intensity and edges are easier to compare.",
+      FilamentousFungiDetector: "Segments filamentous fungal growth by combining colony-region detection with parameters tuned for spreading morphology.",
+      ImagePipeline: "Runs a nested ordered pipeline as the value for this parameter or as a step on the main image spine."
+    };
+    let activeDoc = { ...paramDoc };
+    let filledAuxClass = null;
+
+    function setActiveDoc(title, body) {
+      activeDoc = { title, body };
+      docTitle.textContent = title;
+      docBody.textContent = body;
+    }
+
+    function hideDocPopover() {
+      docPopover.classList.add("hidden");
+    }
+
+    function setAuxDocFromState() {
+      if (filledAuxClass) {
+        setActiveDoc(
+          `${filledAuxClass} docstring`,
+          classDocs[filledAuxClass] || "No docstring is available for this class."
+        );
+        return;
+      }
+      setActiveDoc(paramDoc.title, paramDoc.body);
+    }
+
+    function renderAuxSlots() {
+      if (filledAuxClass) {
+        slotList.innerHTML = `
+          <div class="slot-row">
+            <span class="slot-index">01</span>
+            <div class="slot-main">
+              <div class="slot-name">${filledAuxClass}</div>
+              <div class="slot-type">wired aux value</div>
+            </div>
+            <span class="badge badge-green">Wired</span>
+          </div>
+        `;
+        return;
+      }
+      slotList.innerHTML = `
+        <div class="slot-row">
+          <span class="slot-index">01</span>
+          <div class="slot-main">
+            <div class="slot-name">Empty required slot</div>
+            <div class="slot-type">ImageOperation</div>
+          </div>
+          <span class="badge badge-warning">Required</span>
+        </div>
+        <div class="slot-row">
+          <span class="slot-index">+</span>
+          <div class="slot-main">
+            <div class="slot-name">New nested pipeline</div>
+            <div class="slot-type">breadcrumb drill-in ready</div>
+          </div>
+          <span class="badge badge-gold">Option</span>
+        </div>
+      `;
+    }
+
+    window.setSelectedTarget = function setSelectedTarget(target) {
+      ports.forEach((port) => {
+        port.classList.toggle("selected-target", port.dataset.target === target);
+      });
+
+      const isAux = target === "inoculum-aux";
+      mainMenu.classList.toggle("hidden", isAux);
+      auxMenu.classList.toggle("hidden", !isAux);
+      hideDocPopover();
+
+      if (isAux) {
+        loaderTitle.textContent = "Aux parameter port";
+        loaderBadge.textContent = "Selected";
+        loaderBadge.className = "badge badge-green";
+        loaderStatus.textContent = "Palette operations fill FilamentousFungiDetector.inoculum_detector.";
+        loaderStatus.className = "status-line warning";
+        targetField.textContent = "FilamentousFungiDetector.inoculum_detector";
+        acceptsField.textContent = "ImageOperation or ImagePipeline";
+        crumbTail.textContent = "inoculum_detector";
+        nextClick.textContent = "fills aux parameter";
+        auxHealth.style.width = filledAuxClass ? "72%" : "48%";
+        auxHealth.style.background = filledAuxClass ? "var(--oi-green)" : "var(--oi-orange)";
+        issueHealth.style.width = filledAuxClass ? "4%" : "28%";
+        setAuxDocFromState();
+        renderAuxSlots();
+        return;
+      }
+
+      loaderTitle.textContent = "Continuation port";
+      loaderBadge.textContent = "Selected";
+      loaderBadge.className = "badge badge-green";
+      loaderStatus.textContent = "Palette operations insert after FilamentousFungiDetector.";
+      loaderStatus.className = "status-line";
+      targetField.textContent = "main_tail";
+      acceptsField.textContent = "ImageOperation, ImagePipeline";
+      crumbTail.textContent = "Root";
+      nextClick.textContent = "adds to main spine";
+      auxHealth.style.width = filledAuxClass ? "72%" : "22%";
+      auxHealth.style.background = filledAuxClass ? "var(--oi-green)" : "var(--oi-orange)";
+      issueHealth.style.width = filledAuxClass ? "4%" : "18%";
+      slotList.innerHTML = `
+        <div class="slot-row">
+          <span class="slot-index">01</span>
+          <div class="slot-main">
+            <div class="slot-name">After detector</div>
+            <div class="slot-type">linear image flow</div>
+          </div>
+          <span class="badge">Open</span>
+        </div>
+      `;
+    };
+
+    ports.forEach((port) => {
+      port.addEventListener("click", () => setSelectedTarget(port.dataset.target));
+    });
+
+    document.querySelectorAll(".operation").forEach((button) => {
+      button.addEventListener("click", () => {
+        const active = document.querySelector(".port.selected-target");
+        const target = active ? active.dataset.target : "main-tail";
+        const op = button.dataset.op;
+        if (target === "inoculum-aux") {
+          filledAuxClass = op;
+          loaderStatus.textContent = `${op} selected for FilamentousFungiDetector.inoculum_detector.`;
+          loaderStatus.className = "status-line";
+          renderAuxSlots();
+          auxHealth.style.width = "72%";
+          auxHealth.style.background = "var(--oi-green)";
+          issueHealth.style.width = "4%";
+          setAuxDocFromState();
+          hideDocPopover();
+          return;
+        }
+        loaderStatus.textContent = `${op} selected for insertion after FilamentousFungiDetector.`;
+      });
+    });
+
+    document.querySelectorAll("[data-menu-action]").forEach((button) => {
+      button.addEventListener("click", () => {
+        loaderStatus.textContent = `${button.dataset.menuAction} selected.`;
+      });
+    });
+
+    inoculumHelp.addEventListener("click", (event) => {
+      event.stopPropagation();
+      docTitle.textContent = activeDoc.title;
+      docBody.textContent = activeDoc.body;
+      docPopover.classList.toggle("hidden");
+    });
+
+    document.addEventListener("click", (event) => {
+      if (
+        !docPopover.classList.contains("hidden")
+        && !docPopover.contains(event.target)
+        && event.target !== inoculumHelp
+      ) {
+        hideDocPopover();
+      }
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        hideDocPopover();
+      }
+    });
+  </script>
+</body>
+</html>

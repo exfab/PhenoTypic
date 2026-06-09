@@ -1,0 +1,33 @@
+{
+  "version": "0.16.0",
+  "name": "d3a55e7a-8384-43be-8e13-a00f384ce13a",
+  "desc": null,
+  "reset": false,
+  "pipe_cfgs": {
+    "BM3DDenoiser": {
+      "class": "BM3DDenoiser",
+      "params": {
+        "use_gat": false,
+        "gat_gain": 1.0,
+        "gat_mu": 0.0,
+        "gat_read_sigma": 0.0,
+        "gat_scale_factor": null,
+        "sigma_psd": 0.0,
+        "block_size": 8,
+        "stage_arg": "all_stages",
+        "clip": true
+      }
+    },
+    "OtsuDetector": {
+      "class": "OtsuDetector",
+      "params": {
+        "ignore_zeros": false,
+        "ignore_borders": true
+      }
+    }
+  },
+  "meas": {},
+  "post": {},
+  "filters": {},
+  "model": null
+}

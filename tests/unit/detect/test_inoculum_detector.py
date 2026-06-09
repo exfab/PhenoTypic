@@ -7,6 +7,7 @@ serialization roundtrip, detect_mat immutability, and derived parameter logic.
 
 import pytest
 import numpy as np
+from pydantic import ValidationError
 
 from phenotypic import Image, ImagePipeline
 from phenotypic.data import load_synth_yeast_plate
@@ -86,11 +87,13 @@ class TestInoculumDetectorDefaults:
         assert det.validate_obj_count is False
 
     def test_min_diameter_nonpositive_raises(self):
-        with pytest.raises(ValueError, match="min_diameter must be positive"):
+        # The positivity guard moved from a field_validator to Field(gt=0), so
+        # assert on the ValidationError type rather than the old message.
+        with pytest.raises(ValidationError):
             InoculumDetector(min_diameter=0.0)
 
     def test_max_diameter_nonpositive_raises(self):
-        with pytest.raises(ValueError, match="max_diameter must be positive"):
+        with pytest.raises(ValidationError):
             InoculumDetector(max_diameter=-5.0)
 
     def test_min_ge_max_diameter_raises(self):

@@ -563,7 +563,10 @@ def _print_process_only_dry_run_plan(
     "pipeline_json",
     type=click.Path(exists=True, dir_okay=False, path_type=Path),
     default=None,
-    help="Pipeline JSON configuration file created with pipeline.to_json().",
+    help=(
+        "Pipeline config file created with pipeline.to_json(); legacy .json "
+        "files are accepted."
+    ),
 )
 @click.option(
     "-i",
@@ -1236,7 +1239,7 @@ def phenotypic_cli(
             console.print("[green]✓ Execution configuration validated")
 
             # Step 2: Validate pipeline loading
-            with console.status("[bold cyan]Loading pipeline JSON...", spinner="dots"):
+            with console.status("[bold cyan]Loading pipeline config...", spinner="dots"):
                 pipeline_valid, pipeline_error = validate_pipeline(
                     config.pipeline_json, config.skip_validation
                 )
@@ -1372,7 +1375,7 @@ def phenotypic_cli(
         if not config.process_only_layer:
             output_manager.create_structure(datasets)
 
-        # Copy pipeline JSON for reproducibility (skip in --measure mode — the
+        # Copy pipeline config for reproducibility (skip in --measure mode — the
         # forward run already copied it). Process-only writes its copy under
         # the hidden cache (.phenotypic/pipeline.json), not deliverables/.
         if config.process_only_layer:
@@ -1384,16 +1387,16 @@ def phenotypic_cli(
                 cache_copy.write_bytes(Path(config.pipeline_json).read_bytes())
                 click.echo(f"  Pipeline: {cache_copy}")
             except OSError as e:
-                logger.warning(f"Failed to copy pipeline JSON: {e}")
-                click.echo(f"⚠ Warning: Could not copy pipeline JSON ({e})", err=True)
+                logger.warning(f"Failed to copy pipeline config: {e}")
+                click.echo(f"⚠ Warning: Could not copy pipeline config ({e})", err=True)
         elif not measure_only:
             try:
                 copied = _copy_pipeline_to_output(config.pipeline_json, output_dir)
                 if copied:
                     click.echo(f"  Pipeline: {copied}")
             except OSError as e:
-                logger.warning(f"Failed to copy pipeline JSON: {e}")
-                click.echo(f"⚠ Warning: Could not copy pipeline JSON ({e})", err=True)
+                logger.warning(f"Failed to copy pipeline config: {e}")
+                click.echo(f"⚠ Warning: Could not copy pipeline config ({e})", err=True)
 
         # Create execution strategy
         strategy = create_execution_strategy(config, output_manager)

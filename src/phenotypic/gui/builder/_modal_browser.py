@@ -358,9 +358,10 @@ def load_picker_modal(root: Path | None) -> dbc.Modal:
 
     The modal opens on a chooser page with two large buttons:
 
-    * **JSON** — navigates to a :func:`directory_tree` filtered to
-      :data:`~_directory_browser.PIPELINE_EXTS` (``.json``) so the user can
-      locate a pipeline previously saved with ``ImagePipeline.to_json()``.
+    * **Config file** — navigates to a :func:`directory_tree` filtered to
+      :data:`~_directory_browser.PIPELINE_EXTS` so the user can locate a
+      pipeline previously saved with ``ImagePipeline.to_json()``. Legacy
+      plain JSON files are accepted.
     * **Prefab** — shows a scrollable list of built-in pipelines from
       :mod:`phenotypic.prefab`; clicking any card instantiates that pipeline
       and replaces the current builder state.

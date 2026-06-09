@@ -326,13 +326,13 @@ class ObjectRefiner(ImageOperation, ABC):
     .. code-block:: python
 
         from phenotypic import Image, ImagePipeline
-        from phenotypic.refine import SmallObjectRemover, MaskFill, RemoveNonCircular
+        from phenotypic.refine import SmallObjectRemover, MaskFill, RemoveLowCircularity
 
         # Build a refinement pipeline
         pipeline = ImagePipeline()
         pipeline.add(SmallObjectRemover(min_size=100))          # Remove dust/noise
         pipeline.add(MaskFill())                                 # Fill holes in colonies
-        pipeline.add(RemoveNonCircular(cutoff=0.75))        # Remove elongated artifacts
+        pipeline.add(RemoveLowCircularity(cutoff=0.75))        # Remove elongated artifacts
 
         # Apply to detected image
         image = Image.imread('plate.jpg')
@@ -572,7 +572,7 @@ class ObjectRefiner(ImageOperation, ABC):
         >>> from phenotypic.enhance import GaussianBlur
         >>> from phenotypic.detect import OtsuDetector
         >>> from phenotypic.refine import (
-        ...     SmallObjectRemover, MaskFill, RemoveNonCircular
+        ...     SmallObjectRemover, MaskFill, RemoveLowCircularity
         ... )
         >>> from phenotypic.measure import MeasureColor
         >>> # Build complete processing pipeline with enhancement, detection, and refinement
@@ -584,7 +584,7 @@ class ObjectRefiner(ImageOperation, ABC):
         >>> # Refinement (chain multiple cleanup operations)
         >>> pipeline.add(SmallObjectRemover(min_size=100))          # Remove dust
         >>> pipeline.add(MaskFill())                                 # Fill internal holes
-        >>> pipeline.add(RemoveNonCircular(cutoff=0.75))        # Remove merged/irregular
+        >>> pipeline.add(RemoveLowCircularity(cutoff=0.75))        # Remove merged/irregular
         >>> # Measurement
         >>> pipeline.add(MeasureColor())
         >>> # Load images and process

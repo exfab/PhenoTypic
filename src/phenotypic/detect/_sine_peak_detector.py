@@ -5,15 +5,17 @@ if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
 import gc
-from typing import Literal
+from typing import Annotated, Literal, Optional
 
 import numpy as np
 import scipy.ndimage as ndimage
+from pydantic import Field
 from scipy.ndimage import gaussian_filter1d
 from scipy.signal import find_peaks, fftconvolve, medfilt
 from scipy.stats import rankdata
 
 from phenotypic.abc_ import ObjectDetector
+from phenotypic.tools_.typing_ import TuneSpec
 from phenotypic.tools_.mixin import GridInferenceMixin
 import skimage.filters as filters
 import skimage.morphology as morphology
@@ -31,84 +33,82 @@ class SinePeakDetector(GridInferenceMixin, ObjectDetector):
     growth. For a full comparison see
     :doc:`/explanation/detection_strategies_compared`.
 
+    Best For:
+        - Gridded plates (96-well, 384-well, pinned arrays) where colonies
+          are arranged in a regular periodic pattern.
+        - Plates with heterogeneous colony sizes or uneven growth where
+          rank-based correlation outperforms intensity-based peak finding.
+        - High-throughput batch processing of arrayed plates without
+          manual grid specification.
+        - Plates where a small number of empty or very faint wells would
+          mislead direct intensity peak detection.
+
+    Consider Also:
+        - :class:`RoundPeaksDetector` for a simpler grid detector when
+          colony intensities are uniform and direct peak finding suffices.
+        - :class:`OtsuDetector` when colonies are not gridded and a global
+          threshold is appropriate.
+        - :class:`RankOtsuDetector` when spatial illumination variation is
+          the primary challenge rather than grid localisation.
+
     Args:
         thresh_method: Thresholding method for binary mask creation.
-            Accepted values: ``'otsu'``, ``'mean'``, ``'local'``,
+            Accepted values: ``'otsu'`` (default), ``'mean'``, ``'local'``,
             ``'triangle'``, ``'minimum'``, ``'isodata'``, ``'li'``.
-            Default: ``'otsu'``.
-
-        subtract_background: Apply white tophat transform to remove
-            uneven illumination before thresholding. Default: True.
-
+            ``'otsu'`` works well for most standardised setups; ``'local'``
+            adapts to spatial illumination gradients. Default: ``'otsu'``.
+        subtract_background: Apply white tophat transform to remove uneven
+            illumination before thresholding. Default: True.
         remove_noise: Apply morphological opening to remove small noise
-            artifacts from the binary mask. Default: True.
-
+            artefacts from the binary mask. Default: True.
         footprint_width: Width in pixels for the background subtraction
             kernel. When a GridImage is provided, an adaptive kernel sized
-            to 1.5x colony spacing is used instead. Default: 6.
-
+            to 1.5x colony spacing is used instead, making this a fallback
+            for plain Image inputs. Typical range: 4--20. Default: 6.
         noise_radius: Radius of the diamond structuring element for
-            morphological noise removal. Default: 1.
-
-        smoothing_sigma: Standard deviation for Gaussian smoothing of
+            morphological noise removal. Typical range: 1--3. Default: 1.
+        smoothing_sigma: Gaussian standard deviation for smoothing
             row/column intensity profiles before cross-correlation. Higher
-            values smooth noise but may merge adjacent peaks. Set to 0 to
-            disable. Default: 2.0.
-
+            values suppress noise but may merge adjacent peaks. Set to 0 to
+            disable. Typical range: 0.0--5.0. Default: 2.0.
         min_peak_distance: Minimum pixel distance between detected peaks.
-            If ``None``, automatically estimated from grid dimensions.
+            When ``None``, automatically estimated from grid dimensions.
             Default: None.
-
-        peak_prominence: Minimum prominence for peak detection. If
-            ``None``, auto-calculated as 0.1 * signal range. Higher values
+        peak_prominence: Minimum prominence for peak detection. When
+            ``None``, auto-calculated as 0.1 × signal range. Higher values
             are more selective. Default: None.
-
         edge_refinement: Refine grid edges using weighted local intensity
             profiles for improved accuracy. Default: True.
-
-        correlation_threshold: Minimum normalised cross-correlation for a
-            peak to be valid. Lower values accept weaker matches; higher
-            values are more selective. Typical range: 0.1--0.5. Default:
-            0.3.
-
+        correlation_threshold: Minimum normalised cross-correlation score
+            for a sinusoidal template peak to be accepted as a valid grid
+            position. Lower values recover grid cells with weak colony
+            signal (sparse plates); higher values reject false grid
+            positions at the cost of missing faint wells. Typical range:
+            0.1--0.5. Default: 0.3.
         selection_mode: Strategy for choosing one object per grid cell.
             ``"dominant"`` keeps the largest object by pixel count.
-            ``"centered"`` keeps the object closest to the cell centre.
-            ``"regularized"`` fits a global regular-grid model from median
-            centroids, then re-selects per cell. Default: ``"dominant"``.
-
+            ``"centered"`` keeps the object whose centroid is closest to
+            the cell centre. ``"regularized"`` fits a global regular-grid
+            model from median centroids, then re-selects per cell — best
+            for pinned arrays. Default: ``"dominant"``.
         split_merged: Pre-split merged colonies spanning multiple grid
-            cells using EDT watershed before grid assignment. Default:
-            True.
+            cells using EDT watershed before grid assignment. Set to False
+            when colonies are well-separated. Default: True.
 
     Returns:
         Image: Input image with ``objmask`` set to binary mask and
-        ``objmap`` set to labeled connected components.
+        ``objmap`` set to labeled connected components with one label per
+        grid cell.
 
     Raises:
         ValueError: If ``thresh_method`` is not one of the accepted
             values.
 
-    Best For:
-        * Gridded plates (96-well, 384-well, pinned arrays) where colonies
-          are arranged in a regular periodic pattern.
-        * Plates with heterogeneous colony sizes or uneven growth where
-          rank-based correlation outperforms intensity-based peak finding.
-        * High-throughput batch processing of arrayed plates without
-          manual grid specification.
-
-    Consider Also:
-        * :class:`RoundPeaksDetector` for a simpler grid detector when
-          colony intensities are uniform and direct peak finding suffices.
-        * :class:`OtsuDetector` when colonies are not gridded and a global
-          threshold is appropriate.
-        * :class:`RankOtsuDetector` when spatial illumination variation is
-          the primary challenge rather than grid localisation.
-
     References:
         [1] O. Wagih and L. Parts, "gitter: a robust and accurate method
         for quantification of colony sizes from plate images,"
         *G3 (Bethesda)*, vol. 4, no. 3, pp. 547--552, 2014.
+        doi: 10.1534/g3.113.009431.
 
     See Also:
         :doc:`/tutorials/notebooks/02_detecting_colonies`
@@ -124,13 +124,15 @@ class SinePeakDetector(GridInferenceMixin, ObjectDetector):
     ] = "otsu"
     subtract_background: bool = True
     remove_noise: bool = True
-    footprint_width: int = 6
-    noise_radius: int = 1
-    smoothing_sigma: float = 2.0
-    min_peak_distance: int | None = None
-    peak_prominence: float | None = None
+    # TODO: review bound (unverified vs literature)
+    footprint_width: Annotated[int, TuneSpec(4, 20)] = Field(6, ge=1)
+    noise_radius: Annotated[int, TuneSpec(1, 3)] = Field(1, ge=1)
+    smoothing_sigma: Annotated[float, TuneSpec(0.0, 5.0)] = 2.0
+    min_peak_distance: Annotated[Optional[int], TuneSpec(tunable=False)] = None
+    peak_prominence: Annotated[Optional[float], TuneSpec(tunable=False)] = None
     edge_refinement: bool = True
-    correlation_threshold: float = 0.3
+    # TODO: review bound (unverified vs literature)
+    correlation_threshold: Annotated[float, TuneSpec(0.1, 0.5)] = 0.3
     selection_mode: Literal["dominant", "centered", "regularized"] = "dominant"
     split_merged: bool = True
 
@@ -307,12 +309,14 @@ class SinePeakDetector(GridInferenceMixin, ObjectDetector):
     def _estimate_edges(self, binary_image: np.ndarray, axis: int, n_bins: int, **kwargs: object) -> np.ndarray:  # type: ignore[override]
         """Estimate grid edges using sinusoidal cross-correlation.
 
-        Overrides GridInferenceMixin._estimate_edges with a gitter-faithful
+        Overrides GridInferenceMixin._estimate_edges with a projection-based
         approach: generates a sine template matching expected colony periodicity,
         computes FFT-based normalized cross-correlation against the projection
         signal, and selects peaks from the correlation output. Rank-based
-        (Spearman) correlation provides robustness to outliers and monotonic
-        intensity transformations.
+        (Spearman-style) correlation provides robustness to outliers and
+        monotonic intensity transformations. The sinusoidal template and
+        rank-transform steps are project-specific extensions rather than
+        steps from the gitter paper cited above.
 
         Args:
             binary_image: Binary mask of detected colonies.

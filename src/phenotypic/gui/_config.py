@@ -87,6 +87,7 @@ __all__ = [
     "MOUNT_VIEWER",
     "MOUNT_RUN",
     "MOUNT_ANALYSIS",
+    "MOUNT_TUNE",
     "SANDBOX_API_PREFIX",
     "RUNS_BLUEPRINT_PREFIX",
     # Flask app.server.config keys
@@ -107,6 +108,7 @@ __all__ = [
     # Sandbox subdirectories
     "SANDBOX_GUI_DIRNAME",
     "SANDBOX_PRESETS_SUBDIR",
+    "SANDBOX_TUNE_PRESETS_SUBDIR",
     "SANDBOX_BUILDER_TILES_SUBDIR",
     "RUN_LOG_DIRNAME",
     "VIEWER_CACHE_DIRNAME",
@@ -159,6 +161,7 @@ __all__ = [
     "TITLE_VIEWER",
     "TITLE_RUN",
     "TITLE_ANALYSIS",
+    "TITLE_TUNE",
     "SSH_TUNNEL_HINT",
     # Thread name prefix
     "THREAD_NAME_PREFIX",
@@ -166,6 +169,7 @@ __all__ = [
     "add_launcher_args",
     "configure_launcher_logging",
     "print_launcher_banner",
+    "tune_presets_dir",
 ]
 
 # ---------------------------------------------------------------------------
@@ -185,6 +189,7 @@ MOUNT_BUILDER: str = "/builder/"
 MOUNT_VIEWER: str = "/results/"
 MOUNT_RUN: str = "/run/"
 MOUNT_ANALYSIS: str = "/analysis/"
+MOUNT_TUNE: str = "/tune/"
 
 #: Flask blueprint prefix for the sandbox JSON API (sidebar tree, capability
 #: probe, viewer hand-off, etc.). Mounted on the shell's Flask server in
@@ -272,7 +277,7 @@ CFG_QC_AUGMENTED_FRAME: str = "pheno_qc_augmented_frame"
 #: :class:`~phenotypic._core._image_pipeline.ImagePipeline` deserialized
 #: from the active output root's ``pipeline.json`` at boot. The QC Review
 #: tab's per-group recompute hands this to
-#: :func:`phenotypic.qc._runner.run_qc` so the in-session recompute uses
+#: :func:`phenotypic.tools_._qc_recipe._runner.run_qc` so the in-session recompute uses
 #: exactly the same checks the CLI persisted. ``None`` when no
 #: ``pipeline.json`` exists (or it failed to load) — recompute degrades to
 #: a no-op in that case. Spec §D.5.
@@ -290,9 +295,22 @@ SANDBOX_GUI_DIRNAME: str = ".phenotypic-gui"
 #: presets (one ``<name>.json`` per preset).
 SANDBOX_PRESETS_SUBDIR: str = "presets"
 
+#: Subdirectory of ``.phenotypic-gui/presets`` holding saved tuning specs.
+SANDBOX_TUNE_PRESETS_SUBDIR: str = "tune"
+
 #: Subdirectory of :data:`SANDBOX_GUI_DIRNAME` holding builder DZI tile
 #: caches per loaded image.
 SANDBOX_BUILDER_TILES_SUBDIR: str = "builder_tiles"
+
+
+def tune_presets_dir(sandbox_root: Path) -> Path:
+    """Return ``<sandbox>/.phenotypic-gui/presets/tune``."""
+    return (
+        Path(sandbox_root)
+        / SANDBOX_GUI_DIRNAME
+        / SANDBOX_PRESETS_SUBDIR
+        / SANDBOX_TUNE_PRESETS_SUBDIR
+    )
 
 #: Hidden directory inside a run's *output* directory (NOT the sandbox)
 #: holding ``stdout.log`` and other on-disk run artifacts.
@@ -509,6 +527,7 @@ TITLE_BUILDER: str = "PhenoTypic Pipeline Builder"
 TITLE_VIEWER: str = "PhenoTypic Results Viewer"
 TITLE_RUN: str = "PhenoTypic Run Console"
 TITLE_ANALYSIS: str = "PhenoTypic Analysis"
+TITLE_TUNE: str = "PhenoTypic Tune Co-Pilot"
 
 #: One-line SSH-tunnel hint reused by every launcher banner, argparse
 #: epilogue, and help-modal body. Constructed from :data:`DEFAULT_PORT`

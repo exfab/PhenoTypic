@@ -14,7 +14,7 @@ to study microbial growth patterns.
 
 """
 
-__version__ = "0.16.0"
+__version__ = "0.17.0"
 __author__ = "Alexander Nguyen"
 __email__ = "anguy344@ucr.edu"
 
@@ -37,12 +37,11 @@ from . import (
     enhance,
     grid,
     measure,
-    nn,
     refine,
     schema,
     settings_,
-    sweep,
     tools_,
+    tune,
     util,
     prefab,
 )
@@ -62,9 +61,8 @@ __all__ = [
     "prefab",
     "correction",
     "enhance",
-    "nn",
     "tools_",
     "util",
     "settings_",
-    "sweep",
+    "tune",
 ]

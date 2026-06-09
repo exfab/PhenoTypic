@@ -32,6 +32,7 @@ from phenotypic.gui._config import (
     RESULTS_DIRNAME,
 )
 from phenotypic.gui.builder._directory_browser import IMAGE_EXTS
+from phenotypic.tools_ import PIPELINE_CONFIG_SUFFIXES, matches_any_suffix
 
 __all__ = ["Capabilities", "classify", "invalidate_cache"]
 
@@ -89,6 +90,11 @@ class Capabilities:
             ``results/`` + ``deliverables/master_measurements.parquet``
             markers. Lets the Run console list a process-only run (D13) even
             though it has no dashboard / results affordance.
+        is_tune_output: Directory is a ``python -m phenotypic.tune`` run — it
+            carries a ``.pht-tune-cache/run.json`` marker (written at run
+            START, before any deliverable lands). Lets the GUI surface a live
+            or finished tune output even before ``deliverables/`` exists.
+            Mirrors the ``is_process_only_output`` machine-state detection.
         image_count: Image-file count (capped at :data:`_IMAGE_COUNT_CAP`)
             when ``is_image_dir`` is true; ``None`` otherwise.
         bad_perms: ``True`` if listing the directory raised
@@ -100,6 +106,7 @@ class Capabilities:
     is_cli_output: bool
     has_dashboard: bool
     is_process_only_output: bool
+    is_tune_output: bool
     image_count: int | None
     bad_perms: bool
 
@@ -166,6 +173,7 @@ _EMPTY = Capabilities(
     is_cli_output=False,
     has_dashboard=False,
     is_process_only_output=False,
+    is_tune_output=False,
     image_count=None,
     bad_perms=False,
 )
@@ -175,6 +183,7 @@ _BAD_PERMS = Capabilities(
     is_cli_output=False,
     has_dashboard=False,
     is_process_only_output=False,
+    is_tune_output=False,
     image_count=None,
     bad_perms=True,
 )
@@ -199,14 +208,17 @@ def _classify_cached(path_str: str, mtime_ns: int) -> Capabilities:
 
 
 def _classify_file(path: Path) -> Capabilities:
-    """File-only classifier. Currently only flags pipeline JSONs."""
-    if path.suffix.lower() == ".json" and _peek_for_pipeline_marker(path):
+    """File-only classifier. Currently only flags pipeline config files."""
+    if matches_any_suffix(
+        path, PIPELINE_CONFIG_SUFFIXES
+    ) and _peek_for_pipeline_marker(path):
         return Capabilities(
             is_image_dir=False,
             has_pipeline_json=True,
             is_cli_output=False,
             has_dashboard=False,
             is_process_only_output=False,
+            is_tune_output=False,
             image_count=None,
             bad_perms=False,
         )
@@ -264,6 +276,13 @@ def _classify_dir(path: Path) -> Capabilities:
 
         is_process_only_output = resolve_manifest_json_path(path).is_file()
 
+    # A tune run writes its .pht-tune-cache/run.json marker at run START (before
+    # any deliverable lands), so this is an independent capability — a tune
+    # output may coincide with results/deliverables once the run finalizes.
+    from phenotypic.tools_ import tune_cache_run_marker_path
+
+    is_tune_output = tune_cache_run_marker_path(path).is_file()
+
     is_image_dir = image_count > 0
     return Capabilities(
         is_image_dir=is_image_dir,
@@ -271,6 +290,7 @@ def _classify_dir(path: Path) -> Capabilities:
         is_cli_output=is_cli_output,
         has_dashboard=has_dashboard,
         is_process_only_output=is_process_only_output,
+        is_tune_output=is_tune_output,
         image_count=image_count if is_image_dir else None,
         bad_perms=False,
     )

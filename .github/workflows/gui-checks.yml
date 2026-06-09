@@ -189,7 +189,7 @@ jobs:
       - name: Install dependencies
         run: |
           uv lock
-          uv sync --group dev --all-extras
+          uv sync --group dev --group qt-test --all-extras
 
       - name: Install Playwright browsers
         run: uv run playwright install --with-deps chromium
@@ -243,7 +243,7 @@ jobs:
       - name: Install dependencies
         run: |
           uv lock
-          uv sync --group dev --all-extras
+          uv sync --group dev --group qt-test --all-extras
 
       - name: Install Playwright browsers
         run: uv run playwright install --with-deps chromium

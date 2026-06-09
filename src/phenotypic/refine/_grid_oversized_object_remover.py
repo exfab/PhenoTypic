@@ -13,37 +13,40 @@ from phenotypic.schema import BBOX
 
 
 class GridOversizedObjectRemover(GridObjectRefiner):
-    """Remove objects whose bounding box exceeds the maximum grid cell dimension.
+    """Discard objects whose bounding box equals or exceeds the maximum grid cell span.
 
-    Compares each object's width and height against the largest cell span in
-    the grid and discards objects that match or exceed it. Eliminates merged
-    colonies, agar rim intrusions, and segmentation spillover that span
-    entire grid cells.
+    Measures each detected object's bounding-box width and height and removes
+    any object that meets or exceeds the largest cell dimension in the grid.
+    This eliminates merged colonies spanning adjacent grid positions, agar-rim
+    intrusions, and segmentation spillover that the grid layout guarantees are
+    not single confined colonies.
+
+    For an overview of grid refinement strategies, see
+    :doc:`/explanation/refinement_strategies`.
+
+    Best For:
+        - Pinned colony grids (96-well, 384-well) where valid colonies should
+          fit within a single cell and oversized objects are always artefacts.
+        - Post-detection cleanup when detector outputs contain merged blobs
+          spanning two or more adjacent grid positions.
+        - Removing strong edge or rim artefacts that intrude into the grid area
+          and produce abnormally large detected regions.
+
+    Consider Also:
+        - :class:`KeepSectionLargest` when keeping the single largest valid
+          object per cell is preferable to removing oversized candidates.
+        - :class:`GridAlignmentRefiner` for full grid-aware dominant-object
+          selection with configurable strategies.
+        - :class:`SmallObjectRemover` when the problem is undersized debris
+          rather than oversized merged detections.
 
     Returns:
         Image: Input image with ``objmap`` and ``objmask`` updated to exclude
-        objects exceeding the grid cell size.
-
-    Best For:
-        - Dropping merged blobs that span adjacent grid positions.
-        - Removing strong edge artifacts near the plate rim that intrude
-          into the grid.
-        - Post-detection cleanup on pinned colony grids where each cell
-          should contain one confined colony.
-
-    Consider Also:
-        - :class:`KeepSectionLargest` when you want to keep the single
-          largest object per cell rather than removing oversized ones.
-        - :class:`GridAlignmentRefiner` for full grid-aware dominant-object
-          selection.
-        - :class:`SmallObjectRemover` when the problem is undersized debris
-          rather than oversized detections.
+        objects whose bounding box equals or exceeds the maximum grid cell size.
 
     See Also:
         :doc:`/how_to/notebooks/refine_noisy_boundaries` for grid-based
-        refinement workflows.
-        :doc:`/explanation/refinement_strategies` for an overview of
-        grid refinement strategies.
+        refinement workflows on real plate images.
     """
 
     def _operate(self, image: GridImage) -> GridImage:
