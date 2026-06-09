@@ -207,12 +207,30 @@
 
     
     
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
     
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../../measurements_ref/index.html">
-          Measurements Ref
-        </a>
-      </li>
+    
     
       <li class="nav-item">
         <a class="nav-link nav-internal" href="../../../api_reference/index.html">
@@ -411,12 +429,30 @@
 
     
     
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
     
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../../measurements_ref/index.html">
-          Measurements Ref
-        </a>
-      </li>
+    
     
       <li class="nav-item">
         <a class="nav-link nav-internal" href="../../../api_reference/index.html">
@@ -841,12 +877,12 @@
 <span class="c1"># ---------------------------------------------------------------------------</span>
 
 <span class="c1">#: Per-group QC summary written by</span>
-<span class="c1">#: :func:`phenotypic.qc._runner.run_qc`. One row per</span>
+<span class="c1">#: :func:`phenotypic.tools_._qc_recipe._runner.run_qc`. One row per</span>
 <span class="c1">#: ``(instance_id, groupby key)``: the worst-direction metric, tri-state</span>
 <span class="c1">#: status, flag, member/flagged counts, and a worst-first ``rank``.</span>
 <span class="n">QC_SUMMARY_PARQUET</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;qc_summary.parquet&quot;</span>
 
-<span class="c1">#: Per-group member colonies written by :func:`phenotypic.qc._runner.run_qc`.</span>
+<span class="c1">#: Per-group member colonies written by :func:`phenotypic.tools_._qc_recipe._runner.run_qc`.</span>
 <span class="c1">#: One row per ``(instance_id, group member)`` carrying the curation key</span>
 <span class="c1">#: (``Metadata_ImageFile`` + ``Object_Label``) plus the member&#39;s</span>
 <span class="c1">#: contributing value, so the Review gallery can render each group&#39;s tiles.</span>
@@ -854,12 +890,12 @@
 
 <span class="c1">#: Snapshot of the ``qc`` config entries (``instance_id``/``class``/</span>
 <span class="c1">#: ``enabled``/``params``) that produced the current ``qc/`` artifact.</span>
-<span class="c1">#: Written by :func:`phenotypic.qc._runner.run_qc`.</span>
+<span class="c1">#: Written by :func:`phenotypic.tools_._qc_recipe._runner.run_qc`.</span>
 <span class="n">QC_CONFIG_JSON</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;qc_config.json&quot;</span>
 
 <span class="c1">#: Per-module GUI review progress (``instance_id`` -&gt; reviewed group keys +</span>
 <span class="c1">#: last position). Written **only** by the results-viewer QC Review tab;</span>
-<span class="c1">#: :func:`phenotypic.qc._runner.run_qc` never touches it. The CLI finalize</span>
+<span class="c1">#: :func:`phenotypic.tools_._qc_recipe._runner.run_qc` never touches it. The CLI finalize</span>
 <span class="c1">#: path clears it on every rerun (a fresh run resets review progress).</span>
 <span class="n">QC_REVIEW_STATE_JSON</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;review_state.json&quot;</span>
 

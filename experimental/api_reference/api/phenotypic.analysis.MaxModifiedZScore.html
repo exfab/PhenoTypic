@@ -210,12 +210,30 @@
 
     
     
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
     
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../measurements_ref/index.html">
-          Measurements Ref
-        </a>
-      </li>
+    
     
       <li class="nav-item current active">
         <a class="nav-link nav-internal" href="../index.html">
@@ -416,12 +434,30 @@
 
     
     
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
     
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../measurements_ref/index.html">
-          Measurements Ref
-        </a>
-      </li>
+    
     
       <li class="nav-item current active">
         <a class="nav-link nav-internal" href="../index.html">
@@ -1078,7 +1114,7 @@
 <h1>phenotypic.analysis.MaxModifiedZScore<a class="headerlink" href="#phenotypic-analysis-maxmodifiedzscore" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="phenotypic.analysis.MaxModifiedZScore">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.analysis.</span></span><span class="sig-name descname"><span class="pre">MaxModifiedZScore</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">*,</span> <span class="pre">on:</span> <span class="pre">~typing.Annotated[str,</span> <span class="pre">_ColumnRefMarker('measurements')],</span> <span class="pre">groupby:</span> <span class="pre">~typing.Annotated[list[str],</span> <span class="pre">_ColumnRefMarker('measurements')],</span> <span class="pre">agg_func:</span> <span class="pre">~typing.Callable</span> <span class="pre">|</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">list</span> <span class="pre">|</span> <span class="pre">dict</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">'mean',</span> <span class="pre">n_jobs:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">1,</span> <span class="pre">warn_threshold:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">3.5,</span> <span class="pre">fail_threshold:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">5.0,</span> <span class="pre">unmatched_groups:</span> <span class="pre">list</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;,</span> <span class="pre">time_label:</span> <span class="pre">~typing.Annotated[str,</span> <span class="pre">_ColumnRefMarker('measurements')]</span> <span class="pre">=</span> <span class="pre">'Metadata_Time',</span> <span class="pre">min_replicates:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">2</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/analysis/_max_modz.html#MaxModifiedZScore"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.analysis.MaxModifiedZScore" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.analysis.</span></span><span class="sig-name descname"><span class="pre">MaxModifiedZScore</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">*,</span> <span class="pre">on:</span> <span class="pre">~typing.Annotated[str,</span> <span class="pre">_ColumnRefMarker('measurements')],</span> <span class="pre">groupby:</span> <span class="pre">~typing.Annotated[list[str],</span> <span class="pre">_ColumnRefMarker('measurements')],</span> <span class="pre">agg_func:</span> <span class="pre">~typing.Callable</span> <span class="pre">|</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">list</span> <span class="pre">|</span> <span class="pre">dict</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">'mean',</span> <span class="pre">n_jobs:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">1,</span> <span class="pre">warn_threshold:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">3.5,</span> <span class="pre">fail_threshold:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">5.0,</span> <span class="pre">unmatched_groups:</span> <span class="pre">list</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;,</span> <span class="pre">time_label:</span> <span class="pre">~typing.Annotated[str,</span> <span class="pre">_ColumnRefMarker('measurements')]</span> <span class="pre">=</span> <span class="pre">'Metadata_Time',</span> <span class="pre">min_replicates:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">2</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/analysis/qc/_max_modz.html#MaxModifiedZScore"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.analysis.MaxModifiedZScore" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="../phenotypic.analysis.abc_.html#phenotypic.analysis.abc_.QualityCheck" title="phenotypic.analysis.abc_._quality_check.QualityCheck"><code class="xref py py-class docutils literal notranslate"><span class="pre">QualityCheck</span></code></a></p>
 <p>Flag <code class="docutils literal notranslate"><span class="pre">(group,</span> <span class="pre">time)</span></code> bins whose worst member is a robust outlier.</p>
 <blockquote>
@@ -1132,7 +1168,7 @@ receive <code class="docutils literal notranslate"><span class="pre">metric</spa
 <dt>Examples:</dt><dd><p>Basic — four members per timepoint, the check adds
 <code class="docutils literal notranslate"><span class="pre">QC_ZMax_Metric</span></code> plus the per-bin summary columns:</p>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.analysis._max_modz</span><span class="w"> </span><span class="kn">import</span> <span class="n">MaxModifiedZScore</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.analysis.qc</span><span class="w"> </span><span class="kn">import</span> <span class="n">MaxModifiedZScore</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
 <span class="gp">... </span>    <span class="s2">&quot;Plate&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;P1&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="mi">8</span><span class="p">,</span>
 <span class="gp">... </span>    <span class="s2">&quot;Metadata_Time&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>

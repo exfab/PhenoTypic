@@ -210,12 +210,30 @@
 
     
     
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
     
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../measurements_ref/index.html">
-          Measurements Ref
-        </a>
-      </li>
+    
     
       <li class="nav-item current active">
         <a class="nav-link nav-internal" href="../index.html">
@@ -416,12 +434,30 @@
 
     
     
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
     
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../measurements_ref/index.html">
-          Measurements Ref
-        </a>
-      </li>
+    
     
       <li class="nav-item current active">
         <a class="nav-link nav-internal" href="../index.html">
@@ -1078,7 +1114,7 @@
 <h1>phenotypic.tune.SupervisedScorer<a class="headerlink" href="#phenotypic-tune-supervisedscorer" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="phenotypic.tune.SupervisedScorer">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tune.</span></span><span class="sig-name descname"><span class="pre">SupervisedScorer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">gt</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.GroundTruthMasks" title="phenotypic.tune._scoring._gt_loader.GroundTruthMasks"><span class="pre">GroundTruthMasks</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">region_metric</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><span class="pre">Literal</span></a><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'dice'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'iou'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'dice'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">match_strategy</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><span class="pre">Literal</span></a><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'grid_cell'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'iou_greedy'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'grid_cell'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">iou_tau</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">count_check</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../phenotypic.analysis.html#phenotypic.analysis.ExpectedVsDetectedCount" title="phenotypic.analysis._expected_vs_detected.ExpectedVsDetectedCount"><span class="pre">ExpectedVsDetectedCount</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/tune/_scoring/_supervised.html#SupervisedScorer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tune.SupervisedScorer" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tune.</span></span><span class="sig-name descname"><span class="pre">SupervisedScorer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">gt</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.GroundTruthMasks" title="phenotypic.tune._scoring._gt_loader.GroundTruthMasks"><span class="pre">GroundTruthMasks</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">region_metric</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><span class="pre">Literal</span></a><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'dice'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'iou'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'dice'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">match_strategy</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><span class="pre">Literal</span></a><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'grid_cell'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'iou_greedy'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'grid_cell'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">iou_tau</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">count_check</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../phenotypic.analysis.qc.html#phenotypic.analysis.qc.ExpectedVsDetectedCount" title="phenotypic.analysis.qc._expected_vs_detected.ExpectedVsDetectedCount"><span class="pre">ExpectedVsDetectedCount</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/tune/_scoring/_supervised.html#SupervisedScorer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tune.SupervisedScorer" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.Scorer" title="phenotypic.tune._scoring._scorer.Scorer"><code class="xref py py-class docutils literal notranslate"><span class="pre">Scorer</span></code></a></p>
 <p>Ground-truth segmentation/count objective, tiered by GT modality.</p>
 <p>The <a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.SupervisedScorer.gt" title="phenotypic.tune.SupervisedScorer.gt"><code class="xref py py-attr docutils literal notranslate"><span class="pre">gt</span></code></a> loader’s <a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.GroundTruthMasks.modality" title="phenotypic.tune.GroundTruthMasks.modality"><code class="xref py py-meth docutils literal notranslate"><span class="pre">GroundTruthMasks.modality()</span></code></a> selects the tier
@@ -1104,7 +1140,7 @@ accepting pairs with IoU &gt; <a class="reference internal" href="../phenotypic.
 <li><p><strong>iou_tau</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – The IoU acceptance threshold for <code class="docutils literal notranslate"><span class="pre">&quot;iou_greedy&quot;</span></code> matching
 (ignored for <code class="docutils literal notranslate"><span class="pre">&quot;grid_cell&quot;</span></code>). Default <code class="docutils literal notranslate"><span class="pre">0.5</span></code> gives a provably
 one-to-one assignment.</p></li>
-<li><p><strong>count_check</strong> (<a class="reference internal" href="../phenotypic.analysis.html#phenotypic.analysis.ExpectedVsDetectedCount" title="phenotypic.analysis._expected_vs_detected.ExpectedVsDetectedCount"><em>ExpectedVsDetectedCount</em></a><em> | </em><em>None</em>) – The path-configured <code class="xref py py-class docutils literal notranslate"><span class="pre">ExpectedVsDetectedCount</span></code> reused
+<li><p><strong>count_check</strong> (<a class="reference internal" href="../phenotypic.analysis.qc.html#phenotypic.analysis.qc.ExpectedVsDetectedCount" title="phenotypic.analysis.qc._expected_vs_detected.ExpectedVsDetectedCount"><em>ExpectedVsDetectedCount</em></a><em> | </em><em>None</em>) – The path-configured <code class="xref py py-class docutils literal notranslate"><span class="pre">ExpectedVsDetectedCount</span></code> reused
 for the count tier (do not re-implement counting). Required for the
 count tier to run; <code class="docutils literal notranslate"><span class="pre">None</span></code> makes the count tier abstain.</p></li>
 </ul>

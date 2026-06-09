@@ -1,0 +1,52 @@
+Colorxy
+=======
+
+Python object: ``phenotypic.schema._color_xy.Colorxy``
+
+Measure colony color statistics across multiple perceptual color spaces.
+
+Extract per-colony color features from CIE XYZ, chromaticity (xy),
+CIE Lab (perceptually uniform), and HSV color spaces. For each
+channel the standard statistical suite is computed (min, Q1, mean,
+median, Q3, max, std dev, coefficient of variation), plus Lab chroma
+estimates.
+
+Covers the (x, y) chromaticity channels.
+
+.. list-table:: Category: **Colorxy**
+   :header-rows: 1
+
+   * - Column label
+     - Description
+   * - ``Colorxy_xMin``
+     - The minimum chromaticity x coordinate of the object
+   * - ``Colorxy_xQ1``
+     - The lower quartile (Q1) chromaticity x coordinate of the object
+   * - ``Colorxy_xMean``
+     - The mean chromaticity x coordinate of the object
+   * - ``Colorxy_xMedian``
+     - The median chromaticity x coordinate of the object
+   * - ``Colorxy_xQ3``
+     - The upper quartile (Q3) chromaticity x coordinate of the object
+   * - ``Colorxy_xMax``
+     - The maximum chromaticity x coordinate of the object
+   * - ``Colorxy_xStdDev``
+     - The standard deviation of the chromaticity x coordinate of the object
+   * - ``Colorxy_xCoeffVar``
+     - The coefficient of variation of the chromaticity x coordinate of the object
+   * - ``Colorxy_yMin``
+     - The minimum chromaticity y coordinate of the object
+   * - ``Colorxy_yQ1``
+     - The lower quartile (Q1) chromaticity y coordinate of the object
+   * - ``Colorxy_yMean``
+     - The mean chromaticity y coordinate of the object
+   * - ``Colorxy_yMedian``
+     - The median chromaticity y coordinate of the object
+   * - ``Colorxy_yQ3``
+     - The upper quartile (Q3) chromaticity y coordinate of the object
+   * - ``Colorxy_yMax``
+     - The maximum chromaticity y coordinate of the object
+   * - ``Colorxy_yStdDev``
+     - The standard deviation of the chromaticity y coordinate of the object
+   * - ``Colorxy_yCoeffVar``
+     - The coefficient of variation of the chromaticity y coordinate of the object

@@ -1,0 +1,72 @@
+ColorLab
+========
+
+Python object: ``phenotypic.schema._color_lab.ColorLab``
+
+Measure colony color statistics across multiple perceptual color spaces.
+
+Extract per-colony color features from CIE XYZ, chromaticity (xy),
+CIE Lab (perceptually uniform), and HSV color spaces. For each
+channel the standard statistical suite is computed (min, Q1, mean,
+median, Q3, max, std dev, coefficient of variation), plus Lab chroma
+estimates.
+
+Covers the CIE L*a*b* channels (L*, a*, b*) plus chroma estimates.
+
+.. list-table:: Category: **ColorLab**
+   :header-rows: 1
+
+   * - Column label
+     - Description
+   * - ``ColorLab_L*Min``
+     - The minimum L* value of the object
+   * - ``ColorLab_L*Q1``
+     - The lower quartile (Q1) L* value of the object
+   * - ``ColorLab_L*Mean``
+     - The mean L* value of the object
+   * - ``ColorLab_L*Median``
+     - The median L* value of the object
+   * - ``ColorLab_L*Q3``
+     - The upper quartile (Q3) L* value of the object
+   * - ``ColorLab_L*Max``
+     - The maximum L* value of the object
+   * - ``ColorLab_L*StdDev``
+     - The standard deviation of the L* value of the object
+   * - ``ColorLab_L*CoeffVar``
+     - The coefficient of variation of the L* value of the object
+   * - ``ColorLab_a*Min``
+     - The minimum a* value of the object
+   * - ``ColorLab_a*Q1``
+     - The lower quartile (Q1) a* value of the object
+   * - ``ColorLab_a*Mean``
+     - The mean a* value of the object
+   * - ``ColorLab_a*Median``
+     - The median a* value of the object
+   * - ``ColorLab_a*Q3``
+     - The upper quartile (Q3) a* value of the object
+   * - ``ColorLab_a*Max``
+     - The maximum a* value of the object
+   * - ``ColorLab_a*StdDev``
+     - The standard deviation of the a* value of the object
+   * - ``ColorLab_a*CoeffVar``
+     - The coefficient of variation of the a* value of the object
+   * - ``ColorLab_b*Min``
+     - The minimum b* value of the object
+   * - ``ColorLab_b*Q1``
+     - The lower quartile (Q1) b* value of the object
+   * - ``ColorLab_b*Mean``
+     - The mean b* value of the object
+   * - ``ColorLab_b*Median``
+     - The median b* value of the object
+   * - ``ColorLab_b*Q3``
+     - The upper quartile (Q3) b* value of the object
+   * - ``ColorLab_b*Max``
+     - The maximum b* value of the object
+   * - ``ColorLab_b*StdDev``
+     - The standard deviation of the b* value of the object
+   * - ``ColorLab_b*CoeffVar``
+     - The coefficient of variation of the b* value of the object
+   * - ``ColorLab_ChromaEstimatedMean``
+     - The mean chroma estimation of the object calculated using ``\(sqrt(a^{*}_{mean}^2 + b^{*}_{mean})^2}``
+   * - ``ColorLab_ChromaEstimatedMedian``
+     - The median chroma estimation of the object using ``\sqrt({a*_{median}^2 + b*_{median})^2}``

@@ -1,0 +1,25 @@
+PLATE_METADATA
+==============
+
+Python object: ``phenotypic.schema._experimental_tags._plate.PLATE_METADATA``
+
+Recommended ``Metadata_*`` tags describing the assay plate and its array.
+
+These capture plate-level grouping and physical layout (plate id, batch, array
+density, incubator position). Members render as ``Metadata_<Label>`` (e.g.
+``Metadata_PlateID``) and share the ``Metadata_`` namespace with the other
+experimental-tag enums. Recommended vocabulary, not a validator.
+
+.. list-table:: Category: **Metadata**
+   :header-rows: 1
+
+   * - Column label
+     - Description
+   * - ``Metadata_PlateID``
+     - Identifier of the assay/imaging plate.
+   * - ``Metadata_Batch``
+     - Experimental batch grouping.
+   * - ``Metadata_ArrayDensity``
+     - Colony array density, i.e. wells per plate (e.g. 96, 384, 1536).
+   * - ``Metadata_IncubatorPosition``
+     - Physical position of the plate within the incubator.

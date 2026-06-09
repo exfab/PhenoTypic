@@ -210,12 +210,30 @@
 
     
     
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
     
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../measurements_ref/index.html">
-          Measurements Ref
-        </a>
-      </li>
+    
     
       <li class="nav-item current active">
         <a class="nav-link nav-internal" href="../index.html">
@@ -416,12 +434,30 @@
 
     
     
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
     
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../measurements_ref/index.html">
-          Measurements Ref
-        </a>
-      </li>
+    
     
       <li class="nav-item current active">
         <a class="nav-link nav-internal" href="../index.html">
@@ -25106,7 +25142,7 @@ string is returned instead. Accepts a <code class="docutils literal notranslate"
 
 <dl class="py class">
 <dt class="sig sig-object py">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">PrefabPipeline</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name:</span> <span class="pre">str</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">desc:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">benchmark:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reset:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nrows:</span> <span class="pre">int</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ncols:</span> <span class="pre">int</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ops:</span> <span class="pre">~typing.Dict[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">~phenotypic.abc_._image_operation.ImageOperation</span> <span class="pre">|</span> <span class="pre">~phenotypic._core._pipeline_parts._image_pipeline_core.ImagePipelineCore]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">meas:</span> <span class="pre">~typing.Dict[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">~phenotypic.abc_._measure_features.MeasureFeatures]</span> <span class="pre">=</span> <span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">post:</span> <span class="pre">~typing.Dict[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">~phenotypic.abc_._post_measurement.PostMeasurement]</span> <span class="pre">=</span> <span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filters:</span> <span class="pre">~typing.Dict[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">~phenotypic.analysis.abc_._set_analyzer.SetAnalyzer]</span> <span class="pre">=</span> <span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model:</span> <span class="pre">~phenotypic.analysis.abc_._model_fitter.ModelFitter</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qc:</span> <span class="pre">~typing.List[~phenotypic.qc._recipe.QcRecipeEntry]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/abc_/_prefab_pipeline.html#PrefabPipeline"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">PrefabPipeline</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name:</span> <span class="pre">str</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">desc:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">benchmark:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reset:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nrows:</span> <span class="pre">int</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ncols:</span> <span class="pre">int</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ops:</span> <span class="pre">~typing.Dict[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">~phenotypic.abc_._image_operation.ImageOperation</span> <span class="pre">|</span> <span class="pre">~phenotypic._core._pipeline_parts._image_pipeline_core.ImagePipelineCore]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">meas:</span> <span class="pre">~typing.Dict[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">~phenotypic.abc_._measure_features.MeasureFeatures]</span> <span class="pre">=</span> <span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">post:</span> <span class="pre">~typing.Dict[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">~phenotypic.abc_._post_measurement.PostMeasurement]</span> <span class="pre">=</span> <span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filters:</span> <span class="pre">~typing.Dict[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">~phenotypic.analysis.abc_._set_analyzer.SetAnalyzer]</span> <span class="pre">=</span> <span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model:</span> <span class="pre">~phenotypic.analysis.abc_._model_fitter.ModelFitter</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qc:</span> <span class="pre">~typing.List[~phenotypic.tools_._qc_recipe._recipe.QcRecipeEntry]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/abc_/_prefab_pipeline.html#PrefabPipeline"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ImagePipeline</span></code></p>
 <p>Marker class for pre-built, validated image processing pipelines from the PhenoTypic team.</p>
 <p>PrefabPipeline is a specialized subclass of ImagePipeline that distinguishes “official” pre-built
@@ -25396,7 +25432,7 @@ operations (detection, enhancement, measurement), use operation ABCs directly.</
 <li><p><strong>post</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><em>Dict</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.PostMeasurement" title="phenotypic.abc_._post_measurement.PostMeasurement"><em>PostMeasurement</em></a><em>]</em>)</p></li>
 <li><p><strong>filters</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><em>Dict</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><a class="reference internal" href="../phenotypic.analysis.abc_.html#phenotypic.analysis.abc_.SetAnalyzer" title="phenotypic.analysis.abc_._set_analyzer.SetAnalyzer"><em>SetAnalyzer</em></a><em>]</em>)</p></li>
 <li><p><strong>model</strong> (<a class="reference internal" href="../phenotypic.analysis.abc_.html#phenotypic.analysis.abc_.ModelFitter" title="phenotypic.analysis.abc_._model_fitter.ModelFitter"><em>ModelFitter</em></a><em> | </em><em>None</em>)</p></li>
-<li><p><strong>qc</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><em>List</em></a><em>[</em><a class="reference internal" href="../phenotypic.qc.html#phenotypic.qc.QcRecipeEntry" title="phenotypic.qc._recipe.QcRecipeEntry"><em>QcRecipeEntry</em></a><em>]</em>)</p></li>
+<li><p><strong>qc</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><em>List</em></a><em>[</em><em>QcRecipeEntry</em><em>]</em>)</p></li>
 </ul>
 </dd>
 </dl>
@@ -26294,7 +26330,7 @@ pipelines).</p>
 
 <dl class="py method">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">get_qc</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../phenotypic.qc.html#phenotypic.qc.QcRecipeEntry" title="phenotypic.qc._recipe.QcRecipeEntry"><span class="pre">QcRecipeEntry</span></a><span class="p"><span class="pre">]</span></span></span></span></dt>
+<span class="sig-name descname"><span class="pre">get_qc</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><span class="pre">QcRecipeEntry</span><span class="p"><span class="pre">]</span></span></span></span></dt>
 <dd><p>Get a copy of the QC config entry list.</p>
 <p>Returns a shallow copy so callers cannot mutate the pipeline’s
 internal list by appending/removing. The entries themselves are
@@ -26309,7 +26345,7 @@ GUI only read them and instantiate fresh checks from their params.</p>
 </p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>List[<a class="reference internal" href="../phenotypic.qc.html#phenotypic.qc.QcRecipeEntry" title="phenotypic.qc.QcRecipeEntry">QcRecipeEntry</a>]</p>
+<dd class="field-even"><p>List[QcRecipeEntry]</p>
 </dd>
 </dl>
 </dd></dl>
@@ -26605,14 +26641,14 @@ If a list, class names are used as keys.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">set_qc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">qc</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../phenotypic.qc.html#phenotypic.qc.QcRecipeEntry" title="phenotypic.qc._recipe.QcRecipeEntry"><span class="pre">QcRecipeEntry</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span></dt>
+<span class="sig-name descname"><span class="pre">set_qc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">qc</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><span class="pre">QcRecipeEntry</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span></dt>
 <dd><p>Set the QC config entry list.</p>
 <p>Mirrors <a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.PrefabPipeline.set_post" title="phenotypic.abc_.PrefabPipeline.set_post"><code class="xref py py-meth docutils literal notranslate"><span class="pre">set_post()</span></code></a> / <a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.PrefabPipeline.set_filters" title="phenotypic.abc_.PrefabPipeline.set_filters"><code class="xref py py-meth docutils literal notranslate"><span class="pre">set_filters()</span></code></a> but the QC section is
 an ordered <strong>list</strong> of <code class="xref py py-class docutils literal notranslate"><span class="pre">QcRecipeEntry</span></code> (carrying stable
 <code class="docutils literal notranslate"><span class="pre">instance_id</span></code>/<code class="docutils literal notranslate"><span class="pre">enabled</span></code> metadata), not a name-keyed dict.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>qc</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><em>List</em></a><em>[</em><a class="reference internal" href="../phenotypic.qc.html#phenotypic.qc.QcRecipeEntry" title="phenotypic.qc._recipe.QcRecipeEntry"><em>QcRecipeEntry</em></a><em>] </em><em>| </em><em>None</em>) – A list of <code class="xref py py-class docutils literal notranslate"><span class="pre">QcRecipeEntry</span></code>, or <code class="docutils literal notranslate"><span class="pre">None</span></code> to clear.</p>
+<dd class="field-odd"><p><strong>qc</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><em>List</em></a><em>[</em><em>QcRecipeEntry</em><em>] </em><em>| </em><em>None</em>) – A list of <code class="xref py py-class docutils literal notranslate"><span class="pre">QcRecipeEntry</span></code>, or <code class="docutils literal notranslate"><span class="pre">None</span></code> to clear.</p>
 </dd>
 <dt class="field-even">Raises<span class="colon">:</span></dt>
 <dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#TypeError" title="(in Python v3.14)"><strong>TypeError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">qc</span></code> is neither a list nor <code class="docutils literal notranslate"><span class="pre">None</span></code> (raised by
@@ -26782,7 +26818,7 @@ visualization controls will be added to the widget.</p></li>
 
 <dl class="py attribute">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">qc</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../phenotypic.qc.html#phenotypic.qc.QcRecipeEntry" title="phenotypic.qc.QcRecipeEntry"><span class="pre">QcRecipeEntry</span></a><span class="p"><span class="pre">]</span></span></em></dt>
+<span class="sig-name descname"><span class="pre">qc</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">QcRecipeEntry</span><span class="p"><span class="pre">]</span></span></em></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">

@@ -1,0 +1,68 @@
+ColorXYZ
+========
+
+Python object: ``phenotypic.schema._color_xyz.ColorXYZ``
+
+Measure colony color statistics across multiple perceptual color spaces.
+
+Extract per-colony color features from CIE XYZ, chromaticity (xy),
+CIE Lab (perceptually uniform), and HSV color spaces. For each
+channel the standard statistical suite is computed (min, Q1, mean,
+median, Q3, max, std dev, coefficient of variation), plus Lab chroma
+estimates.
+
+Covers CIE XYZ tristimulus values (X, Y, Z).
+
+.. list-table:: Category: **ColorXYZ**
+   :header-rows: 1
+
+   * - Column label
+     - Description
+   * - ``ColorXYZ_CieXMin``
+     - The minimum X value of the object in CIE XYZ color space
+   * - ``ColorXYZ_CieXQ1``
+     - The lower quartile (Q1) X value of the object in CIE XYZ color space
+   * - ``ColorXYZ_CieXMean``
+     - The mean X value of the object in CIE XYZ color space
+   * - ``ColorXYZ_CieXMedian``
+     - The median X value of the object in CIE XYZ color space
+   * - ``ColorXYZ_CieXQ3``
+     - The upper quartile (Q3) X value of the object in CIE XYZ color space
+   * - ``ColorXYZ_CieXMax``
+     - The maximum X value of the object in CIE XYZ color space
+   * - ``ColorXYZ_CieXStdDev``
+     - The standard deviation of the X value of the object in CIE XYZ color space
+   * - ``ColorXYZ_CieXCoeffVar``
+     - The coefficient of variation of the X value of the object in CIE XYZ color space
+   * - ``ColorXYZ_CieYMin``
+     - The minimum Y value of the object in CIE XYZ color space
+   * - ``ColorXYZ_CieYQ1``
+     - The lower quartile (Q1) Y value of the object in CIE XYZ color space
+   * - ``ColorXYZ_CieYMean``
+     - The mean Y value of the object in CIE XYZ color space
+   * - ``ColorXYZ_CieYMedian``
+     - The median Y value of the object in CIE XYZ color space
+   * - ``ColorXYZ_CieYQ3``
+     - The upper quartile (Q3) Y value of the object in CIE XYZ color space
+   * - ``ColorXYZ_CieYMax``
+     - The maximum Y value of the object in CIE XYZ color space
+   * - ``ColorXYZ_CieYStdDev``
+     - The standard deviation of the Y value of the object in CIE XYZ color space
+   * - ``ColorXYZ_CieYCoeffVar``
+     - The coefficient of variation of the Y value of the object in CIE XYZ color space
+   * - ``ColorXYZ_CieZMin``
+     - The minimum Z value of the object in CIE XYZ color space
+   * - ``ColorXYZ_CieZQ1``
+     - The lower quartile (Q1) Z value of the object in CIE XYZ color space
+   * - ``ColorXYZ_CieZMean``
+     - The mean Z value of the object in CIE XYZ color space
+   * - ``ColorXYZ_CieZMedian``
+     - The median Z value of the object in CIE XYZ color space
+   * - ``ColorXYZ_CieZQ3``
+     - The upper quartile (Q3) Z value of the object in CIE XYZ color space
+   * - ``ColorXYZ_CieZMax``
+     - The maximum Z value of the object in CIE XYZ color space
+   * - ``ColorXYZ_CieZStdDev``
+     - The standard deviation of the Z value of the object in CIE XYZ color space
+   * - ``ColorXYZ_CieZCoeffVar``
+     - The coefficient of variation of the Z value of the object in CIE XYZ color space

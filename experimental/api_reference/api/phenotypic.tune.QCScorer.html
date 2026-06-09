@@ -210,12 +210,30 @@
 
     
     
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
     
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../measurements_ref/index.html">
-          Measurements Ref
-        </a>
-      </li>
+    
     
       <li class="nav-item current active">
         <a class="nav-link nav-internal" href="../index.html">
@@ -416,12 +434,30 @@
 
     
     
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
     
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../measurements_ref/index.html">
-          Measurements Ref
-        </a>
-      </li>
+    
     
       <li class="nav-item current active">
         <a class="nav-link nav-internal" href="../index.html">
@@ -1078,12 +1114,12 @@
 <h1>phenotypic.tune.QCScorer<a class="headerlink" href="#phenotypic-tune-qcscorer" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="phenotypic.tune.QCScorer">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tune.</span></span><span class="sig-name descname"><span class="pre">QCScorer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">check</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../phenotypic.analysis.html#phenotypic.analysis.ExpectedVsDetectedCount" title="phenotypic.analysis._expected_vs_detected.ExpectedVsDetectedCount"><span class="pre">ExpectedVsDetectedCount</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/tune/_scoring/_qc_scorer.html#QCScorer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tune.QCScorer" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tune.</span></span><span class="sig-name descname"><span class="pre">QCScorer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">check</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../phenotypic.analysis.qc.html#phenotypic.analysis.qc.ExpectedVsDetectedCount" title="phenotypic.analysis.qc._expected_vs_detected.ExpectedVsDetectedCount"><span class="pre">ExpectedVsDetectedCount</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/tune/_scoring/_qc_scorer.html#QCScorer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tune.QCScorer" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.Scorer" title="phenotypic.tune._scoring._scorer.Scorer"><code class="xref py py-class docutils literal notranslate"><span class="pre">Scorer</span></code></a></p>
 <p>Count-only quality objective backed by <code class="docutils literal notranslate"><span class="pre">ExpectedVsDetectedCount</span></code>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>check</strong> (<a class="reference internal" href="../phenotypic.analysis.html#phenotypic.analysis.ExpectedVsDetectedCount" title="phenotypic.analysis._expected_vs_detected.ExpectedVsDetectedCount"><em>ExpectedVsDetectedCount</em></a>) – A configured count check. <strong>Configure it from a metadata path</strong>
+<dd class="field-odd"><p><strong>check</strong> (<a class="reference internal" href="../phenotypic.analysis.qc.html#phenotypic.analysis.qc.ExpectedVsDetectedCount" title="phenotypic.analysis.qc._expected_vs_detected.ExpectedVsDetectedCount"><em>ExpectedVsDetectedCount</em></a>) – A configured count check. <strong>Configure it from a metadata path</strong>
 (<code class="docutils literal notranslate"><span class="pre">metadata=&quot;layout.csv&quot;</span></code>) so <code class="docutils literal notranslate"><span class="pre">metadata_source</span></code> persists and the
 scorer round-trips through <code class="docutils literal notranslate"><span class="pre">tuning_spec.json</span></code>; a check built from
 an in-memory frame cannot be rebuilt from JSON.</p>

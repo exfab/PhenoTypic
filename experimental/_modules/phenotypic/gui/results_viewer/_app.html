@@ -207,12 +207,30 @@
 
     
     
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
     
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../../../measurements_ref/index.html">
-          Measurements Ref
-        </a>
-      </li>
+    
     
       <li class="nav-item">
         <a class="nav-link nav-internal" href="../../../../api_reference/index.html">
@@ -411,12 +429,30 @@
 
     
     
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
     
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../../../measurements_ref/index.html">
-          Measurements Ref
-        </a>
-      </li>
+    
     
       <li class="nav-item">
         <a class="nav-link nav-internal" href="../../../../api_reference/index.html">
@@ -629,7 +665,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui.results_viewer._output_root</span><span class="w"> </span><span class="kn">import</span> <span class="n">OutputRoot</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui.results_viewer.colony_view</span><span class="w"> </span><span class="kn">import</span> <span class="n">_crop_routes</span> <span class="k">as</span> <span class="n">colony_crop_routes</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui.shell._ids</span><span class="w"> </span><span class="kn">import</span> <span class="n">SHELL_SIDEBAR_SELECTION_STORE</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.qc</span><span class="w"> </span><span class="kn">import</span> <span class="n">QcRecipe</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_._qc_recipe</span><span class="w"> </span><span class="kn">import</span> <span class="n">QcRecipe</span>
 
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 
@@ -788,7 +824,7 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Deserialize the output root&#39;s ``pipeline.json`` for QC recompute.</span>
 
 <span class="sd">    The QC Review tab&#39;s per-group recompute hands this pipeline to</span>
-<span class="sd">    :func:`phenotypic.qc._runner.run_qc`, so it must carry the same ``qc``</span>
+<span class="sd">    :func:`phenotypic.tools_._qc_recipe._runner.run_qc`, so it must carry the same ``qc``</span>
 <span class="sd">    entries the CLI persisted. Loaded tolerantly (``skip_unknown_analyzers``)</span>
 <span class="sd">    so a stale analyzer class never blocks viewer boot, and degrades to</span>
 <span class="sd">    ``None`` when the file is absent or unreadable — recompute then no-ops</span>

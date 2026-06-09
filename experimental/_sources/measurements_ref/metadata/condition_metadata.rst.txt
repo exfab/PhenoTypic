@@ -1,0 +1,42 @@
+CONDITION_METADATA
+==================
+
+Python object: ``phenotypic.schema._experimental_tags._condition.CONDITION_METADATA``
+
+Recommended ``Metadata_*`` tags describing media and experimental conditions.
+
+These name the chemical environment and perturbations applied to the colonies
+(medium, carbon/nitrogen source, supplements, treatments, compounds, stress).
+Members render as ``Metadata_<Label>`` (e.g. ``Metadata_Treatment``) and share the
+``Metadata_`` namespace with the other experimental-tag enums. Recommended
+vocabulary, not a validator.
+
+.. list-table:: Category: **Metadata**
+   :header-rows: 1
+
+   * - Column label
+     - Description
+   * - ``Metadata_Media``
+     - Growth medium name (e.g. YPD, SC, LB).
+   * - ``Metadata_CarbonSource``
+     - Primary carbon source (e.g. glucose, galactose).
+   * - ``Metadata_NitrogenSource``
+     - Primary nitrogen source.
+   * - ``Metadata_pH``
+     - pH of the growth medium.
+   * - ``Metadata_Supplement``
+     - Medium supplement or additive.
+   * - ``Metadata_Antibiotic``
+     - Antibiotic added to the medium.
+   * - ``Metadata_Inducer``
+     - Inducing agent (e.g. galactose, IPTG, doxycycline).
+   * - ``Metadata_Treatment``
+     - Experimental treatment or perturbation.
+   * - ``Metadata_Compound``
+     - Chemical compound or drug applied.
+   * - ``Metadata_Concentration``
+     - Concentration of the compound or treatment.
+   * - ``Metadata_Dose``
+     - Dose applied to the sample.
+   * - ``Metadata_Stress``
+     - Applied stress condition (e.g. heat, osmotic, oxidative).

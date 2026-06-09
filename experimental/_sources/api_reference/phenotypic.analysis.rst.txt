@@ -13,3 +13,4 @@ Subpackages
    :maxdepth: 4
 
    phenotypic.analysis.abc_
+   phenotypic.analysis.qc

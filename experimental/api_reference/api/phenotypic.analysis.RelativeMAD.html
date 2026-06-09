@@ -210,12 +210,30 @@
 
     
     
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
     
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../measurements_ref/index.html">
-          Measurements Ref
-        </a>
-      </li>
+    
     
       <li class="nav-item current active">
         <a class="nav-link nav-internal" href="../index.html">
@@ -416,12 +434,30 @@
 
     
     
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
     
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../measurements_ref/index.html">
-          Measurements Ref
-        </a>
-      </li>
+    
     
       <li class="nav-item current active">
         <a class="nav-link nav-internal" href="../index.html">
@@ -1078,7 +1114,7 @@
 <h1>phenotypic.analysis.RelativeMAD<a class="headerlink" href="#phenotypic-analysis-relativemad" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="phenotypic.analysis.RelativeMAD">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.analysis.</span></span><span class="sig-name descname"><span class="pre">RelativeMAD</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">*,</span> <span class="pre">on:</span> <span class="pre">~typing.Annotated[str,</span> <span class="pre">_ColumnRefMarker('measurements')],</span> <span class="pre">groupby:</span> <span class="pre">~typing.Annotated[list[str],</span> <span class="pre">_ColumnRefMarker('measurements')],</span> <span class="pre">agg_func:</span> <span class="pre">~typing.Callable</span> <span class="pre">|</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">list</span> <span class="pre">|</span> <span class="pre">dict</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">'mean',</span> <span class="pre">n_jobs:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">1,</span> <span class="pre">warn_threshold:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.1,</span> <span class="pre">fail_threshold:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.2,</span> <span class="pre">unmatched_groups:</span> <span class="pre">list</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;,</span> <span class="pre">time_label:</span> <span class="pre">~typing.Annotated[str,</span> <span class="pre">_ColumnRefMarker('measurements')]</span> <span class="pre">=</span> <span class="pre">'Metadata_Time',</span> <span class="pre">min_replicates:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">2,</span> <span class="pre">eps:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">1e-09</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/analysis/_relative_mad.html#RelativeMAD"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.analysis.RelativeMAD" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.analysis.</span></span><span class="sig-name descname"><span class="pre">RelativeMAD</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">*,</span> <span class="pre">on:</span> <span class="pre">~typing.Annotated[str,</span> <span class="pre">_ColumnRefMarker('measurements')],</span> <span class="pre">groupby:</span> <span class="pre">~typing.Annotated[list[str],</span> <span class="pre">_ColumnRefMarker('measurements')],</span> <span class="pre">agg_func:</span> <span class="pre">~typing.Callable</span> <span class="pre">|</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">list</span> <span class="pre">|</span> <span class="pre">dict</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">'mean',</span> <span class="pre">n_jobs:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">1,</span> <span class="pre">warn_threshold:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.1,</span> <span class="pre">fail_threshold:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.2,</span> <span class="pre">unmatched_groups:</span> <span class="pre">list</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;,</span> <span class="pre">time_label:</span> <span class="pre">~typing.Annotated[str,</span> <span class="pre">_ColumnRefMarker('measurements')]</span> <span class="pre">=</span> <span class="pre">'Metadata_Time',</span> <span class="pre">min_replicates:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">2,</span> <span class="pre">eps:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">1e-09</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/analysis/qc/_relative_mad.html#RelativeMAD"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.analysis.RelativeMAD" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="../phenotypic.analysis.abc_.html#phenotypic.analysis.abc_.QualityCheck" title="phenotypic.analysis.abc_._quality_check.QualityCheck"><code class="xref py py-class docutils literal notranslate"><span class="pre">QualityCheck</span></code></a></p>
 <p>Flag <code class="docutils literal notranslate"><span class="pre">(group,</span> <span class="pre">time)</span></code> bins with poor robust agreement across replicates.</p>
 <blockquote>
@@ -1095,7 +1131,7 @@ even when up to half the replicates in a bin are contaminated — a
 single mis-segmented or contaminated colony will not inflate it the
 way it inflates the relative standard error. It is therefore the
 robust counterpart to
-<a class="reference internal" href="../phenotypic.analysis.html#phenotypic.analysis.ReplicateAgreement" title="phenotypic.analysis._replicate_agreement.ReplicateAgreement"><code class="xref py py-class docutils literal notranslate"><span class="pre">ReplicateAgreement</span></code></a>.</p>
+<a class="reference internal" href="../phenotypic.analysis.qc.html#phenotypic.analysis.qc.ReplicateAgreement" title="phenotypic.analysis.qc._replicate_agreement.ReplicateAgreement"><code class="xref py py-class docutils literal notranslate"><span class="pre">ReplicateAgreement</span></code></a>.</p>
 <p><code class="docutils literal notranslate"><span class="pre">_HIGHER_IS_BAD</span></code> is <code class="docutils literal notranslate"><span class="pre">True</span></code>: a larger relative MAD means worse
 replicate agreement, so the base class flags rows whose metric meets
 or exceeds <code class="docutils literal notranslate"><span class="pre">fail_threshold</span></code>.</p>
@@ -1143,7 +1179,7 @@ only.</p>
 <dt>Examples:</dt><dd><p>Basic — three-replicate, four-timepoint synthetic frame; the
 check adds <code class="docutils literal notranslate"><span class="pre">QC_MAD_Metric</span></code> plus the per-bin summary columns:</p>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.analysis._relative_mad</span><span class="w"> </span><span class="kn">import</span> <span class="n">RelativeMAD</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.analysis.qc</span><span class="w"> </span><span class="kn">import</span> <span class="n">RelativeMAD</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">times</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
 <span class="gp">... </span>    <span class="s2">&quot;Plate&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;P1&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="mi">12</span><span class="p">,</span>

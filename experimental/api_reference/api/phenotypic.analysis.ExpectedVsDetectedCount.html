@@ -210,12 +210,30 @@
 
     
     
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
     
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../measurements_ref/index.html">
-          Measurements Ref
-        </a>
-      </li>
+    
     
       <li class="nav-item current active">
         <a class="nav-link nav-internal" href="../index.html">
@@ -416,12 +434,30 @@
 
     
     
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
     
-      <li class="nav-item">
-        <a class="nav-link nav-internal" href="../../measurements_ref/index.html">
-          Measurements Ref
-        </a>
-      </li>
+    
     
       <li class="nav-item current active">
         <a class="nav-link nav-internal" href="../index.html">
@@ -1078,7 +1114,7 @@
 <h1>phenotypic.analysis.ExpectedVsDetectedCount<a class="headerlink" href="#phenotypic-analysis-expectedvsdetectedcount" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="phenotypic.analysis.ExpectedVsDetectedCount">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.analysis.</span></span><span class="sig-name descname"><span class="pre">ExpectedVsDetectedCount</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">*,</span> <span class="pre">on:</span> <span class="pre">~typing.Annotated[str,</span> <span class="pre">_ColumnRefMarker('measurements')]</span> <span class="pre">=</span> <span class="pre">'Object_Label',</span> <span class="pre">groupby:</span> <span class="pre">~typing.Annotated[list[str],</span> <span class="pre">_ColumnRefMarker('measurements')],</span> <span class="pre">agg_func:</span> <span class="pre">~typing.Callable</span> <span class="pre">|</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">list</span> <span class="pre">|</span> <span class="pre">dict</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">'first',</span> <span class="pre">n_jobs:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">1,</span> <span class="pre">warn_threshold:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.05,</span> <span class="pre">fail_threshold:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.1,</span> <span class="pre">unmatched_groups:</span> <span class="pre">list</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;,</span> <span class="pre">metadata:</span> <span class="pre">~typing.Annotated[~pandas.core.frame.DataFrame,</span> <span class="pre">~pydantic.json_schema.WithJsonSchema(json_schema={'type':</span> <span class="pre">'object'},</span> <span class="pre">mode=None)],</span> <span class="pre">metadata_source:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/analysis/_expected_vs_detected.html#ExpectedVsDetectedCount"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.analysis.ExpectedVsDetectedCount" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.analysis.</span></span><span class="sig-name descname"><span class="pre">ExpectedVsDetectedCount</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">*,</span> <span class="pre">on:</span> <span class="pre">~typing.Annotated[str,</span> <span class="pre">_ColumnRefMarker('measurements')]</span> <span class="pre">=</span> <span class="pre">'Object_Label',</span> <span class="pre">groupby:</span> <span class="pre">~typing.Annotated[list[str],</span> <span class="pre">_ColumnRefMarker('measurements')],</span> <span class="pre">agg_func:</span> <span class="pre">~typing.Callable</span> <span class="pre">|</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">list</span> <span class="pre">|</span> <span class="pre">dict</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">'first',</span> <span class="pre">n_jobs:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">1,</span> <span class="pre">warn_threshold:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.05,</span> <span class="pre">fail_threshold:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.1,</span> <span class="pre">unmatched_groups:</span> <span class="pre">list</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;,</span> <span class="pre">metadata:</span> <span class="pre">~typing.Annotated[~pandas.core.frame.DataFrame,</span> <span class="pre">~pydantic.json_schema.WithJsonSchema(json_schema={'type':</span> <span class="pre">'object'},</span> <span class="pre">mode=None)],</span> <span class="pre">metadata_source:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/analysis/qc/_expected_vs_detected.html#ExpectedVsDetectedCount"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.analysis.ExpectedVsDetectedCount" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="../phenotypic.analysis.abc_.html#phenotypic.analysis.abc_.QualityCheck" title="phenotypic.analysis.abc_._quality_check.QualityCheck"><code class="xref py py-class docutils literal notranslate"><span class="pre">QualityCheck</span></code></a></p>
 <p>Flag groups whose detected colony count diverges from metadata.</p>
 <blockquote>
@@ -1171,7 +1207,7 @@ the top of each <code class="docutils literal notranslate"><span class="pre">ana
 <dt>Examples:</dt><dd><p>Basic match — 96-well metadata vs. a measurement frame missing
 one well:</p>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.analysis._expected_vs_detected</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.analysis.qc</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
 <span class="gp">... </span>    <span class="n">ExpectedVsDetectedCount</span><span class="p">,</span>
 <span class="gp">... </span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">metadata</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
@@ -1444,7 +1480,7 @@ the metric is infinite and the key is recorded:</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.analysis.ExpectedVsDetectedCount.model_post_init">
-<span class="sig-name descname"><span class="pre">model_post_init</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">_ExpectedVsDetectedCount__context</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/analysis/_expected_vs_detected.html#ExpectedVsDetectedCount.model_post_init"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.analysis.ExpectedVsDetectedCount.model_post_init" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">model_post_init</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">_ExpectedVsDetectedCount__context</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/analysis/qc/_expected_vs_detected.html#ExpectedVsDetectedCount.model_post_init"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.analysis.ExpectedVsDetectedCount.model_post_init" title="Link to this definition">#</a></dt>
 <dd><p>Validate metadata columns and pre-compute expected counts.</p>
 <p>Runs after pydantic has validated every field. Mirrors the
 resolved <code class="docutils literal notranslate"><span class="pre">metadata</span></code> frame onto the private <code class="docutils literal notranslate"><span class="pre">_metadata</span></code> slot,
@@ -1469,7 +1505,7 @@ per-key expected colony counts.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.analysis.ExpectedVsDetectedCount.analyze">
-<span class="sig-name descname"><span class="pre">analyze</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.3)"><span class="pre">pandas.DataFrame</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.3)"><span class="pre">pandas.DataFrame</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/analysis/_expected_vs_detected.html#ExpectedVsDetectedCount.analyze"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.analysis.ExpectedVsDetectedCount.analyze" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">analyze</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.3)"><span class="pre">pandas.DataFrame</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.3)"><span class="pre">pandas.DataFrame</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/analysis/qc/_expected_vs_detected.html#ExpectedVsDetectedCount.analyze"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.analysis.ExpectedVsDetectedCount.analyze" title="Link to this definition">#</a></dt>
 <dd><p>Reset <a class="reference internal" href="../phenotypic.analysis.html#phenotypic.analysis.ExpectedVsDetectedCount.unmatched_groups" title="phenotypic.analysis.ExpectedVsDetectedCount.unmatched_groups"><code class="xref py py-attr docutils literal notranslate"><span class="pre">unmatched_groups</span></code></a> and run the base <code class="docutils literal notranslate"><span class="pre">analyze</span></code>.</p>
 <p>Re-running the check on a different measurement frame must not
 carry over unmatched groups from a previous run, so the list is
@@ -1489,7 +1525,7 @@ cleared before delegating to the base class.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.analysis.ExpectedVsDetectedCount.dash">
-<span class="sig-name descname"><span class="pre">dash</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Figure</span></span></span><a class="reference internal" href="../../_modules/phenotypic/analysis/_expected_vs_detected.html#ExpectedVsDetectedCount.dash"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.analysis.ExpectedVsDetectedCount.dash" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">dash</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Figure</span></span></span><a class="reference internal" href="../../_modules/phenotypic/analysis/qc/_expected_vs_detected.html#ExpectedVsDetectedCount.dash"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.analysis.ExpectedVsDetectedCount.dash" title="Link to this definition">#</a></dt>
 <dd><p>Render a horizontal lollipop chart of <code class="docutils literal notranslate"><span class="pre">Delta</span></code> per group.</p>
 <p>Each group’s signed <code class="docutils literal notranslate"><span class="pre">Delta</span></code> is drawn as a horizontal stem from
 zero to <code class="docutils literal notranslate"><span class="pre">Delta</span></code>, with a marker at the tip colored by

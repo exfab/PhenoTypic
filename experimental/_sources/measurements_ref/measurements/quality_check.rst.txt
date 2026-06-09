@@ -1,0 +1,26 @@
+QUALITY_CHECK
+=============
+
+Python object: ``phenotypic.schema._quality_check.QUALITY_CHECK``
+
+Generic QC output columns emitted by every QualityCheck subclass.
+
+The category convention used elsewhere in the codebase would produce
+column names ``QC_Flag``, ``QC_Metric``, ``QC_Status`` — but the
+actual emitted columns include each subclass's ``name`` between the
+category and the label (``QC_Count_Flag``, ``QC_SE_Flag``). This
+enum overrides ``append_rst_to_doc`` to substitute the subclass's
+``name`` into the RST column header, so each concrete subclass's
+docstring documents its real emitted columns.
+
+.. list-table:: Category: **QC**
+   :header-rows: 1
+
+   * - Column label
+     - Description
+   * - ``QC_Flag``
+     - True when the metric crosses fail_threshold in the bad direction; eligible for curation.
+   * - ``QC_Metric``
+     - Headline metric in the check's own units; the bad direction is set by the check's _HIGHER_IS_BAD flag. Drives Status.
+   * - ``QC_Status``
+     - Categorical: pass \| warn \| fail.

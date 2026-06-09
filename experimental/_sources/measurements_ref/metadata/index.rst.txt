@@ -1,0 +1,45 @@
+Metadata
+========
+
+Use the ``Metadata_*`` column labels documented here when preparing external
+metadata tables for PhenoTypic. These labels streamline downstream processing
+because the package offers processing helpers based on these assumptions. If
+your input tables use different column names, provide a mapping before feeding
+them into PhenoTypic workflows.
+
+.. toctree::
+   :maxdepth: 1
+   :caption: MetadataInfo
+   :hidden:
+
+   metadata
+   acquisition_metadata
+   condition_metadata
+   experiment_metadata
+   genetic_metadata
+   incubation_metadata
+   plate_metadata
+   sample_metadata
+
+Framework Metadata
+------------------
+
+``METADATA`` covers framework-populated image bookkeeping columns.
+
+Experimental Tags
+-----------------
+
+The experimental-tag enums live under ``phenotypic.schema._experimental_tags``
+and provide a recommended vocabulary for biological and experimental
+annotations. They are recommended labels, not validators: arbitrary metadata
+columns are still accepted, but using the labels below keeps downstream
+processing simpler.
+
+- :doc:`ACQUISITION_METADATA <acquisition_metadata>`
+- :doc:`CONDITION_METADATA <condition_metadata>`
+- :doc:`EXPERIMENT_METADATA <experiment_metadata>`
+- :doc:`GENETIC_METADATA <genetic_metadata>`
+- :doc:`INCUBATION_METADATA <incubation_metadata>`
+- :doc:`PLATE_METADATA <plate_metadata>`
+- :doc:`SAMPLE_METADATA <sample_metadata>`
+

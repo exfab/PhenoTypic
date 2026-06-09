@@ -1,0 +1,68 @@
+ColorHSV
+========
+
+Python object: ``phenotypic.schema._color_hsv.ColorHSV``
+
+Measure colony color statistics across multiple perceptual color spaces.
+
+Extract per-colony color features from CIE XYZ, chromaticity (xy),
+CIE Lab (perceptually uniform), and HSV color spaces. For each
+channel the standard statistical suite is computed (min, Q1, mean,
+median, Q3, max, std dev, coefficient of variation), plus Lab chroma
+estimates.
+
+Covers the HSV channels (Hue, Saturation, Brightness).
+
+.. list-table:: Category: **ColorHSV**
+   :header-rows: 1
+
+   * - Column label
+     - Description
+   * - ``ColorHSV_HueMin``
+     - The minimum hue of the object
+   * - ``ColorHSV_HueQ1``
+     - The lower quartile (Q1) hue of the object
+   * - ``ColorHSV_HueMean``
+     - The mean hue of the object
+   * - ``ColorHSV_HueMedian``
+     - The median hue of the object
+   * - ``ColorHSV_HueQ3``
+     - The upper quartile (Q3) hue of the object
+   * - ``ColorHSV_HueMax``
+     - The maximum hue of the object
+   * - ``ColorHSV_HueStdDev``
+     - The standard deviation of the hue of the object
+   * - ``ColorHSV_HueCoeffVar``
+     - The coefficient of variation of the hue of the object
+   * - ``ColorHSV_SaturationMin``
+     - The minimum saturation of the object
+   * - ``ColorHSV_SaturationQ1``
+     - The lower quartile (Q1) saturation of the object
+   * - ``ColorHSV_SaturationMean``
+     - The mean saturation of the object
+   * - ``ColorHSV_SaturationMedian``
+     - The median saturation of the object
+   * - ``ColorHSV_SaturationQ3``
+     - The upper quartile (Q3) saturation of the object
+   * - ``ColorHSV_SaturationMax``
+     - The maximum saturation of the object
+   * - ``ColorHSV_SaturationStdDev``
+     - The standard deviation of the saturation of the object
+   * - ``ColorHSV_SaturationCoeffVar``
+     - The coefficient of variation of the saturation of the object
+   * - ``ColorHSV_BrightnessMin``
+     - The minimum brightness of the object
+   * - ``ColorHSV_BrightnessQ1``
+     - The lower quartile (Q1) brightness of the object
+   * - ``ColorHSV_BrightnessMean``
+     - The mean brightness of the object
+   * - ``ColorHSV_BrightnessMedian``
+     - The median brightness of the object
+   * - ``ColorHSV_BrightnessQ3``
+     - The upper quartile (Q3) brightness of the object
+   * - ``ColorHSV_BrightnessMax``
+     - The maximum brightness of the object
+   * - ``ColorHSV_BrightnessStdDev``
+     - The standard deviation of the brightness of the object
+   * - ``ColorHSV_BrightnessCoeffVar``
+     - The coefficient of variation of the brightness of the object
