@@ -20,6 +20,7 @@ from dash import dcc, html
 from phenotypic.gui._config import MOUNT_HOME
 from phenotypic.gui._design import (
     COLOR_BLUE,
+    COLOR_BORDER,
     COLOR_GOLD,
     COLOR_MUTED,
     COLOR_NAVY,
@@ -27,6 +28,8 @@ from phenotypic.gui._design import (
     COLOR_WHITE,
     FONT_SIZE_HEADER_2,
     OI_VERMILION,
+    RADIUS,
+    SPACING_4,
 )
 from phenotypic.gui._operation_registry import OperationRegistry, get_registry
 from phenotypic.gui._param_forms import param_form
@@ -148,7 +151,7 @@ def build_empty_state_layout() -> html.Div:
             "padding": "0.5rem 0.75rem",
             "background": COLOR_SURFACE,
             "border": f"1px solid {COLOR_BLUE}",
-            "borderRadius": "6px",
+            "borderRadius": RADIUS,
         },
     )
 
@@ -170,7 +173,7 @@ def build_empty_state_layout() -> html.Div:
                     html.P(
                         "Pick a CLI output directory in the sidebar, "
                         "then click ↩ Open in analysis to bind it. The "
-                        "binding is shared with the results viewer — "
+                        "binding is shared with the results viewer -- "
                         "both tools rebuild against the chosen output "
                         "in lock-step.",
                     ),
@@ -207,7 +210,7 @@ def _build_output_header(
         style={
             "padding": "0.5rem 1rem",
             "background": COLOR_SURFACE,
-            "borderBottom": "1px solid #ddd",
+            "borderBottom": f"1px solid {COLOR_BORDER}",
         },
     )
 
@@ -223,7 +226,7 @@ def pipeline_header_children(recipe: "RecipeState") -> list:
     n_post = len(pipeline.get_post())
     n_filters = len(pipeline.get_filters())
     model = pipeline.get_model()
-    model_name = type(model).__name__ if model is not None else "—"
+    model_name = type(model).__name__ if model is not None else "(none)"
     summary = (
         f"{len(pipeline.get_ops())} ops · {len(pipeline.get_meas())} meas · "
         f"{n_post} post · {n_filters} filters · model: {model_name}"
@@ -233,7 +236,7 @@ def pipeline_header_children(recipe: "RecipeState") -> list:
         html.Span(
             summary,
             className="analysis-pipeline-summary",
-            style={"marginLeft": "1rem", "color": COLOR_MUTED},
+            style={"marginLeft": SPACING_4, "color": COLOR_MUTED},
         ),
     ]
 
@@ -264,7 +267,7 @@ def _build_recompile_banner() -> html.Div:
         className="analysis-recompile-banner",
         style={
             "padding": "0.5rem 1rem",
-            "background": "#fff8e1",
+            "background": "rgba(230, 159, 0, 0.10)",
             "borderLeft": f"4px solid {COLOR_GOLD}",
             "margin": "0.5rem 1rem",
         },
@@ -327,7 +330,7 @@ def _build_load_warnings_banner(recipe: "RecipeState") -> html.Div:
         className="analysis-load-warnings-banner",
         style={
             "padding": "0.5rem 1rem",
-            "background": "#fff5f0",
+            "background": "rgba(213, 94, 0, 0.08)",
             "borderLeft": f"4px solid {OI_VERMILION}",
             "margin": "0.5rem 1rem",
             "color": COLOR_NAVY,
@@ -493,8 +496,8 @@ def build_section_stack(
                 else ids.filter_section_id(index),
                 className=f"analysis-{kind}-section",
                 style={
-                    "border": "1px solid #ddd",
-                    "borderRadius": "4px",
+                    "border": f"1px solid {COLOR_BORDER}",
+                    "borderRadius": RADIUS,
                     "padding": "0.5rem 0.75rem",
                     "margin": "0.25rem 0",
                     "background": COLOR_SURFACE,
@@ -599,7 +602,7 @@ def _build_model_section(
         ],
         style={
             "border": f"1px solid {COLOR_NAVY}",
-            "borderRadius": "4px",
+            "borderRadius": RADIUS,
             "padding": "0.5rem 0.75rem",
             "background": COLOR_SURFACE,
         },
@@ -634,7 +637,7 @@ def _build_run_console(recipe: "RecipeState") -> html.Div:
             "bottom": 0,
             "padding": "0.75rem 1rem",
             "background": COLOR_WHITE,
-            "borderTop": "1px solid #ddd",
+            "borderTop": f"1px solid {COLOR_BORDER}",
         },
     )
 

@@ -2,8 +2,8 @@
 
 .analysis-page {
     font-family: var(--font-body);
-    color: var(--color-body, #222);
-    background: var(--color-bg, #fafafa);
+    color: var(--color-body);
+    background: var(--color-bg);
 }
 
 .analysis-output-header {
@@ -29,12 +29,12 @@
 }
 
 .analysis-recompile-banner {
-    font-size: var(--font-size-label);
+    font-size: var(--font-size-body-sm);
 }
 
 .analysis-stale-banner {
-    background: #fdecea;
-    border-left: 4px solid #c62828;
+    background: rgba(213, 94, 0, 0.08);
+    border-left: 4px solid var(--oi-vermilion);
     padding: 0.5rem 1rem;
     margin: 0.5rem 1rem;
     font-size: var(--font-size-body);
@@ -44,16 +44,16 @@
 .analysis-post-section,
 .analysis-filter-section,
 .analysis-model-section {
-    transition: var(--transition, all 150ms);
+    transition: var(--transition);
 }
 
 .analysis-post-section:hover,
 .analysis-filter-section:hover {
-    box-shadow: var(--shadow-sm, 0 1px 3px rgba(0, 0, 0, 0.05));
+    box-shadow: var(--shadow-sm);
 }
 
 .analysis-section-remove:hover {
-    color: #c62828;
+    color: var(--oi-vermilion);
 }
 
 /* Post preview table */
@@ -61,18 +61,18 @@
     border-collapse: collapse;
     width: 100%;
     margin-top: 0.5rem;
-    font-size: var(--font-size-label);
+    font-size: var(--font-size-body-sm);
 }
 
 .analysis-post-preview-table th,
 .analysis-post-preview-table td {
-    border: 1px solid #ddd;
+    border: 1px solid var(--color-border);
     padding: 0.25rem 0.5rem;
     text-align: left;
 }
 
 .analysis-post-preview-table th {
-    background: var(--color-surface, #f5f5f5);
+    background: var(--color-surface);
 }
 
 .analysis-post-col {
@@ -81,7 +81,7 @@
 }
 
 .analysis-post-preview-empty {
-    color: #888;
+    color: var(--color-muted);
     font-style: italic;
     margin-top: 0.5rem;
 }
@@ -93,25 +93,25 @@
 
 /* Errors */
 .analysis-error-card {
-    background: #fdecea;
-    border: 1px solid #ef9a9a;
-    border-radius: 4px;
+    background: rgba(213, 94, 0, 0.08);
+    border: 1px solid var(--oi-vermilion);
+    border-radius: var(--radius);
     padding: 0.5rem 0.75rem;
     margin-top: 0.5rem;
-    color: #b71c1c;
-    font-size: var(--font-size-label);
+    color: var(--oi-vermilion-text);
+    font-size: var(--font-size-body-sm);
 }
 
 .analysis-error-pre {
     margin: 0.25rem 0 0 0;
     font-family: var(--font-mono);
-    font-size: var(--font-size-label);
+    font-size: var(--font-size-body-sm);
     white-space: pre-wrap;
 }
 
 /* Run console */
 .analysis-run-console {
-    box-shadow: var(--shadow-md, 0 -2px 8px rgba(0, 0, 0, 0.05));
+    box-shadow: var(--shadow-md);
 }
 
 .analysis-run-status {
