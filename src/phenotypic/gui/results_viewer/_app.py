@@ -64,7 +64,7 @@ from phenotypic.gui.results_viewer._layout import (
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 from phenotypic.gui.results_viewer.colony_view import _crop_routes as colony_crop_routes
 from phenotypic.gui.shell._ids import SHELL_SIDEBAR_SELECTION_STORE
-from phenotypic.qc import QcRecipe
+from phenotypic.tools_._qc_recipe import QcRecipe
 
 logger = logging.getLogger(__name__)
 
@@ -220,7 +220,7 @@ def _load_qc_pipeline(output_root_path: Path):
     """Deserialize the output root's ``pipeline.json`` for QC recompute.
 
     The QC Review tab's per-group recompute hands this pipeline to
-    :func:`phenotypic.qc._runner.run_qc`, so it must carry the same ``qc``
+    :func:`phenotypic.tools_._qc_recipe._runner.run_qc`, so it must carry the same ``qc``
     entries the CLI persisted. Loaded tolerantly (``skip_unknown_analyzers``)
     so a stale analyzer class never blocks viewer boot, and degrades to
     ``None`` when the file is absent or unreadable — recompute then no-ops

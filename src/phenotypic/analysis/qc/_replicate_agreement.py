@@ -84,7 +84,7 @@ class ReplicateAgreement(QualityCheck):
         check adds ``QC_SE_Metric`` plus the per-bin summary columns:
 
         >>> import pandas as pd
-        >>> from phenotypic.analysis._replicate_agreement import (
+        >>> from phenotypic.analysis.qc import (
         ...     ReplicateAgreement,
         ... )
         >>> times = [0, 1, 2, 3]

@@ -25,8 +25,8 @@ from playwright.sync_api import Page
 
 from phenotypic import ImagePipeline
 from phenotypic.analysis import ReplicateAgreement
-from phenotypic.qc import QcRecipeEntry
-from phenotypic.qc._runner import run_qc
+from phenotypic.tools_._qc_recipe import QcRecipeEntry
+from phenotypic.tools_._qc_recipe._runner import run_qc
 
 from tests._output_layout import write_master, write_measurements_mirror, write_pipeline_json
 from tests.e2e.gui.conftest import _build_sandbox, _start_live_server

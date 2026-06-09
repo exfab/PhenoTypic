@@ -67,7 +67,7 @@ from phenotypic.gui.results_viewer._qc_tab.review import (
     _ids as review_ids,
     register_review_callbacks,
 )
-from phenotypic.qc import QcRecipe
+from phenotypic.tools_._qc_recipe import QcRecipe
 
 logger = logging.getLogger(__name__)
 

@@ -277,7 +277,7 @@ CFG_QC_AUGMENTED_FRAME: str = "pheno_qc_augmented_frame"
 #: :class:`~phenotypic._core._image_pipeline.ImagePipeline` deserialized
 #: from the active output root's ``pipeline.json`` at boot. The QC Review
 #: tab's per-group recompute hands this to
-#: :func:`phenotypic.qc._runner.run_qc` so the in-session recompute uses
+#: :func:`phenotypic.tools_._qc_recipe._runner.run_qc` so the in-session recompute uses
 #: exactly the same checks the CLI persisted. ``None`` when no
 #: ``pipeline.json`` exists (or it failed to load) — recompute degrades to
 #: a no-op in that case. Spec §D.5.

@@ -132,7 +132,7 @@ class ExpectedVsDetectedCount(QualityCheck):
         one well:
 
         >>> import pandas as pd
-        >>> from phenotypic.analysis._expected_vs_detected import (
+        >>> from phenotypic.analysis.qc import (
         ...     ExpectedVsDetectedCount,
         ... )
         >>> metadata = pd.DataFrame({

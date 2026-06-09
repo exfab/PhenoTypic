@@ -575,7 +575,7 @@ def finalize_post_master_outputs(
             non-empty ``qc`` section: the GUI-owned
             :data:`~phenotypic.tools_.QC_REVIEW_STATE_JSON` is cleared
             (a fresh CLI run resets review progress) and
-            :func:`phenotypic.qc.run_qc` writes the ``qc/`` artifact from
+            :func:`phenotypic.tools_._qc_recipe._runner.run_qc` writes the ``qc/`` artifact from
             the post-applied + metadata-joined frame. QC failures are
             logged and never affect the authoritative master files.
 
@@ -619,7 +619,7 @@ def finalize_post_master_outputs(
                 # Import the submodule directly (not ``phenotypic.qc``) so QC
                 # compute is only pulled in on the path that needs it, keeping
                 # the qc package __init__ free of an eager _runner import.
-                from phenotypic.qc._runner import run_qc
+                from phenotypic.tools_._qc_recipe._runner import run_qc
 
                 run_qc(post_df.to_pandas(), pipeline, output_dir)
             except Exception:

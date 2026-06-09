@@ -14,7 +14,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import pytest
 
-from phenotypic.analysis._replicate_agreement import ReplicateAgreement
+from phenotypic.analysis.qc import ReplicateAgreement
 
 
 # --------------------------------------------------------------------------- #

@@ -126,7 +126,7 @@ class ICC(QualityCheck):
         ``QC_ICC_Metric`` plus the per-group summary columns:
 
         >>> import pandas as pd
-        >>> from phenotypic.analysis._icc import ICC
+        >>> from phenotypic.analysis.qc import ICC
         >>> data = pd.DataFrame({
         ...     "Plate": ["P1"] * 9,
         ...     "Metadata_Time": [0, 0, 0, 1, 1, 1, 2, 2, 2],

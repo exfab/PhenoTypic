@@ -397,7 +397,7 @@ def _write_parquet(target: Path, df: pd.DataFrame) -> None:
     """Atomically write *df* to *target* as zstd Parquet.
 
     Reuses the CLI's :func:`_atomic_write` (lazy-imported to keep
-    ``phenotypic.qc`` free of an eager ``_cli`` import). Failure is logged at
+    ``phenotypic.tools_._qc_recipe`` free of an eager ``_cli`` import). Failure is logged at
     WARNING and swallowed so one bad write never aborts the others — the
     caller (CLI finalize) already runs ``run_qc`` under its own try/except.
 

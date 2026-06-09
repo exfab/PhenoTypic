@@ -8,7 +8,7 @@ maximum as the per-bin metric, then broadcasts the per-bin scalars back to
 every replicate row in the bin so downstream curation can pick up the flag
 from any row.
 
-Where :class:`~phenotypic.analysis._relative_mad.RelativeMAD` measures the
+Where :class:`~phenotypic.analysis.qc._relative_mad.RelativeMAD` measures the
 overall spread of a bin, this check targets the *worst single member*: a
 large maximum modified Z-score marks the most-deviating colony, which often
 reflects contamination, an edge artifact, or a segmentation error rather
@@ -85,7 +85,7 @@ class MaxModifiedZScore(QualityCheck):
         ``QC_ZMax_Metric`` plus the per-bin summary columns:
 
         >>> import pandas as pd
-        >>> from phenotypic.analysis._max_modz import MaxModifiedZScore
+        >>> from phenotypic.analysis.qc import MaxModifiedZScore
         >>> data = pd.DataFrame({
         ...     "Plate": ["P1"] * 8,
         ...     "Metadata_Time": [0, 0, 0, 0, 1, 1, 1, 1],
