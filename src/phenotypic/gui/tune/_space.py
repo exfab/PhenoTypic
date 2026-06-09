@@ -403,7 +403,7 @@ def build_space_view(root: "TuneRunRoot") -> html.Div:
     note = ""
     if not _is_tuning_spec(source):
         note = (
-            "Fresh search space from pipeline.json — the scorer, strategy, and "
+            "Fresh search space from pipeline.json -- the scorer, strategy, and "
             "budget will be defaulted; review them in Launch before tuning."
         )
 
