@@ -100,8 +100,8 @@ def render_output_dir_tree(
     children: List = [
         html.Div(
             str(here.resolve() if here.exists() else here),
-            className="text-monospace small text-muted mb-2",
-            style={"wordBreak": "break-all"},
+            className="small text-muted mb-2",
+            style={"wordBreak": "break-all", "fontFamily": "var(--font-mono)"},
         ),
     ]
 

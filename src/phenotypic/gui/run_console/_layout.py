@@ -133,7 +133,7 @@ def render_recents_table(rows: List[RecentRunRow]) -> List:
             html.Tr(
                 [
                     html.Td(
-                        "(no runs yet — start one above)",
+                        "(no runs yet -- start one above)",
                         colSpan=4,
                         className="run-console-recents-empty",
                     )
