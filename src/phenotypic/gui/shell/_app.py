@@ -296,7 +296,13 @@ def compose_hub(
     #     user binds a tune run from the sidebar (Chunk C), at which point the
     #     page re-reads the bound run. The factory stays optuna-free; the live
     #     study is opened lazily inside the Monitor poll callback only.
-    tune_app = tune.create_app(root=None, url_prefix=MOUNT_TUNE, sandbox=sandbox)
+    tune_app = tune.create_app(
+        root=None,
+        url_prefix=MOUNT_TUNE,
+        sandbox=sandbox,
+        registry=registry,
+        runner=runner,
+    )
     wrap_in_chrome(tune_app, active_tab=SHELL_TAB_TUNE, sandbox=sandbox)
 
     # Stash on the shell server too so any future cross-tool callback

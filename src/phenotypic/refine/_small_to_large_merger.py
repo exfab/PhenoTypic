@@ -1,17 +1,18 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
 import numpy as np
-from pydantic import field_validator
+from pydantic import Field
 from scipy.spatial import cKDTree
 from skimage.measure import regionprops_table
 import pandas as pd
 
 from ..abc_ import ObjectRefiner
+from ..tools_.typing_ import TuneSpec
 
 
 class SmallToLargeMerger(ObjectRefiner):
@@ -71,30 +72,12 @@ class SmallToLargeMerger(ObjectRefiner):
         merging strategies.
     """
 
-    distance_threshold: float = 30.0
-    size_threshold: int = 100
-
-    @field_validator("distance_threshold")
-    @classmethod
-    def _validate_distance_threshold(cls, distance_threshold: float) -> float:
-        """Reject a non-positive ``distance_threshold``.
-
-        Reproduces the pre-migration ``__init__`` guard verbatim.
-        """
-        if distance_threshold <= 0:
-            raise ValueError("distance_threshold must be positive")
-        return distance_threshold
-
-    @field_validator("size_threshold")
-    @classmethod
-    def _validate_size_threshold(cls, size_threshold: int) -> int:
-        """Reject a non-positive ``size_threshold``.
-
-        Reproduces the pre-migration ``__init__`` guard verbatim.
-        """
-        if size_threshold <= 0:
-            raise ValueError("size_threshold must be positive")
-        return size_threshold
+    distance_threshold: Annotated[float, TuneSpec(10.0, 50.0)] = Field(
+            default=30.0, gt=0
+    )
+    size_threshold: Annotated[int, TuneSpec(50, 200, log=True)] = Field(
+            default=100, gt=0
+    )
 
     def _operate(self, image: Image) -> Image:
         """Apply small-to-large hierarchical merging to objmap.

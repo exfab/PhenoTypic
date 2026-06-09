@@ -38,23 +38,54 @@
 - **Unblock when:** GT validation (item 1) is in place and a metric beyond region/count is needed;
   pin τ / symmetrization / ICC-form / aggregation per the spec when each family is added.
 
-## 3. Operation tuning-annotation coverage — remaining families  — *high-priority deferred*
+## 3. Operation tuning-annotation coverage — remaining families  — ✅ *RESOLVED (annotation pass complete)*
 
 **Decision:** *Annotate `detect/` + `enhance/` now; the rest soon.*  ⚠️ **User flagged: needed soon.**
+
+**Status (resolved):** the annotation pass now covers **all five** families. `ANNOTATED_MODULES`
+(`tests/unit/tune/_annotation_introspect.py`) was extended to `detect + enhance + refine + grid +
+correction`, every numeric-tunable field in `refine/`, `grid/`, and `correction/` was annotated with a
+`TuneSpec` search window or `TuneSpec(tunable=False)`, and the remaining `detect/`/`enhance/` allowlist
+was worked through in the same sweep. Coverage is now **231/243 (95.1%)**. All four guards (`⊆`
+invariant, apply-time backstop, back-compat, coverage) pass.
+
+**Deliberately NOT windowed (12 allowlist entries — no fabricated bounds):** every shipped `TuneSpec`
+window is grounded in the field's docstring "Typical range" or a documented library/house default. For
+the 12 fields with **no defensible documented range**, no guessed window was shipped — they stay
+un-annotated on the allowlist so the engine's Tier-2 heuristic flags them (`needs_review=True`) rather
+than asserting a fabricated bound:
+
+> `FocusEdge{Frangi.alpha, Frangi.gamma, Hessian.alpha, Meijering.alpha}` (ridge-filter shape params),
+> `StructureSmoothing.{alpha, C}` (structure-tensor diffusion constants),
+> `BayesShrinkEnhancer.sigma` / `VisuShrinkEnhancer.sigma` (auto-estimated wavelet noise σ),
+> `GridAlignmentRefiner.peak_prominence` / `RefineBySineFit.peak_prominence` (signal-derived),
+> `ColorCheckerProfile.{median_filter_size, stddev_mag_threshold}` (border-detection thresholds).
+
+> **Follow-up (separate PR — values, not structure):** after the operation docstrings are enriched and
+> fact-checked, set these 12 `TuneSpec` windows from verified sources (and re-check the "med"-confidence
+> windows that *were* shipped — `ChanVese.{lambda1,lambda2}`, `MadHysteresis.min_size`,
+> `ColorCheckerProfile.{min_swatch_area_frac,core_fraction,ridge_lambda,outlier_sigma}`, the
+> Bayes/Visu *corrector* σ, `StructureSmoothing.{sigma,num_iter}`, the `min_peak_distance`s, etc.).
 
 - **Built (annotations workstream v1):** `TuneSpec(...)` search hints + `Field(ge=, le=)` validity
   bounds on **`src/phenotypic/detect/`** and **`src/phenotypic/enhance/`** fields, with the
   `⊆` invariant test + apply-time backstop (for validator-enforced bounds, which `model_fields`
   metadata can't see) + a shrinking coverage allowlist.
-- **Deferred (do next):** the same annotation pass over **`src/phenotypic/refine/`**,
-  **`src/phenotypic/grid/`**, and **`src/phenotypic/correction/`**. Until then,
-  `infer_search_space` flags those families' numeric fields as `needs_review=True`, keeping the
-  `--auto-space` autonomy gate (`proposal.needs_review`) conservative for pipelines that use them.
-- **Migration rule (carry forward):** convert a `field_validator`→`Field(...)` **only** for a bare
-  scalar bound; keep normalizing/conditional validators in place (split when both exist). Back-compat
-  `pipeline.json` fixtures must still load after any `Field` tightening.
+- **Done (this pass):** the same annotation pass over **`src/phenotypic/refine/`**,
+  **`src/phenotypic/grid/`**, and **`src/phenotypic/correction/`**, plus the residual
+  `detect/`+`enhance/` allowlist. `infer_search_space` now resolves these families' annotated fields via
+  Tier-1 (`source="tune_spec"`, `needs_review=False`) instead of the unbounded heuristic, so the
+  `--auto-space` autonomy gate (`proposal.needs_review`) is no longer conservatively tripped by their
+  numeric fields.
+- **Migration rule (carried forward):** converted a `field_validator`→`Field(...)` **only** for a bare
+  scalar bound (4 refine mergers' positivity guards → `Field(gt=0)`; 3 new detect bounds where no
+  validator existed); kept normalizing/conditional validators in place. Back-compat `pipeline.json`
+  fixtures still load. Note: migrating a custom-message validator to `Field` changes the
+  `ValidationError` text (tests asserting the old message were updated to the pydantic phrasing).
 - **Gating:** coverage check is **advisory** (warns on shrink) until ≥70% of numeric fields across the
-  annotated families are covered, then **hard-gates**. Re-evaluate the threshold as families land.
+  annotated families are covered, then **hard-gates**. Now hard-gating at 95.1%. The `ADVISORY_UNTIL_
+  COVERAGE = 0.70` floor was left as-is: the subset/stale allowlist tests are the true no-regression
+  ratchet, and a high % floor would conflict with the allowlist escape hatch for future new ops.
 
 ## 4. Spec-deferred (v1 scope caps — informational)
 

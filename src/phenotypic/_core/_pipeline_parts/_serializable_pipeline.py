@@ -14,6 +14,10 @@ if TYPE_CHECKING:
 import warnings
 
 from phenotypic.abc_ import ImageOperation, MeasureFeatures
+from phenotypic.tools_._io_constants import (
+    CONFIG_SUFFIX_PIPELINE,
+    ensure_typed_json_suffix,
+)
 from ._napari_pipeline_viewer import NapariPipelineViewer
 
 # Import version for serialization - must be after other phenotypic imports to avoid circular import
@@ -93,12 +97,14 @@ class SerializablePipeline(NapariPipelineViewer):
             >>> from phenotypic.measure import MeasureShape
             >>> pipe = ImagePipeline(pipe_cfgs=[OtsuDetector()], meas=[MeasureShape()])
             >>> json_str = pipe.to_json()
-            >>> pipe.to_json('my_pipeline.json')  # Save to file
+            >>> pipe.to_json('my_pipeline')  # Save to typed config file
         """
         json_str = str(self)
 
         if filepath is not None:
-            Path(filepath).write_text(json_str)
+            ensure_typed_json_suffix(filepath, CONFIG_SUFFIX_PIPELINE).write_text(
+                json_str
+            )
             return None
         else:
             return json_str
@@ -230,12 +236,12 @@ class SerializablePipeline(NapariPipelineViewer):
 
             >>> from phenotypic import ImagePipeline
             >>> # Load from file
-            >>> pipe = ImagePipeline.from_json('my_pipeline.json')
+            >>> pipe = ImagePipeline.from_json(saved_path)
             >>> # Load from string
             >>> json_str = '{"pipe_cfgs": {...}, "meas": {...}}'
             >>> pipe = ImagePipeline.from_json(json_str)
             >>> # Load with benchmarking enabled
-            >>> pipe = ImagePipeline.from_json('pipeline.json', benchmark=True)
+            >>> pipe = ImagePipeline.from_json(saved_path, benchmark=True)
         """
         # If already a parsed dict, use directly
         if isinstance(json_data, dict):

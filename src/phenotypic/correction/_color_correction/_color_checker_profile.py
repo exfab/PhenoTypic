@@ -24,7 +24,11 @@ from pydantic import (
 )
 
 from phenotypic.tools_._json_io import read_json_source
-from phenotypic.tools_.typing_ import NdArrayField
+from phenotypic.tools_._io_constants import (
+    CONFIG_SUFFIX_COLOR_CHECKER,
+    ensure_typed_json_suffix,
+)
+from phenotypic.tools_.typing_ import NdArrayField, TuneSpec
 
 from ._capture_metadata import CaptureMetadata
 from ._helpers import (
@@ -307,15 +311,15 @@ class ColorCheckerProfile(BaseModel):
 
     # -- constructor parameters --------------------------------------------
     checker_type: str = "ColorChecker24 - After November 2014"
-    degree: int = 2
+    degree: Annotated[int, TuneSpec(categories=(1, 2, 3, 4))] = 2
     target_illuminant: str = "D65"
     median_filter_size: int = 10
     stddev_mag_threshold: float = 15.0
     pad_checker: bool = False
-    min_swatch_area_frac: float = 0.3
-    core_fraction: float = 0.5
-    ridge_lambda: float = 1e-3
-    outlier_sigma: float = 2.0
+    min_swatch_area_frac: Annotated[float, TuneSpec(0.1, 0.6)] = 0.3
+    core_fraction: Annotated[float, TuneSpec(0.3, 0.8)] = 0.5
+    ridge_lambda: Annotated[float, TuneSpec(1e-4, 1e-1, log=True)] = 1e-3
+    outlier_sigma: Annotated[float, TuneSpec(1.5, 4.0)] = 2.0
     rois: list[tuple[_RoiSlice, _RoiSlice]] | None = Field(default=None, exclude=True)
 
     # -- post-fit state (defaults so an unfitted profile still constructs) --
@@ -392,16 +396,20 @@ class ColorCheckerProfile(BaseModel):
             >>> import tempfile
             >>> from pathlib import Path
             >>> from phenotypic.correction import ColorCheckerProfile
+            >>> from phenotypic.tools_ import CONFIG_SUFFIX_COLOR_CHECKER, ensure_typed_json_suffix
             >>> with tempfile.TemporaryDirectory() as d:
             ...     p = Path(d) / "profile.json"
+            ...     saved = ensure_typed_json_suffix(p, CONFIG_SUFFIX_COLOR_CHECKER)
             ...     ColorCheckerProfile(degree=3).to_json(p)
-            ...     loaded = ColorCheckerProfile.from_json(p)
+            ...     loaded = ColorCheckerProfile.from_json(saved)
             >>> loaded.degree
             3
         """
         json_str = self.model_dump_json(indent=2)
         if filepath is not None:
-            Path(filepath).write_text(json_str)
+            ensure_typed_json_suffix(
+                filepath, CONFIG_SUFFIX_COLOR_CHECKER
+            ).write_text(json_str)
             return None
         return json_str
 

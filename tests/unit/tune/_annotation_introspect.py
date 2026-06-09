@@ -19,12 +19,17 @@ from typing import Any, Iterator, Literal, Union, get_args, get_origin
 import annotated_types as at
 import numpy as np
 
+import phenotypic.correction as _correction
 import phenotypic.detect as _detect
 import phenotypic.enhance as _enhance
+import phenotypic.grid as _grid
+import phenotypic.refine as _refine
 from phenotypic.tune import TuneSpec
 
-#: The two operation families v1 of the annotations workstream covers.
-ANNOTATED_MODULES = (_detect, _enhance)
+#: The operation families the annotations workstream covers. v1 shipped
+#: ``detect`` + ``enhance``; the ``refine`` / ``grid`` / ``correction`` pass
+#: (DEFERRED-WORK.md §3) brought the remaining families into the denominator.
+ANNOTATED_MODULES = (_detect, _enhance, _refine, _grid, _correction)
 
 
 def iter_annotated_classes() -> Iterator[type]:

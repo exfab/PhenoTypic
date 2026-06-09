@@ -5,10 +5,10 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
 from skimage.filters import laplace
-from typing import Optional
+from typing import Annotated, Optional
 
 from ..abc_ import FocusEdge
-from phenotypic.tools_.typing_ import NdArrayField
+from phenotypic.tools_.typing_ import NdArrayField, TuneSpec
 
 
 class FocusEdgeLaplace(FocusEdge):
@@ -58,7 +58,7 @@ class FocusEdgeLaplace(FocusEdge):
         fit into the pipeline model.
     """
 
-    kernel_size: Optional[int] = 3
+    kernel_size: Annotated[Optional[int], TuneSpec(3, 7, step=2)] = 3
     mask: NdArrayField | None = None
 
     def _operate(self, image: Image) -> Image:

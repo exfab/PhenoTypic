@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import difflib
 import json
+import warnings
+from pathlib import Path
 from typing import Any, Optional, TypeAlias
 
 from pydantic import (
@@ -11,10 +13,15 @@ from pydantic import (
     TypeAdapter,
     field_serializer,
     field_validator,
+    Field,
     model_validator,
 )
 
 from phenotypic import ImagePipeline
+from phenotypic.tools_._io_constants import (
+    CONFIG_SUFFIX_TUNING,
+    ensure_typed_json_suffix,
+)
 from phenotypic.tools_.typing_ import polymorphic_field
 
 from ._evaluation import Evaluator, HeldOutConfig
@@ -43,6 +50,13 @@ StrategyConfigField = polymorphic_field(base=StrategyConfig)  # type: ignore[mis
 _STRATEGY_UNION_ADAPTER: TypeAdapter[StrategyConfig] = TypeAdapter(
     StrategyConfigUnion
 )
+
+
+def _current_phenotypic_version() -> str:
+    """Return the package version used to stamp serialized tuning specs."""
+    import phenotypic
+
+    return phenotypic.__version__
 
 
 class Budget(BaseModel):
@@ -137,10 +151,13 @@ class TuningSpec(BaseModel):
             conservative :class:`HeldOutConfig`; a frozen pre-4.5p1
             ``tuning_spec.json`` with **no** ``held_out`` block still validates
             (the field defaults), so the addition is back-compatible.
+        phenotypic_version: Package version that wrote the spec. Missing or
+            mismatched values warn during load but do not reject legacy specs.
     """
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
+    phenotypic_version: str = Field(default_factory=_current_phenotypic_version)
     pipeline: ImagePipeline
     search_space: SearchSpace
     scorer: ScorerField
@@ -148,6 +165,57 @@ class TuningSpec(BaseModel):
     strategy: StrategyConfigField
     budget: Budget
     held_out: HeldOutConfig = HeldOutConfig()
+
+    @model_validator(mode="before")
+    @classmethod
+    def _warn_version_provenance(cls, value: object) -> object:
+        """Warn when loading legacy or older/newer tuning spec payloads."""
+        if not isinstance(value, dict):
+            return value
+        if isinstance(value.get("pipeline"), ImagePipeline):
+            return value
+        saved = value.get("phenotypic_version")
+        current = _current_phenotypic_version()
+        if saved is None:
+            warnings.warn(
+                "tuning spec is missing phenotypic_version; assuming current "
+                f"version {current}",
+                UserWarning,
+                stacklevel=2,
+            )
+        elif saved != current:
+            warnings.warn(
+                "tuning spec phenotypic_version "
+                f"{saved!r} differs from current version {current!r}",
+                UserWarning,
+                stacklevel=2,
+            )
+        return value
+
+    def to_json(
+        self,
+        filepath: str | Path | None = None,
+        *,
+        indent: int | None = 2,
+    ) -> str | None:
+        """Serialize this tuning spec to JSON.
+
+        Args:
+            filepath: Optional path to write. When provided, legacy ``.json``
+                names are normalized to the typed tuning config suffix.
+            indent: Indentation passed to
+                :meth:`~pydantic.BaseModel.model_dump_json`. Defaults to 2.
+
+        Returns:
+            The JSON string when ``filepath`` is None, otherwise None.
+        """
+        payload = self.model_dump_json(indent=indent)
+        if filepath is not None:
+            ensure_typed_json_suffix(filepath, CONFIG_SUFFIX_TUNING).write_text(
+                payload
+            )
+            return None
+        return payload
 
     @field_validator("pipeline", mode="before")
     @classmethod

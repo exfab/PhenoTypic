@@ -22,6 +22,7 @@ from phenotypic.tune import (
 )
 from phenotypic.tune._search_space._targets import Param
 from phenotypic.tune._spec import Budget, TuningSpec
+from phenotypic.tools_ import CONFIG_SUFFIX_TUNING, ensure_typed_json_suffix
 
 #: The frozen Phase-1 ``tuning_spec.json`` (strategy block in the original
 #: discriminated-union form ``{"seed": 0, "kind": "grid"}``) — proves that
@@ -69,6 +70,40 @@ def test_spec_round_trips_pipeline_and_scorer(tmp_path):
         None, pd.DataFrame({"Metadata_ImageName": ["p"] * 96,
                             "Object_Label": list(range(96))})
     )["Count"] == 1.0
+    assert isinstance(back.strategy, GridConfig)
+
+
+def test_spec_to_json_returns_string(tmp_path):
+    spec = _spec(tmp_path)
+    payload = spec.to_json()
+
+    assert isinstance(payload, str)
+    assert json.loads(payload)["phenotypic_version"]
+    back = TuningSpec.model_validate_json(payload)
+    assert isinstance(back.strategy, GridConfig)
+    assert back.phenotypic_version == spec.phenotypic_version
+
+
+def test_missing_phenotypic_version_warns_and_defaults(tmp_path):
+    payload = json.loads(_spec(tmp_path).model_dump_json())
+    payload.pop("phenotypic_version")
+
+    with pytest.warns(UserWarning, match="phenotypic_version"):
+        back = TuningSpec.model_validate(payload)
+
+    assert back.phenotypic_version
+
+
+def test_spec_to_json_file_uses_typed_suffix(tmp_path):
+    spec = _spec(tmp_path)
+    filepath = tmp_path / "tuning_spec.json"
+    typed_filepath = ensure_typed_json_suffix(filepath, CONFIG_SUFFIX_TUNING)
+
+    spec.to_json(filepath)
+
+    assert not filepath.exists()
+    assert typed_filepath.exists()
+    back = TuningSpec.model_validate_json(typed_filepath.read_text())
     assert isinstance(back.strategy, GridConfig)
 
 

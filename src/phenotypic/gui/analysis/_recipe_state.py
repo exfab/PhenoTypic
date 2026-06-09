@@ -33,7 +33,11 @@ from typing import TYPE_CHECKING, List, Optional
 from phenotypic._core._pipeline_parts._serializable_pipeline import (
     PipelineLoadWarning,
 )
-from phenotypic.tools_ import pipeline_json_path
+from phenotypic.tools_ import (
+    DIR_DELIVERABLES,
+    pipeline_json_path,
+    resolve_pipeline_config_path,
+)
 
 if TYPE_CHECKING:
     from phenotypic._core._image_pipeline import ImagePipeline
@@ -59,6 +63,7 @@ class RecipeState:
     path: Path
     pipeline: "ImagePipeline"
     seed_mtime_ns: Optional[int] = None
+    source_path: Optional[Path] = None
     #: JSON string from the most recent successful :meth:`save`. Callbacks
     #: read this for the ``ANALYSIS_PIPELINE_STORE`` payload instead of
     #: re-serializing the pipeline a second time.
@@ -99,20 +104,24 @@ class RecipeState:
         from phenotypic._core._image_pipeline import ImagePipeline
 
         pipeline_path = pipeline_json_path(output_dir)
+        read_path = resolve_pipeline_config_path(output_dir)
         load_warnings: List[PipelineLoadWarning] = []
 
-        if pipeline_path.exists():
+        if read_path.exists():
             pipeline = ImagePipeline.from_json(
-                pipeline_path,
+                read_path,
                 skip_unknown_analyzers=True,
                 load_warnings=load_warnings,
             )
-            mtime = pipeline_path.stat().st_mtime_ns
+            try:
+                mtime = read_path.stat().st_mtime_ns
+            except OSError:
+                mtime = None
             if load_warnings:
                 logger.warning(
                     "%s referenced %d unknown analyzer class(es); the "
                     "analysis page will render a banner. Skipped: %s",
-                    pipeline_path,
+                    read_path,
                     len(load_warnings),
                     ", ".join(w.class_name for w in load_warnings),
                 )
@@ -124,6 +133,7 @@ class RecipeState:
             path=pipeline_path,
             pipeline=pipeline,
             seed_mtime_ns=mtime,
+            source_path=read_path if read_path != pipeline_path else None,
             load_warnings=load_warnings,
         )
 
@@ -139,12 +149,25 @@ class RecipeState:
         if self.seed_mtime_ns is None:
             # No on-disk file yet — nothing to be stale against.
             return False
+        tracked_path = self._tracked_path()
         try:
-            current = self.path.stat().st_mtime_ns
+            current = tracked_path.stat().st_mtime_ns
         except FileNotFoundError:
             # File deleted out from under us; treat as stale.
             return True
         return current != self.seed_mtime_ns
+
+    def _tracked_path(self) -> Path:
+        """Return the path whose mtime should be compared against the seed."""
+        if self.path.exists() or self.source_path is None:
+            return self.path
+        return self.source_path
+
+    def _output_root(self) -> Path:
+        """Return the output root that owns :attr:`path`."""
+        if self.path.parent.name == DIR_DELIVERABLES:
+            return self.path.parent.parent
+        return self.path.parent
 
     def save(self) -> bool:
         """Atomically write :attr:`pipeline` to :attr:`path`.
@@ -185,6 +208,7 @@ class RecipeState:
                 return False
 
             self.seed_mtime_ns = self.path.stat().st_mtime_ns
+            self.source_path = None
             self.last_json = payload
             return True
 
@@ -195,19 +219,8 @@ class RecipeState:
         CLI seed before resuming edits.
         """
         with self._lock:
-            from phenotypic._core._image_pipeline import ImagePipeline
-
-            fresh_warnings: List[PipelineLoadWarning] = []
-            if self.path.exists():
-                self.pipeline = ImagePipeline.from_json(
-                    self.path,
-                    skip_unknown_analyzers=True,
-                    load_warnings=fresh_warnings,
-                )
-                self.seed_mtime_ns = self.path.stat().st_mtime_ns
-            else:
-                self.pipeline = ImagePipeline(
-                    name=f"analysis-{self.path.parent.name}"
-                )
-                self.seed_mtime_ns = None
-            self.load_warnings = fresh_warnings
+            fresh = type(self).load(self._output_root())
+            self.pipeline = fresh.pipeline
+            self.seed_mtime_ns = fresh.seed_mtime_ns
+            self.source_path = fresh.source_path
+            self.load_warnings = fresh.load_warnings

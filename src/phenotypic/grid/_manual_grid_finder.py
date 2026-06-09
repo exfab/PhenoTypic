@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Annotated, Any
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -10,6 +10,7 @@ import numpy as np
 from pydantic import field_validator, model_validator
 
 from phenotypic.abc_ import GridFinder
+from phenotypic.tools_.typing_ import TuneSpec
 
 
 class ManualGridFinder(GridFinder):
@@ -57,8 +58,11 @@ class ManualGridFinder(GridFinder):
     # pydantic build the model; ``_derive_grid_shape`` (a post-validator)
     # overwrites them from the validated edges, reproducing the legacy
     # ``__init__`` behaviour.
-    nrows: int = 0
-    ncols: int = 0
+    # ``nrows`` / ``ncols`` are structural plate-geometry parameters derived
+    # from the edge arrays, not accuracy knobs, so they are excluded from
+    # the tuning search.
+    nrows: Annotated[int, TuneSpec(tunable=False)] = 0
+    ncols: Annotated[int, TuneSpec(tunable=False)] = 0
     row_edges: list[int]
     col_edges: list[int]
 

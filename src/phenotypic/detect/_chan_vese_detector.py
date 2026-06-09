@@ -1,15 +1,17 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated
 
 if TYPE_CHECKING:
     from phenotypic._core._grid_image import GridImage
     from phenotypic._core._image import Image
 
+from pydantic import Field
 from skimage import segmentation, morphology
 from scipy import ndimage
 
 from ..abc_ import ObjectDetector
+from ..tools_.typing_ import TuneSpec
 
 
 class ChanVeseDetector(ObjectDetector):
@@ -126,15 +128,15 @@ class ChanVeseDetector(ObjectDetector):
             failure modes.
     """
 
-    mu: float = 0.25
-    lambda1: float = 1.0
-    lambda2: float = 1.0
-    max_num_iter: int = 500
-    tol: float = 1e-3
-    dt: float = 0.5
+    mu: Annotated[float, TuneSpec(0.0, 1.0)] = 0.25
+    lambda1: Annotated[float, TuneSpec(0.5, 2.0)] = 1.0
+    lambda2: Annotated[float, TuneSpec(0.5, 2.0)] = 1.0
+    max_num_iter: Annotated[int, TuneSpec(100, 1000)] = 500
+    tol: Annotated[float, TuneSpec(1e-5, 1e-2, log=True)] = 1e-3
+    dt: Annotated[float, TuneSpec(0.1, 1.0)] = 0.5
     init_level_set: str = "checkerboard"
-    min_size: int = 50
-    connectivity: int = 2
+    min_size: Annotated[int, TuneSpec(10, 500, log=True)] = 50
+    connectivity: Annotated[int, TuneSpec(categories=[1, 2])] = Field(2, ge=1, le=2)
 
     def _operate(self, image: Image | GridImage) -> Image:
         """Apply Chan-Vese level-set segmentation to detect colonies.

@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated
 
 if TYPE_CHECKING:
     from phenotypic._core._grid_image import GridImage
@@ -10,6 +10,7 @@ from scipy.optimize import minimize_scalar
 
 from phenotypic.abc_ import GridCorrector
 from phenotypic.schema import BBOX, GRID
+from phenotypic.tools_.typing_ import TuneSpec
 
 
 class GridAligner(GridCorrector):
@@ -60,7 +61,8 @@ class GridAligner(GridCorrector):
         walkthrough of grid alignment on real plate images.
     """
 
-    axis: int = 0
+    # Axis selector (0=row-wise, 1=column-wise), not a quality knob.
+    axis: Annotated[int, TuneSpec(tunable=False)] = 0
     mode: str = "edge"
 
     def _operate(self, image: GridImage):

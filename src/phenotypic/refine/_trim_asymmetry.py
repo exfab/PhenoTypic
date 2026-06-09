@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Annotated, Literal
 
 if TYPE_CHECKING:
     from skimage.measure._regionprops import RegionProperties
@@ -16,6 +16,7 @@ from skimage.measure import euler_number, regionprops
 
 from ..abc_ import ObjectRefiner
 from ..measure._measure_symmetric_zones import MeasureSymmetricZones
+from ..tools_.typing_ import TuneSpec
 
 _log = logging.getLogger(__name__)
 
@@ -136,15 +137,15 @@ class TrimAsymmetry(ObjectRefiner):
         algorithm and per-colony topology classification.
     """
 
-    symmetry_threshold: float = 3 / 6
-    n_angular_bins: int = 6
-    n_annuli: int = 100
-    pelt_penalty: float = 5.0
-    smoothing_window: int = 3
+    symmetry_threshold: Annotated[float, TuneSpec(0.33, 0.83)] = 3 / 6
+    n_angular_bins: Annotated[int, TuneSpec(4, 12)] = 6
+    n_annuli: Annotated[int, TuneSpec(10, 200, log=True)] = 100
+    pelt_penalty: Annotated[float, TuneSpec(1.0, 20.0, log=True)] = 5.0
+    smoothing_window: Annotated[int, TuneSpec(1, 10)] = 3
     method: Literal["distance", "intensity"] = "distance"
-    beehive_threshold: float | None = None
-    min_cc_area: int = 50
-    min_object_area: int = 100
+    beehive_threshold: Annotated[float | None, TuneSpec(0.0, 0.05)] = None
+    min_cc_area: Annotated[int, TuneSpec(1, 500, log=True)] = 50
+    min_object_area: Annotated[int, TuneSpec(10, 10_000, log=True)] = 100
 
     @field_validator("symmetry_threshold")
     @classmethod

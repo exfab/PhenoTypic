@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, ClassVar, Literal
+from typing import TYPE_CHECKING, Annotated, ClassVar, Literal
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -9,6 +9,7 @@ from skimage.restoration import denoise_wavelet
 
 from ..abc_ import ImageDenoiser
 from ..tools_.mixin import _GATSupportMixin
+from ..tools_.typing_ import TuneSpec
 
 
 class BayesShrinkEnhancer(_GATSupportMixin, ImageDenoiser):
@@ -138,7 +139,7 @@ class BayesShrinkEnhancer(_GATSupportMixin, ImageDenoiser):
     sigma: float | None = None
     wavelet: str = "db2"
     mode: Literal["soft", "hard"] = "soft"
-    wavelet_levels: int | None = None
+    wavelet_levels: Annotated[int | None, TuneSpec(2, 6)] = None
     clip: bool = True
     rescale_sigma: bool = True
 

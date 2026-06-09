@@ -95,6 +95,31 @@ def test_results_layout_is_empty_state(sandbox: SandboxRoot) -> None:
     assert "results-viewer-empty-state" in text
 
 
+def test_results_layout_carries_shared_source_chrome(sandbox: SandboxRoot) -> None:
+    """Viewer keeps its output-root flow while showing source chrome."""
+    app = create_app(sandbox)
+    client = app.server.test_client()
+    resp = client.get("/results/_dash-layout")
+    assert resp.status_code == 200
+    text = resp.get_data(as_text=True)
+    assert "shell-source-image-root-store" in text
+    assert "shell-source-image-root-label" in text
+    assert "source: unset" in text
+
+
+def test_analysis_layout_carries_shared_source_chrome(sandbox: SandboxRoot) -> None:
+    """Analysis gets shared source visibility without binding an output root."""
+    app = create_app(sandbox)
+    client = app.server.test_client()
+    resp = client.get("/analysis/_dash-layout")
+    assert resp.status_code == 200
+    text = resp.get_data(as_text=True)
+    assert "analysis-page" in text
+    assert "shell-source-image-root-store" in text
+    assert "shell-source-image-root-label" in text
+    assert "source: unset" in text
+
+
 def test_sandbox_api_falls_through_dispatcher(sandbox: SandboxRoot) -> None:
     """``/sandbox/api/root`` is on the shell Flask, not under any mount."""
     app = create_app(sandbox)

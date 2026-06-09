@@ -1,17 +1,18 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Dict
+from typing import TYPE_CHECKING, Annotated, Dict
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
 import numpy as np
-from pydantic import field_validator
+from pydantic import Field
 from scipy.spatial import cKDTree
 from skimage.measure import regionprops_table
 import pandas as pd
 
 from ..abc_ import ObjectRefiner
+from ..tools_.typing_ import TuneSpec
 
 
 class MergeFragmentChains(ObjectRefiner):
@@ -70,18 +71,9 @@ class MergeFragmentChains(ObjectRefiner):
         merging approaches.
     """
 
-    distance_threshold: float = 20.0
-
-    @field_validator("distance_threshold")
-    @classmethod
-    def _validate_distance_threshold(cls, distance_threshold: float) -> float:
-        """Reject a non-positive ``distance_threshold``.
-
-        Reproduces the pre-migration ``__init__`` guard verbatim.
-        """
-        if distance_threshold <= 0:
-            raise ValueError("distance_threshold must be positive")
-        return distance_threshold
+    distance_threshold: Annotated[float, TuneSpec(10.0, 50.0)] = Field(
+            default=20.0, gt=0
+    )
 
     @staticmethod
     def _find_root(label: int, parent: Dict[int, int]) -> int:

@@ -1820,9 +1820,7 @@ def _capture_tune_copilot(context, base_url: str) -> None:
         try:
             plate_picker.click(timeout=3000)
             page.wait_for_timeout(400)
-            option = page.locator(
-                ".Select-option, div[class*='option']"
-            ).first
+            option = page.locator("[role='option']:visible").first
             if option.count() > 0:
                 option.click(timeout=3000)
         except Exception as exc:  # pragma: no cover - best-effort

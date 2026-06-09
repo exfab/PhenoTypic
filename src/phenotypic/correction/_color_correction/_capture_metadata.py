@@ -19,9 +19,11 @@ from __future__ import annotations
 
 import math
 import re
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated
 
 from pydantic import BaseModel, ConfigDict
+
+from ...tools_.typing_ import TuneSpec
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -195,10 +197,12 @@ class CaptureMetadata(BaseModel):
     camera_make: str | None = None
     camera_model: str | None = None
     lens_model: str | None = None
-    iso: int | None = None
-    exposure_time: float | None = None
-    f_number: float | None = None
-    focal_length: float | None = None
+    # EXIF capture values recorded from the calibration photo — camera metadata,
+    # never hyperparameter search targets.
+    iso: Annotated[int | None, TuneSpec(tunable=False)] = None
+    exposure_time: Annotated[float | None, TuneSpec(tunable=False)] = None
+    f_number: Annotated[float | None, TuneSpec(tunable=False)] = None
+    focal_length: Annotated[float | None, TuneSpec(tunable=False)] = None
 
     @classmethod
     def from_image(cls, image: Image) -> CaptureMetadata:

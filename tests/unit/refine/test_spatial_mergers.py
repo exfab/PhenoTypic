@@ -171,9 +171,9 @@ class TestTransitiveDistanceMerger:
 
     def test_invalid_threshold_raises_error(self):
         """Non-positive threshold should raise ValueError."""
-        with pytest.raises(ValueError, match="distance_threshold must be positive"):
+        with pytest.raises(ValueError, match="greater than 0"):
             MergeFragmentChains(distance_threshold=0)
-        with pytest.raises(ValueError, match="distance_threshold must be positive"):
+        with pytest.raises(ValueError, match="greater than 0"):
             MergeFragmentChains(distance_threshold=-10)
 
     def test_protected_components(self, two_close_objects_image):
@@ -251,7 +251,7 @@ class TestNearestNeighborMerger:
 
     def test_invalid_distance_raises_error(self):
         """Non-positive distance_threshold should raise ValueError."""
-        with pytest.raises(ValueError, match="distance_threshold must be positive"):
+        with pytest.raises(ValueError, match="greater than 0"):
             NearestNeighborMerger(distance_threshold=0)
 
     def test_invalid_min_size_raises_error(self):
@@ -394,12 +394,12 @@ class TestSmallToLargeMerger:
 
     def test_invalid_distance_raises_error(self):
         """Non-positive distance_threshold should raise ValueError."""
-        with pytest.raises(ValueError, match="distance_threshold must be positive"):
+        with pytest.raises(ValueError, match="greater than 0"):
             SmallToLargeMerger(distance_threshold=0, size_threshold=100)
 
     def test_invalid_size_threshold_raises_error(self):
         """Non-positive size_threshold should raise ValueError."""
-        with pytest.raises(ValueError, match="size_threshold must be positive"):
+        with pytest.raises(ValueError, match="greater than 0"):
             SmallToLargeMerger(distance_threshold=30, size_threshold=0)
 
     def test_preserves_mask_coverage(self, size_mixed_image):

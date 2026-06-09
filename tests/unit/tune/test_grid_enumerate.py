@@ -15,6 +15,9 @@ from phenotypic.tune._strategies._enumerate import enumerate_grid, grid_values
 def test_grid_values_per_domain():
     assert grid_values(Categorical(choices=(True, False))) == [True, False]
     assert grid_values(IntRange(low=2, high=8, step=2)) == [2, 4, 6, 8]
+    assert grid_values(FloatRange(low=0.0, high=1.0, step=0.5)) == [
+        0.0, 0.5, 1.0,
+    ]
     from phenotypic.tune import Fixed
     assert grid_values(Fixed(value="x")) == ["x"]
 

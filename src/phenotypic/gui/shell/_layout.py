@@ -46,6 +46,9 @@ from phenotypic.gui.shell._ids import (
     SHELL_RSS_LABEL,
     SHELL_SIDEBAR_COLLAPSE_BUTTON,
     SHELL_SIDEBAR_COLLAPSE_STORE,
+    SHELL_SOURCE_IMAGE_ROOT_CLEAR,
+    SHELL_SOURCE_IMAGE_ROOT_LABEL,
+    SHELL_SOURCE_IMAGE_ROOT_STORE,
     SHELL_TAB_ANALYSIS,
     SHELL_TAB_BUILDER,
     SHELL_TAB_HOME,
@@ -53,6 +56,7 @@ from phenotypic.gui.shell._ids import (
     SHELL_TAB_TUNE,
     SHELL_TAB_VIEWER,
     SHELL_TOP_BAR,
+    TUNE_PIPELINE_PATH_STORE,
 )
 from phenotypic.gui.shell._sandbox import SandboxRoot
 from phenotypic.gui.shell._sidebar import build_sidebar
@@ -152,6 +156,21 @@ def build_top_bar(
                         id=SHELL_ROOT_LABEL,
                         className="shell-root-label",
                         title=str(sandbox.root),
+                    ),
+                    html.Span(
+                        "source: unset",
+                        id=SHELL_SOURCE_IMAGE_ROOT_LABEL,
+                        className="shell-source-label",
+                        title="No source image root selected",
+                    ),
+                    dbc.Button(
+                        "x",
+                        id=SHELL_SOURCE_IMAGE_ROOT_CLEAR,
+                        size="sm",
+                        color="link",
+                        n_clicks=0,
+                        title="Clear source image root",
+                        className="shell-source-clear-button",
                     ),
                 ],
                 className="shell-top-bar-left",
@@ -301,6 +320,16 @@ def wrap_in_chrome(
                 id=SHELL_SIDEBAR_COLLAPSE_STORE,
                 storage_type="local",
                 data=False,
+            ),
+            dcc.Store(
+                id=SHELL_SOURCE_IMAGE_ROOT_STORE,
+                storage_type="local",
+                data=None,
+            ),
+            dcc.Store(
+                id=TUNE_PIPELINE_PATH_STORE,
+                storage_type="local",
+                data=None,
             ),
         ],
         className="shell-root",

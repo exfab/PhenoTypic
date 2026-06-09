@@ -20,6 +20,8 @@ from typing import FrozenSet, List, Optional
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 from dash import dcc, html
 
+from phenotypic.tools_ import PIPELINE_CONFIG_SUFFIXES, matches_any_suffix
+
 # ---------------------------------------------------------------------------
 # Public constants
 # ---------------------------------------------------------------------------
@@ -41,10 +43,8 @@ IMAGE_EXTS: FrozenSet[str] = frozenset(
 )
 
 #: Pipeline-config file extensions surfaced when the modal is loading a saved
-#: pipeline. The dash builder writes ``ImagePipeline.to_json`` outputs, so only
-#: ``.json`` is currently recognised — YAML support is intentionally out of
-#: scope.
-PIPELINE_EXTS: FrozenSet[str] = frozenset({".json"})
+#: pipeline. Includes the typed pipeline suffix plus legacy plain JSON files.
+PIPELINE_EXTS: FrozenSet[str] = PIPELINE_CONFIG_SUFFIXES
 
 #: Sentinel path injected into the path input when the user clicks
 #: "Use synthetic plate" and the bundled synthetic plate cannot be located on
@@ -176,7 +176,7 @@ def directory_tree(
     Builds a :class:`dbc.ListGroup` showing the immediate children of
     ``current`` (or ``root`` when ``current`` is ``None``): an optional
     "↑ Parent directory" entry, then subdirectories alphabetically, then
-    selectable files whose extension matches ``extensions``. Hidden entries
+    selectable files whose suffix matches ``extensions``. Hidden entries
     (names starting with ``.``) and symlinks that resolve outside ``root``
     are excluded.
 
@@ -197,7 +197,7 @@ def directory_tree(
             Defaults to :data:`IMAGE_EXTS` so the image picker shows plate
             image files suitable for loading with :class:`phenotypic.Image` or
             :class:`phenotypic.GridImage`. Pass :data:`PIPELINE_EXTS` for the
-            JSON pipeline browser, or ``None`` to surface all files. Ignored
+            pipeline config browser, or ``None`` to surface all files. Ignored
             when ``select_files`` is ``False``.
         select_files: When ``True`` (default), matching files appear as
             clickable list items below the subdirectory entries. When
@@ -271,7 +271,7 @@ def directory_tree(
         if is_dir:
             subdirs.append(entry)
         elif select_files and (
-            extensions is None or entry.suffix.lower() in extensions
+            extensions is None or matches_any_suffix(entry, extensions)
         ):
             files.append(entry)
 

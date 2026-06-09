@@ -234,9 +234,9 @@ def _load_qc_pipeline(output_root_path: Path):
         ``pipeline.json`` exists.
     """
     from phenotypic._core._image_pipeline import ImagePipeline
-    from phenotypic.tools_ import pipeline_json_path
+    from phenotypic.tools_ import resolve_pipeline_config_path
 
-    pipeline_path = pipeline_json_path(output_root_path)
+    pipeline_path = resolve_pipeline_config_path(output_root_path)
     if not pipeline_path.exists():
         return None
     try:

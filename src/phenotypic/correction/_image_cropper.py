@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Tuple, TYPE_CHECKING
+from typing import Annotated, Tuple, TYPE_CHECKING
 
 from pydantic import ValidationInfo, field_validator
 
@@ -9,6 +9,7 @@ if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
 from phenotypic.abc_ import ImageCorrector
+from phenotypic.tools_.typing_ import TuneSpec
 
 
 class ImageCropper(ImageCorrector):
@@ -69,10 +70,11 @@ class ImageCropper(ImageCorrector):
         cropping with rotation correction.
     """
 
-    left: int | None = None
-    right: int | None = None
-    top: int | None = None
-    bottom: int | None = None
+    # Per-edge pixel crop offsets — image-specific geometry, not a quality knob.
+    left: Annotated[int | None, TuneSpec(tunable=False)] = None
+    right: Annotated[int | None, TuneSpec(tunable=False)] = None
+    top: Annotated[int | None, TuneSpec(tunable=False)] = None
+    bottom: Annotated[int | None, TuneSpec(tunable=False)] = None
 
     @field_validator("left", "right", "top", "bottom")
     @classmethod

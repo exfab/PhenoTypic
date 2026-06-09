@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated
 
 import numpy as np
+from pydantic import Field
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -12,6 +13,7 @@ from skimage.morphology import remove_small_objects
 from skimage.segmentation import clear_border
 
 from ..abc_ import ThresholdDetector
+from ..tools_.typing_ import TuneSpec
 
 
 class MadHysteresisDetector(ThresholdDetector):
@@ -99,10 +101,15 @@ class MadHysteresisDetector(ThresholdDetector):
             In-depth comparison of all detection strategies.
     """
 
-    k_high: float = 5.0
-    k_low: float = 2.5
-    min_size: int = 20
-    connectivity: int = 2
+    # Search windows are kept non-overlapping (k_low high < k_high low) so the
+    # tuner — which samples each field independently — can never produce a
+    # k_low >= k_high pair, which ``_operate`` rejects. The windows still sit
+    # inside each field's documented typical range (k_low 1.5--4.0, k_high
+    # 3.0--8.0); the fact-check PR may revisit the exact split.
+    k_high: Annotated[float, TuneSpec(4.0, 8.0)] = 5.0
+    k_low: Annotated[float, TuneSpec(1.5, 3.5)] = 2.5
+    min_size: Annotated[int, TuneSpec(10, 500, log=True)] = 20
+    connectivity: Annotated[int, TuneSpec(categories=[1, 2])] = Field(2, ge=1, le=2)
     ignore_zeros: bool = False
     ignore_borders: bool = True
 

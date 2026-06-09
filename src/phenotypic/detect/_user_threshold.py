@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
 from skimage.segmentation import clear_border
 
 from ..abc_ import ThresholdDetector
+from ..tools_.typing_ import TuneSpec
 
 
 class UserThreshold(ThresholdDetector):
@@ -77,7 +78,11 @@ class UserThreshold(ThresholdDetector):
             In-depth comparison of all detection strategies.
     """
 
-    threshold: float = 0.5
+    # ``detect_mat`` follows the project's float-normalized [0, 1] intensity
+    # convention, so the search window spans that range. The *valid* domain is
+    # bit-depth dependent (0--255 / 0--65535 for integer images), so no tight
+    # Field bound is added — only non-negativity is enforced in ``_operate``.
+    threshold: Annotated[float, TuneSpec(0.0, 1.0)] = 0.5
     ignore_zeros: bool = False
     ignore_borders: bool = True
 

@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Iterable, Optional, TYPE_CHECKING
+from typing import Annotated, Iterable, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -8,6 +8,7 @@ from pydantic import field_validator
 from skimage.filters import meijering
 
 from phenotypic.abc_ import FocusEdge
+from phenotypic.tools_.typing_ import TuneSpec
 
 
 class FocusEdgeMeijering(FocusEdge):
@@ -87,10 +88,13 @@ class FocusEdgeMeijering(FocusEdge):
     """
 
     sigmas: tuple[float, ...] = (1, 2, 3)
+    # alpha left unannotated: default None selects skimage's analytic 2-D
+    # optimum (-1/3); the valid domain is negative and tuning away from the
+    # analytic optimum is rarely beneficial, so no defensible search window.
     alpha: Optional[float] = None
     black_ridges: bool = False
     mode: str = "reflect"
-    cval: float = 0
+    cval: Annotated[float, TuneSpec(tunable=False)] = 0
 
     @field_validator("sigmas", mode="before")
     @classmethod

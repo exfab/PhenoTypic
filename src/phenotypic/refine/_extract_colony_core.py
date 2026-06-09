@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -10,6 +10,7 @@ import cv2
 from sklearn.mixture import GaussianMixture
 
 from ..abc_ import ObjectRefiner
+from ..tools_.typing_ import TuneSpec
 
 
 class ExtractColonyCore(ObjectRefiner):
@@ -77,11 +78,11 @@ class ExtractColonyCore(ObjectRefiner):
         workflows on real plate images.
     """
 
-    n_components: int = 2
-    separation_threshold: float = 0.8
-    min_core_area: int = 30
-    morph_open_radius: int = 1
-    morph_close_radius: int = 2
+    n_components: Annotated[int, TuneSpec(2, 4)] = 2
+    separation_threshold: Annotated[float, TuneSpec(0.5, 1.2)] = 0.8
+    min_core_area: Annotated[int, TuneSpec(10, 500, log=True)] = 30
+    morph_open_radius: Annotated[int, TuneSpec(0, 5)] = 1
+    morph_close_radius: Annotated[int, TuneSpec(0, 5)] = 2
 
     # ------------------------------------------------------------------
     # Static helpers

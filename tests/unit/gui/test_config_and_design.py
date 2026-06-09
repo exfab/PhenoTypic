@@ -75,6 +75,19 @@ class TestConfigConstants:
         assert _config.RUN_LOG_DIRNAME == ".gui_log"
         assert _config.VIEWER_CACHE_DIRNAME == ".viewer_cache"
 
+    def test_tune_presets_dir_nests_under_presets(self) -> None:
+        from pathlib import Path
+
+        root = Path("/tmp/sbx")
+        expected = (
+            root
+            / _config.SANDBOX_GUI_DIRNAME
+            / _config.SANDBOX_PRESETS_SUBDIR
+            / _config.SANDBOX_TUNE_PRESETS_SUBDIR
+        )
+        assert _config.tune_presets_dir(root) == expected
+        assert _config.SANDBOX_TUNE_PRESETS_SUBDIR == "tune"
+
     def test_module_does_not_import_dash(self) -> None:
         """``_config`` must be cheap to import everywhere (no Dash/Flask deps)."""
         import sys

@@ -5,7 +5,8 @@ import skimage.filters.rank as rank
 from skimage.util import img_as_ubyte
 from phenotypic.abc_ import ObjectDetector
 from phenotypic.tools_ import FootprintMixin
-from typing import Literal, TYPE_CHECKING
+from phenotypic.tools_.typing_ import TuneSpec
+from typing import Annotated, Literal, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -69,7 +70,7 @@ class RankOtsuDetector(ObjectDetector, FootprintMixin):
     """
 
     shape: Literal["square", "diamond", "disk"] = "square"
-    width: int | None = None
+    width: Annotated[int | None, TuneSpec(3, 31)] = None
     ignore_zeros: bool = False
 
     def _operate(self, image: Image) -> Image:

@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Iterable, TYPE_CHECKING
+from typing import Annotated, Iterable, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -9,6 +9,7 @@ from pydantic import field_validator
 from skimage.feature import hessian_matrix, hessian_matrix_eigvals
 
 from phenotypic.abc_ import FocusEdge
+from phenotypic.tools_.typing_ import TuneSpec
 
 
 class FocusEdgeSato(FocusEdge):
@@ -84,7 +85,7 @@ class FocusEdgeSato(FocusEdge):
     sigmas: tuple[float, ...] = (1, 2, 3)
     black_ridges: bool = False
     mode: str = "reflect"
-    cval: float = 0
+    cval: Annotated[float, TuneSpec(tunable=False)] = 0
 
     @field_validator("sigmas", mode="before")
     @classmethod

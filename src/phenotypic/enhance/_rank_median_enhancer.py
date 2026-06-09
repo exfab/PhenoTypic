@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import Annotated, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -10,6 +10,7 @@ from skimage.filters.rank import median
 from skimage.util import img_as_ubyte, img_as_float
 
 from phenotypic.abc_ import Smoothing
+from phenotypic.tools_.typing_ import TuneSpec
 
 
 class RankMedianEnhancer(Smoothing):
@@ -66,9 +67,9 @@ class RankMedianEnhancer(Smoothing):
     """
 
     shape: str = "square"
-    width: int | None = None
-    shift_x: int = 0
-    shift_y: int = 0
+    width: Annotated[int | None, TuneSpec(3, 15, step=2)] = None
+    shift_x: Annotated[int, TuneSpec(tunable=False)] = 0
+    shift_y: Annotated[int, TuneSpec(tunable=False)] = 0
 
     @field_validator("shape")
     @classmethod

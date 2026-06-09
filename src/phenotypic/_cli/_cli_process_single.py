@@ -204,7 +204,7 @@ def process_single_hdf_measure_core(
     "--pipeline",
     type=click.Path(exists=True, path_type=Path),
     required=True,
-    help="Path to pipeline JSON file",
+    help="Path to pipeline config file",
 )
 @click.option(
     "--image",

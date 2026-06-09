@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -8,6 +8,7 @@ if TYPE_CHECKING:
 from skimage.morphology import thin
 
 from phenotypic.abc_ import ObjectRefiner
+from phenotypic.tools_.typing_ import TuneSpec
 
 
 class Thinning(ObjectRefiner):
@@ -59,7 +60,7 @@ class Thinning(ObjectRefiner):
         morphological refinement methods.
     """
 
-    max_num_iter: int | None = None
+    max_num_iter: Annotated[int | None, TuneSpec(1, 50, log=True)] = None
 
     def _operate(self, image: Image) -> Image:
         image.objmask[:] = thin(image.objmask[:], max_num_iter=self.max_num_iter)

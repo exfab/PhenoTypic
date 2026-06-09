@@ -39,6 +39,15 @@ def _seed_pipeline_json(output_dir: Path) -> Path:
     return path
 
 
+def _seed_legacy_pipeline_json(output_dir: Path) -> Path:
+    """Write a legacy deliverables/pipeline.json and return its path."""
+    pipe = ImagePipeline(ops=[OtsuDetector()], meas=[MeasureShape()])
+    path = output_dir / "deliverables" / "pipeline.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(pipe.to_json() or "")
+    return path
+
+
 def _se_params() -> dict:
     return {"on": "Size_Area", "groupby": ["Metadata_ImageFile"]}
 
@@ -81,6 +90,23 @@ class TestScopedReadModifyWrite:
 
         doc = json.loads(pipeline_json_path(tmp_path).read_text())
         assert [e["instance_id"] for e in doc["qc"]] == [iid]
+
+    def test_add_from_legacy_pipeline_preserves_pipeline_body(
+        self, tmp_path: Path
+    ) -> None:
+        legacy = _seed_legacy_pipeline_json(tmp_path)
+        before = json.loads(legacy.read_text())
+
+        recipe = QcRecipe.load(tmp_path)
+        iid = recipe.add(ReplicateAgreement, _se_params())
+
+        typed = pipeline_json_path(tmp_path)
+        assert iid is not None
+        assert typed.exists()
+        after = json.loads(typed.read_text())
+        assert after["pipe_cfgs"] == before["pipe_cfgs"]
+        assert after["meas"] == before["meas"]
+        assert [e["instance_id"] for e in after["qc"]] == [iid]
 
 
 class TestMtimeRefusal:

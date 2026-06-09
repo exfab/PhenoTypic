@@ -610,6 +610,7 @@ def run_tuning(
     # knee; a single-objective run's empty front makes this a no-op (no pareto/
     # dir — the back-compat lock, plan §0b).
     _finalize_pareto_outputs(store, resolved_spec, output_dir)
+    _finalize_best_params(headline, output_dir, selection=_selection_label(store))
     # Report-only held-out generalization verdict → deliverables/generalization.json.
     _finalize_generalization(
         headline, resolved_spec, output_dir, split, images, images_by_name
@@ -663,6 +664,11 @@ def _headline_winner(store: StudyStore) -> Optional[Trial]:
     return store.best()
 
 
+def _selection_label(store: StudyStore) -> str:
+    """Return the best-params selection label for ``store``."""
+    return "pareto_knee" if store.pareto_front() else "single_best"
+
+
 def _pipeline_for_trial(spec: TuningSpec, trial: Optional[Trial]):
     """Build a candidate pipeline for ``trial`` or ``None`` when no winner exists."""
     from .._evaluation import build_pipeline
@@ -670,6 +676,25 @@ def _pipeline_for_trial(spec: TuningSpec, trial: Optional[Trial]):
     if trial is None:
         return None
     return build_pipeline(spec.pipeline, trial.params)
+
+
+def _finalize_best_params(
+    winner: Optional[Trial],
+    output_dir: Path,
+    *,
+    selection: str,
+) -> None:
+    """Write the Monitor-facing params sidecar for the selected headline trial."""
+    if winner is None:
+        return
+    payload = {
+        "trial_number": winner.number,
+        "score": winner.score,
+        "objectives": winner.objectives or {},
+        "params": winner.params,
+        "selection": selection,
+    }
+    atomic_write_text(io.best_params_path(output_dir), json.dumps(payload, indent=2))
 
 
 def _submit_slurm_fleet(
