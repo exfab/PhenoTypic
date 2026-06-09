@@ -26,12 +26,15 @@ This module provides three things:
   migrates a legacy ``<output>/.viewer_cache/qc_recipe.json`` sidecar into
   the ``qc`` array exactly once.
 
-Import hygiene: this module imports only
+Import hygiene: at module load this module imports only
 :class:`~phenotypic.analysis.abc_.QualityCheck` from the analysis layer
-(plus stdlib). It must **not** import ``_core``/``_cli``/``gui`` at module
-load — ``_core`` imports :class:`QcRecipeEntry` from here, so a back-edge
-would create a cycle. The atomic-write helper is lazy-imported inside
-:meth:`QcRecipe._write_qc_array`.
+and the ``DIR_DELIVERABLES`` constant from :mod:`phenotypic.tools_` (plus
+stdlib). ``phenotypic.tools_`` does not import this submodule, so that edge
+is safe. It must **not** import ``_core``/``_cli``/``gui`` at module load —
+``_core`` imports :class:`QcRecipeEntry` from here, so a back-edge would
+create a cycle. The path helpers (``pipeline_json_path`` /
+``resolve_pipeline_config_path``) are lazy-imported inside :meth:`QcRecipe.load`
+and the atomic-write helper inside :meth:`QcRecipe._write_qc_array`.
 """
 
 from __future__ import annotations

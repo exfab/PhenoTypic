@@ -575,7 +575,7 @@ def finalize_post_master_outputs(
             non-empty ``qc`` section: the GUI-owned
             :data:`~phenotypic.tools_.QC_REVIEW_STATE_JSON` is cleared
             (a fresh CLI run resets review progress) and
-            :func:`phenotypic.qc.run_qc` writes the ``qc/`` artifact from
+            :func:`phenotypic.tools_._qc_recipe._runner.run_qc` writes the ``qc/`` artifact from
             the post-applied + metadata-joined frame. QC failures are
             logged and never affect the authoritative master files.
 
