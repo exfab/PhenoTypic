@@ -26,11 +26,13 @@
 
    .. autosummary::
    
+      ~_DagBuilderState.open_port_menu
       ~_DagBuilderState.pending_delete_block_id
       ~_DagBuilderState.selected_block_id
       ~_DagBuilderState.selected_edge_id
       ~_DagBuilderState.root
       ~_DagBuilderState.breadcrumb
+      ~_DagBuilderState.selected_targets_by_scope
       ~_DagBuilderState.toast_queue
    
    
