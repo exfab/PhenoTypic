@@ -1,8 +1,8 @@
 """Centralized Plotly theme for PhenoTypic figures.
 
 Registers a single ``plotly.io`` template named ``"phenotypic"`` carrying
-the brand palette, Okabe-Ito data series order, and Roboto typography
-defined in ``DESIGN.md`` (and mirrored by
+the brand palette, Okabe-Ito data series order, and the IBM Plex Sans
+typography defined in ``DESIGN.md`` (and mirrored by
 ``phenotypic.gui._design``). The ``@figure`` decorator applies this
 theme to every figure via :func:`apply_theme`, so individual call sites
 never re-spell hex codes, fonts, or axis styling.
@@ -15,7 +15,7 @@ Design-token sources (single source of truth is ``DESIGN.md``):
   Order`` and the matplotlib ``OKABE_ITO`` block in ``07 -- Code
   Integration`` (navy-anchored: navy, orange, sky, green, blue, purple,
   vermilion).
-* Typography -- ``02 -- Typography`` (Roboto-based stack).
+* Typography -- ``02 -- Typography`` (IBM Plex Sans body stack).
 * Chart styling -- ``06 -- Data Visualization / Chart Styling Rules``
   (gridlines ``#e8ecf2``, axes ``#dde3ed``, muted axis labels
   ``#8892a4``, navy title).
@@ -68,8 +68,8 @@ GOLD: str = "#febc11"
 
 #: Card / plot surface.
 WHITE: str = "#ffffff"
-#: App background (paper backdrop behind the plotting area).
-BG: str = "#f5f7fa"
+#: App background (paper backdrop behind the plotting area; DESIGN.md canvas).
+BG: str = "#FBFEF8"
 #: Chart gridlines (``--color-rule``).
 GRID: str = "#e8ecf2"
 #: Axis lines (``--color-border``).
@@ -106,10 +106,12 @@ OKABE_ITO: tuple[str, ...] = (
 # Typography (DESIGN.md "02 -- Typography")
 # ---------------------------------------------------------------------------
 
-#: Roboto-based font stack matching the active GUI font in
-#: ``phenotypic.gui._design``.
+#: Body font stack (IBM Plex Sans) matching ``phenotypic.gui._design``'s
+#: ``FONT_FAMILY_BODY``. The ``test_font_family_does_not_drift_from_gui_design``
+#: guard keeps the two in sync. (Phase 2 will route numeric axis ticks to the
+#: JetBrains Mono stack per DESIGN.md "02"; titles stay on this body stack.)
 FONT_FAMILY: str = (
-    "'Roboto', -apple-system, BlinkMacSystemFont, "
+    "'IBM Plex Sans', -apple-system, BlinkMacSystemFont, "
     '"Segoe UI", "Helvetica Neue", Arial, sans-serif'
 )
 
@@ -118,7 +120,7 @@ def register_phenotypic_template() -> None:
     """Build and register the ``"phenotypic"`` Plotly template.
 
     Constructs a :class:`plotly.graph_objects.layout.Template` carrying
-    the brand palette, Okabe-Ito ``colorway``, Roboto typography, and the
+    the brand palette, Okabe-Ito ``colorway``, IBM Plex Sans typography, and the
     axis / grid / legend styling from ``DESIGN.md``, then stores it in
     :data:`plotly.io.templates` under :data:`PHENOTYPIC_TEMPLATE_NAME`.
 
