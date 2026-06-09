@@ -565,6 +565,7 @@
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">difflib</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">TypeAlias</span>
 
@@ -574,6 +575,7 @@
     <span class="n">TypeAdapter</span><span class="p">,</span>
     <span class="n">field_serializer</span><span class="p">,</span>
     <span class="n">field_validator</span><span class="p">,</span>
+    <span class="n">Field</span><span class="p">,</span>
     <span class="n">model_validator</span><span class="p">,</span>
 <span class="p">)</span>
 
@@ -610,6 +612,13 @@
 <span class="n">_STRATEGY_UNION_ADAPTER</span><span class="p">:</span> <span class="n">TypeAdapter</span><span class="p">[</span><span class="n">StrategyConfig</span><span class="p">]</span> <span class="o">=</span> <span class="n">TypeAdapter</span><span class="p">(</span>
     <span class="n">StrategyConfigUnion</span>
 <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_current_phenotypic_version</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the package version used to stamp serialized tuning specs.&quot;&quot;&quot;</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">phenotypic</span>
+
+    <span class="k">return</span> <span class="n">phenotypic</span><span class="o">.</span><span class="n">__version__</span>
 
 
 <div class="viewcode-block" id="Budget">
@@ -709,10 +718,13 @@
 <span class="sd">            conservative :class:`HeldOutConfig`; a frozen pre-4.5p1</span>
 <span class="sd">            ``tuning_spec.json`` with **no** ``held_out`` block still validates</span>
 <span class="sd">            (the field defaults), so the addition is back-compatible.</span>
+<span class="sd">        phenotypic_version: Package version that wrote the spec. Missing or</span>
+<span class="sd">            mismatched values warn during load but do not reject legacy specs.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">model_config</span> <span class="o">=</span> <span class="n">ConfigDict</span><span class="p">(</span><span class="n">arbitrary_types_allowed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
+    <span class="n">phenotypic_version</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">_current_phenotypic_version</span><span class="p">)</span>
     <span class="n">pipeline</span><span class="p">:</span> <span class="n">ImagePipeline</span>
     <span class="n">search_space</span><span class="p">:</span> <span class="n">SearchSpace</span>
     <span class="n">scorer</span><span class="p">:</span> <span class="n">ScorerField</span>
@@ -720,6 +732,32 @@
     <span class="n">strategy</span><span class="p">:</span> <span class="n">StrategyConfigField</span>
     <span class="n">budget</span><span class="p">:</span> <span class="n">Budget</span>
     <span class="n">held_out</span><span class="p">:</span> <span class="n">HeldOutConfig</span> <span class="o">=</span> <span class="n">HeldOutConfig</span><span class="p">()</span>
+
+    <span class="nd">@model_validator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;before&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_warn_version_provenance</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">object</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">object</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Warn when loading legacy or older/newer tuning spec payloads.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">value</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;pipeline&quot;</span><span class="p">),</span> <span class="n">ImagePipeline</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">value</span>
+        <span class="n">saved</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;phenotypic_version&quot;</span><span class="p">)</span>
+        <span class="n">current</span> <span class="o">=</span> <span class="n">_current_phenotypic_version</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">saved</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="s2">&quot;tuning spec is missing phenotypic_version; assuming current &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;version </span><span class="si">{</span><span class="n">current</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="ne">UserWarning</span><span class="p">,</span>
+                <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">elif</span> <span class="n">saved</span> <span class="o">!=</span> <span class="n">current</span><span class="p">:</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="s2">&quot;tuning spec phenotypic_version &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">saved</span><span class="si">!r}</span><span class="s2"> differs from current version </span><span class="si">{</span><span class="n">current</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="ne">UserWarning</span><span class="p">,</span>
+                <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">value</span>
 
 <div class="viewcode-block" id="TuningSpec.to_json">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.tune.html#phenotypic.tune.TuningSpec.to_json">[docs]</a>

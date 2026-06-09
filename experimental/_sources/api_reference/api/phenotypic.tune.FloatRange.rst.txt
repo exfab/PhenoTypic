@@ -40,6 +40,7 @@ phenotypic.tune.FloatRange
       ~FloatRange.schema_json
       ~FloatRange.update_forward_refs
       ~FloatRange.validate
+      ~FloatRange.values
    
    
 
@@ -57,6 +58,7 @@ phenotypic.tune.FloatRange
       ~FloatRange.kind
       ~FloatRange.low
       ~FloatRange.high
+      ~FloatRange.step
       ~FloatRange.log
    
    

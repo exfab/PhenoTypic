@@ -861,7 +861,13 @@
     <span class="c1">#     user binds a tune run from the sidebar (Chunk C), at which point the</span>
     <span class="c1">#     page re-reads the bound run. The factory stays optuna-free; the live</span>
     <span class="c1">#     study is opened lazily inside the Monitor poll callback only.</span>
-    <span class="n">tune_app</span> <span class="o">=</span> <span class="n">tune</span><span class="o">.</span><span class="n">create_app</span><span class="p">(</span><span class="n">root</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">url_prefix</span><span class="o">=</span><span class="n">MOUNT_TUNE</span><span class="p">,</span> <span class="n">sandbox</span><span class="o">=</span><span class="n">sandbox</span><span class="p">)</span>
+    <span class="n">tune_app</span> <span class="o">=</span> <span class="n">tune</span><span class="o">.</span><span class="n">create_app</span><span class="p">(</span>
+        <span class="n">root</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">url_prefix</span><span class="o">=</span><span class="n">MOUNT_TUNE</span><span class="p">,</span>
+        <span class="n">sandbox</span><span class="o">=</span><span class="n">sandbox</span><span class="p">,</span>
+        <span class="n">registry</span><span class="o">=</span><span class="n">registry</span><span class="p">,</span>
+        <span class="n">runner</span><span class="o">=</span><span class="n">runner</span><span class="p">,</span>
+    <span class="p">)</span>
     <span class="n">wrap_in_chrome</span><span class="p">(</span><span class="n">tune_app</span><span class="p">,</span> <span class="n">active_tab</span><span class="o">=</span><span class="n">SHELL_TAB_TUNE</span><span class="p">,</span> <span class="n">sandbox</span><span class="o">=</span><span class="n">sandbox</span><span class="p">)</span>
 
     <span class="c1"># Stash on the shell server too so any future cross-tool callback</span>

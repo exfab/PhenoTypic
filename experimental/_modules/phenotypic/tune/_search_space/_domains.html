@@ -569,6 +569,7 @@
 <span class="sd">&quot;&quot;&quot;</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">decimal</span><span class="w"> </span><span class="kn">import</span> <span class="n">Decimal</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Annotated</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">Union</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span><span class="p">,</span> <span class="n">ConfigDict</span><span class="p">,</span> <span class="n">Field</span><span class="p">,</span> <span class="n">model_validator</span>
@@ -648,24 +649,61 @@
 <div class="viewcode-block" id="FloatRange">
 <a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.html#phenotypic.tune.FloatRange">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">FloatRange</span><span class="p">(</span><span class="n">_DomainBase</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;A float range ``[low, high]`` with an optional log scale.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A float range ``[low, high]`` with optional grid step / log scale.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        low: Inclusive lower bound.</span>
 <span class="sd">        high: Inclusive upper bound; must be ``&gt;= low``.</span>
+<span class="sd">        step: Optional strict stride for grid enumeration. ``None`` means the</span>
+<span class="sd">            range is continuous and not grid-enumerable. When the stride does</span>
+<span class="sd">            not land on ``high``, ``high`` is appended exactly.</span>
 <span class="sd">        log: Whether to sample on a logarithmic scale (default ``False``).</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">kind</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;float_range&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;float_range&quot;</span>
     <span class="n">low</span><span class="p">:</span> <span class="nb">float</span>
     <span class="n">high</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">step</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">log</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
 
     <span class="nd">@model_validator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;after&quot;</span><span class="p">)</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_ordered</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;FloatRange&quot;</span><span class="p">:</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">high</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">low</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;FloatRange high (</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">high</span><span class="si">}</span><span class="s2">) &lt; low (</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">low</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
-        <span class="k">return</span> <span class="bp">self</span></div>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">step</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">step</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;FloatRange step must be positive when set&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+<div class="viewcode-block" id="FloatRange.values">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.html#phenotypic.tune.FloatRange.values">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">values</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The deterministic strict-stride grid values for a stepped range.</span>
+
+<span class="sd">        Values start at ``low`` and advance by repeated ``step`` addition.</span>
+<span class="sd">        ``high`` is appended exactly when the stride does not land on it.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The inclusive float values from ``low`` to ``high``.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: When this range is continuous (``step is None``).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">step</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;continuous FloatRange has no enumerable values&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">low</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">high</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">low</span><span class="p">]</span>
+        <span class="n">low</span> <span class="o">=</span> <span class="n">Decimal</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">low</span><span class="p">))</span>
+        <span class="n">high</span> <span class="o">=</span> <span class="n">Decimal</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">high</span><span class="p">))</span>
+        <span class="n">step</span> <span class="o">=</span> <span class="n">Decimal</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">step</span><span class="p">))</span>
+        <span class="n">values</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">low</span><span class="p">]</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="n">low</span> <span class="o">+</span> <span class="n">step</span>
+        <span class="k">while</span> <span class="n">value</span> <span class="o">&lt;</span> <span class="n">high</span><span class="p">:</span>
+            <span class="n">values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="p">))</span>
+            <span class="n">value</span> <span class="o">+=</span> <span class="n">step</span>
+        <span class="k">if</span> <span class="n">values</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">high</span><span class="p">:</span>
+            <span class="n">values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">high</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">values</span></div>
+</div>
 
 
 

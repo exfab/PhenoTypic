@@ -26,6 +26,7 @@
       analysis_parquet_path
       analysis_scatter_json_path
       best_pipeline_path
+      best_params_path
       chunk_lock_path
       chunk_manifest_path
       chunk_parquet_filename

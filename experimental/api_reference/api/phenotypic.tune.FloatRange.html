@@ -771,6 +771,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.analysis_parquet_path.html">phenotypic.tools_.analysis_parquet_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.analysis_scatter_json_path.html">phenotypic.tools_.analysis_scatter_json_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.best_pipeline_path.html">phenotypic.tools_.best_pipeline_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.best_params_path.html">phenotypic.tools_.best_params_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.chunk_lock_path.html">phenotypic.tools_.chunk_lock_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.chunk_manifest_path.html">phenotypic.tools_.chunk_manifest_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.tools_.chunk_parquet_filename.html">phenotypic.tools_.chunk_parquet_filename</a></li>
@@ -1077,14 +1078,17 @@
 <h1>phenotypic.tune.FloatRange<a class="headerlink" href="#phenotypic-tune-floatrange" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="phenotypic.tune.FloatRange">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tune.</span></span><span class="sig-name descname"><span class="pre">FloatRange</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">kind</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><span class="pre">Literal</span></a><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'float_range'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'float_range'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">low</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">high</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">log</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/tune/_search_space/_domains.html#FloatRange"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tune.FloatRange" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tune.</span></span><span class="sig-name descname"><span class="pre">FloatRange</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">kind</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><span class="pre">Literal</span></a><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'float_range'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'float_range'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">low</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">high</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">step</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/tune/_search_space/_domains.html#FloatRange"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tune.FloatRange" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">_DomainBase</span></code></p>
-<p>A float range <code class="docutils literal notranslate"><span class="pre">[low,</span> <span class="pre">high]</span></code> with an optional log scale.</p>
+<p>A float range <code class="docutils literal notranslate"><span class="pre">[low,</span> <span class="pre">high]</span></code> with optional grid step / log scale.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>low</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Inclusive lower bound.</p></li>
 <li><p><strong>high</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Inclusive upper bound; must be <code class="docutils literal notranslate"><span class="pre">&gt;=</span> <span class="pre">low</span></code>.</p></li>
+<li><p><strong>step</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em> | </em><em>None</em>) – Optional strict stride for grid enumeration. <code class="docutils literal notranslate"><span class="pre">None</span></code> means the
+range is continuous and not grid-enumerable. When the stride does
+not land on <code class="docutils literal notranslate"><span class="pre">high</span></code>, <code class="docutils literal notranslate"><span class="pre">high</span></code> is appended exactly.</p></li>
 <li><p><strong>log</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – Whether to sample on a logarithmic scale (default <code class="docutils literal notranslate"><span class="pre">False</span></code>).</p></li>
 <li><p><strong>kind</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><em>Literal</em></a><em>[</em><em>'float_range'</em><em>]</em>)</p></li>
 </ul>
@@ -1165,6 +1169,9 @@
 <tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.FloatRange.validate" title="phenotypic.tune.FloatRange.validate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">validate</span></code></a></p></td>
 <td><p></p></td>
 </tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.FloatRange.values" title="phenotypic.tune.FloatRange.values"><code class="xref py py-obj docutils literal notranslate"><span class="pre">values</span></code></a></p></td>
+<td><p>The deterministic strict-stride grid values for a stepped range.</p></td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -1195,7 +1202,10 @@
 <tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.FloatRange.high" title="phenotypic.tune.FloatRange.high"><code class="xref py py-obj docutils literal notranslate"><span class="pre">high</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.FloatRange.log" title="phenotypic.tune.FloatRange.log"><code class="xref py py-obj docutils literal notranslate"><span class="pre">log</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.FloatRange.step" title="phenotypic.tune.FloatRange.step"><code class="xref py py-obj docutils literal notranslate"><span class="pre">step</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.FloatRange.log" title="phenotypic.tune.FloatRange.log"><code class="xref py py-obj docutils literal notranslate"><span class="pre">log</span></code></a></p></td>
 <td><p></p></td>
 </tr>
 </tbody>
@@ -1217,9 +1227,33 @@
 <dd></dd></dl>
 
 <dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.tune.FloatRange.step">
+<span class="sig-name descname"><span class="pre">step</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></em><a class="headerlink" href="#phenotypic.tune.FloatRange.step" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
 <dt class="sig sig-object py" id="phenotypic.tune.FloatRange.log">
 <span class="sig-name descname"><span class="pre">log</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></em><a class="headerlink" href="#phenotypic.tune.FloatRange.log" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tune.FloatRange.values">
+<span class="sig-name descname"><span class="pre">values</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/phenotypic/tune/_search_space/_domains.html#FloatRange.values"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tune.FloatRange.values" title="Link to this definition">#</a></dt>
+<dd><p>The deterministic strict-stride grid values for a stepped range.</p>
+<p>Values start at <code class="docutils literal notranslate"><span class="pre">low</span></code> and advance by repeated <code class="docutils literal notranslate"><span class="pre">step</span></code> addition.
+<code class="docutils literal notranslate"><span class="pre">high</span></code> is appended exactly when the stride does not land on it.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The inclusive float values from <code class="docutils literal notranslate"><span class="pre">low</span></code> to <code class="docutils literal notranslate"><span class="pre">high</span></code>.</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – When this range is continuous (<code class="docutils literal notranslate"><span class="pre">step</span> <span class="pre">is</span> <span class="pre">None</span></code>).</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)">list</a>[<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a>]</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tune.FloatRange.__copy__">
@@ -1672,7 +1706,7 @@ a [<cite>PydanticSerializationError</cite>][pydantic_core.PydanticSerializationE
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="phenotypic.tune.FloatRange.model_fields">
-<span class="sig-name descname"><span class="pre">model_fields</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'high':</span> <span class="pre">FieldInfo(annotation=float,</span> <span class="pre">required=True),</span> <span class="pre">'kind':</span> <span class="pre">FieldInfo(annotation=Literal['float_range'],</span> <span class="pre">required=False,</span> <span class="pre">default='float_range'),</span> <span class="pre">'log':</span> <span class="pre">FieldInfo(annotation=bool,</span> <span class="pre">required=False,</span> <span class="pre">default=False),</span> <span class="pre">'low':</span> <span class="pre">FieldInfo(annotation=float,</span> <span class="pre">required=True)}</span></em><a class="headerlink" href="#phenotypic.tune.FloatRange.model_fields" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">model_fields</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'high':</span> <span class="pre">FieldInfo(annotation=float,</span> <span class="pre">required=True),</span> <span class="pre">'kind':</span> <span class="pre">FieldInfo(annotation=Literal['float_range'],</span> <span class="pre">required=False,</span> <span class="pre">default='float_range'),</span> <span class="pre">'log':</span> <span class="pre">FieldInfo(annotation=bool,</span> <span class="pre">required=False,</span> <span class="pre">default=False),</span> <span class="pre">'low':</span> <span class="pre">FieldInfo(annotation=float,</span> <span class="pre">required=True),</span> <span class="pre">'step':</span> <span class="pre">FieldInfo(annotation=Union[float,</span> <span class="pre">NoneType],</span> <span class="pre">required=False,</span> <span class="pre">default=None)}</span></em><a class="headerlink" href="#phenotypic.tune.FloatRange.model_fields" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py property">
@@ -2013,7 +2047,9 @@ See the [<cite>extra</cite> configuration value][pydantic.ConfigDict.extra] for 
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tune.FloatRange.kind"><code class="docutils literal notranslate"><span class="pre">FloatRange.kind</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tune.FloatRange.low"><code class="docutils literal notranslate"><span class="pre">FloatRange.low</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tune.FloatRange.high"><code class="docutils literal notranslate"><span class="pre">FloatRange.high</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tune.FloatRange.step"><code class="docutils literal notranslate"><span class="pre">FloatRange.step</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tune.FloatRange.log"><code class="docutils literal notranslate"><span class="pre">FloatRange.log</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tune.FloatRange.values"><code class="docutils literal notranslate"><span class="pre">FloatRange.values()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tune.FloatRange.__copy__"><code class="docutils literal notranslate"><span class="pre">FloatRange.__copy__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tune.FloatRange.__deepcopy__"><code class="docutils literal notranslate"><span class="pre">FloatRange.__deepcopy__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tune.FloatRange.__get_pydantic_json_schema__"><code class="docutils literal notranslate"><span class="pre">FloatRange.__get_pydantic_json_schema__()</span></code></a></li>

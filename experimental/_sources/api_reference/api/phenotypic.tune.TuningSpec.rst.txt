@@ -55,6 +55,7 @@ phenotypic.tune.TuningSpec
       ~TuningSpec.model_extra
       ~TuningSpec.model_fields
       ~TuningSpec.model_fields_set
+      ~TuningSpec.phenotypic_version
       ~TuningSpec.pipeline
       ~TuningSpec.search_space
       ~TuningSpec.scorer

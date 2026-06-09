@@ -1174,6 +1174,7 @@
     <span class="c1"># knee; a single-objective run&#39;s empty front makes this a no-op (no pareto/</span>
     <span class="c1"># dir — the back-compat lock, plan §0b).</span>
     <span class="n">_finalize_pareto_outputs</span><span class="p">(</span><span class="n">store</span><span class="p">,</span> <span class="n">resolved_spec</span><span class="p">,</span> <span class="n">output_dir</span><span class="p">)</span>
+    <span class="n">_finalize_best_params</span><span class="p">(</span><span class="n">headline</span><span class="p">,</span> <span class="n">output_dir</span><span class="p">,</span> <span class="n">selection</span><span class="o">=</span><span class="n">_selection_label</span><span class="p">(</span><span class="n">store</span><span class="p">))</span>
     <span class="c1"># Report-only held-out generalization verdict → deliverables/generalization.json.</span>
     <span class="n">_finalize_generalization</span><span class="p">(</span>
         <span class="n">headline</span><span class="p">,</span> <span class="n">resolved_spec</span><span class="p">,</span> <span class="n">output_dir</span><span class="p">,</span> <span class="n">split</span><span class="p">,</span> <span class="n">images</span><span class="p">,</span> <span class="n">images_by_name</span>
@@ -1228,6 +1229,11 @@
     <span class="k">return</span> <span class="n">store</span><span class="o">.</span><span class="n">best</span><span class="p">()</span>
 
 
+<span class="k">def</span><span class="w"> </span><span class="nf">_selection_label</span><span class="p">(</span><span class="n">store</span><span class="p">:</span> <span class="n">StudyStore</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the best-params selection label for ``store``.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="s2">&quot;pareto_knee&quot;</span> <span class="k">if</span> <span class="n">store</span><span class="o">.</span><span class="n">pareto_front</span><span class="p">()</span> <span class="k">else</span> <span class="s2">&quot;single_best&quot;</span>
+
+
 <span class="k">def</span><span class="w"> </span><span class="nf">_pipeline_for_trial</span><span class="p">(</span><span class="n">spec</span><span class="p">:</span> <span class="n">TuningSpec</span><span class="p">,</span> <span class="n">trial</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Trial</span><span class="p">]):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Build a candidate pipeline for ``trial`` or ``None`` when no winner exists.&quot;&quot;&quot;</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">.._evaluation</span><span class="w"> </span><span class="kn">import</span> <span class="n">build_pipeline</span>
@@ -1235,6 +1241,25 @@
     <span class="k">if</span> <span class="n">trial</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">return</span> <span class="kc">None</span>
     <span class="k">return</span> <span class="n">build_pipeline</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">pipeline</span><span class="p">,</span> <span class="n">trial</span><span class="o">.</span><span class="n">params</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_finalize_best_params</span><span class="p">(</span>
+    <span class="n">winner</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Trial</span><span class="p">],</span>
+    <span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">selection</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Write the Monitor-facing params sidecar for the selected headline trial.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">winner</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span>
+    <span class="n">payload</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;trial_number&quot;</span><span class="p">:</span> <span class="n">winner</span><span class="o">.</span><span class="n">number</span><span class="p">,</span>
+        <span class="s2">&quot;score&quot;</span><span class="p">:</span> <span class="n">winner</span><span class="o">.</span><span class="n">score</span><span class="p">,</span>
+        <span class="s2">&quot;objectives&quot;</span><span class="p">:</span> <span class="n">winner</span><span class="o">.</span><span class="n">objectives</span> <span class="ow">or</span> <span class="p">{},</span>
+        <span class="s2">&quot;params&quot;</span><span class="p">:</span> <span class="n">winner</span><span class="o">.</span><span class="n">params</span><span class="p">,</span>
+        <span class="s2">&quot;selection&quot;</span><span class="p">:</span> <span class="n">selection</span><span class="p">,</span>
+    <span class="p">}</span>
+    <span class="n">atomic_write_text</span><span class="p">(</span><span class="n">io</span><span class="o">.</span><span class="n">best_params_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">),</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">payload</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_submit_slurm_fleet</span><span class="p">(</span>

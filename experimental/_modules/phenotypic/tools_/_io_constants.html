@@ -777,6 +777,10 @@
 <span class="n">BEST_PIPELINE_JSON</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;best_pipeline</span><span class="si">{</span><span class="n">CONFIG_SUFFIX_PIPELINE</span><span class="si">}</span><span class="s2">&quot;</span>
 <span class="n">_LEGACY_BEST_PIPELINE_JSON</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;best_pipeline</span><span class="si">{</span><span class="n">LEGACY_JSON_SUFFIX</span><span class="si">}</span><span class="s2">&quot;</span>
 
+<span class="c1">#: Sidecar with the selected headline trial&#39;s params and scores, written by the</span>
+<span class="c1">#: tune CLI into :data:`DIR_DELIVERABLES` for GUI Monitor display.</span>
+<span class="n">BEST_PARAMS_JSON</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;best_params.json&quot;</span>
+
 <span class="c1">#: The RF-permutation ``param_importance.json`` report written by the tune</span>
 <span class="c1">#: CLI into :data:`DIR_DELIVERABLES`.</span>
 <span class="n">PARAM_IMPORTANCE_JSON</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;param_importance.json&quot;</span>
@@ -1486,6 +1490,14 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">param_importance_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/param_importance.json`` (the report).&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">PARAM_IMPORTANCE_JSON</span></div>
+
+
+
+<div class="viewcode-block" id="best_params_path">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.best_params_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">best_params_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/best_params.json`` (winner params sidecar).&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">BEST_PARAMS_JSON</span></div>
 
 
 
