@@ -108,6 +108,7 @@ __all__ = [
     # Sandbox subdirectories
     "SANDBOX_GUI_DIRNAME",
     "SANDBOX_PRESETS_SUBDIR",
+    "SANDBOX_TUNE_PRESETS_SUBDIR",
     "SANDBOX_BUILDER_TILES_SUBDIR",
     "RUN_LOG_DIRNAME",
     "VIEWER_CACHE_DIRNAME",
@@ -168,6 +169,7 @@ __all__ = [
     "add_launcher_args",
     "configure_launcher_logging",
     "print_launcher_banner",
+    "tune_presets_dir",
 ]
 
 # ---------------------------------------------------------------------------
@@ -293,9 +295,22 @@ SANDBOX_GUI_DIRNAME: str = ".phenotypic-gui"
 #: presets (one ``<name>.json`` per preset).
 SANDBOX_PRESETS_SUBDIR: str = "presets"
 
+#: Subdirectory of ``.phenotypic-gui/presets`` holding saved tuning specs.
+SANDBOX_TUNE_PRESETS_SUBDIR: str = "tune"
+
 #: Subdirectory of :data:`SANDBOX_GUI_DIRNAME` holding builder DZI tile
 #: caches per loaded image.
 SANDBOX_BUILDER_TILES_SUBDIR: str = "builder_tiles"
+
+
+def tune_presets_dir(sandbox_root: Path) -> Path:
+    """Return ``<sandbox>/.phenotypic-gui/presets/tune``."""
+    return (
+        Path(sandbox_root)
+        / SANDBOX_GUI_DIRNAME
+        / SANDBOX_PRESETS_SUBDIR
+        / SANDBOX_TUNE_PRESETS_SUBDIR
+    )
 
 #: Hidden directory inside a run's *output* directory (NOT the sandbox)
 #: holding ``stdout.log`` and other on-disk run artifacts.

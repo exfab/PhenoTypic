@@ -346,7 +346,21 @@ class OptunaStrategy:
                 step = 1
             return trial.suggest_int(key, domain.low, domain.high, step=step, log=log)
         if isinstance(domain, FloatRange):
-            return trial.suggest_float(key, domain.low, domain.high, log=domain.log)
+            float_step: float | None = domain.step
+            log = domain.log
+            if float_step is not None and log:
+                # Optuna forbids suggest_float(step=..., log=True): drop the
+                # step under log scale, mirroring the IntRange guard above.
+                _logger.warning(
+                    "FloatRange %r: step=%s with log=True is unsupported by "
+                    "Optuna; normalizing to continuous (log scale).",
+                    key,
+                    float_step,
+                )
+                float_step = None
+            return trial.suggest_float(
+                key, domain.low, domain.high, step=float_step, log=log
+            )
         raise TypeError(f"unsupported domain {type(domain).__name__}")
 
     # -- tell -----------------------------------------------------------------

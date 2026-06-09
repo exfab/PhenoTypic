@@ -28,6 +28,7 @@ import json
 from pathlib import Path
 
 import pandas as pd
+from dash.development.base_component import Component
 
 from phenotypic.gui.shell import SandboxRoot
 
@@ -120,6 +121,17 @@ def _empty_state_app(sandbox_root: Path):  # type: ignore[no-untyped-def]
     return create_app(root=None, url_prefix="/tune/", sandbox=sandbox)
 
 
+def _walk(component: Component):
+    yield component
+    children = getattr(component, "children", None)
+    if isinstance(children, (list, tuple)):
+        for child in children:
+            if isinstance(child, Component):
+                yield from _walk(child)
+    elif isinstance(children, Component):
+        yield from _walk(children)
+
+
 # ---------------------------------------------------------------------------
 # Dash dispatch helpers (mirrors test_tune_callback_wiring)
 # ---------------------------------------------------------------------------
@@ -179,7 +191,7 @@ def _post_confirm(app, browse_dir: str):  # type: ignore[no-untyped-def]
 # ---------------------------------------------------------------------------
 
 def test_empty_state_renders_picker_store_body_modal(tmp_path: Path) -> None:
-    """The empty-state mount carries the picker + store + swappable body, no views."""
+    """The empty-state mount carries picker, store, body, and poll placeholders."""
     app = _empty_state_app(tmp_path)
     layout = str(app.layout)
     for needed in (
@@ -190,9 +202,12 @@ def test_empty_state_renders_picker_store_body_modal(tmp_path: Path) -> None:
         "tune-subtab-monitor",
     ):
         assert needed in layout, f"empty-state layout missing {needed!r}"
-    # No loaded-view component until a run is bound.
-    assert "tune-objective-figure" not in layout
-    assert "tune-launch-command" not in layout
+    # The empty Monitor destination is pollable for registry/log updates, but
+    # loaded-only Launch/Curate/Space components wait until a run is bound.
+    component_ids = {getattr(component, "id", None) for component in _walk(app.layout)}
+    assert "tune-study-poll" in component_ids
+    assert "tune-objective-figure" in component_ids
+    assert "tune-launch-command" not in component_ids
 
 
 # ---------------------------------------------------------------------------
@@ -217,6 +232,8 @@ def test_bind_run_populates_store_and_swaps_in_loaded_views(tmp_path: Path) -> N
     assert response["tune-run-picker-label"]["children"] == resolved_run
     assert response["tune-run-picker-note"]["children"] == ""
     assert response["tune-run-picker-modal"]["is_open"] is False
+    assert response["tune-active-destination-store"]["data"] == "monitor"
+    assert "tune-view-hidden" not in response["tune-destview-monitor"]["className"]
     # The page body was swapped to the loaded four-view layout: its serialised
     # children carry the Monitor objective figure + the Launch command ids.
     body_str = json.dumps(response["tune-page-body"]["children"])

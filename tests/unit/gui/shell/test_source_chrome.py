@@ -48,6 +48,7 @@ def test_wrap_in_chrome_mounts_local_source_store(tmp_path: Path) -> None:
     from phenotypic.gui.shell._ids import (
         SHELL_SOURCE_IMAGE_ROOT_STORE,
         SHELL_TAB_HOME,
+        TUNE_PIPELINE_PATH_STORE,
     )
 
     sandbox = SandboxRoot.from_path(tmp_path)
@@ -60,6 +61,11 @@ def test_wrap_in_chrome_mounts_local_source_store(tmp_path: Path) -> None:
     assert isinstance(store, dcc.Store)
     assert store.storage_type == "local"
     assert store.data is None
+
+    tune_store = _component_with_id(app.layout, TUNE_PIPELINE_PATH_STORE)
+    assert isinstance(tune_store, dcc.Store)
+    assert tune_store.storage_type == "local"
+    assert tune_store.data is None
 
 
 def test_clear_action_registers_source_store_writer(tmp_path: Path) -> None:

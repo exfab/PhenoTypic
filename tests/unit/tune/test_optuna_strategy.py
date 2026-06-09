@@ -80,6 +80,28 @@ def test_float_range_materializes_log():
     assert 1e-4 <= params["0.f"] <= 1.0
 
 
+def test_float_range_materializes_step():
+    space = SearchSpace(knobs=(
+        Knob(key="0.f", domain=FloatRange(low=0.0, high=1.0, step=0.25)),
+    ))
+    strat = _strategy(space)
+    params, _ = strat.suggest()
+    assert params["0.f"] in FloatRange(low=0.0, high=1.0, step=0.25).values()
+
+
+def test_float_range_step_and_log_guard_warns_and_drops_step(caplog):
+    import logging
+
+    space = SearchSpace(knobs=(
+        Knob(key="0.f", domain=FloatRange(low=1e-4, high=1.0, step=0.25, log=True)),
+    ))
+    strat = _strategy(space)
+    with caplog.at_level(logging.WARNING):
+        params, _ = strat.suggest()
+    assert 1e-4 <= params["0.f"] <= 1.0
+    assert "step=0.25 with log=True" in caplog.text
+
+
 def test_fixed_injected_constant_not_a_trial_dim():
     import optuna
 

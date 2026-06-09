@@ -78,8 +78,20 @@ def test_spec_to_json_returns_string(tmp_path):
     payload = spec.to_json()
 
     assert isinstance(payload, str)
+    assert json.loads(payload)["phenotypic_version"]
     back = TuningSpec.model_validate_json(payload)
     assert isinstance(back.strategy, GridConfig)
+    assert back.phenotypic_version == spec.phenotypic_version
+
+
+def test_missing_phenotypic_version_warns_and_defaults(tmp_path):
+    payload = json.loads(_spec(tmp_path).model_dump_json())
+    payload.pop("phenotypic_version")
+
+    with pytest.warns(UserWarning, match="phenotypic_version"):
+        back = TuningSpec.model_validate(payload)
+
+    assert back.phenotypic_version
 
 
 def test_spec_to_json_file_uses_typed_suffix(tmp_path):

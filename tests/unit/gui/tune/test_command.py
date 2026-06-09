@@ -91,6 +91,12 @@ def test_render_appends_screen_and_slurm_when_toggled() -> None:
         strategy="random",
         n_trials=25,
         storage_url=None,
+        n_workers=None,
+        slurm_partition=None,
+        slurm_mem=None,
+        slurm_time=None,
+        held_out_fraction=None,
+        cv_group=None,
         screen=True,
         slurm=True,
     )
@@ -98,6 +104,33 @@ def test_render_appends_screen_and_slurm_when_toggled() -> None:
     assert "--n-trials 25" in command
     assert "--screen" in command
     assert "--slurm" in command
+
+
+def test_render_includes_run_form_overrides() -> None:
+    from phenotypic.gui.tune._command import render_launch_command
+
+    command = render_launch_command(
+        "spec.json",
+        "imgs",
+        "out",
+        strategy="tpe",
+        n_trials=50,
+        storage_url="sqlite:///study.db",
+        n_workers=4,
+        slurm_partition="batch",
+        slurm_mem="8G",
+        slurm_time="04:00:00",
+        held_out_fraction=0.2,
+        cv_group="plate_id",
+        screen=False,
+        slurm=True,
+    )
+    assert "--n-workers 4" in command
+    assert "--slurm-partition batch" in command
+    assert "--slurm-mem 8G" in command
+    assert "--slurm-time 04:00:00" in command
+    assert "--held-out-fraction 0.2" in command
+    assert "--cv-group plate_id" in command
 
 
 def test_render_quotes_paths_with_spaces() -> None:
@@ -110,6 +143,12 @@ def test_render_quotes_paths_with_spaces() -> None:
         strategy="tpe",
         n_trials=10,
         storage_url=None,
+        n_workers=None,
+        slurm_partition=None,
+        slurm_mem=None,
+        slurm_time=None,
+        held_out_fraction=None,
+        cv_group=None,
         screen=False,
         slurm=False,
     )

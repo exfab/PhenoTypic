@@ -132,6 +132,9 @@ def test_supervised_composite_pareto_end_to_end(tmp_path):
     assert knee is not None
     expected_knee_json = build_pipeline(spec.pipeline, knee.params).to_json()
     assert io.best_pipeline_path(out).read_text() == expected_knee_json
+    best_params = pd.read_json(io.best_params_path(out), typ="series").to_dict()
+    assert best_params["selection"] == "pareto_knee"
+    assert best_params["params"] == knee.params
 
 
 def test_single_objective_sibling_writes_no_pareto(tmp_path):
@@ -148,5 +151,6 @@ def test_single_objective_sibling_writes_no_pareto(tmp_path):
     run_tuning(spec, [load_synth_yeast_plate()], out)
 
     assert io.best_pipeline_path(out).exists()
+    assert io.best_params_path(out).exists()
     assert io.trials_parquet_path(out).exists()
     assert not io.pareto_dir(out).exists()

@@ -42,11 +42,12 @@ def _spec(tmp_path) -> TuningSpec:
     )
 
 
-def test_run_tuning_writes_deliverables(tmp_path):
+def test_run_tuning_writes_deliverables_and_best_params(tmp_path):
     out = tmp_path / "run"
     best = run_tuning(_spec(tmp_path), [load_synth_yeast_plate()], out)
 
     assert io.best_pipeline_path(out).exists()
+    assert io.best_params_path(out).exists()
     assert io.tuning_spec_path(out).exists()
     assert io.param_importance_path(out).exists()
     assert io.trials_parquet_path(out).exists()
@@ -56,7 +57,12 @@ def test_run_tuning_writes_deliverables(tmp_path):
     # importance covers the tuned knob
     imp = json.loads(io.param_importance_path(out).read_text())
     assert "1.ignore_zeros" in imp
+    best_params = json.loads(io.best_params_path(out).read_text())
+    assert best_params["selection"] == "single_best"
     assert best is not None
+    assert best_params["trial_number"] == best.number
+    assert best_params["score"] == best.score
+    assert best_params["params"] == best.params
 
 
 def test_cli_main_invokes_run(tmp_path, monkeypatch):

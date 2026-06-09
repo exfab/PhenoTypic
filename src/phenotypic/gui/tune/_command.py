@@ -21,6 +21,8 @@ from __future__ import annotations
 import shlex
 from typing import Final
 
+from phenotypic.gui.tune._run_argv import tune_run_argv
+
 #: The base invocation every rendered command starts with — the module entry
 #: point plus the ``run`` subcommand (confirmed in ``phenotypic.tune.__main__``).
 _BASE_COMMAND: Final[tuple[str, ...]] = (
@@ -52,8 +54,14 @@ def render_launch_command(
     strategy: str,
     n_trials: int | None,
     storage_url: str | None,
-    screen: bool,
-    slurm: bool,
+    n_workers: int | None = None,
+    slurm_partition: str | None = None,
+    slurm_mem: str | None = None,
+    slurm_time: str | None = None,
+    held_out_fraction: float | None = None,
+    cv_group: str | None = None,
+    screen: bool = False,
+    slurm: bool = False,
 ) -> str:
     """Render the exact ``python -m phenotypic.tune run …`` launch command.
 
@@ -83,26 +91,23 @@ def render_launch_command(
     Returns:
         A single shell-safe command string (the tokens joined by spaces).
     """
-    tokens: list[str] = [
-        *_BASE_COMMAND,
-        spec_path,
-        _FLAG_INPUT,
-        input_dir,
-        _FLAG_OUTPUT,
-        output_dir,
-        _FLAG_STRATEGY,
-        strategy,
-    ]
-    # Grid is exhaustive and ignores --n-trials, so never emit it for grid (even
-    # when a stale budget lingers in the Launch form).
-    if n_trials is not None and strategy != _GRID_STRATEGY:
-        tokens += [_FLAG_N_TRIALS, str(n_trials)]
-    if storage_url:
-        tokens += [_FLAG_STORAGE_URL, storage_url]
-    if screen:
-        tokens.append(_FLAG_SCREEN)
-    if slurm:
-        tokens.append(_FLAG_SLURM)
+    tokens = tune_run_argv(
+        spec_path=spec_path,
+        images_dir=input_dir,
+        output_dir=output_dir,
+        strategy=strategy,
+        n_trials=n_trials,
+        storage_url=storage_url,
+        n_workers=n_workers,
+        slurm_partition=slurm_partition,
+        slurm_mem=slurm_mem,
+        slurm_time=slurm_time,
+        held_out_fraction=held_out_fraction,
+        cv_group=cv_group,
+        slurm=slurm,
+        screen=screen,
+        python="python",
+    )
     return " ".join(shlex.quote(token) for token in tokens)
 
 

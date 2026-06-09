@@ -19,7 +19,13 @@ from typing import Optional
 import dash
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 
-from phenotypic.gui._config import CFG_SANDBOX_ROOT, MOUNT_HOME, TITLE_TUNE
+from phenotypic.gui._config import (
+    CFG_RUNNER,
+    CFG_RUN_REGISTRY,
+    CFG_SANDBOX_ROOT,
+    MOUNT_HOME,
+    TITLE_TUNE,
+)
 from phenotypic.gui._design import inject_design_tokens
 from phenotypic.gui._shared import register_shared_static
 from phenotypic.gui.tune._callbacks import register_callbacks
@@ -37,6 +43,8 @@ def create_app(
     *,
     url_prefix: str = MOUNT_HOME,
     sandbox: "Optional[SandboxRoot]" = None,
+    registry: object | None = None,
+    runner: object | None = None,
 ) -> dash.Dash:
     """Build a configured Dash instance for the tune co-pilot.
 
@@ -90,6 +98,10 @@ def create_app(
     register_shared_static(app.server)
     if sandbox is not None:
         app.server.config[CFG_SANDBOX_ROOT] = str(sandbox.root)
+    if registry is not None:
+        app.server.config[CFG_RUN_REGISTRY] = registry
+    if runner is not None:
+        app.server.config[CFG_RUNNER] = runner
 
     app.layout = build_layout(root, sandbox=sandbox)
     register_callbacks(app, sandbox=sandbox)
