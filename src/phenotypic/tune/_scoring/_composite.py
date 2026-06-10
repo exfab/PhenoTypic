@@ -413,16 +413,27 @@ class CompositeScorer(Scorer):
         ``z*ᵢ = −ε`` (``_UTOPIA_EPS``). The ``max`` drops the absolute value
         because ``z*ᵢ = −ε < 0 ≤ bᵢ`` makes every ``bᵢ − z*ᵢ = bᵢ + ε > 0`` — an
         invariant asserted here (the Phase 1 ``[0,1]`` clamp guarantees the upper
-        bound; the assert fires loudly if that clamp ever regresses). The raw
-        ``Tᵨ`` ranges over ``[ε·(…), (1+ε)·(…)]``, so it is normalized by the
-        theoretical worst ``Tᵨ(1…1)`` over the **same** roster of axes, giving a
-        normalized cost in ``(0, 1]`` for downstream consumers (§6.2). The roster
-        is the pinned active set (the children available study-wide, §6.3) —
-        consistent numerator and denominator across trials.
+        bound; the assert fires loudly if that clamp ever regresses).
+
+        **Normalization is a study-global constant (§6.2).** The raw ``Tᵨ``
+        ranges over ``[ε·(…), (1+ε)·(…)]``, so it is normalized by the theoretical
+        worst ``Tᵨ(1…1)`` to give a normalized cost in ``(0, 1]``. That worst-case
+        denominator is computed over the **full pinned active set**
+        (:attr:`_active_handles`) — every child available study-wide — **not**
+        the in-call roster. Otherwise a pinned child that produces zero terms
+        across a whole trial's calibration set would drop the trial's denominator
+        from ``(1+ε)+ρ·n`` to ``(1+ε)+ρ·(n−1)`` while other trials keep ``n``,
+        normalizing different trials by different constants and perturbing the
+        cross-trial argmin (the winner-equivalence this migration must preserve).
+        The **numerator** (``max_term`` / ``l1``) stays over the in-call
+        ``child_costs``: a child that genuinely abstained this trial contributes
+        no cost to the numerator, which is correct. When :attr:`_active_handles`
+        is ``None`` (direct-``finalize`` unit calls with no engine pin), the
+        denominator falls back to the in-call roster.
 
         Args:
-            child_costs: ``{handle: cost}`` over the active set's axes (each
-                ``bᵢ ∈ [0,1]``).
+            child_costs: ``{handle: cost}`` over the children that scored this
+                call (each ``bᵢ ∈ [0,1]``).
 
         Returns:
             The normalized composite cost in ``(0, 1]``. Empty roster → ``1.0``
@@ -434,8 +445,6 @@ class CompositeScorer(Scorer):
         weights = self.weights or {}
         max_term = 0.0
         l1 = 0.0
-        denom_max = 0.0
-        denom_l1 = 0.0
         for handle, cost in child_costs.items():
             assert 0.0 <= cost <= 1.0, (  # noqa: S101 — B1 invariant guard
                 f"per-child cost {handle}={cost!r} escaped [0,1]; the Phase 1 "
@@ -444,6 +453,18 @@ class CompositeScorer(Scorer):
             weight = float(weights.get(handle, 1.0))
             max_term = max(max_term, weight * (cost + eps))
             l1 += weight * cost
+        # Denominator roster = the full pinned active set (study-global constant),
+        # falling back to the in-call roster when unpinned (direct-finalize unit
+        # calls). Each pinned handle contributes its weight at the worst cost 1.0,
+        # independent of whether it scored this call.
+        denom_handles = (
+            self._active_handles if self._active_handles is not None
+            else tuple(child_costs)
+        )
+        denom_max = 0.0
+        denom_l1 = 0.0
+        for handle in denom_handles:
+            weight = float(weights.get(handle, 1.0))
             denom_max = max(denom_max, weight * (1.0 + eps))
             denom_l1 += weight
         numerator = max_term + self.rho * l1

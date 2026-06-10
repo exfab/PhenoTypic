@@ -380,6 +380,33 @@ def test_active_set_pins_roster_for_both_max_and_normalizer():
     assert 0.0 < result < 0.7
 
 
+def test_tchebycheff_normalizer_is_study_global_pinned_constant():
+    # Spec §6.2 / review I-1: the Tchebycheff DENOMINATOR (the worst-case
+    # Tᵨ(1…1) normalizer) must be a study-global constant over the FULL pinned
+    # active set, NOT the in-call roster. If a pinned child produces zero terms
+    # across a whole trial it drops from child_costs, but the normalizer must
+    # still divide by the constant 2-child denominator so the s0 contribution is
+    # comparable across trials (cross-trial argmin / winner-equivalence).
+    comp = CompositeScorer(scorers=[_FixedScorer(terms={"a": 0.4}),
+                                    _FixedScorer(terms={"b": 0.4})])
+    comp.set_active_set(("s0", "s1"))
+    # s0=0.4 scores; s1 is pinned but abstained the whole trial (absent here).
+    # numerator = max(1·(0.4+ε)) + ρ·(1·0.4) = 0.401 + 0.05·0.4 = 0.421
+    # denom over the FULL pinned set (s0,s1): (1·(1+ε)) + ρ·2 = 1.001 + 0.1 = 1.101
+    only_s0 = comp._tchebycheff({"s0": 0.4})
+    assert only_s0 == pytest.approx(0.421 / 1.101)
+    # Sanity: the buggy in-call-roster denom (1-child: 1.001 + ρ·1 = 1.051) would
+    # have given a different — and trial-dependent — normalization.
+    assert only_s0 != pytest.approx(0.421 / 1.051)
+    # And a genuinely 1-child-pinned scorer DOES normalize by the 1-child denom:
+    solo = CompositeScorer(scorers=[_FixedScorer(terms={"a": 0.4})])
+    solo.set_active_set(("s0",))
+    assert solo._tchebycheff({"s0": 0.4}) == pytest.approx(0.421 / 1.051)
+    # Unpinned (None) falls back to the in-call roster denom (unit-call ergonomics).
+    unpinned = CompositeScorer(scorers=[_FixedScorer(terms={"a": 0.4})])
+    assert unpinned._tchebycheff({"s0": 0.4}) == pytest.approx(0.421 / 1.051)
+
+
 def test_empty_active_set_is_worst_cost():
     comp = CompositeScorer(scorers=[_FixedScorer(terms={})])
     comp.set_active_set(())
