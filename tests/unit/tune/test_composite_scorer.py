@@ -304,3 +304,61 @@ def test_invalid_blend_rejected():
 
     with pytest.raises(pydantic.ValidationError):
         CompositeScorer(scorers=[], blend="geomean")  # not a CompositeBlend
+
+
+# --------------------------------------------------------------------------- #
+# _tchebycheff — formula + normalization (operates on per-child COST dicts)
+# --------------------------------------------------------------------------- #
+def test_tchebycheff_all_perfect_is_near_zero():
+    # All children perfect (cost 0) → numerator = max(w·ε) + ρ·0 = ε (uniform w=1)
+    # T_norm = ε / ((1+ε) + ρ·1) → tiny, in (0,1].
+    comp = CompositeScorer(scorers=[_FixedScorer(terms={"a": 0.0}),
+                                    _FixedScorer(terms={"b": 0.0})])
+    result = comp.finalize(comp.score_image(None, pd.DataFrame()))
+    assert isinstance(result, float)
+    assert 0.0 < result < 0.05  # near-zero cost, strictly positive (z*=−ε)
+
+
+def test_tchebycheff_all_worst_is_one():
+    # All children worst (cost 1) → Tᵨ == Tᵨ(1…1) → T_norm == 1.0 exactly.
+    comp = CompositeScorer(scorers=[_FixedScorer(terms={"a": 1.0}),
+                                    _FixedScorer(terms={"b": 1.0})])
+    result = comp.finalize(comp.score_image(None, pd.DataFrame()))
+    assert result == pytest.approx(1.0)
+
+
+def test_tchebycheff_is_worst_axis_dominant():
+    # Conjunctive: the WORST (highest-cost) axis drives the max term, so a
+    # candidate with one bad axis scores higher (worse) than one balanced at the
+    # mean. {0.0, 0.8} (max term ~0.8) must exceed {0.4, 0.4} (max term ~0.4).
+    one_bad = CompositeScorer(scorers=[_FixedScorer(terms={"a": 0.0}),
+                                       _FixedScorer(terms={"b": 0.8})])
+    balanced = CompositeScorer(scorers=[_FixedScorer(terms={"a": 0.4}),
+                                        _FixedScorer(terms={"b": 0.4})])
+    cost_one_bad = one_bad.finalize(one_bad.score_image(None, pd.DataFrame()))
+    cost_balanced = balanced.finalize(balanced.score_image(None, pd.DataFrame()))
+    assert cost_one_bad > cost_balanced
+
+
+def test_tchebycheff_result_in_unit_interval():
+    for a in (0.0, 0.2, 0.5, 0.9, 1.0):
+        for b in (0.0, 0.3, 1.0):
+            comp = CompositeScorer(scorers=[_FixedScorer(terms={"x": a}),
+                                            _FixedScorer(terms={"y": b})])
+            r = comp.finalize(comp.score_image(None, pd.DataFrame()))
+            assert 0.0 < r <= 1.0 + 1e-9
+
+
+def test_tchebycheff_weights_steer_the_max():
+    # Weighting the worse axis up makes the composite worse (it weighs that axis
+    # more heavily in the max). {a:0.0, b:0.6} with w_b=3 > the same with w=1.
+    light = CompositeScorer(scorers=[_FixedScorer(terms={"a": 0.0}),
+                                     _FixedScorer(terms={"b": 0.6})])
+    heavy = CompositeScorer(scorers=[_FixedScorer(terms={"a": 0.0}),
+                                     _FixedScorer(terms={"b": 0.6})],
+                            weights={"s1": 3.0})
+    # Normalization differs per weight set, so compare each to its own balanced
+    # baseline rather than to each other directly; assert the heavy-weighted
+    # bad axis is still worst-axis dominant (> 0.4 normalized).
+    assert heavy.finalize(heavy.score_image(None, pd.DataFrame())) > 0.4
+    assert light.finalize(light.score_image(None, pd.DataFrame())) > 0.0

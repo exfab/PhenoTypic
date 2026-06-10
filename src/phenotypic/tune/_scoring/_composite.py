@@ -361,6 +361,52 @@ class CompositeScorer(Scorer):
             return 0.0
         return weighted_sum / total_weight
 
+    def _tchebycheff(self, child_costs: dict[str, float]) -> float:
+        """Augmented weighted Tchebycheff of per-child **cost** scalars (§6.1/§6.2).
+
+        ``Tᵨ(b) = maxᵢ wᵢ(bᵢ + ε) + ρ·Σᵢ wᵢ·bᵢ``, minimized, with utopia point
+        ``z*ᵢ = −ε`` (``_UTOPIA_EPS``). The ``max`` drops the absolute value
+        because ``z*ᵢ = −ε < 0 ≤ bᵢ`` makes every ``bᵢ − z*ᵢ = bᵢ + ε > 0`` — an
+        invariant asserted here (the Phase 1 ``[0,1]`` clamp guarantees the upper
+        bound; the assert fires loudly if that clamp ever regresses). The raw
+        ``Tᵨ`` ranges over ``[ε·(…), (1+ε)·(…)]``, so it is normalized by the
+        theoretical worst ``Tᵨ(1…1)`` over the **same** roster of axes, giving a
+        normalized cost in ``(0, 1]`` for downstream consumers (§6.2). The roster
+        is the pinned active set (the children available study-wide, §6.3) —
+        consistent numerator and denominator across trials.
+
+        Args:
+            child_costs: ``{handle: cost}`` over the active set's axes (each
+                ``bᵢ ∈ [0,1]``).
+
+        Returns:
+            The normalized composite cost in ``(0, 1]``. Empty roster → ``1.0``
+            (the worst floor; the engine degrades — guards the ``max([])``).
+        """
+        if not child_costs:
+            return 1.0
+        eps = _UTOPIA_EPS
+        weights = self.weights or {}
+        max_term = 0.0
+        l1 = 0.0
+        denom_max = 0.0
+        denom_l1 = 0.0
+        for handle, cost in child_costs.items():
+            assert 0.0 <= cost <= 1.0, (  # noqa: S101 — B1 invariant guard
+                f"per-child cost {handle}={cost!r} escaped [0,1]; the Phase 1 "
+                "robust-aggregate clamp regressed"
+            )
+            weight = float(weights.get(handle, 1.0))
+            max_term = max(max_term, weight * (cost + eps))
+            l1 += weight * cost
+            denom_max = max(denom_max, weight * (1.0 + eps))
+            denom_l1 += weight
+        numerator = max_term + self.rho * l1
+        denominator = denom_max + self.rho * denom_l1
+        if denominator <= 0.0:
+            return 1.0
+        return clamp01(numerator / denominator)
+
     @staticmethod
     def _geometric_mean(values: list[float]) -> float:
         """The geometric mean of non-negative per-child scalars.
