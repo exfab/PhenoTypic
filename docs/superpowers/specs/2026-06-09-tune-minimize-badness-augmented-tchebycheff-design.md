@@ -1,4 +1,4 @@
-# Tune module: minimize bounded "badness" with augmented Tchebycheff
+# Tune module: minimize bounded "cost" with augmented Tchebycheff
 
 - **Status:** Draft (for review)
 - **Date:** 2026-06-09
@@ -6,7 +6,7 @@
   `src/phenotypic/analysis/abc_/_quality_check.py`, the GUI tune surface
   (`src/phenotypic/gui/tune/**`), and the explainer
   `docs/superpowers/explain/tune-with-optuna.md`.
-- **Decision recorded:** adopt Option 1 ("bounded badness in `[0,1]`, optimizer
+- **Decision recorded:** adopt Option 1 ("bounded cost in `[0,1]`, optimizer
   minimizes") as the internal convention, and replace the geometric-mean
   composite with an **augmented Tchebycheff** scalarization.
 
@@ -16,7 +16,7 @@
 
 Today the tuner normalizes every objective to a bounded `[0,1]` score where
 **higher is better** and Optuna **maximizes**. This document specifies flipping
-the internal convention to bounded **badness** in `[0,1]` where **lower is
+the internal convention to bounded **cost** in `[0,1]` where **lower is
 better** (`0` = perfect, `1` = worst) and Optuna **minimizes**, and replacing the
 single-objective composite combiner (currently a geometric mean of per-child
 goodness) with an **augmented Tchebycheff** scalarization.
@@ -26,10 +26,10 @@ Two coupled changes:
 1. **Pole flip + direction declaration.** Generalize the QC `_HIGHER_IS_BAD`
    flag into a scorer/metric-level *sense* declaration so each scorer emits its
    **natural, intuitive** value (a divergence stays a divergence; Dice stays
-   Dice) and one framework boundary orients it into bounded badness. The
+   Dice) and one framework boundary orients it into bounded cost. The
    optimizer minimizes.
 2. **Composite combiner.** The single-objective `CompositeScorer` blends
-   per-child badness with augmented Tchebycheff
+   per-child cost with augmented Tchebycheff
    `Tᵨ(b) = maxᵢ wᵢ(bᵢ − z*ᵢ) + ρ·Σᵢ wᵢ(bᵢ − z*ᵢ)`, minimized, with a
    strictly-dominating utopia point `z*ᵢ = −ε`.
 
@@ -47,7 +47,7 @@ baseline.
   `_HIGHER_IS_BAD=True` divergences; the raw scorer signals (count divergence,
   relative MAD, max modZ) are losses. Today every scorer hand-rolls a flip into
   higher-is-better `[0,1]` (`_threshold_anchored`, `1−Dice`, fold-and-flip). A
-  badness-native convention lets loss metrics integrate **without any flip**, and
+  cost-native convention lets loss metrics integrate **without any flip**, and
   consolidates the four hand-rolled flips into **one** framework boundary.
 - A "minimize a loss/distance-from-ideal" framing makes the **augmented
   Tchebycheff** combiner natural, which (unlike the weighted sum, and unlike the
@@ -55,7 +55,7 @@ baseline.
   of the front (§9).
 
 ### Goals
-- One internal convention: bounded badness `[0,1]`, minimize.
+- One internal convention: bounded cost `[0,1]`, minimize.
 - New scorers/checks declare a *sense* once and emit natural values; the
   framework orients them. Reuse the QC `_HIGHER_IS_BAD` + `fail_threshold`
   contract verbatim.
@@ -105,9 +105,9 @@ The reusable precedent: `analysis/abc_/_quality_check.py:88` `_HIGHER_IS_BAD`;
 
 ---
 
-## 4. Target design — the badness convention
+## 4. Target design — the cost convention
 
-**Definition.** Every per-term score is a **badness** `b ∈ [0,1]`, where `b=0` is
+**Definition.** Every per-term score is a **cost** `b ∈ [0,1]`, where `b=0` is
 perfect and `b=1` is the worst. The optimizer minimizes. `inf`/degenerate inputs
 floor to `b=1.0` (bounded worst).
 
@@ -117,7 +117,7 @@ floor to `b=1.0` (bounded worst).
 - `mean(b) = 1 − mean(s)`.
 - Pareto domination is order-based; `≤`/`<` is the exact reflection of `≥`/`>`.
 
-So minimizing the badness aggregate yields the **identical winner** to today's
+So minimizing the cost aggregate yields the **identical winner** to today's
 maximize for every path except the composite combiner (§5), which is changed on
 purpose.
 
@@ -132,61 +132,102 @@ objective). For scorers, declare the sense of the terms they emit:
 
 ```python
 class Scorer(BaseModel, ABC):
-    # Sense of the natural values returned by score_image (per term, or uniform).
-    _TERM_SENSE: ClassVar[Sense] = Sense.LOWER_BETTER   # badness-native default
+    # Sense of this scorer's natural per-term values (v1: uniform per scorer).
+    _TERM_SENSE: ClassVar[Sense] = Sense.LOWER_BETTER   # cost-native default
 ```
 
 `Sense` is a closed value set: per `CLAUDE.md`, define it as an enum paired with
 a `Literal` alias plus an alignment test (`set(get_args(SenseLiteral)) ==
 {m.value for m in Sense}`). Mapping: `_HIGHER_IS_BAD=True` ↔ `Sense.LOWER_BETTER`.
+**v1 scope (OQ8):** sense is a single per-scorer `ClassVar` (uniform across that
+scorer's terms). A mixed-sense, per-term map is deferred/YAGNI — no shipped scorer
+needs it.
 
-The default is `LOWER_BETTER` (badness-native, **decided**): a new scorer that
+The default is `LOWER_BETTER` (cost-native, **decided**): a new scorer that
 emits a raw loss is zero-config; a goodness-emitting scorer must declare
-`HIGHER_BETTER`. Because the default *assumes* badness, the migration cannot leave
+`HIGHER_BETTER`. Because the default *assumes* cost, the migration cannot leave
 today's goodness-emitting scorers un-annotated — each must be tagged in the same
 change that rewrites its emission (see §7 Phase 1 and the §11 decision).
 
-### 5.2 The orientation boundary
-One function converts a scorer's **natural** term value into bounded badness.
-Applied at the Evaluator boundary (`_score_one_image`, `_evaluator.py:345`) so
-every consumer downstream sees badness only:
+### 5.2 The orientation boundary — a base-class template method (OQ2)
+
+Orientation is a **per-scorer responsibility**, not a flat Evaluator-boundary
+pass. The base `Scorer` becomes a template method: a scorer produces its natural
+per-term values in `_score_terms`, declares its sense once, and the base wraps
+each term into cost via the single shared `to_cost` helper. This is what makes the
+composite math unambiguous (§6.3): a child emits **already-cost** terms, so the
+per-child reduction and the Tchebycheff combiner both operate on cost.
 
 ```python
-def to_badness(value: float, *, sense: Sense, anchor: float | None) -> float:
-    """Natural value -> badness in [0,1] (0 perfect, 1 worst)."""
+def to_cost(value: float, *, sense: Sense, anchor: float | None) -> float:
+    """Natural value -> cost in [0,1] (0 perfect, 1 worst)."""
     if anchor is None:                      # value already bounded in [0,1]
         return value if sense is Sense.LOWER_BETTER else 1.0 - value
     if not math.isfinite(value):
         return 1.0                          # inf divergence -> worst
     goodness = math.exp(-math.log(2.0) * value / anchor)   # 1 at 0, .5 at anchor
     return (1.0 - goodness) if sense is Sense.LOWER_BETTER else goodness
+
+class Scorer(BaseModel, ABC):
+    _TERM_SENSE: ClassVar[Sense] = Sense.LOWER_BETTER
+
+    @abstractmethod
+    def _score_terms(self, image, measurements) -> dict[str, float]:
+        """This scorer's natural per-term values (its own convention)."""
+
+    def _term_anchor(self, term: str) -> float | None:
+        return None                         # None => value already in [0,1]
+
+    def score_image(self, image, measurements) -> dict[str, float]:
+        # ONE orientation point; sense/anchor are local to the scorer that owns them.
+        return {
+            t: to_cost(v, sense=self._TERM_SENSE, anchor=self._term_anchor(t))
+            for t, v in self._score_terms(image, measurements).items()
+        }
 ```
 
-- **Bounded, lower-better** (1−Dice already in `[0,1]`, etc.): identity.
-- **Bounded, higher-better** (Dice, IoU, ICC, solidity): `1 − value`.
-- **Unbounded, lower-better** (count divergence, relative MAD): the
-  threshold-anchored complement; `anchor` is the check's `fail_threshold`.
-- **Unbounded, higher-better** (rare): `goodness` directly.
+The four `to_cost` cases: **bounded lower-better** → identity; **bounded
+higher-better** (Dice, IoU, ICC, solidity) → `1 − value`; **unbounded
+lower-better** (count divergence) → threshold-anchored complement (`anchor` =
+the check's `fail_threshold`); **unbounded higher-better** (rare) → `goodness`.
+A QC check's `(_HIGHER_IS_BAD, fail_threshold)` maps onto `(sense, anchor)`
+exactly. **`CompositeScorer` overrides `score_image` (the merge), not
+`_score_terms`** — its children already returned cost, so it must not re-orient.
 
-The QC check's `(_HIGHER_IS_BAD, fail_threshold)` pair maps onto `(sense,
-anchor)` exactly, so a QC-backed scorer needs **no** bespoke flip.
+### 5.3 New-scorer authoring contract (canonical — must be documented in 3 places)
 
-### 5.3 New-module authoring contract
-A new scorer/check declares **sense**, supplies an **anchor** only if its natural
-value is unbounded, returns its **natural** value, and **registers** (re-export
-from `tune/__init__.py` + class registry, else GUI/`from_json` cannot see it). It
-introduces **no scalarization parameters**: the anchor is the value it already
-declares for QC (its `fail_threshold`), and the framework derives normalization,
-`ε`, `ρ`, and default weights itself (§6.6). Existing scorers are rewritten to
-emit natural values and declare sense in §7 **Phase 1** (Phase 0 ships only the
-machinery; see §11).
+This is the source-of-truth contract for adding a tuning objective. **Per §7
+Phase 5 it must be reproduced in: (1) the `Scorer` base-class docstring
+(`_scoring/_scorer.py`), (2) `src/phenotypic/tune/CLAUDE.md`, and (3) the
+contributor guide `docs/source/contrib_guide/contributing.rst`.** Keep the three
+copies in sync with this section.
+
+To add a `Scorer`:
+1. **Subclass `Scorer`** and implement `_score_terms(image, measurements) ->
+   dict[str, float]` returning your **natural** per-term values — do **not** flip
+   or normalize by hand.
+2. **Declare `_TERM_SENSE`** (`LOWER_BETTER` if larger = worse, the default;
+   `HIGHER_BETTER` if larger = better, e.g. Dice/ICC).
+3. **Supply an anchor only if a term is unbounded** — override `_term_anchor` to
+   return the half-cost scale (for a QC-backed term, its check's
+   `fail_threshold`). Bounded `[0,1]` terms need nothing.
+4. **Do not add scalarization parameters.** `ε`, `ρ`, normalization, and default
+   weights are framework-derived (§6.6); a scorer never sets them.
+5. **Register** — re-export from `tune/__init__.py` and the class registry, or
+   the GUI and `from_json` cannot see it.
+
+The framework then orients (`to_cost`), robust-aggregates, reduces per child, and
+combines (augmented Tchebycheff) — the author writes none of that. Existing
+scorers are migrated to this shape in §7 **Phase 1** (rename their `score_image`
+body to `_score_terms`, keep their internal fold, declare
+`_TERM_SENSE = HIGHER_BETTER`); Phase 0 ships only the machinery (see §11).
 
 ---
 
 ## 6. Target design — augmented Tchebycheff composite
 
 ### 6.1 Formula
-For per-child badness scalars `bᵢ ∈ [0,1]`, positive weights `wᵢ` (the existing
+For per-child cost scalars `bᵢ ∈ [0,1]`, positive weights `wᵢ` (the existing
 `weights` dict; missing → `1.0`), utopia point `z*ᵢ = −ε`, and augmentation
 coefficient `ρ`:
 
@@ -209,13 +250,13 @@ Tᵨ(b) = max_i dᵢ  +  ρ · Σ_i wᵢ·bᵢ            # minimize
 
 - **Utopia `z*ᵢ = −ε`** (e.g. `ε = 1e-3`): a **strictly-dominating** reference
   point. Tchebycheff's reach-every-Pareto-point property requires the reference
-  to strictly dominate (be unachievable for) the whole front; since child badness
+  to strictly dominate (be unachievable for) the whole front; since child cost
   is achievable down to `0`, `z* = 0` is only *weakly* dominating on a perfect
   axis, so we shift to `−ε`. Static constant — no per-trial state, no estimation,
   no resume hazard (see §9 for why the running-ideal estimation problem does not
   apply here). `ε` is **not scale-free**: the weights that realize a given Pareto
   point scale as `wᵢ ~ 1/(bᵢ + ε)`, so `ε` must be small *relative to the `[0,1]`
-  badness scale* (too large flattens weight differences, biasing toward the L1
+  cost scale* (too large flattens weight differences, biasing toward the L1
   term like a large `ρ`). At `ε = 1e-3` the shift is ~0.1% of full range.
 - **Augmentation `ρ·Σ dᵢ`** upgrades minimizers from *weakly* Pareto optimal
   (plain Tchebycheff) to **properly** Pareto optimal, eliminating
@@ -225,29 +266,27 @@ Tᵨ(b) = max_i dᵢ  +  ρ · Σ_i wᵢ·bᵢ            # minimize
 
 ### 6.2 Normalize to `[0,1]` for downstream consumers
 `Tᵨ` ranges over `[ε(1+ρn), (1+ε)(1+ρn)]`, not `[0,1]`. Several consumers assume
-bounded `[0,1]` badness (the `failure_score=1.0` floor, the `_is_suspicious`
+bounded `[0,1]` cost (the `failure_score=1.0` floor, the `_is_suspicious`
 thresholds). Normalize by the theoretical max:
 
 ```
 T_norm = Tᵨ(b) / Tᵨ(1...1)      # in (0, 1]
 ```
 
-> **Correction (lit review) — the normalizer must be a study-global constant.**
-> Dividing by `Tᵨ(1…1)` is argmin-preserving **only within one trial's
-> objective**. But `Tᵨ(1…1) = (1+ε)(maxᵢ wᵢ + ρ Σᵢ wᵢ)` depends on the active
-> term set `n` and the weights — and the active set **varies per trial** when a
-> child abstains (§6.3). A per-trial-varying normalizer is monotone *within* a
-> trial but **not** monotone *across* trials, so it can change the **cross-trial
-> winner** that Optuna selects — contradicting "winner unchanged." The
-> normalizer must therefore be computed against the **full, fixed term roster**
-> (treat an abstaining term at its worst, do not drop it from the denominator),
-> i.e. a constant for the whole study. This ties directly to the abstainer
-> handling in §6.3.
+> **Correction (lit review + OQ3) — the normalizer must be a study-global
+> constant.** Dividing by `Tᵨ(1…1)` is argmin-preserving **only within one
+> trial's objective**. `Tᵨ(1…1) = (1+ε)(maxᵢ wᵢ + ρ Σᵢ wᵢ)` depends on the active
+> set and the weights, so if the active set varied per trial the normalizer would
+> be monotone within a trial but **not across trials**, changing the cross-trial
+> winner. Resolution (OQ3): both the `max` numerator **and** the normalizer are
+> computed over the **study-global active set** — the children available
+> *study-wide* (`availability() == True`). That set is fixed for the whole study,
+> so the normalizer is constant, and numerator/denominator stay consistent (§6.3).
 
 ### 6.3 Where it plugs in
 `_composite.py:203 finalize`:
-- `multi_objective=True` → unchanged in shape: return the per-child badness
-  dict; the abstainer floor flips `0.0 → 1.0` (worst badness) at `:240`; the
+- `multi_objective=True` → unchanged in shape: return the per-child cost
+  dict; the abstainer floor flips `0.0 → 1.0` (worst cost) at `:240`; the
   vector feeds NSGA-II with `directions=["minimize"]*n`.
 - single-objective with `weights` → augmented Tchebycheff with those weights as
   the **Tchebycheff weights** (conjunctive). See §6.5 — this is a semantics
@@ -257,28 +296,36 @@ T_norm = Tᵨ(b) / Tᵨ(1...1)      # in (0, 1]
   (**replaces** `_geometric_mean`, `:319`).
 
 Introduce a `blend: CompositeBlend` selector (`Literal["tchebycheff",
-"weighted_mean"]`, default `"tchebycheff"`). The geometric-mean-of-badness path
+"weighted_mean"]`, default `"tchebycheff"`). The geometric-mean-of-cost path
 is **never** exposed: it inverts the conjunctive property (one perfect axis
 zeroes the product and dominates), the documented trap this design avoids.
 
-> **New pitfall (migration review) — an abstaining child masks all axes under
-> `max`.** Today an abstaining child is floored to `0.0` and a geometric mean
-> simply ignores a perfect-looking axis. Under Tchebycheff `max`, flooring an
-> abstainer to badness `1.0` (the worst) makes its `dᵢ = wᵢ(1+ε)` **the maximum
-> term for every candidate**, pinning the composite near its ceiling and
-> destroying discrimination on the *available* axes. Abstention is a property of
-> the run/data (e.g. a `SupervisedScorer` with missing GT masks), so this would
-> silently flatten an entire study. **Fix:** the single-objective Tchebycheff
-> path must **exclude abstaining children from the `max`** (compute over present
-> terms only) rather than floor-then-max — while §6.2's normalizer still uses the
-> full roster for cross-trial comparability. (The `0.0 → 1.0` floor at `:240`
-> remains correct for the *multi-objective* NSGA-II vector, which needs a
-> fixed-length vector; the two paths handle abstention differently and the doc
-> must keep them distinct.)
+> **Abstainer handling (migration review + OQ3) — the active-set rule.** Under
+> Tchebycheff `max`, flooring an abstaining child to cost `1.0` (the worst) would
+> make its `dᵢ = wᵢ(1+ε)` **the maximum term for every candidate**, pinning the
+> composite near its ceiling and destroying discrimination on the *available*
+> axes. Abstention is a property of the run/data (e.g. `SupervisedScorer` without
+> GT), so this would silently flatten an entire study.
+>
+> **Resolution (OQ3) — one study-global active set for both numerator and
+> denominator.** Define the active set once as the children that are available
+> **study-wide** (`availability()`); a study-wide abstainer is simply **not an
+> objective** and is dropped from *both* the `max` and the normalizer roster
+> (keeping them consistent — see §6.2). **Per-image** abstention (a study-wide
+> available child that returns `{}` for one plate) is *not* a max-composition
+> issue: it just yields fewer samples for that term in the robust aggregate, and
+> the child still produces a scalar from the plates it did score. Edge cases:
+> empty active set → composite is unavailable (engine degrades) and, defensively,
+> the composite returns cost `1.0` (guard the `max([])`).
+>
+> The **multi-objective** NSGA-II path is separate and keeps the abstainer floor
+> `0.0 → 1.0` at `:240` (it needs a fixed-length value vector); only the
+> single-objective Tchebycheff path uses the active-set rule. Keep the two paths
+> distinct.
 
 ### 6.4 Choosing `ε` and `ρ` (and the harm of mistuning)
 
-Both are **small, fixed constants chosen relative to the `[0,1]` badness scale**,
+Both are **small, fixed constants chosen relative to the `[0,1]` cost scale**,
 not tuned per run. Proposed defaults: `ε = 1e-3`, `ρ = 0.05`. Their jobs are
 distinct and their failure modes are opposite-ended. **These are author-side
 constants, never required of users** — the derivation routes below justify the
@@ -350,7 +397,7 @@ zero-parameter user surface).
   subtract a small offset to get a strictly-dominating utopia point. The offset
   is conventionally a **small fraction of the objective range** (a few percent),
   i.e. `z**ᵢ = z*ᵢ − ε·(nadirᵢ − z*ᵢ)`. Two things make this trivial here:
-  1. **The ideal is known a priori, not estimated.** Because badness is
+  1. **The ideal is known a priori, not estimated.** Because cost is
      normalized to `[0,1]` with `0` = perfect, `z*ᵢ = 0` exactly — so we skip the
      whole running-ideal estimation (and its determinism/resume hazards, §9) and
      only need the offset, giving `z*ᵢ = 0 − ε = −ε`.
@@ -358,7 +405,7 @@ zero-parameter user surface).
      realizes a target front point is `wᵢ ∝ 1/(bᵢ − z*ᵢ) = 1/(bᵢ + ε)`, so `ε`
      **caps the weight dynamic range at `1/ε`**. Choosing `ε = 1e-3` (~0.1% of
      the `[0,1]` range) bounds the realizer at `≤ 1000×` — well-conditioned —
-     while staying far smaller than any badness gap worth resolving. That is the
+     while staying far smaller than any cost gap worth resolving. That is the
      principled lower/upper bracket; no sweep is needed.
 - *Harm of mistuning.*
   - **Too small (→0):** on a perfect axis (`bᵢ = 0` is achievable, e.g. an exact
@@ -424,16 +471,21 @@ performs. The reasoning, grounded in the literature:
    an advanced-only `CompositeScorer` field with a default the user need never
    touch.
 
-2. **Per-axis normalization is auto-derived from values already in the config.**
-   Getting the normalization right is the step that actually matters: Marler &
-   Arora (2010) show that, for a fixed weight set, *rescaling an objective changes
-   which Pareto point you obtain* — so without normalization, weights conflate
-   importance with units. The framework therefore normalizes every objective to
-   `[0,1]` badness using anchors **already declared**: a bounded objective (Dice,
-   ICC) needs none (identity/complement); an unbounded loss (count divergence,
-   relative MAD) reuses its scorer/QC `fail_threshold` as the `to_badness` anchor
-   (§5.2). The user already sets `fail_threshold` for QC, so normalization
-   requires **zero new input**.
+2. **Per-axis normalization needs no user input (OQ1=A).** Getting normalization
+   right is the step that actually matters: Marler & Arora (2010) show that, for a
+   fixed weight set, *rescaling an objective changes which Pareto point you
+   obtain* — so without normalization, weights conflate importance with units.
+   Under OQ1=A this is already handled, because **every shipped scorer already
+   folds its raw signal to a bounded `[0,1]` value internally** (`QCScorer` via
+   `_threshold_anchored` on the count check's `fail_threshold`; `ReferenceFreeScorer`
+   via `_bounded_inverse`/`_clamp01`; `SupervisedScorer` via Dice/IoU + the folded
+   count tier). So at the orientation boundary every term is already `[0,1]` and
+   `to_cost` is the **identity/complement** (`_term_anchor` returns `None`); no
+   per-scorer anchor field is added. The `to_cost` `anchor` branch (and the
+   `fail_threshold`-as-anchor story) is the contract for **future raw-loss
+   scorers**, not a refit of the current `SupervisedScorer`/`ReferenceFreeScorer`
+   (which have no top-level `fail_threshold` — it lives on their nested
+   `count_check`). Either way, normalization requires **zero new user input**.
 
 3. **Weights default to uniform (no-preference).** True relative importance
    cannot be conjured from a pipeline config that carries no preference signal, so
@@ -469,43 +521,56 @@ land together.
 
 ### Phase 0 — direction declaration + orientation boundary (additive)
 - Add `Sense` enum + `Literal` alias + alignment test (`tools_/typing_.py`).
-- Add `to_badness` (new `_scoring/_orient.py`), with unit tests, but **do not
+- Add `to_cost` (new `_scoring/_orient.py`), with unit tests, but **do not
   invoke it on the live scoring path yet**.
 - Lift `_HIGHER_IS_BAD` ↔ `Sense` mapping; keep QC checks unchanged.
 - **No optimizer or scorer change yet.** Because the `Sense` default is
   `LOWER_BETTER`, the boundary cannot be activated while scorers still emit
   goodness (it would mis-orient them). Phase 0 ships only the machinery (enum,
-  alias, `to_badness`, mapping); scorer annotation + activation happen atomically
+  alias, `to_cost`, mapping); scorer annotation + activation happen atomically
   per scorer in Phase 1.
 
 ### Phase 1 — flip the Evaluator math (`_evaluation/**`)
 - `_WORST_TERM: 0.0 → 1.0`; `failure_score: 0.0 → 1.0` (and define a finite
-  `_FAILURE_BADNESS` ≥ achievable composite max if the composite can exceed 1
+  `_FAILURE_COST` ≥ achievable composite max if the composite can exceed 1
   before normalization — but §6.2 normalization keeps it `≤ 1`, so `1.0` holds).
 - `_robust_aggregate`: `median − λ·IQR → median + λ·IQR` (`:53`, `:65`).
-- `_is_suspicious` (`:104`): reflect — `score <= (1 − suspicious_score_floor)`
-  **and** `count_badness >= (1 − suspicious_count_floor)`. Rename floors or
-  reflect internally; update docstrings.
+- `_is_suspicious` (`:104`): reflect **every** constant (OQ9), not just the
+  comparison: `score <= (1 − suspicious_score_floor)` **and** `count_cost >=
+  (1 − suspicious_count_floor)`; flip the **`Count` default** `terms.get("Count",
+  1.0) → 0.0` (a missing Count term must default to *faithful = best cost*, not
+  worst); reflect the two floor fields. Enumerate the full `_evaluator.py` flip
+  set in the checklist: `_WORST_TERM 0.0→1.0`, `failure_score 0.0→1.0`,
+  `_is_suspicious` Count default `1.0→0.0` + both floors, and the `_aggregate`
+  worst-term pad. Update docstrings.
 - **BLOCKER — second direction-sensitive gap: `compute_generalization_gap`
   (`_evaluation/_generalization.py:100`).** The overfit detector computes
   `absolute_drop = cal_score − heldout_score` and flags `drop > margin`. Under
-  goodness, overfit = `cal > heldout` (positive drop). Under **badness** the sign
-  inverts: a genuinely overfit winner has *higher* held-out badness, so
-  `cal_badness − heldout_badness` is **negative** and the gate **never fires** —
+  goodness, overfit = `cal > heldout` (positive drop). Under **cost** the sign
+  inverts: a genuinely overfit winner has *higher* held-out cost, so
+  `cal_cost − heldout_cost` is **negative** and the gate **never fires** —
   the overfit detector silently dies (it writes a wrong `generalization.json`
   rather than erroring). Flip to `heldout − cal` and re-examine the margin
   comparisons. **This file is in neither the original §3 inventory nor any
   phase** — added here (layer 5b). Update its doctest (`:91`).
-- **PITFALL — relative-IQR blowup at BOTH `_relative` call sites.** The shared
-  `_aggregate_math._relative(x, central)` floors the denominator at
-  `_GAP_EPS=1e-12`. Under badness a great candidate has central tendency `≈ 0`,
-  so the relative value explodes. This hits **(a)** `_per_trial_dispersion`
+- **PITFALL — relative-IQR blowup at BOTH `_relative` call sites (OQ4 resolved).**
+  The shared `_aggregate_math._relative(x, central)` floors the denominator at
+  `_GAP_EPS=1e-12`. Under cost a great candidate has central tendency `≈ 0`, so
+  the relative value explodes. This hits **(a)** `_per_trial_dispersion`
   (`_evaluator.py:68`, the `gap` signal) **and (b)** `compute_generalization_gap`
-  (`_generalization.py:101`). Fix **once** at the shared helper or at both
-  callers: compute on the goodness-equivalent (`1 − b`) or against a fixed
-  denominator; never divide by a near-zero badness central tendency. Consumers of
-  `gap` to re-review: the GUI `GAP_FLAG_THRESHOLD=0.15` and the data-poor
-  fallback `calibration_stability=winner.gap` (`_generalization.py:266`).
+  (`_generalization.py:101`). **Resolution — do both:** (i) compute the relative
+  quantity on the **goodness-equivalent (`1 − cost`)** so a good candidate's
+  central tendency is `≈ 1`, not `≈ 0` — this is reflection-clean and keeps the
+  calibrated `GAP_FLAG_THRESHOLD=0.15` valid (the flip moves the singularity to
+  the harmless *bad* end); **and** (ii) raise the existing too-small denominator
+  floor `_GAP_EPS` from `1e-12` to a **meaningful constant `≈ 0.02`** (a few
+  percent of the `[0,1]` scale) as a defensive cap for the residual bad-end case.
+  Keep the floor small enough that it does not materially shift the gap for normal
+  candidates (so `0.15` still holds). Note `_GAP_EPS=1e-12` *is* already a
+  stability term — just far too small to do anything. One shared-helper change
+  fixes both callers. Consumers of `gap` to re-confirm unchanged: the GUI
+  `GAP_FLAG_THRESHOLD=0.15` and the data-poor fallback
+  `calibration_stability=winner.gap` (`_generalization.py:266`).
 - **COUPLING — Phase 1 and Phase 2 must land together (pruner).** The ASHA
   `SuccessiveHalvingPruner` (`_strategies/_optuna.py`) is **direction-aware** —
   it reads `study.direction`. The Evaluator reports `running_score` to it
@@ -532,7 +597,7 @@ land together.
   the study; reopening a `maximize` study as `minimize` raises. We do **not**
   ship a converter. Instead:
   1. A **version bump** of the study/spec schema (a `tune_convention` tag stamped
-     on new studies, e.g. `"minimize-badness-v1"`).
+     on new studies, e.g. `"minimize-cost-v1"`).
   2. A startup **guard** that detects a pre-cutover study and **refuses with an
      actionable error** ("this study was created under the old maximize
      convention; start a fresh run / output dir"). It must run inside
@@ -571,7 +636,7 @@ land together.
   `-inf→+inf`, `<→>`, and `_apply_focused_penalty` adds instead of subtracts.
   `_screening.py` importance sorts are over **importances** (variance attribution
   — sign-independent, unchanged).
-- GUI: `gui/tune/_winner.py` (doctest `score=0.9` → low badness);
+- GUI: `gui/tune/_winner.py` (doctest `score=0.9` → low cost);
   `_study_read.py` (`running_best max→min`, `shortlist reverse=True→False`,
   `GAP_FLAG_THRESHOLD=0.15` re-review after the gap fix, y-axis label "score");
   `_run_root.py:46` `_MULTI_OBJECTIVE_PLACEHOLDER_DIRECTIONS
@@ -580,8 +645,19 @@ land together.
   gates if any affordance text changes.
 
 ### Phase 5 — docs + tests
-- `tune/CLAUDE.md`: "Higher-is-better everywhere" → "Badness everywhere
-  (minimize); the single `_MINIMIZE` literal."
+- **New-scorer authoring contract — propagate §5.3 to all three surfaces (OQ2).**
+  The §5.3 contract is the source of truth; reproduce it (kept in sync) in:
+  1. the **`Scorer` base-class docstring** (`src/phenotypic/tune/_scoring/_scorer.py`)
+     — the `_score_terms` / `_TERM_SENSE` / `_term_anchor` template-method contract
+     and the "emit natural values, declare sense, no scalarization params" rules;
+  2. **`src/phenotypic/tune/CLAUDE.md`** — a short "Adding a Scorer" subsection
+     plus the convention flip below;
+  3. the contributor guide **`docs/source/contrib_guide/contributing.rst`** — a
+     walkthrough for adding a tuning objective.
+  A docs check should fail if these drift (mirror the existing CLAUDE.md/FEATURES
+  gating philosophy).
+- `tune/CLAUDE.md`: "Higher-is-better everywhere" → "Cost everywhere
+  (lower-is-better, minimize); the single `_MINIMIZE` literal."
 - `docs/superpowers/explain/tune-with-optuna.md` (+ `.graph.md`): rewrite the
   scorer/aggregate/Pareto/composite math sections (CLAUDE.md mandates this in the
   same change).
@@ -620,10 +696,10 @@ it requires a baseline snapshot and reviewer sign-off, not a silent swap.
 ## 9. Accuracy & theory notes (literature-audited)
 
 - **Reflection equivalence** (median/IQR/mean): elementary; verified.
-- **Geometric-mean-of-badness is the trap**: the geometric mean is a conjunctive
+- **Geometric-mean-of-cost is the trap**: the geometric mean is a conjunctive
   aggregation function (Beliakov, Pradera & Calvo, 2007) and does not commute
-  with `s → 1−s`; because `0` is the product's annihilator, feeding *badness*
-  into it makes one perfect axis (badness 0) zero the product and dominate — the
+  with `s → 1−s`; because `0` is the product's annihilator, feeding *cost*
+  into it makes one perfect axis (cost 0) zero the product and dominate — the
   opposite of the conjunctive "all axes must be good" property it has on
   *goodness*. Avoided by never exposing it (§6.3).
 - **Weighted sum** reaches only convex-hull ("supported") Pareto points; concave
@@ -645,9 +721,9 @@ it requires a baseline snapshot and reviewer sign-off, not a silent swap.
   deterministic resume, and cross-worker independence) **does not arise**, because
   the bounded `[0,1]` normalization gives a known static lower bound.
 - **Power-mean note**: `p ≤ 0` means (geometric/harmonic) require strictly
-  positive arguments; badness can be `0`. Augmented Tchebycheff (an L∞-family,
+  positive arguments; cost can be `0`. Augmented Tchebycheff (an L∞-family,
   `p → ∞` flavor) has no positivity hazard — another reason to prefer it over any
-  geometric/harmonic badness blend.
+  geometric/harmonic cost blend.
 
 ---
 
@@ -666,16 +742,16 @@ it requires a baseline snapshot and reviewer sign-off, not a silent swap.
 - **Orientation boundary**: table test over the four (bounded?, sense) cases incl.
   `inf → 1.0`; assert QC `(_HIGHER_IS_BAD, fail_threshold)` maps to
   `(sense, anchor)`.
-- **`gap` pitfall guard**: a near-perfect candidate (median badness ≈ 0) must not
+- **`gap` pitfall guard**: a near-perfect candidate (median cost ≈ 0) must not
   produce an exploding/NaN `gap` — assert for **both** `_per_trial_dispersion`
   and `compute_generalization_gap`.
 - **Overfit-gap sign**: a synthetic winner that is better on calibration than
-  held-out must be **flagged** under badness (currently no test asserts the gap
+  held-out must be **flagged** under cost (currently no test asserts the gap
   *sign*; this is how the inverted detector would ship undetected). Invert the
   `test_generalization.py` flag assertions.
 - **Pruner inversion**: `test_optuna_pruning.py`'s end-to-end test seeds good
   trials at `1.0` and a bad one at `0.0` and asserts PRUNED — under minimize this
-  must invert (good = low badness, bad = high badness) or it silently prunes the
+  must invert (good = low cost, bad = high cost) or it silently prunes the
   *best* candidate.
 - **Abstainer masking**: a single-objective composite with one abstaining child
   must still discriminate among candidates on the present axes (regression for
@@ -694,19 +770,20 @@ it requires a baseline snapshot and reviewer sign-off, not a silent swap.
 **Pitfalls** (ordered by risk after the migration review)
 1. **Inverted overfit detector** (§7 Phase 1, `_generalization.py:100`) —
    **highest risk.** The migration originally missed this file entirely; the gap
-   sign inverts under badness and the detector silently stops flagging real
+   sign inverts under cost and the detector silently stops flagging real
    overfit, writing a wrong `generalization.json` with no error and no test
    catching it.
-2. **`_relative` blowup at both call sites** (§7 Phase 1) — `_per_trial_dispersion`
-   *and* `compute_generalization_gap` divide by a central tendency that → 0 for
-   good candidates.
+2. **`_relative` blowup at both call sites** (§7 Phase 1; **OQ4 resolved**) —
+   `_per_trial_dispersion` *and* `compute_generalization_gap` divide by a central
+   tendency that → 0 for good candidates. Fix: compute on `1 − cost` **and** raise
+   `_GAP_EPS` 1e-12 → ~0.02.
 3. **Abstainer masks all axes under Tchebycheff `max`** (§6.3) — a data-dependent
    abstention can flatten an entire study.
 4. **Pruner ↔ direction coupling** (§7 Phase 1) — Phase 1 and Phase 2 are atomic
    unless pruning is disabled between them.
 5. **Composite normalization across trials** (§6.2) — must use a study-global
    constant roster, else the cross-trial winner can change.
-6. **Geometric-mean literal port** (§9) — never expose geomean-of-badness.
+6. **Geometric-mean literal port** (§9) — never expose geomean-of-cost.
 7. **Study-direction immutability** (§7 Phase 2) — guard must precede
    `create_study`; resume conflict on old studies.
 8. **`_is_suspicious` reflection** — both halves invert; off-by-reflection
@@ -719,20 +796,47 @@ it requires a baseline snapshot and reviewer sign-off, not a silent swap.
   `{0.01, 0.05, 0.1}` to confirm); `ε` is a fixed numerical safety margin.
 - **Keep `_weighted_mean` as a `blend="weighted_mean"` opt-out** (§6.5);
   `tchebycheff` is the default; `weights` semantics are now blend-dependent.
-- **`Sense` default → `LOWER_BETTER`** (badness-native, §5.1). A new scorer that
+- **`Sense` default → `LOWER_BETTER`** (cost-native, §5.1). A new scorer that
   emits a raw loss needs no annotation; a goodness-emitting scorer must declare
   `HIGHER_BETTER` explicitly. **Migration implication:** an un-annotated scorer is
-  assumed to emit badness, so **every existing scorer must be annotated in the
+  assumed to emit cost, so **every existing scorer must be annotated in the
   same change that rewrites its emission** (Phase 1) — Phase 0 cannot "land dark"
   by defaulting all scorers, because today's scorers still emit goodness and would
   be mis-oriented. Phase 0 therefore ships only the machinery; Phase 1 flips
   emission + annotation atomically per scorer.
-- **Zero exposed scalarization parameters** (§6.6): `ε`/`ρ`/reference/normalization
-  are framework-derived; per-axis normalization auto-derives from each scorer's
-  existing `fail_threshold`; weights default to uniform; the only optional lever is
-  a coarse per-objective importance. Users set no scalarization parameters.
+- **Terminology → `cost`** (was "badness"): normalized cost ∈ [0,1], minimize;
+  `to_cost`, `_MINIMIZE`. Aligns with `_HIGHER_IS_BAD` (higher metric = higher
+  cost). (Spec filename keeps its original slug; content uses "cost".)
+- **OQ1 = A — keep internal folds.** Existing scorers already emit bounded `[0,1]`
+  values; they declare `_TERM_SENSE = HIGHER_BETTER` and `to_cost` complements
+  (`1 − value`). The `fail_threshold`-as-anchor path is for *future* raw-loss
+  scorers only (§6.6 corrected).
+- **OQ2 — orientation is a base-class template method** (§5.2): scorers implement
+  `_score_terms` + declare `_TERM_SENSE` (+ optional `_term_anchor`); base
+  `score_image` wraps via `to_cost`; composite merges already-cost terms;
+  Tchebycheff runs on per-child cost means (each ∈ [0,1]). Contract documented in
+  §5.3 and propagated to 3 surfaces (§7 Phase 5).
+- **OQ3 — single study-global active set** (§6.2/§6.3): the `max` numerator and
+  the normalizer both use the children available study-wide; per-image abstention
+  is a robust-aggregate sampling matter; empty active set → cost `1.0`.
+- **OQ4 — gap fix** (§7 Phase 1): compute relative dispersion on `1 − cost` **and**
+  raise `_GAP_EPS` 1e-12 → ~0.02 (both `_relative` callers).
+- **OQ8 — `Sense` is uniform per scorer for v1** (§5.1); per-term mixed sense is
+  YAGNI/deferred.
+- **OQ9 — full `_is_suspicious`/`_evaluator.py` reflection list** enumerated in
+  §7 Phase 1 (incl. the `Count` default `1.0→0.0`).
+- **Zero exposed scalarization parameters** (§6.6): `ε`/`ρ`/reference are
+  framework constants; normalization needs no input (terms are already `[0,1]`);
+  weights default to uniform. Users set no scalarization parameters.
 
-**Still open:** none — all design decisions resolved.
+**Open for discussion (next):**
+- **OQ5 — coarse importance lever.** Proposed: **defer to v2** (v1 = uniform
+  weights only; advanced users set `weights` directly). Confirm vs. ship a
+  `low|med|high` preset now.
+- **OQ6 — GUI/`FEATURES.md` coverage** for the relabel + (if shipped) the lever +
+  the read-only monitor's guard messaging.
+- **OQ7 — `tune_convention` tag + guard mechanics** (write path; `load_study` in
+  `try/except KeyError`; `.directions` vs `.direction` for multi-objective).
 
 ---
 
