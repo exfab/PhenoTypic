@@ -17,6 +17,7 @@ import pandas as pd
 
 from phenotypic.analysis import ExpectedVsDetectedCount
 
+from ._orient import Sense
 from ._scorer import Scorer
 
 
@@ -98,11 +99,15 @@ class QCScorer(Scorer):
         >>> measured = pd.DataFrame(
         ...     {"Metadata_ImageName": ["p1"] * 96, "Object_Label": list(range(96))}
         ... )
+        >>> # a perfect 96-well count match → zero cost
         >>> round(scorer.score_image(None, measured)["Count"], 3)
-        1.0
+        0.0
     """
 
     term_name: ClassVar[str] = "Count"
+    #: The folded count term is a bounded [0,1] goodness; the base complements
+    #: it (1 - value) into cost.
+    _TERM_SENSE = Sense.HIGHER_BETTER
 
     check: ExpectedVsDetectedCount
 
@@ -110,22 +115,24 @@ class QCScorer(Scorer):
         """``True`` when the check resolved a non-empty layout frame."""
         return not self.check.metadata.empty
 
-    def score_image(
+    def _score_terms(
         self, image: Any, measurements: pd.DataFrame
     ) -> dict[str, float]:
-        """Return ``{"Count": t}`` — the normalized per-image count score.
+        """Return ``{"Count": t}`` — the natural per-image count goodness.
 
         Runs the count check on ``measurements``, normalizes each group's
         ``QC_Count_Metric`` via :func:`_threshold_anchored`, and averages across
         groups (a single-plate frame has one group, so the mean is that group's
-        score). An empty frame scores ``0.0``.
+        score). An empty frame scores ``0.0``. The base :meth:`score_image`
+        complements this natural goodness in ``[0, 1]`` to cost.
 
         Args:
             image: Unused (the count objective reads only the frame).
             measurements: The candidate pipeline's measurement frame.
 
         Returns:
-            ``{"Count": <score in [0, 1]>}`` (higher = better).
+            ``{"Count": <natural goodness in [0, 1]>}`` (the base complements it
+            to cost).
         """
         return {
             self.term_name: fold_expected_vs_detected_count(
