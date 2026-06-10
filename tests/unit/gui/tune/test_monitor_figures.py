@@ -30,21 +30,20 @@ def _single_objective_root(path: Path) -> TuneRunRoot:
     )
 
 
-def test_build_objective_figure_best_trace_is_monotone() -> None:
+def test_build_objective_figure_best_trace_is_monotone_non_increasing() -> None:
     from phenotypic.gui.tune._study_read import build_objective_figure
 
-    trials = [_trial(0, 0.2), _trial(1, 0.5), _trial(2, 0.3), _trial(3, 0.7)]
+    trials = [_trial(0, 0.7), _trial(1, 0.5), _trial(2, 0.6), _trial(3, 0.3)]
     fig = build_objective_figure(trials)
-
-    # Find the running-best line trace (mode contains "lines"); its y must
-    # be monotone non-decreasing.
     best_traces = [
         tr for tr in fig.data if getattr(tr, "mode", None) and "lines" in tr.mode
     ]
     assert best_traces, "expected a running-best line trace"
     ys = list(best_traces[0].y)
-    assert ys == sorted(ys), "running-best y must be monotone non-decreasing"
-    assert ys == [0.2, 0.5, 0.5, 0.7]
+    assert ys == [0.7, 0.5, 0.5, 0.3]
+    assert ys == sorted(ys, reverse=True)  # cost: non-increasing
+    # y-axis is relabeled to cost (lower is better).
+    assert "cost" in fig.layout.yaxis.title.text.lower()
 
 
 def test_build_objective_figure_empty_is_safe() -> None:
