@@ -2,7 +2,8 @@
 
 The shared, store-agnostic core behind every backend's ``pareto_front`` /
 ``knee_point`` (plan §0a+§0b). It reads each trial's ``objectives`` sidecar (a
-``{objective_name: value}`` dict, higher-is-better — robust-eval §5) and:
+``{objective_name: value}`` dict, cost, lower-is-better — robust-eval §5 / cost
+convention) and:
 
 * :func:`pareto_front_of` selects the **non-dominated** trials — those no other
   trial beats on *every* objective. Failed and objective-less trials are
@@ -45,18 +46,19 @@ def _objective_keys(trials: list["Trial"]) -> list[str]:
 
 
 def _vector(trial: "Trial", keys: list[str]) -> list[float]:
-    """The trial's objective vector in ``keys`` order (``0.0`` for any missing)."""
+    """The trial's objective vector in ``keys`` order (``1.0`` — worst cost — for any missing)."""
     objectives = trial.objectives or {}
-    return [float(objectives.get(key, 0.0)) for key in keys]
+    return [float(objectives.get(key, 1.0)) for key in keys]
 
 
 def _dominates(lhs: list[float], rhs: list[float]) -> bool:
-    """Whether ``lhs`` Pareto-dominates ``rhs`` (higher-is-better objectives).
+    """Whether ``lhs`` Pareto-dominates ``rhs`` (cost objectives, lower-is-better).
 
-    ``lhs`` dominates ``rhs`` iff it is **at least as good on every** objective
-    and **strictly better on at least one**. Equal vectors do not dominate each
-    other, so identical points both survive a pairwise test (the front keeps one
-    representative via the "no *other* point dominates me" selection).
+    ``lhs`` dominates ``rhs`` iff it is **at least as good (no higher cost) on
+    every** objective and **strictly better (lower cost) on at least one**. Equal
+    vectors do not dominate each other, so identical points both survive a
+    pairwise test (the front keeps one representative via the "no *other* point
+    dominates me" selection).
 
     Args:
         lhs: The candidate dominating vector.
@@ -65,8 +67,8 @@ def _dominates(lhs: list[float], rhs: list[float]) -> bool:
     Returns:
         ``True`` when ``lhs`` dominates ``rhs``.
     """
-    no_worse = all(left >= right for left, right in zip(lhs, rhs))
-    strictly_better = any(left > right for left, right in zip(lhs, rhs))
+    no_worse = all(left <= right for left, right in zip(lhs, rhs))
+    strictly_better = any(left < right for left, right in zip(lhs, rhs))
     return no_worse and strictly_better
 
 
@@ -128,6 +130,10 @@ def knee_point_of(front: list["Trial"]) -> "Trial | None":
     reasonable but heuristic compromise pick, not a provably-optimal one. (A
     true n-D knee would project onto the hyperplane through all extreme points;
     deferred until a ≥3-objective scorer ships.)
+
+    The chord/projection geometry is direction-agnostic — the elbow is the same
+    front point whether axes are goodness or cost — so this is unchanged under
+    the cost cutover.
 
     Args:
         front: The Pareto front (e.g. from :func:`pareto_front_of`).

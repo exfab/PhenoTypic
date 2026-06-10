@@ -39,26 +39,61 @@ def _trial(n: int, *, objectives=None, score=None, failed=False) -> Trial:
 
 
 def test_pareto_front_excludes_dominated():
-    """A hand-built objective set → the known non-dominated subset.
+    """A hand-built cost-objective set → the known non-dominated subset.
 
-    Points (Dice, IoU): A=(0.9,0.2), B=(0.5,0.5), C=(0.2,0.9) are mutually
-    non-dominated (each wins an axis); D=(0.4,0.4) is dominated by B (0.5,0.5 ≥
-    on both, strictly on both). The front is {A, B, C}.
+    Cost coordinates (lower is better). Points (cost_seg, cost_qc): A=(0.1,0.8),
+    B=(0.5,0.5), C=(0.8,0.1) are mutually non-dominated (each wins an axis by
+    being lower); D=(0.6,0.6) is dominated by B (0.5,0.5 ≤ on both, strictly on
+    both). The front is {A, B, C}.
     """
     store = JournalStudyStore()
-    store.append(_trial(0, objectives={"Dice": 0.9, "IoU": 0.2}))  # A
+    store.append(_trial(0, objectives={"Dice": 0.1, "IoU": 0.8}))  # A
     store.append(_trial(1, objectives={"Dice": 0.5, "IoU": 0.5}))  # B
-    store.append(_trial(2, objectives={"Dice": 0.2, "IoU": 0.9}))  # C
-    store.append(_trial(3, objectives={"Dice": 0.4, "IoU": 0.4}))  # D (dominated)
+    store.append(_trial(2, objectives={"Dice": 0.8, "IoU": 0.1}))  # C
+    store.append(_trial(3, objectives={"Dice": 0.6, "IoU": 0.6}))  # D (dominated)
 
     front_numbers = {t.number for t in store.pareto_front()}
     assert front_numbers == {0, 1, 2}
 
 
-def test_pareto_front_ignores_failed_trials():
-    """A failed trial is never on the front even if its objectives look strong."""
+def test_pareto_front_excludes_dominated_under_cost():
+    """Cost coordinates (lower is better): the dominated point is the HIGH-cost one.
+
+    Points (cost_seg, cost_qc): A=(0.1,0.8), B=(0.5,0.5), C=(0.8,0.1) are mutually
+    non-dominated (each wins an axis by being lower). D=(0.6,0.6) is dominated by
+    B (0.5,0.5 ≤ on both, strictly on both). The front is {A, B, C}.
+    """
     store = JournalStudyStore()
-    store.append(_trial(0, objectives={"Dice": 0.9, "IoU": 0.9}, failed=True))
+    store.append(_trial(0, objectives={"seg": 0.1, "qc": 0.8}, score=0.45))  # A
+    store.append(_trial(1, objectives={"seg": 0.5, "qc": 0.5}, score=0.50))  # B
+    store.append(_trial(2, objectives={"seg": 0.8, "qc": 0.1}, score=0.45))  # C
+    store.append(_trial(3, objectives={"seg": 0.6, "qc": 0.6}, score=0.60))  # D dominated
+    front_numbers = {t.number for t in store.pareto_front()}
+    assert front_numbers == {0, 1, 2}
+
+
+def test_lower_cost_vector_dominates_higher_cost_vector():
+    """A strictly-lower-cost trial dominates a strictly-higher-cost one (cost B1)."""
+    from phenotypic.tune._study._pareto import _dominates
+
+    assert _dominates([0.2, 0.3], [0.5, 0.6]) is True   # lower on both → dominates
+    assert _dominates([0.5, 0.6], [0.2, 0.3]) is False  # higher on both → dominated
+    assert _dominates([0.2, 0.6], [0.2, 0.3]) is False  # ties one, worse on other
+    assert _dominates([0.2, 0.3], [0.2, 0.3]) is False  # equal vectors never dominate
+
+
+def test_vector_missing_axis_fills_worst_cost():
+    """A trial missing an axis is filled with 1.0 (worst cost), not 0.0 (best)."""
+    from phenotypic.tune._study._pareto import _vector
+
+    partial = _trial(0, objectives={"seg": 0.2}, score=0.2)
+    assert _vector(partial, ["seg", "qc"]) == [0.2, 1.0]
+
+
+def test_pareto_front_ignores_failed_trials():
+    """A failed trial is never on the front even if its costs look strong (low)."""
+    store = JournalStudyStore()
+    store.append(_trial(0, objectives={"Dice": 0.1, "IoU": 0.1}, failed=True))
     store.append(_trial(1, objectives={"Dice": 0.5, "IoU": 0.5}))
     front = store.pareto_front()
     assert {t.number for t in front} == {1}
@@ -106,14 +141,16 @@ def test_pareto_front_duplicate_objectives_keeps_one_representative():
 def test_knee_point_is_max_distance_to_chord():
     """The knee is the front point at max perpendicular distance to the chord.
 
-    With extremes A=(0.0,1.0) and C=(1.0,0.0), the chord is the line
-    ``x+y=1``. B=(0.9,0.9) is the convex elbow (distance ``0.8/√2``), far above
-    the chord; the near-chord point E=(0.5,0.5) sits *on* the chord (distance 0).
-    The knee is B.
+    Cost coordinates (lower is better). With extremes A=(0.0,1.0) and
+    C=(1.0,0.0), the chord is the line ``x+y=1``. B=(0.1,0.1) is the convex elbow
+    toward the origin (the low-cost corner, distance ``0.8/√2`` below the chord);
+    the near-chord point E=(0.5,0.5) sits *on* the chord (distance 0). The knee is
+    B. The chord/projection geometry is direction-agnostic, so the elbow is the
+    same front point whether axes are goodness or cost.
     """
     store = JournalStudyStore()
     store.append(_trial(0, objectives={"Dice": 0.0, "IoU": 1.0}))  # A extreme
-    store.append(_trial(1, objectives={"Dice": 0.9, "IoU": 0.9}))  # B elbow
+    store.append(_trial(1, objectives={"Dice": 0.1, "IoU": 0.1}))  # B elbow
     store.append(_trial(2, objectives={"Dice": 1.0, "IoU": 0.0}))  # C extreme
     store.append(_trial(3, objectives={"Dice": 0.5, "IoU": 0.5}))  # E on chord
     front = store.pareto_front()
