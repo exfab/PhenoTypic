@@ -69,7 +69,7 @@ def test_spec_round_trips_pipeline_and_scorer(tmp_path):
     assert back.scorer.score_image(
         None, pd.DataFrame({"Metadata_ImageName": ["p"] * 96,
                             "Object_Label": list(range(96))})
-    )["Count"] == 1.0
+    )["Count"] == 0.0
     assert isinstance(back.strategy, GridConfig)
 
 

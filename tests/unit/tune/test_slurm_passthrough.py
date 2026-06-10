@@ -122,7 +122,7 @@ def _minimal_spec():
     from phenotypic.tune._strategies._config import OptunaConfig
 
     class _ConstScorer(Scorer):
-        def score_image(self, image, measurements) -> dict[str, float]:
+        def _score_terms(self, image, measurements) -> dict[str, float]:
             return {"Count": 1.0}
 
     return TuningSpec(

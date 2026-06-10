@@ -18,7 +18,7 @@ from phenotypic.tune._evaluation._evaluator import _per_trial_dispersion
 
 
 class _SequenceCountScorer(Scorer):
-    """Returns preset per-call ``Count`` values, ignoring its inputs.
+    """Returns preset per-call ``Count`` cost values, ignoring its inputs.
 
     The relative-IQR ``gap`` is order-independent, so the value→image mapping the
     rung ladder's id-sort imposes does not matter — only the multiset of scores.
@@ -27,7 +27,7 @@ class _SequenceCountScorer(Scorer):
     values: list[float]
     _cursor: int = PrivateAttr(default=0)
 
-    def score_image(self, image, measurements) -> dict[str, float]:
+    def _score_terms(self, image, measurements) -> dict[str, float]:
         value = self.values[self._cursor % len(self.values)]
         self._cursor += 1
         return {"Count": float(value)}
@@ -126,58 +126,60 @@ def test_evaluator_has_robust_eval_config_defaults():
 def test_is_suspicious_high_score_low_count():
     from phenotypic.tune._evaluation._evaluator import _is_suspicious
 
-    # High score paired with a low Count → the qc §5 under-detection signature.
+    # Low cost paired with a high Count cost → the qc §5 under-detection signature.
+    # Thresholds map to cost: score <= (1-0.7)=0.3, Count_cost >= (1-0.3)=0.7.
     assert _is_suspicious(
-        0.95, {"Count": 0.2}, score_floor=0.7, count_floor=0.3
+        0.05, {"Count": 0.8}, score_floor=0.7, count_floor=0.3
     ) is True
 
 
 def test_is_suspicious_faithful_high_count():
     from phenotypic.tune._evaluation._evaluator import _is_suspicious
 
-    # High score with a faithful (high) Count is NOT suspicious.
+    # Low cost with a faithful (low) Count cost is NOT suspicious.
     assert _is_suspicious(
-        0.95, {"Count": 0.9}, score_floor=0.7, count_floor=0.3
+        0.05, {"Count": 0.1}, score_floor=0.7, count_floor=0.3
     ) is False
 
 
 def test_is_suspicious_respects_thresholds():
     from phenotypic.tune._evaluation._evaluator import _is_suspicious
 
-    # Score below the floor → not flagged even with a low Count.
+    # Cost above (1-score_floor) → not flagged even with a high Count cost.
     assert _is_suspicious(
-        0.5, {"Count": 0.1}, score_floor=0.7, count_floor=0.3
+        0.5, {"Count": 0.9}, score_floor=0.7, count_floor=0.3
     ) is False
-    # Count above the floor → not flagged even with a high score.
+    # Count cost below (1-count_floor) → not flagged even with a low cost.
     assert _is_suspicious(
-        0.99, {"Count": 0.31}, score_floor=0.7, count_floor=0.3
+        0.05, {"Count": 0.69}, score_floor=0.7, count_floor=0.3
     ) is False
-    # Exactly on both boundaries (>= score_floor AND <= count_floor) → flagged.
+    # Exactly on both boundaries (cost==1-score_floor AND Count_cost==1-count_floor) → flagged.
     assert _is_suspicious(
-        0.7, {"Count": 0.3}, score_floor=0.7, count_floor=0.3
+        0.3, {"Count": 0.7}, score_floor=0.7, count_floor=0.3
     ) is True
 
 
 def test_is_suspicious_missing_count_defaults_faithful():
     from phenotypic.tune._evaluation._evaluator import _is_suspicious
 
-    # No Count term → default 1.0 (faithful) → never suspicious.
-    assert _is_suspicious(0.99, {}, score_floor=0.7, count_floor=0.3) is False
+    # No Count term → default 0.0 (faithful = best cost) → never suspicious.
+    assert _is_suspicious(0.05, {}, score_floor=0.7, count_floor=0.3) is False
 
 
 class _GamingScorer(Scorer):
-    """A gamer: a high finalized ``score`` masking a low aggregated ``Count``.
+    """A gamer: a falsely-low finalized cost masking a high aggregated Count cost.
 
-    ``score_image`` reports a low Count term per image; ``finalize`` overrides to
-    return an inflated scalar regardless of the term — reproducing the qc §5
-    "great score on under-detection" signature the suspicious flag catches.
+    ``_score_terms`` reports a high Count cost per image (under-detection);
+    ``finalize`` overrides to return a deflated scalar regardless of the term —
+    reproducing the qc §5 "great cost on under-detection" signature the suspicious
+    flag catches.
     """
 
-    def score_image(self, image, measurements) -> dict[str, float]:
-        return {"Count": 0.1}
+    def _score_terms(self, image, measurements) -> dict[str, float]:
+        return {"Count": 0.9}  # high cost = under-detection
 
     def finalize(self, terms):
-        return 0.95  # inflated, ignores the low Count term
+        return 0.05  # deflated cost (falsely good), ignores the high Count cost
 
 
 def test_suspicious_high_score_low_count_end_to_end():
@@ -185,9 +187,9 @@ def test_suspicious_high_score_low_count_end_to_end():
     result = Evaluator(
         suspicious_score_floor=0.7, suspicious_count_floor=0.3
     ).evaluate(base, _GamingScorer(), {}, _plates(4))
-    # score 0.95 (>= 0.7) AND aggregated Count ~0.1 (<= 0.3) → suspicious.
-    assert result.score == 0.95
-    assert result.terms["Count"] <= 0.3
+    # cost 0.05 (<= 0.3) AND aggregated Count cost ~0.9 (>= 0.7) → suspicious.
+    assert result.score == 0.05
+    assert result.terms["Count"] >= 0.7
     assert result.suspicious is True
 
 

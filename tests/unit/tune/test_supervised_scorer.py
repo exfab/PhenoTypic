@@ -156,7 +156,7 @@ def test_mask_tier_emits_region_term(tmp_path):
     scorer = SupervisedScorer(gt=GroundTruthMasks(gt_masks_source=gt_dir))
     out = scorer.score_image(image, _measurements())
     assert set(out) == {"Region"}
-    assert out["Region"] == pytest.approx(1.0)
+    assert out["Region"] == pytest.approx(0.0)
 
 
 def test_mask_tier_unresolved_name_returns_empty_terms(tmp_path):
@@ -176,8 +176,8 @@ def test_count_tier_emits_count_mae_term(tmp_path):
     )
     out = scorer.score_image(None, _measurements(96, "p1"))
     assert set(out) == {"CountMAE"}
-    # perfect count match → folded score 1.0 (higher is better)
-    assert out["CountMAE"] == pytest.approx(1.0)
+    # perfect count match → zero cost (lower is better)
+    assert out["CountMAE"] == pytest.approx(0.0)
 
 
 def test_count_tier_at_fail_threshold_is_half(tmp_path):
@@ -253,7 +253,7 @@ def test_supervised_scorer_round_trips_in_tuning_spec(tmp_path):
     assert back.scorer.gt.modality() == "count"
     assert back.scorer.count_check is not None
     # the path-configured count check still scores after reload
-    assert back.scorer.score_image(None, _measurements())["CountMAE"] == pytest.approx(1.0)
+    assert back.scorer.score_image(None, _measurements())["CountMAE"] == pytest.approx(0.0)
 
 
 def test_supervised_scorer_direct_round_trip(tmp_path):
@@ -354,13 +354,13 @@ def test_binary_gt_missed_cell_pulls_score_below_all_detected(tmp_path):
         _PredOverRealGrid(image, missed), _measurements()
     )["Region"]
 
-    assert all_detected == pytest.approx(1.0)
-    assert missed_score < all_detected
+    assert all_detected == pytest.approx(0.0)
+    assert missed_score > all_detected
     # Diagnostic: exactly one of N GT instances is now unmatched (scored 0), so
-    # the macro-average is (N-1)/N — confirming the missed cell stayed scoreable
-    # rather than vanishing from the GT.
+    # the macro-average goodness is (N-1)/N → cost is 1/N — confirming the missed
+    # cell stayed scoreable rather than vanishing from the GT.
     n = int(image.num_objects)
-    assert missed_score == pytest.approx((n - 1) / n)
+    assert missed_score == pytest.approx(1 / n)
 
 
 def test_binary_gt_under_segmentation_is_visible_not_clipped(tmp_path):
@@ -396,10 +396,10 @@ def test_binary_gt_under_segmentation_is_visible_not_clipped(tmp_path):
         _PredOverRealGrid(image, under), _measurements()
     )["Region"]
 
-    assert all_detected == pytest.approx(1.0)
+    assert all_detected == pytest.approx(0.0)
     # The shrunken pair's IoU is now < 1 (GT extent preserved), so the macro
-    # average drops below the all-detected score — under-segmentation is visible.
-    assert under_score < all_detected
+    # average goodness drops → cost rises above the all-detected cost — under-segmentation is visible.
+    assert under_score > all_detected
 
 
 def test_binary_gt_separating_two_colonies_beats_merging_on_real_grid(tmp_path):
@@ -442,9 +442,9 @@ def test_binary_gt_separating_two_colonies_beats_merging_on_real_grid(tmp_path):
         _PredOverRealGrid(image, merged), _measurements()
     )["Region"]
 
-    assert sep_region > mrg_region
-    assert sep_region == pytest.approx(1.0)
-    assert mrg_region < 1.0
+    assert sep_region < mrg_region
+    assert sep_region == pytest.approx(0.0)
+    assert mrg_region > 0.0
 
 
 def test_binary_gt_without_grid_falls_back_to_global_components(tmp_path):
@@ -470,7 +470,7 @@ def test_binary_gt_without_grid_falls_back_to_global_components(tmp_path):
     )
     image = _PlainImage("plateP", np.array([[1, 1, 0, 0, 2, 2]]))
     region = scorer.score_image(image, _measurements())["Region"]
-    assert region == pytest.approx(1.0)
+    assert region == pytest.approx(0.0)
 
 
 def test_binary_gt_geometric_cell_map_is_detection_independent():
@@ -505,7 +505,7 @@ def test_instance_gt_round_trips_through_the_matcher(tmp_path):
     )
     image = _FakeGridImage("plateI", labels.copy(), sections)
     out = scorer.score_image(image, _measurements())
-    assert out["Region"] == pytest.approx(1.0)
+    assert out["Region"] == pytest.approx(0.0)
 
 
 def test_instance_gt_two_objects_one_missed_is_penalized(tmp_path):
@@ -523,7 +523,7 @@ def test_instance_gt_two_objects_one_missed_is_penalized(tmp_path):
     # Prediction detects only the first GT object; the second is missed.
     image = _FakeGridImage("plateM", np.array([[1, 1, 0, 0, 0, 0]]), sections)
     out = scorer.score_image(image, _measurements())
-    # one perfect IoU (1.0) + one unmatched GT (0.0) → macro 0.5
+    # one perfect IoU (goodness 1.0) + one unmatched GT (goodness 0.0) → macro goodness 0.5 → cost 0.5
     assert out["Region"] == pytest.approx(0.5)
 
 

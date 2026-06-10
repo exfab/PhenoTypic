@@ -154,7 +154,7 @@ class _SigmaScorer(Scorer):
     Lets a freeze decision sensibly pin the noise param while keeping sigma.
     """
 
-    def score_image(self, image, measurements) -> dict[str, float]:
+    def _score_terms(self, image, measurements) -> dict[str, float]:
         return {"Count": 1.0}
 
 

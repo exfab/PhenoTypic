@@ -30,12 +30,12 @@ def test_perfect_count_scores_one(tmp_path):
     )
     result = Evaluator().evaluate(base, scorer, {}, [load_synth_yeast_plate()])
     assert result.n_images == 1
-    assert result.terms["Count"] == pytest.approx(1.0)
-    assert result.score == pytest.approx(1.0)
+    assert result.terms["Count"] == pytest.approx(0.0)
+    assert result.score == pytest.approx(0.0)
 
 
 def test_count_mismatch_scores_below_one(tmp_path):
-    # layout expects 120, detector finds 96 → metric 24/120 = 0.2 → t = exp(-ln2*2) = 0.25
+    # layout expects 120, detector finds 96 → metric 24/120 = 0.2 → goodness = exp(-ln2*2) = 0.25 → cost = 0.75
     base = ImagePipeline(ops=[OtsuDetector()])
     scorer = QCScorer(
         check=ExpectedVsDetectedCount(
@@ -43,4 +43,4 @@ def test_count_mismatch_scores_below_one(tmp_path):
         )
     )
     result = Evaluator().evaluate(base, scorer, {}, [load_synth_yeast_plate()])
-    assert result.score == pytest.approx(0.25, abs=1e-6)
+    assert result.score == pytest.approx(0.75, abs=1e-6)

@@ -101,7 +101,7 @@ def test_budget_no_longer_overshoots_after_reconciliation(tmp_path):
     import optuna
 
     class _ConstScorer(Scorer):
-        def score_image(self, image, measurements) -> dict[str, float]:
+        def _score_terms(self, image, measurements) -> dict[str, float]:
             return {"Count": 1.0}
 
     url = f"sqlite:///{tmp_path / 'study.db'}"

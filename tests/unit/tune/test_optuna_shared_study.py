@@ -44,7 +44,7 @@ _STUDY = "tune"
 
 
 class _ConstScorer(Scorer):
-    def score_image(self, image, measurements) -> dict[str, float]:
+    def _score_terms(self, image, measurements) -> dict[str, float]:
         return {"Count": 1.0}
 
 

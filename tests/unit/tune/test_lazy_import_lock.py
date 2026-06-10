@@ -46,7 +46,7 @@ def test_grid_random_paths_do_not_import_optuna():
     )
 
     class _ConstScorer(Scorer):
-        def score_image(self, image, measurements) -> dict[str, float]:
+        def _score_terms(self, image, measurements) -> dict[str, float]:
             return {"Count": 1.0}
 
     space = SearchSpace(knobs=(

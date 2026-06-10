@@ -11,12 +11,12 @@ class _FixedScorer(Scorer):
 
     terms: dict[str, float]
 
-    def score_image(self, image, measurements) -> dict[str, float]:
+    def _score_terms(self, image, measurements) -> dict[str, float]:
         return dict(self.terms)
 
 
 def test_scorer_is_abstract():
-    # score_image is abstract — the bare base cannot be instantiated.
+    # _score_terms is abstract — the bare base cannot be instantiated.
     with pytest.raises(TypeError):
         Scorer()  # type: ignore[abstract]
 

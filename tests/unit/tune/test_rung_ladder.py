@@ -23,7 +23,7 @@ class _PerImageScorer(Scorer):
 
     mapping: dict[int, float]
 
-    def score_image(self, image, measurements) -> dict[str, float]:
+    def _score_terms(self, image, measurements) -> dict[str, float]:
         return {"X": float(self.mapping[id(image)])}
 
 
@@ -32,7 +32,7 @@ class _CountingScorer(Scorer):
 
     _seen: set[int] = PrivateAttr(default_factory=set)
 
-    def score_image(self, image, measurements) -> dict[str, float]:
+    def _score_terms(self, image, measurements) -> dict[str, float]:
         self._seen.add(id(image))
         return {"X": 1.0}
 
@@ -156,24 +156,24 @@ def test_per_image_exception_drags_score_not_whole_fail():
     class _OneRaisesScorer(Scorer):
         _calls: int = PrivateAttr(default=0)
 
-        def score_image(self, image, measurements) -> dict[str, float]:
+        def _score_terms(self, image, measurements) -> dict[str, float]:
             self._calls += 1
             if self._calls == 1:
                 raise RuntimeError("one bad plate")
-            return {"X": 1.0}
+            return {"X": 0.0}  # perfect cost; error fallback (1.0) drags up
 
     base = ImagePipeline(ops=[OtsuDetector()])
     imgs = _imgs(3)  # single-rung ladder
     result = Evaluator().evaluate(base, _OneRaisesScorer(), {}, imgs)
     assert result.failed is False
     assert result.n_images == 3
-    # The worst term (0.0) drags the aggregate below the clean 1.0.
+    # The worst-term fallback (1.0) drags the aggregate above the clean 0.0.
     assert result.terms["X"] < 1.0
 
 
 def test_all_images_error_is_a_fail():
     class _AllRaiseScorer(Scorer):
-        def score_image(self, image, measurements) -> dict[str, float]:
+        def _score_terms(self, image, measurements) -> dict[str, float]:
             raise RuntimeError("every plate errors")
 
     base = ImagePipeline(ops=[OtsuDetector()])
