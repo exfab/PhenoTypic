@@ -2097,6 +2097,21 @@ mask color in the dashboard matches the same label in napari.
 - Opacity is user-adjustable but defaults conservative so pixels stay legible.
 - A legend for label classes uses the section 12 categorical legend.
 
+> **Exception -- high-cardinality instance maps (decided, intentional).** The
+> `OKABE_ITO_NAPARI` mapping above is for **low-cardinality categorical** overlays
+> (a handful of label *classes*: e.g. mask / ROI / detection-type). It is **not**
+> applied to dense **instance** segmentations where every colony is its own label --
+> an arrayed plate routinely has hundreds of objects, and cycling a 7-color palette
+> across them makes touching colonies share a color, which defeats the overlay's
+> purpose (telling neighbors apart). For those instance maps the GUI keeps
+> scikit-image `label2rgb` (with a matplotlib `tab20` fallback), which spreads many
+> perceptually-distinct hues. This is a deliberate usability-over-brand-consistency
+> call. It governs the builder "Run preview" detector/refiner overlay and the tune
+> Curate overlay, which share one renderer (`gui/builder/_image_renderer.py:
+> to_overlay_rgb_array`). Apply `OKABE_ITO_NAPARI` only when the label count is small
+> enough that each class gets a stable, distinct brand color; revisit if a future
+> overlay is genuinely class-based (few categories) rather than per-instance.
+
 ### Comparison Modes
 
 | Mode          | Use case                         | Layout                          |
