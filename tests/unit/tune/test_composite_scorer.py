@@ -9,6 +9,7 @@ round-trip through ``TuningSpec``, cycle/self-nesting rejection, and the pinned
 """
 from __future__ import annotations
 
+import math
 from pathlib import Path
 
 import pandas as pd
@@ -433,3 +434,116 @@ def test_cost_above_one_trips_the_invariant_assert():
     comp = CompositeScorer(scorers=[_FixedScorer(terms={"a": 0.0})])
     with pytest.raises(AssertionError):
         comp._tchebycheff({"s0": 1.5})
+
+
+# --------------------------------------------------------------------------- #
+# helpers — score a list of (cost_a, cost_b) candidates with a blend
+# --------------------------------------------------------------------------- #
+def _composite(cost_a, cost_b, *, blend="tchebycheff", rho=0.05, weights=None):
+    comp = CompositeScorer(
+        scorers=[_FixedScorer(terms={"a": cost_a}), _FixedScorer(terms={"b": cost_b})],
+        blend=blend,
+        rho=rho,
+        weights=weights,
+    )
+    return comp.finalize(comp.score_image(None, pd.DataFrame()))
+
+
+def _weighted_sum_cost(cost_a, cost_b):
+    # The convex weighted sum (uniform) over cost — the baseline Tchebycheff beats.
+    return 0.5 * cost_a + 0.5 * cost_b
+
+
+def _one_minus_geomean_cost(cost_a, cost_b):
+    # The OLD composite read on cost: 1 - geomean(goodness) = 1 - sqrt((1-a)(1-b)).
+    return 1.0 - math.sqrt((1.0 - cost_a) * (1.0 - cost_b))
+
+
+# A concave Pareto front: two single-axis extremes and a balanced KNEE that
+# bulges toward the origin (low on BOTH axes). The knee has the lowest WORST
+# axis (so augmented Tchebycheff selects it) but a HIGHER coordinate sum than
+# either extreme (so the linear weighted sum — and 1−geomean — pick an extreme
+# instead). This is the non-convex reachability separation, not a weakened test.
+_FRONT = [
+    (0.02, 0.55),  # extreme A: nails axis a, tanks b  (sum 0.57, worst 0.55)
+    (0.34, 0.34),  # the KNEE: balanced, both good     (sum 0.68, worst 0.34)
+    (0.55, 0.02),  # extreme B: nails b, tanks a        (sum 0.57, worst 0.55)
+]
+
+
+def _argmin(front, cost_fn):
+    return min(front, key=lambda p: cost_fn(*p))
+
+
+# --------------------------------------------------------------------------- #
+# non-convex reachability — Tchebycheff selects the knee; weighted sum &
+# 1−geomean do not (§9 / §10)
+# --------------------------------------------------------------------------- #
+def test_tchebycheff_selects_knee_on_concave_front():
+    knee = (0.34, 0.34)
+    assert _argmin(_FRONT, lambda a, b: _composite(a, b)) == knee
+
+
+def test_weighted_sum_misses_the_knee():
+    # The uniform weighted sum is tied/biased toward an extreme, not the knee.
+    winner = _argmin(_FRONT, _weighted_sum_cost)
+    assert winner != (0.34, 0.34)
+
+
+def test_one_minus_geomean_misses_the_knee():
+    # The OLD composite (1 - geomean of goodness) also does not pick this knee —
+    # documenting WHY the migration changes the winner (§8 deliberate change).
+    winner = _argmin(_FRONT, _one_minus_geomean_cost)
+    assert winner != (0.34, 0.34)
+
+
+# --------------------------------------------------------------------------- #
+# ρ removes a weakly-dominated point (§6.1/§6.4)
+# --------------------------------------------------------------------------- #
+def test_rho_breaks_weak_domination():
+    # Two candidates equal on their WORST axis (both max-axis cost 0.5) but one is
+    # strictly better on the OTHER axis. Plain Tchebycheff (ρ→0) ties them; the
+    # augmentation (ρ=0.05) strictly prefers the properly-dominant one.
+    weak = (0.5, 0.5)       # worst axis 0.5, other axis 0.5
+    strong = (0.5, 0.1)     # worst axis 0.5, other axis 0.1 (strictly better)
+    # ρ→0: the max terms are equal → near-tie (strong only marginally lower).
+    tied_weak = _composite(*weak, rho=1e-9)
+    tied_strong = _composite(*strong, rho=1e-9)
+    assert tied_strong == pytest.approx(tied_weak, abs=1e-6)
+    # ρ=0.05: the augmentation L1 term strictly separates them.
+    sep_weak = _composite(*weak, rho=0.05)
+    sep_strong = _composite(*strong, rho=0.05)
+    assert sep_strong < sep_weak  # the properly-dominant point wins
+
+
+# --------------------------------------------------------------------------- #
+# ρ sensitivity — ρ→0 admits a weakly-dominated winner ρ=0.05 rejects; large ρ
+# drifts toward the weighted-sum winner (§6.4)
+# --------------------------------------------------------------------------- #
+def test_large_rho_drifts_toward_weighted_sum():
+    # As ρ grows, the Σ (weighted-sum) term dominates, so the winner converges to
+    # the weighted-sum winner (an extreme), abandoning the knee.
+    ws_winner = _argmin(_FRONT, _weighted_sum_cost)
+    big_rho_winner = _argmin(_FRONT, lambda a, b: _composite(a, b, rho=50.0))
+    assert big_rho_winner == ws_winner
+
+
+def test_default_rho_keeps_the_knee_vs_large_rho():
+    assert _argmin(_FRONT, lambda a, b: _composite(a, b, rho=0.05)) == (0.34, 0.34)
+    assert _argmin(_FRONT, lambda a, b: _composite(a, b, rho=50.0)) != (0.34, 0.34)
+
+
+# --------------------------------------------------------------------------- #
+# composite-delta snapshot — document the intended winner change vs old geomean
+# --------------------------------------------------------------------------- #
+def test_composite_delta_vs_old_geomean_winner_is_documented():
+    # The OLD composite (geomean of goodness == 1−_one_minus_geomean_cost, i.e.
+    # MAXIMIZE goodness == MINIMIZE 1−geomean) and the NEW composite pick
+    # DIFFERENT winners on the concave front — the one intended behavior change
+    # of the migration (README invariant #3, spec §8). This test is the
+    # baseline snapshot + reviewer sign-off gate; if it ever passes with equal
+    # winners, the composite stopped being augmented Tchebycheff.
+    old_winner = _argmin(_FRONT, _one_minus_geomean_cost)
+    new_winner = _argmin(_FRONT, lambda a, b: _composite(a, b))
+    assert new_winner == (0.34, 0.34)        # NEW: the conjunctive knee
+    assert old_winner != new_winner          # DELTA: intentional change
