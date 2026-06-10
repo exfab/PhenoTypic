@@ -523,16 +523,16 @@ def _monitor_degrade_note(root: "TuneRunRoot", error: BaseException) -> str:
     detector (the same predicate the CLI startup guard uses) so the GUI and CLI
     can't disagree about what "legacy" means.
     """
-    # Lazy import: the detector lives behind the tune extra; importing it
+    # Lazy import: the helper lives behind the tune extra; importing it
     # function-local keeps _callbacks importable without optuna.
-    from phenotypic.tune._tune_cli._run import is_legacy_study_name  # Phase 2 symbol
+    from phenotypic.tune._strategies._optuna_support import is_legacy_study_name
 
     if is_legacy_study_name(root.study_name):
         return _NOTE_LEGACY_STUDY
     return _NOTE_LIVE_UNREACHABLE
 ```
 
-> **Phase-2 symbol name:** `is_legacy_study_name` is the *expected* name of the Phase-2 detector predicate (a `str -> bool` that returns `True` for `"tune"` and any other pre-`tune_cost_v1` name). If Phase 2 shipped it under a different name or a different module, re-point this single import — the contract is "True for a pre-cutover study name". If Phase 2 only shipped a richer detector (e.g. one that inspects an Optuna study's stored `direction`), prefer the name-based predicate here: the read-only monitor must not connect to a legacy study just to classify it, so a **name-only** check is the right tool on this path. If no Phase-2 helper exists yet, add a one-line local fallback `return root.study_name != "tune_cost_v1"` and leave a `# TODO(phase-2): replace with the shared detector` — but flag the gap to the Phase-2 worker.
+> **Shared symbol (README registry):** `is_legacy_study_name(study_name: str) -> bool` is the canonical **name-only** predicate defined in Phase 2 in `_strategies/_optuna_support.py` (returns `True` for `"tune"` / any pre-`tune_cost_v1` name). The read-only monitor must NOT connect to a legacy study just to classify it, so the name-only check is the right tool here (Phase 2 also ships the storage-probing `is_legacy_study_present`, used only by the CLI store guard — do not use it on this read path). Both live in `_optuna_support.py`; if Phase 2 has not landed them yet, flag it to the Phase-2 worker rather than re-defining the predicate here.
 
 Wire the helper into both degrade branches of `read_study_for_monitor` (`:519–533`):
 ```python

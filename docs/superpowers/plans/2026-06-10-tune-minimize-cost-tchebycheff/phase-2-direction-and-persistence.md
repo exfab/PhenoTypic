@@ -638,9 +638,9 @@ _logger = logging.getLogger(__name__)
 #: observability and future cutovers (spec §7 Phase 2 #2).
 _CONVENTION_ATTR: str = "tune_convention"
 _CONVENTION_VALUE: str = "minimize-cost-v1"
-#: The pre-cutover study name. Detecting it in the same storage is UX only —
-#: correctness is the ``_STUDY_NAME`` bump (a legacy study is never reopened).
-_LEGACY_STUDY_NAME: str = "tune"
+# `_LEGACY_STUDY_NAME` ("tune") and the two legacy-study helpers live in the
+# shared `_strategies/_optuna_support.py` (step 5a below) so the CLI store guard
+# and the GUI monitor (Phase 4) agree — import them, do not re-spell "tune" here.
 ```
 
   (Add `import logging` to the existing top-of-file imports; do not duplicate.)
@@ -680,8 +680,57 @@ _LEGACY_STUDY_NAME: str = "tune"
             )
 ```
 
-- [ ] Add the detector helper method to `OptunaStudyStore` (place it next to
-      `_enable_sqlite_wal`, ~L117):
+- [ ] **5a — define the shared legacy-study helpers** in
+      `src/phenotypic/tune/_strategies/_optuna_support.py` (beside the other
+      optuna-boundary helpers; `optuna` stays function-local so the module stays
+      import-clean). These are the canonical symbols the README registry pins:
+      Phase 4's GUI monitor imports `is_legacy_study_name` from **here**, and the
+      store guard below calls `is_legacy_study_present`.
+
+```python
+#: The pre-cutover study name. Correctness is the ``_STUDY_NAME`` bump (a legacy
+#: study is never reopened); these helpers are UX (friendly message) only.
+_LEGACY_STUDY_NAME: Final[str] = "tune"
+
+
+def is_legacy_study_name(study_name: str) -> bool:
+    """True for a pre-cutover study name (name-only — no storage probe).
+
+    The read-only GUI Monitor uses this to classify a run from its recorded
+    ``study_name`` without connecting to a (legacy) study.
+    """
+    return study_name == _LEGACY_STUDY_NAME
+
+
+def is_legacy_study_present(
+    storage: Any, *, study_name: str = _LEGACY_STUDY_NAME
+) -> bool:
+    """True iff a pre-cutover study exists in ``storage`` (storage-probing).
+
+    ``storage`` is a storage URL or an Optuna storage object. ``optuna`` is
+    imported function-local (the lazy boundary). ``load_study`` raises
+    ``KeyError`` when the study is absent (common case → ``False``); any other
+    error → ``False`` (best-effort detection must never abort study startup).
+    """
+    import optuna
+
+    try:
+        optuna.load_study(storage=storage, study_name=study_name)
+    except KeyError:
+        return False
+    except Exception:  # noqa: BLE001 - detection is best-effort UX
+        return False
+    return True
+```
+
+  Tests for these two helpers are exercised by the 5b regression below
+  (`is_legacy_study_present` against a seeded legacy study) and Phase 4's
+  name-only monitor test (`is_legacy_study_name`); add a 2-line direct unit test
+  if you want belt-and-suspenders.
+
+- [ ] **5b (method)** — add the store-side detector to `OptunaStudyStore`
+      (next to `_enable_sqlite_wal`, ~L117); it **delegates** to the shared probe
+      so the CLI store and the GUI monitor can't disagree about "legacy":
 
 ```python
     def _warn_if_legacy_study_present(self, storage: Any) -> None:
@@ -691,37 +740,23 @@ _LEGACY_STUDY_NAME: str = "tune"
         mismatch impossible (optuna ``load_if_exists`` would otherwise keep the
         legacy ``maximize`` direction, verified 4.9.0). A pre-cutover study cannot
         be resumed under the cost convention; this points the user at a fresh run.
-
-        ``optuna.load_study`` raises ``KeyError`` when the legacy study is absent
-        (the common case) — swallowed. Any other error is non-fatal and
-        debug-logged: detection must never abort study startup.
+        Delegates the probe to the shared :func:`is_legacy_study_present`.
         """
-        import optuna
+        from phenotypic.tune._strategies._optuna_support import (
+            _LEGACY_STUDY_NAME,
+            is_legacy_study_present,
+        )
 
         if self._study_name == _LEGACY_STUDY_NAME:
             return  # never warn about ourselves
-        try:
-            legacy = optuna.load_study(
-                storage=storage, study_name=_LEGACY_STUDY_NAME
+        if is_legacy_study_present(storage):
+            _logger.warning(
+                "a pre-cutover %r study is present in this storage; it cannot be "
+                "resumed under the minimize-cost convention. Starting a fresh %r "
+                "study beside it (or use a new output dir).",
+                _LEGACY_STUDY_NAME,
+                self._study_name,
             )
-        except KeyError:
-            return  # no legacy study — nothing to warn about
-        except Exception:  # noqa: BLE001 - detection is best-effort UX
-            _logger.debug(
-                "could not probe for a legacy %r study", _LEGACY_STUDY_NAME,
-                exc_info=True,
-            )
-            return
-        # ``.directions`` is multi-objective-safe (``.direction`` raises on a
-        # multi-objective study); we only need its presence for the message.
-        _logger.warning(
-            "a pre-cutover %r study (directions=%s) is present in this storage; "
-            "it cannot be resumed under the minimize-cost convention. Starting a "
-            "fresh %r study beside it (or use a new output dir).",
-            _LEGACY_STUDY_NAME,
-            [d.name.lower() for d in legacy.directions],
-            self._study_name,
-        )
 ```
 
 - [ ] Run (expect pass):
