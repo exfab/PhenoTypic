@@ -28,12 +28,14 @@ construction rather than recursing forever at score time.
 """
 from __future__ import annotations
 
-import math
 from typing import Any, Final, Mapping, Optional
 
 import pandas as pd
-from pydantic import ConfigDict, model_validator
+from pydantic import ConfigDict, PrivateAttr, model_validator
 
+from phenotypic.tools_.typing_ import CompositeBlend
+
+from ._orient import clamp01
 from ._scorer import Scorer, ScorerField, project_objectives_to_scalar
 
 #: The per-child handle prefix: child ``i`` owns the ``"s{i}."`` term namespace,
@@ -43,6 +45,14 @@ _CHILD_HANDLE: Final[str] = "s"
 
 #: The separator between a child handle and the child's own term name.
 _SEP: Final[str] = "."
+
+#: The utopia-point shift ``z*ᵢ = −ε`` for the augmented Tchebycheff combiner.
+#: A small, fixed numerical safety margin (~0.1% of the [0,1] cost scale): it
+#: pushes the reference strictly below the achievable front so every
+#: ``bᵢ − z*ᵢ = bᵢ + ε > 0`` (the unsigned ``max`` is valid) and caps the
+#: weight realizer ``1/(bᵢ + ε)`` at ``≤ 1000×``. Internal — never a field
+#: (spec §6.4/§6.6).
+_UTOPIA_EPS: Final[float] = 1e-3
 
 
 class CompositeScorer(Scorer):
@@ -54,13 +64,28 @@ class CompositeScorer(Scorer):
             round-trips through the polymorphic registry. Child ``i`` owns the
             ``"s{i}."`` term namespace.
         weights: Optional per-child weights for the **single-objective** scalar
-            blend, keyed by child handle (``"s0"``, ``"s1"``, …). When given,
-            :meth:`finalize` returns the weighted arithmetic mean of the
-            per-child scalars; when ``None`` it returns their geometric mean.
-            Ignored when ``multi_objective`` is ``True``.
+            blend, keyed by child handle (``"s0"``, ``"s1"``, …). The meaning is
+            **blend-dependent**: under ``blend="tchebycheff"`` they are per-axis
+            Tchebycheff weights (they steer the ``max`` term, uniform ``1.0``
+            when ``None``); under ``blend="weighted_mean"`` they are arithmetic
+            weights for the compensatory mean. Ignored when ``multi_objective``
+            is ``True``.
         multi_objective: When ``True``, :meth:`finalize` returns a
             ``dict[str, float]`` of per-child objectives (the plan §0a sidecar)
             instead of a scalar, so the composite can drive a Pareto study.
+        blend: The single-objective combiner. ``"tchebycheff"`` (default) is the
+            conjunctive augmented-Tchebycheff cost over the pinned study-global
+            active set — worst-axis-dominant, so a single weak axis cannot be
+            masked by a strong one. ``"weighted_mean"`` is the compensatory
+            arithmetic-mean opt-out. The geometric-mean-of-cost blend is no
+            longer offered (it inverts the conjunctive property — a single
+            perfect axis would annihilate the product).
+        rho: The augmented-Tchebycheff augmentation coefficient (advanced-only;
+            default ``0.05``). It scales the weighted-L1 term that breaks ties
+            between weakly-dominated points; ``→0`` recovers the plain
+            Tchebycheff (admits weakly-dominated winners), large values drift
+            toward the weighted sum (spec §6.4). Ignored under
+            ``blend="weighted_mean"`` / ``multi_objective``.
 
     Raises:
         pydantic.ValidationError: If the nested scorer graph contains a cycle —
@@ -101,6 +126,8 @@ class CompositeScorer(Scorer):
     scorers: list[ScorerField] = []
     weights: Optional[dict[str, float]] = None
     multi_objective: bool = False
+    blend: CompositeBlend = "tchebycheff"
+    rho: float = 0.05
 
     @model_validator(mode="after")
     def _reject_cycles(self) -> "CompositeScorer":

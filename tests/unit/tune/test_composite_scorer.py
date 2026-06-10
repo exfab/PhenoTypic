@@ -275,3 +275,32 @@ def test_composite_direct_round_trip(tmp_path):
     back = CompositeScorer.model_validate_json(comp.model_dump_json())
     assert isinstance(back.scorers[0], QCScorer)
     assert back.multi_objective is False
+
+
+# --------------------------------------------------------------------------- #
+# new fields — rho / blend (defaults + round-trip)
+# --------------------------------------------------------------------------- #
+def test_default_blend_is_tchebycheff_and_default_rho():
+    comp = CompositeScorer(scorers=[_FixedScorer(terms={"a": 0.0})])
+    assert comp.blend == "tchebycheff"
+    assert comp.rho == pytest.approx(0.05)
+
+
+def test_blend_and_rho_round_trip(tmp_path):
+    # Round-trip needs a registered scorer (the local _FixedScorer double is not
+    # in the polymorphic registry); _qc_scorer is a real, serializable child.
+    comp = CompositeScorer(
+        scorers=[_qc_scorer(tmp_path)],
+        blend="weighted_mean",
+        rho=0.1,
+    )
+    back = CompositeScorer.model_validate_json(comp.model_dump_json())
+    assert back.blend == "weighted_mean"
+    assert back.rho == pytest.approx(0.1)
+
+
+def test_invalid_blend_rejected():
+    import pydantic
+
+    with pytest.raises(pydantic.ValidationError):
+        CompositeScorer(scorers=[], blend="geomean")  # not a CompositeBlend
