@@ -9,6 +9,7 @@ from phenotypic.detect import OtsuDetector
 from phenotypic.tune._evaluation._evaluator import (
     EvaluationResult,
     Evaluator,
+    _is_suspicious,
     _robust_aggregate,
 )
 from phenotypic.tune._scoring._scorer import Scorer
@@ -178,3 +179,33 @@ def test_result_carries_pruned_flag():
     pruned = EvaluationResult(score=0.2, terms={"X": 0.2}, n_images=1, pruned=True)
     assert pruned.pruned is True
     assert pruned.failed is False
+
+
+def test_is_suspicious_flags_low_cost_with_high_count_cost():
+    # Cost convention: a GREAT finalized cost (0.1 <= 1 - 0.7 = 0.3) paired with a
+    # HIGH Count cost (0.8 >= 1 - 0.3 = 0.7, i.e. under-detection) is suspicious.
+    assert _is_suspicious(
+        0.1, {"Count": 0.8}, score_floor=0.7, count_floor=0.3
+    ) is True
+
+
+def test_is_suspicious_not_flagged_when_count_is_faithful():
+    # Low Count cost (faithful detection) -> not suspicious even at a great score.
+    assert _is_suspicious(
+        0.1, {"Count": 0.2}, score_floor=0.7, count_floor=0.3
+    ) is False
+
+
+def test_is_suspicious_not_flagged_when_cost_is_mediocre():
+    # A mediocre cost (0.6 > 0.3) is never flagged, regardless of Count.
+    assert _is_suspicious(
+        0.6, {"Count": 0.9}, score_floor=0.7, count_floor=0.3
+    ) is False
+
+
+def test_is_suspicious_missing_count_defaults_faithful():
+    # A non-count objective: missing Count term defaults to 0.0 (faithful = best
+    # cost) so it is NEVER flagged.
+    assert _is_suspicious(
+        0.0, {}, score_floor=0.7, count_floor=0.3
+    ) is False

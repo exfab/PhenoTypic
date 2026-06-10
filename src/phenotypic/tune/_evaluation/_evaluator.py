@@ -116,27 +116,31 @@ def _is_suspicious(
     score_floor: float,
     count_floor: float,
 ) -> bool:
-    """Flag the qc §5 "great score on under-detection" gaming signature.
+    """Flag the qc §5 "great cost on under-detection" gaming signature.
 
-    A candidate is suspicious when a **high** finalized ``score`` is paired with a
-    **low** aggregated ``Count`` term — the signature of a pipeline that scores
-    well precisely *because* it under-detects (detecting fewer colonies dodges
-    the spread/quality penalties the score rewards). Read from already-computed
-    aggregates; a heuristic review flag, not a hard rejection. A missing ``Count``
-    term defaults to ``1.0`` (faithful) so a non-count objective is never flagged.
+    A candidate is suspicious when a **low** finalized ``score`` (great cost) is
+    paired with a **high** aggregated ``Count`` cost — the signature of a pipeline
+    that scores well precisely *because* it under-detects (detecting fewer
+    colonies dodges the spread/quality penalties). Read from already-computed
+    aggregates; a heuristic review flag, not a hard rejection. The intuitive
+    floors are mapped into cost-space here (``1 - floor``): a missing ``Count``
+    term defaults to ``0.0`` (faithful = best cost) so a non-count objective is
+    never flagged.
 
     Args:
-        score: The finalized scalar objective (higher = better).
-        terms: The robust-aggregated per-term scores; ``terms["Count"]`` is read.
-        score_floor: The minimum ``score`` for the "great score" half.
-        count_floor: The maximum ``terms["Count"]`` for the "under-detection" half.
+        score: The finalized scalar cost (lower = better).
+        terms: The robust-aggregated per-term costs; ``terms["Count"]`` is read.
+        score_floor: The "great score" threshold expressed intuitively; the cost
+            half fires when ``score <= 1 - score_floor``.
+        count_floor: The "under-detection" threshold expressed intuitively; the
+            cost half fires when ``terms["Count"] >= 1 - count_floor``.
 
     Returns:
-        ``True`` when ``score >= score_floor`` **and**
-        ``terms["Count"] <= count_floor``.
+        ``True`` when ``score <= (1 - score_floor)`` **and**
+        ``terms["Count"] >= (1 - count_floor)``.
     """
-    count = float(terms.get("Count", 1.0))
-    return score >= score_floor and count <= count_floor
+    count_cost = float(terms.get("Count", 0.0))
+    return score <= (1.0 - score_floor) and count_cost >= (1.0 - count_floor)
 
 
 class EvaluationResult(BaseModel):
