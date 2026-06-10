@@ -106,17 +106,17 @@ def test_multi_objective_gets_noop_channel():
     # Optuna pruners are single-objective → a multi-objective study disables
     # pruning by handing back a NoOpChannel.
     space = _cat_space()
-    strat = _strategy(space, prune=True, directions=["maximize", "maximize"])
+    strat = _strategy(space, prune=True, directions=["minimize", "minimize"])
     _params, channel = strat.suggest()
     assert isinstance(channel, NoOpChannel)
 
 
 def test_bad_candidate_pruned_end_to_end(tmp_path):
-    """A deliberately-bad candidate reporting a low rung-1 value is PRUNED.
+    """A deliberately-bad candidate reporting a HIGH cost at rung 1 is PRUNED.
 
-    Seed the study with several good trials at the first rung, then a clearly
-    inferior one; the ASHA pruner should mark the inferior trial PRUNED at the
-    first rung. Exercised through the channel passthrough (no engine needed).
+    Cost convention (minimize): seed several good trials at a low first-rung cost,
+    then a clearly inferior one at a high cost; the direction-aware ASHA pruner
+    marks the inferior (high-cost) trial PRUNED at the first rung.
     """
     import optuna
 
@@ -125,25 +125,24 @@ def test_bad_candidate_pruned_end_to_end(tmp_path):
     ))
     strat = _strategy(space, sampler="tpe", n_trials=50, rung_floor=1, rung_factor=2)
 
-    # A handful of strong trials reporting high values at the first rung. They
-    # must check should_prune() (as the real Evaluator does between rungs) so
-    # ASHA registers their values into the rung's competing pool.
+    # Strong trials report a LOW cost at the first rung (good). They must check
+    # should_prune() so ASHA registers their values into the rung's pool.
     for _ in range(6):
         params, channel = strat.suggest()
-        channel.report(1.0, 1)
+        channel.report(0.0, 1)
         channel.should_prune()
         strat.register_result(params, EvaluationResult(
-            score=1.0, terms={"t": 1.0}, n_images=2,
+            score=0.0, terms={"t": 0.0}, n_images=2,
         ))
 
-    # A clearly-inferior trial: reports a low value at the first rung.
+    # A clearly-inferior trial: reports a HIGH cost at the first rung (bad).
     params, channel = strat.suggest()
-    channel.report(0.0, 1)
+    channel.report(1.0, 1)
     pruned = channel.should_prune()
     assert pruned is True
     strat.register_result(
         params,
-        EvaluationResult(score=0.0, terms={"t": 0.0}, n_images=1, pruned=True),
+        EvaluationResult(score=1.0, terms={"t": 1.0}, n_images=1, pruned=True),
         pruned=True,
     )
     states = [t.state for t in strat._study.get_trials(deepcopy=False)]
