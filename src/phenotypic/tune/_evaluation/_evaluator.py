@@ -79,8 +79,11 @@ def _per_trial_dispersion(
     """The relative across-plate dispersion of the **primary (first) term**.
 
     The per-trial ``gap`` signal: the relative IQR
-    ``(q75 - q25) / max(|median|, eps)`` of the first term's per-image scores — a
-    cheap instability / overfit-risk flag, NOT a held-out generalization gap. A
+    ``(q75 - q25) / max(1 - median, eps)`` of the first term's per-image scores — a
+    cheap instability / overfit-risk flag, NOT a held-out generalization gap.
+    Under the cost convention a good candidate's median ≈ 0, so the ratio is
+    taken against the goodness-equivalent ``1 - median`` (keeps it finite — the
+    singularity moves to the harmless bad end — and ``GAP_FLAG_THRESHOLD`` valid). A
     single-image trial has no dispersion (``0.0``); below ``min_n`` images the
     estimate is unreliable (``None``, mirroring the stability small-n guard); a
     perfectly flat term is maximally stable (``0.0``).
@@ -106,7 +109,9 @@ def _per_trial_dispersion(
     if n < min_n:
         return None
     median, iqr = _median_iqr(values)
-    return _relative(iqr, median)
+    # Cost convention: a good candidate's median ≈ 0 would blow up the ratio, so
+    # divide by the goodness-equivalent (1 - median ≈ 1) — reflection-clean.
+    return _relative(iqr, 1.0 - median)
 
 
 def _is_suspicious(

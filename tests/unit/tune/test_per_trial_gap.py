@@ -1,13 +1,16 @@
 """4.5p1 C1 — the per-trial ``gap`` (relative across-plate dispersion).
 
-``gap`` is the relative IQR ``(q75 - q25) / max(|median|, eps)`` of the **primary
-(first) term**'s per-image scores — a cheap instability / overfit-risk flag, NOT
-a held-out gap. A flat term → ``gap ≈ 0``; a single-image trial → ``0.0`` (no
-dispersion); below ``min_stability_n`` images → ``None`` (dispersion unreliable,
-mirroring the stability small-n guard).
+``gap`` is the relative IQR ``(q75 - q25) / max(1 - median, eps)`` of the
+**primary (first) term**'s per-image costs — a cheap instability / overfit-risk
+flag, NOT a held-out gap. Under the cost convention the ratio divides by the
+goodness-equivalent ``1 - median`` so a good (low-cost) candidate does not blow
+up. A flat term → ``gap ≈ 0``; a single-image trial → ``0.0`` (no dispersion);
+below ``min_stability_n`` images → ``None`` (dispersion unreliable, mirroring the
+stability small-n guard).
 """
 from __future__ import annotations
 
+import pytest
 from pydantic import PrivateAttr
 
 from phenotypic import ImagePipeline
@@ -61,10 +64,22 @@ def test_dispersion_relative_iqr_of_primary_term():
     values = [0.2, 0.4, 0.6, 0.8, 1.0]
     q75, q25 = np.percentile(values, [75, 25])
     median = float(np.median(values))
-    expected = (q75 - q25) / max(abs(median), 1e-12)
+    # Cost convention: the relative IQR divides by the goodness-equivalent
+    # (1 - median), not the raw median (which would blow up for low-cost terms).
+    expected = (q75 - q25) / max(abs(1.0 - median), 0.02)
     got = _per_trial_dispersion({"Count": values}, min_n=4)
     assert got is not None
     assert abs(got - expected) < 1e-9
+
+
+def test_dispersion_does_not_blow_up_for_good_candidate():
+    # A near-perfect candidate: median cost ≈ 0 with a small IQR. Dividing by the
+    # goodness-equivalent (1 - median ≈ 1) keeps the relative IQR finite/small,
+    # NOT 0.05 / 0.025 = 2.0 (the raw-median blow-up this fix prevents).
+    scores = {"Count": [0.0, 0.0, 0.05, 0.05]}  # median 0.025, IQR 0.05
+    gap = _per_trial_dispersion(scores, min_n=4)
+    assert gap == pytest.approx(0.05 / (1.0 - 0.025))
+    assert gap < 0.15  # below the calibrated GAP_FLAG_THRESHOLD
 
 
 def test_dispersion_uses_first_term_only():
@@ -91,7 +106,8 @@ def test_gap_is_relative_dispersion_of_primary_term():
     assert isinstance(result, EvaluationResult)
     q75, q25 = np.percentile(spread, [75, 25])
     median = float(np.median(spread))
-    expected = (q75 - q25) / max(abs(median), 1e-12)
+    # Cost convention: relative IQR divides by the goodness-equivalent (1 - median).
+    expected = (q75 - q25) / max(abs(1.0 - median), 0.02)
     assert result.gap is not None
     assert abs(result.gap - expected) < 1e-9
 
