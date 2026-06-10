@@ -142,6 +142,38 @@ def test_multi_objective_per_objective_param_importance(tmp_path):
     assert io.pareto_dir(out).exists()
 
 
+def test_per_axis_pareto_export_picks_lowest_cost_trial(tmp_path):
+    """The per-objective ``best_<axis>.json`` exports the LOWER-cost trial.
+
+    Cost convention: for each axis, the front trial with the *lowest* cost on
+    that axis is the per-axis winner (under the old maximize logic it would have
+    been the worst). Two non-dominated trials with distinct params per axis:
+    A (sigma=1.0) wins s0 (0.1 < 0.9); B (sigma=2.0) wins s1 (0.1 < 0.9).
+    """
+    from phenotypic.tune._study_store import JournalStudyStore
+    from phenotypic.tune._tune_cli._run import _finalize_pareto_outputs
+
+    spec = _single_objective_spec(tmp_path)
+    store = JournalStudyStore([
+        Trial(number=0, params={"0.sigma": 1.0}, score=0.5, terms={},
+              n_images=1, objectives={"s0": 0.1, "s1": 0.9}),  # A: best s0
+        Trial(number=1, params={"0.sigma": 2.0}, score=0.5, terms={},
+              n_images=1, objectives={"s0": 0.9, "s1": 0.1}),  # B: best s1
+    ])
+    out = tmp_path / "per_axis"
+    _finalize_pareto_outputs(store, spec, out)
+
+    best_s0 = ImagePipeline.from_json(
+        io.pareto_best_pipeline_path(out, "s0").read_text()
+    )
+    best_s1 = ImagePipeline.from_json(
+        io.pareto_best_pipeline_path(out, "s1").read_text()
+    )
+    # The first op is GaussianBlur; its sigma reflects the winning trial's param.
+    assert list(best_s0.get_ops().values())[0].sigma == 1.0  # A wins s0 (lowest cost)
+    assert list(best_s1.get_ops().values())[0].sigma == 2.0  # B wins s1 (lowest cost)
+
+
 def test_headline_winner_prefers_pareto_knee_over_scalar_best():
     from phenotypic.tune._tune_cli._run import _headline_winner
 

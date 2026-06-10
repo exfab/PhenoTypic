@@ -964,8 +964,9 @@ def _finalize_pareto_outputs(
 
     * ``pareto_front.parquet`` — the front's trials (same schema as
       ``trials.parquet``, ``objectives_json`` populated);
-    * ``best_<objective>.json`` — the front pipeline maximizing each objective
-      axis, plus that axis's :func:`compute_param_importance`;
+    * ``best_<objective>.json`` — the front pipeline minimizing each objective
+      axis's cost (lowest-cost trial per axis), plus that axis's
+      :func:`compute_param_importance`;
     * and it overwrites the top-level ``best_pipeline.json`` with the **knee**
       (the max-curvature compromise pick).
 
@@ -997,7 +998,7 @@ def _finalize_pareto_outputs(
         front[0].objectives or {}
     )
     for name in objective_axes:
-        winner = max(
+        winner = min(
             (t for t in front if t.objectives and name in t.objectives),
             key=lambda t: t.objectives[name],  # type: ignore[index]
             default=None,
