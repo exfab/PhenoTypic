@@ -49,3 +49,10 @@ def test_score_terms_is_abstract():
 
     with pytest.raises(TypeError):
         _Incomplete()  # type: ignore[abstract]
+
+
+def test_composite_score_terms_stub_raises():
+    from phenotypic.tune import CompositeScorer
+
+    with pytest.raises(NotImplementedError):
+        CompositeScorer(scorers=[])._score_terms(None, None)

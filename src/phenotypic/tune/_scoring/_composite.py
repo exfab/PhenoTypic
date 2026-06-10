@@ -86,14 +86,14 @@ class CompositeScorer(Scorer):
         >>> terms = comp.score_image(None, layout)
         >>> sorted(terms)
         ['s0.Count', 's1.Count']
-        >>> round(comp.finalize(terms), 3)  # geometric mean of the two child scalars
-        1.0
+        >>> round(comp.finalize(terms), 3)  # geometric mean of the two child cost scalars (0.0 each -> 0.0); Phase 3 replaces this combiner
+        0.0
 
         Flip to multi-objective and ``finalize`` returns the per-child sidecar:
 
         >>> comp_mo = CompositeScorer(scorers=[qc, qc], multi_objective=True)
         >>> {k: round(v, 3) for k, v in comp_mo.finalize(terms).items()}
-        {'s0': 1.0, 's1': 1.0}
+        {'s0': 0.0, 's1': 0.0}
     """
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -174,6 +174,24 @@ class CompositeScorer(Scorer):
             for an empty composite or one whose children all abstain.
         """
         return any(child.availability() for child in self.scorers)
+
+    def _score_terms(
+        self, image: Any, measurements: pd.DataFrame
+    ) -> dict[str, float]:
+        """Not used — the composite overrides :meth:`score_image` instead.
+
+        ``_score_terms`` is abstract on the base, but a composite's children
+        already returned **cost** (each child's own ``score_image`` oriented its
+        terms), so the composite must **not** re-orient: it overrides the merge
+        in :meth:`score_image` directly. This stub satisfies the abstract base.
+
+        Raises:
+            NotImplementedError: Always — call :meth:`score_image`.
+        """
+        raise NotImplementedError(
+            "CompositeScorer overrides score_image (it merges already-cost "
+            "children); _score_terms is not used."
+        )
 
     def score_image(
         self, image: Any, measurements: pd.DataFrame
