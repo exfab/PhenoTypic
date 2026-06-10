@@ -73,7 +73,6 @@ def _title_row(entry: QcRecipeEntry) -> Component:
         id=ids.qc_card_status_badge_id(instance_id),
         color="secondary",
         className="me-2",
-        pill=True,
     )
 
     title_label = html.Span(

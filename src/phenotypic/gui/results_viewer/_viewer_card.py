@@ -56,6 +56,7 @@ from phenotypic.gui._design import (
     FONT_FAMILY_MONO,
     FONT_SIZE_BODY_SM,
     FONT_SIZE_CAPTION,
+    OI_VERMILION_TEXT,
 )
 from phenotypic.gui.results_viewer._filter_state import FilterSpec
 from phenotypic.gui.results_viewer._filtered_state import (
@@ -114,13 +115,13 @@ _STATUS_ACTIVE = "Active"
 #: :attr:`FilteredMeasurements.removed_keys`.
 _STATUS_REMOVED = "Removed"
 
-#: Soft-red row tint (DESIGN.md ``#cc4f4f`` at 10% alpha) applied to rows
-#: whose Status cell reads "Removed".
-_REMOVED_ROW_BG = "rgba(204, 79, 79, 0.10)"
+#: Soft-vermilion row tint (Okabe-Ito vermilion at 10% alpha) applied to
+#: rows whose Status cell reads "Removed".
+_REMOVED_ROW_BG = "rgba(213, 94, 0, 0.10)"
 
-#: Darker red used for the row text when the row is removed; keeps
-#: contrast acceptable against :data:`_REMOVED_ROW_BG`.
-_REMOVED_ROW_FG = "#803030"
+#: Darkened vermilion text used for the row text when the row is removed;
+#: keeps contrast acceptable against :data:`_REMOVED_ROW_BG`.
+_REMOVED_ROW_FG = OI_VERMILION_TEXT
 
 
 # ---------------------------------------------------------------------------
@@ -311,9 +312,9 @@ def layout(idx: str, output_root: OutputRoot) -> Any:
             "color": COLOR_MUTED,
             "borderBottom": f"2px solid {COLOR_NAVY}",
         },
-        # Tint rows whose Status cell reads "Removed" with a soft red
-        # background plus a darker text color (DESIGN.md token
-        # ``#cc4f4f`` at 10% alpha).
+        # Tint rows whose Status cell reads "Removed" with a soft
+        # vermilion background plus a darkened vermilion text color
+        # (Okabe-Ito vermilion at 10% alpha; see ``_REMOVED_ROW_BG``).
         style_data_conditional=[
             {
                 "if": {

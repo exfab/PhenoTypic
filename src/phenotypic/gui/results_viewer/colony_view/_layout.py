@@ -11,9 +11,9 @@ bulk-action alert bar, and an empty grid container. The grid itself is
 rendered by callbacks in :mod:`._callbacks`; the per-cell
 HTML is built by :mod:`._grid`.
 
-DESIGN.md tokens are honoured throughout: navy ``#003660`` for primary
-text, blue ``#1b75bc`` for accents, gold ``#febc11`` for highlights, and
-``#f5f7fa`` for the page background.
+DESIGN.md tokens are honoured throughout via ``phenotypic.gui._design``:
+navy for primary text, blue for accents, gold for highlights, and the
+background canvas token for the page background.
 """
 
 from __future__ import annotations
