@@ -4,7 +4,6 @@ import pytest
 
 from phenotypic.tune._evaluation._aggregate_math import (
     _GAP_EPS,
-    _median_iqr,
     _relative,
 )
 
