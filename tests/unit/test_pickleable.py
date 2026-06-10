@@ -5,7 +5,7 @@ from unit.test_fixtures import _public
 
 # Module-level slow marker: this is a coverage probe that walks the entire
 # phenotypic public namespace. The walk is heavy and the matrix doesn't move
-# under typical PRs, so we run it on the nightly + post-merge full lane only.
+# under typical PRs, so we run it on the nightly full lane only.
 pytestmark = pytest.mark.slow
 
 # Filter out CLI objects that aren't meant to be serialized

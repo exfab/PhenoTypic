@@ -2,7 +2,7 @@ name: run-pytest
 # Fast PR lane. Goal: ~10-15 min wall-clock for PR-time signal.
 #
 # Matrix: Linux x Python {3.10 (floor), 3.12 (ceiling)}. Windows, macOS, and
-# Python 3.11 move to the nightly + post-merge full lane in
+# Python 3.11 move to the nightly full lane in
 # ``run-pytest-full.yml``. Slow tests are excluded by default via
 # ``addopts = "-m 'not slow'"`` in pyproject.toml.
 #
@@ -105,7 +105,7 @@ jobs:
       matrix:
         include:
           # Ubuntu: floor (3.10) + ceiling (3.12). Python 3.11 moves to the
-          # nightly + post-merge full lane in run-pytest-full.yml.
+          # nightly full lane in run-pytest-full.yml.
           - os: ubuntu-latest
             python-version: "3.10"
           - os: ubuntu-latest
