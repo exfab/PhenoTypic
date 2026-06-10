@@ -1,12 +1,34 @@
 """The pluggable scoring objective — a pydantic ABC.
 
-A ``Scorer`` turns one image's measurement frame into a dict of **named term
-scores** (``score_image``), where *higher is better* and each term is a clean,
-comparable signal (typically normalized to ``[0, 1]``). The ``Evaluator``
-collects the per-image terms across a calibration set, robust-aggregates each
-term, then asks the scorer to ``finalize`` the aggregated terms into the single
-scalar objective the optimizer maximizes. ``availability`` lets a scorer report
-that it cannot run (e.g. missing metadata) so the engine can degrade gracefully.
+A ``Scorer`` emits one image's **natural per-term values** (``_score_terms``);
+the base-class template method ``score_image`` orients each term into bounded
+**cost** ``∈ [0, 1]`` (``0`` = perfect, ``1`` = worst) via the shared
+:func:`~phenotypic.tune._scoring._orient.to_cost`, reading the scorer's
+``_TERM_SENSE`` and optional ``_term_anchor``. The ``Evaluator`` collects the
+per-image cost terms across a calibration set, robust-aggregates each term
+(``median + λ·IQR``, clamped to ``[0, 1]``), then asks the scorer to
+``finalize`` the aggregated terms into the single scalar **the optimizer
+minimizes**. ``availability`` lets a scorer report that it cannot run (e.g.
+missing metadata) so the engine can degrade gracefully.
+
+Authoring a new ``Scorer`` (the canonical contract — kept in sync with
+``tune/CLAUDE.md`` and ``docs/source/contrib_guide/contributing.rst``):
+
+  1. Implement ``_score_terms(image, measurements) -> dict[str, float]``
+     returning your **natural** per-term values — do **not** flip or normalize
+     by hand.
+  2. Declare ``_TERM_SENSE`` (``Sense.LOWER_BETTER`` if larger = worse — the
+     default; ``Sense.HIGHER_BETTER`` if larger = better, e.g. Dice/ICC).
+  3. Override ``_term_anchor`` **only** if a term is unbounded, returning the
+     half-cost scale (for a QC-backed term, its check's ``fail_threshold``);
+     bounded ``[0, 1]`` terms need nothing.
+  4. Do **not** add scalarization parameters (``ε``, ``ρ``, normalization,
+     default weights are framework-derived).
+  5. Register: re-export from ``tune/__init__.py`` and the class registry, or
+     the GUI and ``from_json`` cannot see it.
+
+The framework then orients (``to_cost``), robust-aggregates, reduces per child,
+and combines (augmented Tchebycheff) — the author writes none of that.
 """
 from __future__ import annotations
 
@@ -28,14 +50,16 @@ def project_objectives_to_scalar(mapping: Mapping[str, float]) -> float:
     reduction shared by every multi-objective → scalar projection: the
     :meth:`Scorer.finalize` default, ``CompositeScorer._as_scalar``, and the
     ``Evaluator``'s ``_project_finalize`` sidecar all collapse a dict of named
-    objectives the same way (higher = better, ``0.0`` is the worst score).
+    objectives the same way (lower = better cost, ``0.0`` is the best and the
+    empty-mapping default).
 
     Args:
         mapping: Objective name → value (the robust-aggregated terms, or a
             scorer's named-objectives sidecar).
 
     Returns:
-        ``mean(mapping.values())`` as a ``float``; ``0.0`` for an empty mapping.
+        ``mean(mapping.values())`` as a ``float``; ``0.0`` for an empty mapping
+        (a perfect/empty cost).
     """
     values = list(mapping.values())
     if not values:
@@ -53,21 +77,24 @@ class Scorer(BaseModel, ABC):
     wraps each term into **cost ∈ [0,1]** (``0`` perfect, ``1`` worst, lower is
     better — the optimizer minimizes) via the shared :func:`to_cost` helper.
 
-    To add a scorer:
+    To add a scorer (the canonical contract — kept in sync with
+    ``tune/CLAUDE.md`` and ``docs/source/contrib_guide/contributing.rst``):
 
-    1. Subclass :class:`Scorer` and implement
-       :meth:`_score_terms` → ``dict[str, float]`` returning your **natural**
-       per-term values — do **not** flip or normalize by hand.
-    2. Declare :attr:`_TERM_SENSE`: ``Sense.LOWER_BETTER`` (the default — larger
-       value = worse, a loss/divergence) or ``Sense.HIGHER_BETTER`` (larger =
-       better, e.g. Dice / IoU / ICC / solidity).
-    3. Override :meth:`_term_anchor` **only if a term is unbounded** (return the
-       half-cost scale, e.g. a QC check's ``fail_threshold``); bounded ``[0,1]``
-       terms need nothing.
-    4. Do **not** add scalarization parameters (``ε`` / ``ρ`` / weights /
-       normalization are framework-derived).
+    1. Implement ``_score_terms(image, measurements) -> dict[str, float]``
+       returning your **natural** per-term values — do **not** flip or normalize
+       by hand.
+    2. Declare ``_TERM_SENSE`` (``Sense.LOWER_BETTER`` if larger = worse — the
+       default; ``Sense.HIGHER_BETTER`` if larger = better, e.g. Dice/ICC).
+    3. Override ``_term_anchor`` **only** if a term is unbounded, returning the
+       half-cost scale (for a QC-backed term, its check's ``fail_threshold``);
+       bounded ``[0, 1]`` terms need nothing.
+    4. Do **not** add scalarization parameters (``ε``, ``ρ``, normalization,
+       default weights are framework-derived).
     5. Register: re-export from ``tune/__init__.py`` and the class registry, or
        the GUI and ``from_json`` cannot see it.
+
+    The framework then orients (``to_cost``), robust-aggregates, reduces per
+    child, and combines (augmented Tchebycheff) — the author writes none of that.
 
     Production scorers must be **stateless** across :meth:`score_image` calls:
     the engine reuses one scorer instance for every trial, so per-trial mutable
@@ -164,8 +191,8 @@ class Scorer(BaseModel, ABC):
                 the calibration set by the ``Evaluator``).
 
         Returns:
-            The scalar objective (higher = better; ``0.0`` for no terms) for
-            single-objective scorers, or a ``dict[str, float]`` of named
+            The scalar objective **cost** (lower = better; ``0.0`` for no terms)
+            for single-objective scorers, or a ``dict[str, float]`` of named
             objectives for a multi-objective scorer.
         """
         return project_objectives_to_scalar(terms)
