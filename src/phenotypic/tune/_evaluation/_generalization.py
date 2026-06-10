@@ -87,6 +87,11 @@ def compute_generalization_gap(
         signed (negative when the held-out score *improved*); ``flagged`` is
         ``True`` only when both exceed their margins.
 
+    Note:
+        This function is direction-agnostic. Under the cost convention the
+        caller passes goodness-equivalents (``1 − cost``) so the unchanged
+        formula is the standard loss-space gap (``heldout_cost − cal_cost``).
+
     Examples:
         >>> rel, absolute, flagged = compute_generalization_gap(
         ...     0.9, 0.5, rel_margin=0.15, abs_margin=0.05
@@ -274,8 +279,14 @@ def run_held_out(
         spec.pipeline, spec.scorer, winner.params, held_out_images
     )
     heldout_score = float(result.score)
+    # Cost convention: pass goodness-equivalents (1 - cost) so the unchanged
+    # accuracy-space formula (cal_g - heldout_g) equals the standard loss-space
+    # gap (heldout_cost - cal_cost), positive = overfit. No bespoke sign flip.
     relative_drop, absolute_drop, flagged = compute_generalization_gap(
-        cal_score, heldout_score, rel_margin=rel_margin, abs_margin=abs_margin
+        1.0 - cal_score,
+        1.0 - heldout_score,
+        rel_margin=rel_margin,
+        abs_margin=abs_margin,
     )
 
     note = _WITHIN_GROUP_NOTE if split.within_group_caveat else None
