@@ -16,10 +16,13 @@ from typing import Final, Sequence
 
 import numpy as np
 
-#: Denominator floor for every relative ratio in the evaluation layer — guards a
-#: near-zero median (per-trial dispersion) or calibration score (generalization
-#: drop) so the ratio stays finite. One shared convention across both call sites.
-_GAP_EPS: Final[float] = 1e-12
+#: Denominator floor for every relative ratio in the evaluation layer. Under the
+#: cost convention a great candidate's central tendency is ≈ 0, so the relative
+#: ratio is computed on the goodness-equivalent (``1 - cost``, see
+#: ``_per_trial_dispersion`` / ``compute_generalization_gap``); this floor is the
+#: defensive cap for the residual bad-end case (a few percent of the [0,1] scale,
+#: small enough not to materially shift the gap for normal candidates).
+_GAP_EPS: Final[float] = 0.02
 
 
 def _median_iqr(values: Sequence[float]) -> tuple[float, float]:
