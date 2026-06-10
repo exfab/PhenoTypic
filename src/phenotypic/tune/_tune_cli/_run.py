@@ -66,8 +66,11 @@ _RUN_MARKER_VERSION: Final[int] = 1
 
 #: The study name every tune run uses (the Optuna ``study_name`` + the marker's
 #: ``study_name`` field). A single constant keeps the store, the SLURM fleet, and
-#: the marker in lockstep.
-_STUDY_NAME: Final[str] = "tune"
+#: the marker in lockstep. **Bumped from ``"tune"`` for the minimize-cost cutover
+#: (spec §7 Phase 2, OQ7):** new code only ever opens this study, so a pre-cutover
+#: ``"tune"`` (maximize) study is never reopened — the silent-maximize hazard is
+#: impossible by construction, not contingent on a runtime guard.
+_STUDY_NAME: Final[str] = "tune_cost_v1"
 
 
 def _default_study_db_url(output_dir: Path) -> str:

@@ -32,10 +32,11 @@ from phenotypic.tools_ import (
     tune_cache_run_marker_path,
 )
 
-#: The study name every tune run uses (mirrors ``_tune_cli._run._STUDY_NAME``).
-#: Used as the fallback when discovering from a ``tuning_spec.json`` (which, unlike
-#: the ``run.json`` marker, does not record a study name).
-_DEFAULT_STUDY_NAME: str = "tune"
+#: The study name every tune run uses (mirrors ``_tune_cli._run._STUDY_NAME``;
+#: kept in lockstep by ``test_study_name_cutover.py``). Used as the fallback when
+#: discovering from a ``tuning_spec.json`` (which, unlike the ``run.json`` marker,
+#: does not record a study name).
+_DEFAULT_STUDY_NAME: str = "tune_cost_v1"
 
 #: The placeholder multi-objective ``directions`` synthesized from the
 #: ``run.json`` ``is_multi_objective`` flag. The marker records only the boolean

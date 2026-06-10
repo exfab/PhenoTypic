@@ -69,7 +69,7 @@ def write_winner(
         >>> from phenotypic.tune._study_store import Trial
         >>> d = Path(tempfile.mkdtemp())
         >>> root = TuneRunRoot(
-        ...     path=d, trials_path=None, storage_url=None, study_name="tune",
+        ...     path=d, trials_path=None, storage_url=None, study_name="tune_cost_v1",
         ...     directions=None, images_dir=None,
         ...     best_pipeline_path=best_pipeline_path(d),
         ... )

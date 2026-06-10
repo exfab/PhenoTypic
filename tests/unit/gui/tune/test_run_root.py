@@ -68,7 +68,7 @@ def test_discover_reads_storage_url_and_trials(tmp_path):
     root = TuneRunRoot.discover(out)
 
     assert root.storage_url == "sqlite:///x.db"
-    assert root.study_name == "tune"
+    assert root.study_name == "tune_cost_v1"
     assert root.trials_path == trials_parquet_path(out)
     assert root.best_pipeline_path == best_pipeline_path(out)
     # Single-objective spec → no Pareto directions.
@@ -87,7 +87,7 @@ def test_discover_reads_legacy_tuning_spec_json(tmp_path):
     root = TuneRunRoot.discover(out)
 
     assert root.storage_url == "sqlite:///legacy.db"
-    assert root.study_name == "tune"
+    assert root.study_name == "tune_cost_v1"
     assert root.best_pipeline_path == best_pipeline_path(out)
 
 
