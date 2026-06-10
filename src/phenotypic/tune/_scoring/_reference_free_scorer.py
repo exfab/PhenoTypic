@@ -39,6 +39,7 @@ from pydantic import ConfigDict, PrivateAttr
 from phenotypic.analysis import ExpectedVsDetectedCount
 from phenotypic.schema import SHAPE, SIZE
 
+from ._orient import Sense
 from ._qc_scorer import fold_expected_vs_detected_count
 from ._scorer import Scorer
 
@@ -147,6 +148,10 @@ class ReferenceFreeScorer(Scorer):
 
     #: The optional grid-count term name (present iff ``count_check`` is set).
     count_term_name: ClassVar[str] = "Count"
+
+    #: Every proxy term is bounded [0,1] goodness (fixed-normalized); the base
+    #: complements each into cost.
+    _TERM_SENSE: ClassVar[Sense] = Sense.HIGHER_BETTER
 
     count_check: Optional[ExpectedVsDetectedCount] = None
     replicate_groupby: Optional[list[str]] = None
@@ -291,7 +296,7 @@ class ReferenceFreeScorer(Scorer):
     # ----------------------------------------------------------------- #
     # the proxy terms (Task 1)
     # ----------------------------------------------------------------- #
-    def score_image(
+    def _score_terms(
         self, image: Any, measurements: pd.DataFrame
     ) -> dict[str, float]:
         """Score one image's segmentation as fixed-normalized proxy terms.
@@ -303,10 +308,11 @@ class ReferenceFreeScorer(Scorer):
                 the category-prefixed ``Shape_*``/``Size_*`` columns.
 
         Returns:
-            A mapping of proxy term → score in ``[0, 1]`` (higher = better):
-            ``ShapeRegularity``, ``Contrast``, ``SizeCV``, and — when a
-            ``count_check`` is configured — ``Count``. Keys are stable across
-            images so the ``Evaluator`` can aggregate per term.
+            A mapping of proxy term → natural goodness in ``[0, 1]`` (higher =
+            better): ``ShapeRegularity``, ``Contrast``, ``SizeCV``, and — when a
+            ``count_check`` is configured — ``Count``. The base complements these
+            goodness values to cost. Keys are stable across images so the
+            ``Evaluator`` can aggregate per term.
         """
         empty = measurements is None or len(measurements) == 0
         terms: dict[str, float] = {
