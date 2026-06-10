@@ -193,6 +193,10 @@ the check's `fail_threshold`); **unbounded higher-better** (rare) → `goodness`
 A QC check's `(_HIGHER_IS_BAD, fail_threshold)` maps onto `(sense, anchor)`
 exactly. **`CompositeScorer` overrides `score_image` (the merge), not
 `_score_terms`** — its children already returned cost, so it must not re-orient.
+Because `_score_terms` is `@abstractmethod`, `CompositeScorer` must still provide
+a stub (`_score_terms` that raises `NotImplementedError`) to stay instantiable —
+or the base declares `_score_terms` non-abstract with a `NotImplementedError`
+body. Note this in Phase 3.
 
 ### 5.3 New-scorer authoring contract (canonical — must be documented in 3 places)
 
@@ -246,7 +250,10 @@ Tᵨ(b) = max_i dᵢ  +  ρ · Σ_i wᵢ·bᵢ            # minimize
 > 2. The `max` term drops the absolute value **only because** the invariant
 >    `z*ᵢ = −ε < 0 ≤ bᵢ ≤ 1` makes every `bᵢ − z*ᵢ > 0`. This must be
 >    **asserted in code** — a future "tighten the reference to the ideal `0`"
->    change would silently make the unsigned form reward overshoot.
+>    change would silently make the unsigned form reward overshoot. The upper
+>    bound `bᵢ ≤ 1` is **not automatic**: the robust aggregate is unclamped and
+>    can reach `~1+λ`, so it holds only because Phase 1 clamps the aggregated cost
+>    to `[0,1]` (B1). The assert guards that clamp staying in place.
 
 - **Utopia `z*ᵢ = −ε`** (e.g. `ε = 1e-3`): a **strictly-dominating** reference
   point. Tchebycheff's reach-every-Pareto-point property requires the reference
@@ -317,6 +324,14 @@ zeroes the product and dominates), the documented trap this design avoids.
 > the child still produces a scalar from the plates it did score. Edge cases:
 > empty active set → composite is unavailable (engine degrades) and, defensively,
 > the composite returns cost `1.0` (guard the `max([])`).
+>
+> **Plumbing (SF3):** the active set must be **pinned once at study start**, not
+> recomputed inside `finalize` — `finalize(terms)` has no access to it, and
+> `ReferenceFreeScorer.availability()` reads a *run-local* `_meta_validated`
+> `PrivateAttr` that is `False` until `meta_validate()` runs. So the engine
+> computes the active set after meta-validation and threads it to the composite
+> (a `finalize` signature / stored-state change), so the `max` and the normalizer
+> use the same fixed set for every trial.
 >
 > The **multi-objective** NSGA-II path is separate and keeps the abstainer floor
 > `0.0 → 1.0` at `:240` (it needs a fixed-length value vector); only the
@@ -532,10 +547,22 @@ land together.
   per scorer in Phase 1.
 
 ### Phase 1 — flip the Evaluator math (`_evaluation/**`)
-- `_WORST_TERM: 0.0 → 1.0`; `failure_score: 0.0 → 1.0` (and define a finite
-  `_FAILURE_COST` ≥ achievable composite max if the composite can exceed 1
-  before normalization — but §6.2 normalization keeps it `≤ 1`, so `1.0` holds).
-- `_robust_aggregate`: `median − λ·IQR → median + λ·IQR` (`:53`, `:65`).
+- **BLOCKER (B1) — clamp the aggregated cost to `[0,1]`.** `_robust_aggregate`
+  (`_evaluator.py:65`) is `median − λ·IQR`, **unclamped**: goodness ranges
+  `[−λ, 1]` (≈`[−0.5, 1]`), so the reflected cost `median + λ·IQR` ranges
+  `[0, 1+λ]` (≈`[0, 1.5]`) and **can exceed 1.0**. Today only `_geometric_mean`
+  clamps (bottom-only, `_composite.py:338`); the mean/`_weighted_mean` paths do
+  not. Left unclamped this breaks the §6.1 invariant/assert (`0 ≤ bᵢ ≤ 1`), the
+  §6.2 `T_norm ≤ 1`, and the `_FAILURE_COST = 1.0` floor. **Fix:** clamp the
+  robust-aggregated cost to `[0,1]` (in/after `_robust_aggregate`). The clamp is
+  monotone and only bites on *terrible* terms (cost > 1, i.e. unstable+bad), so it
+  is **winner-preserving** — the §4 winner-equivalence still holds (it is a
+  winner-level, not bit-level, guarantee).
+- `_robust_aggregate`: `median − λ·IQR → median + λ·IQR`, **then clamp to
+  `[0,1]`** (`:53`, `:65`).
+- `_WORST_TERM: 0.0 → 1.0`; `failure_score: 0.0 → 1.0`. With the B1 clamp the
+  per-child cost and the normalized composite are genuinely `≤ 1`, so `1.0` is a
+  valid worst-floor (no separate `_FAILURE_COST` constant needed).
 - `_is_suspicious` (`:104`): reflect **every** constant (OQ9), not just the
   comparison: `score <= (1 − suspicious_score_floor)` **and** `count_cost >=
   (1 − suspicious_count_floor)`; flip the **`Count` default** `terms.get("Count",
@@ -609,7 +636,11 @@ land together.
      construction*, not contingent on a guard. Old-convention resume becomes
      impossible (the intended cutover); a re-run creates a fresh new-name study
      beside the inert old one. **Every reader (CLI, worker, GUI monitor) must use
-     the one constant**, not re-spell `"tune"`.
+     the one constant**, not re-spell `"tune"`. Known desync sites to fix in this
+     phase: `gui/tune/_run_root.py:38` `_DEFAULT_STUDY_NAME = "tune"` (a fallback
+     that would silently miss the bumped study) and the hardcoded
+     `study_name="tune"` in the `gui/tune/_winner.py:72` doctest. Import
+     `_STUDY_NAME` rather than re-spelling it.
   2. **Stamp `tune_convention`** (`study.set_user_attr`, e.g. `"minimize-cost-v1"`)
      for observability / future cutovers.
   3. **Friendly detector (UX, not correctness):** if a legacy `"tune"` study is
@@ -765,6 +796,10 @@ it requires a baseline snapshot and reviewer sign-off, not a silent swap.
 - **Abstainer masking**: a single-objective composite with one abstaining child
   must still discriminate among candidates on the present axes (regression for
   the §6.3 fix).
+- **Cost clamp (B1)**: a high-variance term (`median + λ·IQR > 1`) must yield a
+  per-child cost and `T_norm` in `[0,1]` (assert the §6.1 `0 ≤ bᵢ ≤ 1` invariant
+  holds and the assert does not fire); confirm the clamp is winner-preserving
+  against the unclamped reflection on a non-boundary winner.
 - **Persistence (hard cutover) — silent-maximize regression**: in a storage that
   already holds a `maximize` study named `"tune"`, the new store must **not**
   reopen it as a maximization of cost (the verified optuna `load_if_exists`
@@ -789,19 +824,23 @@ it requires a baseline snapshot and reviewer sign-off, not a silent swap.
    `_per_trial_dispersion` *and* `compute_generalization_gap` divide by a central
    tendency that → 0 for good candidates. Fix: compute on `1 − cost` **and** raise
    `_GAP_EPS` 1e-12 → ~0.02.
-3. **Abstainer masks all axes under Tchebycheff `max`** (§6.3) — a data-dependent
+3. **Unclamped aggregate → cost > 1** (§7 Phase 1, B1) — `_robust_aggregate` is
+   unclamped (`median ± λ·IQR`), so reflected cost reaches `~1+λ`, breaking the
+   `bᵢ ∈ [0,1]` assert, `T_norm ≤ 1`, and the `1.0` worst-floor. Fix: clamp the
+   aggregated cost to `[0,1]` (winner-preserving).
+4. **Abstainer masks all axes under Tchebycheff `max`** (§6.3) — a data-dependent
    abstention can flatten an entire study.
-4. **Pruner ↔ direction coupling** (§7 Phase 1) — Phase 1 and Phase 2 are atomic
+5. **Pruner ↔ direction coupling** (§7 Phase 1) — Phase 1 and Phase 2 are atomic
    unless pruning is disabled between them.
-5. **Composite normalization across trials** (§6.2) — must use a study-global
+6. **Composite normalization across trials** (§6.2) — must use a study-global
    constant roster, else the cross-trial winner can change.
-6. **Geometric-mean literal port** (§9) — never expose geomean-of-cost.
-7. **Silent direction-mismatch load** (§7 Phase 2; **verified**) — optuna
+7. **Geometric-mean literal port** (§9) — never expose geomean-of-cost.
+8. **Silent direction-mismatch load** (§7 Phase 2; **verified**) — optuna
    `create_study(load_if_exists=True)` does **not** reject a `maximize` study when
    asked for `minimize`; it silently keeps `maximize`, so reusing a pre-cutover
    study would maximize cost (pick the worst pipeline) with no error. Fixed by
    bumping `_STUDY_NAME` (collision-impossible), not by relying on Optuna.
-8. **`_is_suspicious` reflection** — both halves invert; off-by-reflection
+9. **`_is_suspicious` reflection** — both halves invert; off-by-reflection
    silently disables the gaming flag.
 
 **Decisions made** (2026-06-09)
