@@ -159,7 +159,7 @@ def freeze_value(key: str, trials: list[Trial], *, top_k: int = 10) -> Any:
 
     Numeric values → the **median**; non-numeric (categorical/bool) → the **mode**
     ("the value good configs tend to use", robust to single-trial noise). Only the
-    ``top_k`` highest-scoring non-failed trials that actually carry ``key`` count.
+    ``top_k`` lowest-cost non-failed trials that actually carry ``key`` count.
 
     Args:
         key: The frozen param's combo key.
@@ -175,7 +175,7 @@ def freeze_value(key: str, trials: list[Trial], *, top_k: int = 10) -> Any:
     ranked = sorted(
         (t for t in trials if not t.failed and key in t.params),
         key=lambda t: t.score,
-        reverse=True,
+        reverse=False,            # cost: lowest score = best
     )[:top_k]
     values = [t.params[key] for t in ranked]
     if not values:
@@ -236,9 +236,9 @@ class ScreeningController:
             deterministic freeze decision.
         engine_factory: Builds a tuning engine from ``(spec, store)``; defaults to
             the real :class:`~phenotypic.tune.TuningEngine`. Injectable for tests.
-        _focused_score_penalty: Test seam — subtract this from every fresh
-            focused-round score to exercise the wrong-freeze recovery path. Never
-            set in production (default ``0.0``).
+        _focused_score_penalty: Test seam — add this to every fresh
+            focused-round score (raise its cost) to exercise the wrong-freeze
+            recovery path. Never set in production (default ``0.0``).
     """
 
     def __init__(
@@ -364,7 +364,7 @@ class ScreeningController:
         top = sorted(
             (t for t in self.explore_store.trials if not t.failed),
             key=lambda t: t.score,
-            reverse=True,
+            reverse=False,            # cost: lowest score = best
         )[: self._config.top_k]
 
         store = JournalStudyStore()
@@ -399,7 +399,12 @@ class ScreeningController:
         return store
 
     def _apply_focused_penalty(self) -> None:
-        """Depress genuinely-focused scores (test-only seam for G3 recovery)."""
+        """Penalize genuinely-focused scores (test-only seam for G3 recovery).
+
+        Under the cost convention a penalty ADDS cost (makes a focused trial
+        worse), so a positive penalty pushes the genuinely-focused best above the
+        explore best and trips the wrong-freeze recovery branch.
+        """
         if self._focused_penalty == 0.0 or self.focused_store is None:
             return
         penalized: list[Trial] = []
@@ -407,7 +412,7 @@ class ScreeningController:
             if index >= self._warm_count and not trial.failed:
                 penalized.append(
                     trial.model_copy(
-                        update={"score": trial.score - self._focused_penalty}
+                        update={"score": trial.score + self._focused_penalty}
                     )
                 )
             else:
@@ -430,7 +435,7 @@ class ScreeningController:
         ]
         if not fresh:
             return None
-        return max(fresh, key=lambda t: t.score)
+        return min(fresh, key=lambda t: t.score)
 
     def _resolve_winner(
         self,
@@ -443,17 +448,17 @@ class ScreeningController:
         assert self.focused_store is not None
 
         explore_score = (
-            explore_best.score if explore_best is not None else float("-inf")
+            explore_best.score if explore_best is not None else float("inf")
         )
         focused_best = self._genuinely_focused_best()
         focused_score = (
-            focused_best.score if focused_best is not None else float("-inf")
+            focused_best.score if focused_best is not None else float("inf")
         )
 
         # Wrong-freeze recovery: the genuinely-focused round underperformed
-        # explore on held-out → flag the freeze, return the explore best,
-        # recommend re-run (no mid-study unfreeze).
-        if focused_score < explore_score:
+        # explore on held-out (focused cost exceeded explore cost) → flag the
+        # freeze, return the explore best, recommend re-run (no mid-study unfreeze).
+        if focused_score > explore_score:
             return ScreeningResult(
                 winner=explore_best,
                 frozen=frozen_values,
@@ -472,7 +477,7 @@ class ScreeningController:
         # Winner = best held-out across both rounds (the full union, including
         # warm-start seeds), so freezing never beats the explore best by accident.
         union = self.explore_store.trials + self.focused_store.trials
-        winner = max(
+        winner = min(
             (t for t in union if not t.failed),
             key=lambda t: t.score,
             default=explore_best,

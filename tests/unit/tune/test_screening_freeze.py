@@ -40,7 +40,7 @@ from phenotypic.tune._screening_freeze import (
     screening_warmup_floor,
     select_params_to_freeze,
 )
-from phenotypic.tune._study_store import Trial
+from phenotypic.tune._study_store import JournalStudyStore, Trial
 
 
 # --- pure helpers -------------------------------------------------------------
@@ -112,22 +112,41 @@ def test_conservative_rf_fallback_freezes_fewer():
 
 
 def test_freeze_value_numeric_is_top_k_median():
-    # Best-scoring trials carry x in {2,4,6}; median = 4 over the top 3.
+    # Cost convention: best (lowest-cost) trials carry x in {2,4,6}; the high-cost
+    # outlier (0.99) is excluded from the top-3, so median = 4.
     trials = [
-        Trial(number=0, params={"x": 2.0}, score=0.9, terms={}, n_images=1),
-        Trial(number=1, params={"x": 4.0}, score=0.8, terms={}, n_images=1),
-        Trial(number=2, params={"x": 6.0}, score=0.7, terms={}, n_images=1),
-        Trial(number=3, params={"x": 99.0}, score=0.1, terms={}, n_images=1),
+        Trial(number=0, params={"x": 2.0}, score=0.10, terms={}, n_images=1),
+        Trial(number=1, params={"x": 4.0}, score=0.20, terms={}, n_images=1),
+        Trial(number=2, params={"x": 6.0}, score=0.30, terms={}, n_images=1),
+        Trial(number=3, params={"x": 99.0}, score=0.99, terms={}, n_images=1),
+    ]
+    assert freeze_value("x", trials, top_k=3) == 4.0
+
+
+def test_freeze_value_numeric_is_top_k_median_by_lowest_cost():
+    """Best (lowest-cost) trials carry x in {2,4,6}; median = 4 over the top 3.
+
+    The cost mirror of ``test_freeze_value_numeric_is_top_k_median``: the
+    high-cost outlier (score=0.99) must be excluded from the top-k, so the
+    central tendency is the median of the three low-cost configs.
+    """
+    trials = [
+        Trial(number=0, params={"x": 2.0}, score=0.10, terms={}, n_images=1),
+        Trial(number=1, params={"x": 4.0}, score=0.20, terms={}, n_images=1),
+        Trial(number=2, params={"x": 6.0}, score=0.30, terms={}, n_images=1),
+        Trial(number=3, params={"x": 99.0}, score=0.99, terms={}, n_images=1),
     ]
     assert freeze_value("x", trials, top_k=3) == 4.0
 
 
 def test_freeze_value_categorical_is_top_k_mode():
+    # Cost convention: lowest-cost trials prefer "ridge"; the high-cost outlier
+    # (0.99) does not enter the top-3 mode.
     trials = [
-        Trial(number=0, params={"m": "ridge"}, score=0.9, terms={}, n_images=1),
-        Trial(number=1, params={"m": "ridge"}, score=0.85, terms={}, n_images=1),
-        Trial(number=2, params={"m": "flat"}, score=0.8, terms={}, n_images=1),
-        Trial(number=3, params={"m": "flat"}, score=0.1, terms={}, n_images=1),
+        Trial(number=0, params={"m": "ridge"}, score=0.10, terms={}, n_images=1),
+        Trial(number=1, params={"m": "ridge"}, score=0.15, terms={}, n_images=1),
+        Trial(number=2, params={"m": "flat"}, score=0.20, terms={}, n_images=1),
+        Trial(number=3, params={"m": "flat"}, score=0.99, terms={}, n_images=1),
     ]
     assert freeze_value("m", trials, top_k=3) == "ridge"
 
@@ -267,8 +286,23 @@ def test_winner_is_best_held_out_across_both_rounds():
     combined = controller.explore_store.trials + (
         controller.focused_store.trials if controller.focused_store else []
     )
-    best = max((t for t in combined if not t.failed), key=lambda t: t.score)
+    # Cost convention: the winner is the lowest-cost trial across both rounds.
+    best = min((t for t in combined if not t.failed), key=lambda t: t.score)
     assert result.winner.score == best.score
+
+
+def test_genuinely_focused_best_is_lowest_cost():
+    """The focused round's best is the MIN-cost fresh (non-warm-start) trial."""
+    spec = _spec(GridConfig())
+    controller = ScreeningController(spec, config=ScreeningConfig())
+    controller._warm_count = 1
+    controller.focused_store = JournalStudyStore([
+        Trial(number=0, params={"x": 1}, score=0.05, terms={}, n_images=1),  # warm seed
+        Trial(number=1, params={"x": 2}, score=0.40, terms={}, n_images=1),  # fresh
+        Trial(number=2, params={"x": 3}, score=0.10, terms={}, n_images=1),  # fresh, best
+    ])
+    best = controller._genuinely_focused_best()
+    assert best is not None and best.number == 2 and best.score == 0.10
 
 
 # --- G3: wrong-freeze recovery ------------------------------------------------
@@ -297,8 +331,38 @@ def test_bad_freeze_falls_back_to_explore_best():
     result = controller.run([load_synth_yeast_plate()])
     assert result.freeze_flagged is True
     assert "re-run" in result.recommendation.lower()
-    # The winner is the explore best, not a depressed focused trial.
-    explore_best = max(
+    # The winner is the explore best (lowest cost), not a penalized focused trial.
+    explore_best = min(
+        (t for t in controller.explore_store.trials if not t.failed),
+        key=lambda t: t.score,
+    )
+    assert result.winner.score == explore_best.score
+
+
+def test_wrong_freeze_recovery_when_focused_cost_exceeds_explore():
+    """A focused round penalized to HIGHER cost than explore flags the freeze.
+
+    The cost mirror of the existing wrong-freeze recovery test: the test seam
+    ``_focused_score_penalty`` ADDS cost (makes focused worse), so the
+    genuinely-focused best is worse (higher cost) than the explore best, tripping
+    the ``focused_score > explore_score`` recovery branch → ``freeze_flagged`` and
+    the explore best (lowest cost) is returned.
+    """
+    spec = _spec(RandomConfig(n_trials=6), space=_random_space(), budget=Budget(n_trials=6))
+    forced = ImportanceReport(
+        importances={"0.sigma": 0.97, "1.ignore_zeros": 0.03},
+        method="fanova",
+        interactions_estimated=True,
+    )
+    controller = ScreeningController(
+        spec,
+        config=ScreeningConfig(free_param_floor=0, warmup_floor=1, top_k=3),
+        importance_report_fn=lambda store: forced,
+        _focused_score_penalty=10.0,  # cost: ADD cost → focused worse than explore
+    )
+    result = controller.run([load_synth_yeast_plate()])
+    assert result.freeze_flagged is True
+    explore_best = min(
         (t for t in controller.explore_store.trials if not t.failed),
         key=lambda t: t.score,
     )
@@ -321,12 +385,15 @@ def test_changed_warm_start_projection_is_re_evaluated():
         class _Engine:
             def optimize(self, images):
                 if store is controller.explore_store:
+                    # Cost convention: lower score = better. n0 (lowest cost)
+                    # sorts to warm-start index 0; n1 (higher cost, frozen-param
+                    # changed) sorts to index 1, where the re-evaluation is asserted.
                     store.append(
                         Trial(
                             number=0,
                             params={"0.sigma": 1.0, "1.ignore_zeros": True},
-                            score=10.0,
-                            terms={"old": 10.0},
+                            score=9.0,
+                            terms={"old": 9.0},
                             n_images=1,
                         )
                     )
@@ -334,8 +401,8 @@ def test_changed_warm_start_projection_is_re_evaluated():
                         Trial(
                             number=1,
                             params={"0.sigma": 2.0, "1.ignore_zeros": False},
-                            score=9.0,
-                            terms={"old": 9.0},
+                            score=10.0,
+                            terms={"old": 10.0},
                             n_images=1,
                         )
                     )
@@ -370,3 +437,28 @@ def test_changed_warm_start_projection_is_re_evaluated():
     assert changed.params == {"0.sigma": 2.0, "1.ignore_zeros": True}
     assert changed.score == 42.0
     assert changed.terms == {"rechecked": 42.0}
+
+
+# --- _screening.py importance sort is direction-independent (do NOT flip) ------
+
+
+def test_importance_sort_is_sign_independent_of_cost():
+    """Importance ranking is over non-negative variance attribution, not score
+    direction: it must NOT flip with the cost cutover. Two stores whose targets
+    are exact negations produce the same importance *ranking* (the RF-permutation
+    magnitude depends on |variance explained|, not on sign)."""
+    from phenotypic.tune._screening import compute_param_importance_report
+
+    def _store(flip):
+        s = JournalStudyStore()
+        for n in range(8):
+            x = float(n)
+            base = 0.05 * n              # x drives the target strongly
+            score = (1.0 - base) if flip else base
+            s.append(Trial(number=n, params={"x": x, "noise": 0.0},
+                           score=score, terms={}, n_images=1))
+        return s
+
+    rank_lo = list(compute_param_importance_report(_store(False)).importances)
+    rank_hi = list(compute_param_importance_report(_store(True)).importances)
+    assert rank_lo[0] == rank_hi[0] == "x"   # x dominates either way; sort unflipped
