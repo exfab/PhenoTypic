@@ -119,27 +119,20 @@ def test_finalize_dict_when_multi_objective():
     assert result == {"s0": pytest.approx(0.8), "s1": pytest.approx(0.4)}
 
 
-def test_finalize_dict_floors_abstaining_child_to_zero():
-    # A child that emits no terms (abstains this run — e.g. a SupervisedScorer in
-    # mask tier whose GT masks are all missing) must still appear in the
-    # multi-objective sidecar, floored to 0.0 (the higher-is-better worst score)
-    # rather than dropped. The dict keys + order must stay invariant and exactly
-    # match objective_names() / the Optuna study's fixed `directions` — a dropped
-    # axis makes the NSGA-II value vector the wrong length and crashes `tell`.
+def test_finalize_dict_floors_abstaining_child_to_worst_cost():
+    # Multi-objective: an abstaining child stays an axis (fixed-length vector for
+    # NSGA-II) but is floored to the WORST cost 1.0 (was 0.0 under goodness).
     comp = CompositeScorer(
-        scorers=[
-            _FixedScorer(terms={"a": 0.8}),
-            _FixedScorer(terms={}),  # abstains: contributes no terms
-        ],
+        scorers=[_FixedScorer(terms={"a": 0.2}), _FixedScorer(terms={})],
         multi_objective=True,
     )
     terms = comp.score_image(None, pd.DataFrame())
-    assert terms == {"s0.a": 0.8}  # only the scoring child emits a prefixed term
+    assert terms == {"s0.a": 0.2}
     result = comp.finalize(terms)
     assert isinstance(result, dict)
     assert list(result.keys()) == comp.objective_names() == ["s0", "s1"]
-    assert result["s0"] == pytest.approx(0.8)
-    assert result["s1"] == 0.0
+    assert result["s0"] == pytest.approx(0.2)
+    assert result["s1"] == pytest.approx(1.0)  # worst cost floor
 
 
 # --------------------------------------------------------------------------- #

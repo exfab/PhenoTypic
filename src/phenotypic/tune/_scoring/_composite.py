@@ -278,13 +278,14 @@ class CompositeScorer(Scorer):
         * ``multi_objective=True`` → returns ``{handle: child_scalar}`` over
           **every** axis in :meth:`objective_names` order — the plan §0a sidecar
           the ``Evaluator`` stashes on ``EvaluationResult.objectives``. A child
-          that abstains (no terms this run) is floored to ``0.0`` (the
-          higher-is-better worst score) rather than dropped, so the dict keys +
+          that abstains (no terms this run) is floored to ``1.0`` (the worst
+          cost; the study minimizes) rather than dropped, so the dict keys +
           order stay invariant and exactly match the multi-objective study's
-          fixed ``directions``. A dropped axis would otherwise make the NSGA-II
-          value vector the wrong length and crash Optuna's ``tell`` mid-run; the
-          floor also mirrors the journal Pareto ``_vector`` fill so the journal
-          and Optuna backends agree on an abstaining axis.
+          fixed ``directions`` (now ``minimize``). A dropped axis would otherwise
+          make the NSGA-II value vector the wrong length and crash Optuna's
+          ``tell`` mid-run; the ``1.0`` floor also mirrors the journal Pareto
+          ``_vector`` fill so the journal and Optuna backends agree on an
+          abstaining axis.
         * ``blend="weighted_mean"`` → the compensatory weighted arithmetic mean
           of the per-child **cost** scalars (missing weights default to ``1.0``).
         * ``blend="tchebycheff"`` (default) → the conjunctive augmented
@@ -310,7 +311,7 @@ class CompositeScorer(Scorer):
         child_scalars = self._per_child_scalars(terms)
         if self.multi_objective:
             return {
-                handle: child_scalars.get(handle, 0.0)
+                handle: child_scalars.get(handle, 1.0)  # was 0.0 (goodness worst)
                 for handle in self.objective_names()
             }
         if self.blend == "weighted_mean":
