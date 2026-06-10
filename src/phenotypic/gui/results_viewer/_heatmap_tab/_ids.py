@@ -34,6 +34,12 @@ HEATMAP_COLOR_PICKER_ID = "heatmap-color-picker"
 #: frame.
 HEATMAP_IMAGE_PICKER_ID = "heatmap-image-picker"
 
+#: Icon-only button selecting the previous heatmap image.
+HEATMAP_IMAGE_PREV_ID = "heatmap-image-prev"
+
+#: Icon-only button selecting the next heatmap image.
+HEATMAP_IMAGE_NEXT_ID = "heatmap-image-next"
+
 #: Slider selecting the time-point filter. Marks are placed at every
 #: unique numeric ``Metadata_Time`` value (not interpolated). Hidden via
 #: :data:`HEATMAP_TIME_SLIDER_WRAPPER_ID` when only one time-point
@@ -72,6 +78,8 @@ __all__ = [
     "STORE_QC_AUGMENTED_REVISION",
     "HEATMAP_COLOR_PICKER_ID",
     "HEATMAP_IMAGE_PICKER_ID",
+    "HEATMAP_IMAGE_PREV_ID",
+    "HEATMAP_IMAGE_NEXT_ID",
     "HEATMAP_TIME_SLIDER_ID",
     "HEATMAP_TIME_SLIDER_WRAPPER_ID",
     "HEATMAP_TIME_NON_NUMERIC_CAPTION_ID",

@@ -30,7 +30,7 @@ from __future__ import annotations
 import json
 import logging
 import uuid
-from typing import Any
+from typing import Any, cast
 
 import dash
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
@@ -82,11 +82,17 @@ from phenotypic.gui.results_viewer._ids import (
     card_info_chip_dataset_id,
     card_info_chip_stem_id,
     card_osd_div_id,
+    card_picker_next_id,
+    card_picker_prev_id,
     card_picker_id,
     card_remove_id,
     card_state_store_id,
 )
 from phenotypic.gui.results_viewer._output_root import OutputRoot
+from phenotypic.gui.results_viewer._picker_navigation import (
+    picker_button_disabled_states,
+    step_picker_value,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -216,6 +222,31 @@ def layout(idx: str, output_root: OutputRoot) -> Any:
         searchable=True,
         style={"flex": "1 1 auto", "minWidth": "12rem"},
     )
+    picker_group = html.Div(
+        [
+            html.Button(
+                "‹",
+                id=card_picker_prev_id(idx),
+                n_clicks=0,
+                title="Previous image",
+                className="btn btn-outline-secondary btn-sm card-picker-nav-btn",
+                type="button",
+                **cast(Any, {"aria-label": "Previous image"}),
+            ),
+            html.Div(picker, style={"flex": "1 1 auto", "minWidth": "10rem"}),
+            html.Button(
+                "›",
+                id=card_picker_next_id(idx),
+                n_clicks=0,
+                title="Next image",
+                className="btn btn-outline-secondary btn-sm card-picker-nav-btn",
+                type="button",
+                **cast(Any, {"aria-label": "Next image"}),
+            ),
+        ],
+        className="d-flex align-items-center",
+        style={"gap": "0.35rem", "flex": "1 1 auto", "minWidth": "12rem"},
+    )
 
     info_chips = html.Div(
         [
@@ -256,7 +287,7 @@ def layout(idx: str, output_root: OutputRoot) -> Any:
     header = dbc.CardHeader(
         html.Div(
             [
-                html.Div(picker, style={"flex": "1 1 auto", "minWidth": "10rem"}),
+                picker_group,
                 html.Div(
                     info_chips,
                     className="card-info-chips-wrap",
@@ -747,7 +778,42 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
         options = _build_picker_options(pairs or [], output_root)
         return [options for _ in picker_ids]
 
-    # 6. Persist per-card state (selected pair + active filter columns).
+    # 6. Step an individual card picker from the icon-only navigation buttons.
+    @app.callback(
+        Output({"type": "card-picker", "index": MATCH}, "value", allow_duplicate=True),
+        Input({"type": "card-picker-prev", "index": MATCH}, "n_clicks"),
+        Input({"type": "card-picker-next", "index": MATCH}, "n_clicks"),
+        State({"type": "card-picker", "index": MATCH}, "value"),
+        State({"type": "card-picker", "index": MATCH}, "options"),
+        prevent_initial_call=True,
+    )
+    def _step_card_picker(
+        _prev_clicks: int | None,
+        _next_clicks: int | None,
+        current: str | None,
+        options: list[dict[str, Any]] | None,
+    ) -> str | Any:
+        triggered = ctx.triggered_id
+        if isinstance(triggered, dict) and triggered.get("type") == "card-picker-prev":
+            return step_picker_value(current, options, "previous") or no_update
+        if isinstance(triggered, dict) and triggered.get("type") == "card-picker-next":
+            return step_picker_value(current, options, "next") or no_update
+        return no_update
+
+    # 7. Disable per-card navigation buttons at picker bounds.
+    @app.callback(
+        Output({"type": "card-picker-prev", "index": MATCH}, "disabled"),
+        Output({"type": "card-picker-next", "index": MATCH}, "disabled"),
+        Input({"type": "card-picker", "index": MATCH}, "value"),
+        Input({"type": "card-picker", "index": MATCH}, "options"),
+    )
+    def _sync_card_picker_nav_disabled(
+        current: str | None,
+        options: list[dict[str, Any]] | None,
+    ) -> tuple[bool, bool]:
+        return picker_button_disabled_states(current, options)
+
+    # 8. Persist per-card state (selected pair + active filter columns).
     @app.callback(
         Output({"type": "card-state", "index": MATCH}, "data"),
         Input({"type": "card-picker", "index": MATCH}, "value"),
@@ -771,7 +837,7 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
             "filter_columns": active_columns,
         }
 
-    # 7. Card payload: info chips + per-object DataTable, computed in
+    # 9. Card payload: info chips + per-object DataTable, computed in
     #    one pass so the (slice + filter) work isn't duplicated across
     #    two callbacks that fire on the same trigger. ``STORE_REMOVED_KEYS``
     #    is an ``Input`` rather than a ``State`` because flipping a row's
@@ -842,7 +908,7 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
             )
         return dataset, stem, f"{n_objects} objects", columns, rows
 
-    # 8. Toggle the details collapse.
+    # 10. Toggle the details collapse.
     @app.callback(
         Output({"type": "card-details-collapse", "index": MATCH}, "is_open"),
         Input({"type": "card-details-toggle", "index": MATCH}, "n_clicks"),

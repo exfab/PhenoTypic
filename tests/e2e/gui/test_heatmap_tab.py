@@ -20,6 +20,7 @@ Tests gated by ``PLAYWRIGHT=1`` via the module-level skip in
 """
 from __future__ import annotations
 
+import base64
 import json
 from pathlib import Path
 from typing import Callable, Iterator
@@ -51,6 +52,9 @@ pytestmark = pytest.mark.ci_flaky
 _OUTPUT_NAME = "CliOutputExample"
 
 _IMAGES = ("plate_001.tif", "plate_002.tif")
+_TINY_PNG = base64.b64decode(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII="
+)
 
 
 def _default_master_df() -> pl.DataFrame:
@@ -74,6 +78,12 @@ def _default_master_df() -> pl.DataFrame:
                         "Object_Label": label,
                         "Grid_RowNum": r,
                         "Grid_ColNum": c,
+                        "Bbox_MinRR": 10,
+                        "Bbox_MaxRR": 310,
+                        "Bbox_MinCC": 10,
+                        "Bbox_MaxCC": 310,
+                        "Bbox_CenterRR": 160,
+                        "Bbox_CenterCC": 160,
                         "Size_Area": float(100 + r * 10 + c),
                     }
                 )
@@ -91,6 +101,9 @@ def _seed_master_df_in_output(sandbox: Path, df: pl.DataFrame) -> Path:
     dataset_dir = cli_out / "results" / "ds1"
     overlays = dataset_dir / "overlays"
     overlays.mkdir(parents=True, exist_ok=True)
+    for image in _IMAGES:
+        (overlays / f"{image}.png").write_bytes(_TINY_PNG)
+        (overlays / f"{Path(image).stem}.png").write_bytes(_TINY_PNG)
     return cli_out
 
 
@@ -309,9 +322,84 @@ def _dash_dropdown_pick(page: Page, dropdown_id: str, label_text: str) -> None:
     ).first.click()
 
 
+def _first_card_picker_value(page: Page) -> str | None:
+    """Return the rendered value of the first Plate card image picker."""
+    return page.evaluate(
+        """() => {
+            const picker = Array.from(document.querySelectorAll('[id]')).find((el) =>
+                el.id.includes('"type":"card-picker"')
+            );
+            if (!picker) return null;
+            const value = picker.querySelector('.dash-dropdown-value');
+            if (!value) return null;
+            const text = value.textContent.trim();
+            return text === 'Select image...' ? null : text;
+        }"""
+    )
+
+
+def _click_first_card_nav(page: Page, direction: str) -> None:
+    """Click the first Plate card picker navigation button."""
+    selector_type = "card-picker-next" if direction == "next" else "card-picker-prev"
+    selector = f'button[id*="\\"type\\":\\"{selector_type}\\""]'
+    button = page.locator(selector).first
+    button.wait_for(state="attached", timeout=10_000)
+    button.click()
+
+
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
+
+def test_plate_card_image_icon_navigation(
+    page: Page,
+    hub_url: str,
+    output_rel: str,
+) -> None:
+    """Plate card image navigation uses icon-only previous/next buttons."""
+    _hand_off_viewer(page, hub_url, output_rel)
+    page.goto(hub_url + "/results/")
+    page.wait_for_selector(
+        'button[id*="\\"type\\":\\"card-picker-next\\""]:not([disabled])',
+        timeout=15_000,
+    )
+
+    assert _first_card_picker_value(page) is None
+    _click_first_card_nav(page, "next")
+    page.wait_for_function(
+        "() => {"
+        "  const picker = Array.from(document.querySelectorAll('[id]')).find((el) => "
+        "    el.id.includes('\"type\":\"card-picker\"'));"
+        "  const value = picker && picker.querySelector('.dash-dropdown-value');"
+        "  return value && value.textContent.trim() === 'ds1 / plate_001.tif';"
+        "}",
+        timeout=10_000,
+    )
+    assert _first_card_picker_value(page) == "ds1 / plate_001.tif"
+
+    _click_first_card_nav(page, "next")
+    page.wait_for_function(
+        "() => {"
+        "  const picker = Array.from(document.querySelectorAll('[id]')).find((el) => "
+        "    el.id.includes('\"type\":\"card-picker\"'));"
+        "  const value = picker && picker.querySelector('.dash-dropdown-value');"
+        "  return value && value.textContent.trim() === 'ds1 / plate_002.tif';"
+        "}",
+        timeout=10_000,
+    )
+    assert _first_card_picker_value(page) == "ds1 / plate_002.tif"
+
+    _click_first_card_nav(page, "previous")
+    page.wait_for_function(
+        "() => {"
+        "  const picker = Array.from(document.querySelectorAll('[id]')).find((el) => "
+        "    el.id.includes('\"type\":\"card-picker\"'));"
+        "  const value = picker && picker.querySelector('.dash-dropdown-value');"
+        "  return value && value.textContent.trim() === 'ds1 / plate_001.tif';"
+        "}",
+        timeout=10_000,
+    )
 
 
 def test_color_picker_lists_measurements_and_qc_severities(
@@ -516,11 +604,71 @@ def test_image_picker(
     initial = _dash_dropdown_value(page, "heatmap-image-picker")
     assert initial in _IMAGES, f"unexpected initial image: {initial!r}"
 
-    # Switch to the other image via the dropdown menu.
+    # Switch to the other image via the icon-only next button, then back
+    # via the previous button.
     other = _IMAGES[1] if initial == _IMAGES[0] else _IMAGES[0]
-    _dash_dropdown_pick(page, "heatmap-image-picker", other)
-    page.wait_for_timeout(1_000)
+    page.locator("#heatmap-image-next").click()
+    page.wait_for_function(
+        "(expected) => {"
+        "  const ip = document.getElementById('heatmap-image-picker');"
+        "  const val = ip && ip.querySelector('.dash-dropdown-value');"
+        "  return val && val.textContent.trim() === expected;"
+        "}",
+        arg=other,
+        timeout=10_000,
+    )
     assert _dash_dropdown_value(page, "heatmap-image-picker") == other
+
+    page.locator("#heatmap-image-prev").click()
+    page.wait_for_function(
+        "(expected) => {"
+        "  const ip = document.getElementById('heatmap-image-picker');"
+        "  const val = ip && ip.querySelector('.dash-dropdown-value');"
+        "  return val && val.textContent.trim() === expected;"
+        "}",
+        arg=initial,
+        timeout=10_000,
+    )
+    assert _dash_dropdown_value(page, "heatmap-image-picker") == initial
+
+
+def test_colony_tile_size_icon_stepper(
+    page: Page,
+    hub_url: str,
+    output_rel: str,
+) -> None:
+    """Colony tile-size ``−``/``+`` buttons update readout and tile width."""
+    _hand_off_viewer(page, hub_url, output_rel)
+    page.goto(hub_url + "/results/")
+    page.locator("a.nav-link", has_text="Colony").first.click()
+    page.wait_for_selector("#colony-tile-size-readout", timeout=10_000)
+    page.wait_for_selector(".colony-cell-img", timeout=15_000)
+
+    initial_readout = page.locator("#colony-tile-size-readout").text_content()
+    assert initial_readout == "150 px"
+    initial_width = page.evaluate(
+        "() => document.querySelector('.colony-cell-img').getBoundingClientRect().width"
+    )
+
+    page.locator("#colony-tile-size-plus").click()
+    page.wait_for_function(
+        "() => document.querySelector('#colony-tile-size-readout').textContent === '166 px'",
+        timeout=10_000,
+    )
+    larger_width = page.evaluate(
+        "() => document.querySelector('.colony-cell-img').getBoundingClientRect().width"
+    )
+    assert larger_width > initial_width
+
+    page.locator("#colony-tile-size-minus").click()
+    page.wait_for_function(
+        "() => document.querySelector('#colony-tile-size-readout').textContent === '150 px'",
+        timeout=10_000,
+    )
+    restored_width = page.evaluate(
+        "() => document.querySelector('.colony-cell-img').getBoundingClientRect().width"
+    )
+    assert restored_width == initial_width
 
 
 @pytest.mark.parametrize(

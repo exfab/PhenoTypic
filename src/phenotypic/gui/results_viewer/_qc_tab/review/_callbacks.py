@@ -369,18 +369,45 @@ def _render_worklist_row(
         id=rids.worklist_row_id(instance_id, encoded),
         n_clicks=0,
         className="qc-worklist-row d-flex align-items-center w-100",
-        style={
-            "gap": "0.4rem",
-            "padding": "0.35rem 0.5rem",
-            "border": "none",
-            "borderBottom": f"1px solid {COLOR_BORDER}",
-            "background": "rgba(0,54,96,0.06)" if is_selected else "transparent",
-            "opacity": "0.55" if is_reviewed else "1",
-            "fontSize": FONT_SIZE_LABEL,
-            "textAlign": "left",
-            "cursor": "pointer",
-        },
+        style=_worklist_row_style(is_selected=is_selected, is_reviewed=is_reviewed),
     )
+
+
+def _worklist_row_style(*, is_selected: bool, is_reviewed: bool) -> dict[str, str]:
+    """Return the visual state for a Review worklist row."""
+    return {
+        "gap": "0.4rem",
+        "padding": "0.35rem 0.5rem",
+        "border": "none",
+        "borderBottom": f"1px solid {COLOR_BORDER}",
+        "background": "rgba(0,54,96,0.06)" if is_selected else "transparent",
+        "opacity": "0.55" if is_reviewed else "1",
+        "fontSize": FONT_SIZE_LABEL,
+        "textAlign": "left",
+        "cursor": "pointer",
+    }
+
+
+def _worklist_row_styles_for_selection(
+    row_ids: list[dict[str, Any]],
+    *,
+    selected_encoded: str,
+    review_state: ReviewState,
+) -> list[dict[str, str]]:
+    """Return updated row styles for a selected encoded group key."""
+    styles: list[dict[str, str]] = []
+    for row_id in row_ids:
+        encoded = str(row_id.get("key", ""))
+        instance_id = str(row_id.get("instance", ""))
+        styles.append(
+            _worklist_row_style(
+                is_selected=encoded == selected_encoded,
+                is_reviewed=review_state.is_reviewed(
+                    instance_id, decode_group_key(encoded)
+                ),
+            )
+        )
+    return styles
 
 
 def _format_metric(metric: Any) -> str:
@@ -749,11 +776,17 @@ def register_review_callbacks(app: dash.Dash) -> None:
         Output(rids.QC_REVIEW_DETAIL_HEADER_ID, "children"),
         Output(rids.QC_REVIEW_GALLERY_ID, "children"),
         Output(rids.STORE_QC_SELECTED_GROUP, "data", allow_duplicate=True),
+        Output(
+            {"type": "qc-worklist-row", "instance": ALL, "key": ALL},
+            "style",
+            allow_duplicate=True,
+        ),
         Input({"type": "qc-worklist-row", "instance": ALL, "key": ALL}, "n_clicks"),
         Input(rids.STORE_QC_SELECTED_GROUP, "data"),
         Input(viewer_ids.STORE_TILE_DIM_ALPHA, "data"),
         State(rids.QC_REVIEW_MODULE_PICKER_ID, "value"),
         State(rids.STORE_QC_RECOMPUTE_DELTAS, "data"),
+        State({"type": "qc-worklist-row", "instance": ALL, "key": ALL}, "id"),
         prevent_initial_call=True,
     )
     def _render_detail(
@@ -762,6 +795,7 @@ def register_review_callbacks(app: dash.Dash) -> None:
         dim_alpha: float | None,
         instance_id: str | None,
         deltas: dict[str, dict[str, Any]] | None,
+        row_ids: list[dict[str, Any]] | None,
     ):
         triggered = callback_context.triggered_id
         is_row_click = (
@@ -777,22 +811,22 @@ def register_review_callbacks(app: dash.Dash) -> None:
             # group leaves the store unchanged and so never echoes, so we
             # still fall through and render to refresh it.)
             if clicked_key != selected_encoded:
-                return no_update, no_update, clicked_key
+                return no_update, no_update, clicked_key, no_update
             selected_encoded = clicked_key
         if not instance_id or not selected_encoded:
-            return [], [], no_update
+            return [], [], no_update, no_update
 
         output_root = _output_root()
         summary = _data.load_qc_summary(output_root)
         members = _data.load_qc_members(output_root)
         if summary is None or members is None:
-            return [], [], selected_encoded
+            return [], [], selected_encoded, no_update
 
         groupby_cols = _data.groupby_cols_for(summary, instance_id)
         key_values = decode_group_key(selected_encoded)
         record = _data.group_record(summary, instance_id, groupby_cols, key_values)
         if record is None:
-            return [], [], selected_encoded
+            return [], [], selected_encoded, no_update
 
         dataset_by_image = _data.dataset_by_image_map(output_root)
         keys = _data.group_member_keys(
@@ -819,7 +853,12 @@ def register_review_callbacks(app: dash.Dash) -> None:
         # Record last-visited group for this module.
         review_state = _load_review_state()
         review_state.set_last(instance_id, key_values)
-        return header, gallery, selected_encoded
+        row_styles = _worklist_row_styles_for_selection(
+            row_ids or [],
+            selected_encoded=selected_encoded,
+            review_state=review_state,
+        )
+        return header, gallery, selected_encoded, row_styles
 
     # -----------------------------------------------------------------
     # D. Tile-spotlight ``dim`` stepper → shared store. Writes the same
@@ -1102,6 +1141,7 @@ def _register_review_progress_callbacks(app: dash.Dash) -> None:
         Output(rids.STORE_QC_RECOMPUTE_DELTAS, "data", allow_duplicate=True),
         Output(rids.STORE_QC_SELECTED_GROUP, "data", allow_duplicate=True),
         Input(rids.QC_REVIEW_MARK_REVIEWED_BTN_ID, "n_clicks"),
+        Input(rids.QC_REVIEW_PREV_BTN_ID, "n_clicks"),
         Input(rids.QC_REVIEW_NEXT_BTN_ID, "n_clicks"),
         State(rids.QC_REVIEW_MODULE_PICKER_ID, "value"),
         State(rids.STORE_QC_SELECTED_GROUP, "data"),
@@ -1111,6 +1151,7 @@ def _register_review_progress_callbacks(app: dash.Dash) -> None:
     )
     def _mark_or_next(
         _mark_clicks: int | None,
+        _prev_clicks: int | None,
         _next_clicks: int | None,
         instance_id: str | None,
         selected_encoded: str | None,
@@ -1121,11 +1162,16 @@ def _register_review_progress_callbacks(app: dash.Dash) -> None:
         if not instance_id or not selected_encoded:
             return no_update, no_update
 
+        deltas = dict(deltas or {})
+        if triggered == rids.QC_REVIEW_PREV_BTN_ID:
+            if not order:
+                return deltas, selected_encoded
+            return deltas, _previous_group(order, selected_encoded)
+
         output_root = _output_root()
         if output_root is None:
             return no_update, no_update
 
-        deltas = dict(deltas or {})
         summary = _data.load_qc_summary(output_root)
         groupby_cols = (
             _data.groupby_cols_for(summary, instance_id) if summary is not None
@@ -1209,6 +1255,14 @@ def _next_unreviewed(
         ):
             return candidate
     return current_encoded
+
+
+def _previous_group(order: list[str], current_encoded: str) -> str:
+    """Return the previous encoded key in frozen visible order, wrapping."""
+    if not order or current_encoded not in order:
+        return current_encoded
+    start = order.index(current_encoded)
+    return order[(start - 1) % len(order)]
 
 
 # ---------------------------------------------------------------------------
@@ -1391,5 +1445,6 @@ __all__ = [
     "sidebar_layout_state",
     "render_worklist_row_metric_cell",
     "worklist_row_metric_update",
+    "_previous_group",
 ]
 

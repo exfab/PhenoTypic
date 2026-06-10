@@ -171,6 +171,56 @@ def _worklist_width(page: Page) -> float:
     )
 
 
+def _selected_worklist_text(page: Page) -> str:
+    """Return the currently highlighted Review worklist row text."""
+    return page.evaluate(
+        """() => {
+            const rows = Array.from(document.querySelectorAll('.qc-worklist-row'));
+            const selected = rows.find((row) =>
+                (row.getAttribute('style') || '').includes('rgba(0, 54, 96, 0.06)')
+                || (row.getAttribute('style') || '').includes('rgba(0,54,96,0.06)')
+            );
+            return selected ? (selected.textContent || '').trim() : '';
+        }"""
+    )
+
+
+def test_group_icon_navigation_previous_and_next(page: Page, hub_url: str) -> None:
+    """Icon-only Review group buttons move selection backward and forward."""
+    _open_review(page, hub_url)
+    first = _selected_worklist_text(page)
+    assert first, "initial Review group was not selected"
+
+    page.locator("#qc-review-next-btn").click()
+    page.wait_for_function(
+        "(before) => {"
+        "  const rows = Array.from(document.querySelectorAll('.qc-worklist-row'));"
+        "  const selected = rows.find((row) => "
+        "    (row.getAttribute('style') || '').includes('rgba(0, 54, 96, 0.06)')"
+        "    || (row.getAttribute('style') || '').includes('rgba(0,54,96,0.06)'));"
+        "  return selected && (selected.textContent || '').trim() !== before;"
+        "}",
+        arg=first,
+        timeout=10_000,
+    )
+    second = _selected_worklist_text(page)
+    assert second and second != first
+
+    page.locator("#qc-review-prev-btn").click()
+    page.wait_for_function(
+        "(before) => {"
+        "  const rows = Array.from(document.querySelectorAll('.qc-worklist-row'));"
+        "  const selected = rows.find((row) => "
+        "    (row.getAttribute('style') || '').includes('rgba(0, 54, 96, 0.06)')"
+        "    || (row.getAttribute('style') || '').includes('rgba(0,54,96,0.06)'));"
+        "  return selected && (selected.textContent || '').trim() !== before;"
+        "}",
+        arg=second,
+        timeout=10_000,
+    )
+    assert _selected_worklist_text(page) != second
+
+
 def test_splitter_drag_resizes_and_persists_across_collapse(
     page: Page, hub_url: str
 ) -> None:

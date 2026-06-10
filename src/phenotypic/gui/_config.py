@@ -152,6 +152,13 @@ __all__ = [
     "TILE_DIM_MAX",
     "step_dim_alpha",
     "stepped_alpha_from_trigger",
+    # Colony tile display size
+    "COLONY_TILE_SIZE_DEFAULT",
+    "COLONY_TILE_SIZE_STEP",
+    "COLONY_TILE_SIZE_MIN",
+    "COLONY_TILE_SIZE_MAX",
+    "step_colony_tile_size",
+    "stepped_colony_tile_size_from_trigger",
     # Tunables
     "DEFAULT_IDLE_RELEASE_SECONDS",
     "RSS_INTERVAL_MS",
@@ -504,6 +511,63 @@ def stepped_alpha_from_trigger(
         # the strength never silently jumps backwards.
         direction = 1
     return step_dim_alpha(base, direction)
+
+
+#: Default rendered colony tile side length, in CSS pixels.
+COLONY_TILE_SIZE_DEFAULT: int = 150
+
+#: Increment per colony tile-size ``−``/``+`` click.
+COLONY_TILE_SIZE_STEP: int = 16
+
+#: Smallest rendered colony tile side length, in CSS pixels.
+COLONY_TILE_SIZE_MIN: int = 64
+
+#: Largest rendered colony tile side length, in CSS pixels.
+COLONY_TILE_SIZE_MAX: int = 400
+
+
+def step_colony_tile_size(current: int | None, direction: int) -> int:
+    """Step the rendered colony tile size one click and clamp it to range.
+
+    Args:
+        current: Current tile size in CSS pixels. ``None`` falls back to
+            :data:`COLONY_TILE_SIZE_DEFAULT`.
+        direction: ``+1`` for the ``+`` button, ``-1`` for the ``−`` button.
+
+    Returns:
+        The stepped size clamped to
+        ``[COLONY_TILE_SIZE_MIN, COLONY_TILE_SIZE_MAX]``.
+    """
+    base = COLONY_TILE_SIZE_DEFAULT if current is None else int(current)
+    stepped = base + direction * COLONY_TILE_SIZE_STEP
+    return min(COLONY_TILE_SIZE_MAX, max(COLONY_TILE_SIZE_MIN, stepped))
+
+
+def stepped_colony_tile_size_from_trigger(
+    triggered_id: object,
+    current: int | None,
+    *,
+    plus_id: str,
+    minus_id: str,
+) -> int:
+    """Resolve a colony tile-size stepper click into the next size.
+
+    Args:
+        triggered_id: ``dash.ctx.triggered_id`` for the button that fired.
+        current: Current tile size store value.
+        plus_id: Component id of the ``+`` button.
+        minus_id: Component id of the ``−`` button.
+
+    Returns:
+        The next rendered tile size in CSS pixels.
+    """
+    if triggered_id == minus_id:
+        direction = -1
+    elif triggered_id == plus_id:
+        direction = 1
+    else:
+        direction = 1
+    return step_colony_tile_size(current, direction)
 
 # ---------------------------------------------------------------------------
 # Tunables

@@ -37,6 +37,7 @@ from dash.development.base_component import Component
 
 from phenotypic.gui._config import (
     CFG_QC_RECIPE,
+    COLONY_TILE_SIZE_DEFAULT,
     MOUNT_HOME,
     SSH_TUNNEL_HINT,
     TILE_DIM_DEFAULT,
@@ -334,6 +335,11 @@ def _build_stores(filtered_state: "FilteredMeasurements") -> Component:
             dcc.Store(
                 id=ids.STORE_COLONY_GRID_ORDER,
                 data=[],
+                storage_type="memory",
+            ),
+            dcc.Store(
+                id=ids.STORE_COLONY_TILE_SIZE,
+                data=COLONY_TILE_SIZE_DEFAULT,
                 storage_type="memory",
             ),
             # Tile-spotlight ``dim`` strength shared by the colony-view and
