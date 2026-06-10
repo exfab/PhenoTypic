@@ -1151,6 +1151,237 @@ git commit -m "test(tune): cross-phase regressions for minimize-cost + Tchebyche
 
 ---
 
+## Task 7 — End-to-end minimize-cost acceptance smoke (multi-plate, seeded)
+
+**New file:** `tests/integration/tune/test_minimize_cost_e2e.py` (+ `tests/integration/tune/__init__.py`)
+
+**Why (Gap 2):** Task 6's regressions use a *synthetic* objective function (a seeded
+grid over a closed-form cost). They prove the math, but nothing drives the **real
+tuner against real images through a real Optuna minimize study**. This task closes
+that: it runs `run_tuning(...)` over **several distinct synthetic plates** (made with
+`make_synthetic_plate(seed=i)` — per-plate seeds give genuine plate-to-plate
+variation, which is what exercises the cross-image robust aggregate) and asserts the
+whole-system cutover: the Optuna study **minimizes**, carries the convention stamp,
+the winner is the **lowest-cost** trial, and a good pipeline is **reachable** (low
+cost achieved). This is the end-to-end complement to the synthetic regressions and a
+phase-independent acceptance gate.
+
+This is an **acceptance test that runs after Phases 1–4 land** (like Task 6), not a
+red-first TDD task — the system must already be cut over for it to pass.
+
+- [ ] **Step 1: Create the package marker**
+
+```bash
+test -f tests/integration/tune/__init__.py || : > tests/integration/tune/__init__.py
+```
+
+- [ ] **Step 2: Write the end-to-end smoke**
+
+Create `tests/integration/tune/test_minimize_cost_e2e.py`:
+```python
+"""End-to-end minimize-cost acceptance smoke (multi-plate, seeded).
+
+Drives the REAL tuner (``run_tuning`` -> ``TuningEngine.optimize`` -> an Optuna
+**minimize** study) over several *distinct* synthetic plates
+(``make_synthetic_plate`` with per-plate seeds, so plate-to-plate variation
+exercises the cross-image robust aggregate). Asserts the cutover end-to-end: the
+study minimizes and carries the convention stamp, the winner is the lowest-cost
+trial, and the achieved cost is low (a good pipeline is reachable) — the
+whole-system proof that complements the synthetic-objective regressions in
+``tests/unit/tune/test_cost_convention_regression.py``.
+"""
+from __future__ import annotations
+
+import pandas as pd
+import pytest
+
+optuna = pytest.importorskip("optuna")  # the `tune` extra
+
+from phenotypic import GridImage, ImagePipeline
+from phenotypic.analysis import ExpectedVsDetectedCount
+from phenotypic.data import make_synthetic_plate
+from phenotypic.detect import OtsuDetector
+from phenotypic.enhance import GaussianBlur
+from phenotypic.tools_ import _io_constants as io
+from phenotypic.tune import (
+    Budget,
+    Categorical,
+    Evaluator,
+    Knob,
+    OptunaConfig,
+    QCScorer,
+    SearchSpace,
+    TuningSpec,
+)
+from phenotypic.tune._tune_cli._run import _STUDY_NAME, run_tuning
+
+_NROWS, _NCOLS = 8, 12
+_EXPECTED = _NROWS * _NCOLS  # 96 colonies per plate
+
+
+def _seeded_plates(n: int = 4) -> list[GridImage]:
+    """``n`` DISTINCT synthetic plates (one seed each), wrapped as GridImages.
+
+    Small (512x768) to keep the smoke fast; the 8x12 grid still yields
+    separable colonies for Otsu. Per-plate seeds give real cross-plate variation.
+    """
+    plates = []
+    for i in range(n):
+        arr = make_synthetic_plate(
+            nrows=_NROWS, ncols=_NCOLS, plate_h=512, plate_w=768, seed=i
+        )
+        plates.append(
+            GridImage(arr=arr, name=f"plate_{i:02d}", nrows=_NROWS, ncols=_NCOLS)
+        )
+    return plates
+
+
+def _layout_csv(tmp_path, names) -> str:
+    """A layout CSV declaring 96 expected objects per plate (for the count check)."""
+    rows = [
+        {"Metadata_ImageName": name, "Object_Label": j}
+        for name in names
+        for j in range(_EXPECTED)
+    ]
+    csv = tmp_path / "layout.csv"
+    pd.DataFrame(rows).to_csv(csv, index=False)
+    return str(csv)
+
+
+def _spec(tmp_path, names) -> TuningSpec:
+    # GaussianBlur sigma is the discriminating knob: a small sigma keeps colonies
+    # separable (count ~= 96 -> low cost); a large sigma merges/erases them
+    # (count far from 96 -> high cost). Minimization must prefer the small sigma.
+    return TuningSpec(
+        pipeline=ImagePipeline(ops=[GaussianBlur(sigma=1.0), OtsuDetector()]),
+        search_space=SearchSpace(
+            knobs=(Knob(key="0.sigma", domain=Categorical(choices=(1.0, 12.0, 40.0))),)
+        ),
+        scorer=QCScorer(
+            check=ExpectedVsDetectedCount(
+                metadata=_layout_csv(tmp_path, names),
+                groupby=["Metadata_ImageName"],
+            )
+        ),
+        evaluator=Evaluator(),
+        strategy=OptunaConfig(n_trials=6, sampler="tpe", seed=0),
+        budget=Budget(),
+    )
+
+
+def test_minimize_cost_end_to_end_winner_is_low_cost(tmp_path):
+    images = _seeded_plates(4)
+    names = [im.name for im in images]
+    out = tmp_path / "out"
+
+    run_tuning(_spec(tmp_path, names), images, out)
+
+    # 1. Deliverables were written.
+    assert io.best_pipeline_path(out).exists()
+    assert io.trials_parquet_path(out).exists()
+
+    # 2. The Optuna study MINIMIZES and carries the convention stamp (no silent
+    #    maximize; the name was bumped to the cost-era study).
+    db = io.resolve_study_db_path(out)
+    study = optuna.load_study(storage=f"sqlite:///{db}", study_name=_STUDY_NAME)
+    assert study.direction == optuna.study.StudyDirection.MINIMIZE
+    assert study.user_attrs.get("tune_convention") == "minimize-cost-v1"
+
+    # 3. The winner is the LOWEST-cost trial, and a good pipeline is reachable.
+    values = [t.value for t in study.trials if t.value is not None]
+    assert values, "no completed trials"
+    assert study.best_value == pytest.approx(min(values))
+    assert study.best_value < 0.5  # small-sigma config detects ~96 -> low cost
+    # Minimization discriminated: when >=2 distinct configs were evaluated, the
+    # best is strictly better than the worst tried (the large-sigma config wrecks
+    # the count -> high cost).
+    if len(set(values)) > 1:
+        assert study.best_value < max(values)
+```
+
+- [ ] **Step 3: Run the smoke**
+
+```bash
+uv run --extra tune pytest tests/integration/tune/test_minimize_cost_e2e.py -v
+```
+**Expected:** PASS once Phases 1–4 have landed. If it errors before the asserts:
+- `_STUDY_NAME` import fails → Phase 2 has not bumped/exported the constant; re-resolve its name in `_tune_cli/_run.py`.
+- `tune_convention` assert fails → Phase 2's stamp (README invariant #5) did not land; check `study.set_user_attr("tune_convention", "minimize-cost-v1")` on study creation.
+- `direction == MINIMIZE` fails → Phase 2's `objective_directions` / `study_objective_kwargs` flip did not land (or a legacy `"tune"` study was silently reopened — the name bump is the guard).
+- `best_value < 0.5` fails → re-check the count physics at 512x768 (a small sigma must detect ~96); if the synthetic colony radius is too small at this resolution, bump `plate_h/plate_w` to 1024x1536 (slower but unambiguous). Do **not** loosen the `< 0.5` threshold to paper over a broken detection — that would defeat the "good pipeline reachable" guarantee.
+
+> **Determinism note:** `make_synthetic_plate(seed=i)` and `OptunaConfig(seed=0)` make the run reproducible. TPE over 6 trials / 3 categories over-covers the space; the `len(set(values)) > 1` guard keeps the discrimination assert robust even in the (unlikely) event the sampler repeats a category.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add tests/integration/tune/__init__.py tests/integration/tune/test_minimize_cost_e2e.py
+git commit -m "test(tune): end-to-end minimize-cost acceptance smoke (multi-plate, seeded)"
+```
+
+---
+
+## Task 8 — Whole-package final acceptance gate
+
+**Why (Gap 1):** Every phase scopes `mypy`/`pytest` to `src/phenotypic/tune` (+
+`gui/tune`). But Phase 1 changes the **public `Scorer` shape** (`score_image` →
+`_score_terms` template method), which can ripple to importers *outside* `tune`. The
+per-phase gates won't catch that. This task runs the type-checker and test suite
+across the **whole package** once, as the last gate before the cutover is declared
+done. (This is the gate the *Execution & review protocol* in the README calls "the
+whole-package final gate".)
+
+This task has **no code** — it is the final verification gate. Run it only after
+Phases 0–5 (including Tasks 1–7) have all landed.
+
+- [ ] **Step 1: Whole-package type check**
+
+```bash
+uv run mypy src/phenotypic
+```
+**Expected:** `Success: no issues found`. If a module *outside* `tune` breaks, it is
+almost always a caller of the old `Scorer.score_image` that needs no change (the
+template method preserves the `score_image` signature) — investigate any error;
+do not blanket-`# type: ignore`.
+
+- [ ] **Step 2: Whole-package lint**
+
+```bash
+uv run ruff check src/phenotypic
+```
+**Expected:** no remaining errors.
+
+- [ ] **Step 3: Whole-suite regression (non-Playwright lanes)**
+
+Run the full unit + integration + smoke suite with the Qt binding and the tune
+extra (the Playwright `tests/e2e/gui` lane is a separate CI job and is **not**
+gated by this change — exclude it here):
+```bash
+QT_QPA_PLATFORM=offscreen uv run --extra tune --group qt-test pytest \
+    tests/unit tests/integration tests/smoke -q
+```
+**Expected:** all green (the default `-m "not slow"` deselection applies). Pay
+attention to any failure *outside* `tests/unit/tune` / `tests/unit/gui/tune` —
+that is the ripple this gate exists to catch. The `tune` GUI tests need the Qt
+offscreen platform + `--group qt-test` (see CLAUDE.md).
+
+- [ ] **Step 4: Confirm no goodness relics remain package-wide**
+
+```bash
+grep -rnE "higher-is-better|maximize a|_MAXIMIZE\b|median − λ·IQR|geometric mean" \
+    src/phenotypic | grep -v "_HIGHER_IS_BAD" || echo "clean"
+```
+**Expected:** `clean` (or only legitimately-unrelated matches — read each; the QC
+flag `_HIGHER_IS_BAD` is intentionally retained and is filtered out above).
+
+- [ ] **Step 5: This gate is verification-only — nothing to commit.** Record the
+  result in the PR description (whole-package `mypy` clean + full non-e2e suite
+  green). The orchestrator then runs the *final acceptance gate* sequence from the
+  README (simplify agent → code-review agent → spec-adherence agent → re-run this
+  gate).
+
+---
+
 ## Phase-close checklist
 
 - [ ] All three §5.3 surfaces (Task 1/2/3) carry the identical contract — diff
@@ -1164,9 +1395,17 @@ git commit -m "test(tune): cross-phase regressions for minimize-cost + Tchebyche
       → no new warnings from `contributing.rst`.
 - [ ] `uv run --extra tune pytest tests/unit/tune/test_cost_convention_regression.py -v`
       → all green (requires Phases 1–4 landed).
+- [ ] **Task 7:** `uv run --extra tune pytest tests/integration/tune/test_minimize_cost_e2e.py -v`
+      → green (the real-tuner end-to-end minimize-cost smoke).
+- [ ] **Task 8 (whole-package final gate):** `uv run mypy src/phenotypic` clean;
+      `QT_QPA_PLATFORM=offscreen uv run --extra tune --group qt-test pytest tests/unit tests/integration tests/smoke -q`
+      green; package-wide goodness-relic grep is clean.
 - [ ] `uv run mypy src/phenotypic/tune` + `uv run ruff check` → clean.
 - [ ] Re-confirm every `file:line` ref in the explainer + `.graph.md` node table
       against the worktree (Phases 1–4 shifted them).
+- [ ] **Orchestrator final acceptance gate (README protocol):** simplify agent →
+      code-review agent → spec-adherence agent → re-run Task 8. Only then is the
+      cutover complete.
 
 ## Spec coverage map (Phase 5)
 
@@ -1179,4 +1418,6 @@ git commit -m "test(tune): cross-phase regressions for minimize-cost + Tchebyche
 | §10 reflection winner-equivalence | Task 6a |
 | §10 overfit-gap sign end-to-end | Task 6b |
 | §10 composite-delta snapshot | Task 6c |
+| §10 end-to-end minimize-cost smoke (real tuner, multi-plate) | Task 7 |
+| Whole-package final acceptance gate (ripple from §5 Scorer template) | Task 8 |
 | §12 references (doc citations) | Tasks 4g (Steuer&Choo, Miettinen, Carrell, Schneider/Bischl/Feurer) |

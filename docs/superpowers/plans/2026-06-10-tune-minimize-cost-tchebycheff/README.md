@@ -16,6 +16,8 @@
 
 Implement in order. **Phases 1 and 2 are a single atomic cutover** (they share one branch/PR and the test suite is only green once *both* land — the ASHA pruner reads `study.direction`, so the reported value and the study direction must flip together).
 
+> **Operational consequence (Gap 3 — expected red suite mid-cutover):** during Phase 1, only each task's **own new/edited tests** are required to pass. The *full* `uv run --extra tune pytest tests/unit/tune` green-bar is **deferred to the end of Phase 2** — between the two phases the suite is legitimately RED (the reported objective is cost but Optuna still maximizes the old `"tune"` study). Do **not** treat that mid-cutover red suite as a task failure, and do **not** "fix" it by partially reverting Phase 1. The review gate that matters for Phase 1 is *its own tests green + mypy/ruff clean on touched files*; the suite-wide gate fires once at the Phase 2 boundary. The Phase-1↔2 code review agent (see *Execution & review protocol*) is dispatched once, after **both** phases land, not between them.
+
 | File | Phase | Lands | Risk |
 |------|-------|-------|------|
 | [`phase-0-orientation-machinery.md`](phase-0-orientation-machinery.md) | 0 — `Sense`, `to_cost`, clamp helper (additive, dark) | own PR | Low |
@@ -23,7 +25,7 @@ Implement in order. **Phases 1 and 2 are a single atomic cutover** (they share o
 | [`phase-2-direction-and-persistence.md`](phase-2-direction-and-persistence.md) | 2 — Optuna minimize + best-selection + study-name bump | **with Phase 1** | High |
 | [`phase-3-tchebycheff-composite.md`](phase-3-tchebycheff-composite.md) | 3 — augmented Tchebycheff combiner + active set | own PR | Med |
 | [`phase-4-pareto-screening-gui.md`](phase-4-pareto-screening-gui.md) | 4 — Pareto domination, screening freeze, GUI relabel | own PR | Med |
-| [`phase-5-docs-and-tests.md`](phase-5-docs-and-tests.md) | 5 — explainer, CLAUDE.md, contrib guide, cross-phase regressions | own PR | Low |
+| [`phase-5-docs-and-tests.md`](phase-5-docs-and-tests.md) | 5 — explainer, CLAUDE.md, contrib guide, cross-phase regressions, **e2e minimize-cost smoke (Task 7)**, **whole-package final gate (Task 8)** | own PR | Low |
 
 ---
 
@@ -151,6 +153,25 @@ uv run ruff check --fix src/phenotypic/tune
 ```
 Commit after every green task (the steps below show the exact `git add` / `git commit`). Run `mypy` + `ruff` once per phase before the final phase commit.
 
+---
+
+## Execution & review protocol (orchestration-level — runs *around* the phases)
+
+The per-phase TDD steps and boundary gates (mypy/ruff/tune-suite) are the **inner** verification loop. Layered on top, the orchestrator runs these review gates:
+
+### After every phase (per-phase review gate)
+1. The phase's own done-criteria must be met (its tests green; mypy/ruff clean on the touched subtree).
+2. **Dispatch a code-review agent** scoped to that phase's diff. Brief it with: the phase file, the spec section(s) it implements (see *Spec coverage map* below), and the *Cross-cutting invariants* list. It must flag: direction/sign errors, broken `[0,1]` invariants, missed reflection-equivalence, and any scorer that emits goodness instead of cost. Read its findings, fix blockers, re-run the phase tests, then proceed.
+   - **Exception (Phase 1↔2 atomic):** run **one** code-review agent after **both** Phase 1 and Phase 2 land (not between them), because the suite is intentionally red mid-cutover (Gap 3). Brief it on the combined Phase 1+2 diff.
+
+### After ALL phases land (final acceptance gate, in this order)
+1. **Simplify agent** — one pass over the full cutover diff (all phases) to remove dead code (e.g. the removed `_geometric_mean`, any leftover goodness-era comments), de-duplicate the orientation logic, and tighten the new Tchebycheff/active-set code. Apply its fixes.
+2. **Code-review agent** — a final whole-diff review (not per-phase) over the simplified tree. Fix blockers.
+3. **Spec-adherence agent** — brief it with the **spec** (`docs/superpowers/specs/2026-06-09-…`) and the final tree; it walks the spec section-by-section (§4 cost convention, §5 Sense/template, §6 Tchebycheff/ε/ρ/active-set, §7 phase plan, §10 testing, §11 pitfalls/decisions) and reports any requirement that shipped differently or not at all. Reconcile every gap (fix the code or record an explicit, justified deviation).
+4. After (1)–(3): re-run the **whole-package** final gate (below) one last time; only then is the cutover complete.
+
+> Per the user's global orchestration rules: subagents are for executing this approved multi-step plan; brief each like a colleague (goal + why + file paths + the spec/invariant constraints); never trust a subagent's summary — read the changed files and re-run tests before marking a gate complete.
+
 ## Spec coverage map
 - §5 Sense + orientation template method → Phase 0 + Phase 1 (scorer migration)
 - §6.1–6.2 Tchebycheff formula + normalization, §6.3 active set → Phase 3
@@ -159,4 +180,4 @@ Commit after every green task (the steps below show the exact `git add` / `git c
 - §7 Phase 2 direction + persistence → Phase 2
 - §7 Phase 4 Pareto/screening/GUI → Phase 4
 - §7 Phase 5 docs → Phase 5
-- §10 tests → distributed across each phase + the cross-phase regressions in Phase 5
+- §10 tests → distributed across each phase + the cross-phase regressions, the end-to-end minimize-cost smoke (Phase 5 Task 7), and the whole-package final gate (Phase 5 Task 8)
