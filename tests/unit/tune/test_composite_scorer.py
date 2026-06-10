@@ -84,40 +84,21 @@ def test_score_image_prefix_disambiguates_colliding_term_names():
 # --------------------------------------------------------------------------- #
 # finalize — scalar blend (default single-objective)
 # --------------------------------------------------------------------------- #
-def test_finalize_scalar_geometric_blend_default():
-    # Default (no weights) → geometric mean of the per-child finalized scalars.
-    # child0 mean = (0.81)=0.81 ; child1 mean = 0.49 ; geo = sqrt(0.81*0.49)=0.63
-    comp = CompositeScorer(
-        scorers=[
-            _FixedScorer(terms={"a": 0.81}),
-            _FixedScorer(terms={"b": 0.49}),
-        ]
-    )
-    terms = comp.score_image(None, pd.DataFrame())
-    result = comp.finalize(terms)
-    assert isinstance(result, float)
-    assert result == pytest.approx((0.81 * 0.49) ** 0.5)
-
-
 def test_finalize_scalar_weighted_blend():
-    # Weights keyed by child prefix → weighted arithmetic mean of child scalars.
+    # blend="weighted_mean" → weighted arithmetic mean of the per-child costs.
     comp = CompositeScorer(
         scorers=[
             _FixedScorer(terms={"a": 0.8}),
             _FixedScorer(terms={"b": 0.4}),
         ],
         weights={"s0": 3.0, "s1": 1.0},
+        blend="weighted_mean",
     )
     terms = comp.score_image(None, pd.DataFrame())
     result = comp.finalize(terms)
     assert isinstance(result, float)
     # (3*0.8 + 1*0.4) / (3 + 1) = 2.8 / 4 = 0.7
     assert result == pytest.approx(0.7)
-
-
-def test_finalize_scalar_empty_is_zero():
-    comp = CompositeScorer(scorers=[])
-    assert comp.finalize({}) == 0.0
 
 
 # --------------------------------------------------------------------------- #
@@ -362,3 +343,57 @@ def test_tchebycheff_weights_steer_the_max():
     # bad axis is still worst-axis dominant (> 0.4 normalized).
     assert heavy.finalize(heavy.score_image(None, pd.DataFrame())) > 0.4
     assert light.finalize(light.score_image(None, pd.DataFrame())) > 0.0
+
+
+# --------------------------------------------------------------------------- #
+# active set — pinned study-global roster for max + normalizer
+# --------------------------------------------------------------------------- #
+def test_finalize_routes_to_tchebycheff_by_default():
+    # With finalize wired, the worst-axis-dominant property now drives finalize.
+    one_bad = CompositeScorer(scorers=[_FixedScorer(terms={"a": 0.0}),
+                                       _FixedScorer(terms={"b": 0.8})])
+    balanced = CompositeScorer(scorers=[_FixedScorer(terms={"a": 0.4}),
+                                        _FixedScorer(terms={"b": 0.4})])
+    assert (one_bad.finalize(one_bad.score_image(None, pd.DataFrame()))
+            > balanced.finalize(balanced.score_image(None, pd.DataFrame())))
+
+
+def test_finalize_weighted_mean_opt_out():
+    # blend="weighted_mean" keeps the compensatory arithmetic mean over costs.
+    comp = CompositeScorer(
+        scorers=[_FixedScorer(terms={"a": 0.8}), _FixedScorer(terms={"b": 0.4})],
+        weights={"s0": 3.0, "s1": 1.0},
+        blend="weighted_mean",
+    )
+    result = comp.finalize(comp.score_image(None, pd.DataFrame()))
+    # (3*0.8 + 1*0.4) / 4 = 0.7  (now over cost; same arithmetic as before)
+    assert result == pytest.approx(0.7)
+
+
+def test_active_set_pins_roster_for_both_max_and_normalizer():
+    # Pin the active set to BOTH children. An abstaining child (no terms this
+    # call) is in the active set but absent from this call's costs → it must NOT
+    # be flooded into the max (that is per-image abstention, handled by the
+    # robust aggregate upstream). With one child scoring 0.5, the composite is
+    # the single-axis Tchebycheff of the present axis (not pinned to 1.0).
+    comp = CompositeScorer(scorers=[_FixedScorer(terms={"a": 0.5}),
+                                    _FixedScorer(terms={})])
+    comp.set_active_set(("s0", "s1"))
+    terms = comp.score_image(None, pd.DataFrame())  # only s0 emits
+    assert terms == {"s0.a": 0.5}
+    result = comp.finalize(terms)
+    # discrimination on the present axis is preserved (not flattened to ~1.0)
+    assert 0.0 < result < 0.7
+
+
+def test_empty_active_set_is_worst_cost():
+    comp = CompositeScorer(scorers=[_FixedScorer(terms={})])
+    comp.set_active_set(())
+    assert comp.finalize({}) == pytest.approx(1.0)
+
+
+def test_no_scored_children_is_worst_cost_under_tchebycheff():
+    # Single-objective default: zero scalars → worst cost 1.0 (NOT 0.0).
+    # This is the cost-convention flip of the old "empty → 0.0" goodness floor.
+    comp = CompositeScorer(scorers=[])
+    assert comp.finalize({}) == pytest.approx(1.0)

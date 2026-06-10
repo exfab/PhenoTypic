@@ -129,6 +129,27 @@ class CompositeScorer(Scorer):
     blend: CompositeBlend = "tchebycheff"
     rho: float = 0.05
 
+    #: The pinned study-global active set — child handles available study-wide,
+    #: fixed once at study start by :meth:`set_active_set`. Used as the roster for
+    #: BOTH the Tchebycheff ``max`` numerator and the normalizer so the
+    #: normalizer is a study-global constant (§6.2/§6.3). ``None`` (never pinned —
+    #: e.g. a direct ``finalize`` unit call) falls back to the in-call roster.
+    #: A ``PrivateAttr`` so it never serializes (it is run/study state, not recipe).
+    _active_handles: Optional[tuple[str, ...]] = PrivateAttr(default=None)
+
+    def set_active_set(self, handles: tuple[str, ...]) -> None:
+        """Pin the study-global active set (child handles available study-wide).
+
+        Called once by the engine after meta-validation, before the trial loop,
+        so every trial's Tchebycheff ``max`` and normalizer use the same fixed
+        roster (§6.3 plumbing SF3). Idempotent.
+
+        Args:
+            handles: The available child handles (a subset of
+                :meth:`objective_names`), in objective order.
+        """
+        self._active_handles = tuple(handles)
+
     @model_validator(mode="after")
     def _reject_cycles(self) -> "CompositeScorer":
         """Reject a nested scorer graph in which a composite reaches itself.
@@ -262,12 +283,19 @@ class CompositeScorer(Scorer):
           order stay invariant and exactly match the multi-objective study's
           fixed ``directions``. A dropped axis would otherwise make the NSGA-II
           value vector the wrong length and crash Optuna's ``tell`` mid-run; the
-          ``0.0`` floor also mirrors the journal Pareto ``_vector`` fill so the
-          journal and Optuna backends agree on an abstaining axis.
-        * with :attr:`weights` → the weighted arithmetic mean of the per-child
-          scalars (missing weights default to ``1.0``).
-        * otherwise → the geometric mean of the per-child scalars (so a single
-          weak axis dominates — it cannot be masked by a strong one).
+          floor also mirrors the journal Pareto ``_vector`` fill so the journal
+          and Optuna backends agree on an abstaining axis.
+        * ``blend="weighted_mean"`` → the compensatory weighted arithmetic mean
+          of the per-child **cost** scalars (missing weights default to ``1.0``).
+        * ``blend="tchebycheff"`` (default) → the conjunctive augmented
+          Tchebycheff cost (:meth:`_tchebycheff`) over the pinned study-global
+          active set, so a single weak (high-cost) axis dominates the ``max`` and
+          cannot be masked by a strong one. The roster is restricted to the
+          pinned active set (the children available study-wide, §6.3): a
+          study-wide abstainer is simply not an objective (dropped from both the
+          ``max`` and the normalizer), while per-image abstention is already a
+          fewer-samples matter handled upstream by the robust aggregate — so a
+          present-but-absent-this-call child is NOT flooded into the ``max``.
 
         Args:
             terms: The robust-aggregated, child-prefixed terms (the output of
@@ -275,9 +303,9 @@ class CompositeScorer(Scorer):
                 aggregation).
 
         Returns:
-            The scalar objective (``0.0`` for no children/terms) for the
-            single-objective path, or the per-child ``dict`` (one entry per axis,
-            abstainers floored to ``0.0``) for the multi-objective path.
+            The scalar objective for the single-objective path (worst cost
+            ``1.0`` for no scored children/terms), or the per-child ``dict`` (one
+            entry per axis, abstainers floored) for the multi-objective path.
         """
         child_scalars = self._per_child_scalars(terms)
         if self.multi_objective:
@@ -285,12 +313,25 @@ class CompositeScorer(Scorer):
                 handle: child_scalars.get(handle, 0.0)
                 for handle in self.objective_names()
             }
-        values = list(child_scalars.values())
-        if not values:
-            return 0.0
-        if self.weights is not None:
+        if self.blend == "weighted_mean":
+            if not child_scalars:
+                return 1.0  # worst cost (cost-convention floor; was 0.0 goodness)
             return self._weighted_mean(child_scalars)
-        return self._geometric_mean(values)
+        # Default conjunctive blend: augmented Tchebycheff over the pinned
+        # study-global active set (§6.3). Restrict to the active roster so a
+        # study-wide abstainer is simply not an objective (dropped from both the
+        # max and the normalizer); per-image abstention is already a fewer-samples
+        # matter handled by the robust aggregate, so a present-but-absent-this-call
+        # child is NOT flooded into the max.
+        if self._active_handles is None:
+            roster = dict(child_scalars)
+        else:
+            roster = {
+                handle: child_scalars[handle]
+                for handle in self._active_handles
+                if handle in child_scalars
+            }
+        return self._tchebycheff(roster)
 
     def _per_child_scalars(
         self, terms: Mapping[str, float]
