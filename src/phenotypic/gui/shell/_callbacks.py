@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import logging
 import os
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import psutil  # type: ignore[import-untyped]
@@ -43,15 +44,23 @@ from phenotypic.gui.shell._ids import (
     SHELL_SIDEBAR_SYMLINK_TOGGLE,
     SHELL_SIDEBAR_TREE,
     SHELL_SOURCE_IMAGE_ROOT_CLEAR,
+    SHELL_SOURCE_IMAGE_ROOT_BROWSE_STORE,
+    SHELL_SOURCE_IMAGE_ROOT_CANCEL,
+    SHELL_SOURCE_IMAGE_ROOT_CONFIRM,
+    SHELL_SOURCE_IMAGE_ROOT_ENTRY_TYPE,
     SHELL_SOURCE_IMAGE_ROOT_LABEL,
+    SHELL_SOURCE_IMAGE_ROOT_MODAL,
+    SHELL_SOURCE_IMAGE_ROOT_MODAL_BODY,
     SHELL_SOURCE_IMAGE_ROOT_STORE,
 )
 from phenotypic.gui.shell._sidebar import render_tree
 from phenotypic.gui.shell._source_context import (
+    resolve_source_image_root,
     source_label,
     source_payload_from_path,
     source_title,
 )
+from phenotypic.gui.shell._source_picker import render_source_picker_tree
 
 if TYPE_CHECKING:
     import dash
@@ -106,6 +115,83 @@ def register_chrome_callbacks(
         if not n_clicks:
             return no_update
         return None
+
+    @app.callback(
+        Output(SHELL_SOURCE_IMAGE_ROOT_MODAL, "is_open", allow_duplicate=True),
+        Output(SHELL_SOURCE_IMAGE_ROOT_BROWSE_STORE, "data", allow_duplicate=True),
+        Input(SHELL_SOURCE_IMAGE_ROOT_LABEL, "n_clicks"),
+        State(SHELL_SOURCE_IMAGE_ROOT_STORE, "data"),
+        prevent_initial_call=True,
+    )
+    def _open_source_picker(
+        n_clicks: int,
+        current_payload: object,
+    ) -> tuple[Any, Any]:
+        if not n_clicks:
+            return no_update, no_update
+        current = resolve_source_image_root(sandbox, current_payload)
+        browse_dir = current if current is not None else sandbox.root
+        return True, str(browse_dir)
+
+    @app.callback(
+        Output(SHELL_SOURCE_IMAGE_ROOT_MODAL, "is_open", allow_duplicate=True),
+        Input(SHELL_SOURCE_IMAGE_ROOT_CANCEL, "n_clicks"),
+        prevent_initial_call=True,
+    )
+    def _cancel_source_picker(n_clicks: int) -> Any:
+        if not n_clicks:
+            return no_update
+        return False
+
+    @app.callback(
+        Output(SHELL_SOURCE_IMAGE_ROOT_BROWSE_STORE, "data", allow_duplicate=True),
+        Input(
+            {
+                "type": SHELL_SOURCE_IMAGE_ROOT_ENTRY_TYPE,
+                "kind": ALL,
+                "path": ALL,
+            },
+            "n_clicks",
+        ),
+        prevent_initial_call=True,
+    )
+    def _navigate_source_picker(_clicks: list[int]) -> Any:
+        triggered = ctx.triggered_id
+        if not isinstance(triggered, dict):
+            return no_update
+        if triggered.get("type") != SHELL_SOURCE_IMAGE_ROOT_ENTRY_TYPE:
+            return no_update
+        if not any(t.get("value") for t in (ctx.triggered or [])):
+            return no_update
+        path = triggered.get("path")
+        return path if isinstance(path, str) and path else no_update
+
+    @app.callback(
+        Output(SHELL_SOURCE_IMAGE_ROOT_MODAL_BODY, "children"),
+        Input(SHELL_SOURCE_IMAGE_ROOT_BROWSE_STORE, "data"),
+        prevent_initial_call=True,
+    )
+    def _render_source_picker_body(dir_value: str | None) -> Any:
+        current = Path(dir_value) if dir_value else None
+        return render_source_picker_tree(sandbox, current)
+
+    @app.callback(
+        Output(SHELL_SOURCE_IMAGE_ROOT_STORE, "data", allow_duplicate=True),
+        Output(SHELL_SOURCE_IMAGE_ROOT_MODAL, "is_open", allow_duplicate=True),
+        Input(SHELL_SOURCE_IMAGE_ROOT_CONFIRM, "n_clicks"),
+        State(SHELL_SOURCE_IMAGE_ROOT_BROWSE_STORE, "data"),
+        prevent_initial_call=True,
+    )
+    def _confirm_source_picker(
+        n_clicks: int,
+        dir_value: str | None,
+    ) -> tuple[Any, Any]:
+        if not n_clicks or not dir_value:
+            return no_update, no_update
+        payload = source_payload_from_path(sandbox, dir_value, source="manual")
+        if payload is None:
+            return no_update, no_update
+        return payload, False
 
     @app.callback(
         Output(SHELL_HELP_MODAL, "is_open"),
