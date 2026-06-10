@@ -240,9 +240,10 @@ T_norm = Tᵨ(b) / Tᵨ(1...1)      # in (0, 1]
 - `multi_objective=True` → unchanged in shape: return the per-child badness
   dict; the abstainer floor flips `0.0 → 1.0` (worst badness) at `:240`; the
   vector feeds NSGA-II with `directions=["minimize"]*n`.
-- single-objective with `weights` → augmented Tchebycheff with those weights
-  (replaces `_weighted_mean` as the compensatory-vs-conjunctive choice; keep
-  `_weighted_mean` available as an explicit `blend="weighted_mean"` opt-out).
+- single-objective with `weights` → augmented Tchebycheff with those weights as
+  the **Tchebycheff weights** (conjunctive). See §6.5 — this is a semantics
+  change from today, where setting `weights` switched the blend to a
+  *compensatory* arithmetic mean.
 - single-objective default → augmented Tchebycheff with uniform weights
   (**replaces** `_geometric_mean`, `:319`).
 
@@ -265,6 +266,98 @@ zeroes the product and dominates), the documented trap this design avoids.
 > remains correct for the *multi-objective* NSGA-II vector, which needs a
 > fixed-length vector; the two paths handle abstention differently and the doc
 > must keep them distinct.)
+
+### 6.4 Choosing `ε` and `ρ` (and the harm of mistuning)
+
+Both are **small, fixed constants chosen relative to the `[0,1]` badness scale**,
+not tuned per run. Proposed defaults: `ε = 1e-3`, `ρ = 0.05`. Their jobs are
+distinct and their failure modes are opposite-ended.
+
+**`ρ` — the augmentation coefficient (`ρ·Σ wᵢ·bᵢ`).**
+- *What it does.* It makes the Tchebycheff norm strongly monotone, which upgrades
+  minimizers from merely *weakly* Pareto optimal to *properly* Pareto optimal —
+  it is the term that breaks ties on the binding (worst) axis by preferring the
+  candidate that is also better on the non-binding axes. The proper-efficiency
+  trade-off rate it permits scales like `1/ρ`.
+- *How it's derived in practice.* The standard value with `[0,1]`-normalized
+  objectives is `ρ = 0.05` (ParEGO, Knowles 2006; reused by later surrogate-MOO
+  work). The constraint is a separation of scales: the `max` term spans up to
+  `≈ max wᵢ` and the augmentation up to `ρ·Σ wᵢ`, so `ρ` must be small enough
+  that the `max` term still dominates (preserving the conjunctive L∞ character)
+  yet large enough to be numerically meaningful at float precision. The practical
+  window is `ρ ∈ [1e-4, 0.1]`; pick `0.05` and confirm with a small sweep
+  (`{0.01, 0.05, 0.1}`).
+- *Harm of mistuning.*
+  - **Too small (→0):** reverts to plain Tchebycheff. Minimizers can be only
+    weakly Pareto optimal, so the composite may pick a candidate tied on its
+    worst axis but **strictly worse on every other objective** — it can no longer
+    distinguish "balanced" from "wasteful" among equal-worst-axis candidates. At
+    the limit the term underflows and contributes nothing.
+  - **Too large:** the weighted-sum-like `Σ` term begins to dominate the `max`,
+    so the combiner **degrades toward a weighted sum** and loses the non-convex
+    reachability that motivated Tchebycheff in the first place (§9). It then
+    favors extreme single-objective "supported" solutions over balanced
+    compromises — the opposite of the conjunctive intent, and exactly the
+    phenotyping failure we are trying to avoid (a pipeline that nails one metric
+    and tanks the rest).
+
+**`ε` — the utopia shift (`z*ᵢ = −ε`).**
+- *What it does.* It pushes the reference point strictly below the achievable
+  front so the reachability guarantee holds and the unsigned `max` is valid
+  (`bᵢ − z*ᵢ = bᵢ + ε > 0`). It is **not** a tuning knob for quality — it is a
+  numerical safety margin.
+- *How it's derived in practice.* Any positive value small relative to the
+  `[0,1]` scale works; `ε = 1e-3` is ~0.1% of full range. A principled lower
+  bound is "a few × the smallest badness difference you care to resolve" (so the
+  shift never swamps a real gap). It does not need a sweep.
+- *Harm of mistuning.*
+  - **Too small (→0):** on a perfect axis (`bᵢ = 0` is achievable, e.g. an exact
+    count match) the reference stops strictly dominating, so reachability degrades
+    at the boundary; the axis contributes `0` to the `max` (a perfect axis drops
+    out), and the realizing weight `wᵢ ~ 1/(bᵢ + ε)` **diverges** as `ε → 0`
+    (division by zero at `ε = 0`).
+  - **Too large:** `ε` is argmin-neutral under *uniform* weights (a constant
+    shift inside the `max`), but with **non-uniform** weights the per-axis term
+    `wᵢ·ε` perturbs which axis wins the `max`, biasing the result; and a large
+    `ε` flattens the weight realizer `1/(bᵢ + ε)`, eroding the combiner's ability
+    to steer toward specific compromises (again drifting toward equal-weight L1).
+    It also inflates the §6.2 normalizer `(1+ε)(…)`, compressing the normalized
+    `[0,1]` scale and miscalibrating downstream thresholds.
+
+**Summary of the asymmetry.** `ρ` is the real quality dial (too small → weak
+Pareto ties; too large → weighted-sum behavior); `ε` is a safety margin that
+should simply be "small and positive." Both are documented module constants
+(`_UTOPIA_EPS`, default `rho`), with `ρ` exposed as a `CompositeScorer` field for
+the rare advanced user, `ε` kept internal.
+
+### 6.5 Blend selection — keep `weighted_mean` as an opt-out (decided)
+
+`tchebycheff` (conjunctive: worst-axis-dominant) and `weighted_mean`
+(compensatory: a strong axis offsets a weak one) encode genuinely different user
+intents:
+- **Conjunctive** fits the usual phenotyping case where objectives are
+  *complementary and all required* (you need good count **and** good shape **and**
+  good contrast) — so it is the **default**.
+- **Compensatory** fits the rarer case where objectives are *substitutable* and
+  the user wants best average quality, tolerating one weak axis.
+
+**Decision: keep `weighted_mean` as an explicit `blend="weighted_mean"`
+opt-out.** Rationale: it already exists, costs almost nothing to retain, and
+removing it would strand the legitimate compensatory use case. Two consequences
+to document loudly:
+1. **`weights` is now blend-dependent.** Under `tchebycheff`, `weights` are the
+   Tchebycheff per-axis weights; under `weighted_mean`, they are arithmetic
+   weights. Same field, different meaning by `blend`.
+2. **Behavior change from today.** Today, *setting* `weights` silently switches
+   the composite from geometric mean (conjunctive) to weighted arithmetic mean
+   (compensatory). After this change, setting `weights` keeps the **conjunctive**
+   Tchebycheff semantics; a user who wants the old compensatory behavior must set
+   `blend="weighted_mean"` explicitly. Call this out in the migration/release
+   notes — it is the most likely silent surprise for existing tuning configs.
+
+`weighted_mean` shares the weighted-sum convex-hull limitation (§9): it cannot
+reach non-convex-front compromises. That is acceptable for an explicitly-chosen
+compensatory blend, but it is a reason it is **not** the default.
 
 ---
 
@@ -334,22 +427,28 @@ land together.
 - `_multi_objective.py:113` `objective_directions` → `["minimize"]*n`.
 - Best selection: `_study/_optuna_store.py:254`, `_study_store.py:102`
   `max → min`.
-- **Study persistence migration.** Optuna stores `direction` in the study;
-  reopening a `maximize` study as `minimize` raises. Provide:
-  1. A **version bump** of the study/spec schema (a `tune_convention`/version
-     tag), and
-  2. A startup **guard** that detects an old-direction study and refuses with an
-     actionable message. **It must run inside `OptunaStudyStore.__init__`
-     *before* the `create_study(..., load_if_exists=True)` call (`:80`)** — that
-     call itself raises on a direction mismatch, so a guard placed after it never
-     executes. Read the persisted direction via `optuna.load_study` (or storage
-     introspection) first.
-  3. An optional **one-shot converter** that creates a new `minimize` study and
-     re-adds trials (via `add_trial`, already used at `:187`; FAIL trials carry
-     `value=None`) with `score → 1 − score`, `objectives/terms → 1 − value`
-     (valid because all stored values are bounded `[0,1]`).
-  Stored `pheno_terms`/`pheno_objectives` change meaning; cross-study comparison
-  with pre-migration runs is invalid (document).
+- **Study persistence — HARD CUTOVER (decided).** Optuna stores `direction` in
+  the study; reopening a `maximize` study as `minimize` raises. We do **not**
+  ship a converter. Instead:
+  1. A **version bump** of the study/spec schema (a `tune_convention` tag stamped
+     on new studies, e.g. `"minimize-badness-v1"`).
+  2. A startup **guard** that detects a pre-cutover study and **refuses with an
+     actionable error** ("this study was created under the old maximize
+     convention; start a fresh run / output dir"). It must run inside
+     `OptunaStudyStore.__init__` *before* the `create_study(...,
+     load_if_exists=True)` call (`:80`) — that call itself raises on a direction
+     mismatch, so a guard placed after it never executes. Read the persisted
+     direction via `optuna.load_study` / storage introspection first, and surface
+     our message instead of Optuna's opaque one.
+  - **Consequence (accepted):** in-flight and completed pre-cutover studies
+    **cannot be resumed**; they must be re-run from scratch under the new
+    convention. This is the explicit cost of the hard cutover — chosen over a
+    converter because the converter would carry permanent reflection-correctness
+    risk (every stored field's `1 − value` must stay exactly right across schema
+    evolution) for the one-time benefit of resuming old runs. Stored
+    `pheno_terms`/`pheno_objectives` from old studies are not interpreted;
+    cross-study comparison with pre-cutover runs is invalid (document in the
+    release notes / `tune/CLAUDE.md`).
 
 ### Phase 3 — augmented Tchebycheff composite (`_scoring/_composite.py`)
 - Add `rho: float = 0.05` and `blend: CompositeBlend = "tchebycheff"` fields;
@@ -395,17 +494,18 @@ land together.
 |-------|--------|------|-------|
 | Phase 0 orient boundary | S | Low | Additive; enum + 1 function + tests |
 | Phase 1 evaluator + scorers | M–L | **High** | Reflection provable for the core, but it must also fix the inverted overfit detector (`_generalization.py`), both `_relative` blowups, and `_is_suspicious`; couples atomically with Phase 2 via the pruner |
-| Phase 2 direction + persistence | M | **High** | Sticky: Optuna study direction is immutable; guard must precede `create_study`; resume of old studies needs converter or hard cutover |
+| Phase 2 direction + persistence | M | **High** | Sticky: Optuna study direction is immutable; guard must precede `create_study`; **hard cutover** — pre-cutover studies error out and must be re-run (no converter) |
 | Phase 3 Tchebycheff composite | M | Med | The combiner is ~10 lines, but it must exclude abstainers from the `max`, use a study-global normalizer, and ship a **non-convex regression test** + an abstainer-masking test |
 | Phase 4 Pareto/screening/GUI | M | Med | Mechanical flips; GUI relabeling + FEATURES/WORKFLOWS gates |
 | Phase 5 docs/tests | M | Low | Explainer rewrite is required, not optional |
 
 **Stickiness / reversibility.** Phase 0 and Phases 3–4 are reversible. Phases 1–2
 (the atomic cutover) are sticky: they change the persisted study `direction` and
-the *meaning* of stored
-`score`/`objectives`/`terms`. Distributed SLURM resume of a pre-migration study
-is the highest-risk item; the converter + guard mitigate it but pre-migration
-runs cannot be silently reopened.
+the *meaning* of stored `score`/`objectives`/`terms`. With the **hard cutover**
+(decided), pre-cutover studies are refused by the startup guard and must be
+re-run; there is no in-place SLURM resume across the convention boundary. This is
+a one-time disruption accepted in exchange for never carrying converter
+reflection-correctness risk.
 
 **Accuracy cost.** Zero for Phases 0–2 and 4 (provable reflection equivalence).
 Phase 3 (composite) is a **deliberate** change: augmented Tchebycheff selects
@@ -479,8 +579,11 @@ it requires a baseline snapshot and reviewer sign-off, not a silent swap.
 - **Abstainer masking**: a single-objective composite with one abstaining child
   must still discriminate among candidates on the present axes (regression for
   the §6.3 fix).
-- **Persistence**: converter round-trips a maximize study to minimize with
-  `1 − value`; guard rejects an unconverted old study with a clear error.
+- **Persistence (hard cutover)**: the startup guard rejects a pre-cutover
+  (`maximize`) study with our actionable error *before* `create_study` raises;
+  a fresh `minimize` study is stamped with the `tune_convention` tag.
+- **`ρ` / `ε` sensitivity**: assert ρ→0 admits a weakly-dominated winner that
+  ρ=0.05 rejects; assert a large ρ drifts toward the weighted-sum winner.
 - **Enum/Literal alignment** test for `Sense` and `CompositeBlend`.
 
 ---
@@ -508,13 +611,15 @@ it requires a baseline snapshot and reviewer sign-off, not a silent swap.
 8. **`_is_suspicious` reflection** — both halves invert; off-by-reflection
    silently disables the gaming flag.
 
-**Open decisions**
-- `ε` (utopia shift) and `ρ` (augmentation) defaults: proposed `1e-3` and `0.05`;
-  ρ warrants a short sensitivity check.
-- Persistence: hard cutover (version bump + guard, no old-study resume) vs. ship
-  the converter. Recommend converter + guard.
-- Keep `_weighted_mean` as a `blend` opt-out, or drop it? Recommend keep
-  (compensatory blending is a legitimate user choice).
+**Decisions made** (2026-06-09)
+- **Persistence → HARD CUTOVER** (§7 Phase 2): version bump + guard, no
+  converter; pre-cutover studies error out and must be re-run.
+- **`ε` / `ρ` defaults → `1e-3` / `0.05`** (§6.4): `ρ` is the quality dial (sweep
+  `{0.01, 0.05, 0.1}` to confirm); `ε` is a fixed numerical safety margin.
+- **Keep `_weighted_mean` as a `blend="weighted_mean"` opt-out** (§6.5);
+  `tchebycheff` is the default; `weights` semantics are now blend-dependent.
+
+**Still open**
 - Whether `Sense` default is `LOWER_BETTER` (badness-native) — proposed — or
   `HIGHER_BETTER` (matches today's emitted goodness pre-rewrite). Tied to whether
   Phase 0 lands dark.
