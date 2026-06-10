@@ -138,6 +138,54 @@ def study_objective_kwargs(
     return {"direction": _MINIMIZE}
 
 
+#: The pre-cutover study name. Correctness is the ``_STUDY_NAME`` bump (a legacy
+#: study is never reopened); these helpers are UX (friendly message) only.
+_LEGACY_STUDY_NAME: Final[str] = "tune"
+
+
+def is_legacy_study_name(study_name: str) -> bool:
+    """True for a pre-cutover study name (name-only — no storage probe).
+
+    The read-only GUI Monitor uses this to classify a run from its recorded
+    ``study_name`` without connecting to a (legacy) study.
+
+    Args:
+        study_name: The recorded study name to classify.
+
+    Returns:
+        ``True`` when ``study_name`` is the pre-cutover ``"tune"`` name.
+    """
+    return study_name == _LEGACY_STUDY_NAME
+
+
+def is_legacy_study_present(
+    storage: Any, *, study_name: str = _LEGACY_STUDY_NAME
+) -> bool:
+    """True iff a pre-cutover study exists in ``storage`` (storage-probing).
+
+    ``storage`` is a storage URL or an Optuna storage object. ``optuna`` is
+    imported function-local (the lazy boundary). ``load_study`` raises
+    ``KeyError`` when the study is absent (common case → ``False``); any other
+    error → ``False`` (best-effort detection must never abort study startup).
+
+    Args:
+        storage: An Optuna storage URL or storage object to probe.
+        study_name: The pre-cutover study name to look for.
+
+    Returns:
+        ``True`` when a study with ``study_name`` exists in ``storage``.
+    """
+    import optuna
+
+    try:
+        optuna.load_study(storage=storage, study_name=study_name)
+    except KeyError:
+        return False
+    except Exception:  # noqa: BLE001 - detection is best-effort UX
+        return False
+    return True
+
+
 def _require_optuna() -> ModuleType:
     """Import and return the ``optuna`` module, or raise an actionable error.
 

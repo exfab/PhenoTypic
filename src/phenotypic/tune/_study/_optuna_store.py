@@ -16,6 +16,7 @@ early-stopped one, ``FAIL`` for a failed candidate.
 """
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING, Any, Optional
 
 from .._strategies._optuna_support import (
@@ -37,6 +38,16 @@ if TYPE_CHECKING:  # pragma: no cover - typing only; never imports optuna at run
 _HEARTBEAT_INTERVAL_S = 60
 _GRACE_PERIOD_S = 180
 
+_logger = logging.getLogger(__name__)
+
+#: Stamped on every freshly-created/loaded cost-convention study for
+#: observability and future cutovers (spec §7 Phase 2 #2).
+_CONVENTION_ATTR: str = "tune_convention"
+_CONVENTION_VALUE: str = "minimize-cost-v1"
+# `_LEGACY_STUDY_NAME` ("tune") and the two legacy-study helpers live in the
+# shared `_strategies/_optuna_support.py` so the CLI store guard and the GUI
+# monitor (Phase 4) agree — import them, do not re-spell "tune" here.
+
 
 class OptunaStudyStore:
     """A :class:`StudyStore` over a persistent, resumable Optuna study.
@@ -48,7 +59,7 @@ class OptunaStudyStore:
         study_name: The study name; re-opening with the same name + URL restores
             the persisted trials and sampler state.
         directions: Per-objective directions for a multi-objective study; ``None``
-            → a single-objective ``maximize`` study.
+            → a single-objective ``minimize`` (cost) study.
         create: When ``True`` (the engine path), create the study if it is
             missing. When ``False`` (read-only monitor path), load only an
             existing study.
@@ -77,6 +88,12 @@ class OptunaStudyStore:
             if storage_url.startswith("sqlite"):
                 self._enable_sqlite_wal(storage)
 
+            # UX-only (correctness is the _STUDY_NAME bump): if a pre-cutover
+            # "tune" study still sits in this storage, it cannot be resumed under
+            # the cost convention — say so with an actionable message instead of
+            # silently starting fresh beside it.
+            self._warn_if_legacy_study_present(storage)
+
             create_kwargs: dict[str, Any] = {
                 "storage": storage,
                 "study_name": study_name,
@@ -84,6 +101,7 @@ class OptunaStudyStore:
                 **study_objective_kwargs(directions),
             }
             self._study = optuna.create_study(**create_kwargs)
+            self._study.set_user_attr(_CONVENTION_ATTR, _CONVENTION_VALUE)
         else:
             self._study = optuna.load_study(
                 storage=storage_url,
@@ -126,6 +144,31 @@ class OptunaStudyStore:
 
         with storage.engine.begin() as conn:
             conn.execute(text("PRAGMA journal_mode=WAL"))
+
+    def _warn_if_legacy_study_present(self, storage: Any) -> None:
+        """Log an actionable note when a pre-cutover ``"tune"`` study exists.
+
+        UX only — the ``_STUDY_NAME`` bump already makes the silent direction
+        mismatch impossible (optuna ``load_if_exists`` would otherwise keep the
+        legacy ``maximize`` direction, verified 4.9.0). A pre-cutover study cannot
+        be resumed under the cost convention; this points the user at a fresh run.
+        Delegates the probe to the shared :func:`is_legacy_study_present`.
+        """
+        from phenotypic.tune._strategies._optuna_support import (
+            _LEGACY_STUDY_NAME,
+            is_legacy_study_present,
+        )
+
+        if self._study_name == _LEGACY_STUDY_NAME:
+            return  # never warn about ourselves
+        if is_legacy_study_present(storage):
+            _logger.warning(
+                "a pre-cutover %r study is present in this storage; it cannot be "
+                "resumed under the minimize-cost convention. Starting a fresh %r "
+                "study beside it (or use a new output dir).",
+                _LEGACY_STUDY_NAME,
+                self._study_name,
+            )
 
     # -- writes ---------------------------------------------------------------
 
