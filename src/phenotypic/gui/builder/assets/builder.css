@@ -128,7 +128,7 @@ code, pre, .text-monospace, .font-monospace {
     letter-spacing: 0.04em;
     background: rgba(220, 226, 235, 0.85);
     padding: 0.35rem 0.75rem;
-    border-radius: 0.5rem;
+    border-radius: var(--radius);
 }
 .pheno-breadcrumb .btn-link {
     color: var(--color-blue);
@@ -199,16 +199,16 @@ code, pre, .text-monospace, .font-monospace {
     background: rgba(27, 117, 188, 0.04);
 }
 
-/* Success -> Okabe-Ito green (semantic) */
+/* Success -> navy chrome (button chrome uses UI palette, not data green) */
 .btn-success {
-    background: var(--oi-green);
-    border-color: var(--oi-green);
+    background: var(--color-navy);
+    border-color: var(--color-navy);
     color: var(--color-white);
 }
 .btn-success:hover, .btn-success:focus {
-    background: #00805d;
-    border-color: #00805d;
-    box-shadow: 0 4px 12px rgba(0, 158, 115, 0.28);
+    background: #00284a;
+    border-color: #00284a;
+    box-shadow: 0 4px 12px rgba(0, 54, 96, 0.28);
 }
 
 /* Danger -> vermilion */
@@ -235,22 +235,22 @@ code, pre, .text-monospace, .font-monospace {
     background: rgba(27, 117, 188, 0.04);
 }
 .btn-outline-warning {
-    color: #9A6B00;
+    color: var(--oi-orange-text);
     border-color: var(--color-border);
     background: transparent;
 }
 .btn-outline-warning:hover, .btn-outline-warning:focus {
-    color: #9A6B00;
+    color: var(--oi-orange-text);
     border-color: var(--oi-orange);
     background: rgba(230, 159, 0, 0.06);
 }
 .btn-outline-success {
-    color: #006B4F;
+    color: var(--oi-green-text);
     border-color: var(--color-border);
     background: transparent;
 }
 .btn-outline-success:hover, .btn-outline-success:focus {
-    color: #006B4F;
+    color: var(--oi-green-text);
     border-color: var(--oi-green);
     background: rgba(0, 158, 115, 0.06);
 }
@@ -475,7 +475,7 @@ code, pre, .text-monospace, .font-monospace {
 }
 
 .shell-badge-pickable {
-    color: #6e3a5d;
+    color: var(--oi-purple-text);
     background: rgba(204, 121, 167, 0.15);
 }
 .shell-badge-pickable::before {
@@ -496,9 +496,9 @@ code, pre, .text-monospace, .font-monospace {
     width: 12px;
     height: 12px;
     border-radius: 50%;
-    background: rgba(220, 38, 38, 0.85);
+    background: rgba(213, 94, 0, 0.85);
     border: 2px solid white;
-    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 0 0 1px rgba(0, 54, 96, 0.3);
     pointer-events: none;
 }
 
@@ -878,7 +878,7 @@ code, pre, .text-monospace, .font-monospace {
 
 .linear-map-header h6,
 .linear-side-loader h6 {
-    font-family: var(--font-sans);
+    font-family: var(--font-body);
     font-size: var(--text-xs);
     letter-spacing: 0.1em;
     text-transform: uppercase;
@@ -930,7 +930,7 @@ code, pre, .text-monospace, .font-monospace {
 }
 
 .linear-map-zoom-symbol {
-    font-size: 1rem;
+    font-size: var(--font-size-body);
     font-weight: 700;
 }
 
@@ -946,7 +946,7 @@ code, pre, .text-monospace, .font-monospace {
     justify-content: center;
     width: 15px;
     height: 15px;
-    font-size: 0.95rem;
+    font-size: var(--font-size-body);
     font-weight: 700;
 }
 
@@ -1058,7 +1058,7 @@ code, pre, .text-monospace, .font-monospace {
     font-family: var(--font-mono);
     font-size: var(--font-size-caption);
     letter-spacing: 0.08em;
-    color: #8a5f00;
+    color: var(--oi-orange-text);
     background: rgba(254, 188, 17, 0.16);
     border: 1px solid rgba(254, 188, 17, 0.38);
     border-radius: var(--radius-sm);
