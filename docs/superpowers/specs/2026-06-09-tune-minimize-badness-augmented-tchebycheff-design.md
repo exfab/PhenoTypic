@@ -489,10 +489,11 @@ performs. The reasoning, grounded in the literature:
 
 3. **Weights default to uniform (no-preference).** True relative importance
    cannot be conjured from a pipeline config that carries no preference signal, so
-   the principled default is equal weights on the normalized axes. The **only**
-   optional user-facing lever is a coarse importance — a per-objective
-   `low|med|high` label or a single "primary objective" pick mapped to weight
-   presets — never a numeric weight vector. Opt-in, not required.
+   the principled default is equal weights on the normalized axes. **v1 ships
+   uniform weights only (OQ5 deferred);** an advanced user who genuinely needs to
+   reweight sets the `weights` dict directly. A coarse-importance preset
+   (`low|med|high` / "primary objective") is **deferred to v2** — it would add a
+   preset→weight mapping decision and GUI surface (OQ6) for speculative demand.
 
 **Why not a lower-parameter method instead** (so the choice is on the record):
 - **Weighted sum** removes `ρ`/reference but cannot reach non-convex-front points
@@ -593,28 +594,36 @@ land together.
 - `_multi_objective.py:113` `objective_directions` → `["minimize"]*n`.
 - Best selection: `_study/_optuna_store.py:254`, `_study_store.py:102`
   `max → min`.
-- **Study persistence — HARD CUTOVER (decided).** Optuna stores `direction` in
-  the study; reopening a `maximize` study as `minimize` raises. We do **not**
-  ship a converter. Instead:
-  1. A **version bump** of the study/spec schema (a `tune_convention` tag stamped
-     on new studies, e.g. `"minimize-cost-v1"`).
-  2. A startup **guard** that detects a pre-cutover study and **refuses with an
-     actionable error** ("this study was created under the old maximize
-     convention; start a fresh run / output dir"). It must run inside
-     `OptunaStudyStore.__init__` *before* the `create_study(...,
-     load_if_exists=True)` call (`:80`) — that call itself raises on a direction
-     mismatch, so a guard placed after it never executes. Read the persisted
-     direction via `optuna.load_study` / storage introspection first, and surface
-     our message instead of Optuna's opaque one.
+- **Study persistence — HARD CUTOVER via study-name bump (decided; OQ7).**
+  ⚠️ **Verified hazard (optuna 4.9.0):** `create_study(load_if_exists=True,
+  direction="minimize")` against an existing `maximize` study **does NOT raise —
+  it silently loads the old study and keeps `direction = MAXIMIZE`.** (An earlier
+  draft of this spec claimed it raises; that is **false**, tested empirically.) So
+  without intervention, re-running into a storage that holds the pre-cutover
+  `"tune"` study would silently **maximize cost** → pick the *worst* pipeline, no
+  error. We do **not** ship a converter. The mechanism is:
+  1. **Bump the study name** — the single `_STUDY_NAME` constant
+     (`_tune_cli/_run.py:70`, today `"tune"`) → e.g. `"tune_cost_v1"`. New code
+     only ever opens the new-name study, so a pre-cutover `"tune"` study is
+     **never reopened** — the silent-maximize hazard is impossible *by
+     construction*, not contingent on a guard. Old-convention resume becomes
+     impossible (the intended cutover); a re-run creates a fresh new-name study
+     beside the inert old one. **Every reader (CLI, worker, GUI monitor) must use
+     the one constant**, not re-spell `"tune"`.
+  2. **Stamp `tune_convention`** (`study.set_user_attr`, e.g. `"minimize-cost-v1"`)
+     for observability / future cutovers.
+  3. **Friendly detector (UX, not correctness):** if a legacy `"tune"` study is
+     present in the storage, log/raise an actionable note ("a pre-cutover study
+     exists here; it cannot be resumed under the cost convention — starting
+     fresh"). Correctness is already guaranteed by the name bump, so this is
+     purely a better message.
   - **Consequence (accepted):** in-flight and completed pre-cutover studies
-    **cannot be resumed**; they must be re-run from scratch under the new
-    convention. This is the explicit cost of the hard cutover — chosen over a
-    converter because the converter would carry permanent reflection-correctness
-    risk (every stored field's `1 − value` must stay exactly right across schema
-    evolution) for the one-time benefit of resuming old runs. Stored
-    `pheno_terms`/`pheno_objectives` from old studies are not interpreted;
-    cross-study comparison with pre-cutover runs is invalid (document in the
-    release notes / `tune/CLAUDE.md`).
+    **cannot be resumed**; they must be re-run. Chosen over a converter, which
+    would carry permanent reflection-correctness risk (every stored field's
+    `1 − value` must stay exactly right across schema evolution) for the one-time
+    benefit of resuming old runs. Old `pheno_terms`/`pheno_objectives` are not
+    interpreted; cross-study comparison with pre-cutover runs is invalid (document
+    in release notes / `tune/CLAUDE.md`).
 
 ### Phase 3 — augmented Tchebycheff composite (`_scoring/_composite.py`)
 - Add `rho: float = 0.05` and `blend: CompositeBlend = "tchebycheff"` fields;
@@ -756,9 +765,12 @@ it requires a baseline snapshot and reviewer sign-off, not a silent swap.
 - **Abstainer masking**: a single-objective composite with one abstaining child
   must still discriminate among candidates on the present axes (regression for
   the §6.3 fix).
-- **Persistence (hard cutover)**: the startup guard rejects a pre-cutover
-  (`maximize`) study with our actionable error *before* `create_study` raises;
-  a fresh `minimize` study is stamped with the `tune_convention` tag.
+- **Persistence (hard cutover) — silent-maximize regression**: in a storage that
+  already holds a `maximize` study named `"tune"`, the new store must **not**
+  reopen it as a maximization of cost (the verified optuna `load_if_exists`
+  hazard). Assert the new run opens the **bumped** study name (`"tune_cost_v1"`,
+  `direction=minimize`), leaves the legacy study inert, and the friendly detector
+  fires; assert a fresh `minimize` study carries the `tune_convention` attr.
 - **`ρ` / `ε` sensitivity**: assert ρ→0 admits a weakly-dominated winner that
   ρ=0.05 rejects; assert a large ρ drifts toward the weighted-sum winner.
 - **Enum/Literal alignment** test for `Sense` and `CompositeBlend`.
@@ -784,8 +796,11 @@ it requires a baseline snapshot and reviewer sign-off, not a silent swap.
 5. **Composite normalization across trials** (§6.2) — must use a study-global
    constant roster, else the cross-trial winner can change.
 6. **Geometric-mean literal port** (§9) — never expose geomean-of-cost.
-7. **Study-direction immutability** (§7 Phase 2) — guard must precede
-   `create_study`; resume conflict on old studies.
+7. **Silent direction-mismatch load** (§7 Phase 2; **verified**) — optuna
+   `create_study(load_if_exists=True)` does **not** reject a `maximize` study when
+   asked for `minimize`; it silently keeps `maximize`, so reusing a pre-cutover
+   study would maximize cost (pick the worst pipeline) with no error. Fixed by
+   bumping `_STUDY_NAME` (collision-impossible), not by relying on Optuna.
 8. **`_is_suspicious` reflection** — both halves invert; off-by-reflection
    silently disables the gaming flag.
 
@@ -829,14 +844,19 @@ it requires a baseline snapshot and reviewer sign-off, not a silent swap.
   framework constants; normalization needs no input (terms are already `[0,1]`);
   weights default to uniform. Users set no scalarization parameters.
 
-**Open for discussion (next):**
-- **OQ5 — coarse importance lever.** Proposed: **defer to v2** (v1 = uniform
-  weights only; advanced users set `weights` directly). Confirm vs. ship a
-  `low|med|high` preset now.
-- **OQ6 — GUI/`FEATURES.md` coverage** for the relabel + (if shipped) the lever +
-  the read-only monitor's guard messaging.
-- **OQ7 — `tune_convention` tag + guard mechanics** (write path; `load_study` in
-  `try/except KeyError`; `.directions` vs `.direction` for multi-objective).
+- **OQ5 — coarse importance lever → DEFERRED to v2** (§6.6): v1 ships uniform
+  weights only; advanced users set `weights` directly.
+- **OQ6 — GUI/`FEATURES.md` coverage → scoped into Phase 4**: cost relabel +
+  `FEATURES.md` row (and `WORKFLOWS.md`/screenshots if affordance text changes);
+  the read-only monitor reuses the friendly legacy-study detector; **no new
+  control** (OQ5 deferred).
+- **OQ7 — persistence → study-name bump (§7 Phase 2).** ⚠️ The guard **is**
+  load-bearing for correctness: optuna `load_if_exists=True` silently loads a
+  mismatched-direction study (verified, 4.9.0). Bumping `_STUDY_NAME`
+  (`"tune"` → `"tune_cost_v1"`) makes the silent-maximize hazard impossible by
+  construction; `tune_convention` stamp + legacy detector are UX on top.
+
+**Still open:** none — all design decisions resolved.
 
 ---
 
