@@ -220,8 +220,14 @@ def _palette_for_categories(
         buttons: List[Any] = []
         for op_info in ops:
             stage = _safe_stage(op_info.name)
-            button_children: List[Any] = [html.Span(op_info.name)]
-            button_class = "text-start w-100 mb-1 palette-button"
+            button_children: List[Any] = [
+                html.Span(
+                    op_info.name,
+                    className="palette-button__label",
+                    title=op_info.name,
+                )
+            ]
+            button_class = "text-start w-100 mb-2 palette-button"
             if op_info.is_point_pickable:
                 button_children.append(
                     dbc.Badge(
@@ -313,7 +319,13 @@ def build_new_pipeline_palette_button() -> dbc.Button:
     # expose ``data-palette-class`` to the retired drag/drop bridge.
     return html.Div(
         dbc.Button(
-            [html.Span("⛓"), html.Span(" + New Pipeline", className="ms-1")],
+            [
+                html.Span("⛓"),
+                html.Span(
+                    " + New Pipeline",
+                    className="ms-1 palette-button__label",
+                ),
+            ],
             id=ids.BTN_NEW_PIPELINE_NODE,
             color="primary",
             outline=True,
@@ -4181,7 +4193,10 @@ def build_app_layout(
     # Picked so the canvas 30% slice gets at least ~210 px and the inspector
     # 70% slice gets ~490 px — comfortable for a typical 3-5 node pipeline
     # with a moderate param form.
-    _ROW_MIN_HEIGHT = "700px"
+    # Floor for short windows; on normal viewports the body flex-fills the
+    # available height instead (see ``body_row`` flex + the flex chain on the
+    # container / page root below).
+    _ROW_MIN_HEIGHT = "420px"
     _SCROLL_FILL_STYLE = {
         "flex": "1 1 0",
         "minHeight": 0,
@@ -4280,30 +4295,96 @@ def build_app_layout(
         className="linear-builder-side-column",
     )
 
-    body_row = dbc.Row(
+    # Two-column body: a resizable + collapsible operations palette, then the
+    # canvas. The inspector no longer takes a third column (which shrank the
+    # canvas) — it docks as a slide-over overlay (below) so the canvas keeps
+    # the full freed width.
+    #
+    # The palette pane's width is driven by the ``--builder-palette-width``
+    # custom property on the columns wrapper; the divider between the palette
+    # and the canvas is a ``col-resize`` drag handle that also carries the
+    # collapse toggle. Both behaviours are UI-only, wired clientside in
+    # ``builder.js`` and persisted to localStorage — no builder state is
+    # written.
+    palette_pane = html.Div(
+        palette_column,
+        id=ids.BUILDER_PALETTE_PANE,
+        className="builder-palette-pane",
+    )
+    palette_divider = html.Div(
+        html.Button(
+            html.Span("‹", className="builder-palette-collapse__chevron"),
+            id=ids.BTN_PALETTE_COLLAPSE,
+            className="builder-palette-collapse",
+            type="button",
+            n_clicks=0,
+            title="Collapse the operations palette",
+        ),
+        id=ids.BUILDER_PALETTE_DIVIDER,
+        className="builder-palette-divider",
+        title="Drag to resize the operations palette",
+    )
+    body_row = html.Div(
+        [palette_pane, palette_divider, map_column],
+        id=ids.BUILDER_COLUMNS,
+        className="builder-columns",
+        # ``min-height`` is a floor for short windows; the palette width seeds
+        # the custom property the pane reads (builder.js overrides it from the
+        # persisted value and on drag).
+        style={
+            "flex": "1 1 auto",
+            "minHeight": _ROW_MIN_HEIGHT,
+            "--builder-palette-width": "320px",
+        },
+    )
+
+    # Inspector slide-over: an absolutely-positioned overlay on the canvas's
+    # right edge. A rounded tab handle tucked half-under its upper-left edge
+    # toggles it open/closed via a clientside class flip on the stable
+    # wrapper (``assets/builder.js``); the toggle survives the
+    # ``INSPECTOR_CONTAINER`` re-renders that happen inside it.
+    inspector_slideover = html.Div(
         [
-            # ``d-flex flex-column`` makes this column a flex container so the
-            # palette wrapper's ``flex: 1`` actually has a flex parent to grow
-            # against. Without it the wrapper would still see ``display:
-            # block`` and ignore its flex sizing.
-            dbc.Col(
-                palette_column,
-                md=3,
-                className="border-end pe-3 d-flex flex-column",
+            html.Button(
+                [
+                    # Label sits at the top of the tab; the arrow trails at
+                    # the bottom (the "end"), points the way the panel will
+                    # move, and flips with the open/closed state.
+                    html.Span(
+                        "Inspector",
+                        className="builder-slideover-tab__label",
+                    ),
+                    html.Span(
+                        "›",
+                        className="builder-slideover-tab__chevron",
+                    ),
+                ],
+                id=ids.BTN_INSPECTOR_SLIDEOVER_TOGGLE,
+                className="builder-slideover-tab",
+                type="button",
+                n_clicks=0,
+                title="Toggle the inspector panel",
             ),
-            dbc.Col(
-                map_column,
-                md=6,
-                className="ps-3 pe-3 d-flex flex-column",
-            ),
-            dbc.Col(
-                side_column,
-                md=3,
-                className="border-start ps-3 d-flex flex-column",
-            ),
+            html.Div(side_column, className="builder-slideover__panel"),
         ],
-        className="g-3",
-        style={"minHeight": _ROW_MIN_HEIGHT, "alignItems": "stretch"},
+        id=ids.INSPECTOR_SLIDEOVER,
+        # Default closed so the canvas is unobstructed (and draggable) on
+        # load; the tab opens it on demand. ``builder.js`` restores the
+        # persisted open/closed choice.
+        className="builder-slideover is-closed",
+    )
+
+    builder_body = html.Div(
+        [body_row, inspector_slideover],
+        className="builder-body-wrap",
+        # Fill the remaining page height so the body_row (and its internally
+        # scrolling columns) fit the viewport instead of overflowing it.
+        style={
+            "flex": "1 1 auto",
+            "minHeight": 0,
+            "display": "flex",
+            "flexDirection": "column",
+        },
     )
 
     stores = html.Div(
@@ -4501,10 +4582,40 @@ def build_app_layout(
             toast,
             modals,
             dbc.Container(
-                [header, build_footer(image_root), build_breadcrumb(state), body_row],
+                [
+                    header,
+                    build_footer(image_root),
+                    build_breadcrumb(state),
+                    builder_body,
+                ],
                 fluid=True,
+                # Fill the scroll pane exactly (a flex column) so the builder
+                # body fills the height below the header / image-source /
+                # breadcrumb rows. The bottom buffer *below* this container —
+                # not padding inside it — is what makes the pane scrollable.
+                style={
+                    "height": "100%",
+                    "minHeight": 0,
+                    "display": "flex",
+                    "flexDirection": "column",
+                },
             ),
-        ]
+            # Page-scroll buffer BELOW the entire builder body (operations,
+            # canvas, inspector). The container above fills the scroll pane
+            # exactly, so this spacer overflows downward into the pane's
+            # scroll area — letting the user scroll down to lift the canvas
+            # toward the vertical centre of the screen.
+            html.Div(className="builder-bottom-buffer"),
+        ],
+        # Block flow (not a flex column) and exactly one pane tall: the
+        # container fills the pane so the body fits the viewport, and the
+        # trailing buffer overflows downward into the pane's scroll area
+        # instead of being compressed to share the height.
+        className="builder-page-root",
+        style={
+            "display": "block",
+            "height": "100%",
+        },
     )
 
 

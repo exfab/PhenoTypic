@@ -487,6 +487,29 @@ def _new_builder_page(context, base_url: str):
     page = _new_page(context, base_url, "/builder/")
     page.wait_for_selector("#palette", timeout=15_000)
     page.wait_for_selector("#linear-map-container", timeout=15_000)
+    # The inspector slide-over and palette width/collapse persist their UI
+    # state to localStorage, shared across pages in this context. Clear those
+    # keys AND normalize the DOM (builder.js already restored from storage on
+    # bind, so clearing alone won't re-close an already-open inspector) so
+    # every builder capture starts from the server defaults — inspector
+    # closed, palette expanded at the default width — regardless of the order
+    # captures run in. Helpers re-open the inspector where a capture needs it.
+    page.evaluate(
+            """() => {
+                try {
+                    window.localStorage.removeItem('phenotypicBuilderInspectorClosed');
+                    window.localStorage.removeItem('phenotypicBuilderPaletteCollapsed');
+                    window.localStorage.removeItem('phenotypicBuilderPaletteWidth');
+                } catch (err) { /* private mode — ignore */ }
+                const slideover = document.getElementById('inspector-slideover');
+                if (slideover) slideover.classList.add('is-closed');
+                const columns = document.getElementById('builder-columns');
+                if (columns) {
+                    columns.classList.remove('palette-collapsed');
+                    columns.style.removeProperty('--builder-palette-width');
+                }
+            }"""
+    )
     page.wait_for_timeout(500)
     return page
 
@@ -521,13 +544,37 @@ def _select_linear_node(page, class_name: str, which: str = "last") -> None:
         print(f"[shot]   linear node {class_name} not found")
         return
     target = locator.first if which == "first" else locator.last
-    target.click()
+    # Dispatch the click rather than a real pointer click: once the inspector
+    # slide-over is open it overlays the canvas's right edge, so a node there
+    # is "obstructed" for a real click. Selection only needs the DOM click
+    # event to reach Dash's delegated listener, which a dispatched event does.
+    target.dispatch_event("click")
     page.wait_for_timeout(500)
+
+
+def _open_inspector(page) -> None:
+    """Open the inspector slide-over if it is closed.
+
+    The inspector docks as a right-edge slide-over that is collapsed by
+    default, so its contents (param form, point-picker buttons) sit off the
+    right of the viewport until the tab handle is clicked. Captures that need
+    the inspector visible call this after selecting a node.
+    """
+
+    slideover = page.locator("#inspector-slideover")
+    if slideover.count() == 0:
+        return
+    classes = slideover.first.get_attribute("class") or ""
+    if "is-closed" in classes:
+        page.locator("#btn-inspector-slideover-toggle").first.click()
+        page.wait_for_timeout(350)
 
 
 def _select_side_param_target(page, param_name: str) -> None:
     """Select a side-loader parameter port as the active fill target."""
 
+    # Side-loader ports live inside the closed-by-default inspector slide-over.
+    _open_inspector(page)
     locator = page.locator(
             f'button.linear-side-param-port[aria-label="Fill {param_name}"]'
     )
@@ -767,8 +814,11 @@ def _capture_pick_points(context, base_url: str) -> None:
     _relayout_canvas(page)
     _save(page, "pick_points", "02_pipeline_with_selector.png")
 
-    # 3) Inspector param form for ManualRefine.
+    # 3) Inspector param form for ManualRefine. The inspector docks as a
+    # closed-by-default slide-over, so open it before screenshotting the
+    # param form (and before reaching the picker button inside it).
     _select_linear_node(page, "ManualRefine")
+    _open_inspector(page)
     page.wait_for_timeout(600)
     _save(page, "pick_points", "03_param_form.png")
 
@@ -935,6 +985,7 @@ def _capture_aux_ports(context, base_url: str) -> None:
 
     # 4) Keep the consumer selected so the filled side value row is visible.
     _select_linear_node(page, "FilamentousFungiDetector")
+    _open_inspector(page)
     _save(page, "aux_ports", "04_inspector_aux.png")
     page.close()
 

@@ -387,13 +387,43 @@ def test_app_layout_mounts_linear_map_instead_of_cytoscape():
     assert not _find_by_id(tree, ids.CANVAS_CYTOSCAPE)
 
 
-def test_app_layout_uses_desktop_three_column_linear_builder():
+def test_app_layout_docks_inspector_as_slideover():
+    """Canvas + palette fill the body; the inspector docks as a slide-over
+    overlay (a tab handle toggles it) rather than taking a third column."""
     from phenotypic.gui.builder._layout import build_app_layout
 
     tree = build_app_layout(BuilderState(), _registry(), image_root=None)
 
+    # Canvas column and the inspector side column both still exist...
     assert _find_by_class(tree, "linear-builder-map-column")
     assert _find_by_class(tree, "linear-builder-side-column")
+    # ...but the inspector is now wrapped in the slide-over with its toggle.
+    slideover = _find_by_id(tree, ids.INSPECTOR_SLIDEOVER)
+    assert len(slideover) == 1
+    assert _find_by_id(tree, ids.BTN_INSPECTOR_SLIDEOVER_TOGGLE)
+    # The stable INSPECTOR_CONTAINER (re-render target) lives inside it.
+    assert _find_by_id(slideover[0], ids.INSPECTOR_CONTAINER)
+
+
+def test_app_layout_palette_is_collapsible_and_resizable():
+    """The operations palette docks in a resizable pane: a width-bearing
+    columns wrapper, a drag divider carrying the collapse toggle, and the
+    pane itself. Operation labels carry the truncation class so long names
+    ellipsis instead of wrapping."""
+    from phenotypic.gui.builder._layout import build_app_layout
+
+    tree = build_app_layout(BuilderState(), _registry(), image_root=None)
+
+    # Columns wrapper seeds the --builder-palette-width custom property the
+    # pane reads; the divider + collapse toggle drive the resize/collapse.
+    columns = _find_by_id(tree, ids.BUILDER_COLUMNS)
+    assert len(columns) == 1
+    assert "--builder-palette-width" in (columns[0].style or {})
+    assert _find_by_id(tree, ids.BUILDER_PALETTE_PANE)
+    assert _find_by_id(tree, ids.BUILDER_PALETTE_DIVIDER)
+    assert _find_by_id(tree, ids.BTN_PALETTE_COLLAPSE)
+    # Operation names truncate (ellipsis) rather than wrapping to a 2nd line.
+    assert _find_by_class(tree, "palette-button__label")
 
 
 def test_app_layout_keeps_retired_viewport_controls_hidden_and_inert():
@@ -511,6 +541,64 @@ def test_linear_zoom_js_is_ui_only_and_preserves_clickable_ports():
 
     assert "linear-map-zoom-viewport" in js
     assert "linear-map-zoom-content" in js
-    assert "transformOrigin = \"left center\"" in js
+    # Content scales from the top-left and reserves the scaled space with
+    # margins so the viewport's scroll bounds grow with the zoom (panning is
+    # not locked once zoomed in).
+    assert 'transformOrigin = "left top"' in js
+    assert "marginRight" in js
     assert "scrollIntoView" not in js
     assert "store-builder-state" not in js[js.find("linear-map zoom") :]
+
+
+def test_linear_card_width_fits_longest_operation_label():
+    """The fixed node-card width is frozen to fit the widest registered
+    operation class label, and never shrinks below the legacy 220px.
+
+    Sized at server-build time so long names like
+    ``GridOversizedObjectRemover`` render without the title ellipsis.
+    """
+    from phenotypic.gui._operation_registry import get_registry
+
+    linear_layout._linear_card_width_px = None  # bust the memo
+    try:
+        width = linear_layout._linear_card_width()
+        longest = max(
+            (len(info.name) for info in get_registry().get_all().values()),
+            default=0,
+        )
+        assert width >= linear_layout._LINEAR_CARD_WIDTH_FLOOR
+        # Room for the longest title plus the fixed (port/badge/help) chrome.
+        expected = max(
+            linear_layout._LINEAR_CARD_WIDTH_FLOOR,
+            int(round(longest * linear_layout._LINEAR_TITLE_CHAR_PX))
+            + linear_layout._LINEAR_CARD_CHROME_PX,
+        )
+        assert width == expected
+    finally:
+        linear_layout._linear_card_width_px = None
+
+
+def test_linear_card_width_is_memoised():
+    """The width is computed once ("server build") and frozen thereafter."""
+    linear_layout._linear_card_width_px = None
+    first = linear_layout._linear_card_width()
+    linear_layout._linear_card_width_px = 999  # a frozen value wins
+    try:
+        assert linear_layout._linear_card_width() == 999
+    finally:
+        linear_layout._linear_card_width_px = None
+    assert linear_layout._linear_card_width() == first
+
+
+def test_linear_map_section_freezes_card_width_css_var():
+    """The map section carries the computed fixed card width as a CSS
+    custom property so every ``.linear-node-card`` descendant reads it."""
+    from phenotypic.gui.builder._linear_layout import build_linear_map_section
+
+    linear_layout._linear_card_width_px = None
+    try:
+        tree = build_linear_map_section(BuilderState(), _registry())
+        expected = f"{linear_layout._linear_card_width()}px"
+    finally:
+        linear_layout._linear_card_width_px = None
+    assert tree.style["--linear-node-card-width"] == expected
