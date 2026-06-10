@@ -23,12 +23,16 @@ from phenotypic.tune._scoring._composite import CompositeScorer
 # test doubles — deterministic scorers with disjoint / colliding term names
 # --------------------------------------------------------------------------- #
 class _FixedScorer(Scorer):
-    """A stateless scorer returning preset terms; available iff ``ok``."""
+    """A stateless scorer returning preset terms; available iff ``ok``.
+
+    Emits its preset terms as **cost** directly (the ``LOWER_BETTER`` default),
+    so the base ``score_image`` template passes them through unchanged.
+    """
 
     terms: dict[str, float]
     ok: bool = True
 
-    def score_image(self, image, measurements) -> dict[str, float]:
+    def _score_terms(self, image, measurements) -> dict[str, float]:
         return dict(self.terms)
 
     def availability(self) -> bool:
