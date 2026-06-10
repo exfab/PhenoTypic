@@ -2053,6 +2053,18 @@ length:      snap to a round calibrated value (5, 10, 20, 50, 100 um ...)
 
 State the calibration source in the metadata strip so the bar is auditable.
 
+> **Status -- deferred (pending core calibration support).** No scale bar ships in
+> the results viewer yet, and it is intentionally blocked rather than skipped: a bar
+> requires a physical pixel size (um/px), which the core image model does not carry
+> (`_core/_image_parts/_image_io_handler.py` has `# TODO: implement calibration
+> schema`; only an experimental `RESOLUTION` tag exists). Because nothing is
+> calibrated today, the "mandatory for calibrated images" rule above is vacuously
+> satisfied. Implementing the bar is a cross-cutting feature, not a styling fix:
+> (1) add the calibration schema to the core `Image` model, (2) plumb um/px through
+> the pipeline into the results viewer, then (3) render the bar (e.g. the
+> openseadragon-scalebar plugin, not currently bundled). Render the bar only when a
+> calibration value is present; omit it (do not fake one) otherwise.
+
 ### Channels & LUTs
 
 This is the image-data analog of the categorical series order. The rules below are
