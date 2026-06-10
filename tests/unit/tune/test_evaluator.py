@@ -25,19 +25,23 @@ def test_robust_aggregate_single_value_is_that_value():
 
 
 class _SequenceScorer(Scorer):
-    """Returns preset per-call values (term ``"X"``), ignoring its inputs."""
+    """Returns preset per-call values (term ``"X"``), ignoring its inputs.
+
+    Emits its values as **cost** directly (the ``LOWER_BETTER`` default), so the
+    base ``score_image`` passes them through unchanged.
+    """
 
     values: list[float]
     _cursor: int = PrivateAttr(default=0)
 
-    def score_image(self, image, measurements) -> dict[str, float]:
+    def _score_terms(self, image, measurements) -> dict[str, float]:
         value = self.values[self._cursor % len(self.values)]
         self._cursor += 1
         return {"X": float(value)}
 
 
 class _RaisingScorer(Scorer):
-    def score_image(self, image, measurements) -> dict[str, float]:
+    def _score_terms(self, image, measurements) -> dict[str, float]:
         raise RuntimeError("scoring blew up")
 
 
