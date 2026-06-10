@@ -1,0 +1,45 @@
+flowchart TD
+    %% ---- one-time setup ----
+    PIPE[/"base ImagePipeline"/]
+    INFER("infer_search_space<br/>Tier-1 TuneSpec / Tier-2 heuristics<br/>numeric: [d/4, d·4], log if span &gt;10x/100x")
+    SPACE[/"SearchSpace (Knobs)"/]
+    PIPE --> INFER --> SPACE
+
+    %% ---- ask-and-tell loop ----
+    SPACE --> STRAT
+    STRAT("Strategy.suggest()<br/>TPE: max EI ∝ l(x)/g(x)<br/>CMA-ES / GP / NSGA-II / random / grid")
+    PARAMS[/"params + PruningChannel"/]
+    STRAT --> PARAMS
+
+    PARAMS --> BUILD{"build_pipeline<br/>builds ok?"}
+    BUILD -- no --> FAIL[/"EvaluationResult<br/>failed=True, score=0.0"/]
+    BUILD -- yes --> RUNG
+
+    RUNG("rung ladder<br/>sizes = max(6, ⌈n/3⌉), x3, … , n")
+    SCORE("Scorer.score_image → terms in [0,1]<br/>supervised: Dice/IoU on matched objects<br/>ref-free: shape / contrast / sizeCV<br/>qc: exp(-ln2·m/thr) · composite: geo/weighted mean")
+    AGG("robust-aggregate per term<br/>median − λ·IQR  (λ=0.5)")
+    FINAL("scorer.finalize → running scalar")
+    PRUNE{"between rungs:<br/>should_prune()?"}
+
+    RUNG --> SCORE --> AGG --> FINAL --> PRUNE
+    PRUNE -- "yes (not final rung)" --> PARTIAL[/"EvaluationResult<br/>pruned=True (partial)"/]
+    PRUNE -- "no / final rung" --> RESULT[/"EvaluationResult<br/>score, terms, objectives?, gap, suspicious"/]
+
+    RESULT --> STORE
+    PARTIAL --> STORE
+    FAIL --> STORE
+    STORE[("StudyStore<br/>append Trial; budget number+=1, failures+=failed")]
+
+    STORE -. "tell: register_result(params, result)" .-> STRAT
+    STORE --> EXH{"exhausted? / n_trials / max_failures"}
+    EXH -. "no" .-> STRAT
+    EXH -- yes --> BEST
+
+    %% ---- one-time finalize ----
+    BEST("store.best()")
+    IMP("param importance<br/>fANOVA (interactions) | RF-permutation (main effects)")
+    PARETO("multi-objective:<br/>Pareto front → knee point")
+    GEN("held-out re-eval →<br/>generalization gap (report-only)")
+    BEST --> IMP
+    BEST --> PARETO
+    BEST --> GEN
