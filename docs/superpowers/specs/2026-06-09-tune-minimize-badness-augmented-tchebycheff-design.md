@@ -571,16 +571,22 @@ land together.
   set in the checklist: `_WORST_TERM 0.0→1.0`, `failure_score 0.0→1.0`,
   `_is_suspicious` Count default `1.0→0.0` + both floors, and the `_aggregate`
   worst-term pad. Update docstrings.
-- **BLOCKER — second direction-sensitive gap: `compute_generalization_gap`
-  (`_evaluation/_generalization.py:100`).** The overfit detector computes
-  `absolute_drop = cal_score − heldout_score` and flags `drop > margin`. Under
-  goodness, overfit = `cal > heldout` (positive drop). Under **cost** the sign
-  inverts: a genuinely overfit winner has *higher* held-out cost, so
-  `cal_cost − heldout_cost` is **negative** and the gate **never fires** —
-  the overfit detector silently dies (it writes a wrong `generalization.json`
-  rather than erroring). Flip to `heldout − cal` and re-examine the margin
-  comparisons. **This file is in neither the original §3 inventory nor any
-  phase** — added here (layer 5b). Update its doctest (`:91`).
+- **BLOCKER — generalization gap inverts; adopt the standard loss-space form (not
+  a custom flip).** `compute_generalization_gap` (`_generalization.py:100`)
+  computes `absolute_drop = cal_score − heldout_score` — the *accuracy-space* gap
+  (`train_acc − test_acc`), correct only while scores were goodness. The canonical
+  generalization gap is defined in **error/loss space**: `gap = test − train`,
+  **positive = overfit** (d2l.ai; Carrell et al., 2022; Liang et al., 2021).
+  Because cost *is* a loss, adopt the textbook form directly:
+  **`gap = heldout_cost − cal_cost`** (positive = overfit) — direction-correct *by
+  construction*, **no bespoke sign flip and no margin re-derivation**. We are
+  explicitly **not reinventing** — this is the standard definition for the space
+  we are now in. Without it, a genuinely overfit winner (higher held-out cost)
+  gives a *negative* drop so the gate **never fires**, while a good generaliser
+  (lower held-out cost) can be **mis-flagged** as overfit — a silently-wrong
+  `generalization.json`, no error, no test catching it. **This file is in neither
+  the original §3 inventory nor any phase** — added here (layer 5b). The doctest
+  (`:91`, `(0.9, 0.5) → 0.444, True`) stays valid read as loss-space inputs.
 - **PITFALL — relative-IQR blowup at BOTH `_relative` call sites (OQ4 resolved).**
   The shared `_aggregate_math._relative(x, central)` floors the denominator at
   `_GAP_EPS=1e-12`. Under cost a great candidate has central tendency `≈ 0`, so
@@ -598,7 +604,14 @@ land together.
   stability term — just far too small to do anything. One shared-helper change
   fixes both callers. Consumers of `gap` to re-confirm unchanged: the GUI
   `GAP_FLAG_THRESHOLD=0.15` and the data-poor fallback
-  `calibration_stability=winner.gap` (`_generalization.py:266`).
+  `calibration_stability=winner.gap` (`_generalization.py:266`). A relative
+  `(test−train)/train` term blowing up as `train → 0` is a **known issue in the
+  literature too**, so this is not a bespoke problem; the principled,
+  blow-up-free normalization is to divide the test degradation by the *achievable*
+  improvement (Schneider, Bischl & Feurer, 2025, "overtuning": relative
+  overtuning `> 1` ⇒ all test gains lost). That needs incumbent + default-config
+  tracking we don't have, so it is a **deferred v2 upgrade**; v1 uses the stable
+  denominator + floor above.
 - **COUPLING — Phase 1 and Phase 2 must land together (pruner).** The ASHA
   `SuccessiveHalvingPruner` (`_strategies/_optuna.py`) is **direction-aware** —
   it reads `study.direction`. The Evaluator reports `running_score` to it
@@ -736,6 +749,19 @@ it requires a baseline snapshot and reviewer sign-off, not a silent swap.
 ## 9. Accuracy & theory notes (literature-audited)
 
 - **Reflection equivalence** (median/IQR/mean): elementary; verified.
+- **Generalization gap is a standard quantity — don't reinvent.** The canonical
+  definition is loss/error-space `gap = test − train`, **positive = overfit**
+  (d2l.ai; Carrell et al., 2022; Liang et al., 2021). Cost *is* a loss, so our
+  gap is the textbook form `heldout_cost − cal_cost` — the cost convention makes
+  it canonical and direction-correct by construction (§7 Phase 1). The flag
+  *policy* (relative + absolute margins) is an engineering heuristic with no
+  single canonical algorithm; the literature-grounded principled alternative is
+  the **overtuning** measure (Schneider, Bischl & Feurer, 2025) — relative
+  overtuning normalized by *achievable* test improvement (`> 1` ⇒ all gains lost)
+  — kept as a deferred v2 upgrade. The standard *mitigation* for HPO overfitting
+  is robust resampling (repeated k-fold CV), which the rung ladder + robust
+  `median − λ·IQR` aggregate + held-out split already approximate; the gap stays
+  report-only.
 - **Geometric-mean-of-cost is the trap**: the geometric mean is a conjunctive
   aggregation function (Beliakov, Pradera & Calvo, 2007) and does not commute
   with `s → 1−s`; because `0` is the product's annihilator, feeding *cost*
@@ -816,7 +842,9 @@ it requires a baseline snapshot and reviewer sign-off, not a silent swap.
 
 **Pitfalls** (ordered by risk after the migration review)
 1. **Inverted overfit detector** (§7 Phase 1, `_generalization.py:100`) —
-   **highest risk.** The migration originally missed this file entirely; the gap
+   **highest risk.** Fix = adopt the standard loss-space gap
+   `heldout_cost − cal_cost` (positive = overfit), not a custom sign flip.
+   The migration originally missed this file entirely; the gap
    sign inverts under cost and the detector silently stops flagging real
    overfit, writing a wrong `generalization.json` with no error and no test
    catching it.
@@ -906,6 +934,9 @@ it requires a baseline snapshot and reviewer sign-off, not a silent swap.
 - Beliakov, G., Pradera, A., & Calvo, T. (2007). *Aggregation functions: A guide
   for practitioners.* Springer. (Geometric mean as a conjunctive aggregation
   function.) https://doi.org/10.1007/978-3-540-73721-6
+- Carrell, A. M., Mallinar, N., Lucas, J., & Nakkiran, P. (2022). *The
+  calibration generalization gap.* arXiv. (Generalization gap as
+  `|Test Error − Train Error|`.) https://doi.org/10.48550/arXiv.2210.01964
 - Dächert, K., Gorski, J., & Klamroth, K. (2012). An augmented weighted
   Tchebycheff method with adaptively chosen parameters for discrete bicriteria
   optimization problems. *Computers & Operations Research, 39*(12), 2929–2943.
@@ -940,6 +971,9 @@ it requires a baseline snapshot and reviewer sign-off, not a silent swap.
   Transactions on Evolutionary Computation, 10*(1), 50–66. (Origin of the
   augmented Tchebycheff `ρ = 0.05` convention in surrogate MOO.)
   https://doi.org/10.1109/TEVC.2005.851274
+- Liang, S., Sun, R., & Srikant, R. (2021). *Achieving small test error in mildly
+  overparameterized neural networks.* arXiv. (Test error = training error +
+  generalization gap.) https://doi.org/10.48550/arXiv.2104.11895
 - Miettinen, K. (1998). *Nonlinear Multiobjective Optimization.* Kluwer.
   https://doi.org/10.1007/978-1-4615-5563-6
 - Rojas-Gonzalez, S., Jalali, H., & Van Nieuwenhuyse, I. (2018). A
@@ -947,11 +981,18 @@ it requires a baseline snapshot and reviewer sign-off, not a silent swap.
   *Proceedings of the Winter Simulation Conference*, 2155–2166. (Reproduces the
   ParEGO augmented Tchebycheff with `ρ = 0.05` and `[0,1]` normalization.)
   https://doi.org/10.1109/WSC.2018.8632322
+- Schneider, L., Bischl, B., & Feurer, M. (2025). *Overtuning in hyperparameter
+  optimization.* arXiv. (Absolute/relative "overtuning" measures; relative
+  overtuning `> 1` ⇒ all test gains lost; robust resampling as mitigation.)
+  https://doi.org/10.48550/arXiv.2506.19540
 - Steuer, R. E., & Choo, E.-U. (1983). An interactive weighted Tchebycheff
   procedure for multiple objective programming. *Mathematical Programming,
   26*(3), 326–344. https://doi.org/10.1007/BF02591870
 - Tripp, A. (2025). *Chebyshev scalarization explained.*
   https://www.austintripp.ca/blog/2025-05-12-chebyshev-scalarization/
+- Zhang, A., Lipton, Z. C., Li, M., & Smola, A. J. *Dive into Deep Learning*
+  (§ Generalization). (Generalization gap = test error − training error.)
+  https://d2l.ai/chapter_multilayer-perceptrons/generalization-deep.html
 - Zhang, Q., & Li, H. (2007). MOEA/D: A multiobjective evolutionary algorithm
   based on decomposition. *IEEE Transactions on Evolutionary Computation, 11*(6),
   712–731. (Weighted-sum / Tchebycheff / PBI decomposition; PBI penalty `θ`.)
