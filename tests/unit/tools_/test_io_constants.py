@@ -157,6 +157,26 @@ class TestLiteralAliases:
         assert set(get_args(FailureSource)) == {"python", "slurm"}
 
 
+class TestCompositeBlendLiteral:
+    """``CompositeBlend`` is the serialized ``CompositeScorer.blend`` value set."""
+
+    def test_members_are_the_two_supported_blends(self):
+        from typing import get_args
+
+        from phenotypic.tools_.typing_ import CompositeBlend
+
+        assert set(get_args(CompositeBlend)) == {"tchebycheff", "weighted_mean"}
+
+    def test_exported_from_tune_package(self):
+        # The blend is a public field value set; it must be importable where the
+        # scorer is, or GUI / from_json callers cannot name it.
+        from typing import get_args
+
+        from phenotypic.tune import CompositeBlend
+
+        assert "tchebycheff" in get_args(CompositeBlend)
+
+
 # ---------------------------------------------------------------------------
 # Filename / dirname constants — concrete-value sanity
 # ---------------------------------------------------------------------------

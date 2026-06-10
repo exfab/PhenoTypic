@@ -98,6 +98,9 @@ from ._search_space import (
 )
 from ._spec import Budget, TuningSpec
 
+# --- Phase 3: composite blend selector (serialized CompositeScorer.blend value) -
+from phenotypic.tools_.typing_ import CompositeBlend
+
 # --- Phase 1b: strategy configs (serializable; build live SearchStrategy) ------
 # --- Phase 2 (chunk 2): OptunaConfig (registry round-trip; builds OptunaStrategy)
 from ._strategies import (
@@ -139,6 +142,7 @@ __all__ = [
     # Phase 4 chunk B: supervised + composite scorers + GT loader
     "GroundTruthMasks",
     "SupervisedScorer",
+    "CompositeBlend",
     "CompositeScorer",
     # Phase 1c: evaluation
     "Evaluator",
