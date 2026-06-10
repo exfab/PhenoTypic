@@ -42,6 +42,52 @@ if TYPE_CHECKING:  # pragma: no cover
 _HIDDEN_STYLE = {"display": "none"}
 _LINEAR_ZOOM_ICON_SIZE = 15
 
+# --- Fixed node-card width -------------------------------------------------
+# Linear node cards are a fixed width so the spine reads as a tidy filmstrip.
+# The width is frozen at server-build time to fit the widest *operation class
+# label* in the registry, so no node title truncates. The title button keeps
+# its ellipsis only as a safety net for unusually long user-set custom labels.
+#: Per-character advance of the title font (``--font-size-body-lg``, ~17px,
+#: proportional). Measured ~9.0 px/char on the longest label; padded so
+#: wide-glyph names (W/M/G/O) still fit without clipping.
+_LINEAR_TITLE_CHAR_PX = 9.7
+#: Fixed non-title chrome around the operation-name row: two 24px port
+#: columns + the grid gaps + the body's horizontal padding. The stage
+#: badge and help "?" no longer count — they sit on their own row above
+#: the name, so the title spans the full card body. Padded for headroom.
+_LINEAR_CARD_CHROME_PX = 96
+#: Never narrower than the legacy fixed card.
+_LINEAR_CARD_WIDTH_FLOOR = 220
+
+#: Memoised fixed card width — computed once ("server build" time) and frozen.
+_linear_card_width_px: "int | None" = None
+
+
+def _linear_card_width() -> int:
+    """Return the fixed linear node-card width (px), sized to the longest op.
+
+    Enumerates every registered :class:`ImageOperation` via the shared
+    :func:`~phenotypic.gui._operation_registry.get_registry` singleton and
+    sizes the card to render the longest class name (e.g.
+    ``GridOversizedObjectRemover``) without the title ellipsis kicking in.
+    Memoised: the first call freezes the width for the life of the server,
+    so every card — present and future — renders at one uniform size.
+
+    Falls back to :data:`_LINEAR_CARD_WIDTH_FLOOR` if the registry is empty.
+    """
+    global _linear_card_width_px
+    if _linear_card_width_px is None:
+        from phenotypic.gui._operation_registry import get_registry
+
+        names = [info.name for info in get_registry().get_all().values()]
+        longest_chars = max((len(name) for name in names), default=0)
+        title_px = longest_chars * _LINEAR_TITLE_CHAR_PX
+        _linear_card_width_px = max(
+            _LINEAR_CARD_WIDTH_FLOOR,
+            int(round(title_px)) + _LINEAR_CARD_CHROME_PX,
+        )
+    return _linear_card_width_px
+
 
 def _target_matches(a: LinearTarget, b: LinearTarget) -> bool:
     return target_to_dict(a) == target_to_dict(b)
@@ -323,16 +369,6 @@ def _stage_badge_label(block: BlockNode) -> str:
     return "OP"
 
 
-def _active_target_strip(target: LinearTarget) -> html.Div:
-    return html.Div(
-        [
-            html.Span("Active target", className="linear-target-strip-label"),
-            html.Span(_port_label(target), className="linear-target-strip-value"),
-        ],
-        className="linear-target-strip",
-    )
-
-
 def _side_node_actions(state: BuilderState, block: BlockNode) -> Optional[html.Div]:
     """Render selected-node reorder/delete actions for the side loader."""
 
@@ -548,20 +584,13 @@ def _block_card(
             left_port,
             html.Div(
                 [
+                    # Top row: stage tag + info "?" tooltip only. The
+                    # operation name moves to its own full-width row below
+                    # so the card stays narrow (the title no longer shares
+                    # horizontal space with the badge / help button).
                     html.Div(
                         [
                             html.Div(badges, className="linear-node-badges"),
-                            html.Button(
-                                title,
-                                id=ids.linear_node_action_id(
-                                    action="select",
-                                    scope_path=scope_path,
-                                    block_id=block.block_id,
-                                ),
-                                type="button",
-                                n_clicks=0,
-                                className="linear-node-title-button",
-                            ),
                             *_help_button(
                                 action_scope="node",
                                 scope_path=scope_path,
@@ -570,6 +599,17 @@ def _block_card(
                             ),
                         ],
                         className="linear-node-header",
+                    ),
+                    html.Button(
+                        title,
+                        id=ids.linear_node_action_id(
+                            action="select",
+                            scope_path=scope_path,
+                            block_id=block.block_id,
+                        ),
+                        type="button",
+                        n_clicks=0,
+                        className="linear-node-title-button",
                     ),
                     html.Div(param_rows, className="linear-node-params"),
                 ],
@@ -643,13 +683,7 @@ def build_linear_map_section(
 
     header = html.Div(
         [
-            html.Div(
-                [
-                    html.H6("Pipeline map", className="mb-0"),
-                    html.Div("Fixed linear view", className="linear-map-kicker"),
-                ],
-                className="linear-map-title-group",
-            ),
+            html.H6("Pipeline map", className="mb-0"),
             _zoom_controls(),
         ],
         className="linear-map-header",
@@ -713,6 +747,10 @@ def build_linear_map_section(
             ),
         ],
         className="linear-map-section",
+        # Freeze the node-card width to fit the widest op label. Set as a CSS
+        # custom property here so it cascades to every `.linear-node-card`
+        # descendant (the cards read `var(--linear-node-card-width)`).
+        style={"--linear-node-card-width": f"{_linear_card_width()}px"},
     )
 
 
@@ -890,15 +928,10 @@ def _side_param_row(
 
 
 def _side_loader_empty(state: BuilderState) -> html.Div:
-    active_target = resolve_selected_target(state)
     return html.Div(
         [
-            _active_target_strip(active_target),
             html.Div(
-                [
-                    html.Div("TARGET", className="linear-side-badge"),
-                    html.H5("Side loader", className="linear-side-title"),
-                ],
+                html.H5("Side loader", className="linear-side-title"),
                 className="linear-side-header",
             ),
             html.P("Select a node to edit parameters.", className="text-muted mb-0"),
@@ -949,7 +982,7 @@ def build_linear_side_loader(
         className="mb-3",
     )
 
-    body: List[Any] = [_active_target_strip(active_target), header, label_input]
+    body: List[Any] = [header, label_input]
     node_actions = _side_node_actions(state, block)
     if node_actions is not None:
         body.append(node_actions)

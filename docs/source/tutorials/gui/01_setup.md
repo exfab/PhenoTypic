@@ -93,8 +93,9 @@ The landing page shows:
 
 - **Top bar** — a `«` chevron that hides the file explorer (covered on
   the [next page](02_file_explorer.md)), the `PhenoTypic GUI` title, the
-  sandbox-root chip, the `Home` / `Builder` / `Viewer` / `Run` tabs, and
-  on the right an RSS readout plus a `?` help button.
+  sandbox-root chip, the navigation — a `Home` tab plus a **Pipeline ▾**
+  dropdown (Builder / Tune / Run) and a **Results ▾** dropdown (Viewer /
+  Analysis) — and on the right an RSS readout plus a `?` help button.
 - **Sidebar** — the sandbox tree. Each entry carries capability badges
   computed by the classifier (`img`, `cfg`, `out`); see the next page for
   details.

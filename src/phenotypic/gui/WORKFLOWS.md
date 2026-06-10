@@ -34,7 +34,7 @@ build.
 
 | ID             | Title                | Description                                                                | Capture function          | Tutorial page                            | Status     |
 | -------------- | -------------------- | -------------------------------------------------------------------------- | ------------------------- | ---------------------------------------- | ---------- |
-| setup          | Setup & landing      | First-launch home page tour: shell chrome, tab strip, sandbox label.       | `_capture_setup`          | `gui/01_setup.md`            | ✅ shipping |
+| setup          | Setup & landing      | First-launch home page tour: shell chrome, grouped tab nav (Home + Pipeline/Results dropdowns), sandbox label. | `_capture_setup`          | `gui/01_setup.md`            | ✅ shipping |
 | file_explorer  | File explorer        | Sidebar tree, capability badges, hidden + symlink toggles, refresh.        | `_capture_file_explorer`  | `gui/02_file_explorer.md`    | ✅ shipping |
 | build_pipeline | Build a pipeline     | Fixed linear port map with view-only zoom/fit controls, click-only palette insertion, green continuation target, side loader, Save / Load, and embedded-pipeline breadcrumbs. | `_capture_build_pipeline` | `gui/03_build_pipeline.md`   | ✅ shipping |
 | run_local      | Run locally          | Run console form, pipeline / input / output pickers, validate, run, log.   | `_capture_run_local`      | `gui/04_run_local.md`        | ✅ shipping |

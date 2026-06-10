@@ -696,6 +696,28 @@ code, pre, .text-monospace, .font-monospace {
  * a server-side no-op for asset compatibility. */
 .palette-button {
     cursor: pointer;
+    /* White fill so each operation reads as a distinct card against the
+     * warm page background (the outline-primary default is transparent,
+     * which let the buttons blend into the canvas). Hover/active still fill
+     * via the higher-specificity Bootstrap :hover rule. */
+    background-color: var(--color-white);
+    /* Flex row so a long operation name truncates with an ellipsis instead
+     * of wrapping to a second line (which made the cards uneven), while any
+     * trailing badge (PICK) stays pinned at the card's end. */
+    display: flex;
+    align-items: center;
+    gap: var(--sp-1);
+}
+.palette-button__label {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: left;
+    /* 2px breathing room above and below the operation name. */
+    padding-top: 2px;
+    padding-bottom: 2px;
 }
 .palette-button:focus-visible {
     outline: 2px solid var(--color-blue);
@@ -864,8 +886,10 @@ code, pre, .text-monospace, .font-monospace {
 .linear-map-header {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: var(--sp-3);
+    /* Zoom/fit tools sit just to the right of the "Pipeline map" title
+     * (left-clustered, not pushed to the far right). */
+    justify-content: flex-start;
+    gap: var(--sp-4);
     padding: var(--sp-3) var(--sp-4);
     border-bottom: 1px solid var(--color-rule);
 }
@@ -897,6 +921,7 @@ code, pre, .text-monospace, .font-monospace {
     align-items: center;
     gap: 4px;
 }
+
 
 .linear-map-zoom-control {
     width: 28px;
@@ -982,6 +1007,20 @@ code, pre, .text-monospace, .font-monospace {
     min-height: 0;
     overflow: auto;
     padding: var(--sp-5);
+    /* Grab-to-pan affordance (drag the empty canvas to scroll); buttons /
+     * ports keep their own pointer cursor. ``is-grabbing`` is toggled by
+     * builder.js while a pan is in progress. ``user-select: none`` stops a
+     * drag from selecting node-label text instead of panning. */
+    cursor: grab;
+    user-select: none;
+    /* Faint navy-tinted canvas so the white node cards read clearly against
+     * it (the surrounding section is pure white, which made white-on-white
+     * cards nearly invisible). */
+    background: rgba(0, 54, 96, 0.05);
+}
+
+.linear-map.is-grabbing {
+    cursor: grabbing;
 }
 
 .linear-map-zoom-content {
@@ -990,6 +1029,238 @@ code, pre, .text-monospace, .font-monospace {
     min-height: 100%;
     transform-origin: left center;
     transition: transform 120ms ease;
+}
+
+/* ========================================================================= *
+ * Inspector slide-over
+ * The inspector docks as an overlay on the canvas's right edge instead of
+ * consuming a third column. A rounded tab handle tucked half-under its
+ * upper-left edge toggles it; ``builder.js`` flips ``.is-closed``.
+ * ========================================================================= */
+/* ---- Operations palette: resizable + collapsible column --------------- *
+ * Children of ``.builder-columns``: the palette pane, the drag divider, and
+ * the canvas. The wrapper owns ``--builder-palette-width`` (seeded inline,
+ * overridden clientside from the persisted value and on drag); the pane reads
+ * it so the width cascades. All behaviour is UI-only (builder.js). */
+.builder-columns {
+    display: flex;
+    align-items: stretch;
+}
+
+.builder-palette-pane {
+    width: var(--builder-palette-width, 320px);
+    flex: 0 0 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: width 160ms var(--ease-out);
+}
+
+/* Mid-drag the width tracks the pointer 1:1, so kill the ease transition. */
+.builder-columns.is-resizing .builder-palette-pane {
+    transition: none;
+}
+
+/* Collapsed: the pane folds to zero width; the divider's chevron reopens it. */
+.builder-columns.palette-collapsed .builder-palette-pane {
+    width: 0 !important;
+}
+
+.builder-palette-divider {
+    flex: 0 0 auto;
+    position: relative;
+    width: 12px;
+    margin: 0 var(--sp-1);
+    cursor: col-resize;
+    /* Hairline rule centred in the (wider) pointer hit area marks the column
+     * boundary; it thickens to the brand blue on hover. */
+    background: linear-gradient(var(--color-border), var(--color-border))
+        center / 1px 100% no-repeat;
+    touch-action: none;
+}
+.builder-palette-divider:hover {
+    background: linear-gradient(var(--color-blue), var(--color-blue)) center /
+        2px 100% no-repeat;
+}
+.builder-columns.palette-collapsed .builder-palette-divider {
+    cursor: default;
+}
+
+/* Collapse toggle: a small button centred on the divider. */
+.builder-palette-collapse {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 20px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-white);
+    color: var(--color-navy);
+    cursor: pointer;
+    line-height: 1;
+    z-index: 2;
+}
+.builder-palette-collapse:hover {
+    border-color: var(--color-blue);
+    color: var(--color-blue);
+}
+.builder-palette-collapse__chevron {
+    font-size: var(--font-size-body-lg);
+    transition: transform 160ms var(--ease-out);
+}
+/* Flip the chevron to point the way the pane will move when toggled. */
+.builder-columns.palette-collapsed .builder-palette-collapse__chevron {
+    transform: rotate(180deg);
+}
+
+/* Canvas fills the width remaining beside the palette. */
+.builder-columns > .linear-builder-map-column {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+/* Page-scroll buffer below the builder body. The container above is exactly
+ * one scroll-pane tall, so this element overflows downward and gives the
+ * pane something to scroll into — enough to lift the canvas to the screen's
+ * vertical centre. As an explicit element its height reliably counts toward
+ * the scroll container's scrollHeight (a trailing margin would not). */
+.builder-bottom-buffer {
+    height: 25vh;
+    flex-shrink: 0;
+    pointer-events: none;
+}
+
+.builder-body-wrap {
+    position: relative;
+    /* Clip ONLY horizontally so the slide-over translated off the right edge
+     * (closed) is hidden instead of widening the page — while leaving the
+     * vertical axis visible so the columns are never cut off below the fold.
+     * (``overflow-x: clip`` is the one value that doesn't force overflow-y
+     * to ``auto`` the way ``hidden`` would.) */
+    overflow-x: clip;
+}
+
+.builder-slideover {
+    position: absolute;
+    /* Align the panel + tab with the pipeline-map canvas, which the body
+     * row's vertical gutter (g-3 == 1rem) pushes down from the wrap top. */
+    top: var(--sp-4);
+    right: 0;
+    height: calc(100% - var(--sp-4));
+    width: 360px;
+    max-width: 92%;
+    z-index: 30;
+    display: flex;
+    transition: transform 240ms var(--ease-out);
+    transform: translateX(0);
+}
+
+.builder-slideover.is-closed {
+    /* Slide the panel off the right edge; the tab handle (pulled left) stays
+     * poking out at the canvas edge so it can be clicked to re-open. */
+    transform: translateX(100%);
+}
+
+.builder-slideover__panel {
+    position: relative;
+    z-index: 1;
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background: var(--color-white);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-lg);
+    padding: var(--sp-3);
+    overflow: hidden;
+}
+
+/* Inside the slide-over the inspector is already framed by the panel, so
+ * drop the side-loader's own card frame to avoid a box-in-box. */
+.builder-slideover .linear-side-loader {
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+/* Tab handle: a vertical bookmark tab on the panel's upper-left edge with
+ * vertical text. It sticks out to the left over the canvas with its inner
+ * edge tucked a few px under the panel so it reads as attached. Rounded on
+ * the outer (left) corners only. */
+.builder-slideover-tab {
+    /* width of the tab tucked under the panel's left edge (hidden half) */
+    --tab-tuck: var(--sp-2);
+    position: absolute;
+    /* sit below the canvas header (title + zoom/fit tools) so the tab never
+     * overlaps the top-left tool menu */
+    top: var(--sp-12);
+    left: 0;
+    /* sit to the left of the panel, sliding the inner edge under it by the
+     * tuck so the tab reads as attached to the panel's upper-left edge */
+    transform: translateX(calc(-100% + var(--tab-tuck)));
+    z-index: 0; /* behind the panel so the tucked inner edge is hidden */
+    /* vertical label at the top, arrow trailing at the bottom */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: var(--sp-1);
+    /* extra right padding == the tuck so the centered content lands in the
+     * VISIBLE (non-tucked) part of the tab, not the full width */
+    padding: var(--sp-2) calc(var(--sp-2) + var(--tab-tuck)) var(--sp-2)
+        var(--sp-2);
+    background: var(--color-navy);
+    color: var(--color-white);
+    border: 0;
+    border-radius: var(--radius) 0 0 var(--radius);
+    box-shadow: -2px 2px 6px rgba(0, 40, 74, 0.18);
+    font-family: var(--font-body);
+    font-size: var(--font-size-body-sm);
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    transition: background var(--transition);
+}
+
+.builder-slideover-tab:hover {
+    background: #00284a;
+}
+
+.builder-slideover-tab:focus-visible {
+    outline: 2px solid var(--color-blue);
+    outline-offset: 2px;
+}
+
+/* Vertical label flipped so the tops of the letters face left (reads
+ * bottom-to-top, like a left-hand spine label). */
+.builder-slideover-tab__label {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    transform: rotate(180deg);
+    white-space: nowrap;
+}
+
+/* The end arrow is a horizontal chevron that points the way the panel will
+ * move: open ⇒ points right ("push the panel away"); closed ⇒ flips to point
+ * left ("pull the panel out"). */
+.builder-slideover-tab__chevron {
+    font-size: var(--font-size-body-lg);
+    line-height: 1;
+    transition: transform 200ms var(--ease-out);
+}
+
+.builder-slideover.is-closed .builder-slideover-tab__chevron {
+    transform: scaleX(-1);
 }
 
 .linear-map-track {
@@ -1001,7 +1272,11 @@ code, pre, .text-monospace, .font-monospace {
 
 .linear-node-card {
     position: relative;
-    flex: 0 0 220px;
+    /* Width is frozen at server-build time to fit the widest operation
+     * class label (see _linear_card_width in _linear_layout.py), injected
+     * as --linear-node-card-width on the map section. The 220px fallback
+     * is the legacy width for when the variable is absent. */
+    flex: 0 0 var(--linear-node-card-width, 220px);
     min-height: 132px;
     display: grid;
     grid-template-columns: 24px minmax(0, 1fr) 24px;
@@ -1034,6 +1309,8 @@ code, pre, .text-monospace, .font-monospace {
 
 .linear-node-header {
     justify-content: space-between;
+    /* Separate the stage tag + "?" row from the operation-name row below. */
+    margin-bottom: var(--sp-1);
 }
 
 .linear-node-badges {
@@ -1066,15 +1343,24 @@ code, pre, .text-monospace, .font-monospace {
 }
 
 .linear-node-title-button {
-    min-width: 0;
-    flex: 1 1 auto;
+    /* The operation name sits on its own row below the badge / help row,
+     * spanning the full card body so it no longer competes for width. */
+    display: block;
+    width: 100%;
     color: var(--color-heading);
     background: transparent;
     border: 0;
     padding: 0;
     text-align: left;
     font-family: var(--font-body);
+    /* Node titles read as the card's primary label — bump from the
+     * inherited 15px body size for legibility. The card is sized to fit
+     * the longest op name at this size (see _linear_card_width). */
+    font-size: var(--font-size-body-lg);
     font-weight: 600;
+    line-height: var(--leading-snug);
+    /* Ellipsis stays as a safety net for unusually long user-set custom
+     * labels; the widest *operation class name* fits without truncation. */
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -1116,6 +1402,17 @@ code, pre, .text-monospace, .font-monospace {
     justify-content: center;
 }
 
+/* Center each port on the card body's vertical edge instead of letting it
+ * float in the inter-card gap. The offset is half the 24px port column
+ * (12px) plus the 8px grid gap that separates the column from the body. */
+.linear-node-port-left {
+    transform: translateX(calc(12px + var(--sp-2)));
+}
+
+.linear-node-port-right {
+    transform: translateX(calc(-12px - var(--sp-2)));
+}
+
 .linear-port-button,
 .linear-help-button,
 .linear-side-action,
@@ -1128,6 +1425,7 @@ code, pre, .text-monospace, .font-monospace {
     height: 24px;
     padding: 0;
     border: 2px solid var(--color-blue);
+    border-radius: 50%; /* circular ports */
     background: var(--color-white);
     color: var(--color-navy);
     line-height: 1;
@@ -1176,14 +1474,22 @@ code, pre, .text-monospace, .font-monospace {
     align-items: center;
 }
 
-.linear-connector-line,
-.linear-terminal-line {
-    width: 100%;
+.linear-connector-line {
+    /* Lengthen the wire on BOTH sides so it still meets the two ports now
+     * pulled onto their card edges (12px half-column + 8px gap each). */
+    width: calc(100% + 2 * (12px + var(--sp-2)));
+    margin: 0 calc(-12px - var(--sp-2));
     height: 2px;
     background: var(--color-blue);
 }
 
 .linear-terminal-line {
+    /* The terminal wires the last card's (edge-centered) output port to the
+     * floating "+" port, which is NOT edge-centered — so lengthen only the
+     * left end toward the moved port; the right end stays at the "+" port. */
+    width: calc(100% + 12px + var(--sp-2));
+    margin-left: calc(-12px - var(--sp-2));
+    height: 2px;
     background: var(--color-gold);
 }
 

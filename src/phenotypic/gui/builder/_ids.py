@@ -272,6 +272,24 @@ STORE_INSPECTOR_LIST_REORDER = "store-inspector-list-reorder"
 #: update this element's ``children`` directly from state mutations.
 LINEAR_MAP_CONTAINER = "linear-map-container"
 
+#: Inspector slide-over wrapper + its toggle tab. The inspector docks as an
+#: overlay on the canvas's right edge (it no longer shrinks the canvas); the
+#: tab handle on its upper-left edge toggles the ``is-closed`` class via a
+#: clientside listener (``builder.js``). The wrapper is stable across
+#: re-renders so the toggle state survives ``INSPECTOR_CONTAINER`` swaps.
+INSPECTOR_SLIDEOVER = "inspector-slideover"
+BTN_INSPECTOR_SLIDEOVER_TOGGLE = "btn-inspector-slideover-toggle"
+
+#: Operations-palette pane chrome. The flex columns wrapper owns the
+#: ``--builder-palette-width`` custom property and the ``palette-collapsed``
+#: state class; the divider is the drag handle (resize) carrying the collapse
+#: toggle button. All three are UI-only — driven clientside by ``builder.js``
+#: and persisted to localStorage; none write builder state.
+BUILDER_COLUMNS = "builder-columns"
+BUILDER_PALETTE_PANE = "builder-palette-pane"
+BUILDER_PALETTE_DIVIDER = "builder-palette-divider"
+BTN_PALETTE_COLLAPSE = "btn-palette-collapse"
+
 #: UI-only fixed-map zoom controls. These do not write builder state and are
 #: intentionally distinct from the retired Cytoscape canvas zoom ids.
 LINEAR_ZOOM_OUT = "linear-zoom-out"
@@ -1118,6 +1136,12 @@ __all__ = [
     "inspector_list_reorder_store_id",
     # Linear port-map additions
     "LINEAR_MAP_CONTAINER",
+    "INSPECTOR_SLIDEOVER",
+    "BTN_INSPECTOR_SLIDEOVER_TOGGLE",
+    "BUILDER_COLUMNS",
+    "BUILDER_PALETTE_PANE",
+    "BUILDER_PALETTE_DIVIDER",
+    "BTN_PALETTE_COLLAPSE",
     "LINEAR_ZOOM_OUT",
     "LINEAR_ZOOM_IN",
     "LINEAR_ZOOM_RESET",

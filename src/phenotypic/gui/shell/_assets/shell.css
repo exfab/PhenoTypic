@@ -206,6 +206,70 @@
   border-bottom-color: var(--color-gold);
 }
 
+/* ----- Dropdown tab groups (Pipeline / Results) -------------------------
+ * Each group is a dbc.DropdownMenu whose toggle reuses the .shell-tab look
+ * and whose menu is a navy panel matching the top bar. The toggle carries
+ * the gold active treatment whenever one of its member mounts is open. */
+.shell-tab-nav .shell-tab-group-menu {
+  display: inline-flex;
+  align-items: stretch;
+}
+
+/* The toggle is a Bootstrap .nav-link.dropdown-toggle; .shell-tab styles
+ * it (equal specificity, shell.css loads after Bootstrap so it wins). */
+.shell-tab-nav .shell-tab-group {
+  background: transparent;
+  cursor: pointer;
+}
+
+.shell-tab-nav .shell-tab-group::after {
+  margin-left: var(--sp-1);
+  vertical-align: middle;
+  opacity: 0.7;
+}
+
+.shell-tab-nav .shell-tab-group-active {
+  color: var(--color-gold);
+  border-bottom-color: var(--color-gold);
+}
+
+.shell-tab-nav .shell-tab-group-active::after {
+  opacity: 1;
+}
+
+/* The open menu panel: navy surface, translucent border, soft shadow. */
+.shell-tab-nav .dropdown-menu {
+  background: var(--color-navy);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  padding: var(--sp-1) 0;
+  margin-top: var(--sp-1);
+  min-width: 9rem;
+}
+
+.shell-tab-nav .dropdown-item,
+.shell-tab-nav .shell-tab-group-item {
+  color: rgba(255, 255, 255, 0.78);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  padding: var(--sp-2) var(--sp-3);
+  transition: color var(--transition), background-color var(--transition);
+}
+
+.shell-tab-nav .dropdown-item:hover,
+.shell-tab-nav .dropdown-item:focus {
+  color: var(--color-white);
+  background-color: rgba(255, 255, 255, 0.10);
+}
+
+.shell-tab-nav .dropdown-item.active,
+.shell-tab-nav .dropdown-item:active {
+  color: var(--color-gold);
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
 .shell-rss-readout {
   font-family: var(--font-mono);
   font-size: var(--text-xs);

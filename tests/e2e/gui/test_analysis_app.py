@@ -103,14 +103,21 @@ def test_analysis_mount_renders_empty_state(page: Page, hub_url: str) -> None:
 
 
 def test_analysis_tab_in_top_bar(page: Page, hub_url: str) -> None:
-    """The shell top bar lists Analysis as a navigable tab."""
+    """The shell top bar lists Analysis under the Results dropdown group."""
+    import re
+
     page.goto(hub_url + "/")
-    page.wait_for_selector("#shell-tab-analysis", timeout=10_000)
-    expect(page.locator("#shell-tab-analysis")).to_be_visible()
-    page.click("#shell-tab-analysis")
+    page.wait_for_selector("#shell-tab-group-results", timeout=10_000)
+    # Analysis is a member of the Results dropdown; open the group to
+    # reveal the item, then click it to navigate to /analysis/.
+    page.click("#shell-tab-group-results .dropdown-toggle")
+    analysis_item = page.locator("#shell-tab-analysis")
+    analysis_item.wait_for(state="visible", timeout=5_000)
+    analysis_item.click()
     page.wait_for_url("**/analysis/")
-    expect(page.locator("#shell-tab-analysis")).to_have_class(
-        "shell-tab shell-tab-active"
+    expect(page.locator("#shell-tab-analysis")).to_have_class(re.compile(r"\bactive\b"))
+    expect(page.locator("#shell-tab-group-results .dropdown-toggle")).to_have_class(
+        re.compile(r"shell-tab-group-active")
     )
 
 

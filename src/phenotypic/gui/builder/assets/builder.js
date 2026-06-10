@@ -307,8 +307,23 @@
         const next = clampZoom(zoom);
         found.viewport.__phenotypicLinearZoom = next;
         found.viewport.dataset.linearZoom = String(Number(next.toFixed(2)));
-        found.content.style.transformOrigin = "left center";
+        // Scale from the top-left so the map grows down/right into the
+        // scrollable directions (a centered origin would push the upper-left
+        // overflow into negative space the viewport can never reach).
+        found.content.style.transformOrigin = "left top";
         found.content.style.transform = `scale(${next})`;
+        // CSS transforms paint-scale but don't resize the layout box, so the
+        // viewport's scroll extent would stay frozen at the un-zoomed size and
+        // panning would "lock" once zoomed in. Reserve the extra scaled space
+        // with margins (which transforms ignore) so the scroll bounds grow to
+        // match what the user actually sees. `scrollWidth`/`scrollHeight` read
+        // the natural, transform-independent content extent.
+        const naturalWidth = found.content.scrollWidth || found.content.offsetWidth || 0;
+        const naturalHeight = found.content.scrollHeight || found.content.offsetHeight || 0;
+        const extraWidth = naturalWidth * (next - 1);
+        const extraHeight = naturalHeight * (next - 1);
+        found.content.style.marginRight = extraWidth > 0 ? `${extraWidth}px` : "0px";
+        found.content.style.marginBottom = extraHeight > 0 ? `${extraHeight}px` : "0px";
     }
 
     function zoomBy(factor) {
@@ -368,6 +383,310 @@
     }
 
     new MutationObserver(scheduleBind).observe(document.body, {
+        childList: true,
+        subtree: true,
+    });
+})();
+
+
+/* PhenoTypic Pipeline Builder — inspector slide-over toggle (UI-only).
+ *
+ * The inspector docks as a right-edge overlay; its tab handle flips the
+ * ``.is-closed`` class on the stable ``#inspector-slideover`` wrapper. The
+ * wrapper survives the inspector's inner re-renders, so the open/closed
+ * choice (persisted to localStorage) sticks across node selections. A
+ * MutationObserver re-binds after Dash swaps subtrees, mirroring the zoom
+ * controls above; a per-element flag keeps the listener single-bound.
+ */
+(function () {
+    "use strict";
+
+    const SLIDEOVER_ID = "inspector-slideover";
+    const STORAGE_KEY = "phenotypicBuilderInspectorClosed";
+
+    function bindSlideover() {
+        const slideover = document.getElementById(SLIDEOVER_ID);
+        if (!slideover || slideover.__phenotypicSlideoverBound) return;
+        const tab = slideover.querySelector(".builder-slideover-tab");
+        if (!tab) return;
+        slideover.__phenotypicSlideoverBound = true;
+
+        // Restore the persisted open/closed choice on first bind (both
+        // directions, so a previously-opened inspector re-opens even though
+        // the layout renders closed by default).
+        try {
+            const stored = window.localStorage.getItem(STORAGE_KEY);
+            if (stored === "1") {
+                slideover.classList.add("is-closed");
+            } else if (stored === "0") {
+                slideover.classList.remove("is-closed");
+            }
+        } catch (err) {
+            /* localStorage unavailable (private mode) — keep default. */
+        }
+
+        tab.addEventListener("click", function () {
+            const closed = slideover.classList.toggle("is-closed");
+            try {
+                window.localStorage.setItem(STORAGE_KEY, closed ? "1" : "0");
+            } catch (err) {
+                /* ignore persistence failures */
+            }
+        });
+    }
+
+    function scheduleSlideoverBind() {
+        requestAnimationFrame(bindSlideover);
+    }
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", scheduleSlideoverBind);
+    } else {
+        scheduleSlideoverBind();
+    }
+
+    new MutationObserver(scheduleSlideoverBind).observe(document.body, {
+        childList: true,
+        subtree: true,
+    });
+})();
+
+
+/* PhenoTypic Pipeline Builder — operations palette: collapse + resize.
+ *
+ * The palette pane's width lives in the ``--builder-palette-width`` custom
+ * property on the stable ``#builder-columns`` wrapper. The divider between the
+ * palette and the canvas is a ``col-resize`` drag handle; the small button on
+ * it toggles a ``palette-collapsed`` class. Both the width and the collapsed
+ * choice persist to localStorage and restore on first bind. A MutationObserver
+ * re-binds after Dash subtree swaps; per-element flags keep the listeners
+ * single-bound. UI-only — no Dash state is written.
+ */
+(function () {
+    "use strict";
+
+    const COLUMNS_ID = "builder-columns";
+    const DIVIDER_ID = "builder-palette-divider";
+    const PANE_ID = "builder-palette-pane";
+    const COLLAPSE_ID = "btn-palette-collapse";
+    const WIDTH_KEY = "phenotypicBuilderPaletteWidth";
+    const COLLAPSED_KEY = "phenotypicBuilderPaletteCollapsed";
+    const MIN_WIDTH = 180;
+    const MAX_WIDTH = 560;
+
+    function clampWidth(px) {
+        return Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, px));
+    }
+
+    function setWidth(columns, px) {
+        columns.style.setProperty("--builder-palette-width", px + "px");
+    }
+
+    function bindPalette() {
+        const columns = document.getElementById(COLUMNS_ID);
+        if (!columns || columns.__phenotypicPaletteBound) return;
+        const divider = document.getElementById(DIVIDER_ID);
+        const collapseBtn = document.getElementById(COLLAPSE_ID);
+        if (!divider || !collapseBtn) return;
+        columns.__phenotypicPaletteBound = true;
+
+        // Restore persisted width + collapsed state on first bind.
+        try {
+            const storedW = parseFloat(
+                window.localStorage.getItem(WIDTH_KEY) || ""
+            );
+            if (Number.isFinite(storedW)) {
+                setWidth(columns, clampWidth(storedW));
+            }
+            if (window.localStorage.getItem(COLLAPSED_KEY) === "1") {
+                columns.classList.add("palette-collapsed");
+            }
+        } catch (err) {
+            /* localStorage unavailable (private mode) — keep defaults. */
+        }
+
+        // Collapse toggle.
+        collapseBtn.addEventListener("click", function (event) {
+            event.stopPropagation();
+            const collapsed = columns.classList.toggle("palette-collapsed");
+            try {
+                window.localStorage.setItem(
+                    COLLAPSED_KEY,
+                    collapsed ? "1" : "0"
+                );
+            } catch (err) {
+                /* ignore persistence failures */
+            }
+        });
+
+        // Drag the divider to resize — unless the pointer-down landed on the
+        // collapse button, or the palette is currently collapsed.
+        let resizing = false;
+        let startX = 0;
+        let startWidth = 0;
+        let currentWidth = 0;
+
+        divider.addEventListener("pointerdown", function (event) {
+            if (event.button !== 0) return;
+            if (event.target.closest(".builder-palette-collapse")) return;
+            if (columns.classList.contains("palette-collapsed")) return;
+            resizing = true;
+            startX = event.clientX;
+            const pane = document.getElementById(PANE_ID);
+            startWidth = pane ? pane.getBoundingClientRect().width : 320;
+            currentWidth = startWidth;
+            columns.classList.add("is-resizing");
+            try {
+                divider.setPointerCapture(event.pointerId);
+            } catch (err) {}
+            event.preventDefault();
+        });
+
+        divider.addEventListener("pointermove", function (event) {
+            if (!resizing) return;
+            currentWidth = clampWidth(startWidth + (event.clientX - startX));
+            setWidth(columns, currentWidth);
+            event.preventDefault();
+        });
+
+        function endResize(event) {
+            if (!resizing) return;
+            resizing = false;
+            columns.classList.remove("is-resizing");
+            try {
+                divider.releasePointerCapture(event.pointerId);
+            } catch (err) {}
+            try {
+                window.localStorage.setItem(
+                    WIDTH_KEY,
+                    String(Math.round(currentWidth))
+                );
+            } catch (err) {
+                /* ignore persistence failures */
+            }
+        }
+
+        divider.addEventListener("pointerup", endResize);
+        divider.addEventListener("pointercancel", endResize);
+    }
+
+    function schedulePaletteBind() {
+        requestAnimationFrame(bindPalette);
+    }
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", schedulePaletteBind);
+    } else {
+        schedulePaletteBind();
+    }
+
+    new MutationObserver(schedulePaletteBind).observe(document.body, {
+        childList: true,
+        subtree: true,
+    });
+})();
+
+
+/* PhenoTypic Pipeline Builder — drag-to-pan the fixed linear map.
+ *
+ * Grab the empty canvas and drag to scroll the map (in addition to the
+ * wheel / scrollbars). Pointer-downs that land on an interactive control
+ * (node title button, port, help "?") are left alone so clicking still
+ * selects nodes; a drag past a small threshold suppresses the trailing
+ * click so a pan never accidentally selects a node. The viewport
+ * (#linear-map-container) is stable across re-renders, so a per-element
+ * flag keeps the listeners single-bound.
+ */
+(function () {
+    "use strict";
+
+    const VIEWPORT_ID = "linear-map-container";
+    const INTERACTIVE =
+        "button, a, input, select, textarea, [role='button']";
+    const THRESHOLD = 4;
+
+    function bindPan() {
+        const vp = document.getElementById(VIEWPORT_ID);
+        if (!vp || vp.__phenotypicPanBound) return;
+        vp.__phenotypicPanBound = true;
+
+        let panning = false;
+        let moved = false;
+        let startX = 0;
+        let startY = 0;
+        let startLeft = 0;
+        let startTop = 0;
+
+        vp.addEventListener("pointerdown", function (event) {
+            if (event.button !== 0) return; // left button only
+            if (event.target.closest(INTERACTIVE)) return; // let controls work
+            panning = true;
+            moved = false;
+            startX = event.clientX;
+            startY = event.clientY;
+            startLeft = vp.scrollLeft;
+            startTop = vp.scrollTop;
+            vp.classList.add("is-grabbing");
+            // Capture the pointer so move/up reliably reach the viewport even
+            // if the cursor leaves it or crosses other elements mid-drag.
+            try {
+                vp.setPointerCapture(event.pointerId);
+            } catch (err) {
+                /* pointer capture unsupported — fall back to bubbling */
+            }
+        });
+
+        vp.addEventListener("pointermove", function (event) {
+            if (!panning) return;
+            const dx = event.clientX - startX;
+            const dy = event.clientY - startY;
+            if (!moved && Math.abs(dx) + Math.abs(dy) < THRESHOLD) return;
+            moved = true;
+            vp.scrollLeft = startLeft - dx;
+            vp.scrollTop = startTop - dy;
+            event.preventDefault();
+        });
+
+        function endPan(event) {
+            if (!panning) return;
+            panning = false;
+            vp.classList.remove("is-grabbing");
+            try {
+                vp.releasePointerCapture(event.pointerId);
+            } catch (err) {
+                /* ignore */
+            }
+        }
+
+        vp.addEventListener("pointerup", endPan);
+        vp.addEventListener("pointercancel", endPan);
+
+        // Suppress the click that trails a real pan so it doesn't select a
+        // node. Capture phase so it beats the node's own click handler.
+        vp.addEventListener(
+            "click",
+            function (event) {
+                if (moved) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    moved = false;
+                }
+            },
+            true,
+        );
+    }
+
+    function schedulePanBind() {
+        requestAnimationFrame(bindPan);
+    }
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", schedulePanBind);
+    } else {
+        schedulePanBind();
+    }
+
+    new MutationObserver(schedulePanBind).observe(document.body, {
         childList: true,
         subtree: true,
     });

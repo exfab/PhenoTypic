@@ -20,6 +20,7 @@ generalises this to wrap the builder + viewer + run console mounts via
 from __future__ import annotations
 
 from pathlib import Path
+from typing import NamedTuple
 
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 from dash import dcc, html
@@ -51,6 +52,8 @@ from phenotypic.gui.shell._ids import (
     SHELL_SOURCE_IMAGE_ROOT_STORE,
     SHELL_TAB_ANALYSIS,
     SHELL_TAB_BUILDER,
+    SHELL_TAB_GROUP_PIPELINE,
+    SHELL_TAB_GROUP_RESULTS,
     SHELL_TAB_HOME,
     SHELL_TAB_RUN,
     SHELL_TAB_TUNE,
@@ -101,24 +104,47 @@ _TAB_HREFS = {
 
 _TAB_LABELS = {
     SHELL_TAB_HOME: "Home",
-    SHELL_TAB_BUILDER: "Pipelines",
+    SHELL_TAB_BUILDER: "Builder",
     SHELL_TAB_VIEWER: "Viewer",
     SHELL_TAB_RUN: "Run",
     SHELL_TAB_TUNE: "Tune",
     SHELL_TAB_ANALYSIS: "Analysis",
 }
 
-#: Display order for the top-bar tab nav. The sequence follows the user
-#: workflow: land on Home, compose a pipeline in Builder, tune its
-#: parameters in Tune, execute it from Run, inspect the output in Viewer,
-#: and run downstream stats in Analysis.
-TAB_DISPLAY_ORDER: tuple[str, ...] = (
+
+class _NavGroup(NamedTuple):
+    """One dropdown tab group in the top-bar nav.
+
+    A group renders as a ``dbc.DropdownMenu`` whose toggle carries
+    ``label`` and ``id == group_id`` and whose menu items are the
+    ``members`` (each a ``SHELL_TAB_*`` id). The toggle gets the gold
+    ``shell-tab-group-active`` treatment whenever the active mount is one
+    of ``members``.
+    """
+
+    label: str
+    group_id: str
+    members: tuple[str, ...]
+
+
+#: Structured top-bar nav model. Entries are either a **leaf** tab id
+#: (a bare ``SHELL_TAB_*`` string, rendered as a plain anchor) or a
+#: :class:`_NavGroup` dropdown. The sequence follows the user workflow:
+#: land on Home, then the **Pipeline** group (compose in Builder, tune in
+#: Tune, execute in Run), then the **Results** group (inspect output in
+#: Viewer, run downstream stats in Analysis).
+NAV_MODEL: tuple["str | _NavGroup", ...] = (
     SHELL_TAB_HOME,
-    SHELL_TAB_BUILDER,
-    SHELL_TAB_TUNE,
-    SHELL_TAB_RUN,
-    SHELL_TAB_VIEWER,
-    SHELL_TAB_ANALYSIS,
+    _NavGroup(
+        "Pipeline",
+        SHELL_TAB_GROUP_PIPELINE,
+        (SHELL_TAB_BUILDER, SHELL_TAB_TUNE, SHELL_TAB_RUN),
+    ),
+    _NavGroup(
+        "Results",
+        SHELL_TAB_GROUP_RESULTS,
+        (SHELL_TAB_VIEWER, SHELL_TAB_ANALYSIS),
+    ),
 )
 
 
@@ -185,8 +211,8 @@ def build_top_bar(
             ),
             html.Nav(
                 [
-                    _build_tab(tab_id, active_tab=active_tab)
-                    for tab_id in TAB_DISPLAY_ORDER
+                    _build_nav_entry(entry, active_tab=active_tab)
+                    for entry in NAV_MODEL
                 ],
                 className="shell-tab-nav",
             ),
@@ -377,6 +403,15 @@ def _inject_shell_css(app) -> None:  # type: ignore[no-untyped-def]
 # Internals
 # ---------------------------------------------------------------------------
 
+def _build_nav_entry(
+    entry: "str | _NavGroup", *, active_tab: str
+):  # type: ignore[no-untyped-def]
+    """Render one :data:`NAV_MODEL` entry — a leaf tab or a dropdown group."""
+    if isinstance(entry, _NavGroup):
+        return _build_tab_group(entry, active_tab=active_tab)
+    return _build_tab(entry, active_tab=active_tab)
+
+
 def _build_tab(tab_id: str, *, active_tab: str) -> html.A:
     href = _TAB_HREFS[tab_id]
     label = _TAB_LABELS[tab_id]
@@ -388,4 +423,41 @@ def _build_tab(tab_id: str, *, active_tab: str) -> html.A:
         id=tab_id,
         href=href,
         className=" ".join(classes),
+    )
+
+
+def _build_tab_group(
+    group: _NavGroup, *, active_tab: str
+) -> dbc.DropdownMenu:
+    """Render a dropdown tab group (``Pipeline`` / ``Results``).
+
+    The toggle is a pure menu opener (no own destination); the member
+    items are real cross-mount anchors (``external_link=True`` forces a
+    full-page navigation across the WSGI mounts, matching the leaf-tab
+    behaviour). The toggle carries ``shell-tab-group-active`` whenever the
+    active mount is one of the group's members, and the matching member
+    item renders with Bootstrap's ``active`` class.
+    """
+    is_active = active_tab in group.members
+    toggle_classes = ["shell-tab", "shell-tab-group"]
+    if is_active:
+        toggle_classes.append("shell-tab-group-active")
+    return dbc.DropdownMenu(
+        label=group.label,
+        id=group.group_id,
+        nav=True,
+        in_navbar=True,
+        toggleClassName=" ".join(toggle_classes),
+        className="shell-tab-group-menu",
+        children=[
+            dbc.DropdownMenuItem(
+                _TAB_LABELS[member],
+                id=member,
+                href=_TAB_HREFS[member],
+                active=(member == active_tab),
+                external_link=True,
+                className="shell-tab-group-item",
+            )
+            for member in group.members
+        ],
     )

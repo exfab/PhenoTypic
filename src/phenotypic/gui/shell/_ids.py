@@ -83,6 +83,15 @@ SHELL_TAB_RUN = "shell-tab-run"
 SHELL_TAB_ANALYSIS = "shell-tab-analysis"
 SHELL_TAB_TUNE = "shell-tab-tune"
 
+#: Dropdown-group toggle ids. The flat tab strip is consolidated into two
+#: grouped dropdowns: **Pipeline** (Builder / Tune / Run) and **Results**
+#: (Viewer / Analysis). Home stays a standalone leaf tab. The group toggle
+#: carries the gold ``shell-tab-group-active`` treatment whenever one of its
+#: member mounts is the active tab; the member items keep the ``SHELL_TAB_*``
+#: ids above so existing selectors/handoff wiring are untouched.
+SHELL_TAB_GROUP_PIPELINE = "shell-tab-group-pipeline"
+SHELL_TAB_GROUP_RESULTS = "shell-tab-group-results"
+
 # ---------------------------------------------------------------------------
 # Sidebar
 # ---------------------------------------------------------------------------
@@ -196,6 +205,8 @@ __all__ = [
     "SHELL_TAB_RUN",
     "SHELL_TAB_ANALYSIS",
     "SHELL_TAB_TUNE",
+    "SHELL_TAB_GROUP_PIPELINE",
+    "SHELL_TAB_GROUP_RESULTS",
     "SHELL_SIDEBAR",
     "SHELL_SIDEBAR_TREE",
     "SHELL_SIDEBAR_REFRESH",
