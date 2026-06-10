@@ -46,7 +46,6 @@ def _load_dotenv() -> None:
 
 _load_dotenv()
 
-
 #: Env var carrying a live Postgres URL for the gated tune study-DB tests. When
 #: unset (after loading ``.env``), every ``@pytest.mark.postgres`` test is skipped
 #: so the default suite needs no database.
@@ -80,3 +79,16 @@ def pytest_collection_modifyitems(config, items):
             item.add_marker(skip_pg)
         if skip_slurm is not None and "slurm" in item.keywords:
             item.add_marker(skip_slurm)
+
+
+def pytest_xdist_auto_num_workers(config) -> int:
+    """Use SLURM-allocated CPUs when available, else fall back to affinity mask."""
+    slurm_cpus = os.environ.get("SLURM_CPUS_PER_TASK")
+    if slurm_cpus is not None:
+        return int(slurm_cpus)
+    # Affinity mask respects cgroups/containers; cpu_count() does not
+    try:
+        return len(os.sched_getaffinity(0))
+    except AttributeError:
+        # sched_getaffinity not available on macOS/Windows
+        return os.cpu_count() or 1
