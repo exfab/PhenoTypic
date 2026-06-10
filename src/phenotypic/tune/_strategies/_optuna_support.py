@@ -90,11 +90,12 @@ def set_trial_user_attrs(
     if getattr(result, "suspicious", False):
         trial.set_user_attr(PHENO_SUSPICIOUS, True)
 
-#: Every objective in a tuning study is normalized higher-is-better
-#: (robust-eval §5), so a single-objective study (and every axis of a
-#: multi-objective one) maximizes. The one canonical ``"maximize"`` literal the
-#: strategy, the study store, and the multi-objective inference all share.
-_MAXIMIZE: Final[str] = "maximize"
+#: Every objective in a tuning study is normalized to a bounded ``[0,1]`` **cost**
+#: (lower-is-better, ``0`` perfect, ``1`` worst — cost convention §4), so a
+#: single-objective study (and every axis of a multi-objective one) **minimizes**.
+#: The one canonical ``"minimize"`` literal the strategy, the study store, and the
+#: multi-objective inference all share.
+_MINIMIZE: Final[str] = "minimize"
 
 
 def is_multi_objective_directions(directions: Optional[Sequence[str]]) -> bool:
@@ -119,7 +120,7 @@ def study_objective_kwargs(
 
     Maps the per-objective directions onto the mutually-exclusive ``create_study``
     objective argument: ``{"directions": [...]}`` for a multi-objective study,
-    else ``{"direction": "maximize"}`` for the single-objective scalar path. The
+    else ``{"direction": "minimize"}`` for the single-objective scalar path. The
     one place that decides the create-study objective shape, shared by
     ``OptunaStrategy`` and ``OptunaStudyStore``.
 
@@ -129,12 +130,12 @@ def study_objective_kwargs(
 
     Returns:
         ``{"directions": list(directions)}`` when multi-objective, else
-        ``{"direction": _MAXIMIZE}``.
+        ``{"direction": _MINIMIZE}``.
     """
     if is_multi_objective_directions(directions):
         assert directions is not None  # narrowed by is_multi_objective_directions
         return {"directions": list(directions)}
-    return {"direction": _MAXIMIZE}
+    return {"direction": _MINIMIZE}
 
 
 def _require_optuna() -> ModuleType:
