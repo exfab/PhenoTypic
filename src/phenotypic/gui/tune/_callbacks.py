@@ -101,6 +101,15 @@ _NOTE_LIVE_UNREACHABLE: str = (
     "Showing the last finished trials."
 )
 
+#: The note for a pre-cutover ("tune", maximize) run reached after the cost
+#: cutover: its study can't be opened by the new name, and even if it could the
+#: stored cost/score meaning is inverted, so the only safe action is a re-run.
+_NOTE_LEGACY_STUDY: str = (
+    "this run predates the cost cutover (study 'tune') -- its results use the "
+    "old higher-is-better convention and can't be monitored live. Re-run it "
+    "with the current phenotypic.tune to get cost-convention results."
+)
+
 
 def _source_payload_for_tune_image_source(
     sandbox: "SandboxRoot",
@@ -516,21 +525,50 @@ def read_study_for_monitor(
     future: "Future[_ReadableStore]" = _LIVE_OPEN_POOL.submit(_open_live_study, root)
     try:
         return future.result(timeout=_LIVE_CONNECT_TIMEOUT_S), ""
-    except FutureTimeout:
+    except FutureTimeout as exc:
         logger.warning(
             "Live tune study open timed out after %.1fs (url=%s); "
             "degrading to journal.",
             _LIVE_CONNECT_TIMEOUT_S,
             root.storage_url,
         )
-        return _load_journal(root), _NOTE_LIVE_UNREACHABLE
-    except Exception:  # noqa: BLE001 - any open/connect error degrades
+        return _load_journal(root), _monitor_degrade_note(root, exc)
+    except Exception as exc:  # noqa: BLE001 - any open/connect error degrades
         logger.warning(
             "Live tune study open failed (url=%s); degrading to journal.",
             root.storage_url,
             exc_info=True,
         )
-        return _load_journal(root), _NOTE_LIVE_UNREACHABLE
+        return _load_journal(root), _monitor_degrade_note(root, exc)
+
+
+def _monitor_degrade_note(root: "TuneRunRoot", error: BaseException) -> str:
+    """Pick the Monitor degrade note for a failed live-study open.
+
+    A pre-cutover run (its marker/spec still names the legacy ``"tune"`` study)
+    gets a friendly re-run message; everything else keeps the generic
+    "couldn't reach the live study" note. Reuses the Phase-2 legacy-study
+    detector (the same predicate the CLI startup guard uses) so the GUI and CLI
+    can't disagree about what "legacy" means.
+
+    Args:
+        root: The bound tune output handle being read.
+        error: The open/connect exception that triggered the degrade. Retained
+            for intent + future detector hooks; the dispositive signal is the
+            recorded ``study_name``, so a legacy run gets the legacy note even
+            when the failure mode is a timeout.
+
+    Returns:
+        The friendly legacy note for a pre-cutover run, else the generic
+        unreachable note.
+    """
+    # Lazy import: the helper lives behind the tune extra; importing it
+    # function-local keeps _callbacks importable without optuna.
+    from phenotypic.tune._strategies._optuna_support import is_legacy_study_name
+
+    if is_legacy_study_name(root.study_name):
+        return _NOTE_LEGACY_STUDY
+    return _NOTE_LIVE_UNREACHABLE
 
 
 # ---------------------------------------------------------------------------
