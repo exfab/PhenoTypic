@@ -95,11 +95,11 @@ class JournalStudyStore:
         return len(self._trials)
 
     def best(self) -> Optional[Trial]:
-        """The non-failed trial with the highest score, or ``None``."""
+        """The non-failed trial with the lowest cost score, or ``None``."""
         valid = [t for t in self._trials if not t.failed]
         if not valid:
             return None
-        return max(valid, key=lambda t: t.score)
+        return min(valid, key=lambda t: t.score)
 
     def is_resumable_in_place(self) -> bool:
         """Always ``False``: the journal resumes by deterministic replay."""
