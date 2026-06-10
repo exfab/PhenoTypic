@@ -26,7 +26,7 @@ import dash
 import pandas as pd
 import plotly.graph_objects as go
 import polars as pl
-from dash import Input, Output
+from dash import Input, Output, State, ctx, no_update
 from flask import current_app
 
 from phenotypic.gui._config import (
@@ -43,6 +43,10 @@ from phenotypic.gui.results_viewer._heatmap_tab import _ids as ids
 from phenotypic.gui.results_viewer._heatmap_tab._figure import (
     AggregatorName,
     build_heatmap_figure,
+)
+from phenotypic.gui.results_viewer._picker_navigation import (
+    picker_button_disabled_states,
+    step_picker_value,
 )
 
 logger = logging.getLogger(__name__)
@@ -210,6 +214,41 @@ def register_heatmap_callbacks(app: dash.Dash) -> None:
             wrapper_style,
             caption,
         )
+
+    @app.callback(
+        Output(ids.HEATMAP_IMAGE_PICKER_ID, "value", allow_duplicate=True),
+        Input(ids.HEATMAP_IMAGE_PREV_ID, "n_clicks"),
+        Input(ids.HEATMAP_IMAGE_NEXT_ID, "n_clicks"),
+        State(ids.HEATMAP_IMAGE_PICKER_ID, "value"),
+        State(ids.HEATMAP_IMAGE_PICKER_ID, "options"),
+        prevent_initial_call=True,
+    )
+    def _step_heatmap_image(
+        _prev_clicks: int | None,
+        _next_clicks: int | None,
+        current: str | None,
+        options: list[dict[str, Any]] | None,
+    ) -> str | Any:
+        """Step the Heatmap image picker from the icon-only buttons."""
+        triggered = ctx.triggered_id
+        if triggered == ids.HEATMAP_IMAGE_PREV_ID:
+            return step_picker_value(current, options, "previous") or no_update
+        if triggered == ids.HEATMAP_IMAGE_NEXT_ID:
+            return step_picker_value(current, options, "next") or no_update
+        return no_update
+
+    @app.callback(
+        Output(ids.HEATMAP_IMAGE_PREV_ID, "disabled"),
+        Output(ids.HEATMAP_IMAGE_NEXT_ID, "disabled"),
+        Input(ids.HEATMAP_IMAGE_PICKER_ID, "value"),
+        Input(ids.HEATMAP_IMAGE_PICKER_ID, "options"),
+    )
+    def _sync_heatmap_image_nav_disabled(
+        current: str | None,
+        options: list[dict[str, Any]] | None,
+    ) -> tuple[bool, bool]:
+        """Disable Heatmap image navigation buttons at picker bounds."""
+        return picker_button_disabled_states(current, options)
 
 
 # ---------------------------------------------------------------------------

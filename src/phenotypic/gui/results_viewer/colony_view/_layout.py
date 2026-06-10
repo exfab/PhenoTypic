@@ -19,12 +19,13 @@ background canvas token for the page background.
 from __future__ import annotations
 
 import logging
+from typing import Any, cast
 
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 from dash import dcc, html
 from dash.development.base_component import Component
 
-from phenotypic.gui._config import TILE_DIM_DEFAULT
+from phenotypic.gui._config import COLONY_TILE_SIZE_DEFAULT, TILE_DIM_DEFAULT
 from phenotypic.gui._design import (
     COLOR_BG,
     COLOR_BLUE,
@@ -194,7 +195,7 @@ def _build_toolbar() -> Component:
         style={"marginLeft": "auto"},
     )
 
-    tile_size_slider = html.Div(
+    tile_size_stepper = html.Div(
         [
             html.Span(
                 "Tile size",
@@ -206,22 +207,40 @@ def _build_toolbar() -> Component:
                     "whiteSpace": "nowrap",
                 },
             ),
-            dcc.Slider(
-                id=ids.COLONY_TILE_SIZE_SLIDER_ID,
-                min=64,
-                max=400,
-                step=16,
-                value=150,
-                marks=None,
-                tooltip={"placement": "bottom", "always_visible": False},
+            html.Button(
+                "−",
+                id=ids.COLONY_TILE_SIZE_MINUS,
+                n_clicks=0,
+                title="Decrease tile size",
+                className="btn btn-outline-secondary btn-sm",
+                type="button",
+                **cast(Any, {"aria-label": "Decrease tile size"}),
+            ),
+            html.Span(
+                f"{COLONY_TILE_SIZE_DEFAULT} px",
+                id=ids.COLONY_TILE_SIZE_READOUT,
+                style={
+                    "fontSize": FONT_SIZE_LABEL,
+                    "minWidth": "3.75rem",
+                    "textAlign": "center",
+                    "whiteSpace": "nowrap",
+                },
+            ),
+            html.Button(
+                "+",
+                id=ids.COLONY_TILE_SIZE_PLUS,
+                n_clicks=0,
+                title="Increase tile size",
+                className="btn btn-outline-secondary btn-sm",
+                type="button",
+                **cast(Any, {"aria-label": "Increase tile size"}),
             ),
         ],
         style={
             "display": "flex",
             "alignItems": "center",
             "gap": "0.5rem",
-            "minWidth": "180px",
-            "flex": "0 0 220px",
+            "flex": "0 0 auto",
         },
     )
 
@@ -241,7 +260,7 @@ def _build_toolbar() -> Component:
                 [y_label, y_dropdown],
                 style={"display": "flex", "alignItems": "center", "gap": "0.25rem"},
             ),
-            tile_size_slider,
+            tile_size_stepper,
             dim_stepper,
             crop_size_info,
             refresh_button,

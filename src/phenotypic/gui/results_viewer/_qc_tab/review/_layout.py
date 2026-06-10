@@ -22,6 +22,8 @@ the Review-scoped ``dcc.Store``s.
 
 from __future__ import annotations
 
+from typing import Any, cast
+
 from dash import dcc, html
 from dash.development.base_component import Component
 
@@ -341,13 +343,23 @@ def _build_detail_action_bar() -> Component:
                 n_clicks=0,
                 style={"background": COLOR_NAVY, "borderColor": COLOR_NAVY},
             ),
-            dbc.Button(
-                "Next group →",
-                id=rids.QC_REVIEW_NEXT_BTN_ID,
-                color="secondary",
-                outline=True,
-                size="sm",
+            html.Button(
+                "‹",
+                id=rids.QC_REVIEW_PREV_BTN_ID,
                 n_clicks=0,
+                title="Previous group",
+                className="btn btn-outline-secondary btn-sm",
+                type="button",
+                **cast(Any, {"aria-label": "Previous group"}),
+            ),
+            html.Button(
+                "›",
+                id=rids.QC_REVIEW_NEXT_BTN_ID,
+                n_clicks=0,
+                title="Next group",
+                className="btn btn-outline-secondary btn-sm",
+                type="button",
+                **cast(Any, {"aria-label": "Next group"}),
             ),
             html.Div(style={"flex": "1 1 auto"}),
             dbc.Button(

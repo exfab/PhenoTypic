@@ -172,6 +172,44 @@ class TestTileDimConstants:
         assert out == 0.65
 
 
+class TestColonyTileSizeConstants:
+    """Rendered colony tile-size policy lives in ``_config``."""
+
+    def test_tile_size_bounds_and_default(self) -> None:
+        assert _config.COLONY_TILE_SIZE_MIN == 64
+        assert _config.COLONY_TILE_SIZE_MAX == 400
+        assert _config.COLONY_TILE_SIZE_STEP == 16
+        assert (
+            _config.COLONY_TILE_SIZE_MIN
+            <= _config.COLONY_TILE_SIZE_DEFAULT
+            <= _config.COLONY_TILE_SIZE_MAX
+        )
+
+    def test_step_colony_tile_size_steps_by_one_increment(self) -> None:
+        assert _config.step_colony_tile_size(150, +1) == 166
+        assert _config.step_colony_tile_size(150, -1) == 134
+
+    def test_step_colony_tile_size_clamps_to_bounds(self) -> None:
+        assert (
+            _config.step_colony_tile_size(_config.COLONY_TILE_SIZE_MAX, +1)
+            == _config.COLONY_TILE_SIZE_MAX
+        )
+        assert (
+            _config.step_colony_tile_size(_config.COLONY_TILE_SIZE_MIN, -1)
+            == _config.COLONY_TILE_SIZE_MIN
+        )
+
+    def test_stepped_colony_tile_size_from_trigger(self) -> None:
+        up = _config.stepped_colony_tile_size_from_trigger(
+            "plus", 150, plus_id="plus", minus_id="minus"
+        )
+        down = _config.stepped_colony_tile_size_from_trigger(
+            "minus", 150, plus_id="plus", minus_id="minus"
+        )
+        assert up == 166
+        assert down == 134
+
+
 class TestTileDimDesignToken:
     """The blend-toward colour is a tuple visual token in ``_design``."""
 

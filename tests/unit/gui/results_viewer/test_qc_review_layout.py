@@ -18,6 +18,7 @@ from dash import html
 from phenotypic.gui.results_viewer._qc_tab._layout import build_qc_tab_body
 from phenotypic.gui.results_viewer._qc_tab.review import _ids as rids
 from phenotypic.gui.results_viewer._qc_tab.review._callbacks import (
+    _previous_group,
     _render_summary_header,
     _row_metric_status,
     render_worklist_row_metric_cell,
@@ -102,6 +103,7 @@ def test_review_view_mounts_every_callback_target() -> None:
         rids.QC_REVIEW_DETAIL_HEADER_ID,
         rids.QC_REVIEW_GALLERY_ID,
         rids.QC_REVIEW_MARK_REVIEWED_BTN_ID,
+        rids.QC_REVIEW_PREV_BTN_ID,
         rids.QC_REVIEW_NEXT_BTN_ID,
         rids.QC_REVIEW_BULK_REMOVE_BTN_ID,
         rids.QC_REVIEW_BULK_RESTORE_BTN_ID,
@@ -114,6 +116,13 @@ def test_review_view_mounts_every_callback_target() -> None:
     }
     missing = expected - ids
     assert not missing, f"Review layout missing callback targets: {missing}"
+
+
+def test_previous_group_wraps_in_frozen_order() -> None:
+    order = ["a", "b", "c"]
+    assert _previous_group(order, "b") == "a"
+    assert _previous_group(order, "a") == "c"
+    assert _previous_group(order, "missing") == "missing"
 
 
 def test_summary_header_lays_out_horizontally() -> None:

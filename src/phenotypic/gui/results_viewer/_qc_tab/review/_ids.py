@@ -189,7 +189,11 @@ QC_REVIEW_GALLERY_ID: str = "qc-review-gallery"
 #: reviewed and (if changes were made) triggers the per-group recompute.
 QC_REVIEW_MARK_REVIEWED_BTN_ID: str = "qc-review-mark-reviewed-btn"
 
-#: "Next group" button — advances to the next unreviewed group in the
+#: Icon-only previous-group button — moves backward through the frozen
+#: visible worklist order without marking reviewed or recomputing.
+QC_REVIEW_PREV_BTN_ID: str = "qc-review-prev-btn"
+
+#: Icon-only next-group button — advances to the next unreviewed group in the
 #: frozen order, auto-marking the current one reviewed if it was curated.
 QC_REVIEW_NEXT_BTN_ID: str = "qc-review-next-btn"
 
@@ -263,6 +267,7 @@ __all__ = [
     "QC_REVIEW_DETAIL_HEADER_ID",
     "QC_REVIEW_GALLERY_ID",
     "QC_REVIEW_MARK_REVIEWED_BTN_ID",
+    "QC_REVIEW_PREV_BTN_ID",
     "QC_REVIEW_NEXT_BTN_ID",
     "QC_REVIEW_BULK_REMOVE_BTN_ID",
     "QC_REVIEW_BULK_RESTORE_BTN_ID",

@@ -249,6 +249,30 @@ def card_picker_id(idx: str) -> Dict[str, str]:
     return {"type": "card-picker", "index": idx}
 
 
+def card_picker_prev_id(idx: str) -> Dict[str, str]:
+    """Build the pattern-matching id for a card's previous-image button.
+
+    Args:
+        idx: Owning card's ``index``.
+
+    Returns:
+        Dict of shape ``{"type": "card-picker-prev", "index": idx}``.
+    """
+    return {"type": "card-picker-prev", "index": idx}
+
+
+def card_picker_next_id(idx: str) -> Dict[str, str]:
+    """Build the pattern-matching id for a card's next-image button.
+
+    Args:
+        idx: Owning card's ``index``.
+
+    Returns:
+        Dict of shape ``{"type": "card-picker-next", "index": idx}``.
+    """
+    return {"type": "card-picker-next", "index": idx}
+
+
 def card_osd_div_id(idx: str) -> Dict[str, str]:
     """Build the pattern-matching id for a card's OpenSeadragon container.
 
@@ -466,11 +490,19 @@ COLONY_CROP_SIZE_INFO_ID = "colony-crop-size-info"
 #: re-builds the tile DOM).
 COLONY_BTN_REFRESH_ID = "colony-btn-refresh"
 
-#: Slider controlling the rendered tile size in pixels (lets the user
-#: shrink to fit narrow screens or enlarge to inspect detail). The
+#: Store carrying the rendered colony tile size in CSS pixels. The
 #: server-side crop is still produced at the full bbox resolution; this
-#: slider only scales the on-screen ``<img>`` width/height via CSS.
-COLONY_TILE_SIZE_SLIDER_ID = "colony-tile-size-slider"
+#: value only scales the on-screen ``<img>`` width/height via CSS.
+STORE_COLONY_TILE_SIZE = "store-colony-tile-size"
+
+#: ``−`` button for the rendered colony tile size stepper.
+COLONY_TILE_SIZE_MINUS = "colony-tile-size-minus"
+
+#: ``+`` button for the rendered colony tile size stepper.
+COLONY_TILE_SIZE_PLUS = "colony-tile-size-plus"
+
+#: Read-only ``150 px`` tile-size readout between the stepper buttons.
+COLONY_TILE_SIZE_READOUT = "colony-tile-size-readout"
 
 #: Toggle that turns the per-cell objmap/contour overlay on or off.
 COLONY_OVERLAY_TOGGLE_ID = "colony-overlay-toggle"
@@ -683,6 +715,8 @@ __all__ = [
     "filter_row_remove_id",
     "card_id",
     "card_picker_id",
+    "card_picker_prev_id",
+    "card_picker_next_id",
     "card_osd_div_id",
     "card_details_toggle_id",
     "card_details_table_id",
@@ -709,7 +743,10 @@ __all__ = [
     "COLONY_TOOLBAR_ID",
     "COLONY_CROP_SIZE_INFO_ID",
     "COLONY_BTN_REFRESH_ID",
-    "COLONY_TILE_SIZE_SLIDER_ID",
+    "STORE_COLONY_TILE_SIZE",
+    "COLONY_TILE_SIZE_MINUS",
+    "COLONY_TILE_SIZE_PLUS",
+    "COLONY_TILE_SIZE_READOUT",
     "COLONY_OVERLAY_TOGGLE_ID",
     "COLONY_DIM_MINUS",
     "COLONY_DIM_PLUS",

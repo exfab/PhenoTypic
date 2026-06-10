@@ -48,6 +48,8 @@ def test_lazy_expand_collapse_state_machine(page: Page, hub_url: str) -> None:
         selector,
     )
     assert icon_before == "📁"
+    assert "‹" not in initial_text
+    assert "›" not in initial_text
 
     # 2. Expand.
     page.click(selector)
