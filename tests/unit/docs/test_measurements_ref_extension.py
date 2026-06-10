@@ -130,6 +130,34 @@ def test_metadata_index_encourages_standard_labels_and_mapping(
     assert "provide a mapping" in metadata_index
 
 
+def test_measurement_toctree_uses_category_labels(
+        tmp_path: Path,
+        monkeypatch: MonkeyPatch,
+) -> None:
+    docs_root = _build_reference_tree(tmp_path, monkeypatch)
+    measurements_index = (docs_root / "measurements" / "index.rst").read_text()
+
+    assert "   Size <size>" in measurements_index
+    assert "   Shape <shape>" in measurements_index
+    assert "   SIZE" not in measurements_index
+    assert "   SHAPE" not in measurements_index
+
+
+def test_metadata_index_embeds_overview_and_class_tables(
+        tmp_path: Path,
+        monkeypatch: MonkeyPatch,
+) -> None:
+    docs_root = _build_reference_tree(tmp_path, monkeypatch)
+    metadata_index = (docs_root / "metadata" / "index.rst").read_text()
+
+    assert "Metadata Tag Overview" in metadata_index
+    assert "Framework-populated image bookkeeping" in metadata_index
+    assert "Use for sample-level biological identity" in metadata_index
+    assert "METADATA\n--------" in metadata_index
+    assert "SAMPLE_METADATA\n---------------" in metadata_index
+    assert ".. list-table:: Category: **Metadata**" in metadata_index
+
+
 def test_generated_enum_pages_escape_rst_markup(
         tmp_path: Path,
         monkeypatch: MonkeyPatch,
