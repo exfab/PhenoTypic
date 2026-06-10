@@ -650,114 +650,183 @@
                   
   <section class="tex2jax_ignore mathjax_ignore" id="tune-co-pilot">
 <h1>Tune co-pilot<a class="headerlink" href="#tune-co-pilot" title="Link to this heading">#</a></h1>
-<p>The <code class="docutils literal notranslate"><span class="pre">Tune</span></code> tab opens a <strong>read-only</strong> co-pilot over a
-<code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">phenotypic.tune</span></code> output directory. It never re-optimizes — it
-<em>reads</em> a finished or in-flight tuning run’s markers, trial journal, and
-study so you can watch progress, compare candidate pipelines on real
-plates, review the search space, and compose the next run. The page is a
-four-view sub-tab stack:</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">Tune</span></code> tab is a full <strong>author → run → monitor</strong> co-pilot for
+hyperparameter tuning. From it you author a tuning spec over a base
+pipeline, launch the search (locally or on SLURM) straight from the
+browser, then watch the study, compare candidate pipelines on real
+plates, and export the winner. The page is organised as three top-level
+<strong>destinations</strong> — selected from the destination row at the top — with the
+classic four-view co-pilot living inside <strong>Monitor</strong>:</p>
 <ul class="simple">
-<li><p><strong>Monitor</strong> — the live study read: an objective curve (raw scores +
-running best), a parameter-importance bar chart, a winner-stability
-(generalization-gap) badge, and a trials table. A 3-second poll
-re-reads the study; if the live store is unreachable it degrades to the
-finished <code class="docutils literal notranslate"><span class="pre">trials.parquet</span></code> journal.</p></li>
-<li><p><strong>Curate</strong> — a shortlist of the best (and gap-flagged) trials. Pin two
-into the <strong>A</strong> / <strong>B</strong> slots and compare their colony overlays
-side-by-side (or as a single difference image) on any plate from the
-run’s image directory. “Set as winner” writes <code class="docutils literal notranslate"><span class="pre">best_pipeline.json</span></code>.</p></li>
-<li><p><strong>Space</strong> — the inferred search space, one editable knob-row per tuned
-target. Flat / presence knobs are editable (low / high / log or
-categorical choices); nested knobs are read-only. Export the edited
-space back to <code class="docutils literal notranslate"><span class="pre">tuning_spec.json</span></code>.</p></li>
-<li><p><strong>Launch</strong> — a form (strategy / trial budget / storage URL / <code class="docutils literal notranslate"><span class="pre">--screen</span></code>
-/ <code class="docutils literal notranslate"><span class="pre">--slurm</span></code>) and a live command card that mirrors the form into a real
+<li><p><strong>Setup</strong> — author a tuning spec: pick a base pipeline (or an existing
+spec) and a metadata layout for the default count scorer, review the
+inferred search space, and <strong>Continue</strong>.</p></li>
+<li><p><strong>Run</strong> — configure the launch (image source, output dir, strategy,
+budget, storage, compute, evaluation) and <strong>Deploy</strong> the run. A live
+command card mirrors the form into the real
 <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">phenotypic.tune</span> <span class="pre">run</span></code> invocation.</p></li>
+<li><p><strong>Monitor</strong> — the live read over the study. Switch among registered
+Local/SLURM runs, cancel a Local run, export the best pipeline, and use
+the four sub-tabs: <strong>Monitor</strong> (objective + importance figures, gap
+badge, trials table), <strong>Curate</strong> (A/B colony overlays), <strong>Space</strong>
+(search-space inference + export), and <strong>Launch</strong> (render the <code class="docutils literal notranslate"><span class="pre">run</span></code>
+command).</p></li>
 </ul>
+<div class="note admonition">
+<p class="admonition-title">This is no longer read-only</p>
+<p>Earlier versions of the co-pilot only <em>read</em> a finished tuning run and
+made you copy a command out to a terminal. The current co-pilot authors
+specs in <strong>Setup</strong> and <strong>launches</strong> them with <strong>Deploy</strong> in <strong>Run</strong> — the
+GUI starts the local runner or submits the SLURM fleet for you. Binding an
+existing run (below) is still strictly read-only.</p>
+</div>
 <section id="prerequisites">
 <h2>Prerequisites<a class="headerlink" href="#prerequisites" title="Link to this heading">#</a></h2>
 <ul class="simple">
-<li><p>A tune output directory produced by <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">phenotypic.tune</span> <span class="pre">run</span></code>,
-<strong>inside the GUI sandbox</strong> (the <code class="docutils literal notranslate"><span class="pre">--root</span></code> you launched <code class="docutils literal notranslate"><span class="pre">phenotypic-gui</span></code>
-with) so the run picker can reach it. It is recognised by its
+<li><p>A <strong>base pipeline</strong> (or tuning spec) JSON reachable <strong>inside the GUI
+sandbox</strong> (the <code class="docutils literal notranslate"><span class="pre">--root</span></code> you launched <code class="docutils literal notranslate"><span class="pre">phenotypic-gui</span></code> with), e.g. one
+exported from the <a class="reference internal" href="03_build_pipeline.html"><span class="std std-doc">pipeline builder</span></a>.</p></li>
+<li><p>A <strong>metadata layout</strong> CSV/Parquet inside the sandbox for the default
+<code class="docutils literal notranslate"><span class="pre">QCScorer</span></code> — one row per colony with the grouping column (e.g.
+<code class="docutils literal notranslate"><span class="pre">Metadata_ImageName</span></code>) so the count scorer has a path-backed source that
+round-trips into the spec.</p></li>
+<li><p>For the Curate overlays and (when monitoring an existing run) the run
+itself, the calibration <strong>image directory</strong> must be reachable inside the
+sandbox. A previously produced tune output is recognised by its
 <code class="docutils literal notranslate"><span class="pre">.pht-tune-cache/run.json</span></code> marker (written at run start, before any
-deliverable lands), so both an in-flight run and a finished run resolve.
-A finished run also carries <code class="docutils literal notranslate"><span class="pre">trials.parquet</span></code> and
-<code class="docutils literal notranslate"><span class="pre">deliverables/tuning_spec.json</span></code>.</p></li>
-<li><p>For the Curate overlays, the run’s calibration <strong>image directory</strong> must
-be reachable inside the GUI sandbox. The Image Source pre-fills from the
-marker’s <code class="docutils literal notranslate"><span class="pre">images_dir</span></code>; you can re-point it with the sandbox-bounded
-Image Source picker.</p></li>
+deliverable lands), so both in-flight and finished runs resolve.</p></li>
 </ul>
 </section>
-<section id="walkthrough">
-<h2>Walkthrough<a class="headerlink" href="#walkthrough" title="Link to this heading">#</a></h2>
-<p>Open the <code class="docutils literal notranslate"><span class="pre">Tune</span></code> tab. The co-pilot mounts <strong>run-unbound</strong> — an empty state
-with a short prompt and a <code class="docutils literal notranslate"><span class="pre">Bind</span> <span class="pre">run</span></code> button in the header:</p>
-<p><img alt="Tune co-pilot empty state: the pick-a-run prompt and the Bind-run button." src="../../_images/00_empty_state.png" /></p>
-<p>Click <code class="docutils literal notranslate"><span class="pre">Bind</span> <span class="pre">run</span></code> to open the <strong>run picker</strong> — a sandbox-bounded directory
-browser (the same security boundary the builder / run-console pickers
-enforce, so a tune output can only be bound from inside the GUI sandbox).
-Navigate to the run’s output directory and click <code class="docutils literal notranslate"><span class="pre">Bind</span> <span class="pre">this</span> <span class="pre">run</span></code>:</p>
-<p><img alt="Tune run picker: the sandbox-bounded directory browser." src="../../_images/00b_run_picker_modal.png" /></p>
-<p>Binding only <strong>reads</strong> the directory — it runs <code class="docutils literal notranslate"><span class="pre">TuneRunRoot.discover</span></code>
-over the run’s markers and, on success, swaps the page into the loaded
-four-view stack. A directory that is not a tune output (no
-<code class="docutils literal notranslate"><span class="pre">.pht-tune-cache/run.json</span></code>, <code class="docutils literal notranslate"><span class="pre">tuning_spec.json</span></code>, or <code class="docutils literal notranslate"><span class="pre">trials.parquet</span></code>) — or
-one outside the sandbox — is refused with a clear note next to the button,
-never a crash.</p>
-<p>Once bound, the <strong>Monitor</strong> view reads the study and renders the objective
-curve (raw per-trial scores plus the monotone running-best trace), the
-parameter-importance bars, the winner-stability badge, and the trials
-table. The 3-second poll keeps all four live while a run is still in
-flight:</p>
-<p><img alt="Tune Monitor: objective curve, importance bars, gap badge, trials table." src="../../_images/01_monitor.png" /></p>
-<p>Switch to <strong>Curate</strong>. The shortlist surfaces the top trials (plus any the
-gap badge flagged). Click a card to pin it into slot <strong>A</strong>, a second to
-pin <strong>B</strong>, then pick a plate — the two <code class="docutils literal notranslate"><span class="pre">go.Image</span></code> overlays render each
-trial’s pipeline applied to that plate so you can read the detection
+<section id="setup-author-a-tuning-spec">
+<h2>Setup — author a tuning spec<a class="headerlink" href="#setup-author-a-tuning-spec" title="Link to this heading">#</a></h2>
+<p>Open the <code class="docutils literal notranslate"><span class="pre">Tune</span></code> tab. It lands on the <strong>Setup</strong> destination. Point the
+<strong>Pipeline</strong> field at a base pipeline (or an existing tuning spec) and the
+<strong>Metadata</strong> field at the layout CSV/Parquet that feeds the default count
+scorer. The search-space and scorer sections stay locked until a pipeline
+is present, and <strong>Continue</strong> stays blocked until the scorer metadata is
+also supplied — so a GUI-authored spec is always launchable:</p>
+<p><img alt="Tune Setup: pipeline + metadata inputs unlock Continue." src="../../_images/00_setup.png" /></p>
+<p>The search-space and scorer sections stay locked until a pipeline is
+present; the gate note confirms the selected pipeline and metadata once
+both are supplied. Pressing <strong>Continue</strong> writes a typed, path-backed
+authored spec under <code class="docutils literal notranslate"><span class="pre">&lt;root&gt;/.phenotypic-gui/presets/tune/</span></code> and advances you
+to <strong>Run</strong>. (You review and edit the inferred search space itself on the
+<strong>Space</strong> sub-tab, below.)</p>
+</section>
+<section id="run-configure-and-launch">
+<h2>Run — configure and launch<a class="headerlink" href="#run-configure-and-launch" title="Link to this heading">#</a></h2>
+<p>The <strong>Run</strong> destination (unlocked once a pipeline is chosen) is the launch
+form. A live command card under the form mirrors every field into the real
+<code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">phenotypic.tune</span> <span class="pre">run</span></code> invocation — the same subcommand and flag
+names you would type by hand — so what you Deploy is exactly what you would
+run in a terminal:</p>
+<p><img alt="Tune Run: launch form, live command card, and Deploy." src="../../_images/01_run.png" /></p>
+<p>The form is grouped:</p>
+<ul class="simple">
+<li><p><strong>Inputs</strong> — an in-sandbox image-source override (blank falls back to the
+shared source root) and the output directory.</p></li>
+<li><p><strong>Strategy</strong> — the strategy (<code class="docutils literal notranslate"><span class="pre">grid</span></code> / <code class="docutils literal notranslate"><span class="pre">random</span></code> / <code class="docutils literal notranslate"><span class="pre">tpe</span></code> / <code class="docutils literal notranslate"><span class="pre">cmaes</span></code> / <code class="docutils literal notranslate"><span class="pre">gp</span></code> /
+<code class="docutils literal notranslate"><span class="pre">nsga2</span></code>), trial budget, and Optuna storage URL.</p></li>
+<li><p><strong>Compute</strong> — Local vs. SLURM, the two-round screening toggle, and the
+SLURM fleet sizing fields (workers, partition, memory, time).</p></li>
+<li><p><strong>Evaluation</strong> — held-out fraction and CV-group overrides.</p></li>
+</ul>
+<p>A pre-flight gate disables <strong>Deploy</strong> when the configuration cannot run —
+for example a <code class="docutils literal notranslate"><span class="pre">grid</span></code> search over a continuous <code class="docutils literal notranslate"><span class="pre">FloatRange</span></code>. Pressing
+<strong>Deploy</strong> registers the run in the shared run registry and starts it
+through the local runner (or submits the SLURM fleet) and switches you to
+<strong>Monitor</strong>. The GUI records the run’s mode and status; it does not parse
+or track a SLURM job id.</p>
+</section>
+<section id="monitor-watch-the-study">
+<h2>Monitor — watch the study<a class="headerlink" href="#monitor-watch-the-study" title="Link to this heading">#</a></h2>
+<p>The <strong>Monitor</strong> destination opens the live read over the study. A
+run-switcher lists every registered Local/SLURM run; the active run drives
+the figures. A Local run shows its stdout tail and a <strong>Cancel Local</strong>
+button (wrapped in a confirm prompt); SLURM runs show fleet status and are
+not killed from the GUI in v1. The objective curve plots the raw per-trial
+scores plus the monotone running-best trace, the importance bars rank the
+tuned parameters, the winner-stability badge flags a high-dispersion
+winner, and the trials table lists every trial. A 3-second poll keeps all
+four live while a run is in flight; if the live study store is unreachable
+the Monitor degrades to the finished <code class="docutils literal notranslate"><span class="pre">trials.parquet</span></code> journal and surfaces
+a note rather than blanking. <strong>Export best pipeline</strong> writes the run’s
+winner from <code class="docutils literal notranslate"><span class="pre">deliverables/best_params.json</span></code>:</p>
+<p><img alt="Tune Monitor: objective curve, importance bars, gap badge, trials table." src="../../_images/02_monitor.png" /></p>
+<section id="binding-an-existing-run-read-only">
+<h3>Binding an existing run (read-only)<a class="headerlink" href="#binding-an-existing-run-read-only" title="Link to this heading">#</a></h3>
+<p>You do not have to deploy from the GUI to monitor a run. Use <strong>Bind run</strong>
+in the page header to open a sandbox-bounded directory picker (the same
+security boundary the builder / run-console pickers enforce) and point it
+at any <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">phenotypic.tune</span></code> output directory:</p>
+<p><img alt="Tune run picker: the sandbox-bounded directory browser." src="../../_images/02b_run_picker_modal.png" /></p>
+<p>Binding only <strong>reads</strong> the directory — it runs <code class="docutils literal notranslate"><span class="pre">TuneRunRoot.discover</span></code> over
+the run’s markers and, on success, swaps in the loaded views. A directory
+that is not a tune output (no <code class="docutils literal notranslate"><span class="pre">.pht-tune-cache/run.json</span></code>,
+<code class="docutils literal notranslate"><span class="pre">tuning_spec.json</span></code>, or <code class="docutils literal notranslate"><span class="pre">trials.parquet</span></code>) — or one outside the sandbox — is
+refused with a clear note, never a crash. A live run resolves from its
+<code class="docutils literal notranslate"><span class="pre">run.json</span></code> marker before any deliverable lands, so an in-flight run shows
+on Monitor immediately.</p>
+</section>
+</section>
+<section id="curate-compare-candidates-on-real-plates">
+<h2>Curate — compare candidates on real plates<a class="headerlink" href="#curate-compare-candidates-on-real-plates" title="Link to this heading">#</a></h2>
+<p>Switch to the <strong>Curate</strong> sub-tab. The shortlist surfaces the top trials
+(plus any the gap badge flagged). Click a card to pin it into slot <strong>A</strong>, a
+second to pin <strong>B</strong>, then pick a plate — the two <code class="docutils literal notranslate"><span class="pre">go.Image</span></code> overlays render
+each trial’s pipeline applied to that plate so you can read the detection
 difference directly. Panning or zooming one overlay mirrors the other
 (linked pan/zoom); the <strong>Difference</strong> toggle collapses the pair into a
 single image that paints both / only-A / only-B objects. <code class="docutils literal notranslate"><span class="pre">Set</span> <span class="pre">as</span> <span class="pre">winner</span></code>
 writes the pinned trial’s pipeline to <code class="docutils literal notranslate"><span class="pre">best_pipeline.json</span></code>:</p>
-<p><img alt="Tune Curate: shortlist + A/B colony overlays on a plate." src="../../_images/02_curate.png" /></p>
-<p><strong>Space</strong> infers the search space from the bound run’s pipeline / spec
-and renders one knob-row per tuned target. Flat and presence knobs are
-editable — a range knob shows low / high / log inputs, a categorical knob
-shows a choice checklist — while nested knobs render read-only. Toggle a
-knob’s <code class="docutils literal notranslate"><span class="pre">tunable</span></code> switch to include or drop it, then <code class="docutils literal notranslate"><span class="pre">Export</span> <span class="pre">tuning_spec.json</span></code> to write the edited space back (the scorer is
-preserved):</p>
-<p><img alt="Tune Space: inferred search space with editable knob rows." src="../../_images/03_space.png" /></p>
+<p><img alt="Tune Curate: shortlist + A/B colony overlays on a plate." src="../../_images/03_curate.png" /></p>
+</section>
+<section id="space-review-and-edit-the-search-space">
+<h2>Space — review and edit the search space<a class="headerlink" href="#space-review-and-edit-the-search-space" title="Link to this heading">#</a></h2>
+<p><strong>Space</strong> infers the search space from the bound run’s pipeline / spec and
+renders one knob-row per tuned target. Flat and presence knobs are editable
+— a range knob shows low / high / log inputs, a categorical knob shows a
+choice checklist — while nested knobs render read-only. Toggle a knob’s
+<code class="docutils literal notranslate"><span class="pre">tunable</span></code> switch to include or drop it, then <code class="docutils literal notranslate"><span class="pre">Export</span> <span class="pre">tuning_spec.json</span></code> to
+write the edited space back (the scorer is preserved):</p>
+<p><img alt="Tune Space: inferred search space with editable knob rows." src="../../_images/04_space.png" /></p>
+</section>
+<section id="launch-render-the-next-command">
+<h2>Launch — render the next command<a class="headerlink" href="#launch-render-the-next-command" title="Link to this heading">#</a></h2>
 <p>Finally, <strong>Launch</strong> turns the next run into a copy-pasteable command. Set
 the strategy, trial budget, storage URL, and the <code class="docutils literal notranslate"><span class="pre">--screen</span></code> / <code class="docutils literal notranslate"><span class="pre">--slurm</span></code>
 toggles; the live command card mirrors the form into a real
 <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">phenotypic.tune</span> <span class="pre">run</span></code> invocation using the actual CLI subcommand
-and flag names:</p>
-<p><img alt="Tune Launch: strategy form + live run command card." src="../../_images/04_launch.png" /></p>
+and flag names. (This sub-tab is the read-only twin of the <strong>Run</strong>
+destination’s Deploy — use it when you would rather launch from a
+terminal.)</p>
+<p><img alt="Tune Launch: strategy form + live run command card." src="../../_images/05_launch.png" /></p>
 </section>
 <section id="common-gotchas">
 <h2>Common gotchas<a class="headerlink" href="#common-gotchas" title="Link to this heading">#</a></h2>
 <ul class="simple">
-<li><p><strong>The co-pilot is read-only.</strong> It never re-runs the optimizer — Launch
-only <em>composes</em> the command; you run it yourself. The import surface
-stays optuna-free, and the live study is opened lazily inside the
-Monitor poll callback only. <strong>Binding a run only reads its directory</strong> —
-the run picker validates the markers and never writes to the run dir.</p></li>
-<li><p><strong>The page mounts empty.</strong> Through <code class="docutils literal notranslate"><span class="pre">phenotypic-gui</span></code> the <code class="docutils literal notranslate"><span class="pre">/tune/</span></code> tab
-opens run-unbound; use <code class="docutils literal notranslate"><span class="pre">Bind</span> <span class="pre">run</span></code> to point it at a tune output. You can
-re-bind a different run at any time from the same header button.</p></li>
-<li><p><strong>A live run resolves before any deliverable lands.</strong> Discovery reads
-the <code class="docutils literal notranslate"><span class="pre">.pht-tune-cache/run.json</span></code> marker first, so an in-flight run shows
-on Monitor before <code class="docutils literal notranslate"><span class="pre">trials.parquet</span></code> or <code class="docutils literal notranslate"><span class="pre">tuning_spec.json</span></code> exist. If the
-live study store is unreachable, the Monitor degrades to the finished
-parquet journal and surfaces a note rather than blanking.</p></li>
-<li><p><strong>Curate overlays need the image directory in the sandbox.</strong> Plate
-loads are re-confined to the GUI sandbox; an out-of-sandbox Image Source
-is refused with a toast. Re-point it with the Image Source picker if the
+<li><p><strong>Setup needs a metadata layout.</strong> The default <code class="docutils literal notranslate"><span class="pre">QCScorer</span></code> scores
+detected vs. expected colony counts, so Setup blocks <strong>Continue</strong> until a
+path-backed metadata layout is supplied — a spec with an unavailable
+scorer would not be launchable.</p></li>
+<li><p><strong>Run unlocks only after a pipeline is chosen.</strong> The Run destination
+button is inert until Setup has a pipeline path; the pre-flight gate then
+blocks <strong>Deploy</strong> for impossible configurations (e.g. a <code class="docutils literal notranslate"><span class="pre">grid</span></code> over a
+continuous range).</p></li>
+<li><p><strong>SLURM runs are submit-and-watch.</strong> The GUI submits the fleet and reaps
+the submitter (a clean exit moves the run from <code class="docutils literal notranslate"><span class="pre">submitting</span></code> to
+<code class="docutils literal notranslate"><span class="pre">running</span></code>), but it does not store a job id or run <code class="docutils literal notranslate"><span class="pre">scancel</span></code>; only Local
+runs are cancellable from the GUI in v1.</p></li>
+<li><p><strong>Binding a run is read-only.</strong> The run picker validates the markers and
+never writes to the run dir; the import surface stays optuna-free and the
+live study is opened lazily inside the Monitor poll only.</p></li>
+<li><p><strong>Curate overlays need the image directory in the sandbox.</strong> Plate loads
+are re-confined to the GUI sandbox; an out-of-sandbox Image Source is
+refused with a toast. Re-point it with the Image Source picker if the
 marker’s <code class="docutils literal notranslate"><span class="pre">images_dir</span></code> is not reachable.</p></li>
-<li><p><strong>The Pareto card is multi-objective only.</strong> A single-objective run
-hides it; a run whose scorer declares more than one direction shows the
-Pareto front card on Monitor.</p></li>
+<li><p><strong>The Pareto card is multi-objective only.</strong> A single-objective run hides
+it; a run whose scorer declares more than one direction shows the Pareto
+front card on Monitor.</p></li>
 </ul>
 </section>
 <section id="where-to-next">
@@ -769,6 +838,8 @@ tune run searches over.</p></li>
 the co-pilot wrote over your full dataset.</p></li>
 <li><p><a class="reference internal" href="08_analysis.html"><span class="std std-doc">Analysis</span></a> — once the pipeline is tuned, compose
 filters + an endpoint model and emit <code class="docutils literal notranslate"><span class="pre">analysis.{csv,parquet}</span></code>.</p></li>
+<li><p><a class="reference internal" href="../../how_to/pages/tuning.html"><span class="std std-doc">Hyperparameter Tuning</span></a> — the Python/CLI
+side of the same engine, including the four scoring objectives.</p></li>
 </ul>
 </section>
 </section>
@@ -797,7 +868,15 @@ filters + an endpoint model and emit <code class="docutils literal notranslate">
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#prerequisites">Prerequisites</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#walkthrough">Walkthrough</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#setup-author-a-tuning-spec">Setup — author a tuning spec</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#run-configure-and-launch">Run — configure and launch</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#monitor-watch-the-study">Monitor — watch the study</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#binding-an-existing-run-read-only">Binding an existing run (read-only)</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#curate-compare-candidates-on-real-plates">Curate — compare candidates on real plates</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#space-review-and-edit-the-search-space">Space — review and edit the search space</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#launch-render-the-next-command">Launch — render the next command</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#common-gotchas">Common gotchas</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#where-to-next">Where to next</a></li>
 </ul>

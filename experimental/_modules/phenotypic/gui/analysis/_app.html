@@ -631,7 +631,12 @@
 <span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">dash</span><span class="w"> </span><span class="kn">import</span> <span class="n">Input</span><span class="p">,</span> <span class="n">Output</span><span class="p">,</span> <span class="n">State</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui._design</span><span class="w"> </span><span class="kn">import</span> <span class="n">COLOR_BLUE</span><span class="p">,</span> <span class="n">COLOR_SURFACE</span><span class="p">,</span> <span class="n">inject_design_tokens</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui._design</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">COLOR_BLUE</span><span class="p">,</span>
+    <span class="n">COLOR_SURFACE</span><span class="p">,</span>
+    <span class="n">RADIUS</span><span class="p">,</span>
+    <span class="n">inject_design_tokens</span><span class="p">,</span>
+<span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui._shared</span><span class="w"> </span><span class="kn">import</span> <span class="n">register_shared_static</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui.analysis</span><span class="w"> </span><span class="kn">import</span> <span class="n">_ids</span> <span class="k">as</span> <span class="n">analysis_ids</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui.analysis._callbacks</span><span class="w"> </span><span class="kn">import</span> <span class="n">register_callbacks</span>
@@ -745,7 +750,7 @@
             <span class="s2">&quot;padding&quot;</span><span class="p">:</span> <span class="s2">&quot;0.5rem 0.75rem&quot;</span><span class="p">,</span>
             <span class="s2">&quot;background&quot;</span><span class="p">:</span> <span class="n">COLOR_SURFACE</span><span class="p">,</span>
             <span class="s2">&quot;border&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;1px solid </span><span class="si">{</span><span class="n">COLOR_BLUE</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;borderRadius&quot;</span><span class="p">:</span> <span class="s2">&quot;6px&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;borderRadius&quot;</span><span class="p">:</span> <span class="n">RADIUS</span><span class="p">,</span>
         <span class="p">}</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">selection</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">selection</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
             <span class="k">return</span> <span class="n">hidden</span><span class="p">,</span> <span class="s2">&quot;(none)&quot;</span><span class="p">,</span> <span class="kc">True</span>

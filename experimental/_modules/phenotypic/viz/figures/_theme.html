@@ -599,8 +599,8 @@
 <span></span><span class="sd">&quot;&quot;&quot;Centralized Plotly theme for PhenoTypic figures.</span>
 
 <span class="sd">Registers a single ``plotly.io`` template named ``&quot;phenotypic&quot;`` carrying</span>
-<span class="sd">the brand palette, Okabe-Ito data series order, and Roboto typography</span>
-<span class="sd">defined in ``DESIGN.md`` (and mirrored by</span>
+<span class="sd">the brand palette, Okabe-Ito data series order, and the IBM Plex Sans</span>
+<span class="sd">typography defined in ``DESIGN.md`` (and mirrored by</span>
 <span class="sd">``phenotypic.gui._design``). The ``@figure`` decorator applies this</span>
 <span class="sd">theme to every figure via :func:`apply_theme`, so individual call sites</span>
 <span class="sd">never re-spell hex codes, fonts, or axis styling.</span>
@@ -613,7 +613,7 @@
 <span class="sd">  Order`` and the matplotlib ``OKABE_ITO`` block in ``07 -- Code</span>
 <span class="sd">  Integration`` (navy-anchored: navy, orange, sky, green, blue, purple,</span>
 <span class="sd">  vermilion).</span>
-<span class="sd">* Typography -- ``02 -- Typography`` (Roboto-based stack).</span>
+<span class="sd">* Typography -- ``02 -- Typography`` (IBM Plex Sans body stack).</span>
 <span class="sd">* Chart styling -- ``06 -- Data Visualization / Chart Styling Rules``</span>
 <span class="sd">  (gridlines ``#e8ecf2``, axes ``#dde3ed``, muted axis labels</span>
 <span class="sd">  ``#8892a4``, navy title).</span>
@@ -640,7 +640,10 @@
     <span class="s2">&quot;MUTED&quot;</span><span class="p">,</span>
     <span class="s2">&quot;BODY&quot;</span><span class="p">,</span>
     <span class="s2">&quot;OKABE_ITO&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;SEQUENTIAL_COLORSCALE&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;FAILED_FILL&quot;</span><span class="p">,</span>
     <span class="s2">&quot;FONT_FAMILY&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;FONT_FAMILY_MONO&quot;</span><span class="p">,</span>
     <span class="s2">&quot;register_phenotypic_template&quot;</span><span class="p">,</span>
     <span class="s2">&quot;apply_theme&quot;</span><span class="p">,</span>
 <span class="p">]</span>
@@ -666,8 +669,8 @@
 
 <span class="c1">#: Card / plot surface.</span>
 <span class="n">WHITE</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;#ffffff&quot;</span>
-<span class="c1">#: App background (paper backdrop behind the plotting area).</span>
-<span class="n">BG</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;#f5f7fa&quot;</span>
+<span class="c1">#: App background (paper backdrop behind the plotting area; DESIGN.md canvas).</span>
+<span class="n">BG</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;#FBFEF8&quot;</span>
 <span class="c1">#: Chart gridlines (``--color-rule``).</span>
 <span class="n">GRID</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;#e8ecf2&quot;</span>
 <span class="c1">#: Axis lines (``--color-border``).</span>
@@ -700,15 +703,41 @@
     <span class="s2">&quot;#000000&quot;</span><span class="p">,</span>  <span class="c1"># black     -- overflow / ink</span>
 <span class="p">)</span>
 
+<span class="c1">#: Single-variable sequential colorscale (DESIGN.md &quot;06 -- Heatmap Colorscale&quot;</span>
+<span class="c1">#: and &quot;12 -- Continuous Colorbar&quot;): near-transparent navy -&gt; sky -&gt; full navy.</span>
+<span class="c1">#: The one continuous ramp for plate maps / heatmaps / intensity overlays;</span>
+<span class="c1">#: never build a sequential scale from the categorical ``OKABE_ITO`` order.</span>
+<span class="n">SEQUENTIAL_COLORSCALE</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="s2">&quot;rgba(0,54,96,0.08)&quot;</span><span class="p">),</span>
+    <span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="s2">&quot;#56B4E9&quot;</span><span class="p">),</span>
+    <span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="s2">&quot;#003660&quot;</span><span class="p">),</span>
+<span class="p">)</span>
+
+<span class="c1">#: Fill for failed / null / removed cells on a heatmap or plate map: vermilion</span>
+<span class="c1">#: at 70% opacity (DESIGN.md &quot;06&quot; / &quot;10&quot;). Reads as a non-data exclusion against</span>
+<span class="c1">#: the navy-to-blue ramp under every CB type.</span>
+<span class="n">FAILED_FILL</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;rgba(213,94,0,0.7)&quot;</span>
+
 <span class="c1"># ---------------------------------------------------------------------------</span>
 <span class="c1"># Typography (DESIGN.md &quot;02 -- Typography&quot;)</span>
 <span class="c1"># ---------------------------------------------------------------------------</span>
 
-<span class="c1">#: Roboto-based font stack matching the active GUI font in</span>
-<span class="c1">#: ``phenotypic.gui._design``.</span>
+<span class="c1">#: Body font stack (IBM Plex Sans) matching ``phenotypic.gui._design``&#39;s</span>
+<span class="c1">#: ``FONT_FAMILY_BODY``. The ``test_font_family_does_not_drift_from_gui_design``</span>
+<span class="c1">#: guard keeps the two in sync. Used for chart titles, axis titles, and legend</span>
+<span class="c1">#: series names.</span>
 <span class="n">FONT_FAMILY</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="p">(</span>
-    <span class="s2">&quot;&#39;Roboto&#39;, -apple-system, BlinkMacSystemFont, &quot;</span>
+    <span class="s2">&quot;&#39;IBM Plex Sans&#39;, -apple-system, BlinkMacSystemFont, &quot;</span>
     <span class="s1">&#39;&quot;Segoe UI&quot;, &quot;Helvetica Neue&quot;, Arial, sans-serif&#39;</span>
+<span class="p">)</span>
+
+<span class="c1">#: Mono font stack (JetBrains Mono) matching ``phenotypic.gui._design``&#39;s</span>
+<span class="c1">#: ``FONT_FAMILY_MONO``. Per DESIGN.md &quot;02&quot;, all numeric data -- axis tick</span>
+<span class="c1">#: labels, hover values, colorbar ticks, annotations -- render in mono. Kept in</span>
+<span class="c1">#: sync with the GUI by ``test_mono_font_does_not_drift_from_gui_design``.</span>
+<span class="n">FONT_FAMILY_MONO</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="s2">&quot;&#39;JetBrains Mono&#39;, ui-monospace, </span><span class="se">\&quot;</span><span class="s2">SFMono-Regular</span><span class="se">\&quot;</span><span class="s2">, Menlo, &quot;</span>
+    <span class="s1">&#39;Consolas, &quot;Liberation Mono&quot;, &quot;Courier New&quot;, monospace&#39;</span>
 <span class="p">)</span>
 
 
@@ -718,7 +747,7 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Build and register the ``&quot;phenotypic&quot;`` Plotly template.</span>
 
 <span class="sd">    Constructs a :class:`plotly.graph_objects.layout.Template` carrying</span>
-<span class="sd">    the brand palette, Okabe-Ito ``colorway``, Roboto typography, and the</span>
+<span class="sd">    the brand palette, Okabe-Ito ``colorway``, IBM Plex Sans typography, and the</span>
 <span class="sd">    axis / grid / legend styling from ``DESIGN.md``, then stores it in</span>
 <span class="sd">    :data:`plotly.io.templates` under :data:`PHENOTYPIC_TEMPLATE_NAME`.</span>
 
@@ -733,10 +762,13 @@
 <span class="sd">        &gt;&gt;&gt; &quot;phenotypic&quot; in pio.templates</span>
 <span class="sd">        True</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Numeric data renders in mono (axis ticks, hover, colorbar, annotations);</span>
+    <span class="c1"># titles, axis titles, and legend series names render in the body font</span>
+    <span class="c1"># (DESIGN.md &quot;02 -- Typography&quot; / &quot;06 -- Chart Styling Rules&quot;).</span>
     <span class="n">template</span> <span class="o">=</span> <span class="n">go</span><span class="o">.</span><span class="n">layout</span><span class="o">.</span><span class="n">Template</span><span class="p">(</span>
         <span class="n">layout</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
             <span class="n">colorway</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">OKABE_ITO</span><span class="p">),</span>
-            <span class="n">font</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">family</span><span class="o">=</span><span class="n">FONT_FAMILY</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">BODY</span><span class="p">),</span>
+            <span class="n">font</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">family</span><span class="o">=</span><span class="n">FONT_FAMILY_MONO</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">BODY</span><span class="p">),</span>
             <span class="n">paper_bgcolor</span><span class="o">=</span><span class="n">BG</span><span class="p">,</span>
             <span class="n">plot_bgcolor</span><span class="o">=</span><span class="n">WHITE</span><span class="p">,</span>
             <span class="n">title</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">font</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">family</span><span class="o">=</span><span class="n">FONT_FAMILY</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">NAVY</span><span class="p">)),</span>
@@ -744,14 +776,14 @@
                 <span class="n">gridcolor</span><span class="o">=</span><span class="n">GRID</span><span class="p">,</span>
                 <span class="n">linecolor</span><span class="o">=</span><span class="n">AXIS</span><span class="p">,</span>
                 <span class="n">zerolinecolor</span><span class="o">=</span><span class="n">GRID</span><span class="p">,</span>
-                <span class="n">tickfont</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">family</span><span class="o">=</span><span class="n">FONT_FAMILY</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">MUTED</span><span class="p">),</span>
+                <span class="n">tickfont</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">family</span><span class="o">=</span><span class="n">FONT_FAMILY_MONO</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">MUTED</span><span class="p">),</span>
                 <span class="n">title</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">font</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">family</span><span class="o">=</span><span class="n">FONT_FAMILY</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">BODY</span><span class="p">)),</span>
             <span class="p">),</span>
             <span class="n">yaxis</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
                 <span class="n">gridcolor</span><span class="o">=</span><span class="n">GRID</span><span class="p">,</span>
                 <span class="n">linecolor</span><span class="o">=</span><span class="n">AXIS</span><span class="p">,</span>
                 <span class="n">zerolinecolor</span><span class="o">=</span><span class="n">GRID</span><span class="p">,</span>
-                <span class="n">tickfont</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">family</span><span class="o">=</span><span class="n">FONT_FAMILY</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">MUTED</span><span class="p">),</span>
+                <span class="n">tickfont</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">family</span><span class="o">=</span><span class="n">FONT_FAMILY_MONO</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">MUTED</span><span class="p">),</span>
                 <span class="n">title</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">font</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">family</span><span class="o">=</span><span class="n">FONT_FAMILY</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">BODY</span><span class="p">)),</span>
             <span class="p">),</span>
             <span class="n">legend</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">font</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">family</span><span class="o">=</span><span class="n">FONT_FAMILY</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">BODY</span><span class="p">)),</span>

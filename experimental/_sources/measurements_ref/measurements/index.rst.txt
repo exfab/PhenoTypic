@@ -7,38 +7,38 @@ descriptions.
 
 .. toctree::
    :maxdepth: 1
-   :caption: MeasurementInfo
+   :caption: Measurement Categories
    :hidden:
 
-   bbox
-   colorcomposition
-   colorhsv
-   colorlab
-   colorxy
-   colorxyz
-   double_softplus_model
-   edge_correction
-   grid
-   grid_linreg_stats
-   grid_spatial
-   grid_spread
-   intensity
-   linear_softplus_model
-   log_growth_model
-   model_metrics
-   object
-   quality_check
-   quality_count
-   quality_icc
-   quality_mad
-   quality_se
-   quality_tukey
-   quality_zmax
-   radial_expansion
-   shape
-   size
-   symmetric_zones
-   texture
+   Bbox <bbox>
+   ColorComposition <colorcomposition>
+   ColorHSV <colorhsv>
+   ColorLab <colorlab>
+   Colorxy <colorxy>
+   ColorXYZ <colorxyz>
+   DoubleSoftplus <double_softplus_model>
+   EdgeCorrection <edge_correction>
+   Grid <grid>
+   GridLinReg <grid_linreg_stats>
+   GridSpatial <grid_spatial>
+   GridSpread <grid_spread>
+   Intensity <intensity>
+   LinearSoftplus <linear_softplus_model>
+   LogGrowthModel <log_growth_model>
+   ModelMetrics <model_metrics>
+   Object <object>
+   QC <quality_check>
+   QC_Count <quality_count>
+   QC_ICC <quality_icc>
+   QC_MAD <quality_mad>
+   QC_SE <quality_se>
+   QC_Tukey <quality_tukey>
+   QC_ZMax <quality_zmax>
+   RadialExpansion <radial_expansion>
+   Shape <shape>
+   Size <size>
+   SymZones <symmetric_zones>
+   Texture <texture>
 
 Operator-Oriented Overview
 --------------------------

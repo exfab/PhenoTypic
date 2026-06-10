@@ -1259,6 +1259,18 @@ Falls back to <code class="docutils literal notranslate"><span class="pre">$PHEN
 <dl class="simple">
 <dt><code class="docutils literal notranslate"><span class="pre">--slurm</span></code></dt><dd><p>Submit a distributed worker fleet over SLURM instead of running locally.</p>
 </dd>
+<dt><code class="docutils literal notranslate"><span class="pre">--n-workers</span> <span class="pre">N</span></code></dt><dd><p>Number of SLURM array workers in the fleet (<code class="docutils literal notranslate"><span class="pre">--slurm</span></code> only). When unset,
+defaults to <code class="docutils literal notranslate"><span class="pre">min(8,</span> <span class="pre">n_trials)</span></code> (or 4 if no trial budget is known). The
+fleet shares the one <code class="docutils literal notranslate"><span class="pre">--n-trials</span></code> budget rather than multiplying it.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">--slurm-partition</span> <span class="pre">NAME</span></code></dt><dd><p>SLURM partition for the worker fleet (<code class="docutils literal notranslate"><span class="pre">--slurm</span></code> only). When unset the
+<code class="docutils literal notranslate"><span class="pre">#SBATCH</span> <span class="pre">--partition</span></code> directive is omitted (cluster default).</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">--slurm-mem</span> <span class="pre">MEM</span></code></dt><dd><p>SLURM <code class="docutils literal notranslate"><span class="pre">--mem</span></code> for each worker (<code class="docutils literal notranslate"><span class="pre">--slurm</span></code> only), e.g. <code class="docutils literal notranslate"><span class="pre">8G</span></code>.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">--slurm-time</span> <span class="pre">HMS</span></code></dt><dd><p>SLURM <code class="docutils literal notranslate"><span class="pre">--time</span></code> wall-clock limit for each worker (<code class="docutils literal notranslate"><span class="pre">--slurm</span></code> only), e.g.
+<code class="docutils literal notranslate"><span class="pre">04:00:00</span></code>.</p>
+</dd>
 </dl>
 </section>
 <section id="robust-eval-options">

@@ -135,6 +135,27 @@ The workers reload the resolved spec written to
 `--n-trials`, or held-out overrides given at submission are honored on every
 node.
 
+### Sizing the fleet
+
+The fleet's shape is set by four `--slurm`-only flags; all are optional and
+fall back to sensible defaults:
+
+- `--n-workers N` — how many SLURM array workers to submit. Unset, it defaults
+  to `min(8, n_trials)` (or 4 when no trial budget is known). Because the
+  budget is shared, adding workers shortens wall-clock without spending more
+  trials.
+- `--slurm-partition NAME` — the partition for the array. Unset, the
+  `#SBATCH --partition` directive is omitted and the cluster default applies.
+- `--slurm-mem MEM` — per-worker memory (e.g. `8G`).
+- `--slurm-time HMS` — per-worker wall-clock limit (e.g. `04:00:00`).
+
+```bash
+python -m phenotypic.tune run spec.json -i ./plates -o ./out \
+    --strategy tpe --n-trials 200 --slurm \
+    --n-workers 16 --slurm-partition batch --slurm-mem 8G --slurm-time 04:00:00 \
+    --storage-url "postgresql+psycopg://$USER@<pg-host>:54399/tune_study"
+```
+
 ## Resume
 
 A tune run resumes by re-pointing `-o` at the same output directory. The shared

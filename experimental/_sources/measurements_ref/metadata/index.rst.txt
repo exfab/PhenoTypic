@@ -21,6 +21,40 @@ them into PhenoTypic workflows.
    plate_metadata
    sample_metadata
 
+Metadata Tag Overview
+---------------------
+
+.. list-table::
+   :header-rows: 1
+
+   * - Tag class
+     - Includes
+     - Use for
+   * - :doc:`METADATA <metadata>`
+     - Framework-populated image bookkeeping, including image names, UUIDs, file formats, image types, bit depth, and file suffixes.
+     - Use when reading provenance emitted by PhenoTypic itself; these are not the biological metadata columns users normally supply.
+   * - :doc:`ACQUISITION_METADATA <acquisition_metadata>`
+     - Image acquisition details, including imaging date, instrument, experimenter, resolution, and exposure time.
+     - Use when tracking imaging batches or diagnosing acquisition effects.
+   * - :doc:`CONDITION_METADATA <condition_metadata>`
+     - Media, nutrients, supplements, treatments, compounds, doses, and stress conditions applied to colonies.
+     - Use when comparing phenotypes across growth environments or perturbations.
+   * - :doc:`EXPERIMENT_METADATA <experiment_metadata>`
+     - Experiment-level bookkeeping, including experiment IDs, projects, datasets, protocols, and notes.
+     - Use when organizing outputs across projects, protocols, or datasets.
+   * - :doc:`GENETIC_METADATA <genetic_metadata>`
+     - Organism and genetic identity, including species, strain, genotype, background, alleles, plasmids, markers, mating type, and ploidy.
+     - Use when grouping or filtering colonies by genetic background.
+   * - :doc:`INCUBATION_METADATA <incubation_metadata>`
+     - Temperature, elapsed time, time units, timepoints, day indices, generation, humidity, and atmosphere.
+     - Use for time-course analyses and incubation-condition grouping.
+   * - :doc:`PLATE_METADATA <plate_metadata>`
+     - Assay plate and physical layout, including plate IDs, batches, array density, and incubator position.
+     - Use when grouping measurements by plate, batch, or spatial assay layout.
+   * - :doc:`SAMPLE_METADATA <sample_metadata>`
+     - Sample identity and provenance, including sample IDs, replicates, clones, source plate/well, library IDs, barcodes, and controls.
+     - Use for sample-level biological identity and for linking colonies back to source materials.
+
 Framework Metadata
 ------------------
 
@@ -42,4 +76,272 @@ processing simpler.
 - :doc:`INCUBATION_METADATA <incubation_metadata>`
 - :doc:`PLATE_METADATA <plate_metadata>`
 - :doc:`SAMPLE_METADATA <sample_metadata>`
+
+
+METADATA
+--------
+
+Framework-populated image metadata keys.
+
+These labels are set automatically by the image pipeline (not by the user) and
+name the bookkeeping entries on the ``image.metadata`` accessor. Members render
+as ``Metadata_<Label>`` (e.g. ``Metadata_ImageName``) so they share the
+``Metadata_`` namespace with the user-facing experimental tags in
+``phenotypic.schema`` (see ``SAMPLE_METADATA`` and siblings).
+
+For the standardized *biological/experimental* vocabulary users supply via the
+``--metadata`` CSV, use the experimental-tag enums instead.
+
+.. list-table:: Category: **Metadata**
+   :header-rows: 1
+
+   * - Name
+     - Description
+   * - ``UUID``
+     - The unique identifier of the image.
+   * - ``ImageName``
+     - The name of the image.
+   * - ``ParentImageName``
+     - The name of the parent image.
+   * - ``ParentUUID``
+     - The UUID of the parent image.
+   * - ``ImageFormat``
+     - The format of the image.
+   * - ``ImageType``
+     - The type of the image.
+   * - ``BitDepth``
+     - The bit depth of the image.
+   * - ``FileSuffix``
+     - The file suffix of the original file the image was imported from
+
+
+ACQUISITION_METADATA
+--------------------
+
+Recommended ``Metadata_*`` tags describing image acquisition.
+
+These record how and by whom an image was captured (acquisition date,
+instrument, operator, resolution, exposure). Members render as
+``Metadata_<Label>`` (e.g. ``Metadata_ImagingDate``) and share the ``Metadata_``
+namespace with the other experimental-tag enums. Recommended vocabulary, not a
+validator.
+
+.. list-table:: Category: **Metadata**
+   :header-rows: 1
+
+   * - Name
+     - Description
+   * - ``ImagingDate``
+     - Date the image was acquired.
+   * - ``Instrument``
+     - Imaging instrument or scanner model.
+   * - ``Experimenter``
+     - Person who acquired the image or ran the experiment.
+   * - ``Resolution``
+     - Image resolution (e.g. DPI or pixels per mm).
+   * - ``ExposureTime``
+     - Camera exposure time.
+
+
+CONDITION_METADATA
+------------------
+
+Recommended ``Metadata_*`` tags describing media and experimental conditions.
+
+These name the chemical environment and perturbations applied to the colonies
+(medium, carbon/nitrogen source, supplements, treatments, compounds, stress).
+Members render as ``Metadata_<Label>`` (e.g. ``Metadata_Treatment``) and share the
+``Metadata_`` namespace with the other experimental-tag enums. Recommended
+vocabulary, not a validator.
+
+.. list-table:: Category: **Metadata**
+   :header-rows: 1
+
+   * - Name
+     - Description
+   * - ``Media``
+     - Growth medium name (e.g. YPD, SC, LB).
+   * - ``CarbonSource``
+     - Primary carbon source (e.g. glucose, galactose).
+   * - ``NitrogenSource``
+     - Primary nitrogen source.
+   * - ``pH``
+     - pH of the growth medium.
+   * - ``Supplement``
+     - Medium supplement or additive.
+   * - ``Antibiotic``
+     - Antibiotic added to the medium.
+   * - ``Inducer``
+     - Inducing agent (e.g. galactose, IPTG, doxycycline).
+   * - ``Treatment``
+     - Experimental treatment or perturbation.
+   * - ``Compound``
+     - Chemical compound or drug applied.
+   * - ``Concentration``
+     - Concentration of the compound or treatment.
+   * - ``Dose``
+     - Dose applied to the sample.
+   * - ``Stress``
+     - Applied stress condition (e.g. heat, osmotic, oxidative).
+
+
+EXPERIMENT_METADATA
+-------------------
+
+Recommended ``Metadata_*`` tags for experiment-level bookkeeping.
+
+These group results by experiment/project and carry free-form provenance
+(experiment id, project, dataset, protocol, notes). ``Dataset`` matches the
+CLI-emitted ``Metadata_Dataset`` column. Members render as ``Metadata_<Label>``
+(e.g. ``Metadata_ExperimentID``) and share the ``Metadata_`` namespace with the
+other experimental-tag enums. Recommended vocabulary, not a validator.
+
+.. list-table:: Category: **Metadata**
+   :header-rows: 1
+
+   * - Name
+     - Description
+   * - ``ExperimentID``
+     - Unique identifier for the experiment.
+   * - ``Project``
+     - Project name or identifier.
+   * - ``Dataset``
+     - Dataset name (matches the CLI-emitted Metadata_Dataset column).
+   * - ``Protocol``
+     - Protocol name or version followed.
+   * - ``Notes``
+     - Free-text notes or comments.
+
+
+GENETIC_METADATA
+----------------
+
+Recommended ``Metadata_*`` tags describing the organism and its genetics.
+
+These name the genetic identity of the colonies on a plate (species, strain,
+genotype, markers). Like all experimental-tag enums they share the
+``Metadata_`` namespace, so members render as ``Metadata_<Label>`` (e.g.
+``Metadata_Strain``) and slot directly into the ``--metadata`` CSV join and the
+``post/`` metadata operations. This is a recommended vocabulary, not a validator:
+arbitrary metadata columns are still accepted.
+
+.. list-table:: Category: **Metadata**
+   :header-rows: 1
+
+   * - Name
+     - Description
+   * - ``Organism``
+     - Species or organism name (e.g. Saccharomyces cerevisiae).
+   * - ``Strain``
+     - Strain name or identifier (e.g. BY4741).
+   * - ``Genotype``
+     - Genotype description of the strain.
+   * - ``Background``
+     - Genetic background or parent strain.
+   * - ``Allele``
+     - Specific allele or mutation under study.
+   * - ``Plasmid``
+     - Plasmid carried by the sample.
+   * - ``SelectionMarker``
+     - Selectable marker gene (e.g. URA3, KanMX).
+   * - ``MatingType``
+     - Mating type for yeast (e.g. MATa, MATalpha).
+   * - ``Ploidy``
+     - Ploidy of the organism (e.g. haploid, diploid).
+
+
+INCUBATION_METADATA
+-------------------
+
+Recommended ``Metadata_*`` tags describing incubation and time course.
+
+These capture the temporal and environmental incubation parameters of an
+experiment (temperature, elapsed time, timepoint, generation, atmosphere).
+``Time``/``Timepoint`` align with the QC time-series axis. Members render as
+``Metadata_<Label>`` (e.g. ``Metadata_Time``) and share the ``Metadata_``
+namespace with the other experimental-tag enums. Recommended vocabulary, not a
+validator.
+
+.. list-table:: Category: **Metadata**
+   :header-rows: 1
+
+   * - Name
+     - Description
+   * - ``Temperature``
+     - Incubation temperature in degrees Celsius.
+   * - ``Time``
+     - Elapsed growth time.
+   * - ``TimeUnit``
+     - Unit for the Time value (e.g. hours, days).
+   * - ``Timepoint``
+     - Discrete timepoint label in a time series.
+   * - ``Day``
+     - Day index of the experiment.
+   * - ``Generation``
+     - Generation or passage number.
+   * - ``Humidity``
+     - Relative humidity during incubation.
+   * - ``Atmosphere``
+     - Atmospheric condition (e.g. aerobic, anaerobic).
+
+
+PLATE_METADATA
+--------------
+
+Recommended ``Metadata_*`` tags describing the assay plate and its array.
+
+These capture plate-level grouping and physical layout (plate id, batch, array
+density, incubator position). Members render as ``Metadata_<Label>`` (e.g.
+``Metadata_PlateID``) and share the ``Metadata_`` namespace with the other
+experimental-tag enums. Recommended vocabulary, not a validator.
+
+.. list-table:: Category: **Metadata**
+   :header-rows: 1
+
+   * - Name
+     - Description
+   * - ``PlateID``
+     - Identifier of the assay/imaging plate.
+   * - ``Batch``
+     - Experimental batch grouping.
+   * - ``ArrayDensity``
+     - Colony array density, i.e. wells per plate (e.g. 96, 384, 1536).
+   * - ``IncubatorPosition``
+     - Physical position of the plate within the incubator.
+
+
+SAMPLE_METADATA
+---------------
+
+Recommended ``Metadata_*`` tags identifying a sample and its provenance.
+
+These distinguish individual biological samples and track where each colony came
+from (replicate, clone, source plate/well, library). Members render as
+``Metadata_<Label>`` (e.g. ``Metadata_Replicate``) and share the ``Metadata_``
+namespace with the other experimental-tag enums. Recommended vocabulary, not a
+validator: arbitrary metadata columns are still accepted.
+
+.. list-table:: Category: **Metadata**
+   :header-rows: 1
+
+   * - Name
+     - Description
+   * - ``SampleID``
+     - Unique identifier for the biological sample.
+   * - ``Replicate``
+     - Biological replicate identifier.
+   * - ``TechnicalReplicate``
+     - Technical replicate identifier.
+   * - ``Clone``
+     - Clone or isolate identifier.
+   * - ``LibraryID``
+     - Source library or collection identifier (e.g. a deletion collection).
+   * - ``SourcePlate``
+     - Identifier of the source plate the sample was pinned from.
+   * - ``SourceWell``
+     - Well position on the source plate (e.g. A1).
+   * - ``Barcode``
+     - Molecular or sample barcode.
+   * - ``Control``
+     - Control designation (e.g. positive, negative, blank).
 

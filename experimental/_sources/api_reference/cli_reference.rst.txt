@@ -172,6 +172,22 @@ Distributed Options
 ``--slurm``
    Submit a distributed worker fleet over SLURM instead of running locally.
 
+``--n-workers N``
+   Number of SLURM array workers in the fleet (``--slurm`` only). When unset,
+   defaults to ``min(8, n_trials)`` (or 4 if no trial budget is known). The
+   fleet shares the one ``--n-trials`` budget rather than multiplying it.
+
+``--slurm-partition NAME``
+   SLURM partition for the worker fleet (``--slurm`` only). When unset the
+   ``#SBATCH --partition`` directive is omitted (cluster default).
+
+``--slurm-mem MEM``
+   SLURM ``--mem`` for each worker (``--slurm`` only), e.g. ``8G``.
+
+``--slurm-time HMS``
+   SLURM ``--time`` wall-clock limit for each worker (``--slurm`` only), e.g.
+   ``04:00:00``.
+
 Robust-Eval Options
 ~~~~~~~~~~~~~~~~~~~
 

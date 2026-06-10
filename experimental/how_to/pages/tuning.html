@@ -891,27 +891,73 @@ construction). The non-dominated front lands in <code class="docutils literal no
 </section>
 <section id="gui-interface">
 <h2>GUI interface<a class="headerlink" href="#gui-interface" title="Link to this heading">#</a></h2>
-<p><code class="docutils literal notranslate"><span class="pre">phenotypic-gui</span></code> mounts a <code class="docutils literal notranslate"><span class="pre">/tune/</span></code> Dash co-pilot as a fifth tab alongside
-<strong>Pipelines · Tune · Run · Viewer · Analysis</strong>. The co-pilot is <strong>read-only over
-a tuning run</strong> — it never re-optimizes. It reads a finished or in-flight
-<code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">phenotypic.tune</span></code> output directory and only ever <em>writes</em>
-<code class="docutils literal notranslate"><span class="pre">best_pipeline.json</span></code> and <code class="docutils literal notranslate"><span class="pre">tuning_spec.json</span></code>. It has four sub-tabs:</p>
+<p><code class="docutils literal notranslate"><span class="pre">phenotypic-gui</span></code> mounts a <code class="docutils literal notranslate"><span class="pre">/tune/</span></code> Dash co-pilot as a tab alongside
+<strong>Home · Builder · Tune · Run · Viewer · Analysis</strong>. The co-pilot is a full
+<strong>author → run → monitor</strong> workflow organised as three top-level destinations,
+selected from the destination row at the top of the page:</p>
+<section id="setup-author-a-tuning-spec">
+<h3>Setup — author a tuning spec<a class="headerlink" href="#setup-author-a-tuning-spec" title="Link to this heading">#</a></h3>
+<p>The landing destination. Point it at a base pipeline (or an existing tuning
+spec) and a <strong>metadata layout CSV/Parquet</strong> for the default <code class="docutils literal notranslate"><span class="pre">QCScorer</span></code>; the
+search-space and scorer sections stay locked until a pipeline is present, and
+<strong>Continue</strong> stays blocked until the required scorer metadata is supplied.
+Continue writes a typed, path-backed authored spec under
+<code class="docutils literal notranslate"><span class="pre">&lt;root&gt;/.phenotypic-gui/presets/tune/</span></code> and advances to <strong>Run</strong>. (Review and
+edit the inferred search space itself on the <strong>Space</strong> sub-tab under Monitor —
+see below.)</p>
+</section>
+<section id="run-configure-and-launch">
+<h3>Run — configure and launch<a class="headerlink" href="#run-configure-and-launch" title="Link to this heading">#</a></h3>
+<p>The Run destination (unlocked once a pipeline is chosen) is a launch form whose
+live command card mirrors your choices into the real
+<code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">phenotypic.tune</span> <span class="pre">run</span></code> invocation — the same subcommand and flag names
+you would type by hand. It exposes:</p>
+<ul class="simple">
+<li><p><strong>Inputs</strong> — an in-sandbox image-source override (blank falls back to the
+shared source root) and the output directory.</p></li>
+<li><p><strong>Strategy</strong> — strategy dropdown (<code class="docutils literal notranslate"><span class="pre">grid</span></code> / <code class="docutils literal notranslate"><span class="pre">random</span></code> / <code class="docutils literal notranslate"><span class="pre">tpe</span></code> / <code class="docutils literal notranslate"><span class="pre">cmaes</span></code> / <code class="docutils literal notranslate"><span class="pre">gp</span></code>
+/ <code class="docutils literal notranslate"><span class="pre">nsga2</span></code>), trial budget, and storage URL.</p></li>
+<li><p><strong>Compute</strong> — Local vs. SLURM, the two-round screening toggle, and the SLURM
+fleet sizing fields (workers, partition, memory, time).</p></li>
+<li><p><strong>Evaluation</strong> — held-out fraction and CV-group overrides.</p></li>
+</ul>
+<p>A pre-flight gate blocks <strong>Deploy</strong> when the configuration cannot run (for
+example a <code class="docutils literal notranslate"><span class="pre">grid</span></code> search over a continuous <code class="docutils literal notranslate"><span class="pre">FloatRange</span></code>). Unlike the earlier
+read-only co-pilot, <strong>Deploy actually launches the run</strong>: it registers the run
+in the shared run registry and starts it through the local runner, or submits
+the SLURM fleet. You no longer have to copy the command out and run it in a
+terminal (though the live command card still lets you, if you prefer).</p>
+</section>
+<section id="monitor-watch-curate-and-export">
+<h3>Monitor — watch, curate, and export<a class="headerlink" href="#monitor-watch-curate-and-export" title="Link to this heading">#</a></h3>
+<p>Once a run is deployed (or you <strong>Bind run</strong> to an existing
+<code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">phenotypic.tune</span></code> output directory via the sandbox-bounded run
+picker), the Monitor destination opens the live read over the study. It carries
+a run switcher across registered Local/SLURM runs, a Local-only <strong>Cancel</strong>
+(SLURM runs are not killed from the GUI in v1), and an <strong>Export best pipeline</strong>
+button — plus the four classic sub-tabs:</p>
 <ul class="simple">
 <li><p><strong>Monitor</strong> — the live study read: objective curve (raw scores + running
 best), a parameter-importance bar chart, a winner-stability
-(generalization-gap) badge, and a trials table, polled while a run is in
-flight.</p></li>
+(generalization-gap) badge, and a trials table, polled every 3 s while a run
+is in flight. If the live study store is unreachable it degrades to the
+finished <code class="docutils literal notranslate"><span class="pre">trials.parquet</span></code> journal. A Pareto-front card appears for
+multi-objective runs only.</p></li>
 <li><p><strong>Curate</strong> — a shortlist of the best (and gap-flagged) trials; pin two into
-<strong>A</strong> / <strong>B</strong> slots and compare their colony overlays side-by-side on any
-plate. “Set as winner” writes <code class="docutils literal notranslate"><span class="pre">best_pipeline.json</span></code>.</p></li>
+<strong>A</strong> / <strong>B</strong> slots and compare their colony overlays side-by-side (or as a
+single difference image) on any plate, with linked pan/zoom. “Set as winner”
+writes <code class="docutils literal notranslate"><span class="pre">best_pipeline.json</span></code>.</p></li>
 <li><p><strong>Space</strong> — the inferred search space as editable knob-rows; export the
 edited space back to <code class="docutils literal notranslate"><span class="pre">tuning_spec.json</span></code>.</p></li>
 <li><p><strong>Launch</strong> — a strategy / budget / storage-URL form whose live command card
-renders a copy-paste <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">phenotypic.tune</span> <span class="pre">run</span></code> invocation. The GUI does
-not launch the optimizer; you copy the command and run it yourself.</p></li>
+renders a copy-paste <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">phenotypic.tune</span> <span class="pre">run</span></code> invocation.</p></li>
 </ul>
+<p>The co-pilot keeps its import surface optuna-free — the live study is opened
+lazily inside the Monitor poll only — and binding an existing run never writes
+to its directory.</p>
 <p>For the full walkthrough, see the
 <a class="reference internal" href="../../tutorials/gui/16_tune_copilot.html"><span class="std std-doc">Tune co-pilot tutorial</span></a>.</p>
+</section>
 </section>
 <section id="distributed-runs">
 <h2>Distributed runs<a class="headerlink" href="#distributed-runs" title="Link to this heading">#</a></h2>
@@ -953,7 +999,12 @@ Optuna study (via <code class="docutils literal notranslate"><span class="pre">-
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#compositescorer"><code class="docutils literal notranslate"><span class="pre">CompositeScorer</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#gui-interface">GUI interface</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#gui-interface">GUI interface</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#setup-author-a-tuning-spec">Setup — author a tuning spec</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#run-configure-and-launch">Run — configure and launch</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#monitor-watch-curate-and-export">Monitor — watch, curate, and export</a></li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#distributed-runs">Distributed runs</a></li>
 </ul>
   </nav></div>
