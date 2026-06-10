@@ -1,9 +1,9 @@
 """The candidate evaluator — the uniform 3-step robust-evaluation loop.
 
 For one parameter combo: build the candidate pipeline, ``score_image`` over the
-calibration set, robust-aggregate each term as ``median - λ·IQR`` (the spread
-penalty rewards parameters that are stable across images, not just good on
-average), then ``finalize`` to the scalar objective the optimizer maximizes.
+calibration set, robust-aggregate each term as ``clamp01(median + λ·IQR)`` (the
+spread penalty pushes the cost up, toward the worst), then ``finalize`` to the
+scalar cost the optimizer **minimizes** (lower = better).
 """
 from __future__ import annotations
 
@@ -18,10 +18,11 @@ from .._strategies._pruning import NoOpChannel, PruningChannel
 from ._aggregate_math import _median_iqr, _relative
 from ._builder import build_pipeline
 
-#: The worst possible per-image term score (higher-is-better objective floor).
-#: A per-image exception contributes this to every term so it honestly drags
-#: the aggregate (robust-eval §10) rather than dodging a bad plate by crashing.
-_WORST_TERM = 0.0
+#: The worst possible per-image term **cost** (lower-is-better objective
+#: ceiling). A per-image exception contributes this to every term so it
+#: honestly drags the aggregate toward the worst (robust-eval §10) rather than
+#: dodging a bad plate by crashing.
+_WORST_TERM = 1.0
 
 
 def _project_finalize(
@@ -142,10 +143,10 @@ class EvaluationResult(BaseModel):
     """The outcome of evaluating one candidate over the calibration set.
 
     Args:
-        score: The finalized scalar objective (higher = better). For a
-            multi-objective candidate this is the **scalar projection** of
-            ``objectives`` (``mean(objectives.values())``).
-        terms: Robust-aggregated per-term scores (``median - λ·IQR`` each).
+        score: The finalized scalar cost the optimizer **minimizes** (lower =
+            better). For a multi-objective candidate this is the **scalar
+            projection** of ``objectives`` (``mean(objectives.values())``).
+        terms: Robust-aggregated per-term costs (``clamp01(median + λ·IQR)`` each).
         n_images: Number of calibration images evaluated.
         objectives: The named multi-objective values (plan §0a sidecar), or
             ``None`` for a single-objective candidate. Set only when the scorer's
@@ -186,8 +187,8 @@ class Evaluator(BaseModel):
     Args:
         stability_weight: λ in ``median - λ·IQR`` — how hard cross-image spread
             is penalized when aggregating a term across the calibration set.
-        failure_score: The score assigned when a candidate fails to build,
-            measure, or score; the floor of the higher-is-better objective.
+        failure_score: The worst-cost ceiling assigned when a candidate fails
+            to build, measure, or score (lower-is-better objective).
         rung_floor: The minimum first-rung size for the ASHA-style fidelity
             ladder (robust-eval §7) — never prune on fewer plates than this.
         rung_factor: The geometric growth factor between rungs (×3 by default).
@@ -206,7 +207,7 @@ class Evaluator(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     stability_weight: float = 0.5
-    failure_score: float = 0.0
+    failure_score: float = 1.0
     rung_floor: int = 6
     rung_factor: int = 3
     min_rungs: int = 2

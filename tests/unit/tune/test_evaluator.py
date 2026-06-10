@@ -71,10 +71,10 @@ def test_evaluate_runs_3_step_loop_and_aggregates():
     result = Evaluator().evaluate(base, scorer, {}, [img, img, img])
     assert isinstance(result, EvaluationResult)
     assert result.n_images == 3
-    # term X aggregated: median 2.0, IQR (2.5 - 1.5)=1.0 → 2.0 - 0.5*1.0 = 1.5
-    assert result.terms == {"X": pytest.approx(1.5)}
-    # default finalize = mean of one term → 1.5
-    assert result.score == pytest.approx(1.5)
+    # term X aggregated: median 2.0, IQR (2.5 - 1.5)=1.0 → 2.0 + 0.5*1.0 = 2.5 → clamped 1.0
+    assert result.terms == {"X": pytest.approx(1.0)}
+    # default finalize = mean of one term → 1.0
+    assert result.score == pytest.approx(1.0)
     assert result.failed is False
 
 
@@ -93,6 +93,41 @@ def test_evaluate_failure_assigns_failure_score():
     assert result.terms == {}
     assert result.n_images == 1
     assert result.failed is True
+
+
+def test_evaluate_failure_assigns_worst_cost():
+    base = ImagePipeline(ops=[OtsuDetector()])
+    img = load_synth_yeast_plate()
+    # Default failure_score is now the worst cost (1.0): a candidate that won't
+    # score floors to the worst, not the best.
+    result = Evaluator().evaluate(base, _RaisingScorer(), {}, [img])
+    assert result.score == pytest.approx(1.0)
+    assert result.terms == {}
+    assert result.n_images == 1
+    assert result.failed is True
+
+
+def test_per_image_exception_pads_worst_cost():
+    class _OneGoodOneRaise(Scorer):
+        """First call returns cost 0.0, the second raises."""
+
+        _n: int = PrivateAttr(default=0)
+
+        def _score_terms(self, image, measurements) -> dict[str, float]:
+            self._n += 1
+            if self._n == 1:
+                return {"X": 0.0}
+            raise RuntimeError("second image blew up")
+
+    base = ImagePipeline(ops=[OtsuDetector()])
+    img = load_synth_yeast_plate()
+    result = Evaluator(stability_weight=0.0).evaluate(
+        base, _OneGoodOneRaise(), {}, [img, img]
+    )
+    # term X = aggregate of [0.0 (good), 1.0 (worst-term pad)] with λ=0
+    # → median 0.5 (not 0.0); the failing plate drags the cost UP.
+    assert result.terms["X"] == pytest.approx(0.5)
+    assert result.failed is False  # not ALL images errored
 
 
 class _RecordingChannel:
