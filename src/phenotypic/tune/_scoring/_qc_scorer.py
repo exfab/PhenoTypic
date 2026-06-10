@@ -4,9 +4,11 @@ Wraps :class:`phenotypic.analysis.ExpectedVsDetectedCount` — for each ``groupb
 unit it compares the detected colony count against an expected count from a
 layout frame, yielding ``QC_Count_Metric = |detected - expected| / expected``
 (``inf`` when a measurement group has no metadata counterpart). The metric is a
-*lower-is-better* divergence in ``[0, ∞)``; ``_threshold_anchored`` flips and
-normalizes it to a *higher-is-better* term in ``[0, 1]`` anchored on the check's
-``fail_threshold``.
+*lower-is-better* divergence in ``[0, ∞)``; ``_threshold_anchored`` folds it to a
+**natural goodness** term in ``[0, 1]`` anchored on the check's
+``fail_threshold`` (``_TERM_SENSE = HIGHER_BETTER``), which the base
+:meth:`Scorer.score_image` then complements into **cost** (lower = better — the
+optimizer minimizes).
 """
 from __future__ import annotations
 
@@ -22,10 +24,12 @@ from ._scorer import Scorer
 
 
 def _threshold_anchored(metric: float, fail_threshold: float) -> float:
-    """Map a lower-is-better divergence to a higher-is-better score in ``[0, 1]``.
+    """Fold a lower-is-better divergence to a natural-goodness value in ``[0, 1]``.
 
     ``t = exp(-ln2 * metric / fail_threshold)`` — so ``metric == 0`` → ``1.0``,
-    ``metric == fail_threshold`` → ``0.5``, ``metric == inf`` → ``0.0``.
+    ``metric == fail_threshold`` → ``0.5``, ``metric == inf`` → ``0.0``. This is
+    the scorer's **natural** (higher-better) value; the base ``score_image``
+    complements it into cost.
 
     Args:
         metric: The non-negative divergence (``|detected-expected|/expected``);
@@ -34,7 +38,8 @@ def _threshold_anchored(metric: float, fail_threshold: float) -> float:
             half-score anchor.
 
     Returns:
-        The normalized score in ``[0, 1]`` (higher = better).
+        The natural-goodness value in ``[0, 1]`` (higher = better; the base
+        complements it to cost).
     """
     if not math.isfinite(metric):
         return 0.0
@@ -46,23 +51,25 @@ def _threshold_anchored(metric: float, fail_threshold: float) -> float:
 def fold_expected_vs_detected_count(
     check: ExpectedVsDetectedCount, measurements: pd.DataFrame
 ) -> float:
-    """Fold a count check's per-group divergence into one higher-is-better score.
+    """Fold a count check's per-group divergence into one natural-goodness value.
 
     The shared count-tier reduction used by :class:`QCScorer`,
     :class:`SupervisedScorer` (count tier), and :class:`ReferenceFreeScorer`
     (optional count term): run ``check`` over ``measurements``, anchor each
     ``groupby`` group's ``QC_Count_Metric`` on the check's ``fail_threshold`` via
     :func:`_threshold_anchored`, and average across groups — turning the
-    lower-is-better divergence into a higher-is-better ``[0, 1]`` score. An empty
-    or ``None`` frame scores ``0.0`` (every caller's empty-frame floor).
+    lower-is-better divergence into a natural-goodness ``[0, 1]`` value (the base
+    ``score_image`` complements it to cost). An empty or ``None`` frame scores
+    ``0.0`` (every caller's empty-frame floor).
 
     Args:
         check: A configured :class:`ExpectedVsDetectedCount` count check.
         measurements: The candidate pipeline's measurement frame.
 
     Returns:
-        The averaged anchored count score in ``[0, 1]`` (higher = better);
-        ``0.0`` for an empty or ``None`` frame.
+        The averaged anchored count value in ``[0, 1]`` (natural goodness, higher
+        = better; the base complements it to cost); ``0.0`` for an empty or
+        ``None`` frame.
     """
     if measurements is None or len(measurements) == 0:
         return 0.0

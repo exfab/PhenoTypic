@@ -29,11 +29,11 @@ def _median_iqr(values: Sequence[float]) -> tuple[float, float]:
     """The median and inter-quartile range (``q75 - q25``) of ``values``.
 
     The quartile reduction shared by the robust term aggregate
-    (``median - λ·IQR``) and the per-trial dispersion gap. Uses
+    (``clamp01(median + λ·IQR)``) and the per-trial dispersion gap. Uses
     ``np.percentile(arr, [75, 25])`` with the default linear interpolation.
 
     Args:
-        values: The per-image scores (higher = better).
+        values: The per-image **costs** (lower = better).
 
     Returns:
         A ``(median, iqr)`` pair, both ``float``. For a single value the IQR is

@@ -439,7 +439,7 @@ def _open_store(
             3-way fallback (env var > local ``study.db``) in
             :func:`_resolve_storage_url`.
         resume_path: The ``trials.parquet`` path the journal resumes from.
-        directions: Per-objective ``["maximize"] * n`` for a multi-objective run
+        directions: Per-objective ``["minimize"] * n`` for a multi-objective run
             (Optuna store only); ``None`` → single-objective.
 
     Returns:

@@ -189,8 +189,9 @@ class Evaluator(BaseModel):
     """Score a candidate combo over a calibration set (CV-only MVP).
 
     Args:
-        stability_weight: λ in ``median - λ·IQR`` — how hard cross-image spread
-            is penalized when aggregating a term across the calibration set.
+        stability_weight: λ in ``clamp01(median + λ·IQR)`` — how hard cross-image
+            spread is penalized when aggregating a term (cost) across the
+            calibration set.
         failure_score: The worst-cost ceiling assigned when a candidate fails
             to build, measure, or score (lower-is-better objective).
         rung_floor: The minimum first-rung size for the ASHA-style fidelity
@@ -258,12 +259,12 @@ class Evaluator(BaseModel):
 
         The candidate is scored in growing rung blocks (:meth:`_rung_sizes`) over
         a **deterministic, id-sorted** subset (metadata-stratified rungs are
-        deferred). After each rung the running ``median - λ·IQR`` is reported to
+        deferred). After each rung the running ``clamp01(median + λ·IQR)`` is reported to
         ``channel`` and ``channel.should_prune()`` is checked *between* rungs; a
         prune short-circuits to a partial ``EvaluationResult(pruned=True)``. Each
         image is scored **once** (memoized across rungs). Failure taxonomy
         (robust-eval §10): a candidate that won't build is a true ``failed``; one
-        image raising mid-scoring contributes the worst term and the loop
+        image raising mid-scoring contributes the worst-cost term and the loop
         continues; only **all** images erroring is a whole-candidate ``failed``.
 
         Args:

@@ -126,7 +126,7 @@ def study_objective_kwargs(
 
     Args:
         directions: Per-objective directions (≥2 → multi-objective), or ``None``
-            / a single axis for the scalar maximize study.
+            / a single axis for the scalar minimize study.
 
     Returns:
         ``{"directions": list(directions)}`` when multi-objective, else

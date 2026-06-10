@@ -176,7 +176,7 @@ class OptunaStrategy:
             ``OptunaStudyStore`` wrapping the same study).
         study_name: Optional study name (for resume / shared studies).
         directions: Per-objective directions for a multi-objective study (e.g.
-            ``["maximize", "maximize"]``); ``None`` → single-objective maximize.
+            ``["minimize", "minimize"]``); ``None`` → single-objective minimize.
         rung_floor: The ASHA ``min_resource`` (first-rung plates); mirrors the
             Evaluator's ``rung_floor``.
         rung_factor: The ASHA ``reduction_factor``; mirrors the Evaluator's

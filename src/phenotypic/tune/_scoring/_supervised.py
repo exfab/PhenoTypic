@@ -21,8 +21,9 @@ honestly compute, so the scorer degrades gracefully as annotations get cheaper:
   :class:`phenotypic.analysis.ExpectedVsDetectedCount` (the master's count QC
   check — do *not* re-implement counting, §1 "reuse, don't duplicate") to get
   each group's ``|detected − expected| / expected`` divergence, fold it to a
-  *higher-is-better* ``[0, 1]`` score anchored on the check's ``fail_threshold``,
-  and emit the ``"CountMAE"`` term.
+  natural-goodness ``[0, 1]`` value anchored on the check's ``fail_threshold``
+  (``_TERM_SENSE = HIGHER_BETTER``; the base complements it to cost), and emit
+  the ``"CountMAE"`` term.
 * **none tier** (abstain): no resolvable GT → :meth:`availability` is ``False``
   and the engine degrades to the configured fallback objective.
 

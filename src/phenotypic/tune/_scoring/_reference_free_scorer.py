@@ -16,9 +16,11 @@ companion catalogue
 * **Count** — *optional* expected-vs-detected grid count, reused from
   ``QCScorer`` when a path-configured ``count_check`` is supplied (family C.6).
 
-Every term is **fixed-normalized** to ``[0, 1]`` (higher = better) so the
-optimum cannot migrate when the parameter grid's endpoints change — the "Böck
-trap" (``§B.3``) that min–max-over-the-tested-set normalization falls into.
+Every term is **fixed-normalized** to a natural-goodness value in ``[0, 1]``
+(higher = better; ``_TERM_SENSE = HIGHER_BETTER``, so the base
+:meth:`Scorer.score_image` complements each into **cost**) so the optimum cannot
+migrate when the parameter grid's endpoints change — the "Böck trap" (``§B.3``)
+that min–max-over-the-tested-set normalization falls into.
 
 The scorer is **gated** behind meta-validation (``D1``): :meth:`meta_validate`
 correlates the proxy against ground truth and caches an enable/abstain flag;
@@ -102,7 +104,8 @@ class ReferenceFreeScorer(Scorer):
     measurement columns — ``Shape_*`` and ``Size_*`` — for the shape and size
     terms (no geometry is recomputed), reads the image grayscale + mask for the
     contrast term, and optionally reuses :class:`QCScorer`'s expected-vs-detected
-    grid count. All terms are fixed-normalized to ``[0, 1]`` (higher = better).
+    grid count. All terms are fixed-normalized to a natural-goodness value in
+    ``[0, 1]`` (higher = better); the base complements each into cost.
 
     The scorer is **unavailable until meta-validated**: :meth:`availability`
     returns ``False`` (so the engine degrades to :class:`QCScorer`) until
