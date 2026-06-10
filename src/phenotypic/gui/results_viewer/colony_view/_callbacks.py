@@ -31,7 +31,11 @@ import dash
 from dash import ALL, MATCH, Input, Output, State, callback_context, no_update
 
 from phenotypic.gui._config import (
+    COLONY_TILE_SIZE_DEFAULT,
+    COLONY_TILE_SIZE_MAX,
+    COLONY_TILE_SIZE_MIN,
     TILE_DIM_DEFAULT,
+    stepped_colony_tile_size_from_trigger,
     stepped_alpha_from_trigger,
 )
 from phenotypic.gui.results_viewer import _ids as ids
@@ -121,7 +125,7 @@ def register_callbacks(
         Input(ids.COLONY_X_AXIS_DROPDOWN_ID, "value"),
         Input(ids.COLONY_Y_AXIS_DROPDOWN_ID, "value"),
         Input(ids.COLONY_BTN_REFRESH_ID, "n_clicks"),
-        Input(ids.COLONY_TILE_SIZE_SLIDER_ID, "value"),
+        Input(ids.STORE_COLONY_TILE_SIZE, "data"),
         Input(ids.STORE_TILE_DIM_ALPHA, "data"),
         Input(ids.TABS_ID, "active_tab"),
     )
@@ -162,12 +166,15 @@ def register_callbacks(
             filtered_df = df
 
         max_size = compute_max_bbox_size(filtered_df)
-        # Display size: clamp the slider value into the slider's own range
+        # Display size: clamp the stepper value into the stepper's own range
         # then cap at the server crop size so the browser never upscales
         # the PNG beyond its native resolution.
-        slider_value = int(tile_size) if tile_size else 150
-        slider_value = max(64, min(400, slider_value))
-        display_size = min(slider_value, max_size)
+        requested_size = int(tile_size) if tile_size else COLONY_TILE_SIZE_DEFAULT
+        requested_size = max(
+            COLONY_TILE_SIZE_MIN,
+            min(COLONY_TILE_SIZE_MAX, requested_size),
+        )
+        display_size = min(requested_size, max_size)
         removed_keys = set(decode_removed_keys_payload(removed_payload))
         alpha = TILE_DIM_DEFAULT if dim_alpha is None else float(dim_alpha)
 
@@ -600,7 +607,41 @@ def register_callbacks(
         )
 
     # ----------------------------------------------------------------------
-    # 8. Colony tile-spotlight ``dim`` stepper → shared store
+    # 8. Colony rendered tile-size stepper → tile-size store
+    # ----------------------------------------------------------------------
+
+    @app.callback(
+        Output(ids.STORE_COLONY_TILE_SIZE, "data"),
+        Input(ids.COLONY_TILE_SIZE_MINUS, "n_clicks"),
+        Input(ids.COLONY_TILE_SIZE_PLUS, "n_clicks"),
+        State(ids.STORE_COLONY_TILE_SIZE, "data"),
+        prevent_initial_call=True,
+    )
+    def _step_colony_tile_size(
+        _minus_clicks: int | None,
+        _plus_clicks: int | None,
+        current: int | None,
+    ) -> int:
+        """Step the rendered colony tile size on a ``−``/``+`` click."""
+        return stepped_colony_tile_size_from_trigger(
+            dash.ctx.triggered_id,
+            current,
+            plus_id=ids.COLONY_TILE_SIZE_PLUS,
+            minus_id=ids.COLONY_TILE_SIZE_MINUS,
+        )
+
+    @app.callback(
+        Output(ids.COLONY_TILE_SIZE_READOUT, "children"),
+        Input(ids.STORE_COLONY_TILE_SIZE, "data"),
+    )
+    def _sync_colony_tile_size_readout(tile_size: int | None) -> str:
+        """Render ``150 px`` into the tile-size readout from the store."""
+        size = COLONY_TILE_SIZE_DEFAULT if tile_size is None else int(tile_size)
+        size = max(COLONY_TILE_SIZE_MIN, min(COLONY_TILE_SIZE_MAX, size))
+        return f"{size} px"
+
+    # ----------------------------------------------------------------------
+    # 9. Colony tile-spotlight ``dim`` stepper → shared store
     # ----------------------------------------------------------------------
 
     @app.callback(
@@ -629,7 +670,7 @@ def register_callbacks(
         )
 
     # ----------------------------------------------------------------------
-    # 9. Shared readout sync — keep BOTH toolbars' ``dim`` readouts in step
+    # 10. Shared readout sync — keep BOTH toolbars' ``dim`` readouts in step
     #    with the shared store. Registered here (once) because the colony
     #    surface always mounts with the viewer; the QC readout id is present
     #    too (suppress_callback_exceptions guards the rare absent case).

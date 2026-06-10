@@ -63,6 +63,7 @@ from phenotypic.gui.shell._ids import (
 )
 from phenotypic.gui.shell._sandbox import SandboxRoot
 from phenotypic.gui.shell._sidebar import build_sidebar
+from phenotypic.gui.shell._source_picker import build_source_picker_modal
 
 __all__ = ["build_top_bar", "build_help_modal", "wrap_in_chrome"]
 
@@ -184,10 +185,17 @@ def build_top_bar(
                         title=str(sandbox.root),
                     ),
                     html.Span(
+                        "",
+                        className="shell-path-divider",
+                        role="separator",
+                    ),
+                    dbc.Button(
                         "source: unset",
                         id=SHELL_SOURCE_IMAGE_ROOT_LABEL,
+                        color="link",
+                        n_clicks=0,
                         className="shell-source-label",
-                        title="No source image root selected",
+                        title="Select source image root",
                     ),
                     dbc.Button(
                         "x",
@@ -338,6 +346,7 @@ def wrap_in_chrome(
                 className="shell-body",
             ),
             build_help_modal(),
+            build_source_picker_modal(sandbox),
             dcc.Interval(id=SHELL_RSS_INTERVAL, interval=RSS_INTERVAL_MS, n_intervals=0),
             # Persists across mounts: each Dash instance reads the same
             # localStorage key and the clientside callback toggles the

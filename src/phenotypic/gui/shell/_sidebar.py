@@ -15,6 +15,7 @@ clientside ``fetch`` to mock) and matches the rest of the chrome's
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any, cast
 
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 from dash import dcc, html
@@ -323,6 +324,12 @@ def _build_row(
         icon = _dir_icon() if child.is_dir() else "📄"
         cls = "shell-sidebar-row"
 
+    if child.is_dir() and not is_external:
+        action = "Collapse folder" if is_expanded else "Expand folder"
+    else:
+        action = "Select path"
+    accessible_label = f"{action}: {rel_path}"
+
     return html.Li(
         html.Button(
             [
@@ -333,6 +340,8 @@ def _build_row(
             id=sidebar_entry_id(rel_path),
             n_clicks=0,
             className=cls,
+            title=accessible_label,
+            **cast(Any, {"aria-label": accessible_label}),
         ),
     )
 

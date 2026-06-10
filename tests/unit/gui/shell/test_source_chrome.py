@@ -32,6 +32,7 @@ def test_top_bar_renders_source_label_and_clear_action(tmp_path: Path) -> None:
     from phenotypic.gui.shell._ids import (
         SHELL_SOURCE_IMAGE_ROOT_CLEAR,
         SHELL_SOURCE_IMAGE_ROOT_LABEL,
+        SHELL_SOURCE_IMAGE_ROOT_MODAL,
         SHELL_TAB_HOME,
     )
 
@@ -40,6 +41,7 @@ def test_top_bar_renders_source_label_and_clear_action(tmp_path: Path) -> None:
 
     assert _component_with_id(top_bar, SHELL_SOURCE_IMAGE_ROOT_LABEL) is not None
     assert _component_with_id(top_bar, SHELL_SOURCE_IMAGE_ROOT_CLEAR) is not None
+    assert _component_with_id(top_bar, SHELL_SOURCE_IMAGE_ROOT_MODAL) is None
 
 
 def test_wrap_in_chrome_mounts_local_source_store(tmp_path: Path) -> None:
@@ -90,5 +92,62 @@ def test_clear_action_registers_source_store_writer(tmp_path: Path) -> None:
     ]
     assert any(
         SHELL_SOURCE_IMAGE_ROOT_CLEAR in json.dumps(meta["inputs"])
+        for meta in source_store_callbacks
+    )
+
+
+def test_wrap_in_chrome_mounts_source_picker_modal(tmp_path: Path) -> None:
+    import dash
+
+    from phenotypic.gui.shell._ids import (
+        SHELL_SOURCE_IMAGE_ROOT_BROWSE_STORE,
+        SHELL_SOURCE_IMAGE_ROOT_CONFIRM,
+        SHELL_SOURCE_IMAGE_ROOT_MODAL,
+        SHELL_SOURCE_IMAGE_ROOT_MODAL_BODY,
+        SHELL_TAB_HOME,
+    )
+
+    sandbox = SandboxRoot.from_path(tmp_path)
+    app = dash.Dash(__name__)
+    app.layout = dcc.Markdown("body")
+
+    wrap_in_chrome(app, active_tab=SHELL_TAB_HOME, sandbox=sandbox)
+
+    assert _component_with_id(app.layout, SHELL_SOURCE_IMAGE_ROOT_MODAL) is not None
+    assert (
+        _component_with_id(app.layout, SHELL_SOURCE_IMAGE_ROOT_MODAL_BODY)
+        is not None
+    )
+    assert (
+        _component_with_id(app.layout, SHELL_SOURCE_IMAGE_ROOT_CONFIRM)
+        is not None
+    )
+    store = _component_with_id(app.layout, SHELL_SOURCE_IMAGE_ROOT_BROWSE_STORE)
+    assert isinstance(store, dcc.Store)
+    assert store.data == str(tmp_path.resolve())
+
+
+def test_source_picker_registers_store_writer(tmp_path: Path) -> None:
+    import dash
+
+    from phenotypic.gui.shell._ids import (
+        SHELL_SOURCE_IMAGE_ROOT_CONFIRM,
+        SHELL_SOURCE_IMAGE_ROOT_STORE,
+        SHELL_TAB_HOME,
+    )
+
+    sandbox = SandboxRoot.from_path(tmp_path)
+    app = dash.Dash(__name__)
+    app.layout = dcc.Markdown("body")
+
+    wrap_in_chrome(app, active_tab=SHELL_TAB_HOME, sandbox=sandbox)
+
+    source_store_callbacks = [
+        meta
+        for callback_id, meta in app.callback_map.items()
+        if f"{SHELL_SOURCE_IMAGE_ROOT_STORE}.data" in callback_id
+    ]
+    assert any(
+        SHELL_SOURCE_IMAGE_ROOT_CONFIRM in json.dumps(meta["inputs"])
         for meta in source_store_callbacks
     )

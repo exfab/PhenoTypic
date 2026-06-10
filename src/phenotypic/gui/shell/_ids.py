@@ -43,6 +43,24 @@ SHELL_SOURCE_IMAGE_ROOT_LABEL = "shell-source-image-root-label"
 #: Top-bar action clearing :data:`SHELL_SOURCE_IMAGE_ROOT_STORE`.
 SHELL_SOURCE_IMAGE_ROOT_CLEAR = "shell-source-image-root-clear"
 
+#: Source-image-root picker modal opened from the top-bar source label.
+SHELL_SOURCE_IMAGE_ROOT_MODAL = "shell-source-image-root-modal"
+
+#: Body region for the source-image-root picker directory tree.
+SHELL_SOURCE_IMAGE_ROOT_MODAL_BODY = "shell-source-image-root-modal-body"
+
+#: Store holding the source picker directory currently being browsed.
+SHELL_SOURCE_IMAGE_ROOT_BROWSE_STORE = "shell-source-image-root-browse-store"
+
+#: Cancel action inside :data:`SHELL_SOURCE_IMAGE_ROOT_MODAL`.
+SHELL_SOURCE_IMAGE_ROOT_CANCEL = "shell-source-image-root-cancel"
+
+#: Confirm action inside :data:`SHELL_SOURCE_IMAGE_ROOT_MODAL`.
+SHELL_SOURCE_IMAGE_ROOT_CONFIRM = "shell-source-image-root-confirm"
+
+#: Pattern-matching ``type`` for source picker tree entries.
+SHELL_SOURCE_IMAGE_ROOT_ENTRY_TYPE = "shell-source-image-root-entry"
+
 #: Memory readout (``psutil.Process().memory_info().rss``); refreshed by
 #: ``SHELL_RSS_INTERVAL``.
 SHELL_RSS_LABEL = "shell-rss-label"
@@ -171,6 +189,12 @@ __all__ = [
     "SHELL_SOURCE_IMAGE_ROOT_STORE",
     "SHELL_SOURCE_IMAGE_ROOT_LABEL",
     "SHELL_SOURCE_IMAGE_ROOT_CLEAR",
+    "SHELL_SOURCE_IMAGE_ROOT_MODAL",
+    "SHELL_SOURCE_IMAGE_ROOT_MODAL_BODY",
+    "SHELL_SOURCE_IMAGE_ROOT_BROWSE_STORE",
+    "SHELL_SOURCE_IMAGE_ROOT_CANCEL",
+    "SHELL_SOURCE_IMAGE_ROOT_CONFIRM",
+    "SHELL_SOURCE_IMAGE_ROOT_ENTRY_TYPE",
     "SHELL_RSS_LABEL",
     "SHELL_RSS_INTERVAL",
     "SHELL_HELP_BUTTON",

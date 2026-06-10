@@ -19,6 +19,7 @@ Population of dropdown options and time-slider marks lives in
 from __future__ import annotations
 
 import logging
+from typing import Any, cast
 
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 from dash import dcc, html
@@ -117,6 +118,31 @@ def _build_picker_strip(
         placeholder="Pick an image...",
         clearable=False,
     )
+    image_picker_group = html.Div(
+        [
+            html.Button(
+                "‹",
+                id=ids.HEATMAP_IMAGE_PREV_ID,
+                n_clicks=0,
+                title="Previous image",
+                className="btn btn-outline-secondary btn-sm",
+                type="button",
+                **cast(Any, {"aria-label": "Previous image"}),
+            ),
+            html.Div(image_picker, style={"flex": "1 1 auto", "minWidth": "12rem"}),
+            html.Button(
+                "›",
+                id=ids.HEATMAP_IMAGE_NEXT_ID,
+                n_clicks=0,
+                title="Next image",
+                className="btn btn-outline-secondary btn-sm",
+                type="button",
+                **cast(Any, {"aria-label": "Next image"}),
+            ),
+        ],
+        className="d-flex align-items-center",
+        style={"gap": "0.35rem"},
+    )
 
     # Time slider lives inside a wrapper div so its visibility (hide /
     # show) is toggled cleanly by the controls-refresh callback without
@@ -149,7 +175,7 @@ def _build_picker_strip(
         [
             _picker_row("Color column", color_picker),
             _picker_row("Aggregator", aggregator_picker),
-            _picker_row("Image", image_picker),
+            _picker_row("Image", image_picker_group),
             _picker_row("Time", time_slider_wrapper),
         ],
         style={
