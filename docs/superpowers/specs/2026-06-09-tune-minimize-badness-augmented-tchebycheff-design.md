@@ -174,9 +174,12 @@ anchor)` exactly, so a QC-backed scorer needs **no** bespoke flip.
 ### 5.3 New-module authoring contract
 A new scorer/check declares **sense**, supplies an **anchor** only if its natural
 value is unbounded, returns its **natural** value, and **registers** (re-export
-from `tune/__init__.py` + class registry, else GUI/`from_json` cannot see it).
-Existing scorers are rewritten to emit natural values and declare sense (§7,
-Phase 0).
+from `tune/__init__.py` + class registry, else GUI/`from_json` cannot see it). It
+introduces **no scalarization parameters**: the anchor is the value it already
+declares for QC (its `fail_threshold`), and the framework derives normalization,
+`ε`, `ρ`, and default weights itself (§6.6). Existing scorers are rewritten to
+emit natural values and declare sense in §7 **Phase 1** (Phase 0 ships only the
+machinery; see §11).
 
 ---
 
@@ -277,7 +280,10 @@ zeroes the product and dominates), the documented trap this design avoids.
 
 Both are **small, fixed constants chosen relative to the `[0,1]` badness scale**,
 not tuned per run. Proposed defaults: `ε = 1e-3`, `ρ = 0.05`. Their jobs are
-distinct and their failure modes are opposite-ended.
+distinct and their failure modes are opposite-ended. **These are author-side
+constants, never required of users** — the derivation routes below justify the
+defaults; they are not operations a user performs (see §6.6 for the
+zero-parameter user surface).
 
 **`ρ` — the augmentation coefficient (`ρ·Σ wᵢ·bᵢ`).**
 - *What it does.* It makes the Tchebycheff norm strongly monotone, which upgrades
@@ -402,6 +408,53 @@ to document loudly:
 `weighted_mean` shares the weighted-sum convex-hull limitation (§9): it cannot
 reach non-convex-front compromises. That is acceptable for an explicitly-chosen
 compensatory blend, but it is a reason it is **not** the default.
+
+### 6.6 User-facing surface — zero exposed scalarization parameters (decided)
+
+**Principle: a user configuring a tuning run sets *no* scalarization parameters.**
+`ε`, `ρ`, the reference point, and the per-axis normalization are all derived by
+the framework. This is a deliberate design goal — the §6.4 derivations are
+*author-side justifications for the fixed defaults*, not operations a user
+performs. The reasoning, grounded in the literature:
+
+1. **`ε` and `ρ` are scale-coupled constants, and normalization removes the
+   scale.** Once every objective is in `[0,1]`, `ρ = 0.05` is the field-standard
+   constant (Knowles, 2006) and `ε = 1e-3` is a numerical margin (§6.4). Neither
+   is problem-dependent, so neither is exposed: `ε` is an internal `Final`, `ρ`
+   an advanced-only `CompositeScorer` field with a default the user need never
+   touch.
+
+2. **Per-axis normalization is auto-derived from values already in the config.**
+   Getting the normalization right is the step that actually matters: Marler &
+   Arora (2010) show that, for a fixed weight set, *rescaling an objective changes
+   which Pareto point you obtain* — so without normalization, weights conflate
+   importance with units. The framework therefore normalizes every objective to
+   `[0,1]` badness using anchors **already declared**: a bounded objective (Dice,
+   ICC) needs none (identity/complement); an unbounded loss (count divergence,
+   relative MAD) reuses its scorer/QC `fail_threshold` as the `to_badness` anchor
+   (§5.2). The user already sets `fail_threshold` for QC, so normalization
+   requires **zero new input**.
+
+3. **Weights default to uniform (no-preference).** True relative importance
+   cannot be conjured from a pipeline config that carries no preference signal, so
+   the principled default is equal weights on the normalized axes. The **only**
+   optional user-facing lever is a coarse importance — a per-objective
+   `low|med|high` label or a single "primary objective" pick mapped to weight
+   presets — never a numeric weight vector. Opt-in, not required.
+
+**Why not a lower-parameter method instead** (so the choice is on the record):
+- **Weighted sum** removes `ρ`/reference but cannot reach non-convex-front points
+  (Das & Dennis, 1997) and is *more* normalization-sensitive (Marler & Arora,
+  2010) — it does not escape the scale problem and is strictly weaker for the
+  all-objectives-required goal.
+- **PBI** (MOEA/D; Zhang & Li, 2007) replaces `ρ` with a penalty `θ` the
+  literature finds *harder* to set (no single `θ` works across problems;
+  Mohammadi et al., 2015) — more burden, not less.
+
+So augmented Tchebycheff + `[0,1]` normalization + fixed `ρ`/`ε` + uniform default
+weights is already near the minimum-parameter frontier; the win is in **not
+exposing** the parameters, achieved by auto-normalizing from the existing
+`fail_threshold` anchors.
 
 ---
 
@@ -674,6 +727,10 @@ it requires a baseline snapshot and reviewer sign-off, not a silent swap.
   by defaulting all scorers, because today's scorers still emit goodness and would
   be mis-oriented. Phase 0 therefore ships only the machinery; Phase 1 flips
   emission + annotation atomically per scorer.
+- **Zero exposed scalarization parameters** (§6.6): `ε`/`ρ`/reference/normalization
+  are framework-derived; per-axis normalization auto-derives from each scorer's
+  existing `fail_threshold`; weights default to uniform; the only optional lever is
+  a coarse per-objective importance. Users set no scalarization parameters.
 
 **Still open:** none — all design decisions resolved.
 
@@ -706,6 +763,15 @@ it requires a baseline snapshot and reviewer sign-off, not a silent swap.
 - Geoffrion, A. M. (1968). Proper efficiency and the theory of vector
   maximization. *Journal of Mathematical Analysis and Applications, 22*(3),
   618–630. https://doi.org/10.1016/0022-247X(68)90201-1
+- Marler, R. T., & Arora, J. S. (2010). The weighted sum method for
+  multi-objective optimization: New insights. *Structural and Multidisciplinary
+  Optimization, 41*(6), 853–862. (Objective scaling changes the Pareto point a
+  given weight set yields → normalize before weighting.)
+  https://doi.org/10.1007/s00158-009-0460-7
+- Mohammadi, A., Omidvar, M. N., & Li, X. (2015). Sensitivity analysis of
+  Penalty-based Boundary Intersection on aggregation-based EMO algorithms. *IEEE
+  Congress on Evolutionary Computation (CEC)*, 2891–2898. (No single PBI penalty
+  `θ` works across problems.) https://doi.org/10.1109/CEC.2015.7257248
 - Knowles, J. (2006). ParEGO: A hybrid algorithm with on-line landscape
   approximation for expensive multiobjective optimization problems. *IEEE
   Transactions on Evolutionary Computation, 10*(1), 50–66. (Origin of the
@@ -723,6 +789,10 @@ it requires a baseline snapshot and reviewer sign-off, not a silent swap.
   26*(3), 326–344. https://doi.org/10.1007/BF02591870
 - Tripp, A. (2025). *Chebyshev scalarization explained.*
   https://www.austintripp.ca/blog/2025-05-12-chebyshev-scalarization/
+- Zhang, Q., & Li, H. (2007). MOEA/D: A multiobjective evolutionary algorithm
+  based on decomposition. *IEEE Transactions on Evolutionary Computation, 11*(6),
+  712–731. (Weighted-sum / Tchebycheff / PBI decomposition; PBI penalty `θ`.)
+  https://doi.org/10.1109/TEVC.2007.892759
 
 *Sourcing note:* Miettinen (1998), Steuer & Choo (1983), Das & Dennis (1997), and
 Geoffrion (1968) were confirmed via citing literature and standard secondary
