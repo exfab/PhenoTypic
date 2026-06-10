@@ -12,6 +12,7 @@ from phenotypic import ImagePipeline
 
 from ._evaluation import build_pipeline
 from ._multi_objective import objective_directions
+from ._scoring import CompositeScorer
 from ._spec import TuningSpec
 from ._study._protocol import StudyStore
 from ._study_store import JournalStudyStore, Trial
@@ -59,6 +60,30 @@ class TuningEngine:
         # scorer yields per-objective ``directions`` the Optuna backend turns into
         # an NSGA-II Pareto study; ``None`` keeps the scalar single-objective path.
         directions = objective_directions(spec.scorer)
+
+        # Pin the study-global active set for the augmented Tchebycheff composite
+        # (§6.3): the children available study-wide form the fixed roster for both
+        # the Tchebycheff max numerator and the normalizer, so the normalizer is a
+        # study-global constant and per-image abstention stays a robust-aggregate
+        # matter (not a max-composition one). Non-composite / non-Tchebycheff
+        # scorers ignore this.
+        #
+        # Meta-validation ordering caveat (SF3): ReferenceFreeScorer.availability()
+        # is False until meta_validate() runs; the engine does not invoke
+        # meta_validate today (it is referenced only as a guard message in the CLI
+        # path), so a ReferenceFreeScorer child is correctly dropped from the
+        # roster here and the engine degrades to its fallback — matching today's
+        # behavior. If a later phase wires meta_validate into the engine, move this
+        # pin to immediately after it.
+        scorer = spec.scorer
+        if isinstance(scorer, CompositeScorer):
+            active = tuple(
+                handle
+                for handle, child in zip(scorer.objective_names(), scorer.scorers)
+                if child.availability()
+            )
+            scorer.set_active_set(active)
+
         strategy = spec.strategy.build(
             spec.search_space, self._store, directions=directions
         )

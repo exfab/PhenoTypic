@@ -547,3 +547,21 @@ def test_composite_delta_vs_old_geomean_winner_is_documented():
     new_winner = _argmin(_FRONT, lambda a, b: _composite(a, b))
     assert new_winner == (0.34, 0.34)        # NEW: the conjunctive knee
     assert old_winner != new_winner          # DELTA: intentional change
+
+
+# --------------------------------------------------------------------------- #
+# engine active-set pin logic — the available children form the roster
+# --------------------------------------------------------------------------- #
+def test_engine_pins_active_set_to_available_children():
+    comp = CompositeScorer(
+        scorers=[_FixedScorer(terms={"a": 0.1}, ok=True),
+                 _FixedScorer(terms={"b": 0.2}, ok=False)],  # unavailable
+    )
+    # Simulate what the engine does (the pin logic, without a full run):
+    active = tuple(
+        handle
+        for handle, child in zip(comp.objective_names(), comp.scorers)
+        if child.availability()
+    )
+    comp.set_active_set(active)
+    assert comp._active_handles == ("s0",)  # only the available child is an axis

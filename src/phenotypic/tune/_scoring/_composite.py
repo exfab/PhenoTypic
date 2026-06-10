@@ -6,10 +6,13 @@ supervised-scorers catalogue calls for (§1: "no single metric covers split,
 merge, boundary, count, and small-colony errors at once — the scorer must be a
 small complementary panel"). It composes children two ways:
 
-* **single-objective** (default): :meth:`finalize` returns one ``float`` — a
-  **weighted** arithmetic blend of the per-child scalars when ``weights`` are
-  given, else their **geometric** mean (so a single weak axis cannot be hidden
-  by a strong one — the geometric mean is dominated by its smallest term).
+* **single-objective** (default): :meth:`finalize` returns one ``float`` — the
+  conjunctive **augmented Tchebycheff** cost over the per-child cost scalars
+  (``blend="tchebycheff"``), so a single weak (high-cost) axis dominates the
+  ``max`` and cannot be masked by a strong one. ``blend="weighted_mean"`` is the
+  compensatory arithmetic-mean opt-out (``weights`` then weight that mean). The
+  geometric-mean blend is no longer offered (it inverts the conjunctive property
+  under cost — a single perfect axis would annihilate the product).
 * **multi-objective** (``multi_objective=True``): :meth:`finalize` returns a
   ``dict[str, float]`` of per-child objectives — the plan §0a *sidecar* path.
   The ``Evaluator`` stashes that dict on ``EvaluationResult.objectives`` and
@@ -111,8 +114,8 @@ class CompositeScorer(Scorer):
         >>> terms = comp.score_image(None, layout)
         >>> sorted(terms)
         ['s0.Count', 's1.Count']
-        >>> round(comp.finalize(terms), 3)  # geometric mean of the two child cost scalars (0.0 each -> 0.0); Phase 3 replaces this combiner
-        0.0
+        >>> round(comp.finalize(terms), 3)  # augmented Tchebycheff of two perfect (cost-0) children
+        0.001
 
         Flip to multi-objective and ``finalize`` returns the per-child sidecar:
 
@@ -448,25 +451,3 @@ class CompositeScorer(Scorer):
         if denominator <= 0.0:
             return 1.0
         return clamp01(numerator / denominator)
-
-    @staticmethod
-    def _geometric_mean(values: list[float]) -> float:
-        """The geometric mean of non-negative per-child scalars.
-
-        A single near-zero axis drags the product toward ``0`` — the property
-        that makes the geometric mean the default composite blend (a weak axis
-        cannot be masked by a strong one).
-
-        Args:
-            values: The per-child scalars (clamped at ``0`` — scores are
-                higher-is-better in ``[0, 1]``, never negative).
-
-        Returns:
-            ``(Π max(vᵢ, 0))^(1/n)``; ``0.0`` for an empty list.
-        """
-        if not values:
-            return 0.0
-        product = 1.0
-        for value in values:
-            product *= max(value, 0.0)
-        return float(math.pow(product, 1.0 / len(values)))

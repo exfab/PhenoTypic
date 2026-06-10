@@ -101,6 +101,41 @@ def test_engine_runs_full_grid():
     assert len(seen) == 6
 
 
+class _AvailScorer(Scorer):
+    """A const scorer whose availability is the ``ok`` flag (cost-native)."""
+
+    ok: bool = True
+
+    def _score_terms(self, image, measurements) -> dict[str, float]:
+        return {"Count": 0.2}
+
+    def availability(self) -> bool:
+        return self.ok
+
+
+def test_engine_pins_composite_active_set_to_available_children():
+    # Phase 3 §6.3: the engine pins the augmented Tchebycheff composite's
+    # study-global active set to the children available study-wide, once before
+    # the trial loop. An unavailable child is dropped from the roster.
+    from phenotypic.tune._scoring._composite import CompositeScorer
+
+    comp = CompositeScorer(
+        scorers=[_AvailScorer(ok=True), _AvailScorer(ok=False)],
+    )
+    spec = TuningSpec(
+        pipeline=_base(),
+        search_space=_grid_space(),
+        scorer=comp,
+        evaluator=Evaluator(),
+        strategy=GridConfig(),
+        budget=Budget(n_trials=1),
+    )
+    engine = TuningEngine(spec)
+    engine.optimize([load_synth_yeast_plate()])
+    # Only the available child (s0) is pinned as an objective axis.
+    assert comp._active_handles == ("s0",)
+
+
 def test_engine_budget_caps_trials():
     spec = _spec(Budget(n_trials=3), _base())
     engine = TuningEngine(spec)
