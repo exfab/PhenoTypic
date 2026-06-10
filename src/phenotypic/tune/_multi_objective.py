@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from ._strategies._optuna_support import _MAXIMIZE
+from ._strategies._optuna_support import _MINIMIZE
 
 
 def is_multi_objective(scorer: Any) -> bool:
@@ -91,9 +91,9 @@ def reject_grid_random_multi_objective(scorer: Any, strategy: Any) -> None:
 def objective_directions(scorer: Any) -> list[str] | None:
     """The per-objective Optuna ``directions`` for a multi-objective ``scorer``.
 
-    ``["maximize"] * n`` over the scorer's objective axes — every tuning
-    objective is higher-is-better (robust-eval §5). ``None`` for a
-    single-objective scorer (a scalar study), and also ``None`` when a
+    ``["minimize"] * n`` over the scorer's objective axes — every tuning
+    objective is bounded cost, lower-is-better (cost convention §4). ``None`` for
+    a single-objective scorer (a scalar study), and also ``None`` when a
     multi-objective scorer resolves to fewer than two named axes (a single axis
     is not a Pareto problem — fall back to the scalar path rather than build a
     degenerate one-objective "multi-objective" study).
@@ -110,4 +110,4 @@ def objective_directions(scorer: Any) -> list[str] | None:
     names = objective_names(scorer)
     if len(names) < 2:
         return None
-    return [_MAXIMIZE] * len(names)
+    return [_MINIMIZE] * len(names)
