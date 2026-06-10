@@ -140,6 +140,12 @@ class Scorer(BaseModel, ABC):
 a `Literal` alias plus an alignment test (`set(get_args(SenseLiteral)) ==
 {m.value for m in Sense}`). Mapping: `_HIGHER_IS_BAD=True` ↔ `Sense.LOWER_BETTER`.
 
+The default is `LOWER_BETTER` (badness-native, **decided**): a new scorer that
+emits a raw loss is zero-config; a goodness-emitting scorer must declare
+`HIGHER_BETTER`. Because the default *assumes* badness, the migration cannot leave
+today's goodness-emitting scorers un-annotated — each must be tagged in the same
+change that rewrites its emission (see §7 Phase 1 and the §11 decision).
+
 ### 5.2 The orientation boundary
 One function converts a scorer's **natural** term value into bounded badness.
 Applied at the Evaluator boundary (`_score_one_image`, `_evaluator.py:345`) so
@@ -277,16 +283,39 @@ distinct and their failure modes are opposite-ended.
 - *What it does.* It makes the Tchebycheff norm strongly monotone, which upgrades
   minimizers from merely *weakly* Pareto optimal to *properly* Pareto optimal —
   it is the term that breaks ties on the binding (worst) axis by preferring the
-  candidate that is also better on the non-binding axes. The proper-efficiency
-  trade-off rate it permits scales like `1/ρ`.
-- *How it's derived in practice.* The standard value with `[0,1]`-normalized
-  objectives is `ρ = 0.05` (ParEGO, Knowles 2006; reused by later surrogate-MOO
-  work). The constraint is a separation of scales: the `max` term spans up to
-  `≈ max wᵢ` and the augmentation up to `ρ·Σ wᵢ`, so `ρ` must be small enough
-  that the `max` term still dominates (preserving the conjunctive L∞ character)
-  yet large enough to be numerically meaningful at float precision. The practical
-  window is `ρ ∈ [1e-4, 0.1]`; pick `0.05` and confirm with a small sweep
-  (`{0.01, 0.05, 0.1}`).
+  candidate that is also better on the non-binding axes. Crucially, `ρ` sets the
+  **trade-off bound** of the properly-efficient solutions it admits: it permits
+  trade-off rates on the order of `1/ρ` and *excludes* solutions whose marginal
+  trade-off exceeds that bound (Steuer & Choo, 1983; Dächert et al., 2012).
+- *How it's typically derived.* Three established routes, in increasing rigor:
+  1. **By convention on normalized objectives.** With objectives normalized to a
+     common `[0,1]` scale, the field-standard value is `ρ = 0.05` (ParEGO,
+     Knowles 2006; reused widely in surrogate MOO, e.g. Rojas-Gonzalez et al.
+     2018, which likewise normalizes first). This is the default we adopt. The
+     informal justification is a separation of scales — the `max` term spans
+     `≈ max wᵢ` while the augmentation spans `ρ·Σ wᵢ`, so `ρ` is kept small
+     enough that the `max` (the conjunctive L∞ character) still dominates yet
+     large enough to break weak ties at float precision; the practical window is
+     `ρ ∈ [1e-4, 0.1]`.
+  2. **From a target trade-off bound (the principled derivation).** Because `ρ`
+     controls the admissible trade-off `~1/ρ`, you can *invert* it: pick the
+     maximum trade-off ratio `M` you are willing to accept between objectives
+     and set `ρ ≈ 1/M`. `ρ = 0.05` ⇒ `M ≈ 20:1`, i.e. it rejects only
+     near-pathological compromises (a candidate buying 20 normalized units on one
+     objective per 1 unit lost on another) while keeping every reasonable
+     balance. This "given a desired trade-off bound, the augmentation parameters
+     are determined" derivation is exactly the contribution of Dächert, Gorski &
+     Klamroth (2012).
+  3. **Adaptive / problem-dependent.** Dächert et al. (2012) further derive,
+     per problem instance, the **largest** `ρ` for which *every* non-dominated
+     point is still reachable — maximizing numerical conditioning without losing
+     any Pareto point. This is overkill for a fixed-weight composite, but it is
+     the rigorous answer to "what is the best `ρ` for *this* front" and is worth
+     citing as the upper-bound principle behind the `[1e-4, 0.1]` window.
+
+  For this design we adopt route 1 (`ρ = 0.05`) with route 2 as the
+  interpretation, and confirm with a small sweep (`{0.01, 0.05, 0.1}`) that the
+  winner stays balanced.
 - *Harm of mistuning.*
   - **Too small (→0):** reverts to plain Tchebycheff. Minimizers can be only
     weakly Pareto optimal, so the composite may pick a candidate tied on its
@@ -305,11 +334,26 @@ distinct and their failure modes are opposite-ended.
 - *What it does.* It pushes the reference point strictly below the achievable
   front so the reachability guarantee holds and the unsigned `max` is valid
   (`bᵢ − z*ᵢ = bᵢ + ε > 0`). It is **not** a tuning knob for quality — it is a
-  numerical safety margin.
-- *How it's derived in practice.* Any positive value small relative to the
-  `[0,1]` scale works; `ε = 1e-3` is ~0.1% of full range. A principled lower
-  bound is "a few × the smallest badness difference you care to resolve" (so the
-  shift never swamps a real gap). It does not need a sweep.
+  numerical safety margin. The standard requirement (confirmed across the
+  reference-point literature) is that the reference be a **utopia point strictly
+  dominated by every feasible objective vector** — `z*ᵢ < min bᵢ` for all `i`.
+- *How it's typically derived.* In the **general** case you first **estimate the
+  ideal point** `z*ᵢ = minₓ fᵢ(x)` — the per-objective optimum, in practice the
+  best value observed so far (this is the running-best estimate, and estimating
+  the ideal/nadir is itself a recognized sub-problem; Deb et al. 2010) — then
+  subtract a small offset to get a strictly-dominating utopia point. The offset
+  is conventionally a **small fraction of the objective range** (a few percent),
+  i.e. `z**ᵢ = z*ᵢ − ε·(nadirᵢ − z*ᵢ)`. Two things make this trivial here:
+  1. **The ideal is known a priori, not estimated.** Because badness is
+     normalized to `[0,1]` with `0` = perfect, `z*ᵢ = 0` exactly — so we skip the
+     whole running-ideal estimation (and its determinism/resume hazards, §9) and
+     only need the offset, giving `z*ᵢ = 0 − ε = −ε`.
+  2. **The offset is set from weight conditioning, not quality.** The weight that
+     realizes a target front point is `wᵢ ∝ 1/(bᵢ − z*ᵢ) = 1/(bᵢ + ε)`, so `ε`
+     **caps the weight dynamic range at `1/ε`**. Choosing `ε = 1e-3` (~0.1% of
+     the `[0,1]` range) bounds the realizer at `≤ 1000×` — well-conditioned —
+     while staying far smaller than any badness gap worth resolving. That is the
+     principled lower/upper bracket; no sweep is needed.
 - *Harm of mistuning.*
   - **Too small (→0):** on a perfect axis (`bᵢ = 0` is achievable, e.g. an exact
     count match) the reference stops strictly dominating, so reachability degrades
@@ -372,10 +416,14 @@ land together.
 
 ### Phase 0 — direction declaration + orientation boundary (additive)
 - Add `Sense` enum + `Literal` alias + alignment test (`tools_/typing_.py`).
-- Add `to_badness` (new `_scoring/_orient.py`).
+- Add `to_badness` (new `_scoring/_orient.py`), with unit tests, but **do not
+  invoke it on the live scoring path yet**.
 - Lift `_HIGHER_IS_BAD` ↔ `Sense` mapping; keep QC checks unchanged.
-- **No optimizer change yet**; boundary is wired but configured to reproduce
-  current behavior (orient to goodness) behind a flag, or landed dark.
+- **No optimizer or scorer change yet.** Because the `Sense` default is
+  `LOWER_BETTER`, the boundary cannot be activated while scorers still emit
+  goodness (it would mis-orient them). Phase 0 ships only the machinery (enum,
+  alias, `to_badness`, mapping); scorer annotation + activation happen atomically
+  per scorer in Phase 1.
 
 ### Phase 1 — flip the Evaluator math (`_evaluation/**`)
 - `_WORST_TERM: 0.0 → 1.0`; `failure_score: 0.0 → 1.0` (and define a finite
@@ -618,11 +666,16 @@ it requires a baseline snapshot and reviewer sign-off, not a silent swap.
   `{0.01, 0.05, 0.1}` to confirm); `ε` is a fixed numerical safety margin.
 - **Keep `_weighted_mean` as a `blend="weighted_mean"` opt-out** (§6.5);
   `tchebycheff` is the default; `weights` semantics are now blend-dependent.
+- **`Sense` default → `LOWER_BETTER`** (badness-native, §5.1). A new scorer that
+  emits a raw loss needs no annotation; a goodness-emitting scorer must declare
+  `HIGHER_BETTER` explicitly. **Migration implication:** an un-annotated scorer is
+  assumed to emit badness, so **every existing scorer must be annotated in the
+  same change that rewrites its emission** (Phase 1) — Phase 0 cannot "land dark"
+  by defaulting all scorers, because today's scorers still emit goodness and would
+  be mis-oriented. Phase 0 therefore ships only the machinery; Phase 1 flips
+  emission + annotation atomically per scorer.
 
-**Still open**
-- Whether `Sense` default is `LOWER_BETTER` (badness-native) — proposed — or
-  `HIGHER_BETTER` (matches today's emitted goodness pre-rewrite). Tied to whether
-  Phase 0 lands dark.
+**Still open:** none — all design decisions resolved.
 
 ---
 
@@ -633,10 +686,20 @@ it requires a baseline snapshot and reviewer sign-off, not a silent swap.
 - Beliakov, G., Pradera, A., & Calvo, T. (2007). *Aggregation functions: A guide
   for practitioners.* Springer. (Geometric mean as a conjunctive aggregation
   function.) https://doi.org/10.1007/978-3-540-73721-6
+- Dächert, K., Gorski, J., & Klamroth, K. (2012). An augmented weighted
+  Tchebycheff method with adaptively chosen parameters for discrete bicriteria
+  optimization problems. *Computers & Operations Research, 39*(12), 2929–2943.
+  (Deriving `ρ` from a desired trade-off bound; the adaptive, largest-feasible-`ρ`
+  rule.) https://doi.org/10.1016/j.cor.2012.02.021
 - Das, I., & Dennis, J. E. (1997). A closer look at drawbacks of minimizing
   weighted sums of objectives for Pareto set generation in multicriteria
   optimization problems. *Structural Optimization, 14*(1), 63–69.
   https://doi.org/10.1007/BF01197559
+- Deb, K., Miettinen, K., & Chaudhuri, S. (2010). Toward an estimation of nadir
+  objective vector using a hybrid of evolutionary and local search approaches.
+  *IEEE Transactions on Evolutionary Computation, 14*(6), 821–841. (Estimating
+  the ideal/nadir reference is itself a sub-problem.)
+  https://doi.org/10.1109/tevc.2010.2041667
 - Engau, A. (2017). Proper efficiency and tradeoffs in multiple criteria and
   stochastic optimization. *Mathematics of Operations Research, 42*(1), 119–134.
   https://doi.org/10.1287/moor.2016.0796
@@ -650,6 +713,11 @@ it requires a baseline snapshot and reviewer sign-off, not a silent swap.
   https://doi.org/10.1109/TEVC.2005.851274
 - Miettinen, K. (1998). *Nonlinear Multiobjective Optimization.* Kluwer.
   https://doi.org/10.1007/978-1-4615-5563-6
+- Rojas-Gonzalez, S., Jalali, H., & Van Nieuwenhuyse, I. (2018). A
+  stochastic-kriging-based multiobjective simulation optimization algorithm.
+  *Proceedings of the Winter Simulation Conference*, 2155–2166. (Reproduces the
+  ParEGO augmented Tchebycheff with `ρ = 0.05` and `[0,1]` normalization.)
+  https://doi.org/10.1109/WSC.2018.8632322
 - Steuer, R. E., & Choo, E.-U. (1983). An interactive weighted Tchebycheff
   procedure for multiple objective programming. *Mathematical Programming,
   26*(3), 326–344. https://doi.org/10.1007/BF02591870
