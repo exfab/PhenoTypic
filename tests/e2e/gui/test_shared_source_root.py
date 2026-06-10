@@ -75,3 +75,68 @@ def test_shared_source_persists_across_pages_and_seeds_builder(
         timeout=5_000,
     )
     expect(page.locator("#analysis-page")).to_be_visible(timeout=10_000)
+
+
+def test_status_bar_source_picker_sets_shared_source_and_page_inputs(
+    page: Page,
+    hub_url: str,
+    fake_sandbox: Path,
+) -> None:
+    """Top-bar source picker writes the same shared source store."""
+    plate = fake_sandbox / "plate1"
+
+    page.goto(hub_url + "/run/")
+    page.click("#shell-source-image-root-label")
+    page.wait_for_selector("#shell-source-image-root-modal", timeout=5_000)
+    page.wait_for_function(
+        "() => {"
+        "  const m = document.getElementById('shell-source-image-root-modal');"
+        "  return m && getComputedStyle(m).display !== 'none';"
+        "}",
+        timeout=5_000,
+    )
+    expect(page.locator("#shell-source-image-root-modal-body")).to_contain_text(
+        "plate1",
+        timeout=5_000,
+    )
+    page.click(
+        '[id*="shell-source-image-root-entry"][id*="plate1"]'
+    )
+    page.click("#shell-source-image-root-confirm")
+
+    expect(page.locator("#shell-source-image-root-label")).to_contain_text(
+        "source: plate1",
+        timeout=5_000,
+    )
+    expect(page.locator("#shell-source-image-root-label")).to_have_attribute(
+        "title",
+        str(plate),
+    )
+    expect(page.locator("#rc-label-input")).to_contain_text(
+        "plate1",
+        timeout=5_000,
+    )
+
+    page.goto(hub_url + "/builder/")
+    expect(page.locator("#shell-source-image-root-label")).to_contain_text(
+        "source: plate1",
+        timeout=5_000,
+    )
+    page.click("#btn-load-image")
+    page.wait_for_function(
+        "() => {"
+        "  const modal = document.getElementById('modal-load-image');"
+        "  return modal && getComputedStyle(modal).display !== 'none';"
+        "}",
+        timeout=5_000,
+    )
+    expect(page.locator("#modal-load-image-body")).to_contain_text(
+        "image.tif",
+        timeout=5_000,
+    )
+
+    page.goto(hub_url + "/tune/")
+    expect(page.locator("#shell-source-image-root-label")).to_contain_text(
+        "source: plate1",
+        timeout=5_000,
+    )
