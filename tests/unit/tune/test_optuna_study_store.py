@@ -73,8 +73,9 @@ def test_best_reads_from_study(tmp_path):
     store.append(_trial(2, 0.7))
     best = store.best()
     assert best is not None
-    assert best.score == 0.95
-    assert best.number == 1
+    # Cost convention (minimize): the lowest-cost trial wins.
+    assert best.score == 0.3
+    assert best.number == 0
 
 
 def test_best_none_when_only_failures(tmp_path):
@@ -106,7 +107,8 @@ def test_resume_loads_persisted_trials(tmp_path):
     reopened = _store(tmp_path, name="resume")
     assert len(reopened) == 2
     assert [t.score for t in reopened.trials] == [0.6, 0.8]
-    assert reopened.best().score == 0.8
+    # Cost convention (minimize): the lowest-cost trial wins.
+    assert reopened.best().score == 0.6
 
 
 def test_satisfies_study_store_protocol_by_calling(tmp_path):
@@ -158,7 +160,8 @@ def test_single_objective_optuna_store_has_empty_pareto_front(tmp_path):
     store.append(_trial(0, 0.3))
     store.append(_trial(1, 0.9))
     assert store.pareto_front() == []
-    assert store.best().score == 0.9
+    # Cost convention (minimize): the lowest-cost trial wins.
+    assert store.best().score == 0.3
 
 
 def test_multi_objective_optuna_store_pareto_front_excludes_dominated(tmp_path):

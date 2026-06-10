@@ -221,6 +221,11 @@ def test_optuna_store_configures_rdb_heartbeat(monkeypatch):
         def __init__(self, **kwargs):
             captured.update(kwargs)
 
+    class _FakeStudy:
+        # The store stamps tune_convention via set_user_attr after create_study.
+        def set_user_attr(self, key, value):
+            captured.setdefault("user_attrs", {})[key] = value
+
     class _FakeOptuna:
         class storages:
             RDBStorage = _FakeStorage
@@ -228,7 +233,7 @@ def test_optuna_store_configures_rdb_heartbeat(monkeypatch):
         @staticmethod
         def create_study(**kwargs):
             captured["create_storage"] = kwargs["storage"]
-            return object()
+            return _FakeStudy()
 
     monkeypatch.setattr(store_mod.OptunaStudyStore, "_enable_sqlite_wal", lambda *a: None)
     monkeypatch.setitem(__import__("sys").modules, "optuna", _FakeOptuna)

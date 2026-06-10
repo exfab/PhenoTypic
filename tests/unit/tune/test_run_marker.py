@@ -32,7 +32,7 @@ from phenotypic.tune import (
 )
 from phenotypic.tune._spec import Budget, TuningSpec
 from phenotypic.tune._strategies._config import PHENOTYPIC_TUNE_STORAGE_URL_ENV
-from phenotypic.tune._tune_cli._run import run_tuning
+from phenotypic.tune._tune_cli._run import _STUDY_NAME, run_tuning
 
 _OPTUNA = importlib.util.find_spec("optuna") is not None
 
@@ -70,7 +70,8 @@ def test_run_marker_written_with_required_keys(tmp_path):
     assert marker_path.is_file()
     marker = json.loads(marker_path.read_text())
     assert marker["version"] == 1
-    assert marker["study_name"] == "tune"
+    # Study name bumped for the minimize-cost cutover (Phase 2, OQ7).
+    assert marker["study_name"] == _STUDY_NAME
     assert marker["strategy"] == "grid"
     assert marker["is_multi_objective"] is False
     assert marker["slurm"] is False

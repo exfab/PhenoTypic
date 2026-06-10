@@ -81,7 +81,8 @@ def test_single_objective_store_has_empty_front_and_best_still_works():
     store.append(_trial(2, score=0.5))
     assert store.pareto_front() == []
     best = store.best()
-    assert best is not None and best.number == 1 and best.score == 0.9
+    # Cost convention (minimize): the lowest-cost trial wins.
+    assert best is not None and best.number == 0 and best.score == 0.3
 
 
 def test_pareto_front_duplicate_objectives_keeps_one_representative():

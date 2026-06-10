@@ -2,7 +2,7 @@
 
 A multi-objective scorer (a ``CompositeScorer(multi_objective=True)``, inferred
 via the scorer — plan §0b) makes an Optuna ``build`` auto-select **NSGA-II** with
-``directions=["maximize"] * n`` over the scorer's stable objective-name order.
+``directions=["minimize"] * n`` over the scorer's stable objective-name order.
 Pairing a **grid/random** strategy with a multi-objective scorer is rejected at
 ``TuningSpec`` construction (and again at run validation) with a clear,
 actionable error: grid/random cannot do Pareto search — use ``--strategy nsga2``
@@ -87,8 +87,8 @@ def test_multi_objective_inferred_from_composite_scorer():
 def test_objective_name_order_is_stable_and_matches_handles():
     scorer = _multi_scorer()
     assert objective_names(scorer) == ["s0", "s1"]
-    # Directions mirror the axis count, all maximize (higher-is-better, §5).
-    assert objective_directions(scorer) == ["maximize", "maximize"]
+    # Directions mirror the axis count, all minimize (cost convention §4).
+    assert objective_directions(scorer) == ["minimize", "minimize"]
 
 
 def test_single_objective_scorer_yields_no_directions():

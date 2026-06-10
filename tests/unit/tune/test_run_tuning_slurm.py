@@ -33,7 +33,7 @@ from phenotypic.tune import (
     SearchSpace,
 )
 from phenotypic.tune._spec import Budget, TuningSpec
-from phenotypic.tune._tune_cli._run import run_tuning
+from phenotypic.tune._tune_cli._run import _STUDY_NAME, run_tuning
 
 _OPTUNA = importlib.util.find_spec("optuna") is not None
 pytestmark = pytest.mark.skipif(not _OPTUNA, reason="optuna extra not installed")
@@ -269,5 +269,6 @@ def test_slurm_fleet_pre_creates_the_shared_study(tmp_path, monkeypatch):
     )
 
     # The study exists in the storage (pre-created) — load_study does not raise.
-    study = optuna.load_study(study_name="tune", storage=url)
-    assert study.study_name == "tune"
+    # Study name bumped for the minimize-cost cutover (Phase 2, OQ7).
+    study = optuna.load_study(study_name=_STUDY_NAME, storage=url)
+    assert study.study_name == _STUDY_NAME
