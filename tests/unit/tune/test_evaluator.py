@@ -16,12 +16,31 @@ from phenotypic.tune._strategies._pruning import NoOpChannel
 
 
 def test_robust_aggregate_penalizes_spread():
-    # median 2.5, IQR (3.25 - 1.75) = 1.5 → 2.5 - 0.5*1.5 = 1.75
-    assert _robust_aggregate([1.0, 2.0, 3.0, 4.0], 0.5) == pytest.approx(1.75)
+    # cost = median + λ·IQR: median 2.5, IQR 1.5 → 2.5 + 0.5*1.5 = 3.25, clamped to 1.0
+    assert _robust_aggregate([1.0, 2.0, 3.0, 4.0], 0.5) == pytest.approx(1.0)
 
 
 def test_robust_aggregate_single_value_is_that_value():
-    assert _robust_aggregate([0.8], 0.5) == pytest.approx(0.8)  # IQR 0
+    assert _robust_aggregate([0.2], 0.5) == pytest.approx(0.2)  # IQR 0
+
+
+def test_robust_aggregate_clamps_to_unit_interval():
+    # A high-variance bad term: np.percentile([0.1,0.8,0.9],[75,25]) = [0.85,0.45]
+    # → median 0.8, IQR 0.40 → 0.8 + 0.5*0.40 = 1.0 (exactly at the ceiling; a
+    # slightly worse term would exceed 1 and be clamped — B1: bᵢ ∈ [0,1] holds).
+    assert _robust_aggregate([0.1, 0.8, 0.9], 0.5) == pytest.approx(1.0)
+
+
+def test_robust_aggregate_in_unit_interval_is_not_clamped():
+    # cost stays < 1: np.percentile([0.3,0.4,0.5],[75,25]) = [0.45,0.35], IQR 0.10
+    # → median 0.4 + 0.5*0.10 = 0.45 (no clamp).
+    assert _robust_aggregate([0.3, 0.4, 0.5], 0.5) == pytest.approx(0.45)
+
+
+def test_robust_aggregate_above_one_is_clamped():
+    # Genuinely > 1 before clamp: np.percentile([0.0,0.9,1.0],[75,25]) = [0.95,0.45],
+    # IQR 0.50 → median 0.9 + 0.5*0.50 = 1.15 → clamped to 1.0.
+    assert _robust_aggregate([0.0, 0.9, 1.0], 0.5) == pytest.approx(1.0)
 
 
 class _SequenceScorer(Scorer):

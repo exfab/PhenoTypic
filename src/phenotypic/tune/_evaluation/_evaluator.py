@@ -12,6 +12,7 @@ from typing import Any, Mapping, Optional
 
 from pydantic import BaseModel, ConfigDict
 
+from .._scoring._orient import clamp01
 from .._scoring._scorer import Scorer, project_objectives_to_scalar
 from .._strategies._pruning import NoOpChannel, PruningChannel
 from ._aggregate_math import _median_iqr, _relative
@@ -51,18 +52,24 @@ def _project_finalize(
 
 
 def _robust_aggregate(values: list[float], stability_weight: float) -> float:
-    """Reduce a term's per-image scores to ``median - stability_weight·IQR``.
+    """Reduce a term's per-image **costs** to ``clamp01(median + λ·IQR)``.
+
+    Cost convention (lower = better): the spread penalty *adds* to the central
+    tendency, so an unstable term is penalized toward the worst cost (``1``).
+    The reflected aggregate ranges ``[0, 1+λ]``, so it is clamped to ``[0,1]``
+    (B1) — the clamp is monotone and only bites on *terrible* terms (cost > 1,
+    i.e. unstable **and** bad), so it is winner-preserving.
 
     Args:
-        values: The per-image scores for one term (higher = better).
+        values: The per-image costs for one term (lower = better).
         stability_weight: λ — how hard cross-image spread is penalized.
 
     Returns:
-        The stability-penalized central tendency. For a single value the IQR is
-        ``0`` and the result is that value.
+        The clamped stability-penalized central tendency in ``[0,1]``. For a
+        single value the IQR is ``0`` and the result is that value.
     """
     median, iqr = _median_iqr(values)
-    return median - stability_weight * iqr
+    return clamp01(median + stability_weight * iqr)
 
 
 def _per_trial_dispersion(
