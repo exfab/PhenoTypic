@@ -58,7 +58,8 @@
     color: var(--color-muted);
     font-family: var(--font-body);
     font-size: var(--font-size-label);
-    font-weight: 700;
+    font-weight: 500;
+    letter-spacing: var(--tracking-button);
     padding: var(--sp-2) var(--sp-4);
     cursor: pointer;
     border-bottom: 2px solid transparent;
@@ -70,8 +71,8 @@
 }
 
 .tune-dest-active {
-    color: var(--color-blue);
-    border-bottom-color: var(--color-blue);
+    color: var(--color-navy);
+    border-bottom-color: var(--color-navy);
 }
 
 .tune-destination-views {
@@ -95,6 +96,7 @@
 
 .tune-setup-section h3 {
     margin: 0;
+    font-family: var(--font-display);
     font-size: var(--font-size-header-2);
     color: var(--color-heading);
 }
@@ -103,12 +105,17 @@
     width: 100%;
     max-width: 42rem;
     padding: var(--sp-2) var(--sp-3);
-    border: 1px solid var(--color-border);
+    border: 1.5px solid var(--color-border);
     border-radius: var(--radius-sm);
     color: var(--color-body);
     background: var(--color-surface);
     font-family: var(--font-mono);
     font-size: var(--font-size-caption);
+}
+
+.tune-setup-path-input:focus {
+    border-color: var(--color-blue);
+    box-shadow: 0 0 0 3px rgba(27, 117, 188, 0.12);
 }
 
 .tune-setup-locked {
@@ -129,13 +136,13 @@
 
 .tune-setup-continue {
     appearance: none;
-    border: 1px solid var(--color-blue);
-    border-radius: var(--radius-sm);
-    background: var(--color-blue);
+    border: 1.5px solid var(--color-navy);
+    border-radius: var(--radius);
+    background: var(--color-navy);
     color: var(--color-surface);
     font-family: var(--font-body);
     font-size: var(--font-size-label);
-    font-weight: 700;
+    font-weight: 500;
     padding: var(--sp-2) var(--sp-4);
     cursor: pointer;
 }
@@ -168,6 +175,7 @@
 .tune-run-section h3 {
     flex: 1 0 100%;
     margin: 0;
+    font-family: var(--font-display);
     font-size: var(--font-size-header-2);
     color: var(--color-heading);
 }
@@ -179,12 +187,17 @@
 .tune-run-input {
     min-width: 10rem;
     padding: var(--sp-2) var(--sp-3);
-    border: 1px solid var(--color-border);
+    border: 1.5px solid var(--color-border);
     border-radius: var(--radius-sm);
     color: var(--color-body);
     background: var(--color-surface);
     font-family: var(--font-body);
     font-size: var(--font-size-caption);
+}
+
+.tune-run-input:focus {
+    border-color: var(--color-blue);
+    box-shadow: 0 0 0 3px rgba(27, 117, 188, 0.12);
 }
 
 .tune-run-input-wide {
@@ -240,7 +253,8 @@
     color: var(--color-muted);
     font-family: var(--font-body);
     font-size: var(--font-size-label);
-    font-weight: 600;
+    font-weight: 500;
+    letter-spacing: var(--tracking-button);
     padding: var(--sp-2) var(--sp-4);
     cursor: pointer;
     border-bottom: 2px solid transparent;
@@ -252,8 +266,8 @@
 }
 
 .tune-subtab-active {
-    color: var(--color-blue);
-    border-bottom-color: var(--color-blue);
+    color: var(--color-navy);
+    border-bottom-color: var(--color-navy);
 }
 
 /* ---- View containers --------------------------------------------------- */
@@ -287,9 +301,11 @@
     align-items: center;
     gap: var(--sp-1);
     padding: var(--sp-1) var(--sp-3);
-    border-radius: var(--radius-sm);
+    border-radius: 9999px;
+    font-family: var(--font-mono);
     font-size: var(--font-size-label);
     font-weight: 600;
+    text-transform: uppercase;
 }
 
 .tune-gap-badge-stable {
@@ -299,9 +315,9 @@
 }
 
 .tune-gap-badge-unstable {
-    background: var(--color-gold);
-    color: var(--color-navy);
-    border: 1px solid var(--color-gold);
+    background: rgba(230, 159, 0, 0.12);
+    color: var(--oi-orange-text);
+    border: 1px solid rgba(230, 159, 0, 0.25);
 }
 
 .tune-monitor-note {
@@ -373,9 +389,11 @@
 }
 
 .tune-curate-label {
-    font-size: var(--font-size-label);
-    font-weight: 600;
-    color: var(--color-heading);
+    font-family: var(--font-mono);
+    font-size: var(--font-size-caption);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-muted);
 }
 
 .tune-curate-source-value {
@@ -427,6 +445,7 @@
 }
 
 .tune-card-title {
+    font-family: var(--font-body);
     font-size: var(--font-size-label);
     font-weight: 600;
     color: var(--color-heading);
@@ -505,9 +524,11 @@
 }
 
 .tune-launch-label {
-    font-size: var(--font-size-label);
-    font-weight: 600;
-    color: var(--color-heading);
+    font-family: var(--font-mono);
+    font-size: var(--font-size-caption);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-muted);
 }
 
 .tune-launch-toggles {
@@ -560,9 +581,10 @@
 
 .tune-space-key {
     font-family: var(--font-mono);
-    font-size: var(--font-size-label);
-    font-weight: 600;
-    color: var(--color-heading);
+    font-size: var(--font-size-caption);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-muted);
 }
 
 .tune-space-review {

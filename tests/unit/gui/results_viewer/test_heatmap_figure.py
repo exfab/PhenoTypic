@@ -13,7 +13,7 @@ import plotly.graph_objects as go
 import polars as pl
 import pytest
 
-from phenotypic.gui._design import COLOR_MUTED
+from phenotypic.gui._design import OI_VERMILION
 from phenotypic.gui.results_viewer._heatmap_tab._figure import build_heatmap_figure
 
 
@@ -177,7 +177,7 @@ class TestRemovedOverlay:
         # >= 2 traces: data heatmap + overlay (heatmap and/or scatter).
         assert len(fig.data) >= 2
 
-    def test_removed_overlay_uses_color_muted(self) -> None:
+    def test_removed_overlay_uses_vermilion(self) -> None:
         frame = _make_minimal_frame(rows=2, cols=2)
         removed = {("image_a.tif", 1)}
         fig = build_heatmap_figure(
@@ -189,16 +189,17 @@ class TestRemovedOverlay:
             removed_keys=removed,
         )
         # Locate the scatter overlay (only the overlay uses Scatter; the
-        # data heatmap is a Heatmap trace).
+        # data heatmap is a Heatmap trace). Removed/excluded cells render in
+        # the spec's failed/null color (vermilion), not grey (DESIGN.md "06"/"10").
         scatter_traces = [t for t in fig.data if t.type == "scatter"]
         assert scatter_traces, "Expected at least one overlay Scatter trace"
         scatter = scatter_traces[0]
         # ``marker.color`` may be either a plain hex string or a list-of-hex.
         marker_color = scatter.marker.color
         if isinstance(marker_color, (list, tuple)):
-            assert all(c == COLOR_MUTED for c in marker_color)
+            assert all(c == OI_VERMILION for c in marker_color)
         else:
-            assert marker_color == COLOR_MUTED
+            assert marker_color == OI_VERMILION
 
 
 class TestTimeFilter:

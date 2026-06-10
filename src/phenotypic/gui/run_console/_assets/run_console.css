@@ -13,7 +13,7 @@
 
 .run-console-root {
   font-family: var(--font-body);
-  color: #1f2937;
+  color: var(--color-body);
 }
 
 /* ----- Dashboard header (logo + title) ---------------------------------- */
@@ -22,7 +22,7 @@
   align-items: center;
   gap: 0.75rem;
   padding: 0.75rem 1.25rem 0.5rem;
-  border-bottom: 1px solid var(--color-rule, #e5e7eb);
+  border-bottom: 1px solid var(--color-rule);
 }
 
 .run-console-header__logo {
@@ -34,7 +34,7 @@
 
 .run-console-header__title {
   font-family: var(--font-display);
-  color: var(--color-heading, #003660);
+  color: var(--color-heading);
 }
 
 .run-console-container {
@@ -49,19 +49,23 @@
 }
 
 .run-console-form-col {
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
-  border-radius: 0.5rem;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   padding: 1rem;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  box-shadow: var(--shadow-sm);
 }
 
 .run-console-form-label {
-  font-size: var(--font-size-label);
-  font-weight: 600;
-  color: #003660;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-caption);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-muted);
   margin-bottom: 0.25rem;
 }
 
@@ -80,9 +84,12 @@
 }
 
 .run-console-picker-label {
-  font-size: var(--font-size-label);
-  font-weight: 600;
-  color: #003660;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-caption);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-muted);
 }
 
 .run-console-picker-row {
@@ -94,7 +101,7 @@
 .run-console-picker-value {
   font-family: var(--font-mono);
   font-size: var(--font-size-label);
-  color: #4b5563;
+  color: var(--color-muted);
   word-break: break-all;
   flex: 1 1 auto;
 }
@@ -111,12 +118,12 @@
 
 .run-console-collapse-toggle {
   text-decoration: none !important;
-  color: #1b75bc !important;
+  color: var(--color-blue) !important;
   padding-left: 0 !important;
 }
 
 .run-console-collapse-toggle:hover {
-  color: #003660 !important;
+  color: var(--color-navy) !important;
 }
 
 /* ----- Action buttons --------------------------------------------------- */
@@ -137,38 +144,39 @@
 }
 
 .run-console-iframe-panel {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 0.5rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   min-height: 360px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  box-shadow: var(--shadow-sm);
 }
 
 .run-console-status-banner {
   font-size: var(--font-size-label);
   font-family: var(--font-mono);
-  color: #f3f4f6;
-  background: #003660;
+  color: var(--color-white);
+  background: var(--color-navy);
   padding: 0.4rem 0.75rem;
-  border-bottom: 1px solid #1b75bc;
+  border-bottom: 1px solid var(--color-blue);
 }
 
 .run-console-iframe-empty {
   padding: 2rem 1.5rem;
   text-align: center;
-  color: #4b5563;
+  color: var(--color-muted);
 }
 
 .run-console-iframe-empty-title {
-  color: #003660;
+  color: var(--color-heading);
   font-weight: 600;
   margin-bottom: 0.5rem;
 }
 
 .run-console-iframe-empty-body {
-  color: #6b7280;
+  color: var(--color-muted);
   font-size: var(--font-size-body);
   max-width: 36rem;
   margin: 0 auto;
@@ -178,14 +186,14 @@
   width: 100%;
   height: 480px;
   border: none;
-  background: #ffffff;
+  background: var(--color-surface);
 }
 
 /* ----- Log tail --------------------------------------------------------- */
 
 .run-console-log-section {
-  background: #1f2937;
-  border-radius: 0.5rem;
+  background: var(--color-image-stage-dark);
+  border-radius: var(--radius);
   padding: 0.5rem 0.75rem;
   display: flex;
   flex-direction: column;
@@ -196,7 +204,7 @@
   font-size: var(--font-size-label);
   font-weight: 700;
   letter-spacing: 0.05em;
-  color: #febc11;
+  color: var(--color-gold);
   text-transform: uppercase;
 }
 
@@ -216,16 +224,17 @@
 
 .run-console-recents {
   margin-top: 1.25rem;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 0.5rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   padding: 0.75rem;
+  box-shadow: var(--shadow-sm);
 }
 
 .run-console-recents-header {
   font-size: var(--font-size-body);
   font-weight: 700;
-  color: #003660;
+  color: var(--color-heading);
   margin-bottom: 0.5rem;
 }
 
@@ -244,22 +253,23 @@
 .run-console-recents-cell-path {
   font-family: var(--font-mono);
   font-size: var(--font-size-label);
-  color: #003660;
+  color: var(--color-heading);
 }
 
 .run-console-recents-cell-mode {
   font-size: var(--font-size-label);
-  color: #4b5563;
+  color: var(--color-muted);
 }
 
 .run-console-recents-cell-dash {
   font-size: var(--font-size-label);
-  color: #4b5563;
+  color: var(--color-muted);
 }
 
 .run-console-recents-empty {
   text-align: center;
-  color: #6b7280;
+  color: var(--color-muted);
+  font-family: var(--font-mono);
   font-style: italic;
   padding: 1rem;
 }
@@ -272,21 +282,21 @@
 }
 
 .run-console-recents-status-running {
-  color: #1b75bc;
+  color: var(--color-blue);
 }
 
 .run-console-recents-status-complete {
-  color: #047857;
+  color: var(--oi-green-text);
 }
 
 .run-console-recents-status-failed {
-  color: #b91c1c;
+  color: var(--oi-vermilion);
 }
 
 .run-console-recents-status-cancelled {
-  color: #b45309;
+  color: var(--oi-orange-text);
 }
 
 .run-console-recents-status-unknown {
-  color: #6b7280;
+  color: var(--color-muted);
 }

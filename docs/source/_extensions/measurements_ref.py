@@ -82,6 +82,53 @@ _EXPERIMENTAL_TAG_NAMES: tuple[str, ...] = (
     "SAMPLE_METADATA",
 )
 
+_METADATA_OVERVIEWS: dict[str, tuple[str, str]] = {
+    "METADATA": (
+        "Framework-populated image bookkeeping, including image names, UUIDs, "
+        "file formats, image types, bit depth, and file suffixes.",
+        "Use when reading provenance emitted by PhenoTypic itself; these are "
+        "not the biological metadata columns users normally supply.",
+    ),
+    "SAMPLE_METADATA": (
+        "Sample identity and provenance, including sample IDs, replicates, "
+        "clones, source plate/well, library IDs, barcodes, and controls.",
+        "Use for sample-level biological identity and for linking colonies "
+        "back to source materials.",
+    ),
+    "PLATE_METADATA": (
+        "Assay plate and physical layout, including plate IDs, batches, array "
+        "density, and incubator position.",
+        "Use when grouping measurements by plate, batch, or spatial assay "
+        "layout.",
+    ),
+    "CONDITION_METADATA": (
+        "Media, nutrients, supplements, treatments, compounds, doses, and "
+        "stress conditions applied to colonies.",
+        "Use when comparing phenotypes across growth environments or "
+        "perturbations.",
+    ),
+    "INCUBATION_METADATA": (
+        "Temperature, elapsed time, time units, timepoints, day indices, "
+        "generation, humidity, and atmosphere.",
+        "Use for time-course analyses and incubation-condition grouping.",
+    ),
+    "ACQUISITION_METADATA": (
+        "Image acquisition details, including imaging date, instrument, "
+        "experimenter, resolution, and exposure time.",
+        "Use when tracking imaging batches or diagnosing acquisition effects.",
+    ),
+    "GENETIC_METADATA": (
+        "Organism and genetic identity, including species, strain, genotype, "
+        "background, alleles, plasmids, markers, mating type, and ploidy.",
+        "Use when grouping or filtering colonies by genetic background.",
+    ),
+    "EXPERIMENT_METADATA": (
+        "Experiment-level bookkeeping, including experiment IDs, projects, "
+        "datasets, protocols, and notes.",
+        "Use when organizing outputs across projects, protocols, or datasets.",
+    ),
+}
+
 _RST_ROLE_RE = re.compile(r":[a-zA-Z0-9_.:]+:`([^`]+)`")
 
 _ROOT_INTRO = """\
@@ -146,7 +193,7 @@ descriptions.
 
 .. toctree::
    :maxdepth: 1
-   :caption: MeasurementInfo
+   :caption: Measurement Categories
    :hidden:
 
 {toctree_entries}
@@ -176,6 +223,17 @@ them into PhenoTypic workflows.
    :hidden:
 
 {toctree_entries}
+
+Metadata Tag Overview
+---------------------
+
+.. list-table::
+   :header-rows: 1
+
+   * - Tag class
+     - Includes
+     - Use for
+{metadata_overview_rows}
 
 Framework Metadata
 ------------------
@@ -252,9 +310,21 @@ def _heading(title: str, underline: str) -> list[str]:
     return [title, underline * len(title), ""]
 
 
-def _toctree_entries(info_names: list[str]) -> str:
+def _toctree_entries(
+        info_names: list[str],
+        public_infos: dict[str, type[Any]] | None = None,
+        *,
+        label_by_category: bool = False,
+) -> str:
     """Format hidden toctree entries for generated enum pages."""
-    return "\n".join(f"   {_doc_stem(name)}" for name in info_names)
+    entries: list[str] = []
+    for name in info_names:
+        if label_by_category and public_infos is not None:
+            label = public_infos[name].category()
+            entries.append(f"   {label} <{_doc_stem(name)}>")
+        else:
+            entries.append(f"   {_doc_stem(name)}")
+    return "\n".join(entries)
 
 
 def _experimental_tag_list() -> str:
@@ -263,6 +333,19 @@ def _experimental_tag_list() -> str:
         f"- :doc:`{name} <{_doc_stem(name)}>`"
         for name in _EXPERIMENTAL_TAG_NAMES
     )
+
+
+def _metadata_overview_rows(info_names: list[str]) -> str:
+    """Return overview table rows for the metadata index."""
+    rows: list[str] = []
+    for name in info_names:
+        includes, use_for = _METADATA_OVERVIEWS[name]
+        rows.extend([
+            f"   * - :doc:`{name} <{_doc_stem(name)}>`",
+            f"     - {includes}",
+            f"     - {use_for}",
+        ])
+    return "\n".join(rows)
 
 
 def _public_measurement_info_classes() -> dict[str, type[Any]]:
@@ -384,25 +467,64 @@ def _append_operator_sections(out: list[str]) -> None:
         out.append("")
 
 
+def _append_metadata_sections(
+        out: list[str],
+        info_names: list[str],
+        public_infos: dict[str, type[Any]],
+) -> None:
+    """Append inline metadata class documentation to the metadata index."""
+    for name in info_names:
+        info_cls = public_infos[name]
+        out.extend(_heading(name, "-"))
+
+        description = _lead_paragraphs(_strip_appended_table(info_cls.__doc__ or ""))
+        if description:
+            out.append(_rst_cell_text(description))
+            out.append("")
+
+        out.append(info_cls.rst_table())
+        out.append("")
+        out.append("")
+
+
 def _write(path: Path, contents: str) -> None:
     """Write a generated page, creating parent directories as needed."""
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(contents, encoding="utf-8")
 
 
-def _build_measurements_index(info_names: list[str]) -> str:
+def _build_measurements_index(
+        info_names: list[str],
+        public_infos: dict[str, type[Any]],
+) -> str:
     """Build the non-metadata measurements index page."""
-    out = [_MEASUREMENTS_INTRO.format(toctree_entries=_toctree_entries(info_names))]
+    out = [
+        _MEASUREMENTS_INTRO.format(
+            toctree_entries=_toctree_entries(
+                info_names,
+                public_infos,
+                label_by_category=True,
+            )
+        )
+    ]
     _append_operator_sections(out)
     return "\n".join(out)
 
 
-def _build_metadata_index(info_names: list[str]) -> str:
+def _build_metadata_index(
+        info_names: list[str],
+        public_infos: dict[str, type[Any]],
+) -> str:
     """Build the metadata index page."""
-    return _METADATA_INTRO.format(
-        toctree_entries=_toctree_entries(info_names),
-        experimental_tag_list=_experimental_tag_list(),
-    )
+    out = [
+        _METADATA_INTRO.format(
+            toctree_entries=_toctree_entries(info_names),
+            metadata_overview_rows=_metadata_overview_rows(info_names),
+            experimental_tag_list=_experimental_tag_list(),
+        )
+    ]
+    _append_metadata_sections(out, info_names, public_infos)
+    return "\n".join(out)
 
 
 def _build_pages(srcdir: str) -> None:
@@ -424,11 +546,11 @@ def _build_pages(srcdir: str) -> None:
     _write(output_dir / "index.rst", _ROOT_INTRO)
     _write(
         output_dir / "measurements" / "index.rst",
-        _build_measurements_index(measurement_names),
+        _build_measurements_index(measurement_names, public_infos),
     )
     _write(
         output_dir / "metadata" / "index.rst",
-        _build_metadata_index(metadata_names),
+        _build_metadata_index(metadata_names, public_infos),
     )
 
     for name in measurement_names:

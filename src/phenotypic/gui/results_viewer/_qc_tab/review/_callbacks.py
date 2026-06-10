@@ -63,6 +63,9 @@ from phenotypic.gui._design import (
     FONT_FAMILY_MONO,
     FONT_SIZE_CAPTION,
     FONT_SIZE_LABEL,
+    OI_GREEN_TEXT,
+    OI_ORANGE_TEXT,
+    OI_VERMILION_TEXT,
 )
 from phenotypic.gui._shared.tiles import build_tile_grid
 from phenotypic.gui.results_viewer import _ids as viewer_ids
@@ -181,12 +184,12 @@ def _render_summary_header(
     vertically and eat the whole column).
     """
     median = stats.get("median_metric")
-    median_text = "—" if median is None else f"{median:.3f}"
+    median_text = "N/A" if median is None else f"{median:.3f}"
     tiles = [
         ("Total", stats.get("total", 0), COLOR_NAVY),
-        ("Fail", stats.get("fail", 0), "#c0392b"),
-        ("Warn", stats.get("warn", 0), "#b8860b"),
-        ("Pass", stats.get("pass", 0), "#1e7d34"),
+        ("Fail", stats.get("fail", 0), OI_VERMILION_TEXT),
+        ("Warn", stats.get("warn", 0), OI_ORANGE_TEXT),
+        ("Pass", stats.get("pass", 0), OI_GREEN_TEXT),
         ("Insufficient", stats.get("insufficient", 0), COLOR_MUTED),
         ("Reviewed", reviewed, COLOR_NAVY),
         ("Removed", colonies_removed, COLOR_MUTED),
@@ -201,6 +204,7 @@ def _render_summary_header(
                         "fontWeight": 600,
                         "color": color,
                         "fontSize": "1.1rem",
+                        "fontFamily": FONT_FAMILY_MONO,
                     },
                 ),
                 html.Div(
@@ -315,11 +319,15 @@ def render_worklist_row_metric_cell(
         The ``[Span(metric_text), Badge(status)[, Span(⤳)]]`` children list.
     """
     children: list[Component] = [
-        html.Span(f" {_format_metric(metric)} "),
+        html.Span(
+            f" {_format_metric(metric)} ",
+            style={"fontFamily": FONT_FAMILY_MONO},
+        ),
         dbc.Badge(
             status,
             color=_BADGE_COLOR_BY_STATUS.get(status, "secondary"),
             className="ms-1",
+            style={"fontFamily": FONT_FAMILY_MONO},
         ),
     ]
     if moved:
@@ -355,7 +363,7 @@ def _render_worklist_row(
         ),
     ]
     if is_reviewed:
-        children.insert(0, html.Span("✓ ", style={"color": "#1e7d34"}))
+        children.insert(0, html.Span("✓ ", style={"color": OI_GREEN_TEXT}))
     return html.Button(
         children,
         id=rids.worklist_row_id(instance_id, encoded),

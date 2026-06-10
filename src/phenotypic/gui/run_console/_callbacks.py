@@ -509,7 +509,7 @@ def register_callbacks(
                     False,
                     *_toast(
                         f"Picked {chosen.name} (no 'operations' token in"
-                        " first 4 KB — may not be a pipeline).",
+                        " first 4 KB -- may not be a pipeline).",
                         ok=True,
                         header="Run console (warning)",
                     ),
@@ -622,7 +622,7 @@ def register_callbacks(
         toast_text = (
             f"Input: {chosen.name}"
             if sample
-            else f"Input: {chosen.name} (no obvious image files —"
+            else f"Input: {chosen.name} (no obvious image files --"
             " set --image-type if needed)"
         )
         return (
@@ -971,7 +971,7 @@ def register_callbacks(
             if _local_run_active(runner, registry):
                 return (
                     *_toast(
-                        "A local run is already active — Cancel it first.",
+                        "A local run is already active -- Cancel it first.",
                         ok=False,
                     ),
                     *((no_update,) * 7),

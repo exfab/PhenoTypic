@@ -97,7 +97,7 @@ _LIVE_OPEN_POOL: ThreadPoolExecutor = ThreadPoolExecutor(
 #: The degrade note shown when a live read was attempted but the storage could
 #: not be reached in time — points the user at the usual culprits.
 _NOTE_LIVE_UNREACHABLE: str = (
-    "couldn't reach the live study — check network / ~/.pgpass. "
+    "couldn't reach the live study -- check network / ~/.pgpass. "
     "Showing the last finished trials."
 )
 
@@ -545,6 +545,14 @@ def _build_trials_table(store: "Optional[_ReadableStore]"):  # type: ignore[no-u
     """Render the trials ``DataTable`` from ``store`` (a placeholder when empty)."""
     from dash import dash_table, html
 
+    from phenotypic.gui._design import (
+        COLOR_MUTED,
+        COLOR_NAVY,
+        FONT_FAMILY_MONO,
+        FONT_SIZE_BODY_SM,
+        FONT_SIZE_CAPTION,
+    )
+
     if store is None or not store.trials:
         return html.P("No trials yet.", className="tune-monitor-note")
 
@@ -557,11 +565,28 @@ def _build_trials_table(store: "Optional[_ReadableStore]"):  # type: ignore[no-u
         }
         for t in store.trials
     ]
+    # Numeric columns render in mono per DESIGN.md "05 -- Data Tables": header
+    # is 11px mono uppercase muted with a 2px navy underline; cells are mono.
     return dash_table.DataTable(  # type: ignore[attr-defined]
         data=rows,
         columns=[{"name": col, "id": col} for col in _TRIALS_COLUMNS],
         page_size=10,
         sort_action="native",
+        style_cell={
+            "fontFamily": FONT_FAMILY_MONO,
+            "fontSize": FONT_SIZE_BODY_SM,
+            "padding": "4px 8px",
+            "textAlign": "left",
+        },
+        style_header={
+            "fontFamily": FONT_FAMILY_MONO,
+            "fontSize": FONT_SIZE_CAPTION,
+            "fontWeight": "500",
+            "textTransform": "uppercase",
+            "letterSpacing": "0.08em",
+            "color": COLOR_MUTED,
+            "borderBottom": f"2px solid {COLOR_NAVY}",
+        },
     )
 
 
@@ -570,7 +595,7 @@ def _gap_badge_outputs(store: "Optional[_ReadableStore]") -> tuple[str, str]:
     from phenotypic.gui.tune._study_read import gap_badge
 
     if store is None:
-        return "—", "tune-gap-badge tune-gap-badge-stable"
+        return "--", "tune-gap-badge tune-gap-badge-stable"
     label, flagged = gap_badge(store)
     variant = "unstable" if flagged else "stable"
     return label, f"tune-gap-badge tune-gap-badge-{variant}"
@@ -1070,7 +1095,7 @@ def register_callbacks(app, *, sandbox=None) -> None:  # type: ignore[no-untyped
             return f"Export unavailable: {exc}"
         except Exception:  # noqa: BLE001
             logger.warning("Monitor best-pipeline export failed", exc_info=True)
-            return "Export failed — see the server log."
+            return "Export failed -- see the server log."
         return f"Exported {written}"
 
     @app.callback(
@@ -1445,7 +1470,7 @@ def _register_space_export(app) -> None:  # type: ignore[no-untyped-def]
         from phenotypic.gui.tune._run_root import TuneRunRoot
 
         if not run_root_data or not run_root_data.get("path"):
-            return "No run is bound — cannot export."
+            return "No run is bound -- cannot export."
         keys = [entry.get("key") for entry in (tunable_ids or [])]
         edits = _collect_space_edits(keys, lows, highs, logs, choices, tunables)
         try:
@@ -1455,7 +1480,7 @@ def _register_space_export(app) -> None:  # type: ignore[no-untyped-def]
             return "Export failed: the output directory is read-only."
         except Exception:  # noqa: BLE001 - surface the failure in the note
             logger.warning("Space export failed", exc_info=True)
-            return "Export failed — see the server log."
+            return "Export failed -- see the server log."
         return f"Exported {written}"
 
 
@@ -1923,7 +1948,7 @@ def _write_curate_winner(ov, n_clicks, pinned, run_root_data):  # type: ignore[n
 
     base = ov.read_base_pipeline(root)
     if base is None:
-        return no_update, True, "Base pipeline unavailable — cannot build winner."
+        return no_update, True, "Base pipeline unavailable -- cannot build winner."
     trials = _trials_by_number(root)
     winner = trials.get(a_trial)
     if winner is None:
@@ -1936,7 +1961,7 @@ def _write_curate_winner(ov, n_clicks, pinned, run_root_data):  # type: ignore[n
         return (
             no_update,
             True,
-            "Could not write best_pipeline.json — output directory is read-only.",
+            "Could not write best_pipeline.json -- output directory is read-only.",
         )
     except Exception:  # noqa: BLE001 - any write error surfaces, never raises
         logger.warning("Winner write failed", exc_info=True)
@@ -2137,7 +2162,7 @@ def _poll_curate_overlays(  # type: ignore[no-untyped-def]
     pinned = pinned if isinstance(pinned, dict) else {}
     a_trial, b_trial = pinned.get("a"), pinned.get("b")
     session = session_id or "default"
-    error_fig = curate.placeholder_figure("render failed — see logs")
+    error_fig = curate.placeholder_figure("render failed -- see logs")
 
     cache = _resolve_overlay_cache(run_root_data)
 

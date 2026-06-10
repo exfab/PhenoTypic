@@ -150,9 +150,9 @@ def test_container_title_bar_label_carries_pipeline_name() -> None:
     label = elem["data"]["label"]
     base = container.label or container.class_name
     # Expanded containers carry the down chevron.
-    assert label == f"▼ Pipeline — {base}", (
+    assert label == f"▼ Pipeline -- {base}", (
         f"unexpected container label {label!r}; expected the expanded "
-        f"chevron template ▼ Pipeline — {base}"
+        f"chevron template ▼ Pipeline -- {base}"
     )
 
 
@@ -189,7 +189,7 @@ def test_collapsed_container_title_bar_uses_right_chevron() -> None:
     # The right chevron + base label is the stable prefix; collapsed
     # containers also append the chain-glyph suffix with the inner-op
     # count.  An empty container reads as ``⬞ 0 ops``.
-    assert label.startswith("▶ Pipeline — sub_pipeline"), (
+    assert label.startswith("▶ Pipeline -- sub_pipeline"), (
         f"collapsed container label should start with the right "
         f"chevron template; got {label!r}"
     )

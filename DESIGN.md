@@ -5,7 +5,7 @@
 >
 > **Single source of truth** for all dashboard UI and data-visualization work. Audience:
 > human designers, frontend developers, and agentic coding assistants. Fonts: IBM Plex
-> Serif (display), DM Sans (body), JetBrains Mono (mono). Canvas: #FBFEF8.
+> Serif (display), IBM Plex Sans (body), JetBrains Mono (mono). Canvas: #FBFEF8.
 
 ---
 
@@ -15,8 +15,10 @@ PhenoTypic is a scientific analysis dashboard design system: light theme, built 
 data-intensive research and bioanalysis. The surface reads as a calm, evidence-first
 instrument, not a marketing site or a consumer app. The default page is a near-white
 canvas (`{colors.canvas}` / `--color-bg` -- `#FBFEF8`) with pure-white card surfaces
-(`--color-white` -- `#ffffff`) lifting off it, and deep navy (`{colors.navy}` -- `#003660`)
-as the primary ink for headings, primary actions, and the wordmark. Navy is deliberate and
+(`--color-white` -- `#ffffff`) lifting off it, and deep navy (`{colors.navy}` --
+`#003660`)
+as the primary ink for headings, primary actions, and the wordmark. Navy is deliberate
+and
 slightly desaturated so it reads as branded rather than as default black.
 
 Around navy sits a restrained UI palette: light blue (`{colors.blue}` -- `#1b75bc`) for
@@ -28,47 +30,60 @@ The system's defining rule is a hard separation of three closed color worlds:
 
 - **UI chrome** -- navy / blue / gold plus the surface and neutral tokens. Buttons, nav,
   headings, borders, links.
-- **Data visualization** -- the colorblind-safe Okabe-Ito palette, used only inside charts,
+- **Data visualization** -- the colorblind-safe Okabe-Ito palette, used only inside
+  charts,
   plate maps, and image overlays.
 - **Branding** -- the logo's colony hues, used in the mark and nowhere else.
 
-These never cross. A data color never paints UI chrome; a logo color never enters a chart;
+These never cross. A data color never paints UI chrome; a logo color never enters a
+chart;
 the gold accent never becomes a data series. This three-way closure is the single most
 important characteristic of the system.
 
 Type carries the second voice. IBM Plex Serif carries content headings and large stat
 values at weight 400, with an italic cut for Latin species names (e.g.
-*Rhodotorula toruloides*). DM Sans carries body copy and UI chrome titles. JetBrains Mono
+*Rhodotorula toruloides*). IBM Plex Sans carries body copy and UI chrome titles. JetBrains
+Mono
 carries every number, axis label, badge, caption, and code token. Mono-for-all-data is a
-signature: it preserves optical column alignment and gives the surface a data-forward read.
+signature: it preserves optical column alignment and gives the surface a data-forward
+read.
 
 Shape is restrained: a `--radius-sm` 3px / `--radius` 6px / `--radius-md` 10px /
-`--radius-lg` 16px ladder, engineered rather than playful. The brand never uses pill CTAs.
+`--radius-lg` 16px ladder, engineered rather than playful. The brand never uses pill
+CTAs.
 
-Elevation is quiet and navy-tinted: shadows always use `rgba(0, 54, 96, ...)`, never gray
-or black. The one permitted dark surface in an otherwise light system is the image stage,
+Elevation is quiet and navy-tinted: shadows always use `rgba(0, 54, 96, ...)`, never
+gray
+or black. The one permitted dark surface in an otherwise light system is the image
+stage,
 where the pixels are the data.
 
 Data integrity is a first-class design constraint, not a styling afterthought: a fixed
 six-series order, no red-green encodings, vermilion reserved for error and alert, and a
-six-series ceiling before an "other" bucket. The system is colorblind-safe by construction.
+six-series ceiling before an "other" bucket. The system is colorblind-safe by
+construction.
 
 **Key Characteristics:**
 
 - **Three closed color systems** -- UI chrome (navy / blue / gold), data (Okabe-Ito,
-  CB-safe), and branding (logo only). Crossing them is a hard error, not a judgment call.
-- **Navy is the ink and the conversion color.** Every primary action, heading, and wordmark
+  CB-safe), and branding (logo only). Crossing them is a hard error, not a judgment
+  call.
+- **Navy is the ink and the conversion color.** Every primary action, heading, and
+  wordmark
   is `{colors.navy}` `#003660`. Blue is secondary / interactive; gold is a rare emphasis
   accent, never a button fill and never a data series.
-- **Mono for all data.** Every number, axis label, badge, caption, and code token renders
+- **Mono for all data.** Every number, axis label, badge, caption, and code token
+  renders
   in JetBrains Mono, for optical column alignment and a data-forward voice.
 - **Serif content headings, sans UI chrome.** IBM Plex Serif (weight 400) for content
-  headings and stat values; DM Sans (500 / 600) for body and component titles. The
+  headings and stat values; IBM Plex Sans (500 / 600) for body and component titles. The
   serif-to-sans shift between content and chrome is intentional.
 - **Colorblind-safe by construction.** Fixed Okabe-Ito six-series order, no red-green
-  colormaps, vermilion reserved for error / alert, six categorical series maximum before an
+  colormaps, vermilion reserved for error / alert, six categorical series maximum before
+  an
   "other" category.
-- **Navy-tinted, layered elevation.** Shadows are always navy-tinted, never gray or black,
+- **Navy-tinted, layered elevation.** Shadows are always navy-tinted, never gray or
+  black,
   and quiet by default. Heavy elevation is reserved for modal-level surfaces only.
 - **Restrained geometry.** A 3 / 6 / 10 / 16px radius ladder. Engineered, never pill.
 - **Light theme, one dark exception.** A near-white `#FBFEF8` canvas with pure-white
@@ -129,48 +144,54 @@ the current rules.
 
 Three brand assets exist. They are not interchangeable; each has a defined role.
 
-| Asset                    | Contents                                              | viewBox       | Aspect | Role                                  |
-|--------------------------|-------------------------------------------------------|---------------|--------|---------------------------------------|
-| `light_logo_exfab.svg`   | PhenoTypic wordmark + colony mark + ExFAB/NSF lockup  | 300 x 112.5   | ~8:3   | Primary topbar banner (carries product name) |
-| `dashboard_logo.svg`     | ExFAB wordmark + "AN NSF BIOFOUNDRY" + NSF seal + colony mark | 300 x 187.5 | ~8:5 | Splash / login / about / exported-figure footer |
-| `LogoArtOnly.png` (icon) | Circular colony "petri dish" mark only                | 500 x 500     | 1:1    | Favicon, collapsed sidebar, app icon, compact contexts |
+| Asset                    | Contents                                                      | viewBox     | Aspect | Role                                                   |
+|--------------------------|---------------------------------------------------------------|-------------|--------|--------------------------------------------------------|
+| `light_logo_exfab.svg`   | PhenoTypic wordmark + colony mark + ExFAB/NSF lockup          | 300 x 112.5 | ~8:3   | Wide banner for light surfaces (sidebar header, splash); NOT the navy topbar -- see section 13 |
+| `dashboard_logo.svg`     | ExFAB wordmark + "AN NSF BIOFOUNDRY" + NSF seal + colony mark | 300 x 187.5 | ~8:5   | Splash / login / about / exported-figure footer        |
+| `LogoArtOnly.png` (icon) | Circular colony "petri dish" mark only                        | 500 x 500   | 1:1    | Favicon, collapsed sidebar, app icon, compact contexts |
 
-- All three are **light-background** assets. There is no dark-background variant yet; see
+- All three are **light-background** assets. There is no dark-background variant yet;
+  see
   "Backgrounds" below before placing any of them on a dark surface.
 - The colony mark is the shared visual anchor across all three and reads as the product
   symbol on its own.
 
 ### Placement by Context
 
-| Context                         | Asset                  | Notes                                      |
-|---------------------------------|------------------------|--------------------------------------------|
-| Topbar (expanded)               | `light_logo_exfab.svg` | Left of the view title; the 8:3 banner fits a 56px bar well |
-| Topbar (narrow / collapsed nav) | icon mark              | Swap the banner for the 1:1 mark below ~640px width |
-| Sidebar header (expanded)       | `light_logo_exfab.svg` or mark | Mark alone if sidebar is <= 240px |
-| Sidebar (collapsed rail)        | icon mark              | Centered, 28-32px                          |
-| Login / splash / hero           | `dashboard_logo.svg`   | The fuller lockup with the NSF seal suits first-screen branding |
-| About / footer / attribution    | `dashboard_logo.svg`   | Where the NSF Biofoundry credit belongs    |
-| Exported figure footer          | `dashboard_logo.svg`   | Small, alongside the provenance strip (section 15) |
-| Browser favicon / PWA icon       | icon mark              | 16, 32, 180 (apple-touch), 512 (PWA)       |
+| Context                         | Asset                          | Notes                                                           |
+|---------------------------------|--------------------------------|-----------------------------------------------------------------|
+| Topbar (navy bar)               | none (wordmark title)          | The topbar is navy (section 13); no light lockup goes on a dark surface. The white view-title carries identity. Add a logo only after a dark-background variant exists. |
+| Sidebar header (expanded)       | `light_logo_exfab.svg` or mark | Mark alone if sidebar is <= 240px                               |
+| Sidebar (collapsed rail)        | icon mark                      | Centered, 28-32px                                               |
+| Login / splash / hero           | `dashboard_logo.svg`           | The fuller lockup with the NSF seal suits first-screen branding |
+| About / footer / attribution    | `dashboard_logo.svg`           | Where the NSF Biofoundry credit belongs                         |
+| Exported figure footer          | `dashboard_logo.svg`           | Small, alongside the provenance strip (section 15)              |
+| Browser favicon / PWA icon      | icon mark                      | 16, 32, 180 (apple-touch), 512 (PWA)                            |
 
-> This supersedes the prior single-line instruction. The earlier note placed
-> `LogoArtOnly.png` to the left of the view title; the wide `light_logo_exfab.svg`
-> banner is the better topbar choice because it carries the PhenoTypic product name. Use
-> the icon mark in the topbar only when the banner cannot fit.
+> The topbar is a navy (dark) bar (section 13), so the light-background
+> `light_logo_exfab.svg` banner is NOT placed there -- dropping a light lockup on a
+> dark surface is forbidden below ("Backgrounds"). The topbar carries the product
+> name through the white view-title wordmark instead. If a logo is wanted on the
+> topbar, commission a dark-background variant first; do not invert or recolor the
+> existing assets. The wide banner / icon mark guidance below applies to light
+> surfaces (sidebar header, splash, footers).
 
 ### Topbar Implementation
 
-Ties to section 13 (App Shell). The topbar logo sits left of the view title.
+Ties to section 13 (App Shell). The navy topbar carries the white view-title wordmark
+(no logo asset). The CSS below applies only if a dark-background logo variant is later
+added; it is left for reference.
 
 ```css
 .topbar-logo {
-  height: 32px;          /* banner scales to fit the 56px bar with padding */
-  width: auto;
-  display: block;
+    height: 32px; /* banner scales to fit the 56px bar with padding */
+    width: auto;
+    display: block;
 }
-.topbar-logo--icon {     /* collapsed / narrow state */
-  height: 28px;
-  width: 28px;
+
+.topbar-logo--icon { /* collapsed / narrow state */
+    height: 28px;
+    width: 28px;
 }
 ```
 
@@ -181,11 +202,11 @@ Ties to section 13 (App Shell). The topbar logo sits left of the view title.
 
 Recommended defaults; adjust if your shell is unusually dense.
 
-| Asset                  | Clear space (all sides) | Min size                          |
-|------------------------|-------------------------|-----------------------------------|
+| Asset                  | Clear space (all sides)    | Min size                                                                  |
+|------------------------|----------------------------|---------------------------------------------------------------------------|
 | `light_logo_exfab.svg` | height of the "e" in eXFAB | ~180px wide (below this the "AN NSF BIOFOUNDRY" line stops being legible) |
-| `dashboard_logo.svg`   | height of the "e" in eXFAB | ~160px wide                       |
-| icon mark              | 25% of mark diameter    | 24px (favicon floor; colony detail is lost smaller) |
+| `dashboard_logo.svg`   | height of the "e" in eXFAB | ~160px wide                                                               |
+| icon mark              | 25% of mark diameter       | 24px (favicon floor; colony detail is lost smaller)                       |
 
 The fine tagline text in both lockups is the limiting factor for minimum size. When you
 need the brand smaller than the legible floor, switch to the icon mark instead of
@@ -215,12 +236,15 @@ palette.
 ### Do / Don't
 
 **Do**
-- Use the wide banner for the topbar, the full lockup for splash and footers, the icon
-  mark for favicon and collapsed states.
+
+- Use the wide banner on light surfaces (sidebar header, splash), the full lockup for
+  splash and footers, the icon mark for favicon and collapsed states. The navy topbar
+  carries the wordmark title, not a logo asset (section 13).
 - Keep lockups on light surfaces with the clear space above.
 - Use SVG in the UI; PNG only for favicons.
 
 **Don't**
+
 - Recolor, invert, or restyle any asset to fit a dark surface.
 - Stretch or change the aspect ratio (8:3 banner, 8:5 lockup, 1:1 mark).
 - Shrink a lockup below its legible floor; switch to the icon mark instead.
@@ -235,13 +259,13 @@ palette.
 Brand identity, UI structure, and interactive elements. These colors are **not** used
 for data series.
 
-| Token           | Hex       | Usage                                        |
-|-----------------|-----------|----------------------------------------------|
-| `--color-navy`  | `#003660` | Headings, nav, primary CTA, table headers    |
-| `--color-blue`  | `#1b75bc` | Links, interactive states, accent borders    |
-| `--color-gold`  | `#febc11` | Highlights, brand accent, emphasized CTA     |
-| `--color-white` | `#ffffff` | Card surfaces, panel backgrounds             |
-| `--color-bg`    | `#FBFEF8` | App background, inset/recessed areas         |
+| Token           | Hex       | Usage                                     |
+|-----------------|-----------|-------------------------------------------|
+| `--color-navy`  | `#003660` | Headings, nav, primary CTA, table headers |
+| `--color-blue`  | `#1b75bc` | Links, interactive states, accent borders |
+| `--color-gold`  | `#febc11` | Highlights, brand accent, emphasized CTA  |
+| `--color-white` | `#ffffff` | Card surfaces, panel backgrounds          |
+| `--color-bg`    | `#FBFEF8` | App background, inset/recessed areas      |
 
 ### Data Colors -- Okabe-Ito -- Visualization Only
 
@@ -249,16 +273,16 @@ Colorblind-safe palette designed by Masataka Okabe and Kei Ito. Safe across
 deuteranopia, protanopia, and tritanopia. Used **exclusively** for data visualization:
 plot series, progress bars, status badges, and semantic states.
 
-| Token            | Name           | Hex       | CB Safe     | Primary Use                 |
-|------------------|----------------|-----------|-------------|-----------------------------|
-| `--oi-orange`    | Orange         | `#E69F00` | All types   | Series 2, warning           |
-| `--oi-sky`       | Sky Blue       | `#56B4E9` | All types   | Series 3, info              |
-| `--oi-green`     | Bluish Green   | `#009E73` | All types   | Series 4, success           |
-| `--oi-vermilion` | Vermilion      | `#D55E00` | All types   | Error/alert series only     |
-| `--oi-blue`      | Blue           | `#0072B2` | All types   | Series 5                    |
-| `--oi-purple`    | Reddish Purple | `#CC79A7` | All types   | Series 6                    |
-| `--oi-yellow`    | Yellow         | `#F0E442` | All types   | Series 7, large fills only  |
-| `--oi-grey`      | Grey           | `#BBBBBB` | All types   | Reference/control/null      |
+| Token            | Name           | Hex       | CB Safe   | Primary Use                |
+|------------------|----------------|-----------|-----------|----------------------------|
+| `--oi-orange`    | Orange         | `#E69F00` | All types | Series 2, warning          |
+| `--oi-sky`       | Sky Blue       | `#56B4E9` | All types | Series 3, info             |
+| `--oi-green`     | Bluish Green   | `#009E73` | All types | Series 4, success          |
+| `--oi-vermilion` | Vermilion      | `#D55E00` | All types | Error/alert series only    |
+| `--oi-blue`      | Blue           | `#0072B2` | All types | Series 5                   |
+| `--oi-purple`    | Reddish Purple | `#CC79A7` | All types | Series 6                   |
+| `--oi-yellow`    | Yellow         | `#F0E442` | All types | Series 7, large fills only |
+| `--oi-grey`      | Grey           | `#BBBBBB` | All types | Reference/control/null     |
 
 > **Source:** Okabe M, Ito K (2008). "Color Universal Design."
 > *jfly.iam.u-tokyo.ac.jp/color*
@@ -286,11 +310,11 @@ plot series, progress bars, status badges, and semantic states.
 
 ### Semantic Color Assignments
 
-| State   | Token                | Hex       | Use Case                                     |
-|---------|----------------------|-----------|----------------------------------------------|
-| Success | `--color-oi-green`   | `#009E73` | Completed jobs, BUSCO pass, positive delta   |
-| Info    | `--color-oi-sky`     | `#56B4E9` | Pipeline notices, metadata callouts          |
-| Warning | `--color-oi-orange`  | `#E69F00` | Threshold failures, outlier flags            |
+| State   | Token                  | Hex       | Use Case                                   |
+|---------|------------------------|-----------|--------------------------------------------|
+| Success | `--color-oi-green`     | `#009E73` | Completed jobs, BUSCO pass, positive delta |
+| Info    | `--color-oi-sky`       | `#56B4E9` | Pipeline notices, metadata callouts        |
+| Warning | `--color-oi-orange`    | `#E69F00` | Threshold failures, outlier flags          |
 | Error   | `--color-oi-vermilion` | `#D55E00` | OOM errors, failed segments, abort states  |
 
 ### Color Selection Decision Logic
@@ -344,15 +368,52 @@ Call-site discipline (carried over from the original spec, unchanged):
 Three role tokens. Nothing else may declare a `font-family`.
 
 ```css
---font-display: 'IBM Plex Serif', Georgia, "Times New Roman", Times, serif;
---font-body:    'DM Sans', -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
---font-mono:    'JetBrains Mono', ui-monospace, "SFMono-Regular", Menlo, "Liberation Mono", monospace;
+--font-display:
+
+'IBM Plex Serif'
+,
+Georgia,
+
+"Times New Roman"
+,
+Times, serif
+
+;
+--font-body:
+
+'IBM Plex Sans'
+,
+-apple-system,
+
+"Segoe UI"
+,
+"Helvetica Neue"
+,
+Arial, sans-serif
+
+;
+--font-mono:
+
+'JetBrains Mono'
+,
+ui-monospace,
+
+"SFMono-Regular"
+,
+Menlo,
+
+"Liberation Mono"
+,
+monospace
+
+;
 ```
 
 ```html
+
 <link
-  href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:ital,wght@0,400;0,500;0,600;1,400;1,500&family=JetBrains+Mono:wght@400;500;600&display=swap"
-  rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:ital,wght@0,400;0,500;0,600;1,400;1,500&family=JetBrains+Mono:wght@400;500;600&display=swap"
+        rel="stylesheet"
 />
 ```
 
@@ -360,27 +421,30 @@ Three role tokens. Nothing else may declare a `font-family`.
 
 ```python
 FONT_FAMILY_DISPLAY = "'IBM Plex Serif', Georgia, 'Times New Roman', Times, serif"
-FONT_FAMILY_BODY    = "'DM Sans', -apple-system, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
-FONT_FAMILY_MONO    = "'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, 'Liberation Mono', monospace"
+FONT_FAMILY_BODY = "'IBM Plex Sans', -apple-system, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
+FONT_FAMILY_MONO = "'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, 'Liberation Mono', monospace"
 ```
 
 Role intent:
 
-| Token            | Role    | Carries                                                        |
-|------------------|---------|----------------------------------------------------------------|
-| `--font-display` | Display | Content headings, large stat values, italic species names      |
-| `--font-body`    | Body    | Prose, button / tab labels, component titles                    |
+| Token            | Role    | Carries                                                                      |
+|------------------|---------|------------------------------------------------------------------------------|
+| `--font-display` | Display | Content headings, large stat values, italic species names                    |
+| `--font-body`    | Body    | Prose, button / tab labels, component titles                                 |
 | `--font-mono`    | Mono    | All numeric data, axis labels, badge / overline / label text, captions, code |
 
-> **This is the swap the original spec anticipated.** The role tokens always existed so a
+> **This is the swap the original spec anticipated.** The role tokens always existed so
+> a
 > move off the single-family Roboto surface would be mechanical: change the three
-> families in `gui/_design.py` and every call site inherits them with no edits. This spec
-> performs that swap (IBM Plex Serif display, DM Sans body, JetBrains Mono mono).
+> families in `gui/_design.py` and every call site inherits them with no edits. This
+> spec
+> performs that swap (IBM Plex Serif display, IBM Plex Sans body, JetBrains Mono mono).
 
 > **Weights.** IBM Plex Serif ships 400 / 500 / 600 (plus italics); JetBrains Mono ships
-> 400 / 500 / 600; DM Sans 400 / 500 / 600 / 700. Display styles default to 400 to keep
+> 400 / 500 / 600; IBM Plex Sans 400 / 500 / 600 / 700. Display styles default to 400 to keep
 > headings light; you may raise Header / Title to 500 or 600 for heavier hierarchy. Only
-> those families and weights are loaded; do not reference a weight outside the imported set.
+> those families and weights are loaded; do not reference a weight outside the imported
+> set.
 
 ---
 
@@ -389,29 +453,92 @@ Role intent:
 The scale is rem-based, rooted on 15px body text. **New call sites use the semantic
 alias** (right column). The raw `--text-*` primitive is back-compat only.
 
-| Role            | Primitive     | Size              | Semantic alias          | Python const        |
-|-----------------|---------------|-------------------|-------------------------|---------------------|
-| Display         | `--text-3xl`  | 2.5rem / 40px     | `--font-size-display`   | `FONT_SIZE_DISPLAY` |
-| Title           | `--text-2xl`  | 1.875rem / 30px   | `--font-size-title`     | `FONT_SIZE_TITLE`   |
-| Header (h2)     | `--text-xl`   | 1.5rem / 24px     | `--font-size-header-1`  | `FONT_SIZE_HEADER_1`|
-| H2 (h3)         | `--text-lg`   | 1.25rem / 20px    | `--font-size-header-2`  | `FONT_SIZE_HEADER_2`|
-| H3 / Body Large | `--text-md`   | 1.0625rem / 17px  | `--font-size-body-lg`   | `FONT_SIZE_BODY_LG` |
-| Body            | `--text-base` | 0.9375rem / 15px  | `--font-size-body`      | `FONT_SIZE_BODY`    |
-| Body Small      | `--text-sm`   | 0.8125rem / 13px  | `--font-size-body-sm`   | `FONT_SIZE_BODY_SM` |
-| Label / Caption | `--text-xs`   | 0.6875rem / 11px  | `--font-size-caption`   | `FONT_SIZE_CAPTION` |
-| Data Micro      | `--text-2xs`  | 0.625rem / 10px   | `--font-size-micro`     | `FONT_SIZE_MICRO`   |
-| (reserve)       | `--text-4xl`  | 3.25rem / 52px    | --                      | --                  |
+| Role            | Primitive     | Size             | Semantic alias         | Python const         |
+|-----------------|---------------|------------------|------------------------|----------------------|
+| Display         | `--text-3xl`  | 2.5rem / 40px    | `--font-size-display`  | `FONT_SIZE_DISPLAY`  |
+| Title           | `--text-2xl`  | 1.875rem / 30px  | `--font-size-title`    | `FONT_SIZE_TITLE`    |
+| Header (h2)     | `--text-xl`   | 1.5rem / 24px    | `--font-size-header-1` | `FONT_SIZE_HEADER_1` |
+| H2 (h3)         | `--text-lg`   | 1.25rem / 20px   | `--font-size-header-2` | `FONT_SIZE_HEADER_2` |
+| H3 / Body Large | `--text-md`   | 1.0625rem / 17px | `--font-size-body-lg`  | `FONT_SIZE_BODY_LG`  |
+| Body            | `--text-base` | 0.9375rem / 15px | `--font-size-body`     | `FONT_SIZE_BODY`     |
+| Body Small      | `--text-sm`   | 0.8125rem / 13px | `--font-size-body-sm`  | `FONT_SIZE_BODY_SM`  |
+| Label / Caption | `--text-xs`   | 0.6875rem / 11px | `--font-size-caption`  | `FONT_SIZE_CAPTION`  |
+| Data Micro      | `--text-2xs`  | 0.625rem / 10px  | `--font-size-micro`    | `FONT_SIZE_MICRO`    |
+| (reserve)       | `--text-4xl`  | 3.25rem / 52px   | --                     | --                   |
 
 ```css
---font-size-display:  var(--text-3xl);
---font-size-title:    var(--text-2xl);
---font-size-header-1: var(--text-xl);
---font-size-header-2: var(--text-lg);
---font-size-body-lg:  var(--text-md);
---font-size-body:     var(--text-base);
---font-size-body-sm:  var(--text-sm);   /* renamed from --font-size-label; see 02.7 */
---font-size-caption:  var(--text-xs);
---font-size-micro:    var(--text-2xs);  /* new: chart axis / sparkline floor */
+--font-size-display:
+var
+
+(
+--text-3xl
+
+)
+;
+--font-size-title:
+var
+
+(
+--text-2xl
+
+)
+;
+--font-size-header-1:
+var
+
+(
+--text-xl
+
+)
+;
+--font-size-header-2:
+var
+
+(
+--text-lg
+
+)
+;
+--font-size-body-lg:
+var
+
+(
+--text-md
+
+)
+;
+--font-size-body:
+var
+
+(
+--text-base
+
+)
+;
+--font-size-body-sm:
+var
+
+(
+--text-sm
+
+)
+; /* renamed from --font-size-label; see 02.7 */
+--font-size-caption:
+var
+
+(
+--text-xs
+
+)
+;
+--font-size-micro:
+var
+
+(
+--text-2xs
+
+)
+; /* new: chart axis / sparkline floor */
 ```
 
 > SVG-rendered chart internals (axis ticks, scale-bar labels) may go to 8px directly,
@@ -422,21 +549,73 @@ alias** (right column). The raw `--text-*` primitive is back-compat only.
 ### 02.3 -- Line-height & Tracking Tokens
 
 ```css
---leading-display: 1.1;   --leading-tight: 1.2;   --leading-snug: 1.3;
---leading-normal:  1.45;  --leading-relaxed: 1.6;
+--leading-display:
 
---tracking-tight: -0.02em; --tracking-snug: -0.01em; --tracking-normal: 0;
---tracking-button: 0.01em; --tracking-wide: 0.08em;  --tracking-wider: 0.12em;
+1.1
+;
+--leading-tight:
+
+1.2
+;
+--leading-snug:
+
+1.3
+;
+--leading-normal:
+
+1.45
+;
+--leading-relaxed:
+
+1.6
+;
+
+--tracking-tight:
+
+-
+0.02
+em
+
+;
+--tracking-snug:
+
+-
+0.01
+em
+
+;
+--tracking-normal:
+
+0
+;
+--tracking-button:
+
+0.01
+em
+
+;
+--tracking-wide:
+
+0.08
+em
+
+;
+--tracking-wider:
+
+0.12
+em
+
+;
 ```
 
-| Line-height         | Used by                       | Tracking            | Used by             |
-|---------------------|-------------------------------|---------------------|---------------------|
-| `--leading-display` | Display                       | `--tracking-tight`  | Display             |
-| `--leading-tight`   | Header, Label, Data Micro     | `--tracking-snug`   | Title, Header       |
-| `--leading-snug`    | Title, H2, H3, UI Title       | `--tracking-normal` | H2, H3, Body, Caption|
-| `--leading-normal`  | Caption, Data Value           | `--tracking-button` | Button              |
-| `--leading-relaxed` | Body Large, Body, Body Small  | `--tracking-wide`   | Label               |
-|                     |                               | `--tracking-wider`  | Overline            |
+| Line-height         | Used by                      | Tracking            | Used by               |
+|---------------------|------------------------------|---------------------|-----------------------|
+| `--leading-display` | Display                      | `--tracking-tight`  | Display               |
+| `--leading-tight`   | Header, Label, Data Micro    | `--tracking-snug`   | Title, Header         |
+| `--leading-snug`    | Title, H2, H3, UI Title      | `--tracking-normal` | H2, H3, Body, Caption |
+| `--leading-normal`  | Caption, Data Value          | `--tracking-button` | Button                |
+| `--leading-relaxed` | Body Large, Body, Body Small | `--tracking-wide`   | Label                 |
+|                     |                              | `--tracking-wider`  | Overline              |
 
 ---
 
@@ -446,34 +625,37 @@ Every piece of text uses exactly one of these. Components reference the **Style*
 "Default color" is overridable in context; family, size, weight, line-height, and
 tracking are fixed.
 
-| Style              | Family   | Size (alias)            | Weight | Line-height        | Tracking            | Transform | Default color     | Used for                                              |
-|--------------------|----------|-------------------------|--------|--------------------|---------------------|-----------|-------------------|-------------------------------------------------------|
-| **Display**        | display  | `--font-size-display`   | 400    | `--leading-display`| `--tracking-tight`  | none      | `--color-heading` | Stat-card values, hero numbers                        |
-| **Title**          | display  | `--font-size-title`     | 400    | `--leading-snug`   | `--tracking-snug`   | none      | `--color-heading` | Page / view title (h1)                                |
-| **Header**         | display  | `--font-size-header-1`  | 400    | `--leading-tight`  | `--tracking-snug`   | none      | `--color-heading` | Major section heading (h2), modal title               |
-| **H2**             | display  | `--font-size-header-2`  | 400    | `--leading-snug`   | `--tracking-normal` | none      | `--color-heading` | Subsection heading (h3)                               |
-| **H3**             | display  | `--font-size-body-lg`   | 400    | `--leading-snug`   | `--tracking-normal` | none      | `--color-heading` | Minor heading (h4)                                    |
-| **Body Large**     | body     | `--font-size-body-lg`   | 400    | `--leading-relaxed`| `--tracking-normal` | none      | `--color-body`    | Lead paragraph, intro copy                            |
-| **Body**           | body     | `--font-size-body`      | 400    | `--leading-relaxed`| `--tracking-normal` | none      | `--color-body`    | Default paragraph copy                                |
-| **Body Small**     | body     | `--font-size-body-sm`   | 400    | `--leading-relaxed`| `--tracking-normal` | none      | `--color-body`    | Dense / secondary prose                               |
-| **UI Title**       | body     | `--font-size-body-sm`   | 600    | `--leading-snug`   | `--tracking-normal` | none      | `--color-heading` | Chart / card / alert / panel titles                   |
-| **Button**         | body     | `--font-size-body-sm`   | 500    | 1                  | `--tracking-button` | none      | per variant       | Button labels, nav tab labels                         |
-| **Label / Overline**| mono    | `--font-size-caption`   | 500    | `--leading-tight`  | `--tracking-wide` / `--tracking-wider` | uppercase | `--color-muted` | Form labels, table headers, overlines, badge text     |
-| **Caption**        | mono     | `--font-size-caption`   | 400    | `--leading-normal` | `--tracking-normal` | none      | `--color-muted`   | Hints, figure captions, chart subtitle, scale-bar label |
-| **Data Value**     | mono     | `--font-size-body`      | 500    | `--leading-normal` | `--tracking-normal` | none      | `--color-heading` | Numeric table cells, stat deltas, tooltip values      |
-| **Data Value (muted)** | mono | `--font-size-body`      | 400    | `--leading-normal` | `--tracking-normal` | none      | `--color-muted`   | Table secondary cells                                 |
-| **Data Micro**     | mono     | `--font-size-micro`     | 400    | `--leading-tight`  | 0.02em              | none      | `--color-muted`   | Chart axis ticks, sparkline labels, dense data         |
+| Style                  | Family  | Size (alias)           | Weight | Line-height         | Tracking                               | Transform | Default color     | Used for                                                |
+|------------------------|---------|------------------------|--------|---------------------|----------------------------------------|-----------|-------------------|---------------------------------------------------------|
+| **Display**            | display | `--font-size-display`  | 400    | `--leading-display` | `--tracking-tight`                     | none      | `--color-heading` | Stat-card values, hero numbers                          |
+| **Title**              | display | `--font-size-title`    | 400    | `--leading-snug`    | `--tracking-snug`                      | none      | `--color-heading` | Page / view title (h1)                                  |
+| **Header**             | display | `--font-size-header-1` | 400    | `--leading-tight`   | `--tracking-snug`                      | none      | `--color-heading` | Major section heading (h2), modal title                 |
+| **H2**                 | display | `--font-size-header-2` | 400    | `--leading-snug`    | `--tracking-normal`                    | none      | `--color-heading` | Subsection heading (h3)                                 |
+| **H3**                 | display | `--font-size-body-lg`  | 400    | `--leading-snug`    | `--tracking-normal`                    | none      | `--color-heading` | Minor heading (h4)                                      |
+| **Body Large**         | body    | `--font-size-body-lg`  | 400    | `--leading-relaxed` | `--tracking-normal`                    | none      | `--color-body`    | Lead paragraph, intro copy                              |
+| **Body**               | body    | `--font-size-body`     | 400    | `--leading-relaxed` | `--tracking-normal`                    | none      | `--color-body`    | Default paragraph copy                                  |
+| **Body Small**         | body    | `--font-size-body-sm`  | 400    | `--leading-relaxed` | `--tracking-normal`                    | none      | `--color-body`    | Dense / secondary prose                                 |
+| **UI Title**           | body    | `--font-size-body-sm`  | 600    | `--leading-snug`    | `--tracking-normal`                    | none      | `--color-heading` | Chart / card / alert / panel titles                     |
+| **Button**             | body    | `--font-size-body-sm`  | 500    | 1                   | `--tracking-button`                    | none      | per variant       | Button labels, nav tab labels                           |
+| **Label / Overline**   | mono    | `--font-size-caption`  | 500    | `--leading-tight`   | `--tracking-wide` / `--tracking-wider` | uppercase | `--color-muted`   | Form labels, table headers, overlines, badge text       |
+| **Caption**            | mono    | `--font-size-caption`  | 400    | `--leading-normal`  | `--tracking-normal`                    | none      | `--color-muted`   | Hints, figure captions, chart subtitle, scale-bar label |
+| **Data Value**         | mono    | `--font-size-body`     | 500    | `--leading-normal`  | `--tracking-normal`                    | none      | `--color-heading` | Numeric table cells, stat deltas, tooltip values        |
+| **Data Value (muted)** | mono    | `--font-size-body`     | 400    | `--leading-normal`  | `--tracking-normal`                    | none      | `--color-muted`   | Table secondary cells                                   |
+| **Data Micro**         | mono    | `--font-size-micro`    | 400    | `--leading-tight`   | 0.02em                                 | none      | `--color-muted`   | Chart axis ticks, sparkline labels, dense data          |
 
 Notes:
 
 - **Label vs Overline** share the recipe; only tracking differs. `--tracking-wide`
-  (0.08em) for inline labels and table headers, `--tracking-wider` (0.12em) for standalone
+  (0.08em) for inline labels and table headers, `--tracking-wider` (0.12em) for
+  standalone
   section overlines.
-- **Data Value** size follows its container; `--font-size-body` is the default. The fixed
+- **Data Value** size follows its container; `--font-size-body` is the default. The
+  fixed
   parts are mono family, weight 500, heading color. The **muted** variant (weight 400,
   `--color-muted`) is for secondary table cells.
 - **Species names** are an italic modifier on any display-family style, not a separate
-  style. Apply `font-style: italic` to Title / Header / H2 / H3 as needed (IBM Plex Serif
+  style. Apply `font-style: italic` to Title / Header / H2 / H3 as needed (IBM Plex
+  Serif
   italics are loaded).
 
 ---
@@ -484,31 +666,153 @@ A component applies one class; it never re-declares these properties. Classes re
 the semantic aliases, not raw primitives.
 
 ```css
-.text-display    { font-family: var(--font-display); font-size: var(--font-size-display);   font-weight: 400; line-height: var(--leading-display); letter-spacing: var(--tracking-tight); color: var(--color-heading); }
-.text-title      { font-family: var(--font-display); font-size: var(--font-size-title);     font-weight: 400; line-height: var(--leading-snug);    letter-spacing: var(--tracking-snug);  color: var(--color-heading); }
-.text-header     { font-family: var(--font-display); font-size: var(--font-size-header-1);  font-weight: 400; line-height: var(--leading-tight);   letter-spacing: var(--tracking-snug);  color: var(--color-heading); }
-.text-h2         { font-family: var(--font-display); font-size: var(--font-size-header-2);  font-weight: 400; line-height: var(--leading-snug);    color: var(--color-heading); }
-.text-h3         { font-family: var(--font-display); font-size: var(--font-size-body-lg);   font-weight: 400; line-height: var(--leading-snug);    color: var(--color-heading); }
+.text-display {
+    font-family: var(--font-display);
+    font-size: var(--font-size-display);
+    font-weight: 400;
+    line-height: var(--leading-display);
+    letter-spacing: var(--tracking-tight);
+    color: var(--color-heading);
+}
 
-.text-body-lg    { font-family: var(--font-body); font-size: var(--font-size-body-lg); font-weight: 400; line-height: var(--leading-relaxed); color: var(--color-body); }
-.text-body       { font-family: var(--font-body); font-size: var(--font-size-body);    font-weight: 400; line-height: var(--leading-relaxed); color: var(--color-body); }
-.text-body-sm    { font-family: var(--font-body); font-size: var(--font-size-body-sm); font-weight: 400; line-height: var(--leading-relaxed); color: var(--color-body); }
+.text-title {
+    font-family: var(--font-display);
+    font-size: var(--font-size-title);
+    font-weight: 400;
+    line-height: var(--leading-snug);
+    letter-spacing: var(--tracking-snug);
+    color: var(--color-heading);
+}
 
-.text-ui-title   { font-family: var(--font-body); font-size: var(--font-size-body-sm); font-weight: 600; line-height: var(--leading-snug); color: var(--color-heading); }
-.text-button     { font-family: var(--font-body); font-size: var(--font-size-body-sm); font-weight: 500; line-height: 1; letter-spacing: var(--tracking-button); }
+.text-header {
+    font-family: var(--font-display);
+    font-size: var(--font-size-header-1);
+    font-weight: 400;
+    line-height: var(--leading-tight);
+    letter-spacing: var(--tracking-snug);
+    color: var(--color-heading);
+}
 
-.text-label      { font-family: var(--font-mono); font-size: var(--font-size-caption); font-weight: 500; line-height: var(--leading-tight); letter-spacing: var(--tracking-wide);  text-transform: uppercase; color: var(--color-muted); }
-.text-overline   { font-family: var(--font-mono); font-size: var(--font-size-caption); font-weight: 500; line-height: var(--leading-tight); letter-spacing: var(--tracking-wider); text-transform: uppercase; color: var(--color-muted); }
-.text-caption    { font-family: var(--font-mono); font-size: var(--font-size-caption); font-weight: 400; line-height: var(--leading-normal); color: var(--color-muted); }
-.text-data       { font-family: var(--font-mono); font-size: var(--font-size-body);    font-weight: 500; line-height: var(--leading-normal); color: var(--color-heading); }
-.text-data--muted{ font-family: var(--font-mono); font-size: var(--font-size-body);    font-weight: 400; line-height: var(--leading-normal); color: var(--color-muted); }
-.text-data-micro { font-family: var(--font-mono); font-size: var(--font-size-micro);   font-weight: 400; line-height: var(--leading-tight); letter-spacing: 0.02em; color: var(--color-muted); }
+.text-h2 {
+    font-family: var(--font-display);
+    font-size: var(--font-size-header-2);
+    font-weight: 400;
+    line-height: var(--leading-snug);
+    color: var(--color-heading);
+}
 
-.is-species      { font-style: italic; }   /* modifier for display-family headings */
+.text-h3 {
+    font-family: var(--font-display);
+    font-size: var(--font-size-body-lg);
+    font-weight: 400;
+    line-height: var(--leading-snug);
+    color: var(--color-heading);
+}
+
+.text-body-lg {
+    font-family: var(--font-body);
+    font-size: var(--font-size-body-lg);
+    font-weight: 400;
+    line-height: var(--leading-relaxed);
+    color: var(--color-body);
+}
+
+.text-body {
+    font-family: var(--font-body);
+    font-size: var(--font-size-body);
+    font-weight: 400;
+    line-height: var(--leading-relaxed);
+    color: var(--color-body);
+}
+
+.text-body-sm {
+    font-family: var(--font-body);
+    font-size: var(--font-size-body-sm);
+    font-weight: 400;
+    line-height: var(--leading-relaxed);
+    color: var(--color-body);
+}
+
+.text-ui-title {
+    font-family: var(--font-body);
+    font-size: var(--font-size-body-sm);
+    font-weight: 600;
+    line-height: var(--leading-snug);
+    color: var(--color-heading);
+}
+
+.text-button {
+    font-family: var(--font-body);
+    font-size: var(--font-size-body-sm);
+    font-weight: 500;
+    line-height: 1;
+    letter-spacing: var(--tracking-button);
+}
+
+.text-label {
+    font-family: var(--font-mono);
+    font-size: var(--font-size-caption);
+    font-weight: 500;
+    line-height: var(--leading-tight);
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
+    color: var(--color-muted);
+}
+
+.text-overline {
+    font-family: var(--font-mono);
+    font-size: var(--font-size-caption);
+    font-weight: 500;
+    line-height: var(--leading-tight);
+    letter-spacing: var(--tracking-wider);
+    text-transform: uppercase;
+    color: var(--color-muted);
+}
+
+.text-caption {
+    font-family: var(--font-mono);
+    font-size: var(--font-size-caption);
+    font-weight: 400;
+    line-height: var(--leading-normal);
+    color: var(--color-muted);
+}
+
+.text-data {
+    font-family: var(--font-mono);
+    font-size: var(--font-size-body);
+    font-weight: 500;
+    line-height: var(--leading-normal);
+    color: var(--color-heading);
+}
+
+.text-data--muted {
+    font-family: var(--font-mono);
+    font-size: var(--font-size-body);
+    font-weight: 400;
+    line-height: var(--leading-normal);
+    color: var(--color-muted);
+}
+
+.text-data-micro {
+    font-family: var(--font-mono);
+    font-size: var(--font-size-micro);
+    font-weight: 400;
+    line-height: var(--leading-tight);
+    letter-spacing: 0.02em;
+    color: var(--color-muted);
+}
+
+.is-species {
+    font-style: italic;
+}
+
+/* modifier for display-family headings */
 ```
 
-> **Python parity:** mirror these as a `TEXT_STYLE` mapping in `gui/_design.py` (one entry
-> per style returning the family / size / weight / leading / tracking / color), so Python
+> **Python parity:** mirror these as a `TEXT_STYLE` mapping in `gui/_design.py` (one
+> entry
+> per style returning the family / size / weight / leading / tracking / color), so
+> Python
 > call sites apply a style by name exactly as CSS does by class. Add `--text-2xs`, the
 > line-height tokens, and the tracking tokens to the section 07 `:root` block; the other
 > primitives and aliases already exist there.
@@ -519,19 +823,19 @@ the semantic aliases, not raw primitives.
 
 #### HTML element defaults
 
-| Element        | Style          |
-|----------------|----------------|
-| `h1`           | Title          |
-| `h2`           | Header         |
-| `h3`           | H2             |
-| `h4`           | H3             |
-| `p`            | Body           |
-| `p.lead`       | Body Large     |
-| `small`        | Caption        |
-| `label`, `th`  | Label          |
-| `button`, tab  | Button         |
-| `code`, `kbd`  | mono inline (see rule below) |
-| numeric `td`   | Data Value     |
+| Element       | Style                        |
+|---------------|------------------------------|
+| `h1`          | Title                        |
+| `h2`          | Header                       |
+| `h3`          | H2                           |
+| `h4`          | H3                           |
+| `p`           | Body                         |
+| `p.lead`      | Body Large                   |
+| `small`       | Caption                      |
+| `label`, `th` | Label                        |
+| `button`, tab | Button                       |
+| `code`, `kbd` | mono inline (see rule below) |
+| numeric `td`  | Data Value                   |
 
 #### Typography rules (carried over from the original, mapped to styles)
 
@@ -543,7 +847,8 @@ the semantic aliases, not raw primitives.
   (Data Value style).
 - **Table numeric cells:** Data Value style (mono, weight 500, `--color-heading`).
 - **Table secondary cells:** Data Value (muted) style (mono, `--color-muted`).
-- **Inline code:** mono family, `background: #edf2f7`, `color: #003660`, `padding: 1px 5px`,
+- **Inline code:** mono family, `background: #edf2f7`, `color: #003660`,
+  `padding: 1px 5px`,
   `border-radius: 3px`.
 - **Maximum line length:** 65ch for Body, 52ch for Body Large.
 
@@ -553,21 +858,29 @@ the semantic aliases, not raw primitives.
 
 Confirm before treating this as final.
 
-1. **Label alias renamed.** The original named the 13px rung `--font-size-label`, but every
+1. **Label alias renamed.** The original named the 13px rung `--font-size-label`, but
+   every
    component renders labels at 11px mono. This spec renames the 13px rung to
-   `--font-size-body-sm` (Body Small / UI Title / Button) and routes the Label / Overline
-   style to `--font-size-caption` (11px), matching real usage. Update any `--font-size-label`
+   `--font-size-body-sm` (Body Small / UI Title / Button) and routes the Label /
+   Overline
+   style to `--font-size-caption` (11px), matching real usage. Update any
+   `--font-size-label`
    references in `gui/_design.py` and CSS to `--font-size-body-sm`, or keep a deprecated
    alias `--font-size-label: var(--font-size-body-sm)` during migration.
 
-2. **Heading family at small sizes.** Content headings (Title, Header, H2, H3) stay in the
+2. **Heading family at small sizes.** Content headings (Title, Header, H2, H3) stay in
+   the
    display serif (IBM Plex Serif, 400). Component titles use the **UI Title** style
-   (DM Sans, 600), matching the component specs. The serif-to-sans shift is intentional. To
+   (IBM Plex Sans, 600), matching the component specs. The serif-to-sans shift is intentional.
+   To
    unify, point UI Title at `--font-display`.
 
-3. **Body family (optional).** Body stays DM Sans. You use IBM Plex Sans + IBM Plex Mono in
-   the timeline artifact; for full IBM Plex cohesion, switch `--font-body` to `'IBM Plex Sans'`
-   and update the import. IBM Plex Serif + DM Sans is also a fine pairing. Preference, not
+3. **Body family (optional).** Body stays IBM Plex Sans. You use IBM Plex Sans + IBM Plex Mono
+   in
+   the timeline artifact; for full IBM Plex cohesion, switch `--font-body` to
+   `'IBM Plex Sans'`
+   and update the import. IBM Plex Serif + IBM Plex Sans is also a fine pairing. Preference,
+   not
    correctness.
 
 ---
@@ -600,21 +913,22 @@ Confirm before treating this as final.
 Two container modes. Both live inside the App Shell content area (to the right of the
 240px sidebar, section 13).
 
-| Mode          | Width                          | Gutters                          | Use                                              |
-|---------------|--------------------------------|----------------------------------|--------------------------------------------------|
-| **Contained** | `max-width: 1600px`, centered  | `--sp-8` (32px) desktop, `--sp-4` (16px) mobile | Default. Keeps chart sizes and line lengths sane on ultrawide displays |
-| **Full-bleed**| Fills the content area edge to edge | Outer `--sp-8` edge padding only | Wide data tables, plate maps, image montages that benefit from width |
+| Mode           | Width                               | Gutters                                         | Use                                                                    |
+|----------------|-------------------------------------|-------------------------------------------------|------------------------------------------------------------------------|
+| **Contained**  | `max-width: 1600px`, centered       | `--sp-8` (32px) desktop, `--sp-4` (16px) mobile | Default. Keeps chart sizes and line lengths sane on ultrawide displays |
+| **Full-bleed** | Fills the content area edge to edge | Outer `--sp-8` edge padding only                | Wide data tables, plate maps, image montages that benefit from width   |
 
 ```css
 .container {
-  width: 100%;
-  max-width: 1600px;
-  margin-inline: auto;
-  padding-inline: var(--sp-8);
+    width: 100%;
+    max-width: 1600px;
+    margin-inline: auto;
+    padding-inline: var(--sp-8);
 }
+
 .container--bleed {
-  max-width: none;
-  padding-inline: var(--sp-8);
+    max-width: none;
+    padding-inline: var(--sp-8);
 }
 ```
 
@@ -630,27 +944,42 @@ same grid the App Shell references; do not define a second grid.
 
 ```css
 .panel-grid {
-  display: grid;
-  grid-template-columns: repeat(12, 1fr);
-  gap: var(--sp-6);
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: var(--sp-6);
 }
-.col-3  { grid-column: span 3;  }
-.col-4  { grid-column: span 4;  }
-.col-6  { grid-column: span 6;  }
-.col-8  { grid-column: span 8;  }
-.col-12 { grid-column: span 12; }
+
+.col-3 {
+    grid-column: span 3;
+}
+
+.col-4 {
+    grid-column: span 4;
+}
+
+.col-6 {
+    grid-column: span 6;
+}
+
+.col-8 {
+    grid-column: span 8;
+}
+
+.col-12 {
+    grid-column: span 12;
+}
 ```
 
 Desktop spans:
 
-| Element                                   | Span    | Per row |
-|-------------------------------------------|---------|---------|
-| Stat / KPI card                           | `col-3` | 4-up    |
-| Secondary chart                           | `col-4` | 3-up    |
-| Standard chart card                       | `col-6` | 2-up    |
-| Primary / featured chart                  | `col-8` | with a `col-4` companion |
-| Well-plate, wide data table, image montage| `col-12`| full    |
-| Image panel                               | `col-6` min | never below a ~360px stage |
+| Element                                    | Span        | Per row                    |
+|--------------------------------------------|-------------|----------------------------|
+| Stat / KPI card                            | `col-3`     | 4-up                       |
+| Secondary chart                            | `col-4`     | 3-up                       |
+| Standard chart card                        | `col-6`     | 2-up                       |
+| Primary / featured chart                   | `col-8`     | with a `col-4` companion   |
+| Well-plate, wide data table, image montage | `col-12`    | full                       |
+| Image panel                                | `col-6` min | never below a ~360px stage |
 
 Mixed sizing is encouraged, mirroring the reference's feature-cards-span-two idea: a
 primary chart (`col-8`) pairs with a supporting `col-4` panel (legend, stat list, or
@@ -690,20 +1019,40 @@ Strategy section (next).
 
 #### Breakpoints
 
-| Name          | Width        | Key changes                                                           |
-|---------------|--------------|-----------------------------------------------------------------------|
-| Mobile        | < 480px      | Single column; sidebar becomes a drawer; topbar collapses to hamburger |
-| Mobile-Large  | 480 to 767px | As Mobile; thumbnail grids may show 2 across                          |
-| Tablet        | 768 to 991px | 2-up panel grids; sidebar collapses to icon rail                      |
-| Desktop       | 992 to 1599px| Full multi-up grids; sidebar expanded                                  |
-| Wide          | >= 1600px    | Container stops growing at `1600px` and centers (Grid & Container)     |
+| Name         | Width         | Key changes                                                            |
+|--------------|---------------|------------------------------------------------------------------------|
+| Mobile       | < 480px       | Single column; sidebar becomes a drawer; topbar collapses to hamburger |
+| Mobile-Large | 480 to 767px  | As Mobile; thumbnail grids may show 2 across                           |
+| Tablet       | 768 to 991px  | 2-up panel grids; sidebar collapses to icon rail                       |
+| Desktop      | 992 to 1599px | Full multi-up grids; sidebar expanded                                  |
+| Wide         | >= 1600px     | Container stops growing at `1600px` and centers (Grid & Container)     |
 
 ```css
 /* breakpoint reference values */
---bp-mobile-lg: 480px;
---bp-tablet:    768px;
---bp-desktop:   992px;
---bp-wide:      1600px;
+--bp-mobile-lg:
+
+480
+px
+
+;
+--bp-tablet:
+
+768
+px
+
+;
+--bp-desktop:
+
+992
+px
+
+;
+--bp-wide:
+
+1600
+px
+
+;
 ```
 
 CSS variables cannot be used inside media query conditions; the tokens above are the
@@ -711,11 +1060,11 @@ documented values to write into `@media (min-width: 992px)` and equivalents.
 
 #### Touch Targets
 
-| Control                                  | Minimum target | Standard         |
-|------------------------------------------|----------------|------------------|
-| Primary / secondary buttons, nav links, tabs | 44 x 44px  | WCAG 2.5.5 AAA   |
-| Dense icon controls (image toolbar, table row actions) | 24 x 24px absolute floor, with >= `--sp-2` (8px) spacing between adjacent targets | WCAG 2.5.8 AA |
-| Plate wells / thumbnails on touch        | tap to select; if the rendered cell is below 24px, require zoom (section 10) before selection | -- |
+| Control                                                | Minimum target                                                                                | Standard       |
+|--------------------------------------------------------|-----------------------------------------------------------------------------------------------|----------------|
+| Primary / secondary buttons, nav links, tabs           | 44 x 44px                                                                                     | WCAG 2.5.5 AAA |
+| Dense icon controls (image toolbar, table row actions) | 24 x 24px absolute floor, with >= `--sp-2` (8px) spacing between adjacent targets             | WCAG 2.5.8 AA  |
+| Plate wells / thumbnails on touch                      | tap to select; if the rendered cell is below 24px, require zoom (section 10) before selection | --             |
 
 - Default buttons reach 44px via vertical padding (`--sp-3` 12px) plus the Button line
   box; do not shrink primary actions below this on touch surfaces.
@@ -726,21 +1075,22 @@ documented values to write into `@media (min-width: 992px)` and equivalents.
 
 Each grid pattern from Grid & Container collapses as follows.
 
-| Pattern (desktop)            | Tablet (768 to 991)        | Mobile (< 768)              |
-|------------------------------|----------------------------|-----------------------------|
-| Stat row (4 x `col-3`)       | 2-up                       | 1-up (stacked)              |
-| Chart pair (2 x `col-6`)     | 1-up                       | 1-up                        |
-| Focus + context (`col-8` + `col-4`) | stack: primary then context | stacked                |
-| Full-width data (`col-12`)   | stays full width           | stays full width            |
-| Image panel (`col-6`)        | full width                 | full width                  |
-| Thumbnail grid               | auto-fill (fewer columns)  | 2 across, then 1            |
+| Pattern (desktop)                   | Tablet (768 to 991)         | Mobile (< 768)   |
+|-------------------------------------|-----------------------------|------------------|
+| Stat row (4 x `col-3`)              | 2-up                        | 1-up (stacked)   |
+| Chart pair (2 x `col-6`)            | 1-up                        | 1-up             |
+| Focus + context (`col-8` + `col-4`) | stack: primary then context | stacked          |
+| Full-width data (`col-12`)          | stays full width            | stays full width |
+| Image panel (`col-6`)               | full width                  | full width       |
+| Thumbnail grid                      | auto-fill (fewer columns)   | 2 across, then 1 |
 
 App shell and navigation:
 
 - **Sidebar:** expanded (240px) at Desktop, icon rail at Tablet, off-canvas drawer at
   Mobile (section 13).
-- **Topbar:** full link row + `light_logo_exfab.svg` banner at Desktop; banner swaps to the
-  icon mark and links collapse to a hamburger below `--bp-tablet` (section 00).
+- **Topbar:** navy bar with the full link row + white view-title wordmark at Desktop;
+  links collapse to a hamburger below `--bp-tablet` (sections 00 / 13). No logo asset
+  sits on the navy bar.
 - **Wide data table:** never reflow columns; scroll horizontally inside its container at
   Tablet and Mobile, with the first column frozen.
 - **Well-plate:** never shrink wells past legibility; below the format minimum width
@@ -752,15 +1102,18 @@ Imagery in this system is data, not decoration. The marketing convention of full
 photographic heroes does not apply.
 
 - **Image panels** preserve native pixel aspect ratio and letterbox against the stage
-  background (section 09). The stage scales down to a ~360px minimum, below which the panel
+  background (section 09). The stage scales down to a ~360px minimum, below which the
+  panel
   takes full width (`col-12`).
-- **Thumbnail / montage grids** are already fluid via `repeat(auto-fill, minmax(96px, 1fr))`
+- **Thumbnail / montage grids** are already fluid via
+  `repeat(auto-fill, minmax(96px, 1fr))`
   (section 09); columns reduce naturally with width.
 - **Charts** reflow to container width and reduce axis-tick density (fewer ticks) rather
   than letting labels overlap; the Data Micro style is the floor (section 02 / 11).
 - **Plate maps** scroll and zoom below their minimum width rather than shrinking wells
   (section 10).
-- **Scale bars, colorbars, and legends** persist at every breakpoint and in exports; they
+- **Scale bars, colorbars, and legends** persist at every breakpoint and in exports;
+  they
   are never dropped to save space (section 09 / 12 / 15).
 - No decorative or portrait photography anywhere in the surface.
 
@@ -770,12 +1123,12 @@ photographic heroes does not apply.
 
 ### Border Radius
 
-| Token         | Value | Usage                                          |
-|---------------|-------|------------------------------------------------|
-| `--radius-sm` | 3px   | Inline code, badges, small chips               |
-| `--radius`    | 6px   | Buttons, inputs, small cards                   |
-| `--radius-md` | 10px  | Stat cards, chart cards, main cards            |
-| `--radius-lg` | 16px  | Hero panels, modal surfaces, feature banners   |
+| Token         | Value | Usage                                        |
+|---------------|-------|----------------------------------------------|
+| `--radius-sm` | 3px   | Inline code, badges, small chips             |
+| `--radius`    | 6px   | Buttons, inputs, small cards                 |
+| `--radius-md` | 10px  | Stat cards, chart cards, main cards          |
+| `--radius-lg` | 16px  | Hero panels, modal surfaces, feature banners |
 
 ### Elevation & Depth
 
@@ -784,28 +1137,177 @@ as part of the brand rather than a default browser drop-shadow. Elevation is qui
 default; heavy shadow is reserved for genuinely transient surfaces. The ladder assigns
 each shadow token a level and a use.
 
-| Level | Name      | Treatment                                   | Token         | Use                                                      |
-|-------|-----------|---------------------------------------------|---------------|----------------------------------------------------------|
-| **0** | Flat      | No border, no shadow                        | --            | Canvas bands, full-bleed sections, inline content        |
-| **1** | Hairline  | `1px solid --color-border` on `--color-white`, no shadow | -- | Inputs, table containers, recessed / inset surfaces      |
-| **2** | Resting   | Hairline + `--shadow-sm`                    | `--shadow-sm` | Default cards, stat cards, chart cards at rest           |
-| **3** | Raised    | Hairline + `--shadow`                       | `--shadow`    | Hovered cards, the featured / primary panel, swipe handle |
-| **4** | Floating  | `--shadow-md`                               | `--shadow-md` | Dropdowns, popovers, tooltips, sticky bars, modals       |
-| **5** | Overlay   | `--shadow-lg`                               | `--shadow-lg` | Full-page overlays, lightbox, fullscreen image stage      |
+| Level | Name     | Treatment                                                | Token         | Use                                                       |
+|-------|----------|----------------------------------------------------------|---------------|-----------------------------------------------------------|
+| **0** | Flat     | No border, no shadow                                     | --            | Canvas bands, full-bleed sections, inline content         |
+| **1** | Hairline | `1px solid --color-border` on `--color-white`, no shadow | --            | Inputs, table containers, recessed / inset surfaces       |
+| **2** | Resting  | Hairline + `--shadow-sm`                                 | `--shadow-sm` | Default cards, stat cards, chart cards at rest            |
+| **3** | Raised   | Hairline + `--shadow`                                    | `--shadow`    | Hovered cards, the featured / primary panel, swipe handle |
+| **4** | Floating | `--shadow-md`                                            | `--shadow-md` | Dropdowns, popovers, tooltips, sticky bars, modals        |
+| **5** | Overlay  | `--shadow-lg`                                            | `--shadow-lg` | Full-page overlays, lightbox, fullscreen image stage      |
 
 - **Hover transition:** interactive cards animate from Level 2 to Level 3 on hover via
   `transition: border-color, box-shadow` (the same motion used by thumbnails and chart
   cards in sections 09 and 11). Resting state returns to Level 2.
-- **Do not stack:** a surface already at a level does not gain a second shadow when nested
+- **Do not stack:** a surface already at a level does not gain a second shadow when
+  nested
   inside another elevated surface. Pick one level per surface.
 
 #### Elevation Tokens (recipes)
 
 ```css
---shadow-sm: 0 1px 3px rgba(0,54,96,0.07), 0 1px 2px rgba(0,54,96,0.04);   /* Level 2 -- resting  */
---shadow:    0 4px 12px rgba(0,54,96,0.08), 0 1px 3px rgba(0,54,96,0.05);  /* Level 3 -- raised   */
---shadow-md: 0 8px 24px rgba(0,54,96,0.10), 0 2px 6px rgba(0,54,96,0.06);  /* Level 4 -- floating */
---shadow-lg: 0 16px 40px rgba(0,54,96,0.12), 0 4px 12px rgba(0,54,96,0.07);/* Level 5 -- overlay  */
+--shadow-sm:
+
+0
+1
+px
+
+3
+px
+rgba
+
+(
+0
+,
+54
+,
+96
+,
+0.07
+)
+,
+0
+1
+px
+
+2
+px
+rgba
+
+(
+0
+,
+54
+,
+96
+,
+0.04
+)
+; /* Level 2 -- resting  */
+--shadow:
+
+0
+4
+px
+
+12
+px
+rgba
+
+(
+0
+,
+54
+,
+96
+,
+0.08
+)
+,
+0
+1
+px
+
+3
+px
+rgba
+
+(
+0
+,
+54
+,
+96
+,
+0.05
+)
+; /* Level 3 -- raised   */
+--shadow-md:
+
+0
+8
+px
+
+24
+px
+rgba
+
+(
+0
+,
+54
+,
+96
+,
+0.10
+)
+,
+0
+2
+px
+
+6
+px
+rgba
+
+(
+0
+,
+54
+,
+96
+,
+0.06
+)
+; /* Level 4 -- floating */
+--shadow-lg:
+
+0
+16
+px
+
+40
+px
+rgba
+
+(
+0
+,
+54
+,
+96
+,
+0.12
+)
+,
+0
+4
+px
+
+12
+px
+rgba
+
+(
+0
+,
+54
+,
+96
+,
+0.07
+)
+; /* Level 5 -- overlay  */
 ```
 
 Each token is a two-stop shadow: a soft, wide far-shadow plus a tight near-shadow, which
@@ -816,11 +1318,14 @@ gives a natural falloff. This layered pairing is the system's only atmospheric e
 - **Navy tint, never neutral.** Depth carries the brand hue. A gray or black shadow is a
   defect in this system, not a stylistic alternative.
 - **The hairline is the primary separator.** On the near-white `#FBFEF8` canvas, the
-  canvas-to-card lightness gap is about one percent, so the `1px --color-border` at Level 1
-  does most of the work of separating a card from the page; the shadow is a secondary cue.
+  canvas-to-card lightness gap is about one percent, so the `1px --color-border` at
+  Level 1
+  does most of the work of separating a card from the page; the shadow is a secondary
+  cue.
   This is why nearly every card keeps its hairline even at higher levels.
 - **One intentional dark surface.** The image stage (section 09) is deliberately dark
-  because the pixels are the data. That is a content canvas, not an elevation level, and no
+  because the pixels are the data. That is a content canvas, not an elevation level, and
+  no
   UI chrome ever uses a dark fill to imply depth.
 - **Restraint.** Most surfaces live at Level 1 or 2. Reserve Level 4 and 5 for surfaces
   that genuinely float above the page or sit over a scrim. Do not push a resting card to
@@ -828,13 +1333,17 @@ gives a natural falloff. This layered pairing is the system's only atmospheric e
 
 #### Reconciliation Flags
 
-1. **Radius splits out.** This section now covers depth only. The Border Radius table from
-   the old section 04 should become its own short "Shapes" section (content unchanged: the
-   3 / 6 / 10 / 16px ladder), matching the reference's separation of Shapes from Elevation.
+1. **Radius splits out.** This section now covers depth only. The Border Radius table
+   from
+   the old section 04 should become its own short "Shapes" section (content unchanged:
+   the
+   3 / 6 / 10 / 16px ladder), matching the reference's separation of Shapes from
+   Elevation.
 2. **Modal level.** Your original token table placed modals at `--shadow-md` and labeled
    `--shadow-lg` as "hero, full-page overlays." I kept modals at Level 4 (`--shadow-md`)
    per that original intent, moved "hero" off the heaviest level since hero bands are
-   normally flat (Level 0), and reframed Level 5 as full-page overlays and the lightbox. If
+   normally flat (Level 0), and reframed Level 5 as full-page overlays and the lightbox.
+   If
    you prefer the reference's "modal is the heaviest surface," bump modals to Level 5.
 
 ---
@@ -848,15 +1357,15 @@ Use primary colors for top-level KPIs; Okabe-Ito for categorically meaningful me
 
 **Accent bar color assignments:**
 
-| Color                       | Hex       | Metric Type                                |
-|-----------------------------|-----------|--------------------------------------------|
-| Navy `--color-navy`         | `#003660` | Primary KPIs (total count, overall status) |
-| Blue `--color-blue`         | `#1b75bc` | Measurement values (diameter, area)        |
-| Gold `--color-gold`         | `#febc11` | Coverage / utilization percentages         |
-| Orange `--oi-orange`        | `#E69F00` | Warning states, flagged conditions         |
-| Bluish Green `--oi-green`   | `#009E73` | Quality / completeness / BUSCO scores      |
-| Sky Blue `--oi-sky`         | `#56B4E9` | Throughput / job counts                    |
-| Vermilion `--oi-vermilion`  | `#D55E00` | Error / failure counts                     |
+| Color                      | Hex       | Metric Type                                |
+|----------------------------|-----------|--------------------------------------------|
+| Navy `--color-navy`        | `#003660` | Primary KPIs (total count, overall status) |
+| Blue `--color-blue`        | `#1b75bc` | Measurement values (diameter, area)        |
+| Gold `--color-gold`        | `#febc11` | Coverage / utilization percentages         |
+| Orange `--oi-orange`       | `#E69F00` | Warning states, flagged conditions         |
+| Bluish Green `--oi-green`  | `#009E73` | Quality / completeness / BUSCO scores      |
+| Sky Blue `--oi-sky`        | `#56B4E9` | Throughput / job counts                    |
+| Vermilion `--oi-vermilion` | `#D55E00` | Error / failure counts                     |
 
 **Delta text colors:** positive `#009E73`, negative `#D55E00`, neutral `#8892a4`.
 
@@ -875,20 +1384,23 @@ Use primary colors for top-level KPIs; Okabe-Ito for categorically meaningful me
 
 ```css
 .stat-card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: var(--sp-5) var(--sp-6);
-  box-shadow: var(--shadow-sm);
-  position: relative;
-  overflow: hidden;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: var(--sp-5) var(--sp-6);
+    box-shadow: var(--shadow-sm);
+    position: relative;
+    overflow: hidden;
 }
+
 .stat-card::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 3px;
-  background: var(--accent-color); /* set per instance */
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--accent-color); /* set per instance */
 }
 ```
 
@@ -901,10 +1413,10 @@ Use Okabe-Ito series order for multi-fill progress. Track background is always
 
 **Variants:**
 
-| Variant   | Height | Use Case                                         |
-|-----------|--------|--------------------------------------------------|
-| Standard  | 6px    | Multi-step pipelines, comparison series          |
-| Thick     | 10px   | Primary KPI progress                             |
+| Variant   | Height  | Use Case                                         |
+|-----------|---------|--------------------------------------------------|
+| Standard  | 6px     | Multi-step pipelines, comparison series          |
+| Thick     | 10px    | Primary KPI progress                             |
 | Segmented | 6--10px | Proportional composition (e.g. strain breakdown) |
 
 **Color series order** for multi-progress lists:
@@ -921,26 +1433,27 @@ Use Okabe-Ito series order for multi-fill progress. Track background is always
 
 Reserve `#D55E00` for error-state fills only.
 
-**Label layout:** progress name (DM Sans 500) left, value (JetBrains Mono) right,
+**Label layout:** progress name (IBM Plex Sans 500) left, value (JetBrains Mono) right,
 `justify-content: space-between`. Stack items with `gap: 16px`.
 
 **CSS:**
 
 ```css
 .progress-track {
-  height: 6px;
-  background: var(--color-rule);
-  border-radius: 9999px;
-  overflow: hidden;
+    height: 6px;
+    background: var(--color-rule);
+    border-radius: 9999px;
+    overflow: hidden;
 }
+
 .progress-fill {
-  height: 100%;
-  border-radius: 9999px;
-  background-image: linear-gradient(
-    90deg,
-    rgba(255,255,255,0) 0%,
-    rgba(255,255,255,0.25) 100%
-  );
+    height: 100%;
+    border-radius: 9999px;
+    background-image: linear-gradient(
+            90deg,
+            rgba(255, 255, 255, 0) 0%,
+            rgba(255, 255, 255, 0.25) 100%
+    );
 }
 ```
 
@@ -951,31 +1464,32 @@ Reserve `#D55E00` for error-state fills only.
 Primary buttons use the brand palette. Okabe-Ito colors are **not** used for buttons --
 reserved exclusively for data. Exception: danger variant uses `--oi-vermilion`.
 
-| Variant | Background        | Text            | Border           | Use Case               |
-|---------|-------------------|-----------------|------------------|------------------------|
-| Primary | `--color-navy`    | White           | `--color-navy`   | Submit, Run, Confirm   |
-| Blue    | `--color-blue`    | White           | `--color-blue`   | Primary interactive    |
-| Gold    | `--color-gold`    | `--color-navy`  | `--color-gold`   | Emphasized CTA         |
-| Outline | Transparent       | `--color-navy`  | `--color-border` | Secondary actions      |
-| Ghost   | Transparent       | `--color-muted` | none             | Tertiary / utility     |
-| Danger  | Transparent       | `#D55E00`       | `#D55E00`        | Destructive actions    |
+| Variant | Background     | Text            | Border           | Use Case             |
+|---------|----------------|-----------------|------------------|----------------------|
+| Primary | `--color-navy` | White           | `--color-navy`   | Submit, Run, Confirm |
+| Blue    | `--color-blue` | White           | `--color-blue`   | Primary interactive  |
+| Gold    | `--color-gold` | `--color-navy`  | `--color-gold`   | Emphasized CTA       |
+| Outline | Transparent    | `--color-navy`  | `--color-border` | Secondary actions    |
+| Ghost   | Transparent    | `--color-muted` | none             | Tertiary / utility   |
+| Danger  | Transparent    | `#D55E00`       | `#D55E00`        | Destructive actions  |
 
 **Sizes:**
 
-| Size    | Font Size | Padding              |
-|---------|-----------|----------------------|
-| sm      | 11px      | `0.3rem 0.75rem`     |
-| default | 13px      | `0.5rem 1.125rem`    |
-| lg      | 15px      | `0.7rem 1.5rem`      |
+| Size    | Font Size | Padding                           |
+|---------|-----------|-----------------------------------|
+| sm      | 11px      | `0.3rem 0.75rem`                  |
+| default | 13px      | `0.5rem 1.125rem`                 |
+| lg      | 15px      | `0.7rem 1.5rem`                   |
 | icon    | --        | `width/height 2.25rem, padding 0` |
 
-**Shared styles:** DM Sans, `font-weight: 500`, `letter-spacing: 0.01em`,
+**Shared styles:** IBM Plex Sans, `font-weight: 500`, `letter-spacing: 0.01em`,
 `border-radius: var(--radius)`, `border-width: 1.5px`,
 `transition: all 180ms cubic-bezier(0.22, 1, 0.36, 1)`.
 
 **Hover states:**
 
-- Filled variants: darken background ~8%, add `box-shadow: 0 4px 12px rgba(0,54,96,0.28)`
+- Filled variants: darken background ~8%, add
+  `box-shadow: 0 4px 12px rgba(0,54,96,0.28)`
 - Outline: `border-color: #1b75bc`, `color: #1b75bc`,
   `background: rgba(27,117,188,0.04)`
 - Danger: `background: #D55E00`, `color: #fff`
@@ -1022,31 +1536,32 @@ card surfaces.
 `border-radius: var(--radius)`, `border-left: 4px solid`.
 
 **Icon:** `1rem`, `flex-shrink: 0`, `margin-top: 1px`.
-**Title:** DM Sans, `font-weight: 600`, `font-size: 13px`.
+**Title:** IBM Plex Sans, `font-weight: 600`, `font-size: 13px`.
 **Body:** `opacity: 0.85`, `line-height: 1.5`.
 
-| Type    | Border    | Background                | Text      |
-|---------|-----------|---------------------------|-----------|
-| Info    | `#56B4E9` | `rgba(86,180,233,0.08)`   | `#0B5E87` |
-| Success | `#009E73` | `rgba(0,158,115,0.07)`    | `#005C43` |
-| Warning | `#E69F00` | `rgba(230,159,0,0.10)`    | `#7A5500` |
-| Error   | `#D55E00` | `rgba(213,94,0,0.08)`     | `#8A3C00` |
+| Type    | Border    | Background              | Text      |
+|---------|-----------|-------------------------|-----------|
+| Info    | `#56B4E9` | `rgba(86,180,233,0.08)` | `#0B5E87` |
+| Success | `#009E73` | `rgba(0,158,115,0.07)`  | `#005C43` |
+| Warning | `#E69F00` | `rgba(230,159,0,0.10)`  | `#7A5500` |
+| Error   | `#D55E00` | `rgba(213,94,0,0.08)`   | `#8A3C00` |
 
 ---
 
 ### Data Tables
 
-| Element          | Style                                                                   |
-|------------------|-------------------------------------------------------------------------|
-| Header border    | `2px solid --color-navy` (bottom)                                       |
-| Header text      | JetBrains Mono, 11px, uppercase, `letter-spacing: 0.08em`, `--color-muted`    |
-| Cell padding     | `12px 16px`                                                             |
-| Row divider      | `1px solid --color-rule`                                                |
-| Row hover        | `background: rgba(27,117,188,0.03)`                                     |
-| Numeric values   | JetBrains Mono, `--color-heading`, `font-weight: 500`                          |
-| Secondary values | JetBrains Mono, `--color-muted`                                                |
+| Element          | Style                                                                      |
+|------------------|----------------------------------------------------------------------------|
+| Header border    | `2px solid --color-navy` (bottom)                                          |
+| Header text      | JetBrains Mono, 11px, uppercase, `letter-spacing: 0.08em`, `--color-muted` |
+| Cell padding     | `12px 16px`                                                                |
+| Row divider      | `1px solid --color-rule`                                                   |
+| Row hover        | `background: rgba(27,117,188,0.03)`                                        |
+| Numeric values   | JetBrains Mono, `--color-heading`, `font-weight: 500`                      |
+| Secondary values | JetBrains Mono, `--color-muted`                                            |
 
-**Column ordering convention:** identifier, taxonomy/category, measurements (JetBrains Mono),
+**Column ordering convention:** identifier, taxonomy/category, measurements (JetBrains
+Mono),
 quality metrics, status badge.
 
 ---
@@ -1054,15 +1569,15 @@ quality metrics, status badge.
 ### Form Inputs
 
 **Base styles:** `background: #ffffff`, `border: 1.5px solid --color-border`,
-`border-radius: var(--radius)`, `padding: 0.5rem 0.875rem`, DM Sans 13px,
+`border-radius: var(--radius)`, `padding: 0.5rem 0.875rem`, IBM Plex Sans 13px,
 `color: --color-body`, `transition: border-color 180ms, box-shadow 180ms`.
 
-| State   | Border                       | Focus Ring                          |
-|---------|------------------------------|-------------------------------------|
-| Default | `1.5px solid --color-border` | --                                  |
-| Focus   | `1.5px solid --color-blue`   | `0 0 0 3px rgba(27,117,188,0.12)`  |
-| Valid   | `1.5px solid #009E73`        | `0 0 0 3px rgba(0,158,115,0.12)`   |
-| Error   | `1.5px solid #D55E00`        | `0 0 0 3px rgba(213,94,0,0.12)`    |
+| State   | Border                       | Focus Ring                        |
+|---------|------------------------------|-----------------------------------|
+| Default | `1.5px solid --color-border` | --                                |
+| Focus   | `1.5px solid --color-blue`   | `0 0 0 3px rgba(27,117,188,0.12)` |
+| Valid   | `1.5px solid #009E73`        | `0 0 0 3px rgba(0,158,115,0.12)`  |
+| Error   | `1.5px solid #D55E00`        | `0 0 0 3px rgba(213,94,0,0.12)`   |
 
 **Labels:** JetBrains Mono, 11px, uppercase, `letter-spacing: 0.08em`, `--color-muted`,
 placed above input.
@@ -1076,20 +1591,104 @@ placed above input.
 
 ```css
 /* Track */
-border-bottom: 2px solid var(--color-rule); /* full width */
+border-bottom:
+
+2
+px solid
+var
+
+(
+--color-rule
+
+)
+; /* full width */
 
 /* Tab */
-font-family: var(--font-body);
-font-size: 13px;
-font-weight: 500;
-padding: 12px 20px;
-border-bottom: 2px solid transparent;
-margin-bottom: -2px;
+font-family:
+var
+
+(
+--font-body
+
+)
+;
+font-size:
+
+13
+px
+
+;
+font-weight:
+
+500
+;
+padding:
+
+12
+px
+
+20
+px
+
+;
+border-bottom:
+
+2
+px solid transparent
+
+;
+margin-bottom:
+
+-
+2
+px
+
+;
 
 /* States */
-/* active  */ color: var(--color-navy); border-color: var(--color-navy);
-/* inactive */ color: var(--color-muted);
-/* hover (inactive) */ color: var(--color-body); border-color: var(--color-border);
+/* active  */
+color:
+var
+
+(
+--color-navy
+
+)
+;
+border-color:
+var
+
+(
+--color-navy
+
+)
+;
+/* inactive */
+color:
+var
+
+(
+--color-muted
+
+)
+;
+/* hover (inactive) */
+color:
+var
+
+(
+--color-body
+
+)
+;
+border-color:
+var
+
+(
+--color-border
+
+)
+;
 ```
 
 ---
@@ -1114,18 +1713,18 @@ series 1, keeping the primary series harmonious with the UI chrome.
 
 ### Chart Styling Rules
 
-| Element           | Style                                                    |
-|-------------------|----------------------------------------------------------|
-| Gridlines         | `1px`, `#e8ecf2`                                         |
-| Axes              | `1.5px`, `#dde3ed`                                       |
-| Axis labels       | JetBrains Mono, 7--8px, `--color-muted`                        |
-| Chart title       | DM Sans, 13px, weight 600, `--color-heading`            |
-| Chart subtitle    | JetBrains Mono, 11px, `--color-muted`                          |
-| Spines            | Top and right hidden; bottom and left only               |
-| Data point dots   | 3.5px radius, filled with series color                   |
-| Area fills        | Series color at 7% opacity beneath line                  |
-| Line stroke width | 2px, `stroke-linejoin: round`, `stroke-linecap: round`  |
-| Error bars        | 1px, series color, 60% opacity                           |
+| Element           | Style                                                  |
+|-------------------|--------------------------------------------------------|
+| Gridlines         | `1px`, `#e8ecf2`                                       |
+| Axes              | `1.5px`, `#dde3ed`                                     |
+| Axis labels       | JetBrains Mono, 7--8px, `--color-muted`                |
+| Chart title       | IBM Plex Sans, 13px, weight 600, `--color-heading`           |
+| Chart subtitle    | JetBrains Mono, 11px, `--color-muted`                  |
+| Spines            | Top and right hidden; bottom and left only             |
+| Data point dots   | 3.5px radius, filled with series color                 |
+| Area fills        | Series color at 7% opacity beneath line                |
+| Line stroke width | 2px, `stroke-linejoin: round`, `stroke-linecap: round` |
+| Error bars        | 1px, series color, 60% opacity                         |
 
 ### Donut / Pie Charts
 
@@ -1134,7 +1733,7 @@ ring stroke-width:  20px on r=40 SVG circle (circumference ~251px)
 center value:       IBM Plex Serif, font-size 11, font-weight 600, fill #003660
 center unit:        JetBrains Mono, font-size 6.5, fill #8892a4
 legend dot:         10px circle
-legend name:        DM Sans, 11px, color #2e3a4e
+legend name:        IBM Plex Sans, 11px, color #2e3a4e
 legend pct:         JetBrains Mono, 11px, color #8892a4
 ```
 
@@ -1174,26 +1773,26 @@ OKABE_ITO = [
 ]
 
 mpl.rcParams.update({
-    "axes.prop_cycle":    mpl.cycler(color=OKABE_ITO),
-    "axes.facecolor":     "#ffffff",
-    "figure.facecolor":   "#FBFEF8",
-    "axes.edgecolor":     "#dde3ed",
-    "axes.grid":          True,
-    "grid.color":         "#e8ecf2",
-    "grid.linewidth":     0.8,
-    "axes.spines.top":    False,
-    "axes.spines.right":  False,
-    "font.family":        "sans-serif",
-    "font.sans-serif":    ["DM Sans", "Helvetica Neue", "Arial"],
-    "axes.labelcolor":    "#2e3a4e",
-    "xtick.color":        "#8892a4",
-    "ytick.color":        "#8892a4",
-    "axes.titlecolor":    "#003660",
-    "axes.titleweight":   "600",
-    "axes.titlesize":     11,
-    "axes.labelsize":     9,
-    "xtick.labelsize":    8,
-    "ytick.labelsize":    8,
+    "axes.prop_cycle"  : mpl.cycler(color=OKABE_ITO),
+    "axes.facecolor"   : "#ffffff",
+    "figure.facecolor" : "#FBFEF8",
+    "axes.edgecolor"   : "#dde3ed",
+    "axes.grid"        : True,
+    "grid.color"       : "#e8ecf2",
+    "grid.linewidth"   : 0.8,
+    "axes.spines.top"  : False,
+    "axes.spines.right": False,
+    "font.family"      : "sans-serif",
+    "font.sans-serif"  : ["IBM Plex Sans", "Helvetica Neue", "Arial"],
+    "axes.labelcolor"  : "#2e3a4e",
+    "xtick.color"      : "#8892a4",
+    "ytick.color"      : "#8892a4",
+    "axes.titlecolor"  : "#003660",
+    "axes.titleweight" : "600",
+    "axes.titlesize"   : 11,
+    "axes.labelsize"   : 9,
+    "xtick.labelsize"  : 8,
+    "ytick.labelsize"  : 8,
 })
 ```
 
@@ -1204,13 +1803,13 @@ For categorical label overlays (e.g. colony segmentation masks):
 ```python
 # RGBA tuples normalized 0-1, for napari label layer color dict
 OKABE_ITO_NAPARI = {
-    1: (  0/255,  54/255,  96/255, 1.0),  # navy
-    2: (230/255, 159/255,   0/255, 1.0),  # orange
-    3: ( 86/255, 180/255, 233/255, 1.0),  # sky blue
-    4: (  0/255, 158/255, 115/255, 1.0),  # bluish green
-    5: (  0/255, 114/255, 178/255, 1.0),  # blue
-    6: (204/255, 121/255, 167/255, 1.0),  # reddish purple
-    7: (213/255,  94/255,   0/255, 1.0),  # vermilion (error)
+    1: (0 / 255, 54 / 255, 96 / 255, 1.0),  # navy
+    2: (230 / 255, 159 / 255, 0 / 255, 1.0),  # orange
+    3: (86 / 255, 180 / 255, 233 / 255, 1.0),  # sky blue
+    4: (0 / 255, 158 / 255, 115 / 255, 1.0),  # bluish green
+    5: (0 / 255, 114 / 255, 178 / 255, 1.0),  # blue
+    6: (204 / 255, 121 / 255, 167 / 255, 1.0),  # reddish purple
+    7: (213 / 255, 94 / 255, 0 / 255, 1.0),  # vermilion (error)
 }
 ```
 
@@ -1220,98 +1819,105 @@ Include this `:root` block in all generated CSS files:
 
 ```css
 :root {
-  /* Primary palette -- UI only */
-  --color-navy:    #003660;
-  --color-blue:    #1b75bc;
-  --color-gold:    #febc11;
-  --color-white:   #ffffff;
-  --color-bg:      #FBFEF8;
-  --color-surface: #ffffff;
-  --color-border:  #dde3ed;
-  --color-rule:    #e8ecf2;
-  --color-muted:   #8892a4;
-  --color-body:    #2e3a4e;
-  --color-heading: #003660;
+    /* Primary palette -- UI only */
+    --color-navy: #003660;
+    --color-blue: #1b75bc;
+    --color-gold: #febc11;
+    --color-white: #ffffff;
+    --color-bg: #FBFEF8;
+    --color-surface: #ffffff;
+    --color-border: #dde3ed;
+    --color-rule: #e8ecf2;
+    --color-muted: #8892a4;
+    --color-body: #2e3a4e;
+    --color-heading: #003660;
 
-  /* Data palette -- Okabe-Ito -- visualization only */
-  --oi-orange:    #E69F00;
-  --oi-sky:       #56B4E9;
-  --oi-green:     #009E73;
-  --oi-vermilion: #D55E00;
-  --oi-blue:      #0072B2;
-  --oi-purple:    #CC79A7;
-  --oi-yellow:    #F0E442;  /* large fills only */
-  --oi-grey:      #BBBBBB;  /* reference / control */
+    /* Data palette -- Okabe-Ito -- visualization only */
+    --oi-orange: #E69F00;
+    --oi-sky: #56B4E9;
+    --oi-green: #009E73;
+    --oi-vermilion: #D55E00;
+    --oi-blue: #0072B2;
+    --oi-purple: #CC79A7;
+    --oi-yellow: #F0E442; /* large fills only */
+    --oi-grey: #BBBBBB; /* reference / control */
 
-  /* Semantic aliases */
-  --color-success: var(--oi-green);
-  --color-info:    var(--oi-sky);
-  --color-warning: var(--oi-orange);
-  --color-danger:  var(--oi-vermilion);
+    /* Semantic aliases */
+    --color-success: var(--oi-green);
+    --color-info: var(--oi-sky);
+    --color-warning: var(--oi-orange);
+    --color-danger: var(--oi-vermilion);
 
-  /* Typography */
-  --font-display: 'IBM Plex Serif', Georgia, serif;
-  --font-body:    'DM Sans', system-ui, sans-serif;
-  --font-mono:    'JetBrains Mono', 'Courier New', monospace;
+    /* Typography */
+    --font-display: 'IBM Plex Serif', Georgia, serif;
+    --font-body: 'IBM Plex Sans', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', 'Courier New', monospace;
 
-  /* Type scale */
-  --text-xs:   0.6875rem;   /*  11px */
-  --text-sm:   0.8125rem;   /*  13px */
-  --text-base: 0.9375rem;   /*  15px */
-  --text-md:   1.0625rem;   /*  17px */
-  --text-lg:   1.25rem;     /*  20px */
-  --text-xl:   1.5rem;      /*  24px */
-  --text-2xl:  1.875rem;    /*  30px */
-  --text-3xl:  2.5rem;      /*  40px */
-  --text-4xl:  3.25rem;     /*  52px */
-  --text-2xs:  0.625rem;    /*  10px */
+    /* Type scale */
+    --text-xs: 0.6875rem; /*  11px */
+    --text-sm: 0.8125rem; /*  13px */
+    --text-base: 0.9375rem; /*  15px */
+    --text-md: 1.0625rem; /*  17px */
+    --text-lg: 1.25rem; /*  20px */
+    --text-xl: 1.5rem; /*  24px */
+    --text-2xl: 1.875rem; /*  30px */
+    --text-3xl: 2.5rem; /*  40px */
+    --text-4xl: 3.25rem; /*  52px */
+    --text-2xs: 0.625rem; /*  10px */
 
-  /* Semantic size aliases -- use these, not raw --text-* */
-  --font-size-display:  var(--text-3xl);
-  --font-size-title:    var(--text-2xl);
-  --font-size-header-1: var(--text-xl);
-  --font-size-header-2: var(--text-lg);
-  --font-size-body-lg:  var(--text-md);
-  --font-size-body:     var(--text-base);
-  --font-size-body-sm:  var(--text-sm);
-  --font-size-caption:  var(--text-xs);
-  --font-size-micro:    var(--text-2xs);
+    /* Semantic size aliases -- use these, not raw --text-* */
+    --font-size-display: var(--text-3xl);
+    --font-size-title: var(--text-2xl);
+    --font-size-header-1: var(--text-xl);
+    --font-size-header-2: var(--text-lg);
+    --font-size-body-lg: var(--text-md);
+    --font-size-body: var(--text-base);
+    --font-size-body-sm: var(--text-sm);
+    --font-size-caption: var(--text-xs);
+    --font-size-micro: var(--text-2xs);
 
-  /* Line-height */
-  --leading-display: 1.1;  --leading-tight: 1.2;   --leading-snug: 1.3;
-  --leading-normal: 1.45;  --leading-relaxed: 1.6;
+    /* Line-height */
+    --leading-display: 1.1;
+    --leading-tight: 1.2;
+    --leading-snug: 1.3;
+    --leading-normal: 1.45;
+    --leading-relaxed: 1.6;
 
-  /* Letter-spacing */
-  --tracking-tight: -0.02em; --tracking-snug: -0.01em; --tracking-normal: 0;
-  --tracking-button: 0.01em; --tracking-wide: 0.08em;  --tracking-wider: 0.12em;
+    /* Letter-spacing */
+    --tracking-tight: -0.02em;
+    --tracking-snug: -0.01em;
+    --tracking-normal: 0;
+    --tracking-button: 0.01em;
+    --tracking-wide: 0.08em;
+    --tracking-wider: 0.12em;
 
-  /* Spacing (8pt grid) */
-  --sp-1:  0.25rem;
-  --sp-2:  0.5rem;
-  --sp-3:  0.75rem;
-  --sp-4:  1rem;
-  --sp-5:  1.25rem;
-  --sp-6:  1.5rem;
-  --sp-8:  2rem;
-  --sp-10: 2.5rem;
-  --sp-12: 3rem;
-  --sp-16: 4rem;
+    /* Spacing (8pt grid) */
+    --sp-1: 0.25rem;
+    --sp-2: 0.5rem;
+    --sp-3: 0.75rem;
+    --sp-4: 1rem;
+    --sp-5: 1.25rem;
+    --sp-6: 1.5rem;
+    --sp-8: 2rem;
+    --sp-10: 2.5rem;
+    --sp-12: 3rem;
+    --sp-16: 4rem;
 
-  /* Border radius */
-  --radius-sm: 3px;
-  --radius:    6px;
-  --radius-md: 10px;
-  --radius-lg: 16px;
+    /* Border radius */
+    --radius-sm: 3px;
+    --radius: 6px;
+    --radius-md: 10px;
+    --radius-lg: 16px;
 
-  /* Shadows (navy-tinted) */
-  --shadow-sm: 0 1px 3px rgba(0,54,96,0.07), 0 1px 2px rgba(0,54,96,0.04);
-  --shadow:    0 4px 12px rgba(0,54,96,0.08), 0 1px 3px rgba(0,54,96,0.05);
-  --shadow-md: 0 8px 24px rgba(0,54,96,0.10), 0 2px 6px rgba(0,54,96,0.06);
-  --shadow-lg: 0 16px 40px rgba(0,54,96,0.12), 0 4px 12px rgba(0,54,96,0.07);
+    /* Shadows (navy-tinted) */
+    --shadow-sm: 0 1px 3px rgba(0, 54, 96, 0.07), 0 1px 2px rgba(0, 54, 96, 0.04);
+    --shadow: 0 4px 12px rgba(0, 54, 96, 0.08), 0 1px 3px rgba(0, 54, 96, 0.05);
+    --shadow-md: 0 8px 24px rgba(0, 54, 96, 0.10), 0 2px 6px rgba(0, 54, 96, 0.06);
+    --shadow-lg: 0 16px 40px rgba(0, 54, 96, 0.12), 0 4px 12px rgba(0, 54, 96, 0.07);
 
-  /* Motion */
-  --ease-out:   cubic-bezier(0.22, 1, 0.36, 1);
-  --transition: 180ms var(--ease-out);
+    /* Motion */
+    --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+    --transition: 180ms var(--ease-out);
 }
 ```
 
@@ -1321,49 +1927,63 @@ Include this `:root` block in all generated CSS files:
 
 ### Do
 
-- **Keep the three color worlds separate.** UI chrome (navy / blue / gold plus neutrals),
+- **Keep the three color worlds separate.** UI chrome (navy / blue / gold plus
+  neutrals),
   data (Okabe-Ito), and branding (the logo) never borrow from one another.
 - **Reserve navy `#003660` for primary actions, headings, and the wordmark.** Use blue
-  `#1b75bc` for interactive and secondary roles, and gold `#febc11` only as a rare emphasis
+  `#1b75bc` for interactive and secondary roles, and gold `#febc11` only as a rare
+  emphasis
   accent (darken to `#a87a00` for text on white).
-- **Use Okabe-Ito for chart series, progress fills, and semantic states** (success / info /
+- **Use Okabe-Ito for chart series, progress fills, and semantic states** (success /
+  info /
   warning / error), in the fixed order navy, orange, sky, green, blue, purple.
 - **Render every number, axis label, badge, caption, and code token in the mono family**
   (JetBrains Mono), to keep optical column alignment and a data-forward voice.
-- **Use IBM Plex Serif for content headings and large stat values; DM Sans for body and
+- **Use IBM Plex Serif for content headings and large stat values; IBM Plex Sans for body and
   component titles.** Serif for content, sans for chrome.
-- **Pair color with a second signal on every status.** A dot, an icon, or a text word, so
+- **Pair color with a second signal on every status.** A dot, an icon, or a text word,
+  so
   meaning survives for colorblind readers.
 - **Keep shadows navy-tinted and quiet, and let the hairline border do the primary
   separating** on the near-white `#FBFEF8` canvas.
-- **Hold buttons and inputs at `--radius` 6px and cards at `--radius-md` 10px.** Keep the
+- **Hold buttons and inputs at `--radius` 6px and cards at `--radius-md` 10px.** Keep
+  the
   geometry restrained and engineered.
-- **Put a scale bar on every calibrated image, and a persistent colorbar or legend on every
+- **Put a scale bar on every calibrated image, and a persistent colorbar or legend on
+  every
   data figure.** They stay in exports too.
-- **Show single fluorescence channels in grayscale and composites in green / magenta**, not
+- **Show single fluorescence channels in grayscale and composites in green / magenta**,
+  not
   green / red.
-- **Reference text styles and tokens by name.** The document is the single source of truth;
+- **Reference text styles and tokens by name.** The document is the single source of
+  truth;
   never hardcode a font, size, or hex at a call site.
 
 ### Don't
 
-- **Don't use data colors (Okabe-Ito) for buttons, nav, headings, links, input borders, or
+- **Don't use data colors (Okabe-Ito) for buttons, nav, headings, links, input borders,
+  or
   any UI chrome.**
-- **Don't reorder the Okabe-Ito series,** and don't exceed six categorical series without
+- **Don't reorder the Okabe-Ito series,** and don't exceed six categorical series
+  without
   introducing an "other" category.
 - **Don't use red-green colormaps,** and don't rely on a green-success / red-error pair
   without a dot or label to carry the meaning.
-- **Don't use `#F0E442` (yellow) as text, stroke, or a thin line on white.** Reserve it for
+- **Don't use `#F0E442` (yellow) as text, stroke, or a thin line on white.** Reserve it
+  for
   large filled chart elements only.
-- **Don't combine `--oi-blue` (`#0072B2`) and `--color-blue` (`#1b75bc`) in the same chart.**
+- **Don't combine `--oi-blue` (`#0072B2`) and `--color-blue` (`#1b75bc`) in the same
+  chart.**
   They read as the same color at small sizes.
 - **Don't render data, labels, captions, or code in anything but the mono family.**
 - **Don't use gray or black shadows,** and don't apply `--shadow-lg` to inline cards or
   panels (reserve it for overlays).
 - **Don't use raw Okabe-Ito hex as text on white** without the darkened contrast variant
   from the Badges section.
-- **Don't use chromatic data colors as button fills, and don't use gold as a data series.**
-- **Don't render pill-shaped CTAs,** and don't stretch the logo or sample its colony colors
+- **Don't use chromatic data colors as button fills, and don't use gold as a data
+  series.**
+- **Don't render pill-shaped CTAs,** and don't stretch the logo or sample its colony
+  colors
   for UI or data.
 - **Don't use em dashes.** Use double hyphens or restructure the sentence.
 
@@ -1380,7 +2000,7 @@ composites, and overlays that never destroy the underlying signal.
 
 ```
 +-- chart-card surface (radius-md, shadow-sm, 1px --color-border) -----+
-|  TITLE -- DM Sans 13 600 --color-heading      [toolbar: icons right] |
+|  TITLE -- IBM Plex Sans 13 600 --color-heading      [toolbar: icons right] |
 |  subtitle -- JetBrains Mono 11 --color-muted                                |
 |  +-- image stage (background #0e1620 for fluor, #FBFEF8 for bright)+ |
 |  |                                                                  | |
@@ -1405,12 +2025,12 @@ composites, and overlays that never destroy the underlying signal.
 
 Icon buttons, `icon` size from the Buttons section, `ghost` variant. Group order:
 
-| Group       | Controls                                    |
-|-------------|---------------------------------------------|
-| Navigation  | zoom in, zoom out, fit-to-view, reset 1:1   |
-| Display     | channel toggle, LUT/colormap, brightness    |
-| Overlay     | mask on/off, ROI on/off, labels on/off      |
-| Capture     | fullscreen, download (see section 15)       |
+| Group      | Controls                                  |
+|------------|-------------------------------------------|
+| Navigation | zoom in, zoom out, fit-to-view, reset 1:1 |
+| Display    | channel toggle, LUT/colormap, brightness  |
+| Overlay    | mask on/off, ROI on/off, labels on/off    |
+| Capture    | fullscreen, download (see section 15)     |
 
 - Zoom level reads in a mono chip at lower-left: `JetBrains Mono 11 --color-muted`, e.g.
   `220%`.
@@ -1432,6 +2052,18 @@ length:      snap to a round calibrated value (5, 10, 20, 50, 100 um ...)
 ```
 
 State the calibration source in the metadata strip so the bar is auditable.
+
+> **Status -- deferred (pending core calibration support).** No scale bar ships in
+> the results viewer yet, and it is intentionally blocked rather than skipped: a bar
+> requires a physical pixel size (um/px), which the core image model does not carry
+> (`_core/_image_parts/_image_io_handler.py` has `# TODO: implement calibration
+> schema`; only an experimental `RESOLUTION` tag exists). Because nothing is
+> calibrated today, the "mandatory for calibrated images" rule above is vacuously
+> satisfied. Implementing the bar is a cross-cutting feature, not a styling fix:
+> (1) add the calibration schema to the core `Image` model, (2) plumb um/px through
+> the pipeline into the results viewer, then (3) render the bar (e.g. the
+> openseadragon-scalebar plugin, not currently bundled). Render the bar only when a
+> calibration value is present; omit it (do not fake one) otherwise.
 
 ### Channels & LUTs
 
@@ -1466,25 +2098,40 @@ Channel chips below the stage carry a mono label and a swatch of the assigned LU
 Overlays reuse the `OKABE_ITO_NAPARI` label mapping already defined in section 07, so a
 mask color in the dashboard matches the same label in napari.
 
-| Overlay type        | Default render                                              |
-|---------------------|------------------------------------------------------------|
-| Segmentation mask   | outline 1.5px series color, OR <= 45% fill, never 100%     |
-| Labeled instances   | outline series color + mono ID at centroid, 10px           |
-| ROI (user-drawn)    | `--color-blue` 1.5px dashed, 8% fill                       |
-| Detection box       | series color 1.5px solid, mono confidence chip top-left    |
-| Reference / control | `--oi-grey` outline, to read as non-data                   |
+| Overlay type        | Default render                                          |
+|---------------------|---------------------------------------------------------|
+| Segmentation mask   | outline 1.5px series color, OR <= 45% fill, never 100%  |
+| Labeled instances   | outline series color + mono ID at centroid, 10px        |
+| ROI (user-drawn)    | `--color-blue` 1.5px dashed, 8% fill                    |
+| Detection box       | series color 1.5px solid, mono confidence chip top-left |
+| Reference / control | `--oi-grey` outline, to read as non-data                |
 
 - Opacity is user-adjustable but defaults conservative so pixels stay legible.
 - A legend for label classes uses the section 12 categorical legend.
 
+> **Exception -- high-cardinality instance maps (decided, intentional).** The
+> `OKABE_ITO_NAPARI` mapping above is for **low-cardinality categorical** overlays
+> (a handful of label *classes*: e.g. mask / ROI / detection-type). It is **not**
+> applied to dense **instance** segmentations where every colony is its own label --
+> an arrayed plate routinely has hundreds of objects, and cycling a 7-color palette
+> across them makes touching colonies share a color, which defeats the overlay's
+> purpose (telling neighbors apart). For those instance maps the GUI keeps
+> scikit-image `label2rgb` (with a matplotlib `tab20` fallback), which spreads many
+> perceptually-distinct hues. This is a deliberate usability-over-brand-consistency
+> call. It governs the builder "Run preview" detector/refiner overlay and the tune
+> Curate overlay, which share one renderer (`gui/builder/_image_renderer.py:
+> to_overlay_rgb_array`). Apply `OKABE_ITO_NAPARI` only when the label count is small
+> enough that each class gets a stable, distinct brand color; revisit if a future
+> overlay is genuinely class-based (few categories) rather than per-instance.
+
 ### Comparison Modes
 
-| Mode          | Use case                          | Layout                         |
-|---------------|-----------------------------------|--------------------------------|
-| Side-by-side  | two conditions, raw vs segmented  | 2-up grid, shared zoom/pan     |
-| Swipe slider  | before/after, channel A vs B      | single stage, draggable divider |
-| Composite tog | channels overlaid vs split        | toolbar toggle, no relayout     |
-| Linked sync   | many fields, one zoom state       | grid, `sync-zoom` shared state |
+| Mode          | Use case                         | Layout                          |
+|---------------|----------------------------------|---------------------------------|
+| Side-by-side  | two conditions, raw vs segmented | 2-up grid, shared zoom/pan      |
+| Swipe slider  | before/after, channel A vs B     | single stage, draggable divider |
+| Composite tog | channels overlaid vs split       | toolbar toggle, no relayout     |
+| Linked sync   | many fields, one zoom state      | grid, `sync-zoom` shared state  |
 
 Swipe divider handle: `--color-navy` 2px line, 28px circular grip, `--shadow-sm`.
 
@@ -1494,21 +2141,35 @@ For plate fields, well montages, and image sets.
 
 ```css
 .thumb-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
-  gap: var(--sp-2);
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+    gap: var(--sp-2);
 }
+
 .thumb {
-  aspect-ratio: 1 / 1;
-  border-radius: var(--radius-sm);
-  border: 1.5px solid var(--color-border);
-  overflow: hidden;
-  cursor: pointer;
-  transition: border-color var(--transition), box-shadow var(--transition);
+    aspect-ratio: 1 / 1;
+    border-radius: var(--radius-sm);
+    border: 1.5px solid var(--color-border);
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color var(--transition), box-shadow var(--transition);
 }
-.thumb:hover    { border-color: var(--color-blue); box-shadow: var(--shadow-sm); }
-.thumb.selected { border-color: var(--color-navy); box-shadow: var(--shadow); }
-.thumb.flagged  { border-color: var(--oi-vermilion); }   /* QC fail */
+
+.thumb:hover {
+    border-color: var(--color-blue);
+    box-shadow: var(--shadow-sm);
+}
+
+.thumb.selected {
+    border-color: var(--color-navy);
+    box-shadow: var(--shadow);
+}
+
+.thumb.flagged {
+    border-color: var(--oi-vermilion);
+}
+
+/* QC fail */
 ```
 
 - Caption under each thumb: mono 11px, well ID or field index.
@@ -1518,12 +2179,12 @@ For plate fields, well montages, and image sets.
 
 ### Image States
 
-| State    | Treatment                                                          |
-|----------|--------------------------------------------------------------------|
-| Loading  | skeleton block at stage aspect, shimmer (section 14)               |
+| State    | Treatment                                                            |
+|----------|----------------------------------------------------------------------|
+| Loading  | skeleton block at stage aspect, shimmer (section 14)                 |
 | Failed   | centered `--oi-vermilion` icon + mono "Image failed to load" + retry |
-| Empty    | centered `--color-muted` icon + mono "No image for this selection" |
-| Decoding | progress bar (thick variant) at stage bottom, navy fill            |
+| Empty    | centered `--color-muted` icon + mono "No image for this selection"   |
+| Decoding | progress bar (thick variant) at stage bottom, navy fill              |
 
 ---
 
@@ -1547,14 +2208,14 @@ plate map encodes one continuous variable (density, OD, growth).
 
 ### Well States & Value Mapping
 
-| Well state        | Fill                                  | Stroke                  |
-|-------------------|---------------------------------------|-------------------------|
-| Value (low->high) | `rgba(0,54,96,0.08)` -> `#56B4E9` -> `#003660` | 1px `--color-border` |
-| Failed / null     | `#D55E00` at 70% opacity              | 1px `#D55E00`           |
-| Empty / no sample | `--color-bg`                          | 1px dashed `--color-border` |
-| Control           | `--oi-grey` fill                      | 1px `#8892a4`           |
-| Selected          | current fill                          | 2px `--color-navy`      |
-| Hover             | current fill + `--shadow-sm`          | 1.5px `--color-blue`    |
+| Well state        | Fill                                           | Stroke                      |
+|-------------------|------------------------------------------------|-----------------------------|
+| Value (low->high) | `rgba(0,54,96,0.08)` -> `#56B4E9` -> `#003660` | 1px `--color-border`        |
+| Failed / null     | `#D55E00` at 70% opacity                       | 1px `#D55E00`               |
+| Empty / no sample | `--color-bg`                                   | 1px dashed `--color-border` |
+| Control           | `--oi-grey` fill                               | 1px `#8892a4`               |
+| Selected          | current fill                                   | 2px `--color-navy`          |
+| Hover             | current fill + `--shadow-sm`                   | 1.5px `--color-blue`        |
 
 This is identical to the section 06 heatmap rule, so a plate map and a heatmap of the
 same data read the same. Do not introduce a second ramp.
@@ -1568,11 +2229,11 @@ same data read the same. Do not introduce a second ramp.
 
 ### Plate Density / Spacing
 
-| Format  | Well shape | Gap     | Min stage width |
-|---------|------------|---------|-----------------|
-| 96      | circle     | --sp-2  | ~520px          |
-| 384     | rounded sq | --sp-1  | ~720px          |
-| 1536    | square     | 1px     | scroll / zoom   |
+| Format | Well shape | Gap    | Min stage width |
+|--------|------------|--------|-----------------|
+| 96     | circle     | --sp-2 | ~520px          |
+| 384    | rounded sq | --sp-1 | ~720px          |
+| 1536   | square     | 1px    | scroll / zoom   |
 
 Below the minimum width, enable zoom/pan (reuse the Image Toolbar navigation group)
 rather than shrinking wells past legibility.
@@ -1587,53 +2248,53 @@ remain `JetBrains Mono` per the typography constraints.
 
 ### Bar Charts (grouped / stacked)
 
-| Property        | Value                                                   |
-|-----------------|---------------------------------------------------------|
-| Bar fill        | series order; single-series defaults to `--color-navy`  |
-| Bar corner      | `--radius-sm` on the free end only (top for vertical)   |
-| Group gap       | 0.2 of band width; bar gap within group 0.08            |
-| Stacked order   | series order bottom-up; "other" category last in `--oi-grey` |
-| Value labels    | JetBrains Mono 11, `--color-heading`, only when < ~12 bars     |
-| Baseline        | 1.5px `--color-border` at zero                          |
+| Property      | Value                                                        |
+|---------------|--------------------------------------------------------------|
+| Bar fill      | series order; single-series defaults to `--color-navy`       |
+| Bar corner    | `--radius-sm` on the free end only (top for vertical)        |
+| Group gap     | 0.2 of band width; bar gap within group 0.08                 |
+| Stacked order | series order bottom-up; "other" category last in `--oi-grey` |
+| Value labels  | JetBrains Mono 11, `--color-heading`, only when < ~12 bars   |
+| Baseline      | 1.5px `--color-border` at zero                               |
 
 Reserve `--oi-vermilion` for a failed / alert bar only, never as series 7 by default.
 
 ### Box Plot / Violin   (distributions -- common in this field)
 
-| Element        | Style                                                    |
-|----------------|----------------------------------------------------------|
-| Box fill       | series color at 18% opacity                              |
-| Box outline    | series color 1.5px                                       |
-| Median line    | series color 2px                                         |
-| Whiskers       | series color 1px, cap 1px                                |
-| Outlier points | series color, 2.5px radius, 60% opacity                  |
-| Violin shape   | series color outline 1.5px, fill 12%; overlay box thin   |
-| Jittered points| optional, 2px, 40% opacity, slight x-jitter              |
+| Element         | Style                                                  |
+|-----------------|--------------------------------------------------------|
+| Box fill        | series color at 18% opacity                            |
+| Box outline     | series color 1.5px                                     |
+| Median line     | series color 2px                                       |
+| Whiskers        | series color 1px, cap 1px                              |
+| Outlier points  | series color, 2.5px radius, 60% opacity                |
+| Violin shape    | series color outline 1.5px, fill 12%; overlay box thin |
+| Jittered points | optional, 2px, 40% opacity, slight x-jitter            |
 
 Show n per group as a mono caption beneath each category label. Distribution plots
 without n are not publication-honest.
 
 ### Scatter + Regression
 
-| Element          | Style                                                  |
-|------------------|--------------------------------------------------------|
-| Points           | series color, 3.5px radius (matches section 06 dots)   |
-| Point opacity    | 70%; drop to 40% above ~500 points to show density     |
-| Regression line  | `--color-navy` 2px, or series color if grouped         |
-| Confidence band  | same color at 12% opacity fill                          |
-| Identity / y=x   | `--oi-grey` 1px dashed                                  |
-| R-squared / fit  | mono chip, upper-left, `--color-muted`                  |
+| Element         | Style                                                |
+|-----------------|------------------------------------------------------|
+| Points          | series color, 3.5px radius (matches section 06 dots) |
+| Point opacity   | 70%; drop to 40% above ~500 points to show density   |
+| Regression line | `--color-navy` 2px, or series color if grouped       |
+| Confidence band | same color at 12% opacity fill                       |
+| Identity / y=x  | `--oi-grey` 1px dashed                               |
+| R-squared / fit | mono chip, upper-left, `--color-muted`               |
 
 ### Growth Curve / Time-Series   (OD600, kinetics)
 
-| Element        | Style                                                    |
-|----------------|----------------------------------------------------------|
-| Line           | series order, 2px, round join/cap                        |
-| Error band     | mean +/- SD or SEM, series color 12% fill; state which   |
-| Replicate lines| optional thin 1px, 30% opacity, same color as mean       |
-| Markers        | optional 3.5px at measured timepoints only               |
-| Log axis       | label as "log10" in mono; gridlines at decades           |
-| Phase markers  | `--oi-grey` dashed verticals + mono label (lag/log/stat) |
+| Element         | Style                                                    |
+|-----------------|----------------------------------------------------------|
+| Line            | series order, 2px, round join/cap                        |
+| Error band      | mean +/- SD or SEM, series color 12% fill; state which   |
+| Replicate lines | optional thin 1px, 30% opacity, same color as mean       |
+| Markers         | optional 3.5px at measured timepoints only               |
+| Log axis        | label as "log10" in mono; gridlines at decades           |
+| Phase markers   | `--oi-grey` dashed verticals + mono label (lag/log/stat) |
 
 ### Histogram / KDE
 
@@ -1682,7 +2343,8 @@ Never build a sequential colorbar from categorical series colors.
 ### Categorical Legend
 
 - Marker: 10px circle (line/area charts) or 10px rounded square (bar/box).
-- Name: `DM Sans 11 --color-body`. Optional value/pct: `JetBrains Mono 11 --color-muted`.
+- Name: `IBM Plex Sans 11 --color-body`. Optional value/pct:
+  `JetBrains Mono 11 --color-muted`.
 - Order matches series order exactly. Wrap, never scroll, for <= 6 entries; introduce
   "other" beyond that (existing constraint).
 - Interactive legends: clicking dims a series to 20% opacity rather than removing it, so
@@ -1692,19 +2354,19 @@ Never build a sequential colorbar from categorical series colors.
 
 ```css
 .tooltip {
-  background: var(--color-navy);
-  color: #ffffff;
-  border-radius: var(--radius-sm);
-  padding: var(--sp-2) var(--sp-3);
-  box-shadow: var(--shadow-md);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  line-height: 1.5;
-  pointer-events: none;
+    background: var(--color-navy);
+    color: #ffffff;
+    border-radius: var(--radius-sm);
+    padding: var(--sp-2) var(--sp-3);
+    box-shadow: var(--shadow-md);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    line-height: 1.5;
+    pointer-events: none;
 }
 ```
 
-- Label row in DM Sans; all numeric values in JetBrains Mono.
+- Label row in IBM Plex Sans; all numeric values in JetBrains Mono.
 - Series swatch (8px) precedes each value in multi-series tooltips.
 - Position above the cursor; flip below near the top edge.
 
@@ -1717,12 +2379,12 @@ Never build a sequential colorbar from categorical series colors.
 
 ### Chart States
 
-| State    | Treatment                                                       |
-|----------|-----------------------------------------------------------------|
-| Loading  | axis frame drawn, plot area shimmer skeleton (section 14)       |
-| Empty    | centered mono "No data for this selection", muted icon          |
-| Error    | `--oi-vermilion` icon + mono message + retry, axis frame hidden |
-| Partial  | render available series + mono caption "n of m series loaded"   |
+| State   | Treatment                                                       |
+|---------|-----------------------------------------------------------------|
+| Loading | axis frame drawn, plot area shimmer skeleton (section 14)       |
+| Empty   | centered mono "No data for this selection", muted icon          |
+| Error   | `--oi-vermilion` icon + mono message + retry, axis frame hidden |
+| Partial | render available series + mono caption "n of m series loaded"   |
 
 ---
 
@@ -1731,8 +2393,8 @@ Never build a sequential colorbar from categorical series colors.
 ### App Shell
 
 ```
-+-- topbar (h 56px, --color-white, 1px bottom --color-border) ----------+
-|  [logo 28px] view title (display 20)        [global filters] [user]   |
++-- topbar (h 56px, --color-navy, 1px bottom rule) --------------------+
+|  view title (display 20)                    [global filters] [user]   |
 +----------------+------------------------------------------------------+
 | sidebar 240px  |  content (--color-bg, padding --sp-8)                |
 | --color-white  |   +-- panel grid -------------------------------+    |
@@ -1742,24 +2404,48 @@ Never build a sequential colorbar from categorical series colors.
 +----------------+------------------------------------------------------+
 ```
 
-- **Sidebar nav item:** DM Sans 13, `--color-muted` default; active gets
+- **Topbar:** the topbar is a deliberate dark surface -- `--color-navy` background
+  with white ink and a gold (`--color-gold`) underline on the active tab. This is an
+  intentional brand choice (the one chrome exception to the otherwise-light theme,
+  alongside the section 09 image stage); it is NOT the white topbar an earlier draft
+  specified. White-on-navy carries the wordmark identity directly, so the topbar does
+  not place a logo asset (a light-background lockup on the navy bar would violate the
+  section 00 "no light lockup on a dark surface" rule; a dark-background logo variant
+  would be required first).
+- **Sidebar nav item:** IBM Plex Sans 13, `--color-muted` default; active gets
   `--color-navy` text + 3px left accent bar in `--color-navy` + `rgba(0,54,96,0.05)`
-  background. Reuses the active-tab logic.
-- **Topbar logo:** the branding asset from section 00, left of the view title.
+  background. Reuses the active-tab logic. The sidebar itself is `--color-white`.
 
 ### Panel Grid
 
 ```css
 .panel-grid {
-  display: grid;
-  grid-template-columns: repeat(12, 1fr);
-  gap: var(--sp-6);
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: var(--sp-6);
 }
+
 /* common spans */
-.col-3  { grid-column: span 3;  }   /* stat card        */
-.col-6  { grid-column: span 6;  }   /* half-width chart  */
-.col-8  { grid-column: span 8;  }   /* primary chart     */
-.col-12 { grid-column: span 12; }   /* full-width / plate */
+.col-3 {
+    grid-column: span 3;
+}
+
+/* stat card        */
+.col-6 {
+    grid-column: span 6;
+}
+
+/* half-width chart  */
+.col-8 {
+    grid-column: span 8;
+}
+
+/* primary chart     */
+.col-12 {
+    grid-column: span 12;
+}
+
+/* full-width / plate */
 ```
 
 - Stat cards: 4-up (`col-3`) on wide, 2-up on tablet, stacked on mobile.
@@ -1785,17 +2471,25 @@ Never build a sequential colorbar from categorical series colors.
 
 ```css
 .skeleton {
-  background: linear-gradient(
-    90deg,
-    var(--color-rule) 25%,
-    #eef2f7 37%,
-    var(--color-rule) 63%
-  );
-  background-size: 400% 100%;
-  border-radius: var(--radius-sm);
-  animation: shimmer 1.4s ease-in-out infinite;
+    background: linear-gradient(
+            90deg,
+            var(--color-rule) 25%,
+            #eef2f7 37%,
+            var(--color-rule) 63%
+    );
+    background-size: 400% 100%;
+    border-radius: var(--radius-sm);
+    animation: shimmer 1.4s ease-in-out infinite;
 }
-@keyframes shimmer { 0% { background-position: 100% 0; } 100% { background-position: 0 0; } }
+
+@keyframes shimmer {
+    0% {
+        background-position: 100% 0;
+    }
+    100% {
+        background-position: 0 0;
+    }
+}
 ```
 
 - Match the skeleton block to the eventual content shape (stat value bar, chart area,
@@ -1803,7 +2497,7 @@ Never build a sequential colorbar from categorical series colors.
 
 ### Empty States
 
-- Centered, vertically generous (`--sp-12` padding). Muted icon (24px), DM Sans 13
+- Centered, vertically generous (`--sp-12` padding). Muted icon (24px), IBM Plex Sans 13
   title, JetBrains Mono 11 sub-line, optional primary button to act.
 - Voice: state what is missing and the next step, not just "no data".
 
@@ -1812,21 +2506,26 @@ Never build a sequential colorbar from categorical series colors.
 - Bottom-right stack, `--color-white`, `--radius-md`, `--shadow-md`, 4px left accent in
   the semantic color (success / info / warning / error from section 01).
 - Auto-dismiss 4-6s; errors persist until dismissed.
-- Title DM Sans 13 600; body DM Sans 13; any code/IDs JetBrains Mono.
+- Title IBM Plex Sans 13 600; body IBM Plex Sans 13; any code/IDs JetBrains Mono.
 
 ### Modal / Dialog
 
-The system references modals in shadows and radius but does not spec them; this fills it.
+The system references modals in shadows and radius but does not spec them; this fills
+it.
 
 ```css
 .modal {
-  background: var(--color-white);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);          /* one of the few valid --shadow-lg uses */
-  max-width: 560px;
-  padding: var(--sp-8);
+    background: var(--color-white);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg); /* one of the few valid --shadow-lg uses */
+    max-width: 560px;
+    padding: var(--sp-8);
 }
-.modal-overlay { background: rgba(0,54,96,0.45); backdrop-filter: blur(2px); }
+
+.modal-overlay {
+    background: rgba(0, 54, 96, 0.45);
+    backdrop-filter: blur(2px);
+}
 ```
 
 - Title: display family, `--font-size-header-1`, `--color-heading`.
@@ -1842,7 +2541,8 @@ its provenance.
 
 - **Download control:** ghost icon button (section 09 toolbar) offering PNG (raster) and
   SVG / PDF (vector) for plots; PNG / TIFF for images. State format in a mono dropdown.
-- **Provenance strip** (optional footer on exported panels): JetBrains Mono 10, `--color-muted`,
+- **Provenance strip** (optional footer on exported panels): JetBrains Mono 10,
+  `--color-muted`,
   e.g. `dataset_id | pipeline v | UTC timestamp | colormap`. Keeps a figure auditable
   once it leaves the dashboard.
 - **Scale-bar persistence:** scale bars and colorbars must be burned into image exports,

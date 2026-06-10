@@ -371,7 +371,7 @@ def build_empty_body() -> html.Div:
                     dcc.Graph(id=ids.TUNE_OBJECTIVE_FIGURE),
                     dcc.Graph(id=ids.TUNE_IMPORTANCE_FIGURE),
                     html.Span(
-                        "—",
+                        "--",
                         id=ids.TUNE_GAP_BADGE,
                         className="tune-gap-badge tune-gap-badge-stable",
                     ),
@@ -476,7 +476,7 @@ def _build_view_body(
         return build_space_view(root)
     # Defensive: every SUBTAB_ORDER name now has a builder; an unknown name
     # (a future sub-tab added to ids without a view) renders a stub.
-    return html.P(f"{name} — view not yet implemented.")
+    return html.P(f"{name} -- view not yet implemented.")
 
 
 def build_monitor_view(root: "TuneRunRoot") -> html.Div:
@@ -505,7 +505,7 @@ def build_monitor_view(root: "TuneRunRoot") -> html.Div:
             [
                 html.Span("Winner stability:"),
                 html.Span(
-                    "—",
+                    "--",
                     id=ids.TUNE_GAP_BADGE,
                     className="tune-gap-badge tune-gap-badge-stable",
                 ),

@@ -26,6 +26,8 @@ matplotlib.use("Agg")  # safe in dash worker threads; must precede pyplot import
 import matplotlib.pyplot as plt
 from dash import dcc, html
 
+from phenotypic.viz.figures import apply_theme, phenotypic_mpl_context
+
 if TYPE_CHECKING:
     from phenotypic.analysis.abc_ import SetAnalyzer
 
@@ -63,6 +65,10 @@ def render_plot(node: "SetAnalyzer | Any", **plot_kwargs: Any) -> Any:
         return _error_card(f"dash(): {exc}")
 
     if figure is not None:
+        # Stamp the shared PhenoTypic theme (Okabe-Ito colorway, mono numeric
+        # axes, navy title, brand grid/axis colors) so every model figure is
+        # spec-faithful without per-analyzer styling.
+        apply_theme(figure)
         return dcc.Graph(
             figure=figure,
             config={"displayModeBar": False},
@@ -70,15 +76,19 @@ def render_plot(node: "SetAnalyzer | Any", **plot_kwargs: Any) -> Any:
         )
 
     try:
-        mpl_fig = node.show(**plot_kwargs)
-        if mpl_fig is None:
-            # ``show()`` implementations that mutate ``plt.gca()`` without
-            # returning the figure leave the active one for us to grab.
-            mpl_fig = plt.gcf()
+        # Apply the matplotlib rcParams mirror (DESIGN.md "07") for the duration
+        # of figure construction + raster so filter previews carry the brand
+        # palette, fonts, and spine rules.
+        with phenotypic_mpl_context():
+            mpl_fig = node.show(**plot_kwargs)
+            if mpl_fig is None:
+                # ``show()`` implementations that mutate ``plt.gca()`` without
+                # returning the figure leave the active one for us to grab.
+                mpl_fig = plt.gcf()
 
-        buf = io.BytesIO()
-        mpl_fig.savefig(buf, format="png", dpi=110, bbox_inches="tight")
-        plt.close(mpl_fig)
+            buf = io.BytesIO()
+            mpl_fig.savefig(buf, format="png", dpi=110, bbox_inches="tight")
+            plt.close(mpl_fig)
     except Exception as exc:  # noqa: BLE001
         logger.warning("show() raised on %s: %s", type(node).__name__, exc)
         return _error_card(f"show(): {exc}")

@@ -1,8 +1,8 @@
 """Centralized Plotly theme for PhenoTypic figures.
 
 Registers a single ``plotly.io`` template named ``"phenotypic"`` carrying
-the brand palette, Okabe-Ito data series order, and Roboto typography
-defined in ``DESIGN.md`` (and mirrored by
+the brand palette, Okabe-Ito data series order, and the IBM Plex Sans
+typography defined in ``DESIGN.md`` (and mirrored by
 ``phenotypic.gui._design``). The ``@figure`` decorator applies this
 theme to every figure via :func:`apply_theme`, so individual call sites
 never re-spell hex codes, fonts, or axis styling.
@@ -15,7 +15,7 @@ Design-token sources (single source of truth is ``DESIGN.md``):
   Order`` and the matplotlib ``OKABE_ITO`` block in ``07 -- Code
   Integration`` (navy-anchored: navy, orange, sky, green, blue, purple,
   vermilion).
-* Typography -- ``02 -- Typography`` (Roboto-based stack).
+* Typography -- ``02 -- Typography`` (IBM Plex Sans body stack).
 * Chart styling -- ``06 -- Data Visualization / Chart Styling Rules``
   (gridlines ``#e8ecf2``, axes ``#dde3ed``, muted axis labels
   ``#8892a4``, navy title).
@@ -42,7 +42,10 @@ __all__ = [
     "MUTED",
     "BODY",
     "OKABE_ITO",
+    "SEQUENTIAL_COLORSCALE",
+    "FAILED_FILL",
     "FONT_FAMILY",
+    "FONT_FAMILY_MONO",
     "register_phenotypic_template",
     "apply_theme",
 ]
@@ -68,8 +71,8 @@ GOLD: str = "#febc11"
 
 #: Card / plot surface.
 WHITE: str = "#ffffff"
-#: App background (paper backdrop behind the plotting area).
-BG: str = "#f5f7fa"
+#: App background (paper backdrop behind the plotting area; DESIGN.md canvas).
+BG: str = "#FBFEF8"
 #: Chart gridlines (``--color-rule``).
 GRID: str = "#e8ecf2"
 #: Axis lines (``--color-border``).
@@ -102,15 +105,41 @@ OKABE_ITO: tuple[str, ...] = (
     "#000000",  # black     -- overflow / ink
 )
 
+#: Single-variable sequential colorscale (DESIGN.md "06 -- Heatmap Colorscale"
+#: and "12 -- Continuous Colorbar"): near-transparent navy -> sky -> full navy.
+#: The one continuous ramp for plate maps / heatmaps / intensity overlays;
+#: never build a sequential scale from the categorical ``OKABE_ITO`` order.
+SEQUENTIAL_COLORSCALE: tuple[tuple[float, str], ...] = (
+    (0.0, "rgba(0,54,96,0.08)"),
+    (0.5, "#56B4E9"),
+    (1.0, "#003660"),
+)
+
+#: Fill for failed / null / removed cells on a heatmap or plate map: vermilion
+#: at 70% opacity (DESIGN.md "06" / "10"). Reads as a non-data exclusion against
+#: the navy-to-blue ramp under every CB type.
+FAILED_FILL: str = "rgba(213,94,0,0.7)"
+
 # ---------------------------------------------------------------------------
 # Typography (DESIGN.md "02 -- Typography")
 # ---------------------------------------------------------------------------
 
-#: Roboto-based font stack matching the active GUI font in
-#: ``phenotypic.gui._design``.
+#: Body font stack (IBM Plex Sans) matching ``phenotypic.gui._design``'s
+#: ``FONT_FAMILY_BODY``. The ``test_font_family_does_not_drift_from_gui_design``
+#: guard keeps the two in sync. Used for chart titles, axis titles, and legend
+#: series names.
 FONT_FAMILY: str = (
-    "'Roboto', -apple-system, BlinkMacSystemFont, "
+    "'IBM Plex Sans', -apple-system, BlinkMacSystemFont, "
     '"Segoe UI", "Helvetica Neue", Arial, sans-serif'
+)
+
+#: Mono font stack (JetBrains Mono) matching ``phenotypic.gui._design``'s
+#: ``FONT_FAMILY_MONO``. Per DESIGN.md "02", all numeric data -- axis tick
+#: labels, hover values, colorbar ticks, annotations -- render in mono. Kept in
+#: sync with the GUI by ``test_mono_font_does_not_drift_from_gui_design``.
+FONT_FAMILY_MONO: str = (
+    "'JetBrains Mono', ui-monospace, \"SFMono-Regular\", Menlo, "
+    'Consolas, "Liberation Mono", "Courier New", monospace'
 )
 
 
@@ -118,7 +147,7 @@ def register_phenotypic_template() -> None:
     """Build and register the ``"phenotypic"`` Plotly template.
 
     Constructs a :class:`plotly.graph_objects.layout.Template` carrying
-    the brand palette, Okabe-Ito ``colorway``, Roboto typography, and the
+    the brand palette, Okabe-Ito ``colorway``, IBM Plex Sans typography, and the
     axis / grid / legend styling from ``DESIGN.md``, then stores it in
     :data:`plotly.io.templates` under :data:`PHENOTYPIC_TEMPLATE_NAME`.
 
@@ -133,10 +162,13 @@ def register_phenotypic_template() -> None:
         >>> "phenotypic" in pio.templates
         True
     """
+    # Numeric data renders in mono (axis ticks, hover, colorbar, annotations);
+    # titles, axis titles, and legend series names render in the body font
+    # (DESIGN.md "02 -- Typography" / "06 -- Chart Styling Rules").
     template = go.layout.Template(
         layout=dict(
             colorway=list(OKABE_ITO),
-            font=dict(family=FONT_FAMILY, color=BODY),
+            font=dict(family=FONT_FAMILY_MONO, color=BODY),
             paper_bgcolor=BG,
             plot_bgcolor=WHITE,
             title=dict(font=dict(family=FONT_FAMILY, color=NAVY)),
@@ -144,14 +176,14 @@ def register_phenotypic_template() -> None:
                 gridcolor=GRID,
                 linecolor=AXIS,
                 zerolinecolor=GRID,
-                tickfont=dict(family=FONT_FAMILY, color=MUTED),
+                tickfont=dict(family=FONT_FAMILY_MONO, color=MUTED),
                 title=dict(font=dict(family=FONT_FAMILY, color=BODY)),
             ),
             yaxis=dict(
                 gridcolor=GRID,
                 linecolor=AXIS,
                 zerolinecolor=GRID,
-                tickfont=dict(family=FONT_FAMILY, color=MUTED),
+                tickfont=dict(family=FONT_FAMILY_MONO, color=MUTED),
                 title=dict(font=dict(family=FONT_FAMILY, color=BODY)),
             ),
             legend=dict(font=dict(family=FONT_FAMILY, color=BODY)),

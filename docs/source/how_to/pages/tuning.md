@@ -265,24 +265,71 @@ scorer = CompositeScorer(
 
 ## GUI interface
 
-`phenotypic-gui` mounts a `/tune/` Dash co-pilot as a fifth tab alongside
-**Pipelines · Tune · Run · Viewer · Analysis**. The co-pilot is **read-only over
-a tuning run** — it never re-optimizes. It reads a finished or in-flight
-`python -m phenotypic.tune` output directory and only ever *writes*
-`best_pipeline.json` and `tuning_spec.json`. It has four sub-tabs:
+`phenotypic-gui` mounts a `/tune/` Dash co-pilot as a tab alongside
+**Home · Builder · Tune · Run · Viewer · Analysis**. The co-pilot is a full
+**author → run → monitor** workflow organised as three top-level destinations,
+selected from the destination row at the top of the page:
+
+### Setup — author a tuning spec
+
+The landing destination. Point it at a base pipeline (or an existing tuning
+spec) and a **metadata layout CSV/Parquet** for the default `QCScorer`; the
+search-space and scorer sections stay locked until a pipeline is present, and
+**Continue** stays blocked until the required scorer metadata is supplied.
+Continue writes a typed, path-backed authored spec under
+`<root>/.phenotypic-gui/presets/tune/` and advances to **Run**. (Review and
+edit the inferred search space itself on the **Space** sub-tab under Monitor —
+see below.)
+
+### Run — configure and launch
+
+The Run destination (unlocked once a pipeline is chosen) is a launch form whose
+live command card mirrors your choices into the real
+`python -m phenotypic.tune run` invocation — the same subcommand and flag names
+you would type by hand. It exposes:
+
+- **Inputs** — an in-sandbox image-source override (blank falls back to the
+  shared source root) and the output directory.
+- **Strategy** — strategy dropdown (`grid` / `random` / `tpe` / `cmaes` / `gp`
+  / `nsga2`), trial budget, and storage URL.
+- **Compute** — Local vs. SLURM, the two-round screening toggle, and the SLURM
+  fleet sizing fields (workers, partition, memory, time).
+- **Evaluation** — held-out fraction and CV-group overrides.
+
+A pre-flight gate blocks **Deploy** when the configuration cannot run (for
+example a `grid` search over a continuous `FloatRange`). Unlike the earlier
+read-only co-pilot, **Deploy actually launches the run**: it registers the run
+in the shared run registry and starts it through the local runner, or submits
+the SLURM fleet. You no longer have to copy the command out and run it in a
+terminal (though the live command card still lets you, if you prefer).
+
+### Monitor — watch, curate, and export
+
+Once a run is deployed (or you **Bind run** to an existing
+`python -m phenotypic.tune` output directory via the sandbox-bounded run
+picker), the Monitor destination opens the live read over the study. It carries
+a run switcher across registered Local/SLURM runs, a Local-only **Cancel**
+(SLURM runs are not killed from the GUI in v1), and an **Export best pipeline**
+button — plus the four classic sub-tabs:
 
 - **Monitor** — the live study read: objective curve (raw scores + running
   best), a parameter-importance bar chart, a winner-stability
-  (generalization-gap) badge, and a trials table, polled while a run is in
-  flight.
+  (generalization-gap) badge, and a trials table, polled every 3 s while a run
+  is in flight. If the live study store is unreachable it degrades to the
+  finished `trials.parquet` journal. A Pareto-front card appears for
+  multi-objective runs only.
 - **Curate** — a shortlist of the best (and gap-flagged) trials; pin two into
-  **A** / **B** slots and compare their colony overlays side-by-side on any
-  plate. "Set as winner" writes `best_pipeline.json`.
+  **A** / **B** slots and compare their colony overlays side-by-side (or as a
+  single difference image) on any plate, with linked pan/zoom. "Set as winner"
+  writes `best_pipeline.json`.
 - **Space** — the inferred search space as editable knob-rows; export the
   edited space back to `tuning_spec.json`.
 - **Launch** — a strategy / budget / storage-URL form whose live command card
-  renders a copy-paste `python -m phenotypic.tune run` invocation. The GUI does
-  not launch the optimizer; you copy the command and run it yourself.
+  renders a copy-paste `python -m phenotypic.tune run` invocation.
+
+The co-pilot keeps its import surface optuna-free — the live study is opened
+lazily inside the Monitor poll only — and binding an existing run never writes
+to its directory.
 
 For the full walkthrough, see the
 [Tune co-pilot tutorial](../../tutorials/gui/16_tune_copilot.md).

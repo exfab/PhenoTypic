@@ -323,12 +323,13 @@ class TestDesignTokens:
         }
         assert alias_values == primitives
 
-    def test_font_family_constants_carry_active_google_font(self) -> None:
-        """The Python-side ``FONT_FAMILY_*`` strings must lead with the
-        active Google Font and end with a generic CSS family fallback."""
-        assert _design.FONT_FAMILY_DISPLAY.startswith("'Roboto'")
-        assert _design.FONT_FAMILY_BODY.startswith("'Roboto'")
-        assert _design.FONT_FAMILY_MONO.startswith("'Roboto'")
+    def test_font_family_constants_carry_role_fonts(self) -> None:
+        """Each Python-side ``FONT_FAMILY_*`` string leads with its role font
+        (IBM Plex Serif display / IBM Plex Sans body / JetBrains Mono mono) and
+        ends with the matching generic CSS family fallback (DESIGN.md "02.1")."""
+        assert _design.FONT_FAMILY_DISPLAY.startswith("'IBM Plex Serif'")
+        assert _design.FONT_FAMILY_BODY.startswith("'IBM Plex Sans'")
+        assert _design.FONT_FAMILY_MONO.startswith("'JetBrains Mono'")
         assert _design.FONT_FAMILY_DISPLAY.rstrip().endswith("serif")
         assert _design.FONT_FAMILY_BODY.rstrip().endswith("sans-serif")
         assert _design.FONT_FAMILY_MONO.rstrip().endswith("monospace")

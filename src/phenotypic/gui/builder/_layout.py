@@ -40,6 +40,7 @@ from phenotypic.gui._design import (
     FONT_FAMILY_MONO,
     FONT_SIZE_LABEL,
     OI_GREEN,
+    OI_ORANGE,
     OI_PURPLE,
     OI_VERMILION,
 )
@@ -587,8 +588,8 @@ def _canvas_stylesheet() -> List[dict]:
             "selector": "node.dag-issue--advisory",
             "style": {
                 "label": "?",
-                "background-color": COLOR_GOLD,
-                "border-color": COLOR_GOLD,
+                "background-color": OI_ORANGE,
+                "border-color": OI_ORANGE,
                 "color": COLOR_NAVY,
             },
         },
@@ -1254,8 +1255,8 @@ def _build_image_port_subnode(
 #: containers carry the down chevron (▼); collapsed containers swap to
 #: the right chevron (▶) so users can toggle between the two visual
 #: states without reading the title text.
-_DAG_CONTAINER_TITLE_EXPANDED = "▼ Pipeline — {label}"
-_DAG_CONTAINER_TITLE_COLLAPSED = "▶ Pipeline — {label}"
+_DAG_CONTAINER_TITLE_EXPANDED = "▼ Pipeline -- {label}"
+_DAG_CONTAINER_TITLE_COLLAPSED = "▶ Pipeline -- {label}"
 
 
 def _count_inner_ops(nested: Optional["_DagBuilderScope"]) -> int:
@@ -3125,7 +3126,7 @@ def _build_aux_list_row(
                 style={
                     "border": f"1px solid {COLOR_BORDER}",
                     "borderRadius": "4px",
-                    "background": "#fff",
+                    "background": COLOR_WHITE,
                 },
             )
         )
@@ -3348,7 +3349,7 @@ def _build_input_image_card(
     body_children: List[Any] = [
         dbc.CardHeader(
             html.H4(
-                "Input Image — pipeline source",
+                "Input Image -- pipeline source",
                 className="mb-0",
             )
         ),
@@ -3357,7 +3358,7 @@ def _build_input_image_card(
                 html.P(
                     "Every op chain starts here. The image flowing out "
                     "of this block is whatever your run-time loader "
-                    "provides — typically the file you point Run "
+                    "provides -- typically the file you point Run "
                     "preview at, or each image in the batch under a "
                     "production run.",
                     className="text-muted small mb-3",

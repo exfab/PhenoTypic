@@ -215,7 +215,7 @@ def build_help_modal() -> dbc.Modal:
     """
     return dbc.Modal(
         [
-            dbc.ModalHeader(dbc.ModalTitle(f"{TITLE_HUB} — Help")),
+            dbc.ModalHeader(dbc.ModalTitle(f"{TITLE_HUB} -- Help")),
             dbc.ModalBody(
                 [
                     html.H6("SSH tunnel pattern"),
@@ -237,7 +237,7 @@ def build_help_modal() -> dbc.Modal:
                     html.Hr(),
                     html.H6("Cloud deployment"),
                     html.P(
-                        "v1 of the GUI is single-user, frozen-at-launch — "
+                        "v1 of the GUI is single-user, frozen-at-launch -- "
                         "designed for SSH-tunnelled workstation use. "
                         "Multi-user / cloud deployment is a non-goal for v1.",
                         className="text-muted",

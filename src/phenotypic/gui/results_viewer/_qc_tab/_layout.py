@@ -33,6 +33,7 @@ from phenotypic.gui._design import (
     COLOR_NAVY,
     COLOR_SURFACE,
     FONT_SIZE_LABEL,
+    OI_ORANGE_TEXT,
 )
 from phenotypic.tools_._qc_recipe import QcRecipe, QcRecipeLoadWarning
 from phenotypic.gui.results_viewer._qc_tab import _ids as ids
@@ -131,7 +132,7 @@ def _render_load_warnings(
                         style={"fontWeight": 500},
                     ),
                     html.Span(
-                        f" — {warning.reason}",
+                        f" -- {warning.reason}",
                         style={"color": COLOR_MUTED},
                     ),
                 ]
@@ -146,7 +147,7 @@ def _render_load_warnings(
             ),
             html.Ul(items, style={"marginBottom": 0}),
         ],
-        style={"color": "#8a4d00"},
+        style={"color": OI_ORANGE_TEXT},
     )
 
 

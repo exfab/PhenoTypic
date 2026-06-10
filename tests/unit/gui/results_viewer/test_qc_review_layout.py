@@ -159,8 +159,9 @@ def test_summary_header_distinguishes_insufficient_from_pass() -> None:
     ]
     assert "Insufficient" in labels
     assert "Pass" in labels
-    # No finite metric → median renders as an em dash, not "0.000".
-    assert any(node == "—" for node in labels)
+    # No finite metric → median renders as "N/A" (no em dashes per DESIGN.md),
+    # not "0.000".
+    assert any(node == "N/A" for node in labels)
 
 
 # ---------------------------------------------------------------------------

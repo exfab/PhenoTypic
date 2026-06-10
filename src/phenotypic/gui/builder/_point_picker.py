@@ -44,6 +44,7 @@ from phenotypic.gui._config import (
     SANDBOX_BUILDER_TILES_SUBDIR,
     SANDBOX_GUI_DIRNAME,
 )
+from phenotypic.gui._design import COLOR_IMAGE_STAGE_DARK
 from phenotypic.gui.builder import _ids as ids
 from phenotypic.gui.builder._image_renderer import _normalize_to_uint8
 from phenotypic.gui.builder._session import get_cache
@@ -313,7 +314,7 @@ def build_point_picker_modal() -> dbc.Modal:
                             "height": "70vh",
                             "width": "100%",
                             "marginTop": "0.5rem",
-                            "background": "#111",
+                            "background": COLOR_IMAGE_STAGE_DARK,
                         },
                         **{"data-testid": "point-picker-osd-canvas"},  # type: ignore[arg-type]
                     ),

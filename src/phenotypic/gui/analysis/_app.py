@@ -30,7 +30,12 @@ from phenotypic.gui._config import (
 )
 from dash import Input, Output, State
 
-from phenotypic.gui._design import COLOR_BLUE, COLOR_SURFACE, inject_design_tokens
+from phenotypic.gui._design import (
+    COLOR_BLUE,
+    COLOR_SURFACE,
+    RADIUS,
+    inject_design_tokens,
+)
 from phenotypic.gui._shared import register_shared_static
 from phenotypic.gui.analysis import _ids as analysis_ids
 from phenotypic.gui.analysis._callbacks import register_callbacks
@@ -141,7 +146,7 @@ def _register_empty_state_callbacks(app: dash.Dash, *, url_prefix: str) -> None:
             "padding": "0.5rem 0.75rem",
             "background": COLOR_SURFACE,
             "border": f"1px solid {COLOR_BLUE}",
-            "borderRadius": "6px",
+            "borderRadius": RADIUS,
         }
         if not selection or not isinstance(selection, dict):
             return hidden, "(none)", True

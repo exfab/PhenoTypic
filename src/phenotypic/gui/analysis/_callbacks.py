@@ -38,7 +38,7 @@ from phenotypic.gui._config import (
     CFG_RECIPE_STATE,
 )
 from phenotypic.gui.results_viewer._filtered_state import KEY_IMAGE_FILE
-from phenotypic.gui._design import COLOR_MUTED
+from phenotypic.gui._design import COLOR_MUTED, OI_GREEN_TEXT, OI_VERMILION_TEXT
 from phenotypic.gui.analysis import _ids as ids
 from phenotypic.gui.analysis._layout import (
     build_section_stack,
@@ -351,7 +351,7 @@ def register_callbacks(app: "dash.Dash") -> None:
         output_root = server.config[CFG_OUTPUT_ROOT]
         if recipe.pipeline.get_model() is None:
             return html.Span(
-                "No model configured.", style={"color": "#c00"}
+                "No model configured.", style={"color": OI_VERMILION_TEXT}
             )
         return _run_inline(recipe, Path(output_root.root))
 
@@ -410,7 +410,7 @@ def register_callbacks(app: "dash.Dash") -> None:
 
         node = _resolve_preview_node(recipe, kind, index)
         if node is None:
-            return _preview_error("Section no longer exists — reload the page.")
+            return _preview_error("Section no longer exists -- reload the page.")
 
         measurements = measurements_parquet_path(Path(output_root.root))
         if not measurements.exists():
@@ -444,7 +444,7 @@ def _resolve_preview_node(recipe: Any, kind: Any, index: Any) -> Any:
 def _preview_error(message: str) -> Any:
     """Inline error span for a failed preview (pre-render failures)."""
     return html.Div(
-        html.Span(message, style={"color": "#c00"}),
+        html.Span(message, style={"color": OI_VERMILION_TEXT}),
         className="analysis-preview-error",
     )
 
@@ -622,14 +622,14 @@ def _run_inline(recipe: Any, output_dir: Path) -> Any:
     if not measurements.exists():
         return html.Span(
             f"Curated measurements not found at {measurements}.",
-            style={"color": "#c00"},
+            style={"color": OI_VERMILION_TEXT},
         )
 
     start = time.time()
     try:
         master_pl = pl.read_parquet(measurements)
     except Exception as exc:  # noqa: BLE001
-        return html.Span(f"Read failed: {exc}", style={"color": "#c00"})
+        return html.Span(f"Read failed: {exc}", style={"color": OI_VERMILION_TEXT})
 
     result = _emit_analysis_outputs(output_dir, master_pl, recipe.pipeline)
     duration = time.time() - start
@@ -637,13 +637,13 @@ def _run_inline(recipe: Any, output_dir: Path) -> Any:
     if result is None:
         return html.Span(
             "Analysis run failed (see server logs).",
-            style={"color": "#c00"},
+            style={"color": OI_VERMILION_TEXT},
         )
 
     written, n_rows = result
     return html.Span(
         f"Wrote {written.name} ({n_rows} rows · {duration:.1f}s)",
-        style={"color": "#2e7d32"},
+        style={"color": OI_GREEN_TEXT},
     )
 
 

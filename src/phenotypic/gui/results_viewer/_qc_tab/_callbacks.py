@@ -50,6 +50,8 @@ from phenotypic.gui._config import (
     CFG_QC_AUGMENTED_FRAME,
     CFG_QC_RECIPE,
 )
+from phenotypic.gui._design import COLOR_MUTED, OI_VERMILION, OI_VERMILION_TEXT
+from phenotypic.viz.figures import apply_theme
 from phenotypic.gui._operation_registry import OperationRegistry
 from phenotypic.gui._param_forms import param_form, parse_widget_value
 from phenotypic.gui.results_viewer import _ids as viewer_ids
@@ -102,12 +104,11 @@ def _empty_figure(message: str) -> go.Figure:
         showarrow=False,
         font={"size": 12},
     )
+    apply_theme(fig)
     fig.update_layout(
         xaxis={"visible": False},
         yaxis={"visible": False},
         margin={"l": 20, "r": 20, "t": 10, "b": 10},
-        plot_bgcolor="white",
-        paper_bgcolor="white",
         height=320,
     )
     return fig
@@ -123,15 +124,14 @@ def _error_figure(*, check_name: str, message: str) -> go.Figure:
         x=0.5,
         y=0.5,
         showarrow=False,
-        font={"color": "#c00", "size": 12},
+        font={"color": OI_VERMILION, "size": 12},
         align="center",
     )
+    apply_theme(fig)
     fig.update_layout(
         xaxis={"visible": False},
         yaxis={"visible": False},
         margin={"l": 20, "r": 20, "t": 10, "b": 10},
-        plot_bgcolor="white",
-        paper_bgcolor="white",
         height=320,
     )
     return fig
@@ -458,6 +458,9 @@ def register_qc_callbacks(app: dash.Dash) -> None:
 
             try:
                 figure = check.dash()
+                # Stamp the shared theme so QC check figures carry the
+                # Okabe-Ito colorway, mono numeric axes, and brand chrome.
+                apply_theme(figure)
             except Exception as exc:  # noqa: BLE001
                 logger.warning("QC dash() failed: %s", exc, exc_info=True)
                 figure = _error_figure(check_name=type(check).__name__, message=str(exc))
@@ -553,19 +556,19 @@ def register_qc_callbacks(app: dash.Dash) -> None:
         if not class_name:
             return html.Div(
                 "Pick a check class to configure its parameters.",
-                style={"color": "#666", "fontStyle": "italic"},
+                style={"color": COLOR_MUTED, "fontStyle": "italic"},
             )
         registry = _get_registry()
         if registry is None:
             return html.Div(
-                "OperationRegistry unavailable — cannot render params.",
-                style={"color": "#c00"},
+                "OperationRegistry unavailable -- cannot render params.",
+                style={"color": OI_VERMILION_TEXT},
             )
         info = registry.get(class_name)
         if info is None:
             return html.Div(
                 f"Unknown class {class_name!r} in registry.",
-                style={"color": "#c00"},
+                style={"color": OI_VERMILION_TEXT},
             )
 
         # When editing, seed with the entry's current params; otherwise

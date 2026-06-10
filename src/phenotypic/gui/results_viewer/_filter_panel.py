@@ -39,7 +39,7 @@ from phenotypic.gui._design import (
     COLOR_SURFACE,
     FONT_FAMILY_MONO,
     FONT_SIZE_CAPTION,
-    OI_VERMILION,
+    OI_VERMILION_TEXT,
 )
 from phenotypic.gui.results_viewer import _ids as ids
 from phenotypic.gui.results_viewer._filter_state import FilterSpec
@@ -219,7 +219,7 @@ def _render_chip(label: str, *, matched: bool) -> Component:
     else:
         bg = "rgba(213,94,0,0.08)"
         border = "rgba(213,94,0,0.20)"
-        color = OI_VERMILION
+        color = OI_VERMILION_TEXT
     return html.Span(
         label,
         className="me-1 mb-1 d-inline-block",
@@ -230,7 +230,7 @@ def _render_chip(label: str, *, matched: bool) -> Component:
             "border": f"1px solid {border}",
             "background": bg,
             "color": color,
-            "borderRadius": "9999px",
+            "borderRadius": "var(--radius-sm)",
         },
     )
 
@@ -376,7 +376,7 @@ def _render_filter_row(
         id=ids.filter_row_id(idx),
         className="filter-row mb-2",
         style={
-            "borderLeft": "2px solid #1b75bc",
+            "borderLeft": f"2px solid {COLOR_BLUE}",
             "paddingLeft": "0.5rem",
             "paddingTop": "0.25rem",
             "paddingBottom": "0.25rem",

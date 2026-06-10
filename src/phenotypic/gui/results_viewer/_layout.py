@@ -50,6 +50,7 @@ from phenotypic.gui._design import (
     COLOR_GOLD,
     COLOR_MUTED,
     COLOR_NAVY,
+    COLOR_RULE,
     COLOR_SURFACE,
     FONT_SIZE_LABEL,
 )
@@ -114,7 +115,7 @@ def _build_header(output_root: OutputRoot, *, url_prefix: str = MOUNT_HOME) -> C
             "fontSize": FONT_SIZE_LABEL,
             "padding": "0.25rem 0.6rem",
             "border": f"1px solid {_BLUE}33",
-            "borderRadius": "9999px",
+            "borderRadius": "var(--radius)",
             "background": COLOR_SURFACE,
         },
     )
@@ -151,7 +152,6 @@ def _build_header(output_root: OutputRoot, *, url_prefix: str = MOUNT_HOME) -> C
                 "",
                 id=ids.FILTER_TOGGLE_BADGE_ID,
                 color="primary",
-                pill=True,
                 className="ms-2",
                 style={"display": "none"},
             ),
@@ -240,10 +240,10 @@ def _build_startup_banner(output_root: OutputRoot) -> Component:
             html.Code(
                 f"rm -rf {cache_dir}",
                 style={
-                    "background": "#edf2f7",
+                    "background": COLOR_RULE,
                     "color": _NAVY,
                     "padding": "1px 5px",
-                    "borderRadius": "3px",
+                    "borderRadius": "var(--radius-sm)",
                 },
             ),
         ],
@@ -253,9 +253,9 @@ def _build_startup_banner(output_root: OutputRoot) -> Component:
         is_open=True,
         className="mx-3 mt-2 mb-0 small",
         style={
-            "borderLeft": "4px solid #56B4E9",
-            "background": "rgba(86,180,233,0.08)",
-            "color": "#0B5E87",
+            "borderLeft": f"4px solid {COLOR_BLUE}",
+            "background": "rgba(27,117,188,0.08)",
+            "color": COLOR_BLUE,
         },
     )
 
@@ -550,7 +550,7 @@ def build_empty_state_layout() -> Component:
             "padding": "0.5rem 0.75rem",
             "background": COLOR_SURFACE,
             "border": f"1px solid {_BLUE}",
-            "borderRadius": "6px",
+            "borderRadius": "var(--radius)",
         },
     )
 
