@@ -81,7 +81,7 @@ def test_monitor_pareto_visible_true_for_multi_objective(tmp_path: Path) -> None
         trials_path=None,
         storage_url=None,
         study_name="tune",
-        directions=["maximize", "maximize"],
+        directions=["minimize", "minimize"],
         images_dir=None,
         best_pipeline_path=tmp_path / "best_pipeline.json",
     )

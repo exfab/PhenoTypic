@@ -41,10 +41,11 @@ _DEFAULT_STUDY_NAME: str = "tune_cost_v1"
 #: The placeholder multi-objective ``directions`` synthesized from the
 #: ``run.json`` ``is_multi_objective`` flag. The marker records only the boolean
 #: (not the per-axis names), so a multi-objective run is represented as a 2-axis
-#: maximize vector — enough for ``is_multi_objective(root)`` (len > 1) and the
-#: GUI's "this is a Pareto run" branch. Every tuning objective is higher-is-better
-#: (robust-eval §5), so the synthesized axes are both ``"maximize"``.
-_MULTI_OBJECTIVE_PLACEHOLDER_DIRECTIONS: list[str] = ["maximize", "maximize"]
+#: minimize vector — enough for ``is_multi_objective(root)`` (len > 1) and the
+#: GUI's "this is a Pareto run" branch. Every tuning objective is a cost
+#: (lower-is-better — cost convention), so the synthesized axes are both
+#: ``"minimize"``.
+_MULTI_OBJECTIVE_PLACEHOLDER_DIRECTIONS: list[str] = ["minimize", "minimize"]
 
 
 class TuneRunRootError(ValueError):

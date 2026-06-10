@@ -120,9 +120,9 @@ def test_discover_reads_run_marker_first(tmp_path):
     assert root.storage_url == "postgresql://host/tune"
     assert root.study_name == "tune"
     assert root.images_dir == tmp_path / "calib"
-    # is_multi_objective=True → two-axis maximize directions.
+    # is_multi_objective=True → two-axis minimize directions (cost convention).
     assert root.directions is not None
-    assert len(root.directions) >= 2
+    assert root.directions == ["minimize", "minimize"]
 
 
 def test_discover_raises_when_neither_study_nor_trials(tmp_path):
