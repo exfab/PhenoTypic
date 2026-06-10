@@ -390,3 +390,46 @@ def test_no_scored_children_is_worst_cost_under_tchebycheff():
     # This is the cost-convention flip of the old "empty → 0.0" goodness floor.
     comp = CompositeScorer(scorers=[])
     assert comp.finalize({}) == pytest.approx(1.0)
+
+
+# --------------------------------------------------------------------------- #
+# abstainer masking (§6.3 pitfall #4) — one study-wide-absent / per-image-absent
+# child must not flatten discrimination on the present axes
+# --------------------------------------------------------------------------- #
+def test_one_abstaining_child_does_not_flatten_present_axis():
+    # Active set pins both children; s1 abstains this call. The present axis (s0)
+    # must still discriminate: a good s0 (0.1) scores strictly better than a bad
+    # s0 (0.7), i.e. the abstainer is NOT flooded into the max as cost 1.0.
+    good = CompositeScorer(scorers=[_FixedScorer(terms={"a": 0.1}),
+                                    _FixedScorer(terms={})])
+    bad = CompositeScorer(scorers=[_FixedScorer(terms={"a": 0.7}),
+                                   _FixedScorer(terms={})])
+    good.set_active_set(("s0", "s1"))
+    bad.set_active_set(("s0", "s1"))
+    cost_good = good.finalize(good.score_image(None, pd.DataFrame()))
+    cost_bad = bad.finalize(bad.score_image(None, pd.DataFrame()))
+    assert cost_good < cost_bad  # discrimination preserved
+    assert cost_bad < 0.9        # NOT pinned near the ceiling by the abstainer
+
+
+# --------------------------------------------------------------------------- #
+# cost clamp (B1, §6.1 invariant 0 <= bᵢ <= 1) — a high-variance term clamped
+# upstream must keep T_norm in [0,1] and the assert must NOT fire
+# --------------------------------------------------------------------------- #
+def test_high_cost_child_keeps_t_norm_in_unit_interval():
+    # A child whose robust-aggregated cost is clamped to 1.0 (median+λ·IQR > 1
+    # upstream → clamp01 → 1.0) feeds the composite as exactly 1.0; T_norm stays
+    # in (0,1] and the §6.1 0<=bᵢ<=1 assert does not fire.
+    comp = CompositeScorer(scorers=[_FixedScorer(terms={"a": 1.0}),
+                                    _FixedScorer(terms={"b": 0.3})])
+    result = comp.finalize(comp.score_image(None, pd.DataFrame()))
+    assert 0.0 < result <= 1.0
+
+
+def test_cost_above_one_trips_the_invariant_assert():
+    # Defensive: if an UNCLAMPED cost (>1, the Phase 1 clamp regressed) reaches
+    # the combiner, the §6.1 invariant assert must fire loudly (not silently
+    # saturate). Drive _tchebycheff directly with a poisoned roster.
+    comp = CompositeScorer(scorers=[_FixedScorer(terms={"a": 0.0})])
+    with pytest.raises(AssertionError):
+        comp._tchebycheff({"s0": 1.5})
