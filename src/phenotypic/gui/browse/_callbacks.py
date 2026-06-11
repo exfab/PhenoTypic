@@ -103,7 +103,7 @@ def register_callbacks(app: dash.Dash, sandbox: SandboxRoot) -> None:
         options = dataset_options(datasets)
         value = options[0]["value"] if options else None
         row_style = hidden_row if dataset_row_hidden(datasets) else dict(DATASET_ROW_STYLE)
-        hint_style = {"display": "block"} if not datasets else {"display": "none"}
+        hint_style = {"display": "none"} if datasets else {"display": "block"}
         return datasets, options, value, row_style, hint_style
 
     @app.callback(
