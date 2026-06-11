@@ -20,6 +20,7 @@ import logging
 import os
 import re
 import threading
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -29,6 +30,8 @@ from phenotypic.schema import CURATION, OBJECT, ErrorCategory
 from phenotypic.tools_ import (
     curation_labels_parquet_path,
     custom_categories_json_path,
+    error_category_parquet_path,
+    errors_dir,
     measurements_csv_path,
     measurements_parquet_path,
 )
@@ -280,3 +283,189 @@ class CurationLabels:
             else:
                 dropped += 1
         return labels, fingerprints, RekeyReport(kept=kept, dropped=dropped)
+
+    # -- queries -------------------------------------------------------------
+    def filtered_df(self, master_df: pl.DataFrame) -> pl.DataFrame:
+        """Return ``master_df`` with all labeled (removed) rows dropped."""
+        if not self.labels:
+            return master_df
+        removed = pl.DataFrame(
+            {
+                KEY_COLUMNS[0]: [k[0] for k in self.labels],
+                KEY_COLUMNS[1]: [k[1] for k in self.labels],
+            },
+            schema={KEY_COLUMNS[0]: pl.String, KEY_COLUMNS[1]: pl.Int64},
+        )
+        keyed = master_df.with_columns(
+            pl.col(KEY_COLUMNS[0]).cast(pl.String),
+            pl.col(KEY_COLUMNS[1]).cast(pl.Int64),
+        )
+        return keyed.join(removed, on=list(KEY_COLUMNS), how="anti")
+
+    def _fingerprint_of(self, image_file: str, label: int) -> tuple[float, float] | None:
+        """Look up an object's centroid in the cached master, or ``None``."""
+        if KEY_CENTER_RR not in self._master_df.columns:
+            return None
+        row = (
+            self._master_df.filter(
+                (pl.col(KEY_IMAGE_FILE).cast(pl.String) == image_file)
+                & (pl.col(KEY_OBJECT_LABEL).cast(pl.Int64) == label)
+            )
+            .select(KEY_CENTER_RR, KEY_CENTER_CC)
+            .head(1)
+        )
+        if row.is_empty():
+            return None
+        return (float(row.get_column(KEY_CENTER_RR)[0]), float(row.get_column(KEY_CENTER_CC)[0]))
+
+    # -- mutators ------------------------------------------------------------
+    def mark(self, image_file: str, label: int, category: str) -> None:
+        """Assign ``category`` to one object and persist all derived outputs.
+
+        Raises:
+            ValueError: If ``category`` is neither a core nor registered token.
+        """
+        if not self.is_valid_category(category):
+            raise ValueError(f"Unknown category {category!r}.")
+        key = (image_file, label)
+        with self._lock:
+            self.labels[key] = category
+            fp = self._fingerprint_of(image_file, label)
+            if fp is not None:
+                self.fingerprints[key] = fp
+            self._save_locked()
+
+    def unmark(self, image_file: str, label: int) -> None:
+        """Remove any label for one object and persist."""
+        key = (image_file, label)
+        with self._lock:
+            if key not in self.labels:
+                return
+            self.labels.pop(key, None)
+            self.fingerprints.pop(key, None)
+            self._save_locked()
+
+    def mark_many(self, keys: Iterable[LabelKey], category: str) -> None:
+        """Assign ``category`` to a batch in one save."""
+        if not self.is_valid_category(category):
+            raise ValueError(f"Unknown category {category!r}.")
+        with self._lock:
+            changed = False
+            for image_file, label in keys:
+                key = (image_file, label)
+                self.labels[key] = category
+                fp = self._fingerprint_of(image_file, label)
+                if fp is not None:
+                    self.fingerprints[key] = fp
+                changed = True
+            if changed:
+                self._save_locked()
+
+    def unmark_many(self, keys: Iterable[LabelKey]) -> None:
+        """Remove labels for a batch in one save."""
+        with self._lock:
+            removed = False
+            for key in keys:
+                if key in self.labels:
+                    self.labels.pop(key, None)
+                    self.fingerprints.pop(key, None)
+                    removed = True
+            if removed:
+                self._save_locked()
+
+    # -- persistence ---------------------------------------------------------
+    def save(self) -> None:
+        """Persist all derived outputs under the lock (public entry)."""
+        with self._lock:
+            self._save_locked()
+
+    def _save_locked(self) -> None:
+        """Write labels parquet + curated mirror + per-category files (lock held)."""
+        self._write_labels_parquet()
+        self._write_curated_mirror()
+        self._write_category_parquets()
+
+    def _write_labels_parquet(self) -> None:
+        path = self.labels_path
+        path.parent.mkdir(parents=True, exist_ok=True)
+        rows = {
+            KEY_IMAGE_FILE: [k[0] for k in self.labels],
+            KEY_OBJECT_LABEL: [k[1] for k in self.labels],
+            KEY_CATEGORY: [self.labels[k] for k in self.labels],
+            KEY_CENTER_RR: [self.fingerprints.get(k, (float("nan"), float("nan")))[0] for k in self.labels],
+            KEY_CENTER_CC: [self.fingerprints.get(k, (float("nan"), float("nan")))[1] for k in self.labels],
+        }
+        df = pl.DataFrame(
+            rows,
+            schema={
+                KEY_IMAGE_FILE: pl.String,
+                KEY_OBJECT_LABEL: pl.Int64,
+                KEY_CATEGORY: pl.String,
+                KEY_CENTER_RR: pl.Float64,
+                KEY_CENTER_CC: pl.Float64,
+            },
+        )
+        _atomic_write_parquet(df, path)
+
+    def _write_curated_mirror(self) -> None:
+        curated = self.filtered_df(self._master_df)
+        self.measurements_parquet.parent.mkdir(parents=True, exist_ok=True)
+        _atomic_write_parquet(curated, self.measurements_parquet)
+        try:
+            _atomic_write_csv(curated, self.measurements_csv)
+        except Exception:
+            logger.exception("Failed to write curated CSV mirror at %s", self.measurements_csv)
+
+    def _write_category_parquets(self) -> None:
+        errs_dir = errors_dir(self.root)
+        errs_dir.mkdir(parents=True, exist_ok=True)
+        # Group keys by category.
+        by_cat: dict[str, list[LabelKey]] = {}
+        for key, cat in self.labels.items():
+            by_cat.setdefault(cat, []).append(key)
+        # Write present categories; remove files for categories no longer present.
+        present = set()
+        for cat, keys in by_cat.items():
+            token = sanitize_category(cat)
+            if not token:
+                logger.warning("Skipping category with no filename-safe token: %r", cat)
+                continue
+            present.add(token)
+            sub = pl.DataFrame(
+                {
+                    KEY_COLUMNS[0]: [k[0] for k in keys],
+                    KEY_COLUMNS[1]: [k[1] for k in keys],
+                },
+                schema={KEY_COLUMNS[0]: pl.String, KEY_COLUMNS[1]: pl.Int64},
+            )
+            keyed = self._master_df.with_columns(
+                pl.col(KEY_COLUMNS[0]).cast(pl.String),
+                pl.col(KEY_COLUMNS[1]).cast(pl.Int64),
+            )
+            frame = keyed.join(sub, on=list(KEY_COLUMNS), how="semi").with_columns(
+                pl.lit(cat).alias(KEY_CATEGORY)
+            )
+            _atomic_write_parquet(frame, error_category_parquet_path(self.root, token))
+        # Clean up stale category files.
+        for existing in errs_dir.glob("*.parquet"):
+            if existing.stem not in present:
+                try:
+                    existing.unlink()
+                except OSError:
+                    logger.warning("Could not remove stale category file %s", existing)
+
+
+def _atomic_write_parquet(df: pl.DataFrame, path: Path) -> None:
+    """Write a parquet via a sibling temp file + ``os.replace`` (atomic)."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    df.write_parquet(tmp)
+    os.replace(tmp, path)
+
+
+def _atomic_write_csv(df: pl.DataFrame, path: Path) -> None:
+    """Write a CSV via a sibling temp file + ``os.replace`` (atomic)."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    df.write_csv(tmp)
+    os.replace(tmp, path)
