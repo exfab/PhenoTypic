@@ -75,7 +75,7 @@ class MeasureColor(MeasureFeatures):
     medoid_max_pixels: int = 1000
     random_seed: int = 0
 
-    def _operate(self, image: Image):
+    def _operate(self, image: Image) -> pd.DataFrame:
         objmap = image.objmap[:]
         data = {OBJECT.LABEL: image.objects.labels2series()}
 

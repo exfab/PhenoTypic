@@ -1,5 +1,4 @@
 import numpy as np
-import pandas as pd
 import pytest
 
 from phenotypic.data import load_synth_yeast_plate

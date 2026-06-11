@@ -1,6 +1,13 @@
 import numpy as np
 import pytest
-from phenotypic.util._robust_color_stats import robust_color_center
+from phenotypic.util._robust_color_stats import (
+    cone_to_hsv,
+    delta_e2000_spread,
+    hsv_to_cone,
+    lab_to_srgb_hex,
+    medoid_ciede2000,
+    robust_color_center,
+)
 
 
 def test_robust_center_symmetric_cloud():
@@ -25,10 +32,6 @@ def test_robust_center_identical_points():
 def test_robust_center_empty_returns_nan():
     out = robust_color_center(np.empty((0, 3)))
     assert out.shape == (3,) and np.isnan(out).all()
-from phenotypic.util._robust_color_stats import (
-    medoid_ciede2000,
-    delta_e2000_spread,
-)
 
 
 def test_medoid_is_an_actual_input_pixel():
@@ -74,11 +77,6 @@ def test_delta_e2000_spread_values():
 def test_delta_e2000_spread_empty_is_nan():
     med, mean, p95 = delta_e2000_spread(np.array([]))
     assert np.isnan(med) and np.isnan(mean) and np.isnan(p95)
-from phenotypic.util._robust_color_stats import (
-    hsv_to_cone,
-    cone_to_hsv,
-    lab_to_srgb_hex,
-)
 
 
 def test_cone_roundtrip_recovers_hsv():
