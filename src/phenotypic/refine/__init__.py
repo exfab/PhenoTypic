@@ -38,6 +38,7 @@ from ._merge_fragment_chains import MergeFragmentChains
 from ._mask_white_tophat import MaskWhiteTophat
 from ._keep_section_largest import KeepSectionLargest
 from ._separate_objects import SeparateObjects
+from ._remove_by_value import RemoveByValue
 
 __all__ = [
     "TrimAsymmetry",
@@ -65,5 +66,6 @@ __all__ = [
     "Thinning",
     "MergeFragmentChains",
     "MaskWhiteTophat",
-    "KeepSectionLargest"
+    "KeepSectionLargest",
+    "RemoveByValue",
 ]
