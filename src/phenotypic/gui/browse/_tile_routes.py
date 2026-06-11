@@ -83,7 +83,12 @@ def register(app: dash.Dash, sandbox: SandboxRoot) -> None:
         try:
             _source_render.normalize_to_png(original, cache_png)
         except _source_render.SourceRenderUnavailable as exc:
-            return _json_error(str(exc), 422)
+            # Log the server-side detail but return a fixed client message;
+            # never trust the exception text for the response body.
+            logger.info("source render unavailable for token=%s: %s", token, exc)
+            return _json_error(
+                "source image cannot be rendered on this platform", 422
+            )
         except Exception:
             logger.exception("source render failed for token=%s", token)
             return _json_error("render failed", 500)
