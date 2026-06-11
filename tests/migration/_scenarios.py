@@ -413,6 +413,9 @@ CURATED_EXTRAS: tuple[_CuratedExtra, ...] = (
             "MeasureColor", "with_xyz", {"include_XYZ": True}
     ),
     _CuratedExtra(
+            "MeasureColor", "with_xy", {"include_xy": True}
+    ),
+    _CuratedExtra(
             "MeasureSymmetricZones",
             "intensity_method",
             {"method": "intensity", "n_annuli": 60},
@@ -443,7 +446,10 @@ def discover_operations() -> dict[str, list[type]]:
 
     discovered: dict[str, list[type]] = {}
     for subpkg in OPERATION_SUBPACKAGES:
-        pkg = importlib.import_module(f"phenotypic.{subpkg}")
+        try:
+            pkg = importlib.import_module(f"phenotypic.{subpkg}")
+        except Exception:  # noqa: BLE001 - optional subpackages may be absent
+            continue
         found: dict[str, type] = {}
         for _finder, modname, _ispkg in pkgutil.walk_packages(
                 pkg.__path__, f"{pkg.__name__}."
