@@ -25,10 +25,11 @@ import pytest
 from PIL import Image as PILImage
 
 from phenotypic.gui._config import CFG_FILTERED_STATE
+from phenotypic.gui._shared._radial import RADIAL_RESTORE_SENTINEL
 from phenotypic.gui.results_viewer._app import create_app
 from phenotypic.gui.results_viewer._curation_labels import CurationLabels
 from phenotypic.gui.results_viewer._output_root import OutputRoot
-from phenotypic.tools_ import measurements_parquet_path
+from phenotypic.tools_ import error_category_parquet_path, measurements_parquet_path
 
 from tests._output_layout import write_master, write_measurements_mirror
 
@@ -162,66 +163,125 @@ def test_toggle_via_filtered_state_writes_mirror(
     assert ("img-A", 2) not in keys_after
 
 
-def test_colony_single_cell_remove_callback_toggles_object(
-    output_root: OutputRoot,
-    tmp_path: Path,
-) -> None:
-    """POSTing the colony single-cell-remove callback drops the target object.
+# ---------------------------------------------------------------------------
+# Colony radial triage (Task 4) — wedge mark + restore round-trip
+# ---------------------------------------------------------------------------
 
-    Uses the Flask test client + ``_find_output_key`` to locate the
-    ``allow_duplicate`` STORE_REMOVED_KEYS output without hard-coding hashes.
-    Asserts a 200, a non-empty payload, and the mirror drop.
+
+def _post_colony_wedge(
+    app,
+    *,
+    image_file: str,
+    label: int,
+    category: str,
+):
+    """POST a colony radial wedge click via the Dash update route.
+
+    Resolves the ``STORE_REMOVED_KEYS`` allow_duplicate output owned by the
+    ``colony-cat-wedge`` mark callback (no hard-coded hash) and fires it for
+    the given ``(image_file, label, category)`` wedge.
     """
-    app = create_app(output_root)
     client = app.server.test_client()
-
-    # Locate the callback that owns STORE_REMOVED_KEYS with the
-    # colony-cell-remove-btn pattern as Input.
-    out_key = _find_output_key(
-        app, "store-removed-keys.data", "colony-cell-remove-btn"
+    out_key = _find_output_key(app, "store-removed-keys.data", "colony-cat-wedge")
+    triggered_id = {
+        "type": "colony-cat-wedge",
+        "image_file": image_file,
+        "label": label,
+        "category": category,
+    }
+    # Dash serializes pattern-matched ids with keys sorted alphabetically.
+    changed_prop = (
+        '{"category":"%s","image_file":"%s","label":%d,"type":"colony-cat-wedge"}.n_clicks'
+        % (category, image_file, label)
     )
-
-    # The triggered id: img-B / label 2 was clicked once.
-    triggered_id = {"type": "colony-cell-remove-btn", "image_file": "img-B", "label": 2}
-
-    resp = client.post(
+    return client.post(
         "/_dash-update-component",
         json={
             "output": out_key,
             "outputs": _outputs_from_key(out_key),
             "inputs": [
                 [
-                    # One entry per matched button; only the triggered one has n_clicks=1.
+                    # One entry per matched wedge; only the triggered one fires.
                     {"id": triggered_id, "property": "n_clicks", "value": 1},
                 ]
             ],
-            "state": [
-                {
-                    "id": "store-removed-keys",
-                    "property": "data",
-                    "value": [],
-                }
-            ],
-            "changedPropIds": [
-                '{"image_file":"img-B","label":2,"type":"colony-cell-remove-btn"}.n_clicks'
-            ],
+            "changedPropIds": [changed_prop],
         },
     )
 
-    assert resp.status_code == 200, f"Callback returned {resp.status_code}: {resp.data[:200]}"
-    # Regardless of exact response shape, the mirror must reflect the removal.
+
+def test_colony_wedge_mark_writes_category_parquet_and_drops_mirror(
+    output_root: OutputRoot,
+    tmp_path: Path,
+) -> None:
+    """A ``debris`` wedge click categorizes the object and drops it from the mirror.
+
+    Asserts ``deliverables/errors/debris.parquet`` gains the object and the
+    curated ``deliverables/measurements.parquet`` no longer carries it.
+    """
+    app = create_app(output_root)
+
+    resp = _post_colony_wedge(app, image_file="img-B", label=2, category="debris")
+    assert resp.status_code == 200, (
+        f"Wedge callback returned {resp.status_code}: {resp.data[:200]}"
+    )
+
+    # The per-category parquet gains img-B/label-2.
+    debris_path = error_category_parquet_path(tmp_path, "debris")
+    assert debris_path.exists(), "debris.parquet should be written after the mark"
+    debris = pl.read_parquet(debris_path)
+    debris_keys = set(
+        zip(
+            debris.get_column("Metadata_ImageFile").to_list(),
+            debris.get_column("Object_Label").to_list(),
+        )
+    )
+    assert ("img-B", 2) in debris_keys
+
+    # The curated mirror drops it.
     mirror = pl.read_parquet(measurements_parquet_path(tmp_path))
-    keys = set(
+    mirror_keys = set(
         zip(
             mirror.get_column("Metadata_ImageFile").to_list(),
             mirror.get_column("Object_Label").to_list(),
         )
     )
-    assert ("img-B", 2) not in keys, (
-        "img-B/label-2 should have been removed from the curated mirror. "
-        f"Remaining keys: {keys}"
+    assert ("img-B", 2) not in mirror_keys
+
+    # And the in-memory store agrees, with the right category.
+    store: CurationLabels = app.server.config[CFG_FILTERED_STATE]
+    assert store.is_removed("img-B", 2)
+    assert store.labels[("img-B", 2)] == "debris"
+
+
+def test_colony_wedge_restore_round_trip(
+    output_root: OutputRoot,
+    tmp_path: Path,
+) -> None:
+    """A restore-sentinel wedge click clears a prior category and restores the object."""
+    app = create_app(output_root)
+    store: CurationLabels = app.server.config[CFG_FILTERED_STATE]
+
+    # First mark img-A/label-1 as debris.
+    resp = _post_colony_wedge(app, image_file="img-A", label=1, category="debris")
+    assert resp.status_code == 200
+    assert store.is_removed("img-A", 1)
+
+    # Then fire the center restore node for the same object.
+    resp = _post_colony_wedge(
+        app, image_file="img-A", label=1, category=RADIAL_RESTORE_SENTINEL
+    )
+    assert resp.status_code == 200, (
+        f"Restore callback returned {resp.status_code}: {resp.data[:200]}"
     )
 
-    # Also confirm the store on the server carried the removal through.
-    store: CurationLabels = app.server.config[CFG_FILTERED_STATE]
-    assert store.is_removed("img-B", 2), "CurationLabels store should mark img-B/2 as removed"
+    # The object is back in the curated mirror and no longer labeled.
+    assert not store.is_removed("img-A", 1)
+    mirror = pl.read_parquet(measurements_parquet_path(tmp_path))
+    mirror_keys = set(
+        zip(
+            mirror.get_column("Metadata_ImageFile").to_list(),
+            mirror.get_column("Object_Label").to_list(),
+        )
+    )
+    assert ("img-A", 1) in mirror_keys, "restored object should be back in the mirror"

@@ -6,8 +6,9 @@ Owns every callback whose Output is confined to the colony-view subtree:
    set, selection, axis dropdowns, refresh button, or active tab change.
 2. **Axis dropdown population** — keep the X/Y axis dropdown options in
    sync with the filtered frame's selectable columns.
-3. **Single-cell remove** — toggle a colony's curated-removal state
-   when its per-cell × / ↺ button fires.
+3. **Radial category mark / restore** — assign a colony's curation
+   category (durable remove) when one of its radial wedges fires, or
+   clear it when the center restore node fires.
 4. **Selection-delta consumer** — fold the JS-emitted shift/click delta
    into the canonical multi-select store (with anchor tracking).
 5. **Bulk-bar visibility / count label** — show or hide the bulk action
@@ -29,6 +30,7 @@ from typing import Any
 
 import dash
 from dash import ALL, MATCH, Input, Output, State, callback_context, no_update
+from dash.exceptions import PreventUpdate
 
 from phenotypic.gui._config import (
     COLONY_TILE_SIZE_DEFAULT,
@@ -38,6 +40,7 @@ from phenotypic.gui._config import (
     stepped_colony_tile_size_from_trigger,
     stepped_alpha_from_trigger,
 )
+from phenotypic.gui._shared._radial import RADIAL_RESTORE_SENTINEL
 from phenotypic.gui.results_viewer import _ids as ids
 from phenotypic.gui.results_viewer._qc_tab.review import _ids as qc_review_ids
 from phenotypic.gui.results_viewer._filter_state import FilterSpec
@@ -178,6 +181,14 @@ def register_callbacks(
         removed_keys = set(decode_removed_keys_payload(removed_payload))
         alpha = TILE_DIM_DEFAULT if dim_alpha is None else float(dim_alpha)
 
+        # Decision A: read the per-object category map straight off the
+        # durable store under its lock (a server-side snapshot — there is
+        # NO separate STORE_LABELS Dash store). STORE_REMOVED_KEYS firing is
+        # the render trigger; the labels dict it implies is read here so the
+        # radial trigger on each tile renders the right category badge.
+        with filtered_state._lock:
+            category_of = dict(filtered_state.labels)
+
         # Selection styling is applied by the JS lifecycle layer, so we
         # always render the grid as if nothing were selected. This
         # keeps the click hot path off the server.
@@ -191,6 +202,7 @@ def register_callbacks(
             output_root,
             display_size=display_size,
             dim_alpha=alpha,
+            category_of=category_of,
         )
         info = (
             f"crop {max_size}px → {display_size}px "
@@ -254,49 +266,79 @@ def register_callbacks(
         return options, options, x_value, y_value
 
     # ----------------------------------------------------------------------
-    # 3. Single-cell remove (pattern-matching ALL)
+    # 3. Radial category mark / restore (pattern-matching ALL)
     # ----------------------------------------------------------------------
+    #
+    # MF4: the radial menu subsumes the old binary ✕ remove button. A wedge
+    # click marks the colony with the wedge's category (durable remove); the
+    # center node carries ``RADIAL_RESTORE_SENTINEL`` and restores it.
 
     @app.callback(
         Output(ids.STORE_REMOVED_KEYS, "data", allow_duplicate=True),
-        Input({"type": "colony-cell-remove-btn", "image_file": ALL, "label": ALL}, "n_clicks"),
-        State(ids.STORE_REMOVED_KEYS, "data"),
+        Input(
+            {
+                "type": "colony-cat-wedge",
+                "image_file": ALL,
+                "label": ALL,
+                "category": ALL,
+            },
+            "n_clicks",
+        ),
         prevent_initial_call=True,
     )
-    def _toggle_single_cell_removal(
-        n_clicks_list: list[int | None],
-        removed_payload: Any,
-    ) -> Any:
-        """Toggle a colony's curated-removal state on a per-cell button click.
+    def _mark_colony_category(_n: list[int | None]) -> Any:
+        """Mark (or restore) a colony's category from a radial wedge click.
 
-        Inspects ``callback_context.triggered_id`` to recover the firing
-        cell's ``image_file`` / ``label`` and flips its removal state.
-        Each :class:`FilteredMeasurements` mutator auto-saves, so we
-        only need to re-emit the store payload after the mutation.
+        The ALL pattern fires once at mount with every ``n_clicks`` empty;
+        guard against that before reading ``triggered_id``. A wedge whose
+        ``category`` is :data:`RADIAL_RESTORE_SENTINEL` clears the label;
+        every other wedge assigns its category (a durable removal). The
+        ``"__custom_folder__"`` placeholder wedge is inert here (Task 7
+        wires the custom-add flow); marking it as a literal category would
+        be wrong, so it is ignored.
         """
-        del removed_payload  # filtered_state holds the source of truth.
         triggered = callback_context.triggered_id
         if not triggered or not isinstance(triggered, dict):
-            return no_update
-        # Skip the initial-mount fire where every n_clicks is 0/None.
-        if not any(n for n in n_clicks_list if n):
-            return no_update
+            raise PreventUpdate
+        # Skip the initial empty-n_clicks fire from the ALL pattern.
+        if not any(
+            callback_context.triggered[i]["value"]
+            for i in range(len(callback_context.triggered))
+        ):
+            raise PreventUpdate
 
         raw_image_file = triggered.get("image_file")
         raw_label = triggered.get("label")
-        if raw_image_file is None or raw_label is None:
-            return no_update
+        raw_category = triggered.get("category")
+        if raw_image_file is None or raw_label is None or raw_category is None:
+            raise PreventUpdate
         try:
             image_file = str(raw_image_file)
             label = int(raw_label)
         except (TypeError, ValueError):
-            return no_update
+            raise PreventUpdate
+        category = str(raw_category)
 
-        # Mutate + emit under the same lock so a concurrent bulk action
-        # can't slip a divergent payload between us and the next render.
-        return filtered_state.mutate_and_payload(
-            lambda s: s.toggle(image_file, label)
-        )
+        # The custom-folder placeholder opens the folder (Task 7); it is not
+        # a real category, so never mark on it.
+        if category == "__custom_folder__":
+            raise PreventUpdate
+
+        if category == RADIAL_RESTORE_SENTINEL:
+            payload = filtered_state.mutate_and_payload(
+                lambda s: s.unmark(image_file, label)
+            )
+        else:
+            payload = filtered_state.mutate_and_payload(
+                lambda s: s.mark(image_file, label, category)
+            )
+        # ``STORE_REMOVED_KEYS`` is an ``allow_duplicate`` (multi-mode) output
+        # whose value is itself a list. Restoring the LAST labeled object
+        # yields an empty payload ``[]``; a bare ``[]`` makes Dash's multi-mode
+        # response validator see *zero* output values and 500. Wrap in a
+        # 1-tuple so Dash sees exactly one value (the list) regardless of its
+        # length.
+        return (payload,)
 
     # ----------------------------------------------------------------------
     # 4. Selection-delta consumer
