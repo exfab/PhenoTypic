@@ -4,9 +4,10 @@ For one error category, :class:`ErrorCutoffFinder` compares the *good* baseline
 distribution against the *error* distribution on every measurement column and
 ranks the measurements by how cleanly they separate the two (AUC). Each
 discriminative measurement gets a ROC/Youden's-J cutoff with the recall and
-precision it achieves, plus the one-way ANOVA F/p and a Benjamini-Hochberg
-FDR-adjusted p. The result is the table the Error-analysis tab reads so the
-user can adopt a cutoff to filter similar bad data.
+specificity it achieves (plus the count of good objects it would wrongly
+flag), the one-way ANOVA F/p, and a Benjamini-Hochberg FDR-adjusted p. The
+result is the table the Error-analysis tab reads so the user can adopt a cutoff
+to filter similar bad data.
 
 The engine is deliberately **GUI/IO-free and mode-agnostic**: it takes a *good*
 frame and an *error* frame and does not know whether the good baseline is
@@ -27,10 +28,10 @@ from sklearn.metrics import roc_auc_score, roc_curve
 #: Column-name prefixes treated as numeric **phenotype** measurements.
 #: Absolute position (``Bbox_`` centroids/corners) is intentionally **excluded**
 #: (resolved decision) — a "cutoff" on plate position is a spatial artifact, not
-#: a phenotype filter. ``Texture`` (no trailing ``_``) catches every texture
-#: matrix (``TextureGray_``, ``TextureColor_``, …), not just gray. This list is
-#: defined independently — the colony grid's ``_MEASUREMENT_PREFIXES`` is a UI
-#: axis-exclusion list, not an authoritative phenotype-measurement set.
+#: a phenotype filter. ``Texture`` (no trailing ``_``) matches the whole
+#: ``Texture``-prefixed namespace regardless of the matrix/scale suffix. This
+#: list is defined independently — the colony grid's ``_MEASUREMENT_PREFIXES``
+#: is a UI axis-exclusion list, not an authoritative phenotype-measurement set.
 MEASUREMENT_PREFIXES: tuple[str, ...] = (
     "Size_",
     "Shape_",

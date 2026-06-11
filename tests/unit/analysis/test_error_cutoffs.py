@@ -124,6 +124,19 @@ def test_bh_adjusted_p_is_monotone_and_ge_raw():
     assert (res["p_bh"] >= res["p_value"] - 1e-9).all()
 
 
+def test_specificity_and_good_flagged_match_the_reported_cutoff_on_overlap():
+    """Pin the midpoint-nudge invariant on OVERLAPPING data: the reported
+    specificity / good_flagged equal the actual good-class classification at the
+    returned cutoff (would fail if the nudge moved a point across the boundary)."""
+    good, error = _separating()
+    res = ErrorCutoffFinder().analyze(good, error)
+    row = res[res["measurement"] == "Size_Area"].iloc[0]
+    vals = good["Size_Area"]
+    flagged = vals > row["cutoff"] if row["direction"] == ">" else vals < row["cutoff"]
+    assert int(flagged.sum()) == row["good_flagged"]
+    assert (1.0 - flagged.mean()) == pytest.approx(row["specificity"], abs=1e-9)
+
+
 def test_insufficient_error_returns_empty_frame():
     good, error = _separating(n_good=40, n_err=3)
     res = ErrorCutoffFinder(min_error_n=8).analyze(good, error)
