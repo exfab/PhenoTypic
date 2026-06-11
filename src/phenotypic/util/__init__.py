@@ -4,6 +4,7 @@ A module for useful utility operations and functions that don't fit into a speci
 
 from ._geometric_median import geometric_median
 from ._measurement_outputs import generate_output_key, split_measurements
+from ._robust_color_stats import robust_color_center
 from ._well_pos_decoder import decode_well_position
 from .image_metrics import (
     BackgroundMetrics,
@@ -19,6 +20,7 @@ __all__ = [
     "geometric_median",
     "generate_output_key",
     "split_measurements",
+    "robust_color_center",
     # Image metrics
     "ImageMetricsCalculator",
     "THRESHOLDS",
