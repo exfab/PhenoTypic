@@ -28,6 +28,12 @@
 - **Frames are pandas** (consistent with `analysis/` — `MADOutlierRemover`, the QC checks all use `pd.DataFrame`). The Phase-4 GUI converts its polars master/curated frames to pandas at the boundary.
 - **Engine takes good + error frames** (not a labeled master + category). The good/error split — and the verified-only restriction — are the caller's responsibility (spec §7).
 - **Ranking key = separability** = `max(auc_raw, 1 - auc_raw)` (direction-agnostic), recorded with a `direction` (`">"` = flag when measurement is above the cutoff, `"<"` = below). Effect size, not raw p (p is sample-size driven).
+- **Resolved decisions (from the Phase-3 plan review):**
+  - **Cutoff is midpoint-nudged into the gap.** The Youden ROC threshold is an *attained* value; the engine shifts the cutoff to the midpoint between it and the nearest observed value on the good side, so it lands between the clusters and `>`/`<` strictness is moot.
+  - **Position columns (`Bbox_`) are excluded** — a cutoff on absolute plate position is a spatial artifact, not a phenotype filter.
+  - **Report `specificity` (= 1 − FPR, fraction of good kept) + `good_flagged` (count of good wrongly flagged), not precision** — precision is prevalence-dependent (it swings with the good:error ratio fed in) and wouldn't transfer to the full dataset; specificity + the absolute good-flagged count are prevalence-independent and directly answer "how much good do I lose."
+  - **`Texture` (all matrices)**, not `TextureGray_` (which silently drops color-matrix texture).
+  - **Non-finite ANOVA F/p → skip the measurement** (returns `None` in the scorer) so `false_discovery_control` never sees a NaN; the scipy `ConstantInputWarning` is suppressed.
 - **Insufficient data → empty frame.** When `len(error) < min_error_n` or `len(good) < min_good_n`, `analyze` returns an empty (0-row) frame with the right columns; a public `enough_data(good, error)` predicate lets the Phase-4 panel show the "review more / mark more" state without catching exceptions.
 
 ## File structure (Phase 3)
@@ -138,16 +144,20 @@ from __future__ import annotations
 import pandas as pd
 from pydantic import BaseModel, ConfigDict
 
-#: Column-name prefixes that mark a numeric measurement (mirrors the spec's
-#: measurement-selection list and the colony grid's ``_MEASUREMENT_PREFIXES``).
+#: Column-name prefixes treated as numeric **phenotype** measurements.
+#: Absolute position (``Bbox_`` centroids/corners) is intentionally **excluded**
+#: (resolved decision) — a "cutoff" on plate position is a spatial artifact, not
+#: a phenotype filter. ``Texture`` (no trailing ``_``) catches every texture
+#: matrix (``TextureGray_``, ``TextureColor_``, …), not just gray. This list is
+#: defined independently — the colony grid's ``_MEASUREMENT_PREFIXES`` is a UI
+#: axis-exclusion list, not an authoritative phenotype-measurement set.
 MEASUREMENT_PREFIXES: tuple[str, ...] = (
     "Size_",
     "Shape_",
     "Intensity_",
-    "TextureGray_",
+    "Texture",
     "SymZones_",
     "GridSpatial_",
-    "Bbox_",
     "RadialExpansion_",
 )
 
@@ -158,7 +168,8 @@ RESULT_COLUMNS: tuple[str, ...] = (
     "direction",
     "cutoff",
     "recall",
-    "precision",
+    "specificity",
+    "good_flagged",
     "f_stat",
     "p_value",
     "p_bh",
@@ -262,8 +273,8 @@ def test_separating_measurement_ranks_first_with_high_auc():
     good, error = _separating()
     res = ErrorCutoffFinder().analyze(good, error)
     assert list(res.columns) == [
-        "measurement", "auc", "direction", "cutoff", "recall",
-        "precision", "f_stat", "p_value", "p_bh", "good_n", "error_n",
+        "measurement", "auc", "direction", "cutoff", "recall", "specificity",
+        "good_flagged", "f_stat", "p_value", "p_bh", "good_n", "error_n",
     ]
     # Size_Area separates; it ranks first with high AUC.
     assert res.iloc[0]["measurement"] == "Size_Area"
@@ -272,9 +283,10 @@ def test_separating_measurement_ranks_first_with_high_auc():
     assert res.iloc[0]["direction"] == ">"
     # The cutoff sits between the two means.
     assert 0.5 < res.iloc[0]["cutoff"] < 4.0
-    # Recall/precision are sane fractions.
+    # Recall / specificity are sane fractions; good_flagged is a small count.
     assert 0.5 <= res.iloc[0]["recall"] <= 1.0
-    assert 0.5 <= res.iloc[0]["precision"] <= 1.0
+    assert 0.5 <= res.iloc[0]["specificity"] <= 1.0
+    assert 0 <= res.iloc[0]["good_flagged"] <= 40
     # The non-separating measurement has AUC near 0.5.
     circ = res[res["measurement"] == "Shape_Circularity"].iloc[0]
     assert abs(circ["auc"] - 0.5) < 0.15
@@ -314,7 +326,7 @@ def test_insufficient_error_returns_empty_frame():
 
 - [ ] **Step 3: Implement `analyze` + the per-measurement scorer**
 
-Add to `_error_cutoffs.py` (imports at top: `import numpy as np`, `from scipy.stats import f_oneway, false_discovery_control`, `from sklearn.metrics import roc_auc_score, roc_curve`):
+Add to `_error_cutoffs.py` (imports at top: `import warnings`, `import numpy as np`, `from scipy.stats import f_oneway, false_discovery_control`, `from sklearn.metrics import roc_auc_score, roc_curve`):
 
 ```python
     def analyze(self, good: pd.DataFrame, error: pd.DataFrame) -> pd.DataFrame:
@@ -359,7 +371,7 @@ Add to `_error_cutoffs.py` (imports at top: `import numpy as np`, `from scipy.st
 
     @staticmethod
     def _score_measurement(g: "np.ndarray", e: "np.ndarray") -> dict | None:
-        """Score one measurement: ANOVA F/p, AUC + direction, Youden cutoff.
+        """Score one measurement: ANOVA F/p, AUC + direction, gap-midpoint cutoff.
 
         Args:
             g: Good-class values (NaN-free 1-D array).
@@ -367,7 +379,9 @@ Add to `_error_cutoffs.py` (imports at top: `import numpy as np`, `from scipy.st
 
         Returns:
             A dict of the per-measurement statistics, or ``None`` when either
-            class has < 2 values or zero variance makes the test degenerate.
+            class has < 2 values, the combined values are constant, or the
+            ANOVA F/p is non-finite (degenerate) — so no non-finite p ever
+            reaches the BH step.
         """
         if len(g) < 2 or len(e) < 2:
             return None
@@ -376,37 +390,52 @@ Add to `_error_cutoffs.py` (imports at top: `import numpy as np`, `from scipy.st
             return None
         y = np.concatenate([np.zeros(len(g)), np.ones(len(e))])  # 1 = error
 
-        f_stat, p_value = f_oneway(g, e)
-        auc_raw = roc_auc_score(y, scores)  # P(error score > good score)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")  # silence scipy ConstantInputWarning
+            f_stat, p_value = f_oneway(g, e)
+        # Degenerate (e.g. each class internally constant -> F=inf/p=nan): skip
+        # BEFORE the value can poison BH-FDR (false_discovery_control rejects NaN).
+        if not np.isfinite(f_stat) or not np.isfinite(p_value):
+            return None
 
+        auc_raw = roc_auc_score(y, scores)  # P(error score > good score)
         if auc_raw >= 0.5:
-            direction = ">"  # error is the HIGH side
+            direction = ">"  # error is the HIGH side; flag when value > cutoff
             separability = auc_raw
             fpr, tpr, thr = roc_curve(y, scores)
         else:
-            direction = "<"  # error is the LOW side
+            direction = "<"  # error is the LOW side; flag when value < cutoff
             separability = 1.0 - auc_raw
             fpr, tpr, thr = roc_curve(y, -scores)
             thr = -thr  # map thresholds back to the measurement scale
 
-        # Youden's J optimal operating point. roc_curve prepends an
-        # +/-inf threshold (the "classify nothing as positive" point); skip it.
+        # Youden's J optimal operating point (skip roc_curve's +/-inf point).
         valid = np.isfinite(thr)
-        j = tpr[valid] - fpr[valid]
-        k = int(np.argmax(j))
-        cutoff = float(thr[valid][k])
-        recall = float(tpr[valid][k])
-        # precision = TP / (TP + FP) at the operating point.
-        tp = tpr[valid][k] * len(e)
-        fp = fpr[valid][k] * len(g)
-        precision = float(tp / (tp + fp)) if (tp + fp) > 0 else float("nan")
+        k = int(np.argmax(tpr[valid] - fpr[valid]))
+        thr_v = float(thr[valid][k])
+        tpr_k = float(tpr[valid][k])
+        fpr_k = float(fpr[valid][k])
+
+        # Midpoint-nudge (resolved decision): the ROC threshold is an *attained*
+        # value, so shift the cutoff to the midpoint between it and the nearest
+        # observed value on the good side. This puts it in the gap (mid-gap on
+        # perfect separation) and makes >/< strictness irrelevant. The nudge
+        # stays between two adjacent observed values, so no point crosses it —
+        # tpr/fpr at the operating point are unchanged.
+        if direction == ">":
+            lower = scores[scores < thr_v]
+            cutoff = float((thr_v + lower.max()) / 2) if lower.size else thr_v
+        else:
+            upper = scores[scores > thr_v]
+            cutoff = float((thr_v + upper.min()) / 2) if upper.size else thr_v
 
         return {
             "auc": float(separability),
             "direction": direction,
             "cutoff": cutoff,
-            "recall": recall,
-            "precision": precision,
+            "recall": tpr_k,                              # fraction of errors caught
+            "specificity": float(1.0 - fpr_k),           # fraction of good kept
+            "good_flagged": int(round(fpr_k * len(g))),  # # good wrongly flagged
             "f_stat": float(f_stat),
             "p_value": float(p_value),
             "good_n": int(len(g)),
@@ -454,15 +483,18 @@ def test_constant_measurement_is_skipped():
     assert res.empty  # no separable measurement
 
 
-def test_perfect_separation_recall_precision_one():
+def test_perfect_separation_clean_cutoff_and_metrics():
     good = pd.DataFrame({"Object_Label": range(20), "Size_Area": np.linspace(0, 1, 20)})
     error = pd.DataFrame({"Object_Label": range(10), "Size_Area": np.linspace(10, 11, 10)})
     res = ErrorCutoffFinder(min_good_n=10, min_error_n=8).analyze(good, error)
     row = res.iloc[0]
     assert row["auc"] == pytest.approx(1.0)
     assert row["recall"] == pytest.approx(1.0)
-    assert row["precision"] == pytest.approx(1.0)
+    assert row["specificity"] == pytest.approx(1.0)
+    assert row["good_flagged"] == 0
+    # Midpoint-nudge puts the cutoff IN the gap (≈ (1 + 10)/2), not on the edge.
     assert 1.0 < row["cutoff"] < 10.0
+    assert row["cutoff"] == pytest.approx((1.0 + 10.0) / 2, abs=0.2)
 
 
 def test_measurement_only_in_good_is_ignored():
@@ -501,10 +533,10 @@ git commit -m "test(analysis): ErrorCutoffFinder edge cases + doctest"
 
 - ANOVA F/p per measurement → Task 2 (`f_oneway`). ✅
 - Effect size + AUC ranking → Task 2 (`roc_auc_score`, separability = `max(auc,1-auc)`, sorted desc). ✅
-- ROC/Youden cutoff + direction + recall/precision → Task 2 (`roc_curve` + Youden's J). ✅
-- BH-FDR across measurements → Task 2 (`false_discovery_control`). ✅
-- Output frame `[measurement, auc, f, p, p_bh, cutoff, direction, recall, precision, good_n, error_n]` → `RESULT_COLUMNS`. ✅
-- Measurement auto-detection by prefix → Task 1. ✅
+- ROC/Youden cutoff (midpoint-nudged into the gap) + direction + recall/specificity/good_flagged → Task 2 (`roc_curve` + Youden's J). ✅
+- BH-FDR across measurements → Task 2 (`false_discovery_control`; non-finite p skipped upstream). ✅
+- Output frame `[measurement, auc, direction, cutoff, recall, specificity, good_flagged, f_stat, p_value, p_bh, good_n, error_n]` → `RESULT_COLUMNS`. ✅
+- Measurement auto-detection by prefix (position `Bbox_` excluded; `Texture` all-matrices) → Task 1. ✅
 - min-n guard → Task 1 (`enough_data`) + Task 2 (empty frame). ✅
 - Mode-agnostic good/error inputs (verified-only is the caller's concern) → the whole design. ✅
 - Exported/discoverable → Task 1 Step 4. ✅

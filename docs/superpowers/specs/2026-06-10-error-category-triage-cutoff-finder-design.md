@@ -246,19 +246,27 @@ plan), exported from `analysis/__init__.py`.
     (`qc/review_state.json`). A GUI/data helper builds this frame and (verified
     mode) materializes `deliverables/verified.parquet`; the engine just consumes
     the resulting good frame.
-- **Measurement selection:** numeric measurement columns auto-detected by the
-  category prefixes (`Size_`, `Shape_`, `Intensity_`, `TextureGray_`,
-  `SymZones_`, `GridSpatial_`, `Bbox_` extents), excluding metadata/grid-key and
-  non-numeric columns.
+- **Measurement selection:** numeric **phenotype** measurement columns
+  auto-detected by category prefix (`Size_`, `Shape_`, `Intensity_`, `Texture`
+  (all matrices), `SymZones_`, `GridSpatial_`, `RadialExpansion_`), excluding
+  metadata/grid-key, non-numeric columns, and **absolute position** (`Bbox_`
+  centroids/corners — a position "cutoff" is a spatial artifact, not a filter;
+  resolved decision).
 - **Per measurement:**
-  - One-way ANOVA `scipy.stats.f_oneway(good, error)` → F, p.
+  - One-way ANOVA `scipy.stats.f_oneway(good, error)` → F, p. Non-finite
+    (degenerate) F/p measurements are skipped before FDR.
   - Effect size + **AUC** (good-vs-error binary separability), used as the
     ranking key (effect size, not raw p — p is sample-size driven).
-  - **ROC/Youden's J** optimal threshold (direction-aware), with recall and
-    precision reported at that cutoff.
+  - **ROC/Youden's J** optimal threshold (direction-aware), **midpoint-nudged
+    into the gap** between the clusters so the cutoff isn't an attained value and
+    `>`/`<` strictness is moot. Reports **recall** (errors caught),
+    **specificity** (1 − FPR, good kept), and **good_flagged** (count of good
+    objects flagged) — prevalence-independent, unlike precision (resolved
+    decision).
   - **Benjamini-Hochberg** FDR adjustment of p across all tested measurements.
-- **Output:** a tidy frame `[measurement, auc, f, p, p_bh, cutoff, direction,
-  recall, precision, good_n, error_n]` sorted by AUC desc.
+- **Output:** a tidy frame `[measurement, auc, direction, cutoff, recall,
+  specificity, good_flagged, f_stat, p_value, p_bh, good_n, error_n]` sorted by
+  AUC desc.
 - **Guard:** below a minimum error-n (default 8; configurable) — or, in
   verified-only mode, below a minimum verified-good-n — return an
   "insufficient labels / review more QC groups" sentinel rather than unstable
