@@ -106,7 +106,7 @@ def build_browse_layout() -> Any:
 
     osd_div = html.Div(
         id=ids.BROWSE_OSD_DIV,
-        className="osd-canvas browse-osd-canvas",
+        className="browse-osd-canvas",
         style=_OSD_STYLE,
     )
 
