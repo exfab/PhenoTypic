@@ -291,11 +291,7 @@ class TestBuildRadialBody:
         )
         assert debris_btn is not None
         expected_color = category_color("debris")
-        # Transparent fill: the category color reads as the circle's outline +
-        # label text, not a solid disc.
-        assert debris_btn.style.get("backgroundColor") == "transparent"
-        assert expected_color in debris_btn.style.get("border", "")
-        assert debris_btn.style.get("color") == expected_color
+        assert debris_btn.style.get("backgroundColor") == expected_color
 
     def test_long_segmentation_tokens_use_short_wedge_labels(self) -> None:
         """The over/under tokens render as OverS/UnderS; tokens are unchanged."""

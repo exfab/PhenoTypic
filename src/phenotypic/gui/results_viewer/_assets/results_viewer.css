@@ -309,6 +309,26 @@
     z-index: 1090;
 }
 
+/* The radial menu has no chrome: only its circular buttons float over the tile.
+ * Strip the popover's white box, border, shadow and arrow (covers both the
+ * className-on-.popover and className-on-wrapper cases). */
+.radial-popover.popover,
+.radial-popover .popover {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    max-width: none;
+}
+
+.radial-popover .popover-body {
+    background: transparent;
+    padding: 0;
+}
+
+.radial-popover .popover-arrow {
+    display: none;
+}
+
 /* Square container for the wedge ring.  width/height set inline by the
  * Python builder. */
 .radial-ring-container {

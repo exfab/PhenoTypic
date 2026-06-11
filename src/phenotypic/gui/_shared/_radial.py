@@ -384,7 +384,7 @@ def build_radial_trigger(
         target=trigger_id,
         trigger="legacy",
         placement="right",
-        hide_arrow=False,
+        hide_arrow=True,
         style={"zIndex": "1090"},
         className="radial-popover",
     )
@@ -499,11 +499,9 @@ def build_radial_body(
                     # Inline 50% beats Bootstrap's ``.btn-sm`` radius so the
                     # wedge is a true circle.
                     "borderRadius": "50%",
-                    # Transparent fill: the category color reads as the circle's
-                    # outline + label text instead of a solid disc.
-                    "backgroundColor": "transparent",
-                    "border": f"2px solid {color}",
-                    "color": color,
+                    "backgroundColor": color,
+                    "borderColor": color,
+                    "color": "#fff",
                     "fontSize": "0.55rem",
                     "lineHeight": "1.1",
                     "padding": "2px",
