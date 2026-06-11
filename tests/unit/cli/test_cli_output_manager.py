@@ -33,6 +33,7 @@ from phenotypic._cli._cli_output_manager import (
     _collect_feature_headers,
     _load_pipeline_from_output_dir,
     aggregate_measurements,
+    finalize_post_master_outputs,
     split_master_by_feature,
 )
 
@@ -330,3 +331,104 @@ class TestAggregateMeasurementsAutoResolve:
             "Object_Label",
             "Size_Area",
         ]
+
+
+class TestFinalizeReemitsErrorDeliverables:
+    """``finalize_post_master_outputs`` re-emits errors/* + error_analysis.* from
+    a durable labels store, keyed off the clean master, while still resetting
+    ``review_state.json`` and never wiping the labels parquet (Phase 5)."""
+
+    @staticmethod
+    def _master_df() -> pl.DataFrame:
+        """Clean master: 30 small + 10 clearly-larger ``Size_Area`` objects."""
+        import numpy as np
+
+        rng = np.random.default_rng(0)
+        n_good, n_err = 30, 10
+        n = n_good + n_err
+        labels = list(range(1, n + 1))
+        area = np.concatenate(
+            [rng.normal(100.0, 5.0, n_good), rng.normal(500.0, 5.0, n_err)]
+        )
+        return pl.DataFrame({
+            "Metadata_Dataset": ["ds1"] * n,
+            "Metadata_ImageFile": ["plateA"] * n,
+            "Object_Label": labels,
+            "Bbox_CenterRR": [10.0 * i for i in labels],
+            "Bbox_CenterCC": [20.0 * i for i in labels],
+            "Size_Area": area.tolist(),
+            "Shape_Circularity": rng.normal(0.8, 0.05, n).tolist(),
+        })
+
+    @staticmethod
+    def _stage_labels(output_dir: Path, master: pl.DataFrame, err_labels: list[int],
+                      category: str) -> None:
+        import phenotypic.tools_ as tools_
+
+        rows = master.filter(pl.col("Object_Label").is_in(err_labels))
+        labels = pl.DataFrame(
+            {
+                "Metadata_ImageFile": rows.get_column("Metadata_ImageFile").to_list(),
+                "Object_Label": rows.get_column("Object_Label").to_list(),
+                "Curation_Category": [category] * rows.height,
+                "Bbox_CenterRR": rows.get_column("Bbox_CenterRR").to_list(),
+                "Bbox_CenterCC": rows.get_column("Bbox_CenterCC").to_list(),
+            },
+            schema={
+                "Metadata_ImageFile": pl.String,
+                "Object_Label": pl.Int64,
+                "Curation_Category": pl.String,
+                "Bbox_CenterRR": pl.Float64,
+                "Bbox_CenterCC": pl.Float64,
+            },
+        )
+        path = tools_.curation_labels_parquet_path(output_dir)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        labels.write_parquet(path)
+
+    def test_finalize_emits_errors_and_preserves_labels(self, tmp_path: Path) -> None:
+        import phenotypic.tools_ as tools_
+        from phenotypic import ImagePipeline
+
+        output_dir = tmp_path / "out"
+        output_dir.mkdir()
+        master = self._master_df()
+        self._stage_labels(output_dir, master, list(range(31, 41)), "debris")
+
+        # Seed a pre-existing review_state.json so we can assert finalize resets it.
+        review_state = tools_.qc_review_state_path(output_dir)
+        review_state.parent.mkdir(parents=True, exist_ok=True)
+        review_state.write_text("{}", encoding="utf-8")
+
+        finalize_post_master_outputs(output_dir, master, ImagePipeline(), no_qc=True)
+
+        # Error deliverables emitted from the labels store.
+        debris = pl.read_parquet(
+            tools_.error_category_parquet_path(output_dir, "debris")
+        )
+        assert debris.height == 10
+        ea = pl.read_parquet(tools_.error_analysis_parquet_path(output_dir))
+        assert ea.columns[0] == "category"
+        assert "debris" in set(ea.get_column("category").to_list())
+
+        # review_state.json was reset (existing finalize behavior).
+        assert not review_state.exists()
+        # Durable labels store survived (no wipe).
+        assert tools_.curation_labels_parquet_path(output_dir).exists()
+        # verified.parquet never written headlessly.
+        assert not tools_.verified_parquet_path(output_dir).exists()
+
+    def test_finalize_no_labels_store_is_a_clean_no_op(self, tmp_path: Path) -> None:
+        import phenotypic.tools_ as tools_
+        from phenotypic import ImagePipeline
+
+        output_dir = tmp_path / "out"
+        output_dir.mkdir()
+        master = self._master_df()
+
+        finalize_post_master_outputs(output_dir, master, ImagePipeline(), no_qc=True)
+
+        # No labels store → no error deliverables, but the mirror seed is written.
+        assert not tools_.errors_dir(output_dir).exists()
+        assert not tools_.error_analysis_parquet_path(output_dir).exists()
+        assert tools_.measurements_parquet_path(output_dir).exists()

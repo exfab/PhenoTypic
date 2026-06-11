@@ -646,6 +646,19 @@ def finalize_post_master_outputs(
             exc_info=True,
         )
 
+    # Re-emit the durable error-triage deliverables (errors/* + error_analysis.*)
+    # from the labels store, keyed off the CLEAN master (the same frame the GUI's
+    # CurationLabels loads, so headless == live). No-op without a durable
+    # qc/curation_labels.parquet. (spec §9)
+    try:
+        from phenotypic._cli._cli_error_outputs import reemit_error_deliverables
+
+        reemit_error_deliverables(output_dir, master_df)
+    except Exception:  # defensive: a curation re-emit must never fail finalize
+        logger.warning(
+            "Failed to re-emit error-triage deliverables", exc_info=True
+        )
+
     return post_df
 
 
