@@ -100,11 +100,13 @@ class RemoveByValue(ObjectRefiner):
 
     feature: str | None = None
     value: str | None = None
-    # min/max are user-set filter cutoffs whose meaningful range depends entirely
-    # on the chosen feature/value, so there is no universal search window: mark
-    # them explicitly non-tunable for the annotation-coverage gate.
-    min_value: Annotated[float | None, TuneSpec(tunable=False)] = None
-    max_value: Annotated[float | None, TuneSpec(tunable=False)] = None
+    # min/max ARE worth tuning, but their meaningful range depends entirely on the
+    # chosen feature/value — there is no universal search window. A bare TuneSpec()
+    # (tunable, no low/high) marks them as intended knobs while letting auto-search
+    # surface them as range-less rather than fabricate a window; the concrete range
+    # is supplied per-run in the tune spec.
+    min_value: Annotated[float | None, TuneSpec()] = None
+    max_value: Annotated[float | None, TuneSpec()] = None
     measure_kwargs: dict[str, Any] | None = None
 
     @field_validator("feature")
