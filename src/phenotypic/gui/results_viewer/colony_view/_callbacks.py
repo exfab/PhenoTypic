@@ -44,6 +44,7 @@ from phenotypic.gui._shared._radial import (
     RADIAL_RESTORE_SENTINEL,
     build_radial_body,
 )
+from phenotypic.gui._shared._triage_callbacks import fold_selection_delta
 from phenotypic.gui.results_viewer import _ids as ids
 from phenotypic.gui.results_viewer._qc_tab.review import _ids as qc_review_ids
 from phenotypic.gui.results_viewer._filter_state import FilterSpec
@@ -56,7 +57,6 @@ from phenotypic.gui.results_viewer.colony_view._grid import (
     build_grid,
     build_stack_popover_rows,
     compute_max_bbox_size,
-    expand_range,
     selectable_axis_columns,
 )
 
@@ -71,26 +71,6 @@ logger = logging.getLogger(__name__)
 # Empty selection payload — used by Clear, layout-change reset, and the
 # post-bulk-action emission. Module-level so all three sites agree.
 _EMPTY_SELECTION: dict[str, Any] = {"anchor": None, "selected": []}
-
-
-def _coerce_anchor(payload: Any) -> tuple[str, int] | None:
-    """Coerce a single ``[img, label]`` payload into a tuple, or None."""
-    if not isinstance(payload, (list, tuple)) or len(payload) != 2:
-        return None
-    try:
-        return (str(payload[0]), int(payload[1]))
-    except (TypeError, ValueError):
-        return None
-
-
-def _selection_payload(
-    anchor: tuple[str, int] | None, selected: list[tuple[str, int]]
-) -> dict[str, Any]:
-    """Build the canonical selection-store payload (lists, not tuples)."""
-    return {
-        "anchor": [anchor[0], anchor[1]] if anchor is not None else None,
-        "selected": [[img, label] for img, label in selected],
-    }
 
 
 def category_dropdown_options(categories: list[str]) -> list[dict[str, str]]:
@@ -438,62 +418,17 @@ def register_callbacks(
     ) -> Any:
         """Fold a JS-emitted click into the canonical selection store.
 
-        Delta shape: ``{"key": [image_file, label], "shift": bool, "ts": int}``.
-        Single-toggle: add or remove the key, set anchor to the just-clicked
-        key when it lands in the selection (else clear the anchor).
-        Shift+click: union the current selection with the inclusive slice
-        of ``grid_order`` between the existing anchor and the delta key,
-        preserving the anchor.
+        Thin adapter over the pure, Dash-free
+        :func:`~phenotypic.gui._shared._triage_callbacks.fold_selection_delta`
+        (shared with the QC-review surface). ``None`` from the helper — a
+        malformed delta or a same-value re-emission — maps to ``no_update``
+        so a no-op click never re-fires the downstream visibility + render
+        callbacks.
         """
-        if not isinstance(delta, dict):
-            return no_update
-        delta_key = _coerce_anchor(delta.get("key"))
-        if delta_key is None:
-            return no_update
-
-        current = current_selection if isinstance(current_selection, dict) else {}
-        current_anchor = _coerce_anchor(current.get("anchor"))
-        original_selected = set(decode_removed_keys_payload(current.get("selected")))
-        grid_order = decode_removed_keys_payload(grid_order_payload)
-
-        shift = bool(delta.get("shift"))
-
-        if shift and current_anchor is not None:
-            try:
-                slice_keys = expand_range(grid_order, current_anchor, delta_key)
-            except ValueError:
-                # Anchor or target slipped out of the current grid (e.g.
-                # the filter or axis changed since the anchor was
-                # captured). Fall back to a single-toggle on the delta
-                # key, dropping the stale anchor.
-                working = set(original_selected)
-                if delta_key in working:
-                    working.discard(delta_key)
-                    new_anchor: tuple[str, int] | None = None
-                else:
-                    working.add(delta_key)
-                    new_anchor = delta_key
-                new_selected = working
-            else:
-                new_selected = original_selected | set(slice_keys)
-                new_anchor = current_anchor
-        else:
-            working = set(original_selected)
-            if delta_key in working:
-                working.discard(delta_key)
-                new_anchor = None
-            else:
-                working.add(delta_key)
-                new_anchor = delta_key
-            new_selected = working
-
-        # Suppress same-value re-emissions so a click that doesn't
-        # change the selection (e.g. shift-click within an already-fully-
-        # covered range) doesn't re-fire the downstream visibility +
-        # render callbacks.
-        if new_anchor == current_anchor and new_selected == original_selected:
-            return no_update
-        return _selection_payload(new_anchor, sorted(new_selected))
+        payload = fold_selection_delta(
+            delta, current_selection, grid_order_payload
+        )
+        return no_update if payload is None else payload
 
     # ----------------------------------------------------------------------
     # 5. Bulk-bar visibility / count label
@@ -680,11 +615,21 @@ def register_callbacks(
     # selection. Doing that in JS instead of through a Python callback
     # avoids re-running ``FilterSpec.apply_to`` and rebuilding the
     # Component tree on every click.
+    # ``STORE_COLONY_SELECTION`` is SHARED by the colony grid and the QC
+    # review gallery (M1: selection parity), so the styler sweeps BOTH
+    # containers' tiles — a key selected on either surface lights up there.
+    # (Within one tab the user selects on a single surface at a time, so a
+    # shared selection store + a both-container sweep is correct.)
     app.clientside_callback(
         """
         function(selection) {
-            const container = document.getElementById("colony-grid-container");
-            if (!container) return window.dash_clientside.no_update;
+            const containers = [
+                document.getElementById("colony-grid-container"),
+                document.getElementById("qc-review-gallery"),
+            ].filter(Boolean);
+            if (containers.length === 0) {
+                return window.dash_clientside.no_update;
+            }
             const selected = (selection && Array.isArray(selection.selected))
                 ? selection.selected : [];
             const wanted = new Set();
@@ -693,12 +638,14 @@ def register_callbacks(
                     wanted.add(entry[0] + "::" + entry[1]);
                 }
             });
-            container.querySelectorAll(".colony-cell").forEach(function (cell) {
-                const cb = cell.querySelector(".colony-cell-checkbox");
-                const key = cb ? cb.dataset.key : null;
-                const shouldBeSelected = !!key && wanted.has(key);
-                cell.classList.toggle("is-selected", shouldBeSelected);
-                if (cb) cb.classList.toggle("is-checked", shouldBeSelected);
+            containers.forEach(function (container) {
+                container.querySelectorAll(".colony-cell").forEach(function (cell) {
+                    const cb = cell.querySelector(".colony-cell-checkbox");
+                    const key = cb ? cb.dataset.key : null;
+                    const shouldBeSelected = !!key && wanted.has(key);
+                    cell.classList.toggle("is-selected", shouldBeSelected);
+                    if (cb) cb.classList.toggle("is-checked", shouldBeSelected);
+                });
             });
             return Date.now();
         }

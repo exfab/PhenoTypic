@@ -182,8 +182,27 @@ QC_REVIEW_DETAIL_HEADER_ID: str = "qc-review-detail-header"
 
 #: Faceted tile-gallery sub-region (one row per timepoint for time-course
 #: checks, else a single flat gallery via
-#: :func:`gui._shared.tiles.build_tile_grid`).
+#: :func:`gui._shared.tiles.build_tile_grid`). The JS shift-click bridge
+#: attaches to this container so QC tile checkbox clicks emit a selection
+#: delta exactly like the colony grid (selection parity, M1).
 QC_REVIEW_GALLERY_ID: str = "qc-review-gallery"
+
+#: ``dcc.Store`` written by the QC gallery render carrying the row-major
+#: order of the currently-rendered QC tiles as a list of ``[image_file,
+#: label]`` pairs. The QC selection-delta consumer resolves shift-range
+#: selections against this order (the QC analogue of
+#: :data:`...._ids.STORE_COLONY_GRID_ORDER`), since the QC gallery's order
+#: differs from the colony grid's.
+STORE_QC_GALLERY_ORDER: str = "store-qc-gallery-order"
+
+#: ``dcc.Store`` written by the JS shift-click bridge carrying the most
+#: recent QC-tile selection delta (``{"key": [image_file, label], "shift":
+#: bool, "ts": int}``). A QC-specific consumer folds it into the SHARED
+#: :data:`...._ids.STORE_COLONY_SELECTION` (within one tab the user selects
+#: on a single surface at a time), resolving ranges against
+#: :data:`STORE_QC_GALLERY_ORDER`. The QC analogue of
+#: :data:`...._ids.STORE_COLONY_SELECTION_DELTA`.
+STORE_QC_GALLERY_SELECTION_DELTA: str = "store-qc-gallery-selection-delta"
 
 #: "Mark reviewed" button in the detail action bar — marks the open group
 #: reviewed and (if changes were made) triggers the per-group recompute.
@@ -272,6 +291,8 @@ __all__ = [
     "QC_REVIEW_DETAIL_ID",
     "QC_REVIEW_DETAIL_HEADER_ID",
     "QC_REVIEW_GALLERY_ID",
+    "STORE_QC_GALLERY_ORDER",
+    "STORE_QC_GALLERY_SELECTION_DELTA",
     "QC_REVIEW_MARK_REVIEWED_BTN_ID",
     "QC_REVIEW_PREV_BTN_ID",
     "QC_REVIEW_NEXT_BTN_ID",

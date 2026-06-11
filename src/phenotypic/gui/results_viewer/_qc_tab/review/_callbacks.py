@@ -73,6 +73,7 @@ from phenotypic.gui._shared._radial import (
     build_radial_body,
     build_radial_trigger,
 )
+from phenotypic.gui._shared._triage_callbacks import fold_selection_delta
 from phenotypic.gui._shared.tiles import build_tile_grid
 from phenotypic.gui.results_viewer import _ids as viewer_ids
 from phenotypic.gui.results_viewer._filtered_state import (
@@ -566,6 +567,32 @@ def _render_faceted_gallery(
     return html.Div(rows)
 
 
+def _faceted_gallery_order(
+    facets: list[tuple[Any, list[tuple[str, str, int]]]],
+) -> list[list]:
+    """Row-major ``[[image_file, label], ...]`` order across all facet rows.
+
+    Mirrors the order :func:`build_tile_grid` renders tiles in (each facet's
+    ``keys`` in order, facet rows top-to-bottom), so the QC selection-delta
+    consumer can resolve shift-ranges against
+    :data:`...._ids.STORE_QC_GALLERY_ORDER` exactly the way the colony
+    consumer resolves against ``STORE_COLONY_GRID_ORDER``. Returns lists
+    (not tuples) so it is JSON-serialisable straight into the store.
+
+    Args:
+        facets: ``(timepoint, keys)`` pairs (one per facet row), the same
+            facets passed to :func:`_render_faceted_gallery`.
+
+    Returns:
+        A flat ``[[image_file, label], ...]`` list in rendered tile order.
+    """
+    return [
+        [image_file, label]
+        for _timepoint, keys in facets
+        for _dataset, image_file, label in keys
+    ]
+
+
 # ---------------------------------------------------------------------------
 # Shared state plumbing used by multiple callbacks
 # ---------------------------------------------------------------------------
@@ -831,6 +858,7 @@ def register_review_callbacks(app: dash.Dash) -> None:
             "style",
             allow_duplicate=True,
         ),
+        Output(rids.STORE_QC_GALLERY_ORDER, "data"),
         Input({"type": "qc-worklist-row", "instance": ALL, "key": ALL}, "n_clicks"),
         Input(rids.STORE_QC_SELECTED_GROUP, "data"),
         Input(viewer_ids.STORE_TILE_DIM_ALPHA, "data"),
@@ -865,22 +893,22 @@ def register_review_callbacks(app: dash.Dash) -> None:
             # group leaves the store unchanged and so never echoes, so we
             # still fall through and render to refresh it.)
             if clicked_key != selected_encoded:
-                return no_update, no_update, clicked_key, no_update
+                return no_update, no_update, clicked_key, no_update, no_update
             selected_encoded = clicked_key
         if not instance_id or not selected_encoded:
-            return [], [], no_update, no_update
+            return [], [], no_update, no_update, no_update
 
         output_root = _output_root()
         summary = _data.load_qc_summary(output_root)
         members = _data.load_qc_members(output_root)
         if summary is None or members is None:
-            return [], [], selected_encoded, no_update
+            return [], [], selected_encoded, no_update, no_update
 
         groupby_cols = _data.groupby_cols_for(summary, instance_id)
         key_values = decode_group_key(selected_encoded)
         record = _data.group_record(summary, instance_id, groupby_cols, key_values)
         if record is None:
-            return [], [], selected_encoded, no_update
+            return [], [], selected_encoded, no_update, no_update
 
         dataset_by_image = _data.dataset_by_image_map(output_root)
         keys = _data.group_member_keys(
@@ -926,7 +954,10 @@ def register_review_callbacks(app: dash.Dash) -> None:
             selected_encoded=selected_encoded,
             review_state=review_state,
         )
-        return header, gallery, selected_encoded, row_styles
+        # Publish the gallery's row-major order so the QC selection-delta
+        # consumer can resolve shift-ranges against the rendered tiles (M1).
+        gallery_order = _faceted_gallery_order(facets)
+        return header, gallery, selected_encoded, row_styles, gallery_order
 
     # -----------------------------------------------------------------
     # D. Tile-spotlight ``dim`` stepper → shared store. Writes the same
@@ -1386,6 +1417,41 @@ def _register_curation_callbacks(app: dash.Dash) -> None:
             current_category=current_category,
         )
         return body, message, int(revision or 0) + 1
+
+    # -- QC selection-delta consumer (M1: selection parity) -----------------
+    # The QC gallery's JS shift-click bridge writes
+    # STORE_QC_GALLERY_SELECTION_DELTA; this consumer folds it into the
+    # SHARED STORE_COLONY_SELECTION using the same pure helper the colony
+    # consumer uses, but resolves shift-ranges against the QC gallery's own
+    # order store (the colony grid's order differs). Within one tab the user
+    # selects on a single surface at a time, so sharing the selection store
+    # is safe (decision C).
+    @app.callback(
+        Output(viewer_ids.STORE_COLONY_SELECTION, "data", allow_duplicate=True),
+        Input(rids.STORE_QC_GALLERY_SELECTION_DELTA, "data"),
+        State(viewer_ids.STORE_COLONY_SELECTION, "data"),
+        State(rids.STORE_QC_GALLERY_ORDER, "data"),
+        prevent_initial_call=True,
+    )
+    def _consume_qc_selection_delta(
+        delta: Any,
+        current_selection: Any,
+        gallery_order_payload: Any,
+    ):
+        """Fold a QC-tile shift-click delta into the shared selection store.
+
+        Thin adapter over the pure, Dash-free
+        :func:`~phenotypic.gui._shared._triage_callbacks.fold_selection_delta`
+        (the colony surface uses the same helper). ``None`` — a malformed
+        delta or a same-value re-emission — maps to ``no_update`` so a no-op
+        click never re-fires the downstream bulk-bar + detail-render
+        callbacks.
+
+        """
+        payload = fold_selection_delta(
+            delta, current_selection, gallery_order_payload
+        )
+        return no_update if payload is None else payload
 
     @app.callback(
         Output(viewer_ids.STORE_REMOVED_KEYS, "data", allow_duplicate=True),

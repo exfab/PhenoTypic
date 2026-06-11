@@ -445,6 +445,12 @@ def build_review_view() -> Component:
             dcc.Store(
                 id=rids.STORE_QC_SIDEBAR_WIDTH, data=SIDEBAR_DEFAULT_WIDTH_PX
             ),
+            # Selection-parity stores (M1): the QC gallery's row-major order
+            # and the JS-emitted shift-click delta. The QC consumer folds the
+            # delta into the SHARED STORE_COLONY_SELECTION, resolving ranges
+            # against the order store (the colony grid's order differs).
+            dcc.Store(id=rids.STORE_QC_GALLERY_ORDER, data=[]),
+            dcc.Store(id=rids.STORE_QC_GALLERY_SELECTION_DELTA, data=None),
         ],
         className="qc-review-root d-flex flex-column",
         # No height cap / overflow lock: the view sizes to its content so

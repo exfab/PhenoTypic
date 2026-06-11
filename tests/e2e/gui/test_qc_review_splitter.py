@@ -279,3 +279,55 @@ def test_splitter_drag_resizes_and_persists_across_collapse(
         f"dragged width not preserved across collapse: "
         f"{dragged} -> {width_restored}"
     )
+
+
+def test_qc_tile_click_selects_via_shared_store(page: Page, hub_url: str) -> None:
+    """A QC-gallery tile checkbox click selects the tile (M1: selection parity).
+
+    Drives the full in-browser chain the unit/integration tests cannot:
+    the JS shift-click bridge (now attached to ``#qc-review-gallery``) emits
+    a delta → the QC consumer folds it into the SHARED
+    ``store-colony-selection`` → the clientside styler (which reads that
+    store and sweeps ``#qc-review-gallery``) toggles ``.is-selected`` on the
+    clicked tile. Observing the ``.is-selected`` class is a stronger
+    end-to-end proof than reading the store directly: it only lights up if
+    every link in the chain is wired.
+
+    This replaces the hand-injected-State integration test as the FEATURES
+    "QC selection parity" reference.
+    """
+    _open_review(page, hub_url)
+
+    # The first worklist group is auto-selected on Review open, so the
+    # detail gallery already carries tiles. Wait for at least one tile
+    # checkbox to mount.
+    gallery = page.locator("#qc-review-gallery")
+    checkbox = gallery.locator(".colony-cell-checkbox").first
+    checkbox.wait_for(state="attached", timeout=15_000)
+
+    # No tile is selected before the click.
+    selected_before = page.evaluate(
+        "() => document.querySelectorAll("
+        "'#qc-review-gallery .colony-cell.is-selected').length"
+    )
+    assert selected_before == 0, (
+        f"expected no selected QC tiles before the click, got {selected_before}"
+    )
+
+    # Click the checkbox: bridge → QC delta store → consumer → shared
+    # selection store → styler → .is-selected.
+    checkbox.click()
+
+    # The styler must light exactly the clicked tile.
+    page.wait_for_function(
+        "() => document.querySelectorAll("
+        "'#qc-review-gallery .colony-cell.is-selected').length >= 1",
+        timeout=10_000,
+    )
+    selected_after = page.evaluate(
+        "() => document.querySelectorAll("
+        "'#qc-review-gallery .colony-cell.is-selected').length"
+    )
+    assert selected_after == 1, (
+        f"QC tile click should select exactly one tile, got {selected_after}"
+    )

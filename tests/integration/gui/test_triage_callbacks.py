@@ -641,6 +641,97 @@ def test_qc_bulk_mark_marks_whole_selection(
 
 
 # ---------------------------------------------------------------------------
+# QC-review selection parity (M1) — the selection-delta consumer drives the
+# SHARED selection store, resolving shift-ranges against the QC gallery's
+# own order store.
+#
+# The full in-browser chain (JS bridge → QC delta store → consumer →
+# STORE_COLONY_SELECTION → styler → .is-selected) is proven by the REAL
+# e2e ``tests/e2e/gui/test_qc_review_splitter.py::
+# test_qc_tile_click_selects_via_shared_store`` (no hand-injected State).
+# These integration tests pin the two Dash-free pieces deterministically:
+# (1) the consumer callback is actually registered with the QC delta store
+# as its Input and the SHARED selection store as its Output; and (2) the
+# pure fold helper resolves single-toggle + shift-range against the QC
+# gallery's own order — the exact logic the consumer is a thin adapter
+# over. (Driving the single-output ``allow_duplicate`` callback through the
+# POST harness is intractable: ``validate_multi_return`` forces multi-mode
+# on the synthesized ``outputs`` list; the e2e exercises the real path.)
+# ---------------------------------------------------------------------------
+
+
+def test_qc_selection_delta_consumer_is_registered(
+    output_root: OutputRoot,
+) -> None:
+    """The QC selection-delta consumer is wired: QC delta in → shared store out.
+
+    Proves the callback exists with the right Input (the QC gallery delta
+    store the JS bridge writes) and Output (the SHARED selection store the
+    bulk bar reads) — the wiring the broken-in-browser bug was about.
+    """
+    app = create_app(output_root)
+    key = _find_output_key(
+        app, "store-colony-selection.data", "store-qc-gallery-selection-delta"
+    )
+    cb = app.callback_map[key]
+    # Single Output to the shared selection store.
+    assert "store-colony-selection.data" in str(cb["output"])
+    # Its sole Input is the QC gallery's delta store.
+    input_ids = [
+        inp.get("id") for inp in cb.get("inputs", []) if isinstance(inp, dict)
+    ]
+    assert "store-qc-gallery-selection-delta" in input_ids
+    # And it reads the QC gallery order as State (for shift-range resolution).
+    state_ids = [
+        st.get("id") for st in cb.get("state", []) if isinstance(st, dict)
+    ]
+    assert "store-qc-gallery-order" in state_ids
+
+
+def test_qc_selection_fold_single_toggle_sets_anchor() -> None:
+    """A single (non-shift) QC tile click selects the key and sets the anchor.
+
+    The consumer is a thin adapter over ``fold_selection_delta``; this pins
+    the single-toggle semantics it produces for ``STORE_COLONY_SELECTION``.
+    """
+    from phenotypic.gui._shared._triage_callbacks import fold_selection_delta
+
+    gallery_order = [["img-A", 1], ["img-A", 2], ["img-B", 1], ["img-B", 2]]
+    payload = fold_selection_delta(
+        {"key": ["img-A", 2], "shift": False, "ts": 1},
+        {"anchor": None, "selected": []},
+        gallery_order,
+    )
+    assert payload is not None
+    assert payload["selected"] == [["img-A", 2]]
+    assert payload["anchor"] == ["img-A", 2]
+
+
+def test_qc_selection_fold_shift_range_resolves_against_gallery_order() -> None:
+    """A shift-click resolves the inclusive range against the QC gallery order.
+
+    The range A2..B1 selects exactly the slice of the QC gallery's own order
+    between the prior anchor and the clicked key — proving the consumer
+    resolves against ``STORE_QC_GALLERY_ORDER`` (passed through as the order
+    payload), not the colony grid's order.
+    """
+    from phenotypic.gui._shared._triage_callbacks import fold_selection_delta
+
+    gallery_order = [["img-A", 1], ["img-A", 2], ["img-B", 1], ["img-B", 2]]
+    payload = fold_selection_delta(
+        {"key": ["img-B", 1], "shift": True, "ts": 2},
+        # Anchor already at A2 (set by a prior single click).
+        {"anchor": ["img-A", 2], "selected": [["img-A", 2]]},
+        gallery_order,
+    )
+    assert payload is not None
+    selected = {tuple(entry) for entry in payload["selected"]}
+    assert selected == {("img-A", 2), ("img-B", 1)}
+    # The anchor is preserved across a shift-range extension.
+    assert payload["anchor"] == ["img-A", 2]
+
+
+# ---------------------------------------------------------------------------
 # Add-custom-category from the radial folder (Task 7) — colony + QC
 # ---------------------------------------------------------------------------
 
