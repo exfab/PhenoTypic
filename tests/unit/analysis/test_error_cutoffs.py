@@ -1,5 +1,6 @@
 """Tests for the error-cutoff finder (good-vs-category measurement screen)."""
 
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -53,3 +54,79 @@ def test_enough_data_predicate():
     assert finder.enough_data(good, error) is False
     error2 = _frame({"Size_Area": [9.0] * 4}, n=4)
     assert finder.enough_data(good, error2) is True
+
+
+def _separating(n_good=40, n_err=20, seed=0):
+    """Good ~ N(0,1); error ~ N(4,1) on Size_Area (clearly separable),
+    plus a non-separating Shape_Circularity ~ N(0.5,0.05) in both."""
+    rng = np.random.default_rng(seed)
+    good = pd.DataFrame(
+        {
+            "Metadata_ImageFile": ["p.tif"] * n_good,
+            "Object_Label": list(range(1, n_good + 1)),
+            "Size_Area": rng.normal(0.0, 1.0, n_good),
+            "Shape_Circularity": rng.normal(0.5, 0.05, n_good),
+        }
+    )
+    error = pd.DataFrame(
+        {
+            "Metadata_ImageFile": ["p.tif"] * n_err,
+            "Object_Label": list(range(1, n_err + 1)),
+            "Size_Area": rng.normal(4.0, 1.0, n_err),
+            "Shape_Circularity": rng.normal(0.5, 0.05, n_err),
+        }
+    )
+    return good, error
+
+
+def test_separating_measurement_ranks_first_with_high_auc():
+    good, error = _separating()
+    res = ErrorCutoffFinder().analyze(good, error)
+    assert list(res.columns) == [
+        "measurement", "auc", "direction", "cutoff", "recall", "specificity",
+        "good_flagged", "f_stat", "p_value", "p_bh", "good_n", "error_n",
+    ]
+    # Size_Area separates; it ranks first with high AUC.
+    assert res.iloc[0]["measurement"] == "Size_Area"
+    assert res.iloc[0]["auc"] > 0.9
+    # Error is the HIGH side -> flag when measurement is ABOVE the cutoff.
+    assert res.iloc[0]["direction"] == ">"
+    # The cutoff sits between the two means.
+    assert 0.5 < res.iloc[0]["cutoff"] < 4.0
+    # Recall / specificity are sane fractions; good_flagged is a small count.
+    assert 0.5 <= res.iloc[0]["recall"] <= 1.0
+    assert 0.5 <= res.iloc[0]["specificity"] <= 1.0
+    assert 0 <= res.iloc[0]["good_flagged"] <= 40
+    # The non-separating measurement has AUC near 0.5.
+    circ = res[res["measurement"] == "Shape_Circularity"].iloc[0]
+    assert abs(circ["auc"] - 0.5) < 0.15
+    # n columns reflect inputs.
+    assert res.iloc[0]["good_n"] == 40
+    assert res.iloc[0]["error_n"] == 20
+
+
+def test_direction_below_when_error_is_low_side():
+    # Error LOWER than good -> flag when measurement is BELOW the cutoff.
+    rng = np.random.default_rng(1)
+    good = pd.DataFrame({"Object_Label": range(40), "Intensity_MeanIntensity": rng.normal(5, 0.5, 40)})
+    error = pd.DataFrame({"Object_Label": range(20), "Intensity_MeanIntensity": rng.normal(1, 0.5, 20)})
+    res = ErrorCutoffFinder().analyze(good, error)
+    row = res.iloc[0]
+    assert row["measurement"] == "Intensity_MeanIntensity"
+    assert row["direction"] == "<"
+    assert 1.0 < row["cutoff"] < 5.0
+
+
+def test_bh_adjusted_p_is_monotone_and_ge_raw():
+    good, error = _separating()
+    res = ErrorCutoffFinder().analyze(good, error)
+    # BH-adjusted p >= raw p for every measurement.
+    assert (res["p_bh"] >= res["p_value"] - 1e-9).all()
+
+
+def test_insufficient_error_returns_empty_frame():
+    good, error = _separating(n_good=40, n_err=3)
+    res = ErrorCutoffFinder(min_error_n=8).analyze(good, error)
+    assert res.empty
+    assert list(res.columns) == list(__import__("phenotypic.analysis._error_cutoffs",
+                                                fromlist=["RESULT_COLUMNS"]).RESULT_COLUMNS)
