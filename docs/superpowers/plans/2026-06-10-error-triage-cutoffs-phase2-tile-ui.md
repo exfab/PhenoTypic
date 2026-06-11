@@ -272,3 +272,19 @@ Design (implement exactly):
 
 - §6.1 radial menu → Tasks 3–5. §6.2 bulk → Task 6. §6.3 colors → Task 2. Custom folder/add → Tasks 3,7. Store swap + durable plain-remove (§2) → Task 1. Mtime guard (Q3) → Task 1. FEATURES/docs → Task 8.
 - Not in Phase 2 (correctly deferred): the cutoff ANOVA engine (Phase 3), the Error-analysis tab (Phase 4), CLI finalize per-category/error_analysis emit (Phase 5), WORKFLOWS.md + screenshots (Phase 6).
+
+## Phase-2 review fixes (2026-06-10, plan-reviewer) — decision-free corrections folded in
+
+- **MF1 — `get_curated_frame` swap:** widen `_filtered_state.py:98 get_curated_frame(filtered, output_root)` to accept `CurationLabels` (it only calls `.filtered_df(master_df)`, which `CurationLabels` provides). Add to Task 1 Step 5; callers to recheck: `_heatmap_tab/_callbacks.py:277`, `_qc_tab/_callbacks.py:410,809,927`. Without this, Task 1 Step 7's mypy fails.
+- **MF2 — `_filtered_state.py` stays a utility/constants module:** `KEY_DATASET`/`KEY_IMAGE_FILE`/`KEY_OBJECT_LABEL` + `decode_removed_keys_payload` keep being imported from it post-swap; it is NOT deleted in Phase 2 (full retirement is later cleanup). Task 8 CLAUDE.md note: "utility/constants only; do not extend."
+- **MF4 — retire `_toggle_single_cell_removal`:** Task 4 deletes the old `colony-cell-remove-btn` ALL-pattern callback registration (the radial subsumes the ✕); don't leave it dormant.
+- **C2 — radial CSS lands in `results_viewer/_assets/results_viewer.css`:** there is no `_shared/_assets/` served by the viewer app; that app serves both colony + QC tabs, so its `_assets/` covers the radial.
+- **C3 — split Task 4:** 4a = `_grid.py` structure (radial trigger + badge + thread `category_of`) + failing grid test; 4b = wedge mark callback; 4c = lazy-populate callback. (Custom-add stays Task 7.)
+- **C6 — `stale` is a read-only property:** back it with a private `_stale` and expose `@property stale` so external code can't clear it.
+- **Concurrency — lock the reads:** the lazy-populate + grid-render reads of `filtered_state.labels`/`categories()` snapshot under `with filtered_state._lock:` (or `.labels.copy()`) to avoid racing a concurrent `mark`.
+- **C7 — mtime guard scope:** the guard watches `measurements.parquet` (the canonical staleness signal) only; documented as such.
+- **Suggestion 1 — integration tests use `_find_output_key`:** look up the hashed `allow_duplicate` output key (pattern in `tests/integration/gui/test_tune_callback_wiring.py`); never hardcode it.
+- **Suggestion 2 — `RADIAL_RESTORE_SENTINEL = "__restore__"`** constant in `_radial.py`, used by both the builder and the wedge callback.
+- **stale-banner consumer is Phase 4:** the `stale` property + guard ship here; the viewer banner that reads it is Phase 4 (no premature UI callback in Phase 2).
+
+**The plan's 7 Open-Questions are consolidated into 4 decisions surfaced to the user (grid category channel, plate-view scope, QC selection parity, custom-category colors); the rest are resolved by the corrections above.**
