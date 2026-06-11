@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Annotated, Any
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -10,6 +10,7 @@ from pydantic import field_validator, model_validator
 from typing_extensions import Self
 
 from ..abc_ import ObjectRefiner
+from ..tools_.typing_ import TuneSpec
 from phenotypic.schema import OBJECT
 
 
@@ -99,8 +100,11 @@ class RemoveByValue(ObjectRefiner):
 
     feature: str | None = None
     value: str | None = None
-    min_value: float | None = None
-    max_value: float | None = None
+    # min/max are user-set filter cutoffs whose meaningful range depends entirely
+    # on the chosen feature/value, so there is no universal search window: mark
+    # them explicitly non-tunable for the annotation-coverage gate.
+    min_value: Annotated[float | None, TuneSpec(tunable=False)] = None
+    max_value: Annotated[float | None, TuneSpec(tunable=False)] = None
     measure_kwargs: dict[str, Any] | None = None
 
     @field_validator("feature")
