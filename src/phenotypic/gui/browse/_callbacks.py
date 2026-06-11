@@ -20,6 +20,7 @@ from phenotypic.gui._shared._picker_navigation import (
 )
 from phenotypic.gui.browse import _ids as ids
 from phenotypic.gui.browse import _metadata, _source_lister, _source_render
+from phenotypic.gui.browse._layout import DATASET_ROW_STYLE
 from phenotypic.gui.shell._ids import SHELL_SOURCE_IMAGE_ROOT_STORE
 from phenotypic.gui.shell._sandbox import SandboxRoot
 from phenotypic.gui.shell._source_context import resolve_source_image_root
@@ -94,13 +95,14 @@ def register_callbacks(app: dash.Dash, sandbox: SandboxRoot) -> None:
         Input(SHELL_SOURCE_IMAGE_ROOT_STORE, "data"),
     )
     def _load_datasets(payload: Any):
+        hidden_row = {**DATASET_ROW_STYLE, "display": "none"}
         resolved = resolve_source_image_root(sandbox, payload)
         if resolved is None:
-            return {}, [], None, {"display": "none"}, {"display": "block"}
+            return {}, [], None, hidden_row, {"display": "block"}
         datasets = _source_lister.list_datasets(resolved)
         options = dataset_options(datasets)
         value = options[0]["value"] if options else None
-        row_style = {"display": "none"} if dataset_row_hidden(datasets) else {}
+        row_style = hidden_row if dataset_row_hidden(datasets) else dict(DATASET_ROW_STYLE)
         hint_style = {"display": "block"} if not datasets else {"display": "none"}
         return datasets, options, value, row_style, hint_style
 

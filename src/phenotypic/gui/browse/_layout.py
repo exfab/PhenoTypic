@@ -8,9 +8,14 @@ from dash import dcc, html
 from phenotypic.gui._design import COLOR_MUTED, FONT_SIZE_CAPTION
 from phenotypic.gui.browse import _ids as ids
 
-__all__ = ["build_browse_layout"]
+__all__ = ["DATASET_ROW_STYLE", "build_browse_layout"]
 
 _OSD_STYLE = {"height": "70vh", "width": "100%"}
+
+#: Base style for the dataset-row wrapper. Single-sourced so callbacks toggle
+#: visibility without clobbering the row's spacing (Dash ``style`` replaces,
+#: it never merges).
+DATASET_ROW_STYLE = {"marginRight": "0.75rem", "flex": "0 0 auto"}
 
 
 def _meta_chip(label: str, value_id: str) -> Any:
@@ -47,7 +52,7 @@ def build_browse_layout() -> Any:
     dataset_row = html.Div(
         dataset_picker,
         id=ids.BROWSE_DATASET_ROW,
-        style={"marginRight": "0.75rem", "flex": "0 0 auto"},
+        style=dict(DATASET_ROW_STYLE),
     )
 
     image_picker = dcc.Dropdown(
