@@ -43,7 +43,7 @@
 - Modify: `src/phenotypic/schema/__init__.py`
 - Test: `tests/unit/schema/test_error_category.py`
 
-**Why:** The core taxonomy must be a closed, documented value set. Per project convention (`CLAUDE.md` "closed value sets needing user-visible documentation: prefer `MeasurementInfo`/`ConstantLabels`"), these are `MeasurementInfo` subclasses. `schema/` may import only stdlib + its sibling base, so they subclass `MeasurementInfo` directly (not `ConstantLabels`, which lives in `tools_`). `ErrorCategory` values are persisted as the **bare `.label`** (e.g. `"oversegmented"`), filename-safe by construction. `CURATION.CATEGORY` names the `Curation_Category` column.
+**Why:** The core taxonomy must be a closed, documented value set. Per project convention (`CLAUDE.md` "closed value sets needing user-visible documentation: prefer `MeasurementInfo`/`ConstantLabels`"), these are `MeasurementInfo` subclasses. `schema/` may import only stdlib + its sibling base, so they subclass `MeasurementInfo` directly (not `ConstantLabels`, which lives in `tools_`). `ErrorCategory` values are persisted as the **bare `.label`** (e.g. `"oversegmented"`), filename-safe by construction. `CURATION.ERROR_CATEGORY` names the `Curation_Category` column (the member is named `ERROR_CATEGORY`, not `CATEGORY`, because `CATEGORY` is a reserved `MeasurementInfo` property).
 
 - [ ] **Step 1: Write the failing test**
 
@@ -51,8 +51,6 @@ Create `tests/unit/schema/test_error_category.py`:
 
 ```python
 """Tests for the ErrorCategory + CURATION schema enums."""
-
-import pytest
 
 from phenotypic.schema import CURATION, ErrorCategory
 
@@ -94,8 +92,8 @@ def test_from_label_round_trips_and_rejects_unknown():
 
 
 def test_curation_category_column_name():
-    assert str(CURATION.CATEGORY) == "Curation_Category"
-    assert CURATION.CATEGORY.label == "Category"
+    assert str(CURATION.ERROR_CATEGORY) == "Curation_Category"
+    assert CURATION.ERROR_CATEGORY.label == "Category"
 ```
 
 - [ ] **Step 2: Run the test to verify it fails**
@@ -545,7 +543,7 @@ logger = logging.getLogger(__name__)
 KEY_IMAGE_FILE: str = "Metadata_ImageFile"
 KEY_OBJECT_LABEL: str = str(OBJECT.LABEL)
 KEY_DATASET: str = "Metadata_Dataset"
-KEY_CATEGORY: str = str(CURATION.CATEGORY)  # "Curation_Category"
+KEY_CATEGORY: str = str(CURATION.ERROR_CATEGORY)  # "Curation_Category"
 KEY_CENTER_RR: str = "Bbox_CenterRR"
 KEY_CENTER_CC: str = "Bbox_CenterCC"
 KEY_COLUMNS: tuple[str, str] = (KEY_IMAGE_FILE, KEY_OBJECT_LABEL)

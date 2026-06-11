@@ -17,7 +17,9 @@ class CURATION(MeasurementInfo):
     def category(cls) -> str:
         return "Curation"
 
-    CATEGORY = (
+    # Member name avoids ``CATEGORY`` (a reserved ``MeasurementInfo`` property);
+    # the label stays "Category" so the column is ``Curation_Category``.
+    ERROR_CATEGORY = (
         "Category",
         "Error-category token assigned to a removed/triaged object.",
     )

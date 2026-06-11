@@ -1,7 +1,5 @@
 """Tests for the ErrorCategory + CURATION schema enums."""
 
-import pytest
-
 from phenotypic.schema import CURATION, ErrorCategory
 
 
@@ -42,5 +40,5 @@ def test_from_label_round_trips_and_rejects_unknown():
 
 
 def test_curation_category_column_name():
-    assert str(CURATION.CATEGORY) == "Curation_Category"
-    assert CURATION.CATEGORY.label == "Category"
+    assert str(CURATION.ERROR_CATEGORY) == "Curation_Category"
+    assert CURATION.ERROR_CATEGORY.label == "Category"
