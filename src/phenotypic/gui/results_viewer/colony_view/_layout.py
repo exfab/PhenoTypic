@@ -323,13 +323,25 @@ def _build_bulk_bar() -> Component:
         n_clicks=0,
     )
 
+    # Category-aware "Mark N selected as ▾" dropdown. Options are populated
+    # by a callback from ``filtered_state.categories()`` (core + custom);
+    # selecting one marks the whole active selection with that category.
+    mark_dropdown = dcc.Dropdown(
+        id=ids.COLONY_BULK_MARK_DROPDOWN_ID,
+        options=[],
+        value=None,
+        placeholder="Mark selected as…",
+        clearable=False,
+        style={"minWidth": "12rem"},
+    )
+
     return dbc.Alert(
         [
             count_label,
             html.Div(style={"flex": "1 1 auto"}),  # spacer
             html.Div(
-                [remove_btn, restore_btn, clear_btn],
-                style={"display": "flex", "gap": "0.5rem"},
+                [mark_dropdown, remove_btn, restore_btn, clear_btn],
+                style={"display": "flex", "gap": "0.5rem", "alignItems": "center"},
             ),
         ],
         id=ids.COLONY_BULK_BAR_ID,

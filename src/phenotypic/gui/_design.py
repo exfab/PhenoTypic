@@ -128,6 +128,9 @@ __all__ = [
     "SHADOW_LG",
     "EASE_OUT",
     "TRANSITION",
+    # ---- Error category colors ----
+    "ERROR_CATEGORY_COLORS",
+    "category_color",
     # ---- CSS bundles ----
     "FONT_TOKENS_CSS",
     "DESIGN_TOKENS_CSS",
@@ -273,6 +276,48 @@ OKABE_ITO_NAPARI: dict[int, tuple[float, float, float, float]] = {
     6: (204 / 255, 121 / 255, 167 / 255, 1.0),  # reddish purple
     7: (213 / 255, 94 / 255, 0 / 255, 1.0),  # vermilion (error)
 }
+
+# ---------------------------------------------------------------------------
+# Error-category → color map (shared by radial wedges, tile badges, ANOVA plots)
+# ---------------------------------------------------------------------------
+#
+# Core error-category tokens map to fixed OI slots; ``other`` maps to grey.
+# Custom tokens (registered at runtime) cycle ``_CUSTOM_PALETTE``.
+# Colors are drawn from the DATA palette (``OI_*``) only -- never ``COLOR_*``.
+
+ERROR_CATEGORY_COLORS: dict[str, str] = {
+    "oversegmented": OI_ORANGE,
+    "undersegmented": OI_SKY,
+    "merged": OI_PURPLE,
+    "background_noise": OI_BLUE,
+    "debris": OI_GREEN,
+    "other": OI_GREY,
+}
+
+#: Palette custom categories cycle through (OI data colors minus the reserved
+#: core/Other slots and the alert vermilion / unreadable yellow).
+_CUSTOM_PALETTE: tuple[str, ...] = (OI_ORANGE, OI_SKY, OI_GREEN, OI_BLUE, OI_PURPLE)
+
+
+def category_color(token: str, custom_index: int = 0) -> str:
+    """Return the display color for a category token.
+
+    Core tokens map to their fixed OI slot; custom tokens cycle
+    ``_CUSTOM_PALETTE`` by their registration index.
+
+    Args:
+        token: The category token string (e.g. ``"debris"``, ``"halo"``).
+        custom_index: Zero-based registration index for custom categories;
+            ignored when ``token`` is a core category. Wraps around
+            ``_CUSTOM_PALETTE`` so any non-negative integer is valid.
+
+    Returns:
+        A hex color string from the Okabe-Ito data palette.
+    """
+    if token in ERROR_CATEGORY_COLORS:
+        return ERROR_CATEGORY_COLORS[token]
+    return _CUSTOM_PALETTE[custom_index % len(_CUSTOM_PALETTE)]
+
 
 # Semantic state colors -- map to Okabe-Ito (DATA / state only, never chrome).
 # Use for chart/state fills and as the *source* hue of badges/alerts; for TEXT

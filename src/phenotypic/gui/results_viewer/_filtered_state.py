@@ -33,7 +33,10 @@ import os
 import threading
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, Iterable
+from typing import TYPE_CHECKING, Any, Callable, Iterable, Union
+
+if TYPE_CHECKING:
+    from phenotypic.gui.results_viewer._curation_labels import CurationLabels
 
 import polars as pl
 
@@ -95,21 +98,29 @@ def decode_removed_keys_payload(
     return out
 
 
-def get_curated_frame(filtered: "FilteredMeasurements", output_root: object) -> pl.DataFrame:
+def get_curated_frame(
+    filtered: "Union[CurationLabels, FilteredMeasurements]",
+    output_root: Any,
+) -> pl.DataFrame:
     """Return the post-curation polars frame for ``output_root``.
 
     Thin wrapper around ``filtered.filtered_df(output_root.master_df)`` so
     the two viewer tabs that need the curated frame (QC tab + heatmap tab)
     can spell it as a single import-able call rather than hand-typing the
-    delegate path each time.
+    delegate path each time.  Accepts both the legacy
+    :class:`FilteredMeasurements` and the new
+    :class:`~phenotypic.gui.results_viewer._curation_labels.CurationLabels`
+    store (MF1: both provide ``filtered_df``).
 
     Args:
-        filtered: The active :class:`FilteredMeasurements` instance.
+        filtered: The active curation-state instance (either
+            :class:`FilteredMeasurements` or :class:`CurationLabels`).
         output_root: An ``OutputRoot``-shaped object exposing ``master_df``.
 
     Returns:
         The curated polars frame as produced by
-        :meth:`FilteredMeasurements.filtered_df`.
+        :meth:`FilteredMeasurements.filtered_df` or
+        :meth:`~phenotypic.gui.results_viewer._curation_labels.CurationLabels.filtered_df`.
     """
     return filtered.filtered_df(output_root.master_df)
 

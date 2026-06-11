@@ -43,7 +43,7 @@ from phenotypic.gui._design import (
 )
 from phenotypic.gui.results_viewer import _ids as ids
 from phenotypic.gui.results_viewer._filter_state import FilterSpec
-from phenotypic.gui.results_viewer._filtered_state import FilteredMeasurements
+from phenotypic.gui.results_viewer._curation_labels import CurationLabels
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 
 logger = logging.getLogger(__name__)
@@ -392,7 +392,7 @@ def _render_filter_row(
 def register_callbacks(
     app: dash.Dash,
     output_root: OutputRoot,
-    filtered_state: FilteredMeasurements,
+    filtered_state: CurationLabels,
 ) -> None:
     """Register every callback owned by the filter sidebar.
 

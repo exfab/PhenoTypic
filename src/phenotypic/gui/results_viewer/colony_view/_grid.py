@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import functools
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, cast
 
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 import polars as pl
@@ -40,13 +40,14 @@ from phenotypic.gui._design import (
     FONT_SIZE_CAPTION,
     FONT_SIZE_LABEL,
 )
+from phenotypic.gui._shared._radial import build_radial_trigger
 from phenotypic.gui._shared.tiles import build_tile_cell, expand_range
 from phenotypic.gui.results_viewer._ids import (
     colony_cell_count_badge_id,
     colony_cell_popover_body_id,
     colony_cell_popover_data_id,
-    colony_cell_remove_btn_id,
 )
+from phenotypic.schema import ErrorCategory
 from phenotypic.gui.results_viewer._filtered_state import (
     KEY_DATASET,
     KEY_IMAGE_FILE,
@@ -99,6 +100,11 @@ _MIN_CROP_SIZE = 64
 #: tab to peek out of. Applied to every tile (even single-colony ones)
 #: so the grid stays evenly spaced regardless of which cells aggregate.
 _STACK_TAB_OFFSET = 14
+
+#: Core (built-in) error-category tokens. A category token outside this set
+#: is a runtime-registered custom category, so its tile badge gets the
+#: ``radial-badge--custom`` discriminator (decision D).
+_CORE_CATEGORY_TOKENS: frozenset[str] = frozenset(ErrorCategory.labels())
 
 
 # ---------------------------------------------------------------------------
@@ -335,31 +341,6 @@ def _colony_crop_url(
     )
 
 
-def _colony_remove_button(image_file: str, label: int, is_removed: bool) -> Component:
-    """Build the colony-cell remove/restore button with its pattern-matched id."""
-    return dbc.Button(
-        "↺" if is_removed else "✕",
-        id=colony_cell_remove_btn_id(image_file, label),
-        color="danger" if not is_removed else "secondary",
-        outline=True,
-        size="sm",
-        className="colony-cell-remove-btn",
-        style={
-            "position": "absolute",
-            "top": "4px",
-            "right": "4px",
-            "zIndex": "2",
-            "padding": "0 0.4rem",
-            "lineHeight": "1.2",
-        },
-        title=(
-            "add colony to measurements"
-            if is_removed
-            else "remove colony from measurements"
-        ),
-    )
-
-
 def _build_cell(
     *,
     image_file: str,
@@ -371,15 +352,17 @@ def _build_cell(
     has_overlay: bool,
     is_removed: bool,
     is_selected: bool,
+    current_category: str | None = None,
     members: list[tuple[str, str, int]] | None = None,
     dim_alpha: float = 0.0,
 ) -> Component:
     """Render the chrome + crop for a single grid cell.
 
     Delegates the shared per-tile chrome (img/placeholder, checkbox,
-    remove button) to :func:`phenotypic.gui._shared.tiles.build_tile_cell`
-    and layers on the colony-grid-only ``N=k`` stack badge + popover plus
-    the extra vertical room the badge peeks into.
+    radial category trigger) to
+    :func:`phenotypic.gui._shared.tiles.build_tile_cell` and layers on the
+    colony-grid-only ``N=k`` stack badge + popover plus the extra vertical
+    room the badge peeks into.
 
     Args:
         image_file: ``Metadata_ImageFile`` of the representative colony.
@@ -395,8 +378,11 @@ def _build_cell(
         has_overlay: Whether the source overlay PNG exists on disk; if not,
             a striped placeholder is rendered instead of an ``<img>``.
         is_removed: Whether the representative colony is in the curated
-            removal set. Toggles the icon and dims the crop.
+            removal set. Dims the crop.
         is_selected: Whether the cell is in the active multi-select.
+        current_category: The colony's assigned curation-category token, or
+            ``None`` when uncategorized. Controls whether the radial trigger
+            renders as a colored category badge or the neutral ▾.
         dim_alpha: Tile-spotlight strength threaded onto every crop URL in
             the cell (the main tile and any stack-popover thumbnails) as
             ``&dim=``. ``0.0`` (default) keeps today's full-context crop.
@@ -440,7 +426,16 @@ def _build_cell(
         is_selected=is_selected,
         # Bind the spotlight strength onto the 4-arg url_builder protocol.
         url_builder=functools.partial(_colony_crop_url, dim_alpha=dim_alpha),
-        remove_button=_colony_remove_button(image_file, label, is_removed),
+        remove_button=build_radial_trigger(
+            "colony",
+            image_file,
+            label,
+            current_category=current_category,
+            is_custom=(
+                current_category is not None
+                and current_category not in _CORE_CATEGORY_TOKENS
+            ),
+        ),
         extra_children=extra_children,
         # Reserve room beneath the frame for the stack tab to peek out.
         outer_height=display_size + _STACK_TAB_OFFSET,
@@ -573,6 +568,7 @@ def build_grid(
     output_root: OutputRoot,
     display_size: int | None = None,
     dim_alpha: float = 0.0,
+    category_of: dict[tuple[str, int], str] | None = None,
 ) -> tuple[Component, list[tuple[str, int]]]:
     """Render the colony-grid component and its row-major key order.
 
@@ -582,7 +578,7 @@ def build_grid(
     - **Left column**: Y-axis value labels (one row header per unique Y value).
     - **Each cell**: a representative colony crop (smallest ``Object_Label``
       among rows matching the cell's ``(x_value, y_value)``) plus chrome
-      (× / ↺ button, multi-select checkbox, optional ``N=k`` badge).
+      (radial category trigger, multi-select checkbox, optional ``N=k`` badge).
 
     Per-cell visual state:
 
@@ -616,6 +612,11 @@ def build_grid(
         dim_alpha: Tile-spotlight strength threaded onto every crop URL as
             ``&dim=`` (read from the shared ``STORE_TILE_DIM_ALPHA``).
             ``0.0`` (default) is today's full-context crop.
+        category_of: Mapping ``(image_file, label) -> category token`` for
+            every currently-labeled colony, used to render each tile's
+            radial trigger as a colored category badge. Defaults to ``None``
+            (treated as empty), so a cell with no entry renders the neutral
+            ▾ trigger.
 
     Returns:
         A tuple ``(component, grid_order)``. ``grid_order`` is the
@@ -626,6 +627,8 @@ def build_grid(
     """
     if display_size is None:
         display_size = max_size
+    if category_of is None:
+        category_of = {}
 
     if df.is_empty() or x_axis_col not in df.columns or y_axis_col not in df.columns:
         return html.Div("No colonies match the active filter.", className="text-muted"), []
@@ -721,11 +724,12 @@ def build_grid(
             count = int(entry["count"])  # type: ignore[call-overload]
             key = (image_file, label)
             grid_order.append(key)
-            members = entry.get("members") or []
-            # ``members`` came in already typed as ``list[tuple[str, str, int]]``
-            # from the index; cast for the local helper.
+            # polars row dicts type values as ``object``; the index stored a
+            # ``list[tuple[str, str, int]]`` under "members". Cast so the
+            # comprehension below has a concrete iterable element type.
+            members = cast("list[tuple[str, str, int]]", entry.get("members") or [])
             typed_members = [
-                (str(m[0]), str(m[1]), int(m[2])) for m in members  # type: ignore[index]
+                (str(m[0]), str(m[1]), int(m[2])) for m in members
             ]
             children.append(
                 _build_cell(
@@ -738,6 +742,7 @@ def build_grid(
                     has_overlay=output_root.has_overlay(dataset, image_file),
                     is_removed=key in removed_keys,
                     is_selected=key in selected_keys,
+                    current_category=category_of.get(key),
                     members=typed_members,
                     dim_alpha=dim_alpha,
                 )

@@ -428,6 +428,39 @@ DIR_QC: Final[str] = "qc"
 #: roots at :func:`deliverables_dir`.
 DIR_DELIVERABLES: Final[str] = "deliverables"
 
+#: Per-category error-object parquet subdirectory under deliverables:
+#: ``<output>/deliverables/errors/<category>.parquet``. Holds the master rows
+#: for each triaged error category. **Dual-owned:** the GUI writes them live as
+#: the user curates (via ``CurationLabels._save_locked``) and CLI finalize
+#: re-emits them (all categories) from the durable ``qc/curation_labels.parquet``
+#: via ``reemit_error_deliverables`` — so headless == live.
+DIR_ERRORS: Final[str] = "errors"
+
+#: Durable curation-labels store: ``<output>/qc/curation_labels.parquet``.
+#: The source of truth for categorized removals; the CLI re-keys but never
+#: wipes it (contrast :data:`QC_REVIEW_STATE_JSON`).
+CURATION_LABELS_PARQUET: Final[str] = "curation_labels.parquet"
+
+#: Ordered custom-category registry sidecar: ``<output>/qc/custom_categories.json``.
+CUSTOM_CATEGORIES_JSON: Final[str] = "custom_categories.json"
+
+#: Ranked error-cutoff analysis deliverables (``ErrorCutoffFinder`` output;
+#: columns ``[category, *RESULT_COLUMNS]``). **Dual-owned, but with differing
+#: scope:** the GUI's Error tab writes the parquet/csv live for the *focused*
+#: category (transient, last-viewed-in-session) on each recompute, while CLI
+#: finalize (``reemit_error_deliverables``) authoritatively rewrites them across
+#: *all* labeled categories from the durable labels store. The HTML is written
+#: only on an explicit GUI ``Save analysis report`` or by CLI finalize — never on
+#: a live recompute.
+ERROR_ANALYSIS_PARQUET: Final[str] = "error_analysis.parquet"
+ERROR_ANALYSIS_CSV: Final[str] = "error_analysis.csv"
+ERROR_ANALYSIS_HTML: Final[str] = "error_analysis.html"
+
+#: Filename of the GUI-written verified-good baseline archive (spec §9). It is
+#: derived from ``qc/review_state.json`` (which CLI finalize RESETS), so it is
+#: GUI-owned and never CLI-emitted; finalize leaves any existing file untouched.
+VERIFIED_PARQUET: Final[str] = "verified.parquet"
+
 #: ``splits/`` — the robust-eval held-out **split assignment** sidecar folder
 #: (holds :data:`SPLIT_ASSIGNMENT_JSON`). Lives inside the hidden tune cache
 #: (:data:`DIR_PHT_TUNE_CACHE`), **not** under :data:`DIR_DELIVERABLES`: the
@@ -1240,6 +1273,52 @@ def qc_config_json_path(output_dir: Path) -> Path:
 def qc_review_state_path(output_dir: Path) -> Path:
     """Return ``<output>/qc/review_state.json`` (GUI-owned review progress)."""
     return qc_dir(output_dir) / QC_REVIEW_STATE_JSON
+
+
+def errors_dir(output_dir: Path) -> Path:
+    """Return ``<output>/deliverables/errors/`` (per-category error parquets)."""
+    return deliverables_dir(output_dir) / DIR_ERRORS
+
+
+def error_category_parquet_path(output_dir: Path, category: str) -> Path:
+    """Return ``<output>/deliverables/errors/<category>.parquet``.
+
+    Args:
+        output_dir: Run output directory.
+        category: A bare, already-sanitized category token (e.g.
+            ``"background_noise"``). The caller is responsible for sanitization.
+    """
+    return errors_dir(output_dir) / f"{category}.parquet"
+
+
+def error_analysis_parquet_path(output_dir: Path) -> Path:
+    """Return ``<output>/deliverables/error_analysis.parquet``."""
+    return deliverables_dir(output_dir) / ERROR_ANALYSIS_PARQUET
+
+
+def error_analysis_csv_path(output_dir: Path) -> Path:
+    """Return ``<output>/deliverables/error_analysis.csv``."""
+    return deliverables_dir(output_dir) / ERROR_ANALYSIS_CSV
+
+
+def error_analysis_html_path(output_dir: Path) -> Path:
+    """Return ``<output>/deliverables/error_analysis.html``."""
+    return deliverables_dir(output_dir) / ERROR_ANALYSIS_HTML
+
+
+def verified_parquet_path(output_dir: Path) -> Path:
+    """Return ``<output>/deliverables/verified.parquet`` (GUI-written, §9)."""
+    return deliverables_dir(output_dir) / VERIFIED_PARQUET
+
+
+def curation_labels_parquet_path(output_dir: Path) -> Path:
+    """Return ``<output>/qc/curation_labels.parquet`` (durable labels store)."""
+    return qc_dir(output_dir) / CURATION_LABELS_PARQUET
+
+
+def custom_categories_json_path(output_dir: Path) -> Path:
+    """Return ``<output>/qc/custom_categories.json`` (custom-category registry)."""
+    return qc_dir(output_dir) / CUSTOM_CATEGORIES_JSON
 
 
 # ---------------------------------------------------------------------------

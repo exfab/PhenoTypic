@@ -59,11 +59,11 @@ from phenotypic.gui._design import (
     OI_VERMILION_TEXT,
 )
 from phenotypic.gui.results_viewer._filter_state import FilterSpec
+from phenotypic.gui.results_viewer._curation_labels import CurationLabels
 from phenotypic.gui.results_viewer._filtered_state import (
     KEY_DATASET,
     KEY_IMAGE_FILE,
     KEY_OBJECT_LABEL,
-    FilteredMeasurements,
     decode_removed_keys_payload,
 )
 from phenotypic.gui.results_viewer._ids import (
@@ -665,7 +665,7 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
     # ``flask.current_app`` later would fail. ``None`` is tolerated so
     # tests / harnesses that don't seed the config still register
     # callbacks (the toggle becomes a no-op in that case).
-    filtered_state: FilteredMeasurements | None = app.server.config.get(
+    filtered_state: CurationLabels | None = app.server.config.get(
         CFG_FILTERED_STATE
     )
 
@@ -1001,7 +1001,7 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
             return no_update
 
         try:
-            return filtered_state.mutate_and_payload(
+            payload = filtered_state.mutate_and_payload(
                 lambda s: s.toggle(image_file, object_label)
             )
         except Exception:
@@ -1011,6 +1011,13 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
                 object_label,
             )
             return no_update
+        # ``STORE_REMOVED_KEYS`` is an ``allow_duplicate`` (multi-mode) output
+        # whose value is itself a list. Restoring the LAST removed object yields
+        # an empty payload ``[]``; a bare ``[]`` makes Dash's multi-mode response
+        # validator see *zero* output values and 500. Wrap in a 1-tuple so Dash
+        # sees exactly one value (the list) regardless of its length (matches
+        # ``colony_view._callbacks._mark_colony_category``).
+        return (payload,)
 
 
 __all__ = [

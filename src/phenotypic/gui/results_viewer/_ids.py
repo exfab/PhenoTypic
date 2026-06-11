@@ -443,6 +443,11 @@ TAB_QC_ID = "tab-qc"
 #: ``dbc.Tab`` value for the heatmap view (per-image grid view).
 TAB_HEATMAP_ID = "tab-heatmap"
 
+#: ``dbc.Tab`` value for the Error-analysis view. The 5th tab; its
+#: recompute callback gates on ``active_tab == TAB_ERROR_ID`` so the
+#: cutoff finder never runs while the user is curating on another tab.
+TAB_ERROR_ID = "tab-error"
+
 
 # ---------------------------------------------------------------------------
 # QC stores (Wave D mounts the stores; Wave E writes to them)
@@ -544,6 +549,17 @@ COLONY_BULK_RESTORE_BTN_ID = "colony-bulk-restore-btn"
 
 #: Button clearing the active selection without touching the curated set.
 COLONY_BULK_CLEAR_BTN_ID = "colony-bulk-clear-btn"
+
+#: Category dropdown in the bulk bar — "Mark N selected as ▾". Options are
+#: ``filtered_state.categories()`` (core + custom); selecting one marks the
+#: active selection via ``mark_many(selected, category)``. Distinct from the
+#: explicit Remove(=other)/Restore buttons, which stay.
+COLONY_BULK_MARK_DROPDOWN_ID = "colony-bulk-mark-dropdown"
+
+#: ``dcc.Store`` ticked whenever the category vocabulary changes (a custom
+#: category is registered), so the bulk-mark dropdowns + open radial wheels
+#: refresh their options/body. Bumped by the custom-add callbacks (Task 7).
+STORE_CATEGORY_VOCAB_REVISION = "store-category-vocab-revision"
 
 
 # ---------------------------------------------------------------------------
@@ -735,6 +751,7 @@ __all__ = [
     "TAB_COLONY_ID",
     "TAB_QC_ID",
     "TAB_HEATMAP_ID",
+    "TAB_ERROR_ID",
     "STORE_QC_RECIPE_REVISION",
     "STORE_QC_AUGMENTED_REVISION",
     "COLONY_X_AXIS_DROPDOWN_ID",
@@ -756,6 +773,8 @@ __all__ = [
     "COLONY_BULK_REMOVE_BTN_ID",
     "COLONY_BULK_RESTORE_BTN_ID",
     "COLONY_BULK_CLEAR_BTN_ID",
+    "COLONY_BULK_MARK_DROPDOWN_ID",
+    "STORE_CATEGORY_VOCAB_REVISION",
     "STORE_REMOVED_KEYS",
     "STORE_TILE_DIM_ALPHA",
     "STORE_COLONY_SELECTION",

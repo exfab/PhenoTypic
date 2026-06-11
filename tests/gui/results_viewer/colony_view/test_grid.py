@@ -338,3 +338,161 @@ def test_build_grid_default_dim_alpha_is_zero(tmp_path: Path) -> None:
     assert srcs
     for src in srcs:
         assert "&dim=0.0" in src
+
+
+# -------------------------------------------------------------------------
+# Radial category trigger + per-cell category badge (Phase 2, Task 4a)
+# -------------------------------------------------------------------------
+
+
+def _collect_buttons(component: object) -> list[object]:
+    """Recursively collect every ``dbc.Button`` in a component tree."""
+    import dash_bootstrap_components as dbc
+
+    buttons: list[object] = []
+
+    def _walk(node: object) -> None:
+        if isinstance(node, dbc.Button):
+            buttons.append(node)
+        children = getattr(node, "children", None)
+        if isinstance(children, (list, tuple)):
+            for child in children:
+                _walk(child)
+        elif children is not None:
+            _walk(children)
+
+    _walk(component)
+    return buttons
+
+
+def test_build_grid_tiles_carry_radial_trigger_not_old_remove_button(
+    tmp_path: Path,
+) -> None:
+    """Tiles render the radial ▾ trigger and not the legacy ✕ remove button."""
+    root = _make_output_root(tmp_path)
+
+    component, grid_order = build_grid(
+        df=root.master_df,
+        x_axis_col="Grid_ColNum",
+        y_axis_col="Grid_RowNum",
+        max_size=64,
+        removed_keys=set(),
+        selected_keys=set(),
+        output_root=root,
+    )
+
+    buttons = _collect_buttons(component)
+    trigger_types = {
+        btn.id.get("type")  # type: ignore[union-attr]
+        for btn in buttons
+        if isinstance(btn.id, dict)
+    }
+    # The new radial trigger type is present...
+    assert "colony-radial-trigger" in trigger_types
+    # ...and the legacy single-cell remove button type is gone.
+    assert "colony-cell-remove-btn" not in trigger_types
+    # One trigger per representative cell.
+    triggers = [
+        btn
+        for btn in buttons
+        if isinstance(btn.id, dict) and btn.id.get("type") == "colony-radial-trigger"
+    ]
+    assert len(triggers) == len(grid_order) == 4
+
+
+def test_build_grid_renders_category_badge_for_labeled_cell(tmp_path: Path) -> None:
+    """A cell whose key is in ``category_of`` renders a colored category badge."""
+    from phenotypic.gui._design import category_color
+
+    root = _make_output_root(tmp_path)
+    # Mark img-001/label-1 as ``debris``.
+    category_of = {("img-001", 1): "debris"}
+
+    component, _order = build_grid(
+        df=root.master_df,
+        x_axis_col="Grid_ColNum",
+        y_axis_col="Grid_RowNum",
+        max_size=64,
+        removed_keys=set(),
+        selected_keys=set(),
+        output_root=root,
+        category_of=category_of,
+    )
+
+    buttons = _collect_buttons(component)
+    # The trigger for the labeled cell renders as a colored badge with the
+    # category's display text and color.
+    labeled_trigger = next(
+        (
+            btn
+            for btn in buttons
+            if isinstance(btn.id, dict)
+            and btn.id.get("type") == "colony-radial-trigger"
+            and btn.id.get("image_file") == "img-001"
+            and btn.id.get("label") == 1
+        ),
+        None,
+    )
+    assert labeled_trigger is not None
+    assert "radial-badge" in (labeled_trigger.className or "")  # type: ignore[union-attr]
+    assert labeled_trigger.style.get("backgroundColor") == category_color("debris")  # type: ignore[union-attr]
+
+
+def test_build_grid_default_category_of_renders_neutral_triggers(
+    tmp_path: Path,
+) -> None:
+    """With no ``category_of`` every trigger is the neutral ▾ (no badge color)."""
+    root = _make_output_root(tmp_path)
+
+    component, _order = build_grid(
+        df=root.master_df,
+        x_axis_col="Grid_ColNum",
+        y_axis_col="Grid_RowNum",
+        max_size=64,
+        removed_keys=set(),
+        selected_keys=set(),
+        output_root=root,
+    )
+
+    buttons = _collect_buttons(component)
+    triggers = [
+        btn
+        for btn in buttons
+        if isinstance(btn.id, dict) and btn.id.get("type") == "colony-radial-trigger"
+    ]
+    assert triggers
+    for btn in triggers:
+        assert "radial-badge--neutral" in (btn.className or "")  # type: ignore[union-attr]
+        assert not btn.style.get("backgroundColor")  # type: ignore[union-attr]
+
+
+def test_build_grid_custom_category_badge_marks_is_custom(tmp_path: Path) -> None:
+    """A custom (non-core) category token renders the ``radial-badge--custom`` modifier."""
+    root = _make_output_root(tmp_path)
+    category_of = {("img-001", 1): "halo"}  # not an ErrorCategory token
+
+    component, _order = build_grid(
+        df=root.master_df,
+        x_axis_col="Grid_ColNum",
+        y_axis_col="Grid_RowNum",
+        max_size=64,
+        removed_keys=set(),
+        selected_keys=set(),
+        output_root=root,
+        category_of=category_of,
+    )
+
+    buttons = _collect_buttons(component)
+    labeled_trigger = next(
+        (
+            btn
+            for btn in buttons
+            if isinstance(btn.id, dict)
+            and btn.id.get("type") == "colony-radial-trigger"
+            and btn.id.get("image_file") == "img-001"
+            and btn.id.get("label") == 1
+        ),
+        None,
+    )
+    assert labeled_trigger is not None
+    assert "radial-badge--custom" in (labeled_trigger.className or "")  # type: ignore[union-attr]

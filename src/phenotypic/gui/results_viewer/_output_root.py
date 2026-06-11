@@ -52,9 +52,16 @@ class OutputRoot:
 
     Attributes:
         root: Absolute path of the output directory.
-        master_df: Master measurements DataFrame loaded from
-            ``master_measurements.parquet``. Each row is a single
-            measured object.
+        master_df: The viewer's display frame — the post-applied
+            ``measurements.parquet`` mirror when present (so the filter
+            sidebar reflects post ops), falling back to the clean master
+            mid-run. Curation removes labeled rows from this mirror, so it is
+            NOT a complete object set after curation.
+        clean_master_df: The clean, pre-post ``master_measurements.parquet``
+            frame — the full object set, including objects the curated mirror
+            removed. Curation re-keying and the Error-analysis tab read this so
+            labeled objects (which the mirror drops) remain resolvable across a
+            viewer reload.
         column_value_sets: Mapping from column name to the sorted
             list of unique string values found in that column. Used
             to populate filter dropdowns; nulls are dropped.
@@ -68,6 +75,7 @@ class OutputRoot:
 
     root: Path
     master_df: pl.DataFrame
+    clean_master_df: pl.DataFrame
     column_value_sets: Mapping[str, list[str]]
     cache_dir: Path
     pipeline_summary: str | None
@@ -120,6 +128,12 @@ class OutputRoot:
         # has produced master_measurements.parquet but finalize hasn't yet
         # seeded measurements.parquet) and on legacy outputs from before
         # the clean-master split.
+        # The clean (pre-post) master is the FULL object set — including
+        # objects the curated mirror removes. Curation re-keying + the Error
+        # tab read it so labels survive a reload (the mirror alone would drop
+        # them). The discovery sentinel above already proved it is present.
+        clean_master_df = pl.read_parquet(master_path)
+
         mirror_path = measurements_parquet_path(root)
         if mirror_path.is_file():
             logger.info(
@@ -132,7 +146,7 @@ class OutputRoot:
                 mirror_path,
                 master_path,
             )
-            master_df = pl.read_parquet(master_path)
+            master_df = clean_master_df
 
         results_dir = root / RESULTS_DIRNAME
         if not results_dir.is_dir():
@@ -154,6 +168,9 @@ class OutputRoot:
             )
 
         master_df = _ensure_required_columns(master_df, results_dir, datasets)
+        clean_master_df = _ensure_required_columns(
+            clean_master_df, results_dir, datasets
+        )
         datasets_with_overlays = [
             ds for ds in datasets if (results_dir / ds / DIR_OVERLAYS).is_dir()
         ]
@@ -182,6 +199,7 @@ class OutputRoot:
         return cls(
             root=root,
             master_df=master_df,
+            clean_master_df=clean_master_df,
             column_value_sets=column_value_sets,
             cache_dir=cache_dir,
             pipeline_summary=pipeline_summary,

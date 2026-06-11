@@ -43,6 +43,8 @@ from ._linear_softplus_model import LINEAR_SOFTPLUS_MODEL
 from ._log_growth_model import LOG_GROWTH_MODEL
 from ._model_metrics import MODEL_METRICS
 from ._object import OBJECT
+from ._curation import CURATION
+from ._error_category import ErrorCategory
 from ._quality_check import QUALITY_CHECK
 from ._quality_count import QUALITY_COUNT
 from ._quality_icc import QUALITY_ICC
@@ -72,8 +74,10 @@ __all__ = [
     "ColorLab",
     "Colorxy",
     "ColorXYZ",
+    "CURATION",
     "DOUBLE_SOFTPLUS_MODEL",
     "EDGE_CORRECTION",
+    "ErrorCategory",
     "GRID",
     "GRID_LINREG_STATS",
     "GRID_SPATIAL",

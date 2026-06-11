@@ -88,7 +88,7 @@ from phenotypic.gui._config import (
     CFG_IMAGE_ROOT,            # builder image root
     CFG_SANDBOX_ROOT,          # frozen sandbox root (string)
     CFG_OUTPUT_ROOT,           # results viewer OutputRoot
-    CFG_FILTERED_STATE,        # results viewer FilteredMeasurements
+    CFG_FILTERED_STATE,        # results viewer CurationLabels (durable, categorized)
 )
 ```
 
@@ -320,8 +320,99 @@ travels with the field annotation.
 - **`inject_design_tokens` is idempotent** — both the sub-app `_app.py`
   factories AND `wrap_in_chrome` call it; only the first call inserts
   the `<style>` block (marker comment de-dupes).
+- **`CFG_FILTERED_STATE` now holds `CurationLabels`, not
+  `FilteredMeasurements`** — the live results-viewer curation backend was
+  swapped to the durable, categorized store. The config key name is
+  unchanged (≈12 duck-typed call sites keep working). `FilteredMeasurements`
+  (`results_viewer/_filtered_state.py`) is now a **utility / constants
+  module only** (`KEY_DATASET` / `KEY_IMAGE_FILE` / `KEY_OBJECT_LABEL` +
+  `decode_removed_keys_payload`) — do not extend it; new curation state lives
+  on `CurationLabels` (`results_viewer/_curation_labels.py`).
+- **A single-`Output` `allow_duplicate` callback returning a list 500s on
+  the empty case** — `STORE_REMOVED_KEYS` payloads are lists, and Dash treats
+  an `allow_duplicate` output as multi-mode; a bare `[]` (e.g. restoring the
+  last labeled object) makes the multi-return validator see *zero* values and
+  raise. Wrap the return in a 1-tuple: `return (payload,)`. Same rule for
+  wildcard (`MATCH`) outputs returning a single component (e.g. the radial
+  popover body) — wrap it: `return (body,)`.
 
 ---
+
+## Error-category triage (curation)
+
+The results viewer's per-colony curation is an **error-category radial
+menu**, not a binary remove. The shared component is
+`gui/_shared/_radial.py` (one implementation for both tile surfaces):
+
+- **Per-tile trigger** (`build_radial_trigger`) → a `▾` button (or a colored
+  category **badge** when labeled) anchoring a **lazily-populated**
+  `dbc.Popover`. The body ships empty and a `MATCH` populate-on-click callback
+  fills the wedge ring (`build_radial_body`) — mirrors the `_build_stack_popover`
+  pattern so a grid of many tiles stays light.
+- **Surfaces** are keyed by a `surface` arg (`"colony"` / `"qc"`) baked into
+  every id type (`colony-cat-wedge` vs `qc-cat-wedge`, …) so the two tabs'
+  pattern-matched callbacks never collide. Colony wiring lives in
+  `colony_view/_callbacks.py`; QC in `_qc_tab/review/_callbacks.py`.
+- **One wedge click → one `CurationLabels.mark(image_file, label, category)`**;
+  the center node carries `RADIAL_RESTORE_SENTINEL` (`"__restore__"`) → `unmark`.
+  Category colors come from `_design.category_color` (core = fixed OI slot,
+  custom = cycled palette + a `radial-badge--custom` discriminator, decision D).
+- **Grid category channel (decision A):** the grid re-render reads
+  `filtered_state.labels` under `filtered_state._lock` (a server-side snapshot —
+  there is **no** `STORE_LABELS` Dash store) and threads a `category_of` map
+  into `build_grid` / `build_tile_grid`.
+- **On-disk dual ownership:** the GUI writes `deliverables/errors/<category>.parquet`
+  **live** as the user curates (via `CurationLabels._save_locked`), and the CLI
+  **re-emits** them on the next finalize/recompile from the durable
+  `qc/curation_labels.parquet` (which the CLI never wipes). Resolve these paths
+  via `phenotypic.tools_` helpers (`errors_dir`, `error_category_parquet_path`,
+  `curation_labels_parquet_path`), never by hand-joining names.
+
+---
+
+## Error-analysis tab
+
+The results viewer's **Error** tab (`results_viewer/_error_tab/`, the 5th
+tab, `TAB_ERROR_ID`) ranks the single measurements that best separate a
+chosen error category from a good baseline, via
+`phenotypic.analysis.ErrorCutoffFinder`. The package splits the usual way:
+`_data.py` (pure good/error frame construction + verified-good resolution),
+`_figure.py` (the pure good-vs-error distribution figure), `_layout.py`
+(the static layout), `_callbacks.py` (the recompute + cutoff-drag wiring),
+and `_ids.py` (all-static component ids, e.g. `error-cutoff-table`,
+`error-distribution-figure`, `error-good-mode-toggle`).
+
+- **Good-baseline toggle (`ERROR_GOOD_MODE_TOGGLE_ID`):** `all_unlabeled`
+  (default — every unlabeled object is good) vs `verified` (the good class
+  is restricted to `verified_good_keys`, the unlabeled members of
+  QC-reviewed groups, derived from `qc/qc_summary.parquet` +
+  `qc/qc_members.parquet` + `qc/review_state.json`). The verified-good
+  count badge (`ERROR_VERIFIED_COUNT_ID`) reports that set's size.
+- **Server-side state, recompute on activation:** the recompute callback
+  reads `filtered_state.labels` under `filtered_state._lock` (the shared
+  `CurationLabels`; there is **no** `STORE_LABELS` Dash store) and builds
+  the error frame by looking the labeled keys up in `output_root.master_df`
+  (the post-applied mirror). It gates on `active_tab == TAB_ERROR_ID` and
+  raises `PreventUpdate` off-tab, so marking a colony on another tab never
+  runs the finder — returning to the Error tab recomputes from the current
+  durable labels store (R2).
+- **Live persistence (focused category):** each recompute writes
+  `deliverables/error_analysis.{parquet,csv}` for the *focused* category
+  (leading `category` column, transient last-viewed-in-session) via
+  `_persist`, and in verified mode writes `deliverables/verified.parquet`
+  via `_persist_verified`. The HTML report is written only on explicit
+  `Save analysis report`. The per-category `deliverables/errors/<category>.parquet`
+  are written by the curation layer (`CurationLabels._save_locked`), not here.
+- **CLI finalize re-emits (all categories):** `reemit_error_deliverables`
+  (`_cli/_cli_error_outputs.py`, called from `finalize_post_master_outputs`)
+  re-runs the finder per labeled category against the clean master and
+  authoritatively rewrites `errors/*` + `error_analysis.*` (columns
+  `[category, *RESULT_COLUMNS]`) from the durable `qc/curation_labels.parquet`,
+  so headless output matches the live GUI. `verified.parquet` is **GUI-only**
+  — finalize never writes it (it would be stale: `review_state.json` is reset
+  on recompile). Resolve every path via `phenotypic.tools_` helpers
+  (`error_analysis_parquet_path`, `errors_dir`, `verified_parquet_path`, …),
+  never by hand-joining names.
 
 ## Builder preview cache
 

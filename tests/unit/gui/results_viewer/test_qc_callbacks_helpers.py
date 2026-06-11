@@ -7,16 +7,22 @@ app. Each test constructs a synthetic input inline.
 from __future__ import annotations
 
 import re
+from pathlib import Path
 
 import pandas as pd
 import polars as pl
 
+from phenotypic.gui._shared._radial import RADIAL_RESTORE_SENTINEL
+from phenotypic.gui.results_viewer._curation_labels import CurationLabels
 from phenotypic.gui.results_viewer._qc_tab._callbacks import (
     _badge_color_for_status,
     _left_join_qc_columns,
     _merge_removed_keys,
     _render_summary_strip,
     _worst_status,
+)
+from phenotypic.gui.results_viewer._qc_tab.review._callbacks import (
+    mark_review_tile,
 )
 
 
@@ -91,3 +97,61 @@ def test_merge_removed_keys_dedupes() -> None:
     new = [("b", 2), ("c", 3)]
     merged = _merge_removed_keys(current, new)
     assert merged == [["a", 1], ["b", 2], ["c", 3]]
+
+
+# ---------------------------------------------------------------------------
+# mark_review_tile — the QC radial mark/restore pure helper (Task 5)
+# ---------------------------------------------------------------------------
+
+
+def _qc_master() -> pl.DataFrame:
+    """Minimal 3-object master frame for the curation-labels helper tests."""
+    return pl.DataFrame(
+        {
+            "Metadata_Dataset": ["d1"] * 3,
+            "Metadata_ImageFile": ["img-A", "img-A", "img-B"],
+            "Object_Label": [1, 2, 1],
+            "Bbox_CenterRR": [10.0, 20.0, 30.0],
+            "Bbox_CenterCC": [10.0, 20.0, 30.0],
+            "Size_Area": [100.0, 200.0, 300.0],
+        }
+    )
+
+
+def _curation_store(tmp_path: Path) -> CurationLabels:
+    """Build a CurationLabels store over a synthetic master + mirror."""
+    from tests._output_layout import write_master, write_measurements_mirror
+
+    master = _qc_master()
+    write_master(tmp_path, master)
+    write_measurements_mirror(tmp_path, master)
+    return CurationLabels.load(tmp_path, master)
+
+
+def test_mark_review_tile_assigns_category(tmp_path: Path) -> None:
+    """A core category token marks the colony and returns the payload."""
+    store = _curation_store(tmp_path)
+    payload = mark_review_tile(store, "img-A", 2, "debris")
+    assert store.labels[("img-A", 2)] == "debris"
+    assert store.is_removed("img-A", 2)
+    # The payload carries the removed key as a [image_file, label] pair.
+    assert ["img-A", 2] in payload
+
+
+def test_mark_review_tile_restore_sentinel_clears(tmp_path: Path) -> None:
+    """The restore sentinel clears a prior label and restores the object."""
+    store = _curation_store(tmp_path)
+    mark_review_tile(store, "img-A", 1, "merged")
+    assert store.is_removed("img-A", 1)
+    payload = mark_review_tile(store, "img-A", 1, RADIAL_RESTORE_SENTINEL)
+    assert not store.is_removed("img-A", 1)
+    assert ["img-A", 1] not in payload
+
+
+def test_mark_review_tile_custom_category(tmp_path: Path) -> None:
+    """A registered custom token marks the colony with that category."""
+    store = _curation_store(tmp_path)
+    token = store.register_custom_category("Halo")
+    assert token == "halo"
+    mark_review_tile(store, "img-B", 1, token)
+    assert store.labels[("img-B", 1)] == "halo"
