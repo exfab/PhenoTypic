@@ -131,6 +131,73 @@ def radial_store_id(surface: str, image_file: str, label: int) -> dict[str, Any]
     }
 
 
+def radial_custom_input_id(
+    surface: str, image_file: str, label: int
+) -> dict[str, Any]:
+    """Return the pattern-matched id for the radial's custom-category text input.
+
+    The ``＋ Add custom`` affordance in the Custom folder section of the
+    radial body (Task 7). The submit callback reads this input's value to
+    register a new custom category.
+
+    Args:
+        surface: Tile surface, either ``"colony"`` or ``"qc"``.
+        image_file: ``Metadata_ImageFile`` of the colony.
+        label: ``Object_Label`` of the colony.
+
+    Returns:
+        A ``{"type": "<surface>-radial-custom-input", ...}`` dict id.
+    """
+    return {
+        "type": f"{surface}-radial-custom-input",
+        "image_file": image_file,
+        "label": label,
+    }
+
+
+def radial_custom_submit_id(
+    surface: str, image_file: str, label: int
+) -> dict[str, Any]:
+    """Return the pattern-matched id for the radial's custom-category submit button.
+
+    Args:
+        surface: Tile surface, either ``"colony"`` or ``"qc"``.
+        image_file: ``Metadata_ImageFile`` of the colony.
+        label: ``Object_Label`` of the colony.
+
+    Returns:
+        A ``{"type": "<surface>-radial-custom-submit", ...}`` dict id.
+    """
+    return {
+        "type": f"{surface}-radial-custom-submit",
+        "image_file": image_file,
+        "label": label,
+    }
+
+
+def radial_custom_msg_id(
+    surface: str, image_file: str, label: int
+) -> dict[str, Any]:
+    """Return the pattern-matched id for the radial's custom-category message slot.
+
+    Inline area beneath the ``＋ Add custom`` input where the submit callback
+    surfaces a validation error (empty / collision) or a success hint.
+
+    Args:
+        surface: Tile surface, either ``"colony"`` or ``"qc"``.
+        image_file: ``Metadata_ImageFile`` of the colony.
+        label: ``Object_Label`` of the colony.
+
+    Returns:
+        A ``{"type": "<surface>-radial-custom-msg", ...}`` dict id.
+    """
+    return {
+        "type": f"{surface}-radial-custom-msg",
+        "image_file": image_file,
+        "label": label,
+    }
+
+
 # ---------------------------------------------------------------------------
 # Geometry helper
 # ---------------------------------------------------------------------------
@@ -339,9 +406,10 @@ def build_radial_body(
         categories: Ordered list of all active category tokens (core + custom).
             Used to determine the current active ring order.
         custom_categories: List of registered custom category tokens (e.g.
-            ``["halo", "ghost"]``).  Each gets a wedge inside the Custom
-            folder slot (full expansion is Task 7; here the folder wedge
-            is a placeholder that Task 7 fills).
+            ``["halo", "ghost"]``).  Each renders as a chip in the expanded
+            Custom folder section beneath the ring (with the
+            ``radial-badge--custom`` discriminator), alongside an
+            ``＋ Add custom`` input that registers a new one.
         current_category: Currently assigned category, or ``None``.  The
             matching wedge is highlighted with an ``active`` modifier.
 
@@ -355,7 +423,7 @@ def build_radial_body(
         >>> cats = ErrorCategory.labels()
         >>> body = build_radial_body("colony", "p.tif", 1, cats, [])
         >>> body.className
-        'radial-ring-container'
+        'radial-body-wrap'
     """
     # Primary wedge tokens: core (excluding other) + other + custom-folder.
     # Max 7 primary wedges per plan.
@@ -436,12 +504,149 @@ def build_radial_body(
         n_clicks=0,
     )
 
-    return html.Div(
+    ring = html.Div(
         children=wedges + [center_node],
         className="radial-ring-container",
         style={
             "position": "relative",
             "width": f"{container_size}px",
             "height": f"{container_size}px",
+        },
+    )
+
+    custom_section = _build_custom_section(
+        surface, image_file, label, custom_categories, current_category
+    )
+
+    return html.Div(
+        [ring, custom_section],
+        className="radial-body-wrap",
+    )
+
+
+def _build_custom_section(
+    surface: str,
+    image_file: str,
+    label: int,
+    custom_categories: list[str],
+    current_category: str | None,
+) -> Component:
+    """Build the expanded Custom folder: custom wedges + an ＋ Add affordance.
+
+    Renders, beneath the core ring:
+
+    * one chip per registered custom category token, colored by
+      :func:`~phenotypic.gui._design.category_color` (cycling the custom
+      palette by registration index) and carrying the
+      ``radial-badge--custom`` discriminator (decision D) so a custom chip
+      never reads identically to a core badge;
+    * an inline ``dcc.Input`` + confirm button (``＋ Add custom``) plus an
+      empty message slot the submit callback (Task 7) fills with a validation
+      error or success hint.
+
+    Each custom chip is a wedge id (``radial_wedge_id``) so clicking it marks
+    the colony with that custom category through the SAME mark callback as the
+    core wedges.
+
+    Args:
+        surface: Tile surface — ``"colony"`` or ``"qc"``.
+        image_file: ``Metadata_ImageFile`` of the colony.
+        label: ``Object_Label`` integer.
+        custom_categories: Registered custom category tokens, in registration
+            order (the order drives the custom-palette color cycle).
+        current_category: Currently assigned category, or ``None`` — the
+            matching custom chip gets the ``radial-wedge--active`` modifier.
+
+    Returns:
+        An ``html.Div`` for the custom folder section.
+    """
+    chips: list[Component] = []
+    for index, token in enumerate(custom_categories):
+        color = category_color(token, custom_index=index)
+        classes = "radial-custom-chip radial-badge--custom"
+        if token == current_category:
+            classes += " radial-wedge--active"
+        chips.append(
+            dbc.Button(
+                token.replace("_", " "),
+                id=radial_wedge_id(surface, image_file, label, token),
+                className=classes,
+                style={
+                    "backgroundColor": color,
+                    "borderColor": color,
+                    "color": "#fff",
+                    "fontSize": "0.6rem",
+                    "padding": "1px 6px",
+                    "margin": "2px",
+                },
+                title=token,
+                size="sm",
+                n_clicks=0,
+            )
+        )
+
+    add_row = html.Div(
+        [
+            dcc.Input(
+                id=radial_custom_input_id(surface, image_file, label),
+                type="text",
+                placeholder="New category…",
+                debounce=True,
+                className="radial-custom-input",
+                style={"fontSize": "0.7rem", "width": "8rem"},
+            ),
+            dbc.Button(
+                "＋ Add",
+                id=radial_custom_submit_id(surface, image_file, label),
+                className="radial-custom-submit",
+                color="secondary",
+                outline=True,
+                size="sm",
+                n_clicks=0,
+            ),
+        ],
+        className="radial-custom-add-row",
+        style={
+            "display": "flex",
+            "gap": "0.25rem",
+            "alignItems": "center",
+            "marginTop": "0.25rem",
+        },
+    )
+
+    msg = html.Div(
+        "",
+        id=radial_custom_msg_id(surface, image_file, label),
+        className="radial-custom-msg",
+        style={"fontSize": "0.6rem", "minHeight": "0.9rem"},
+    )
+
+    return html.Div(
+        [
+            html.Div(
+                "Custom",
+                className="radial-custom-header",
+                style={
+                    "fontSize": "0.6rem",
+                    "fontWeight": 600,
+                    "color": "var(--color-muted, #888)",
+                    "marginTop": "0.35rem",
+                    "textTransform": "uppercase",
+                    "letterSpacing": "0.06em",
+                },
+            ),
+            html.Div(
+                chips,
+                className="radial-custom-chips",
+                style={"display": "flex", "flexWrap": "wrap"},
+            ),
+            add_row,
+            msg,
+        ],
+        className="radial-custom-section",
+        style={
+            "borderTop": "1px solid var(--color-border, #dee2e6)",
+            "marginTop": "0.4rem",
+            "paddingTop": "0.25rem",
         },
     )

@@ -140,6 +140,36 @@ def bulk_mark(
     )
 
 
+def register_custom_category_safe(
+    filtered: CurationLabels, name: str | None
+) -> tuple[str | None, str]:
+    """Register a custom category, returning ``(token_or_None, message)``.
+
+    Module-level + pure so the radial custom-add submit callbacks (colony and
+    QC) share one validation path and it is unit-testable without booting
+    Dash. Sanitizes + registers via
+    :meth:`CurationLabels.register_custom_category`, catching its
+    ``ValueError`` (empty name / collision with a core token) and turning it
+    into an inline message.
+
+    Args:
+        filtered: The shared :class:`CurationLabels`.
+        name: The user-entered category name (``None`` / blank rejected).
+
+    Returns:
+        ``(token, message)`` where ``token`` is the registered bare token on
+        success (``message`` is a short confirmation) or ``None`` on failure
+        (``message`` is the reason to surface inline).
+    """
+    if not name or not name.strip():
+        return None, "Enter a category name."
+    try:
+        token = filtered.register_custom_category(name)
+    except ValueError as exc:
+        return None, str(exc)
+    return token, f"Added “{token}”."
+
+
 # ---------------------------------------------------------------------------
 # Callback registration
 # ---------------------------------------------------------------------------
@@ -827,6 +857,99 @@ def register_callbacks(
         # the Div's children list. (The stack-popover callback dodges this only
         # because it happens to return a list of rows.)
         return (body,)
+
+    # ----------------------------------------------------------------------
+    # 8c. Add-custom-category from the radial folder (Task 7)
+    # ----------------------------------------------------------------------
+    #
+    # The Custom folder section of the radial body carries a ＋ Add input +
+    # confirm. On submit, register the sanitized name (catching collisions /
+    # empties as an inline message), then re-render THIS tile's body so the
+    # new custom chip appears and bump STORE_CATEGORY_VOCAB_REVISION so every
+    # bulk-mark dropdown refreshes its options.
+
+    @app.callback(
+        Output(
+            {
+                "type": "colony-radial-popover-body",
+                "image_file": MATCH,
+                "label": MATCH,
+            },
+            "children",
+            allow_duplicate=True,
+        ),
+        Output(
+            {
+                "type": "colony-radial-custom-msg",
+                "image_file": MATCH,
+                "label": MATCH,
+            },
+            "children",
+        ),
+        Output(ids.STORE_CATEGORY_VOCAB_REVISION, "data", allow_duplicate=True),
+        Input(
+            {
+                "type": "colony-radial-custom-submit",
+                "image_file": MATCH,
+                "label": MATCH,
+            },
+            "n_clicks",
+        ),
+        State(
+            {
+                "type": "colony-radial-custom-input",
+                "image_file": MATCH,
+                "label": MATCH,
+            },
+            "value",
+        ),
+        State(ids.STORE_CATEGORY_VOCAB_REVISION, "data"),
+        prevent_initial_call=True,
+    )
+    def _add_custom_category(
+        n_clicks: int | None,
+        name: str | None,
+        revision: int | None,
+    ) -> Any:
+        """Register a custom category from a tile's ＋ Add affordance.
+
+        On success: re-render this tile's radial body (so the new chip shows)
+        and bump the vocabulary revision (so bulk-mark dropdowns refresh). On
+        failure (empty / collision): leave the body untouched and surface the
+        reason in the inline message slot. ``MATCH`` keys the input value, the
+        message slot, and the body to the same tile automatically.
+        """
+        if not n_clicks:
+            raise PreventUpdate
+        triggered = callback_context.triggered_id
+        if not isinstance(triggered, dict):
+            raise PreventUpdate
+        try:
+            image_file = str(triggered["image_file"])
+            label = int(triggered["label"])
+        except (KeyError, TypeError, ValueError):
+            raise PreventUpdate
+
+        token, message = register_custom_category_safe(filtered_state, name)
+        if token is None:
+            # Validation failure: only the message updates.
+            return no_update, message, no_update
+
+        # Re-render this tile's body with the new custom chip; bump the vocab
+        # revision so every bulk-mark dropdown re-reads the vocabulary.
+        with filtered_state._lock:
+            categories = filtered_state.categories()
+            custom_categories = list(filtered_state.custom_categories)
+            current_category = filtered_state.labels.get((image_file, label))
+        body = build_radial_body(
+            "colony",
+            image_file,
+            label,
+            categories,
+            custom_categories,
+            current_category=current_category,
+        )
+        return body, message, int(revision or 0) + 1
 
     # ----------------------------------------------------------------------
     # 8. Colony rendered tile-size stepper → tile-size store

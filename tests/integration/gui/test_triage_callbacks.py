@@ -29,7 +29,11 @@ from phenotypic.gui._shared._radial import RADIAL_RESTORE_SENTINEL
 from phenotypic.gui.results_viewer._app import create_app
 from phenotypic.gui.results_viewer._curation_labels import CurationLabels
 from phenotypic.gui.results_viewer._output_root import OutputRoot
-from phenotypic.tools_ import error_category_parquet_path, measurements_parquet_path
+from phenotypic.tools_ import (
+    custom_categories_json_path,
+    error_category_parquet_path,
+    measurements_parquet_path,
+)
 
 from tests._output_layout import write_master, write_measurements_mirror
 
@@ -634,3 +638,142 @@ def test_qc_bulk_mark_marks_whole_selection(
     )
     assert store.labels[("img-A", 2)] == "merged"
     assert store.labels[("img-B", 1)] == "merged"
+
+
+# ---------------------------------------------------------------------------
+# Add-custom-category from the radial folder (Task 7) — colony + QC
+# ---------------------------------------------------------------------------
+
+
+def _post_radial_custom_add(
+    app,
+    *,
+    surface: str,
+    image_file: str,
+    label: int,
+    name: str,
+):
+    """POST a radial ＋ Add-custom submit via the Dash update route.
+
+    The submit callback is a 3-output MATCH callback (body re-render + inline
+    message + vocab-revision bump). ``output`` is the registered MATCH pattern
+    key; the concrete resolved ids go in ``outputs``/``inputs``/``state``.
+    """
+    client = app.server.test_client()
+    out_key = _find_output_key(
+        app, f"{surface}-radial-popover-body", f"{surface}-radial-custom-submit"
+    )
+    submit_id = {
+        "type": f"{surface}-radial-custom-submit",
+        "image_file": image_file,
+        "label": label,
+    }
+    input_id = {
+        "type": f"{surface}-radial-custom-input",
+        "image_file": image_file,
+        "label": label,
+    }
+    body_id = {
+        "type": f"{surface}-radial-popover-body",
+        "image_file": image_file,
+        "label": label,
+    }
+    msg_id = {
+        "type": f"{surface}-radial-custom-msg",
+        "image_file": image_file,
+        "label": label,
+    }
+    return client.post(
+        "/_dash-update-component",
+        json={
+            "output": out_key,
+            "outputs": [
+                {"id": body_id, "property": "children"},
+                {"id": msg_id, "property": "children"},
+                {"id": "store-category-vocab-revision", "property": "data"},
+            ],
+            "inputs": [{"id": submit_id, "property": "n_clicks", "value": 1}],
+            "state": [
+                {"id": input_id, "property": "value", "value": name},
+                {
+                    "id": "store-category-vocab-revision",
+                    "property": "data",
+                    "value": 0,
+                },
+            ],
+            "changedPropIds": [
+                '{"image_file":"%s","label":%d,"type":"%s-radial-custom-submit"}.n_clicks'
+                % (image_file, label, surface)
+            ],
+        },
+    )
+
+
+def test_colony_custom_add_registers_and_persists(
+    output_root: OutputRoot,
+    tmp_path: Path,
+) -> None:
+    """Submitting ＋ Add 'Halo' registers a custom category and persists it.
+
+    Asserts: 200, ``categories()`` includes ``halo``, the registry json
+    persists, and the re-rendered body carries a ``halo`` custom wedge.
+    """
+    app = create_app(output_root)
+    store: CurationLabels = app.server.config[CFG_FILTERED_STATE]
+
+    resp = _post_radial_custom_add(
+        app, surface="colony", image_file="img-A", label=1, name="Halo"
+    )
+    assert resp.status_code == 200, (
+        f"Custom-add returned {resp.status_code}: {resp.data[:200]}"
+    )
+
+    # The sanitized token is registered + persisted.
+    assert "halo" in store.categories()
+    registry = custom_categories_json_path(tmp_path)
+    assert registry.exists()
+    assert "halo" in registry.read_text(encoding="utf-8")
+
+    # The re-rendered body carries the new custom wedge (clickable as a
+    # colony-cat-wedge with category 'halo').
+    body_text = resp.get_data(as_text=True)
+    assert "halo" in body_text
+    assert "colony-cat-wedge" in body_text
+
+
+def test_colony_custom_add_empty_name_is_rejected_inline(
+    output_root: OutputRoot,
+) -> None:
+    """A blank custom name is rejected with an inline message, not a crash."""
+    app = create_app(output_root)
+    store: CurationLabels = app.server.config[CFG_FILTERED_STATE]
+
+    resp = _post_radial_custom_add(
+        app, surface="colony", image_file="img-A", label=1, name="   "
+    )
+    assert resp.status_code == 200
+    # No category registered; an inline message was surfaced.
+    assert store.custom_categories == []
+    body_text = resp.get_data(as_text=True)
+    assert "category name" in body_text.lower()
+
+
+def test_qc_custom_add_registers_and_persists(
+    output_root: OutputRoot,
+    tmp_path: Path,
+) -> None:
+    """The QC surface's ＋ Add-custom registers + persists a custom category."""
+    app = create_app(output_root)
+    store: CurationLabels = app.server.config[CFG_FILTERED_STATE]
+
+    resp = _post_radial_custom_add(
+        app, surface="qc", image_file="img-B", label=1, name="Ghost"
+    )
+    assert resp.status_code == 200, (
+        f"QC custom-add returned {resp.status_code}: {resp.data[:200]}"
+    )
+    assert "ghost" in store.categories()
+    assert custom_categories_json_path(tmp_path).exists()
+    body_text = resp.get_data(as_text=True)
+    assert "ghost" in body_text
+    assert "qc-cat-wedge" in body_text

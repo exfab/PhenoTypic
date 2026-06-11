@@ -15,6 +15,7 @@ from phenotypic.gui.results_viewer._curation_labels import CurationLabels
 from phenotypic.gui.results_viewer.colony_view._callbacks import (
     bulk_mark,
     category_dropdown_options,
+    register_custom_category_safe,
 )
 from phenotypic.schema import ErrorCategory
 
@@ -88,3 +89,43 @@ def test_bulk_mark_custom_category(tmp_path: Path) -> None:
     token = store.register_custom_category("Halo")
     bulk_mark(store, [("img-A", 1)], token)
     assert store.labels[("img-A", 1)] == "halo"
+
+
+# ---------------------------------------------------------------------------
+# register_custom_category_safe
+# ---------------------------------------------------------------------------
+
+
+def test_register_custom_safe_returns_token_and_message(tmp_path: Path) -> None:
+    """A valid name registers, returning the sanitized token + a confirmation."""
+    store = _store(tmp_path)
+    token, message = register_custom_category_safe(store, "Halo Ring")
+    assert token == "halo_ring"
+    assert "halo_ring" in message
+    assert "halo_ring" in store.categories()
+
+
+def test_register_custom_safe_empty_name_rejected(tmp_path: Path) -> None:
+    """A blank name returns ``(None, message)`` and registers nothing."""
+    store = _store(tmp_path)
+    token, message = register_custom_category_safe(store, "   ")
+    assert token is None
+    assert message
+    assert store.custom_categories == []
+
+
+def test_register_custom_safe_none_name_rejected(tmp_path: Path) -> None:
+    """``None`` is rejected the same as a blank name (no crash)."""
+    store = _store(tmp_path)
+    token, message = register_custom_category_safe(store, None)
+    assert token is None
+    assert message
+
+
+def test_register_custom_safe_core_collision_rejected(tmp_path: Path) -> None:
+    """A name colliding with a core token returns the registry's ValueError text."""
+    store = _store(tmp_path)
+    token, message = register_custom_category_safe(store, "debris")
+    assert token is None
+    assert "debris" in message
+    assert "debris" not in store.custom_categories

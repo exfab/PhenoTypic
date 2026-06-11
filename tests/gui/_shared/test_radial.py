@@ -183,9 +183,12 @@ class TestBuildRadialBody:
             current_category,
         )
 
-    def test_returns_container_with_radial_class(self) -> None:
+    def test_returns_body_wrap_with_ring_child(self) -> None:
         body = self._body()
-        assert body.className == "radial-ring-container"
+        assert body.className == "radial-body-wrap"
+        # The ring container is the first child of the body wrap.
+        ring = body.children[0]
+        assert ring.className == "radial-ring-container"
 
     def test_one_wedge_per_core_category_excluding_other(self) -> None:
         """Each non-other core token should have exactly one wedge button."""
@@ -447,3 +450,107 @@ class TestBuildRadialTrigger:
         trigger_btn = components[0]
         expected = category_color("halo", custom_index=0)
         assert trigger_btn.style.get("backgroundColor") == expected
+
+
+# ---------------------------------------------------------------------------
+# Custom folder section (Task 7): chips + ＋ Add affordance
+# ---------------------------------------------------------------------------
+
+
+def _walk_components(root):
+    """Yield root + every descendant (re-export of the module helper)."""
+    yield from _walk(root)
+
+
+class TestBuildRadialBodyCustomSection:
+    """Tests for the expanded Custom folder section of ``build_radial_body``."""
+
+    _CATEGORIES = ErrorCategory.labels()
+
+    def _body(self, custom: list[str], current_category: str | None = None):
+        return build_radial_body(
+            "colony",
+            "plateA.tif",
+            2,
+            [*self._CATEGORIES, *custom],
+            custom,
+            current_category,
+        )
+
+    def test_custom_chip_rendered_per_registered_token(self) -> None:
+        """Each registered custom token renders a clickable wedge chip."""
+        body = self._body(["halo", "ghost"])
+        chip_categories = [
+            btn.id.get("category")
+            for btn in _buttons(body)
+            if isinstance(btn.id, dict)
+            and btn.id.get("type") == "colony-cat-wedge"
+            and btn.id.get("category") in {"halo", "ghost"}
+        ]
+        assert "halo" in chip_categories
+        assert "ghost" in chip_categories
+
+    def test_custom_chip_carries_custom_discriminator(self) -> None:
+        """Custom chips get the ``radial-badge--custom`` discriminator (decision D)."""
+        body = self._body(["halo"])
+        chip = next(
+            btn
+            for btn in _buttons(body)
+            if isinstance(btn.id, dict) and btn.id.get("category") == "halo"
+        )
+        assert "radial-badge--custom" in (chip.className or "")
+
+    def test_custom_chip_cycles_custom_palette_color(self) -> None:
+        """Custom chips are colored by their registration index via category_color."""
+        body = self._body(["halo", "ghost"])
+        chips = {
+            btn.id.get("category"): btn
+            for btn in _buttons(body)
+            if isinstance(btn.id, dict) and btn.id.get("category") in {"halo", "ghost"}
+        }
+        assert chips["halo"].style.get("backgroundColor") == category_color(
+            "halo", custom_index=0
+        )
+        assert chips["ghost"].style.get("backgroundColor") == category_color(
+            "ghost", custom_index=1
+        )
+
+    def test_add_custom_input_and_submit_present(self) -> None:
+        """The ＋ Add affordance ships an input + a submit button."""
+        from dash import dcc
+
+        body = self._body([])
+        ids = {
+            n.id.get("type")
+            for n in _walk_components(body)
+            if isinstance(getattr(n, "id", None), dict)
+        }
+        assert "colony-radial-custom-input" in ids
+        assert "colony-radial-custom-submit" in ids
+        assert "colony-radial-custom-msg" in ids
+        # The input is a dcc.Input.
+        inputs = [n for n in _walk_components(body) if isinstance(n, dcc.Input)]
+        assert len(inputs) == 1
+
+    def test_active_custom_chip_gets_active_modifier(self) -> None:
+        """The chip matching ``current_category`` is marked active."""
+        body = self._body(["halo"], current_category="halo")
+        chip = next(
+            btn
+            for btn in _buttons(body)
+            if isinstance(btn.id, dict) and btn.id.get("category") == "halo"
+        )
+        assert "radial-wedge--active" in (chip.className or "")
+
+    def test_custom_section_ids_carry_surface(self) -> None:
+        """QC surface custom-add ids are distinct from colony's."""
+        qc_body = build_radial_body(
+            "qc", "p.tif", 1, [*self._CATEGORIES, "halo"], ["halo"], None
+        )
+        ids = {
+            n.id.get("type")
+            for n in _walk_components(qc_body)
+            if isinstance(getattr(n, "id", None), dict)
+        }
+        assert "qc-radial-custom-input" in ids
+        assert "colony-radial-custom-input" not in ids

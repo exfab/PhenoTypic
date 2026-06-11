@@ -1303,6 +1303,90 @@ def _register_curation_callbacks(app: dash.Dash) -> None:
         # exactly one output value (mirrors colony `_populate_radial_body`).
         return (body,)
 
+    # -- Add-custom-category from the radial folder (Task 7, surface="qc") --
+    # Mirrors the colony view's `_add_custom_category` exactly. On success,
+    # re-render THIS tile's body so the new chip shows + bump the shared
+    # vocabulary revision so every bulk-mark dropdown refreshes.
+    from phenotypic.gui.results_viewer.colony_view._callbacks import (
+        register_custom_category_safe,
+    )
+
+    @app.callback(
+        Output(
+            {
+                "type": "qc-radial-popover-body",
+                "image_file": MATCH,
+                "label": MATCH,
+            },
+            "children",
+            allow_duplicate=True,
+        ),
+        Output(
+            {
+                "type": "qc-radial-custom-msg",
+                "image_file": MATCH,
+                "label": MATCH,
+            },
+            "children",
+        ),
+        Output(
+            viewer_ids.STORE_CATEGORY_VOCAB_REVISION, "data", allow_duplicate=True
+        ),
+        Input(
+            {
+                "type": "qc-radial-custom-submit",
+                "image_file": MATCH,
+                "label": MATCH,
+            },
+            "n_clicks",
+        ),
+        State(
+            {
+                "type": "qc-radial-custom-input",
+                "image_file": MATCH,
+                "label": MATCH,
+            },
+            "value",
+        ),
+        State(viewer_ids.STORE_CATEGORY_VOCAB_REVISION, "data"),
+        prevent_initial_call=True,
+    )
+    def _add_qc_custom_category(
+        n_clicks: int | None,
+        name: str | None,
+        revision: int | None,
+    ):
+        """Register a custom category from a QC tile's ＋ Add affordance."""
+        if not n_clicks:
+            return no_update, no_update, no_update
+        triggered = callback_context.triggered_id
+        filtered = _filtered_state()
+        if filtered is None or not isinstance(triggered, dict):
+            return no_update, no_update, no_update
+        try:
+            image_file = str(triggered["image_file"])
+            label = int(triggered["label"])
+        except (KeyError, TypeError, ValueError):
+            return no_update, no_update, no_update
+
+        token, message = register_custom_category_safe(filtered, name)
+        if token is None:
+            return no_update, message, no_update
+
+        with filtered._lock:
+            categories = filtered.categories()
+            custom_categories = list(filtered.custom_categories)
+            current_category = filtered.labels.get((image_file, label))
+        body = build_radial_body(
+            "qc",
+            image_file,
+            label,
+            categories,
+            custom_categories,
+            current_category=current_category,
+        )
+        return body, message, int(revision or 0) + 1
+
     @app.callback(
         Output(viewer_ids.STORE_REMOVED_KEYS, "data", allow_duplicate=True),
         Output(viewer_ids.STORE_COLONY_SELECTION, "data", allow_duplicate=True),

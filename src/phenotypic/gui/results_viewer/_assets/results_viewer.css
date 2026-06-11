@@ -396,3 +396,34 @@
 .radial-badge--custom {
     box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.30);
 }
+
+/* Radial body wrapper: the wedge ring stacked over the expandable Custom
+ * folder section (Task 7). */
+.radial-body-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Custom folder section beneath the ring: registered custom chips + the
+ * ＋ Add affordance. */
+.radial-custom-section {
+    width: 100%;
+    max-width: 180px;
+}
+
+.radial-custom-chips {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+/* Each registered custom chip carries the same inset-ring discriminator as
+ * the per-tile custom badge so it never reads as a core category (decision D). */
+.radial-custom-chip.radial-badge--custom {
+    box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.30);
+    border-radius: 0.5rem;
+}
+
+.radial-custom-msg {
+    color: var(--color-muted, #888);
+}
