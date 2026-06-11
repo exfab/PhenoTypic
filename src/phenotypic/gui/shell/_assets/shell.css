@@ -11,9 +11,9 @@
  *   - Primary palette (navy, blue, gold) for chrome
  *   - Okabe-Ito reserved for data viz only (we use it on capability
  *     badges as small chips, which DESIGN.md explicitly allows)
- *   - Three role fonts injected from gui/_design.py (IBM Plex Serif
- *     display, IBM Plex Sans body, JetBrains Mono mono) accessed via
- *     var(--font-display | --font-body | --font-mono)
+ *   - Role fonts injected from gui/_design.py (Comfortaa display + body,
+ *     JetBrains Mono mono, IBM Plex Serif for italic species names only)
+ *     accessed via var(--font-display | --font-body | --font-mono | --font-species)
  *   - 8pt spacing grid, navy-tinted shadows
  *
  * Topbar note: the topbar is intentionally navy (white ink, gold active-tab

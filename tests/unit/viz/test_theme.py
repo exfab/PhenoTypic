@@ -102,11 +102,31 @@ def test_paper_bgcolor_matches_design_bg() -> None:
     assert template.layout.paper_bgcolor == BG
 
 
-def test_font_family_does_not_drift_from_gui_design() -> None:
-    """The theme body-font stack mirrors ``gui/_design.FONT_FAMILY_BODY``."""
+def test_chart_body_font_intentionally_differs_from_gui_chrome() -> None:
+    """The chart body font is IBM Plex Sans, decoupled from the GUI chrome body.
+
+    The GUI chrome moved to Comfortaa (``gui/_design.FONT_FAMILY_BODY``), but the
+    chart subsystem deliberately stays on IBM Plex Sans for plot titles and legend
+    names (DESIGN.md "06 -- Charts"). The two are expected to *differ* now -- this
+    test pins that intent so neither side silently re-converges.
+    """
     from phenotypic.gui._design import FONT_FAMILY_BODY
 
-    assert FONT_FAMILY == FONT_FAMILY_BODY
+    assert FONT_FAMILY.startswith("'IBM Plex Sans'")
+    assert FONT_FAMILY_BODY.startswith("'Comfortaa'")
+    assert FONT_FAMILY != FONT_FAMILY_BODY
+
+
+def test_chart_body_font_is_loaded_by_gui_import() -> None:
+    """IBM Plex Sans must stay in the GUI ``@import`` so GUI-embedded charts render it.
+
+    Plotly figures render inside Dash pages that load ``gui/_design`` tokens; if the
+    webfont were dropped from the ``@import`` the chart body text would silently fall
+    back to the system sans instead of IBM Plex Sans.
+    """
+    from phenotypic.gui._design import FONT_TOKENS_CSS
+
+    assert "IBM+Plex+Sans" in FONT_TOKENS_CSS
 
 
 def test_mono_font_does_not_drift_from_gui_design() -> None:
