@@ -88,7 +88,7 @@ from phenotypic.gui._config import (
     CFG_IMAGE_ROOT,            # builder image root
     CFG_SANDBOX_ROOT,          # frozen sandbox root (string)
     CFG_OUTPUT_ROOT,           # results viewer OutputRoot
-    CFG_FILTERED_STATE,        # results viewer FilteredMeasurements
+    CFG_FILTERED_STATE,        # results viewer CurationLabels (durable, categorized)
 )
 ```
 
@@ -320,6 +320,53 @@ travels with the field annotation.
 - **`inject_design_tokens` is idempotent** — both the sub-app `_app.py`
   factories AND `wrap_in_chrome` call it; only the first call inserts
   the `<style>` block (marker comment de-dupes).
+- **`CFG_FILTERED_STATE` now holds `CurationLabels`, not
+  `FilteredMeasurements`** — the live results-viewer curation backend was
+  swapped to the durable, categorized store. The config key name is
+  unchanged (≈12 duck-typed call sites keep working). `FilteredMeasurements`
+  (`results_viewer/_filtered_state.py`) is now a **utility / constants
+  module only** (`KEY_DATASET` / `KEY_IMAGE_FILE` / `KEY_OBJECT_LABEL` +
+  `decode_removed_keys_payload`) — do not extend it; new curation state lives
+  on `CurationLabels` (`results_viewer/_curation_labels.py`).
+- **A single-`Output` `allow_duplicate` callback returning a list 500s on
+  the empty case** — `STORE_REMOVED_KEYS` payloads are lists, and Dash treats
+  an `allow_duplicate` output as multi-mode; a bare `[]` (e.g. restoring the
+  last labeled object) makes the multi-return validator see *zero* values and
+  raise. Wrap the return in a 1-tuple: `return (payload,)`. Same rule for
+  wildcard (`MATCH`) outputs returning a single component (e.g. the radial
+  popover body) — wrap it: `return (body,)`.
+
+---
+
+## Error-category triage (curation)
+
+The results viewer's per-colony curation is an **error-category radial
+menu**, not a binary remove. The shared component is
+`gui/_shared/_radial.py` (one implementation for both tile surfaces):
+
+- **Per-tile trigger** (`build_radial_trigger`) → a `▾` button (or a colored
+  category **badge** when labeled) anchoring a **lazily-populated**
+  `dbc.Popover`. The body ships empty and a `MATCH` populate-on-click callback
+  fills the wedge ring (`build_radial_body`) — mirrors the `_build_stack_popover`
+  pattern so a grid of many tiles stays light.
+- **Surfaces** are keyed by a `surface` arg (`"colony"` / `"qc"`) baked into
+  every id type (`colony-cat-wedge` vs `qc-cat-wedge`, …) so the two tabs'
+  pattern-matched callbacks never collide. Colony wiring lives in
+  `colony_view/_callbacks.py`; QC in `_qc_tab/review/_callbacks.py`.
+- **One wedge click → one `CurationLabels.mark(image_file, label, category)`**;
+  the center node carries `RADIAL_RESTORE_SENTINEL` (`"__restore__"`) → `unmark`.
+  Category colors come from `_design.category_color` (core = fixed OI slot,
+  custom = cycled palette + a `radial-badge--custom` discriminator, decision D).
+- **Grid category channel (decision A):** the grid re-render reads
+  `filtered_state.labels` under `filtered_state._lock` (a server-side snapshot —
+  there is **no** `STORE_LABELS` Dash store) and threads a `category_of` map
+  into `build_grid` / `build_tile_grid`.
+- **On-disk dual ownership:** the GUI writes `deliverables/errors/<category>.parquet`
+  **live** as the user curates (via `CurationLabels._save_locked`), and the CLI
+  **re-emits** them on the next finalize/recompile from the durable
+  `qc/curation_labels.parquet` (which the CLI never wipes). Resolve these paths
+  via `phenotypic.tools_` helpers (`errors_dir`, `error_category_parquet_path`,
+  `curation_labels_parquet_path`), never by hand-joining names.
 
 ---
 
