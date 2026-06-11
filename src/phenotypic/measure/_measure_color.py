@@ -9,6 +9,8 @@ import numpy as np
 import pandas as pd
 import logging
 
+from scipy import ndimage
+
 from phenotypic.abc_ import MeasureFeatures
 from phenotypic.schema import OBJECT
 from phenotypic.schema import ColorXYZ, Colorxy, ColorLab, ColorHSV
@@ -96,11 +98,18 @@ class MeasureColor(MeasureFeatures):
         labels = np.unique(objmap)
         labels = labels[labels != 0]
 
+        # One linear pass yields each label's bounding-box slices, so per-object
+        # work touches only that colony's window instead of rescanning the whole
+        # image (O(N) total vs O(K*N) full-image masks). bbox_slices[L - 1] is the
+        # slice tuple for label L (None for absent labels).
+        bbox_slices = ndimage.find_objects(objmap)
+
         rows: list[dict] = []
         for label in labels:
-            mask = objmap == label
-            rows.append({**self._robust_lab_row(lab[mask]),
-                         **self._robust_hsv_row(hsv[mask])})
+            sl = bbox_slices[label - 1]
+            submask = objmap[sl] == label  # exclude neighbours sharing the bbox
+            rows.append({**self._robust_lab_row(lab[sl][submask]),
+                         **self._robust_hsv_row(hsv[sl][submask])})
 
         # Assemble column-major dict; preserve header order.
         columns = ColorLab.robust_headers() + ColorHSV.robust_headers()
