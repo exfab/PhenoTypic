@@ -45,6 +45,11 @@ class FakeOutputRoot:
     root: Path
     master_df: pl.DataFrame
 
+    @property
+    def clean_master_df(self) -> pl.DataFrame:
+        """The Error tab reads the clean master; here it is the same frame."""
+        return self.master_df
+
 
 def _separating_master() -> pl.DataFrame:
     """20 objects: 10 small-area errors vs 10 large-area good, clean split."""

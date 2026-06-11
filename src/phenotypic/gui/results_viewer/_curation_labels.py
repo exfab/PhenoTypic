@@ -34,6 +34,7 @@ from phenotypic.tools_ import (
     custom_categories_json_path,
     error_category_parquet_path,
     errors_dir,
+    master_measurements_parquet_path,
     measurements_csv_path,
     measurements_parquet_path,
 )
@@ -171,7 +172,16 @@ class CurationLabels:
     fingerprints: dict[LabelKey, tuple[float, float]]
     custom_categories: list[str]
     rekey_report: RekeyReport
+    #: The CLEAN (pre-post) master — all objects, including those a prior
+    #: curation removed from the mirror. Re-keying, fingerprinting, and the
+    #: per-category error partitions all read this so labels survive a viewer
+    #: reload (the curated mirror no longer contains the labeled objects).
     _master_df: pl.DataFrame = field(repr=False)
+    #: The post-applied measurements mirror, written back (minus labeled rows)
+    #: as ``measurements.parquet`` so the viewer's filter sidebar keeps its
+    #: post columns. ``None`` (legacy/direct construction) falls back to
+    #: ``_master_df`` for the curated-mirror write.
+    _mirror_df: pl.DataFrame | None = field(default=None, repr=False)
     _lock: threading.RLock = field(default_factory=threading.RLock, repr=False)
     _seed_mtime_ns: int | None = field(default=None, repr=False)
     _stale: bool = field(default=False, repr=False)
@@ -243,7 +253,12 @@ class CurationLabels:
 
         Args:
             root: Output root directory.
-            master_df: Full master measurements frame (all objects).
+            master_df: The viewer's display frame — the **post-applied
+                measurements mirror** (``OutputRoot.master_df``). Re-keying is
+                done against the CLEAN ``master_measurements.parquet`` read here
+                (it still contains objects the curated mirror dropped, so labels
+                survive a reload); ``master_df`` is retained only as the frame
+                the curated mirror is written back from.
 
         Returns:
             A ready-to-mutate :class:`CurationLabels`.
@@ -253,12 +268,17 @@ class CurationLabels:
         fingerprints: dict[LabelKey, tuple[float, float]] = {}
         report = RekeyReport()
 
+        # Re-key against the CLEAN master (all objects), never the curated
+        # mirror — a labeled object is absent from the mirror, so re-keying
+        # against the mirror would drop every label on reload.
+        clean_master = cls._read_clean_master(root, master_df)
+
         labels_path = curation_labels_parquet_path(root)
         if labels_path.exists():
             stored = cls._read_labels_parquet(labels_path)
-            labels, fingerprints, report = cls._rekey(stored, master_df)
+            labels, fingerprints, report = cls._rekey(stored, clean_master)
         elif measurements_parquet_path(root).exists():
-            labels, fingerprints = cls._migrate_legacy(root, master_df)
+            labels, fingerprints = cls._migrate_legacy(root, clean_master)
             n = len(labels)
             if n > 0:
                 logger.info("Imported %d legacy removal(s) from measurements.parquet as 'other'.", n)
@@ -275,9 +295,32 @@ class CurationLabels:
             fingerprints=fingerprints,
             custom_categories=custom,
             rekey_report=report,
-            _master_df=master_df,
+            _master_df=clean_master,
+            _mirror_df=master_df,
             _seed_mtime_ns=seed_mtime,
         )
+
+    @staticmethod
+    def _read_clean_master(root: Path, fallback: pl.DataFrame) -> pl.DataFrame:
+        """Return the clean (pre-post) master frame for re-keying.
+
+        Reads ``deliverables/master_measurements.parquet`` — the full,
+        archival object set that the curated ``measurements.parquet`` mirror
+        is derived from (and which it removes labeled rows from). Falls back to
+        ``fallback`` (the passed mirror) only mid-run / on legacy outputs where
+        the clean master is absent.
+        """
+        path = master_measurements_parquet_path(root)
+        if path.is_file():
+            try:
+                return pl.read_parquet(path)
+            except Exception:  # noqa: BLE001 - a corrupt master is non-fatal here
+                logger.warning(
+                    "Could not read clean master at %s; re-keying against the "
+                    "mirror (labels for curated-out objects may be dropped).",
+                    path,
+                )
+        return fallback
 
     # -- registry IO ---------------------------------------------------------
     @staticmethod
@@ -629,7 +672,11 @@ class CurationLabels:
         _atomic_write_parquet(df, path)
 
     def _write_curated_mirror(self) -> None:
-        curated = self.filtered_df(self._master_df)
+        # Curate the POST-APPLIED mirror (keeps its post columns), not the
+        # clean master — falls back to the clean master only when no mirror
+        # frame was supplied (direct construction / legacy).
+        mirror_source = self._mirror_df if self._mirror_df is not None else self._master_df
+        curated = self.filtered_df(mirror_source)
         self.measurements_parquet.parent.mkdir(parents=True, exist_ok=True)
         _atomic_write_parquet(curated, self.measurements_parquet)
         try:

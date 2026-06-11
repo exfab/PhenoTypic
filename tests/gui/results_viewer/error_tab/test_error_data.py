@@ -42,6 +42,11 @@ class FakeOutputRoot:
     root: Path
     master_df: pl.DataFrame
 
+    @property
+    def clean_master_df(self) -> pl.DataFrame:
+        """The Error tab reads the clean master; here it is the same frame."""
+        return self.master_df
+
 
 def _master_six() -> pl.DataFrame:
     """Six objects across two images, one Size_Area measurement column."""

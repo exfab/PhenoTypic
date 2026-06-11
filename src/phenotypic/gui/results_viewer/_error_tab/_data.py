@@ -213,7 +213,10 @@ def build_good_error_frames(
     boundary (:class:`ErrorCutoffFinder` is pandas-typed).
 
     Args:
-        output_root: The active output root (provides ``master_df``).
+        output_root: The active output root. The frames are built from
+            ``clean_master_df`` (the full pre-post object set), NOT the curated
+            ``master_df`` mirror — the mirror has the labeled (error) rows
+            removed, so the error class would be empty after a reload.
         labels: The curation store's ``(image, label) -> category`` map.
         category: The focused error category token.
         good_mode: ``"all_unlabeled"`` or ``"verified"``.
@@ -221,7 +224,7 @@ def build_good_error_frames(
     Returns:
         A ``(good_pdf, error_pdf)`` pair of pandas frames.
     """
-    master = output_root.master_df
+    master = output_root.clean_master_df
     labeled_keys = set(labels.keys())
     error_keys = {key for key, cat in labels.items() if cat == category}
 

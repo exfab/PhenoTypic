@@ -415,3 +415,53 @@ def test_save_refuses_after_external_reseed(tmp_path: Path):
     assert 2 in on_disk.get_column("Object_Label").to_list()
     # The staleness flag must be set.
     assert store.stale is True
+
+
+def test_labels_survive_reload_against_curated_mirror(tmp_path: Path):
+    """Re-key against the CLEAN master on disk, not the curated mirror.
+
+    Regression: ``OutputRoot`` hands ``load`` the curated ``measurements.parquet``
+    mirror, which has the labeled rows removed. Re-keying against that mirror
+    dropped every label on a viewer reload. With the clean
+    ``master_measurements.parquet`` present, the labels must survive.
+    """
+    clean = _master(6)
+    master_path = tools_.master_measurements_parquet_path(tmp_path)
+    master_path.parent.mkdir(parents=True, exist_ok=True)
+    clean.write_parquet(master_path)
+
+    # Session 1: open against the clean master, mark 3 objects.
+    s1 = CurationLabels.load(tmp_path, clean)
+    s1.mark_many([("plateA", i) for i in (1, 2, 3)], "debris")
+    mirror = pl.read_parquet(tools_.measurements_parquet_path(tmp_path))
+    assert mirror.height == 3  # labeled rows curated OUT of the mirror
+
+    # Session 2 (reload): OutputRoot would pass the curated MIRROR as master_df.
+    s2 = CurationLabels.load(tmp_path, mirror)
+    assert len(s2.labels) == 3  # all survive — re-keyed against the clean master
+    assert s2.rekey_report.kept == 3
+    assert s2.rekey_report.dropped == 0
+
+    # And the labeled (curated-out) objects still re-emit to errors/*.parquet,
+    # because the per-category partition reads the clean master.
+    s2.write_error_partitions()
+    errs = pl.read_parquet(tools_.error_category_parquet_path(tmp_path, "debris"))
+    assert sorted(errs.get_column("Object_Label").to_list()) == [1, 2, 3]
+
+
+def test_curated_mirror_preserves_post_columns(tmp_path: Path):
+    """The curated mirror is written from the post-applied frame (``master_df``),
+    so post-only columns survive curation; re-keying still uses the clean master."""
+    clean = _master(4)
+    master_path = tools_.master_measurements_parquet_path(tmp_path)
+    master_path.parent.mkdir(parents=True, exist_ok=True)
+    clean.write_parquet(master_path)
+
+    # A post-applied mirror carries a column the clean master lacks.
+    mirror = clean.with_columns(pl.lit(1.0).alias("Post_Normalized"))
+    store = CurationLabels.load(tmp_path, mirror)
+    store.mark("plateA", 2, "debris")
+
+    curated = pl.read_parquet(tools_.measurements_parquet_path(tmp_path))
+    assert "Post_Normalized" in curated.columns  # post column preserved
+    assert 2 not in curated.get_column("Object_Label").to_list()  # still curated
