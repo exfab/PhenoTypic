@@ -95,6 +95,7 @@ from ._io_constants import (
     TRIALS_PARQUET,
     TUNING_CONFIG_SUFFIXES,
     TUNING_SPEC_JSON,
+    VERIFIED_PARQUET,
     # Namespace classes
     ChunkManifestKey,
     ChunkStateKey,
@@ -197,6 +198,7 @@ from ._io_constants import (
     tune_cache_splits_dir,
     tune_cache_study_db_path,
     tuning_spec_path,
+    verified_parquet_path,
 )
 from .funcs_ import is_binary_mask, timed_execution
 from .hdf_ import HDF
@@ -282,6 +284,7 @@ __all__ = [
     "TRIALS_PARQUET",
     "TUNING_CONFIG_SUFFIXES",
     "TUNING_SPEC_JSON",
+    "VERIFIED_PARQUET",
     # Directory constants
     "DIR_CHUNKS",
     "DIR_DELIVERABLES",
@@ -405,4 +408,5 @@ __all__ = [
     "tune_cache_splits_dir",
     "tune_cache_study_db_path",
     "tuning_spec_path",
+    "verified_parquet_path",
 ]

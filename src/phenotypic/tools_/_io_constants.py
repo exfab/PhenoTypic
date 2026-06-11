@@ -446,6 +446,11 @@ ERROR_ANALYSIS_PARQUET: Final[str] = "error_analysis.parquet"
 ERROR_ANALYSIS_CSV: Final[str] = "error_analysis.csv"
 ERROR_ANALYSIS_HTML: Final[str] = "error_analysis.html"
 
+#: Filename of the GUI-written verified-good baseline archive (spec §9). It is
+#: derived from ``qc/review_state.json`` (which CLI finalize RESETS), so it is
+#: GUI-owned and never CLI-emitted; finalize leaves any existing file untouched.
+VERIFIED_PARQUET: Final[str] = "verified.parquet"
+
 #: ``splits/`` — the robust-eval held-out **split assignment** sidecar folder
 #: (holds :data:`SPLIT_ASSIGNMENT_JSON`). Lives inside the hidden tune cache
 #: (:data:`DIR_PHT_TUNE_CACHE`), **not** under :data:`DIR_DELIVERABLES`: the
@@ -1289,6 +1294,11 @@ def error_analysis_csv_path(output_dir: Path) -> Path:
 def error_analysis_html_path(output_dir: Path) -> Path:
     """Return ``<output>/deliverables/error_analysis.html``."""
     return deliverables_dir(output_dir) / ERROR_ANALYSIS_HTML
+
+
+def verified_parquet_path(output_dir: Path) -> Path:
+    """Return ``<output>/deliverables/verified.parquet`` (GUI-written, §9)."""
+    return deliverables_dir(output_dir) / VERIFIED_PARQUET
 
 
 def curation_labels_parquet_path(output_dir: Path) -> Path:
