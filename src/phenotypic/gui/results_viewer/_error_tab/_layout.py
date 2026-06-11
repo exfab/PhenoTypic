@@ -260,6 +260,7 @@ def _build_empty_state_card() -> Component:
                 html.P(
                     "Label more objects in this category (and a good baseline) "
                     "before the cutoff finder can rank measurements reliably.",
+                    id=ids.ERROR_EMPTY_STATE_MSG_ID,
                     className="mb-0",
                     style={"color": COLOR_MUTED, "fontSize": FONT_SIZE_BODY_SM},
                 ),
@@ -290,7 +291,6 @@ def _build_stores() -> Component:
     return html.Div(
         [
             dcc.Store(id=ids.STORE_ERROR_FOCUS_ID),
-            dcc.Store(id=ids.STORE_ERROR_GOOD_MODE_ID, data="all_unlabeled"),
             dcc.Store(id=ids.STORE_ERROR_CATEGORY_ID),
         ]
     )

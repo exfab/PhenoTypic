@@ -164,8 +164,16 @@ def _module_reviewed_member_keys(
     Returns:
         The ``(image_file, label)`` members of every reviewed group.
     """
-    cols = groupby_cols_for(summary_df, instance_id)
     out: set[LabelKey] = set()
+    # Guard: an instance with reviewed keys but absent from the summary is
+    # stale (e.g. a re-detect changed the recipe). Its groupby columns are
+    # unrecoverable, so the predicate would collapse to ``instance_id`` only
+    # and select *every* member — drop the stale keys instead. A legitimate
+    # no-groupby check IS in the summary (cols == [] but the slice is
+    # non-empty), so it correctly selects its single group's members.
+    if summary_df.filter(pl.col("instance_id") == instance_id).is_empty():
+        return out
+    cols = groupby_cols_for(summary_df, instance_id)
     for encoded in reviewed_encoded:
         key_values = decode_group_key(encoded)
         predicate = pl.col("instance_id") == instance_id

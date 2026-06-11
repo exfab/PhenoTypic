@@ -77,12 +77,13 @@ ERROR_CONTENT_ID = "error-content"
 #: re-reads parquet.
 STORE_ERROR_FOCUS_ID = "store-error-focus"
 
-#: ``dcc.Store`` echoing the good-baseline mode for the recompute path.
-STORE_ERROR_GOOD_MODE_ID = "store-error-good-mode"
-
 #: ``dcc.Store`` echoing the focused-category token for the recompute path
 #: (written by a chip click).
 STORE_ERROR_CATEGORY_ID = "store-error-category"
+
+#: The mode-aware message paragraph inside the empty-state card (swapped to
+#: a "review more QC groups" prompt when verified mode is the limiting class).
+ERROR_EMPTY_STATE_MSG_ID = "error-empty-state-msg"
 
 
 __all__ = [
@@ -99,8 +100,8 @@ __all__ = [
     "ERROR_SAVE_TOAST_ID",
     "ERROR_STALE_BANNER_ID",
     "ERROR_EMPTY_STATE_ID",
+    "ERROR_EMPTY_STATE_MSG_ID",
     "ERROR_CONTENT_ID",
     "STORE_ERROR_FOCUS_ID",
-    "STORE_ERROR_GOOD_MODE_ID",
     "STORE_ERROR_CATEGORY_ID",
 ]

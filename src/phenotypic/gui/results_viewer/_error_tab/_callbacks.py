@@ -93,6 +93,8 @@ class RecomputeResult:
         error_n: Error object count actually screened.
         verified_count: Verified-good object count (verified mode only).
         good_mode: The good-baseline mode this pass ran in.
+        empty_message: The reason shown in the empty-state card (verified
+            mode swaps in a "review more QC groups" prompt; R5).
     """
 
     category: str | None
@@ -105,6 +107,31 @@ class RecomputeResult:
     error_n: int = 0
     verified_count: int = 0
     good_mode: str = "all_unlabeled"
+    empty_message: str = ""
+
+
+#: Empty-state copy by reason. The verified-good message points the user at
+#: the QC tab (the only place reviewed groups grow); R5.
+_MSG_NO_LABELS = (
+    "No error labels yet — mark objects with a category on the Colony or "
+    "QC tab to begin."
+)
+_MSG_FEW_VERIFIED = (
+    "Too few verified-good objects. Mark more QC groups reviewed on the QC "
+    "tab to grow the verified baseline, or switch to All-unlabeled."
+)
+_MSG_NO_SEPARATION = (
+    "No measurement separates good from this category yet — the labeled "
+    "errors don't differ from the baseline on any measurement."
+)
+
+
+def _few_errors_message(category: str) -> str:
+    """Empty-state copy when the error class is the limiting one."""
+    return (
+        f"Label more '{category}' objects (and keep a good baseline) before "
+        "the cutoff finder can rank measurements reliably."
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -144,7 +171,12 @@ def _recompute(
         # to the default so the tab focuses *something* when labels exist.
         category = default_category(category_counts(labels), OTHER_CATEGORY)
     if category is None:
-        return RecomputeResult(category=None, empty_state=True, good_mode=good_mode)
+        return RecomputeResult(
+            category=None,
+            empty_state=True,
+            good_mode=good_mode,
+            empty_message=_MSG_NO_LABELS,
+        )
 
     good_pdf, error_pdf = build_good_error_frames(
         output_root, labels, category, cast(GoodMode, good_mode)
@@ -156,11 +188,18 @@ def _recompute(
         verified_count = len(verified_good_keys(output_root, set(labels.keys())))
 
     if not finder.enough_data(good_pdf, error_pdf):
+        # R5: in verified mode, a short good class means "review more QC
+        # groups"; otherwise the error class is the limiting one.
+        if good_mode == "verified" and len(good_pdf) < finder.min_good_n:
+            message = _MSG_FEW_VERIFIED
+        else:
+            message = _few_errors_message(category)
         return RecomputeResult(
             category=category,
             empty_state=True,
             verified_count=verified_count,
             good_mode=good_mode,
+            empty_message=message,
         )
 
     res = finder.analyze(good_pdf, error_pdf)
@@ -170,6 +209,7 @@ def _recompute(
             empty_state=True,
             verified_count=verified_count,
             good_mode=good_mode,
+            empty_message=_MSG_NO_SEPARATION,
         )
 
     top = res.iloc[0]
@@ -257,20 +297,26 @@ def _persist_verified(output_root: "OutputRoot", good_pdf: pd.DataFrame) -> None
 
 
 def _render_chips(
-    counts: dict[str, int], focused: str | None
+    counts: dict[str, int],
+    focused: str | None,
+    custom_categories: list[str],
 ) -> list[Any]:
     """Build the per-category chip row (selected chip carries ``is-selected``).
 
     Args:
         counts: Per-category tallies from :func:`category_counts`.
         focused: The currently-focused category token, if any.
+        custom_categories: Ordered registered custom tokens, so a custom
+            chip's swatch uses its **registration** index (matching the
+            tile badge / radial wedge), not its sorted-row position.
 
     Returns:
         A list of chip components (one per labeled category).
     """
+    custom_index_of = {tok: i for i, tok in enumerate(custom_categories)}
     chips: list[Any] = []
-    for idx, (token, count) in enumerate(sorted(counts.items())):
-        color = category_color(token, idx)
+    for token, count in sorted(counts.items()):
+        color = category_color(token, custom_index_of.get(token, 0))
         selected = token == focused
         chips.append(
             html.Button(
@@ -418,6 +464,7 @@ def register_error_callbacks(
         Output(ids.ERROR_FIGURE_ID, "figure"),
         Output(ids.STORE_ERROR_FOCUS_ID, "data"),
         Output(ids.ERROR_EMPTY_STATE_ID, "style"),
+        Output(ids.ERROR_EMPTY_STATE_MSG_ID, "children"),
         Output(ids.ERROR_CONTENT_ID, "style"),
         Output(ids.ERROR_STALE_BANNER_ID, "children"),
         Output(ids.ERROR_STALE_BANNER_ID, "is_open"),
@@ -440,9 +487,10 @@ def register_error_callbacks(
 
         mode = good_mode or "all_unlabeled"
         result = _recompute(output_root, filtered_state, focused_category, mode)
-        chips = _render_chips(
-            category_counts(dict(filtered_state.labels)), result.category
-        )
+        with filtered_state._lock:
+            counts = category_counts(dict(filtered_state.labels))
+            custom = list(filtered_state.custom_categories)
+        chips = _render_chips(counts, result.category, custom)
         verified_style = (
             {"display": "inline-block"} if mode == "verified" else {"display": "none"}
         )
@@ -459,6 +507,7 @@ def register_error_callbacks(
                 go.Figure(),
                 {},
                 {"display": "block", "margin": "1rem"},
+                result.empty_message,
                 {"display": "none"},
                 stale_text,
                 stale_open,
@@ -472,6 +521,7 @@ def register_error_callbacks(
             result.figure,
             result.focus,
             {"display": "none"},
+            no_update,
             {"padding": "0.5rem 1rem"},
             stale_text,
             stale_open,

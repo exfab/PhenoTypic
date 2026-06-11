@@ -7,7 +7,10 @@ horizontal line shape at the suggested cutoff. The drag emits
 can recompute recall/specificity at any dragged position.
 
 Palette rule (DESIGN.md): the good series uses the neutral data tone
-``COLOR_INFO`` (OI_SKY); the error series uses
+``OI_NAVY`` — chosen because it is the one data hue **no** core error
+category owns (and is absent from the custom-cycle palette), so the good
+box never collides with the focused category's color (e.g. ``COLOR_INFO``
+/ OI_SKY would clash with ``undersegmented``). The error series uses
 ``category_color(category, custom_index)`` from the Okabe-Ito data
 palette. :func:`phenotypic.viz.figures.apply_theme` is applied before the
 figure is returned.
@@ -17,11 +20,15 @@ from __future__ import annotations
 import numpy as np
 import plotly.graph_objects as go
 
-from phenotypic.gui._design import COLOR_INFO, category_color
+from phenotypic.gui._design import OI_NAVY, category_color
 from phenotypic.viz.figures import apply_theme
 
 #: Display name of the good-baseline box trace.
 _GOOD_TRACE_NAME = "Good kept"
+
+#: Good-baseline series color — a data tone unused by any core/custom
+#: category, so the two boxes never render the same fill.
+_GOOD_COLOR = OI_NAVY
 
 
 def build_distribution_figure(
@@ -59,7 +66,7 @@ def build_distribution_figure(
         go.Box(
             y=good,
             name=_GOOD_TRACE_NAME,
-            marker_color=COLOR_INFO,
+            marker_color=_GOOD_COLOR,
             boxpoints="all",
             jitter=0.4,
             pointpos=0,
