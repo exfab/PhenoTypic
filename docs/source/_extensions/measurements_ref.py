@@ -43,8 +43,6 @@ _REGISTRY: list[tuple[str, list[str]]] = [
         ["phenotypic.schema.TEXTURE"]),
     ("phenotypic.measure._measure_color.MeasureColor",
         [
-            "phenotypic.schema.ColorXYZ",
-            "phenotypic.schema.Colorxy",
             "phenotypic.schema.ColorLab",
             "phenotypic.schema.ColorHSV",
         ]),

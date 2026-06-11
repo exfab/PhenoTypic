@@ -89,8 +89,8 @@ def test_split_measurements_groups_plural_measure_color_infoclasses() -> None:
         {
             "Metadata_Dataset": ["ds1"],
             str(OBJECT.LABEL): [1],
-            str(ColorLab.L_STAR_MEAN): [55.0],
-            str(ColorHSV.HUE_MEAN): [0.2],
+            str(ColorLab.L_STAR_GEOMEDIAN): [55.0],
+            str(ColorHSV.HUE_ROBUST_MEAN): [0.2],
         }
     )
 
@@ -100,8 +100,8 @@ def test_split_measurements_groups_plural_measure_color_infoclasses() -> None:
     assert list(splits["MeasureColor"].columns) == [
         "Metadata_Dataset",
         str(OBJECT.LABEL),
-        str(ColorLab.L_STAR_MEAN),
-        str(ColorHSV.HUE_MEAN),
+        str(ColorLab.L_STAR_GEOMEDIAN),
+        str(ColorHSV.HUE_ROBUST_MEAN),
     ]
 
 

@@ -1,104 +1,54 @@
-"""Per-object summary statistics in the CIE L*a*b* color space."""
+"""Per-object robust colorimetric statistics in the CIE L*a*b* color space."""
 
 from ._measurement_info import MeasurementInfo
 
 
 class ColorLab(MeasurementInfo):
-    """Measure colony color statistics across multiple perceptual color spaces.
+    """Robust CIE L*a*b* colorimetric summary for a colony.
 
-    Extract per-colony color features from CIE XYZ, chromaticity (xy),
-    CIE Lab (perceptually uniform), and HSV color spaces. For each
-    channel the standard statistical suite is computed (min, Q1, mean,
-    median, Q3, max, std dev, coefficient of variation), plus Lab chroma
-    estimates.
-
-    Covers the CIE L*a*b* channels (L*, a*, b*) plus chroma estimates.
+    Reports two robust center colors -- the ΔE76 (Euclidean) geometric median
+    and the ΔE2000 medoid -- plus ΔE2000 within-colony consistency scalars, the
+    total Euclidean color variance, and an sRGB hex swatch (plot-only) derived
+    from the medoid.
     """
 
     @classmethod
     def category(cls):
         return "ColorLab"
 
-    L_STAR_MINIMUM = ("L*Min", "The minimum L* value of the object")
-    L_STAR_Q1 = ("L*Q1", "The lower quartile (Q1) L* value of the object")
-    L_STAR_MEAN = ("L*Mean", "The mean L* value of the object")
-    L_STAR_MEDIAN = ("L*Median", "The median L* value of the object")
-    L_STAR_Q3 = ("L*Q3", "The upper quartile (Q3) L* value of the object")
-    L_STAR_MAXIMUM = ("L*Max", "The maximum L* value of the object")
-    L_STAR_STDDEV = ("L*StdDev", "The standard deviation of the L* value of the object")
-    L_STAR_COEFF_VARIANCE = (
-        "L*CoeffVar",
-        "The coefficient of variation of the L* value of the object",
-    )
+    # -- ΔE76 geometric-median center (continuous, 0.5 breakdown) --
+    L_STAR_GEOMEDIAN = ("L*GeoMedian", "L* of the ΔE76 (Euclidean) geometric-median center color of the object")
+    A_STAR_GEOMEDIAN = ("a*GeoMedian", "a* of the ΔE76 (Euclidean) geometric-median center color of the object")
+    B_STAR_GEOMEDIAN = ("b*GeoMedian", "b* of the ΔE76 (Euclidean) geometric-median center color of the object")
+
+    # -- ΔE2000 medoid center (real pixel, perceptually-corrected) --
+    L_STAR_MEDOID = ("L*Medoid", "L* of the ΔE2000 medoid center color (real pixel minimizing total ΔE2000)")
+    A_STAR_MEDOID = ("a*Medoid", "a* of the ΔE2000 medoid center color (real pixel minimizing total ΔE2000)")
+    B_STAR_MEDOID = ("b*Medoid", "b* of the ΔE2000 medoid center color (real pixel minimizing total ΔE2000)")
+
+    # -- ΔE2000 within-colony consistency, measured from the medoid --
+    DELTA_E2000_MEDIAN = ("DeltaE2000MedianFromMedoid", "Median ΔE2000 of object pixels from the ΔE2000 medoid center (robust perceptual MAD)")
+    DELTA_E2000_MEAN = ("DeltaE2000MeanFromMedoid", "Mean ΔE2000 of object pixels from the ΔE2000 medoid center (color-uniformity standard)")
+    DELTA_E2000_P95 = ("DeltaE2000P95FromMedoid", "95th-percentile ΔE2000 of object pixels from the ΔE2000 medoid center (worst-case / sectoring flag)")
+
+    # -- classical Euclidean spread --
+    LAB_TOTAL_VARIANCE = ("LabTotalVariance", "Trace of the 3x3 L*a*b* covariance (var L* + var a* + var b*); mean-squared ΔE76 spread about the arithmetic mean (NOT about the reported GeoMedian/Medoid center)")
+
+    # -- plot-only swatch --
+    MEDOID_COLOR_HEX = ("MedoidColorHex", "sRGB hex string of the ΔE2000 medoid color; for plot visualization only (not a numeric measurement)")
 
     @classmethod
-    def l_star_headers(cls):
+    def robust_headers(cls):
         return [
-            str(cls.L_STAR_MINIMUM),
-            str(cls.L_STAR_Q1),
-            str(cls.L_STAR_MEAN),
-            str(cls.L_STAR_MEDIAN),
-            str(cls.L_STAR_Q3),
-            str(cls.L_STAR_MAXIMUM),
-            str(cls.L_STAR_STDDEV),
-            str(cls.L_STAR_COEFF_VARIANCE),
+            str(cls.L_STAR_GEOMEDIAN),
+            str(cls.A_STAR_GEOMEDIAN),
+            str(cls.B_STAR_GEOMEDIAN),
+            str(cls.L_STAR_MEDOID),
+            str(cls.A_STAR_MEDOID),
+            str(cls.B_STAR_MEDOID),
+            str(cls.DELTA_E2000_MEDIAN),
+            str(cls.DELTA_E2000_MEAN),
+            str(cls.DELTA_E2000_P95),
+            str(cls.LAB_TOTAL_VARIANCE),
+            str(cls.MEDOID_COLOR_HEX),
         ]
-
-    A_STAR_MINIMUM = ("a*Min", "The minimum a* value of the object")
-    A_STAR_Q1 = ("a*Q1", "The lower quartile (Q1) a* value of the object")
-    A_STAR_MEAN = ("a*Mean", "The mean a* value of the object")
-    A_STAR_MEDIAN = ("a*Median", "The median a* value of the object")
-    A_STAR_Q3 = ("a*Q3", "The upper quartile (Q3) a* value of the object")
-    A_STAR_MAXIMUM = ("a*Max", "The maximum a* value of the object")
-    A_STAR_STDDEV = ("a*StdDev", "The standard deviation of the a* value of the object")
-    A_STAR_COEFF_VARIANCE = (
-        "a*CoeffVar",
-        "The coefficient of variation of the a* value of the object",
-    )
-
-    @classmethod
-    def a_star_headers(cls):
-        return [
-            str(cls.A_STAR_MINIMUM),
-            str(cls.A_STAR_Q1),
-            str(cls.A_STAR_MEAN),
-            str(cls.A_STAR_MEDIAN),
-            str(cls.A_STAR_Q3),
-            str(cls.A_STAR_MAXIMUM),
-            str(cls.A_STAR_STDDEV),
-            str(cls.A_STAR_COEFF_VARIANCE),
-        ]
-
-    B_STAR_MINIMUM = ("b*Min", "The minimum b* value of the object")
-    B_STAR_Q1 = ("b*Q1", "The lower quartile (Q1) b* value of the object")
-    B_STAR_MEAN = ("b*Mean", "The mean b* value of the object")
-    B_STAR_MEDIAN = ("b*Median", "The median b* value of the object")
-    B_STAR_Q3 = ("b*Q3", "The upper quartile (Q3) b* value of the object")
-    B_STAR_MAXIMUM = ("b*Max", "The maximum b* value of the object")
-    B_STAR_STDDEV = ("b*StdDev", "The standard deviation of the b* value of the object")
-    B_STAR_COEFF_VARIANCE = (
-        "b*CoeffVar",
-        "The coefficient of variation of the b* value of the object",
-    )
-
-    @classmethod
-    def b_star_headers(cls):
-        return [
-            str(cls.B_STAR_MINIMUM),
-            str(cls.B_STAR_Q1),
-            str(cls.B_STAR_MEAN),
-            str(cls.B_STAR_MEDIAN),
-            str(cls.B_STAR_Q3),
-            str(cls.B_STAR_MAXIMUM),
-            str(cls.B_STAR_STDDEV),
-            str(cls.B_STAR_COEFF_VARIANCE),
-        ]
-
-    CHROMA_EST_MEAN = (
-        "ChromaEstimatedMean",
-        r"The mean chroma estimation of the object calculated using :math:`\(sqrt(a^{*}_{mean}^2 + b^{*}_{mean})^2}`",
-    )
-    CHROMA_EST_MEDIAN = (
-        "ChromaEstimatedMedian",
-        r"The median chroma estimation of the object using :math:`\sqrt({a*_{median}^2 + b*_{median})^2}`",
-    )
