@@ -75,7 +75,7 @@ class StrategyConfig(BaseModel):
                 uniform factory signature but unused by the zero-dependency
                 grid/random strategies.
             directions: Per-objective Optuna ``directions`` for a multi-objective
-                run (``["maximize"] * n``), inferred from the scorer by the
+                run (``["minimize"] * n``), inferred from the scorer by the
                 engine. ``None`` → single-objective. Only the Optuna backend
                 honors it; grid/random ignore it (4.8 rejects pairing them with a
                 multi-objective scorer at validation, so they never receive it).
@@ -177,7 +177,7 @@ class OptunaConfig(StrategyConfig):
             space: The search space to materialize each trial from.
             store: The study store (the Optuna study owns persistence; passed for
                 the uniform factory signature).
-            directions: Per-objective ``["maximize"] * n`` for a multi-objective
+            directions: Per-objective ``["minimize"] * n`` for a multi-objective
                 run, inferred from the scorer; ``None`` → single-objective.
         """
         from ._optuna import OptunaStrategy

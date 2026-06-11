@@ -5,8 +5,11 @@ candidate parameters are *decided*, how they are *scored*, which ones are
 *found important*, and how the whole thing forms one ask-and-tell loop.
 
 > All file:line references point at `src/phenotypic/tune/…`. Everything in the
-> module follows one sign convention: **higher-is-better, everything is
-> maximized** (`_MAXIMIZE = "maximize"`, `_strategies/_optuna_support.py`).
+> module follows one sign convention: **bounded cost in `[0,1]` (`0` = perfect,
+> `1` = worst), everything is minimized** (`_MINIMIZE = "minimize"`,
+> `_strategies/_optuna_support.py`). Each scorer emits its *natural* per-term
+> value and declares a `Sense`; the base `Scorer.score_image` orients it into
+> cost via `to_cost` (`_scoring/_orient.py`).
 
 ---
 
@@ -22,7 +25,7 @@ Tuning is an **ask-and-tell optimization loop**:
 4. The result is *told* back to the strategy so the next proposal is
    better-informed.
 
-The orchestrator is `TuningEngine.optimize()` (`_engine.py:48`). Per trial:
+The orchestrator is `TuningEngine.optimize()` (`_engine.py:49`). Per trial:
 
 ```
 strategy.suggest()  →  evaluator.evaluate(...)  →  store.append(Trial)  →
@@ -142,12 +145,12 @@ natively — which is why it is the default.
 
 ## 3. How one proposal is scored — rung ladder + robust aggregation
 
-This is the heart of `Evaluator.evaluate` (`_evaluation/_evaluator.py:236`), and
+This is the heart of `Evaluator.evaluate` (`_evaluation/_evaluator.py:248`), and
 where "accuracy over speed" becomes real math.
 
 ### Step A — fidelity ladder (ASHA rungs)
 Rather than always scoring every plate, images are scored in **growing blocks**
-(`_rung_sizes`, `_evaluator.py:210`):
+(`_rung_sizes`, `_evaluator.py:222`):
 
 ```
 first rung = max(rung_floor=6, ceil(n / rung_factor=3))
@@ -160,21 +163,24 @@ self-disables to a single full-fidelity pass. Each image is scored **once**
 (memoized across rungs).
 
 ### Step B — robust per-term aggregation
-After each rung, every scoring term's per-image values are reduced not by a
-plain mean but by a **spread-penalized median** (`_robust_aggregate`,
-`_evaluator.py:53`):
+After each rung, every scoring term's per-image **cost** values are reduced not
+by a plain mean but by a **spread-penalized median**, then clamped to `[0,1]`
+(`_robust_aggregate`, `_evaluator.py:55`):
 
 ```
-term = median(s₁ … sₖ) − λ · IQR(s₁ … sₖ)
+term = clamp01( median(b₁ … bₖ) + λ · IQR(b₁ … bₖ) )
 ```
 
 with `λ = stability_weight = 0.5` and `IQR = Q75 − Q25`
-(`_aggregate_math.py:25`). The `−λ·IQR` term **rewards parameters that work
-consistently across plates**, not just on average — a config that is brilliant
-on two plates and terrible on three loses to a steady one.
+(`_aggregate_math.py:28`). The `+λ·IQR` term **penalizes parameters that work
+inconsistently across plates** — a config that is brilliant on two plates and
+terrible on three (high IQR) is dragged toward worse cost and loses to a steady
+one. The clamp matters: `median + λ·IQR` can reach `~1+λ` on an unstable-and-bad
+term, so clamping keeps every per-child cost in `[0,1]` (the invariant the
+Tchebycheff composite asserts).
 
 ### Step C — finalize to the objective
-`scorer.finalize(terms)` collapses the term dict to the scalar Optuna maximizes
+`scorer.finalize(terms)` collapses the term dict to the scalar Optuna minimizes
 (or a dict for multi-objective; see §6). The shared projection is
 `mean(objectives.values())` (`_scoring/_scorer.py: project_objectives_to_scalar`).
 
@@ -194,32 +200,40 @@ SuccessiveHalvingPruner(min_resource=rung_floor, reduction_factor=rung_factor)
 
 At each rung, trials are ranked by their interim value; only the **top
 `1/reduction_factor`** (top third by default) survive to the next rung, the rest
-are killed. A clearly-losing config dies after 6 plates instead of wasting the
+are killed (under `direction=minimize` the ASHA pruner keeps the **lowest-cost**
+third). A clearly-losing config dies after 6 plates instead of wasting the
 full set. Pruning is **disabled during explore rounds** (keeps the importance
 sample unbiased) and **disabled for multi-objective** (Optuna pruners are
 single-objective only). Grid/Random use a `NoOpChannel` that never prunes.
 
-### Failure taxonomy (`_evaluator.py:277`)
-- Candidate won't **build** → hard `failed=True`, score floored to `0.0`.
-- **One** image raises → that image contributes the worst term (`0.0`) to
-  *every* term and the loop continues (failures honestly drag the aggregate,
-  `_aggregate`, `_evaluator.py:373`).
+### Failure taxonomy (`_evaluator.py:283`)
+- Candidate won't **build** → hard `failed=True`, score floored to `1.0`.
+- **One** image raises → that image contributes the worst term (`1.0`) to
+  *every* term and the loop continues (failures honestly drag the aggregate
+  **up** (toward worse cost), `_aggregate`, `_evaluator.py:385`).
 - **All** images raise → whole-candidate `failed=True`.
 
 ### Two diagnostic flags
-- **`gap`** (`_per_trial_dispersion`, `_evaluator.py:68`) = relative IQR of the
-  *primary* term, `(Q75 − Q25) / max(|median|, 1e-12)` — a cheap
-  instability/overfit flag (not a held-out gap).
-- **`suspicious`** (`_is_suspicious`, `_evaluator.py:104`) =
-  `score ≥ 0.7 AND Count ≤ 0.3` — catches the gaming signature where a pipeline
-  scores well *because* it under-detects.
+- **`gap`** (`_per_trial_dispersion`, `_evaluator.py:76`) = relative IQR of the
+  *primary* term computed on the **goodness-equivalent `1 − cost`**, with the
+  denominator floored at `_GAP_EPS ≈ 0.02` — a cheap instability/overfit flag
+  (not a held-out gap). Computing it on `1 − cost` moves the divide-by-zero
+  singularity to the harmless *bad-cost* end so a near-perfect candidate
+  (cost ≈ 0) does not explode.
+- **`suspicious`** (`_is_suspicious`, `_evaluator.py:112`) =
+  `score ≤ 0.3 AND Count ≥ 0.7` (cost) — catches the gaming signature where a
+  pipeline has low *cost* (looks good) *because* it under-detects (high Count
+  cost). A missing `Count` term defaults to best cost (`0.0`), so absent-Count
+  candidates are never flagged.
 
 ---
 
 ## 4. The scoring strategies (the objective itself)
 
-Every scorer returns named per-image terms, all normalized **[0,1],
-higher-is-better**. There are four.
+Every scorer returns named per-image terms, each emitted as a **natural** value
+and oriented to **cost ∈ [0,1]** by the base `score_image` (a
+`Sense.HIGHER_BETTER` term like Dice is complemented `1 − value`; a
+`Sense.LOWER_BETTER` divergence passes through). There are four.
 
 ### A. SupervisedScorer — ground truth available (`_scoring/_supervised.py`)
 Modality-tiered.
@@ -234,7 +248,9 @@ IoU  =   |A ∩ B| / |A ∪ B|
 ```
 
 then **macro-average** over pairs into the term `"Region"`. Two empty masks →
-1.0; matched-vs-empty (a false positive or a missed object) → 0.0.
+1.0; matched-vs-empty (a false positive or a missed object) → 0.0. These are the
+natural Dice values; the base orients them to cost (`1 − Dice`), so two empty
+masks → cost `0.0` (perfect) and a missed object → cost `1.0`.
 
 Matching (`_scoring/_matching.py`) is **greedy by descending IoU**:
 - *grid* path: each object is assigned to the grid cell it most overlaps, then
@@ -267,36 +283,65 @@ Spearman rank correlation with GT clears `ρ ≥ 0.7` (`_ENABLE_RHO`), and
 degrades to QC.
 
 ### C. QCScorer — count-only (`_scoring/_qc_scorer.py`)
-The count divergence `metric = |detected − expected| / expected` is folded to
-higher-is-better via an **exponential half-life anchor**:
+The count divergence `metric = |detected − expected| / expected` is the
+scorer's **natural** value (a loss, `Sense.LOWER_BETTER`). Because it is
+unbounded, the scorer supplies an **anchor** (`_term_anchor` → the check's
+`fail_threshold`), and the base `to_cost` folds it via the threshold-anchored
+transform `1 − exp(−ln2 · metric / fail_threshold)`:
 
 ```
-t(metric) = exp( −ln2 · metric / fail_threshold )
+cost(metric) = 1 − exp( −ln2 · metric / fail_threshold )
 ```
 
-So metric 0 → 1.0, metric = fail_threshold → exactly 0.5, metric → ∞ → 0.0.
-Averaged across `groupby` units → term `"Count"`.
+So metric 0 → cost 0.0 (perfect), metric = fail_threshold → exactly 0.5,
+metric → ∞ → cost 1.0 (worst). Averaged across `groupby` units → term
+`"Count"`. (In the shipped roster every scorer keeps its internal `[0,1]` fold
+— OQ1=A — so `_term_anchor` returns `None` and `to_cost` is identity/complement;
+the anchor branch is the contract for future raw-loss scorers.)
 
 ### D. CompositeScorer — blend multiple scorers (`_scoring/_composite.py`)
 Each child owns a namespaced prefix `s0.`, `s1.`, … Children are finalized to
-scalars, then combined:
+per-child **cost** scalars `bᵢ ∈ [0,1]`, then combined over the **study-global
+active set** (children available study-wide; a study-wide abstainer is dropped
+from *both* the `max` and the normalizer):
 
-- **weighted arithmetic mean** `Σ wᵢsᵢ / Σ wᵢ` if weights are given, else
-- **geometric mean** `(Π max(sᵢ, 0))^(1/n)` — a single weak axis drags the
-  product toward 0, so a bad objective can't be masked by a strong one.
+- **augmented Tchebycheff** (default, `blend="tchebycheff"`) with utopia point
+  `z*ᵢ = −ε` and augmentation `ρ`:
 
-It rejects cyclic nesting at construction, and in `multi_objective=True` mode
-returns the per-child dict instead of a scalar.
+  ```
+  Tᵨ(b) = maxᵢ wᵢ(bᵢ + ε)  +  ρ · Σᵢ wᵢ·bᵢ           (minimize)
+  T_norm = Tᵨ(b) / Tᵨ(1…1)                            ∈ (0, 1]
+  ```
+
+  The `max` makes it **conjunctive** (worst axis dominates — all objectives
+  must be good); the `ρ·Σ` augmentation upgrades minimizers from *weakly* to
+  *properly* Pareto optimal. `_UTOPIA_EPS = 1e-3`, `rho = 0.05` (defaults the
+  user never sets — §6.4). The normalizer is the **study-global** constant
+  `Tᵨ(1…1)`, so the `[0,1]` rescale is argmin-preserving **across** trials.
+- **weighted arithmetic mean** (opt-out, `blend="weighted_mean"`)
+  `Σ wᵢbᵢ / Σ wᵢ` — *compensatory*: a strong axis offsets a weak one. Cannot
+  reach non-convex-front compromises; that is why it is not the default.
+
+**Never** a geometric mean of cost: `0` is the product's annihilator, so one
+perfect axis (cost 0) would zero the product and dominate — the opposite of
+the conjunctive property it has on goodness. It is removed from the live path.
+
+`weights` are now **blend-dependent** — Tchebycheff per-axis weights under
+`tchebycheff`, arithmetic weights under `weighted_mean` (a behavior change:
+today *setting* `weights` switched to the compensatory mean). It rejects cyclic
+nesting at construction, and in `multi_objective=True` mode returns the
+per-child cost dict (NSGA-II, `directions=["minimize"]*n`; the abstainer floor
+flips `0.0 → 1.0`).
 
 ### Summary table
 
 | Scorer | Term(s) | Range | Formula |
 |---|---|---|---|
-| Supervised (mask) | `Region` | [0,1]↑ | macro-avg Dice or IoU over matched pairs |
-| Supervised (count) | `CountMAE` | [0,1]↑ | `exp(−ln2·metric/thr)` |
-| Reference-free | `ShapeRegularity`, `Contrast`, `SizeCV`, `Count`? | [0,1]↑ | see table above |
-| QC | `Count` | [0,1]↑ | `exp(−ln2·|det−exp|/exp / thr)` |
-| Composite | child blend | [0,1]↑ | weighted or geometric mean / multi-objective dict |
+| Supervised (mask) | `Region` | [0,1]↓ (cost) | `1 − Dice/IoU` (macro-avg over matched pairs) |
+| Supervised (count) | `CountMAE` | [0,1]↓ (cost) | `1 − exp(−ln2·metric/thr)` |
+| Reference-free | `ShapeRegularity`, `Contrast`, `SizeCV`, `Count`? | [0,1]↓ (cost) | see table above (complemented to cost) |
+| QC | `Count` | [0,1]↓ (cost) | `1 − exp(−ln2·metric/thr)` |
+| Composite | child blend | [0,1]↓ (cost) | augmented Tchebycheff (or weighted mean) / multi-objective dict |
 
 ---
 
@@ -335,19 +380,20 @@ degradation under shuffling (permutation, main effects).
 
 ## 6. Multiple objectives — Pareto math
 
-When the scorer is multi-objective, directions become `["maximize"] * n`
+When the scorer is multi-objective, directions become `["minimize"] * n`
 (`_multi_objective.py:91`), NSGA-II is forced, and pruning is off.
 
-**Dominance** (`_study/_pareto.py:53`): `a` dominates `b` iff `a` is ≥ `b` on
-**every** axis AND strictly > on **at least one**. The **Pareto front** is all
-non-dominated trials (ties deduplicated).
+**Dominance** (`_study/_pareto.py:54`): `a` dominates `b` iff `a` is **≤** `b` on
+**every** axis AND strictly **<** on **at least one**. The **Pareto front** is
+all non-dominated trials (ties deduplicated).
 
-**Picking one config — the knee point** (`_study/_pareto.py:113`): draw the
+**Picking one config — the knee point** (`_study/_pareto.py:115`): draw the
 chord between the lexicographic extremes `lo = min(vectors)` and
 `hi = max(vectors)`; the recommended trial is the one with **maximum
 perpendicular distance to that chord** — the elbow where you stop gaining on one
-objective without sacrificing another. Exact for 2 objectives; heuristic for
-≥ 3.
+objective without sacrificing another (the extremes/chord are direction-agnostic;
+under minimize the knee is still the elbow of the cost front). Exact for 2
+objectives; heuristic for ≥ 3.
 
 ---
 
@@ -364,13 +410,22 @@ plate names, so the same dataset always yields the same split regardless of
 resume order.
 
 The overfit gate (`compute_generalization_gap`, `_evaluation/_generalization.py:58`)
-flags a winner only when **both** margins are exceeded:
+adopts the **standard loss-space generalization gap** — `gap = test − train`,
+positive = overfit. Because cost *is* a loss, this is direction-correct by
+construction (no custom sign flip):
 
 ```
-abs_drop = s_cal − s_held
-rel_drop = abs_drop / max(|s_cal|, 1e-12)
-flag  ⟺  rel_drop > rel_margin  AND  abs_drop > abs_margin
+abs_gap = heldout_cost − cal_cost          # positive = overfit
+rel_gap = abs_gap / max(1 − cal_cost, _GAP_EPS)   # on the goodness-equivalent
+flag  ⟺  rel_gap > rel_margin  AND  abs_gap > abs_margin
 ```
+
+The relative term divides by the **goodness-equivalent `1 − cal_cost`** (with
+`_GAP_EPS ≈ 0.02`) so a near-perfect calibration (cost ≈ 0) does not explode.
+The principled blow-up-free upgrade — relative *overtuning* normalized by the
+*achievable* test improvement (`> 1` ⇒ all gains lost; Schneider, Bischl &
+Feurer, 2025) — needs incumbent/default tracking we don't have and is a
+deferred v2 upgrade.
 
 The margins are `HeldOutConfig` defaults (`gap_margin_relative = 0.15`,
 `gap_margin_absolute = 0.05`, `_evaluation/_held_out.py`). It is report-only —
@@ -402,20 +457,20 @@ the winner never changes.
    │              │   • hand back PruningChannel (ASHA)                                            │  │
    │              ▼                                                                                │  │
    │   ┌──────────────────────────────── Evaluator.evaluate(params) ───────────────────────────┐ │  │
-   │   │  build_pipeline(base, params)   ── fails to build? → FAIL (score 0.0) ─────────────────┼─┘  │
+   │   │  build_pipeline(base, params)   ── fails to build? → FAIL (cost 1.0) ─────────────────┼─┘  │
    │   │           │                                                                            │    │
    │   │           ▼     rung ladder: sizes = max(6, ⌈n/3⌉), ×3, … , n                           │    │
    │   │   ┌───────────────┐                                                                    │    │
    │   │   │  for each rung │───────────────────────────────────────────┐                       │    │
    │   │   │   block of     │                                            │                       │    │
    │   │   │   images:      │   ┌──────────────────────────────────┐     │                       │    │
-   │   │   │   measure +    │──▶│  Scorer.score_image → terms[0,1] │     │                       │    │
-   │   │   │   score once   │   │  supervised: Dice/IoU (matched)  │     │                       │    │
+   │   │   │   measure +    │──▶│  Scorer.score_image → cost[0,1]  │     │                       │    │
+   │   │   │   score once   │   │  supervised: 1−Dice/IoU (matched)│     │                       │    │
    │   │   │   (memoized)   │   │  ref-free:   shape/contrast/CV   │     │                       │    │
-   │   │   └───────┬────────┘   │  qc:         exp(-ln2·m/thr)     │     │                       │    │
-   │   │           │            │  composite:  geo/weighted mean   │     │                       │    │
+   │   │   └───────┬────────┘   │  qc:         1−exp(-ln2·m/thr)   │     │                       │    │
+   │   │           │            │  composite:  aug. Tchebycheff    │     │                       │    │
    │   │           ▼            └──────────────────────────────────┘     │                       │    │
-   │   │   robust-aggregate per term:  median − λ·IQR   (λ=0.5)          │                       │    │
+   │   │   robust-aggregate per term:  clamp01(median + λ·IQR)  (λ=0.5)  │                       │    │
    │   │           │                                                     │                       │    │
    │   │           ▼            scorer.finalize → running scalar         │                       │    │
    │   │   channel.report(score, scored)                                 │                       │    │
@@ -447,14 +502,19 @@ the winner never changes.
   log/bounds heuristics); the sampler — TPE by default — proposes values by
   maximizing the good/bad density ratio `l(x)/g(x)`.
 - **Scored**: candidates run on a fidelity ladder with a stability-penalized
-  robust aggregate (`median − λ·IQR`), so consistency across plates is rewarded
-  and cheap losers are pruned via ASHA.
-- **Objective**: one of four [0,1] scoring strategies (supervised, reference-
-  free, QC, composite).
+  robust aggregate (`median + λ·IQR`, clamped), so consistency across plates is
+  rewarded and cheap losers are pruned via ASHA.
+- **Objective**: one of four [0,1]-cost scoring strategies (supervised,
+  reference-free, QC, composite).
 - **Important**: read out post-hoc via fANOVA (variance decomposition, with
   interactions) or RF-permutation (accuracy drop, main effects only).
 - **Trusted**: multi-objective runs surface a Pareto knee point, and a held-out
   generalization gap flags overfit before you trust the winner.
+- **Combined**: the single-objective `CompositeScorer` uses an **augmented
+  Tchebycheff** scalarization (conjunctive, worst-axis-dominant) over the
+  study-global active set, replacing the old geometric mean — it can reach
+  non-convex-front compromises a weighted sum cannot (Steuer & Choo, 1983;
+  Miettinen, 1998).
 
 ### Key files
 | File | Role |
@@ -464,8 +524,32 @@ the winner never changes.
 | `_strategies/_optuna.py` | sampler selection, suggest, pruning channel, tell |
 | `_evaluation/_evaluator.py` | rung ladder + robust aggregate + finalize |
 | `_evaluation/_aggregate_math.py` | `median/IQR`, eps-floored relative ratio |
-| `_scoring/_supervised.py`, `_reference_free_scorer.py`, `_qc_scorer.py`, `_composite.py` | the four scorers |
+| `_scoring/_orient.py` | `Sense`, `to_cost`, `clamp01` (the orientation boundary) |
+| `_scoring/_supervised.py`, `_reference_free_scorer.py`, `_qc_scorer.py` | the per-modality scorers (natural terms, base-oriented to cost) |
+| `_scoring/_composite.py` | the composite blend (augmented Tchebycheff / weighted mean) |
 | `_scoring/_matching.py` | greedy-IoU / grid object matching |
 | `_screening.py` | parameter importance (fANOVA vs RF-permutation) |
 | `_multi_objective.py`, `_study/_pareto.py` | Pareto dominance + knee point |
 | `_evaluation/_split.py`, `_generalization.py` | held-out split + overfit gate |
+
+---
+
+## References
+
+The cost convention and composite math draw on:
+
+- Steuer, R. E., & Choo, E.-U. (1983). *An interactive weighted Tchebycheff
+  procedure for multiple objective programming.* Mathematical Programming,
+  26(3), 326–344. https://doi.org/10.1007/BF02591870 — weighted Tchebycheff
+  reaches every Pareto point; augmentation gives *proper* Pareto optimality.
+- Miettinen, K. (1998). *Nonlinear Multiobjective Optimization.* Kluwer.
+  https://doi.org/10.1007/978-1-4615-5563-6 — reachability and proper efficiency
+  of (augmented) Tchebycheff scalarization.
+- Carrell, A. M., Mallinar, N., Lucas, J., & Nakkiran, P. (2022). *The
+  calibration generalization gap.* arXiv.
+  https://doi.org/10.48550/arXiv.2210.01964 — generalization gap as
+  `|Test − Train|` error; our loss-space `heldout_cost − cal_cost` is the same
+  quantity.
+- Schneider, L., Bischl, B., & Feurer, M. (2025). *Overtuning in hyperparameter
+  optimization.* arXiv. https://doi.org/10.48550/arXiv.2506.19540 — the
+  relative-overtuning normalization deferred to v2.

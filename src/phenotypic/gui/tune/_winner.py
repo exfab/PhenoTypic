@@ -69,12 +69,12 @@ def write_winner(
         >>> from phenotypic.tune._study_store import Trial
         >>> d = Path(tempfile.mkdtemp())
         >>> root = TuneRunRoot(
-        ...     path=d, trials_path=None, storage_url=None, study_name="tune",
+        ...     path=d, trials_path=None, storage_url=None, study_name="tune_cost_v1",
         ...     directions=None, images_dir=None,
         ...     best_pipeline_path=best_pipeline_path(d),
         ... )
         >>> base = ImagePipeline(ops=[GaussianBlur(sigma=1.0), OtsuDetector()])
-        >>> winner = Trial(number=0, params={"0.sigma": 3.0}, score=0.9,
+        >>> winner = Trial(number=0, params={"0.sigma": 3.0}, score=0.05,
         ...                terms={}, n_images=2)
         >>> written = write_winner(root, base, winner)
         >>> restored = ImagePipeline.from_json(written.read_text())

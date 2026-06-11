@@ -17,14 +17,14 @@ from phenotypic.tune._spec import Budget, TuningSpec
 
 
 class _ConstScorer(Scorer):
-    def score_image(self, image, measurements) -> dict[str, float]:
+    def _score_terms(self, image, measurements) -> dict[str, float]:
         return {"Count": 1.0}
 
 
 class _FailScorer(Scorer):
     """Always raises — the Evaluator catches it and marks the trial failed."""
 
-    def score_image(self, image, measurements) -> dict[str, float]:
+    def _score_terms(self, image, measurements) -> dict[str, float]:
         raise RuntimeError("forced failure")
 
 
@@ -54,15 +54,15 @@ def _base():
 
 
 class _SuspiciousScorer(Scorer):
-    """High finalized score (mean 0.733) paired with a near-floor Count term (0.2).
+    """Low finalized cost (~0.267) paired with a high Count cost (0.8).
 
-    Trips the suspicious gate (``score >= 0.7 and Count <= 0.3``) and yields a
-    computable per-trial dispersion, so a run exercises both robust-eval signals
+    Trips the suspicious gate (``cost <= 0.3 and Count_cost >= 0.7``) and yields
+    a computable per-trial dispersion, so a run exercises both robust-eval signals
     end-to-end (Evaluator → Trial → store).
     """
 
-    def score_image(self, image, measurements) -> dict[str, float]:
-        return {"Count": 0.2, "A": 1.0, "B": 1.0}
+    def _score_terms(self, image, measurements) -> dict[str, float]:
+        return {"Count": 0.8, "A": 0.0, "B": 0.0}
 
 
 def test_engine_carries_gap_and_suspicious_to_store():
@@ -87,7 +87,7 @@ def test_engine_carries_gap_and_suspicious_to_store():
     best = engine.store.best()
     assert best is not None
     assert best.gap is not None        # the dropped-field bug left this None
-    assert best.suspicious is True     # high score + near-floor Count term
+    assert best.suspicious is True     # low cost + high Count cost (under-detection signature)
 
 
 def test_engine_runs_full_grid():
@@ -99,6 +99,41 @@ def test_engine_runs_full_grid():
     # all six param-combos are distinct
     seen = {tuple(sorted(t.params.items())) for t in engine.store.trials}
     assert len(seen) == 6
+
+
+class _AvailScorer(Scorer):
+    """A const scorer whose availability is the ``ok`` flag (cost-native)."""
+
+    ok: bool = True
+
+    def _score_terms(self, image, measurements) -> dict[str, float]:
+        return {"Count": 0.2}
+
+    def availability(self) -> bool:
+        return self.ok
+
+
+def test_engine_pins_composite_active_set_to_available_children():
+    # Phase 3 §6.3: the engine pins the augmented Tchebycheff composite's
+    # study-global active set to the children available study-wide, once before
+    # the trial loop. An unavailable child is dropped from the roster.
+    from phenotypic.tune._scoring._composite import CompositeScorer
+
+    comp = CompositeScorer(
+        scorers=[_AvailScorer(ok=True), _AvailScorer(ok=False)],
+    )
+    spec = TuningSpec(
+        pipeline=_base(),
+        search_space=_grid_space(),
+        scorer=comp,
+        evaluator=Evaluator(),
+        strategy=GridConfig(),
+        budget=Budget(n_trials=1),
+    )
+    engine = TuningEngine(spec)
+    engine.optimize([load_synth_yeast_plate()])
+    # Only the available child (s0) is pinned as an objective axis.
+    assert comp._active_handles == ("s0",)
 
 
 def test_engine_budget_caps_trials():

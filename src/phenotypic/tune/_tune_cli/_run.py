@@ -66,8 +66,11 @@ _RUN_MARKER_VERSION: Final[int] = 1
 
 #: The study name every tune run uses (the Optuna ``study_name`` + the marker's
 #: ``study_name`` field). A single constant keeps the store, the SLURM fleet, and
-#: the marker in lockstep.
-_STUDY_NAME: Final[str] = "tune"
+#: the marker in lockstep. **Bumped from ``"tune"`` for the minimize-cost cutover
+#: (spec §7 Phase 2, OQ7):** new code only ever opens this study, so a pre-cutover
+#: ``"tune"`` (maximize) study is never reopened — the silent-maximize hazard is
+#: impossible by construction, not contingent on a runtime guard.
+_STUDY_NAME: Final[str] = "tune_cost_v1"
 
 
 def _default_study_db_url(output_dir: Path) -> str:
@@ -436,7 +439,7 @@ def _open_store(
             3-way fallback (env var > local ``study.db``) in
             :func:`_resolve_storage_url`.
         resume_path: The ``trials.parquet`` path the journal resumes from.
-        directions: Per-objective ``["maximize"] * n`` for a multi-objective run
+        directions: Per-objective ``["minimize"] * n`` for a multi-objective run
             (Optuna store only); ``None`` → single-objective.
 
     Returns:
@@ -961,8 +964,9 @@ def _finalize_pareto_outputs(
 
     * ``pareto_front.parquet`` — the front's trials (same schema as
       ``trials.parquet``, ``objectives_json`` populated);
-    * ``best_<objective>.json`` — the front pipeline maximizing each objective
-      axis, plus that axis's :func:`compute_param_importance`;
+    * ``best_<objective>.json`` — the front pipeline minimizing each objective
+      axis's cost (lowest-cost trial per axis), plus that axis's
+      :func:`compute_param_importance`;
     * and it overwrites the top-level ``best_pipeline.json`` with the **knee**
       (the max-curvature compromise pick).
 
@@ -994,7 +998,7 @@ def _finalize_pareto_outputs(
         front[0].objectives or {}
     )
     for name in objective_axes:
-        winner = max(
+        winner = min(
             (t for t in front if t.objectives and name in t.objectives),
             key=lambda t: t.objectives[name],  # type: ignore[index]
             default=None,

@@ -70,7 +70,8 @@ def test_legacy_parquet_without_gap_columns_loads(tmp_path):
     assert len(back) == 2
     assert all(t.gap is None for t in back.trials)
     assert all(t.suspicious is False for t in back.trials)
-    assert back.best().score == 0.9
+    # Cost convention (minimize): the lowest-cost trial wins.
+    assert back.best().score == 0.3
 
 
 def test_gap_columns_appended_last(tmp_path):

@@ -19,21 +19,21 @@ from phenotypic.tune._scoring._scorer import Scorer
 
 
 class _SequenceScorer(Scorer):
-    """Single-objective: returns preset per-call values (term ``"X"``)."""
+    """Single-objective: returns preset per-call cost values (term ``"X"``)."""
 
     values: list[float]
     _cursor: int = PrivateAttr(default=0)
 
-    def score_image(self, image, measurements) -> dict[str, float]:
+    def _score_terms(self, image, measurements) -> dict[str, float]:
         value = self.values[self._cursor % len(self.values)]
         self._cursor += 1
         return {"X": float(value)}
 
 
 class _MultiObjectiveScorer(Scorer):
-    """Multi-objective: two named objectives passed straight through finalize."""
+    """Multi-objective: two named cost objectives passed straight through finalize."""
 
-    def score_image(self, image, measurements) -> dict[str, float]:
+    def _score_terms(self, image, measurements) -> dict[str, float]:
         return {"Dice": 0.8, "IoU": 0.4}
 
     def finalize(self, terms):
@@ -67,7 +67,8 @@ def test_single_objective_evaluate_leaves_objectives_none():
         base, _SequenceScorer(values=[1.0, 2.0, 3.0]), {}, [img, img, img]
     )
     assert result.objectives is None
-    assert result.score == pytest.approx(1.5)
+    # With cost convention: values [1.0, 2.0, 3.0] → robust = clamp01(2.0 + 0.5·1.0) = 1.0.
+    assert result.score == pytest.approx(1.0)
 
 
 def test_multi_objective_evaluate_sets_objectives_and_projects_score():
@@ -90,7 +91,7 @@ def test_multi_objective_empty_objectives_projects_to_zero():
     img = load_synth_yeast_plate()
 
     class _EmptyDictScorer(Scorer):
-        def score_image(self, image, measurements) -> dict[str, float]:
+        def _score_terms(self, image, measurements) -> dict[str, float]:
             return {}
 
         def finalize(self, terms):

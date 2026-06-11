@@ -40,3 +40,33 @@ def test_cancel_prompt_is_local_only():
 
     with pytest.raises(ValueError, match="SLURM"):
         cancel_prompt("slurm_run", "slurm")
+
+
+def test_legacy_study_degrade_note_is_friendly(tmp_path):
+    """A pre-cutover run (study_name='tune') degrades with a re-run message,
+    not the generic 'couldn't reach the live study' note."""
+    from phenotypic.gui.tune._callbacks import _monitor_degrade_note
+    from phenotypic.gui.tune._run_root import TuneRunRoot
+
+    legacy = TuneRunRoot(
+        path=tmp_path, trials_path=None, storage_url="sqlite:///x.db",
+        study_name="tune", directions=None, images_dir=None,
+        best_pipeline_path=tmp_path / "best_pipeline.json",
+    )
+    note = _monitor_degrade_note(legacy, RuntimeError("study not found"))
+    assert "re-run" in note.lower() or "pre-cutover" in note.lower()
+
+
+def test_current_study_degrade_note_is_generic(tmp_path):
+    """A current-convention run keeps the generic unreachable note."""
+    from phenotypic.gui.tune._callbacks import (
+        _NOTE_LIVE_UNREACHABLE, _monitor_degrade_note,
+    )
+    from phenotypic.gui.tune._run_root import TuneRunRoot
+
+    current = TuneRunRoot(
+        path=tmp_path, trials_path=None, storage_url="sqlite:///x.db",
+        study_name="tune_cost_v1", directions=None, images_dir=None,
+        best_pipeline_path=tmp_path / "best_pipeline.json",
+    )
+    assert _monitor_degrade_note(current, RuntimeError("timeout")) == _NOTE_LIVE_UNREACHABLE

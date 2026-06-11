@@ -30,9 +30,10 @@ def _detected(n: int, name: str = "p1") -> pd.DataFrame:
     )
 
 
-def test_under_detect_scores_strictly_lower():
+def test_under_detect_scores_strictly_higher_cost():
     # SAME layout (96 expected); a faithful frame detects all 96, an
-    # under-detecting one detects far fewer (24).
+    # under-detecting one detects far fewer (24). Under cost, faithful detection
+    # must score STRICTLY LOWER (better) than under-detection.
     scorer = QCScorer(
         check=ExpectedVsDetectedCount(
             metadata=_layout(96), groupby=["Metadata_ImageName"]
@@ -40,4 +41,4 @@ def test_under_detect_scores_strictly_lower():
     )
     faithful = scorer.score_image(None, _detected(96))["Count"]
     under_detect = scorer.score_image(None, _detected(24))["Count"]
-    assert faithful > under_detect
+    assert faithful < under_detect

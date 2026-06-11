@@ -1,9 +1,9 @@
 """The candidate evaluator — the uniform 3-step robust-evaluation loop.
 
 For one parameter combo: build the candidate pipeline, ``score_image`` over the
-calibration set, robust-aggregate each term as ``median - λ·IQR`` (the spread
-penalty rewards parameters that are stable across images, not just good on
-average), then ``finalize`` to the scalar objective the optimizer maximizes.
+calibration set, robust-aggregate each term as ``clamp01(median + λ·IQR)`` (the
+spread penalty pushes the cost up, toward the worst), then ``finalize`` to the
+scalar cost the optimizer **minimizes** (lower = better).
 """
 from __future__ import annotations
 
@@ -12,15 +12,17 @@ from typing import Any, Mapping, Optional
 
 from pydantic import BaseModel, ConfigDict
 
+from .._scoring._orient import clamp01
 from .._scoring._scorer import Scorer, project_objectives_to_scalar
 from .._strategies._pruning import NoOpChannel, PruningChannel
 from ._aggregate_math import _median_iqr, _relative
 from ._builder import build_pipeline
 
-#: The worst possible per-image term score (higher-is-better objective floor).
-#: A per-image exception contributes this to every term so it honestly drags
-#: the aggregate (robust-eval §10) rather than dodging a bad plate by crashing.
-_WORST_TERM = 0.0
+#: The worst possible per-image term **cost** (lower-is-better objective
+#: ceiling). A per-image exception contributes this to every term so it
+#: honestly drags the aggregate toward the worst (robust-eval §10) rather than
+#: dodging a bad plate by crashing.
+_WORST_TERM = 1.0
 
 
 def _project_finalize(
@@ -51,18 +53,24 @@ def _project_finalize(
 
 
 def _robust_aggregate(values: list[float], stability_weight: float) -> float:
-    """Reduce a term's per-image scores to ``median - stability_weight·IQR``.
+    """Reduce a term's per-image **costs** to ``clamp01(median + λ·IQR)``.
+
+    Cost convention (lower = better): the spread penalty *adds* to the central
+    tendency, so an unstable term is penalized toward the worst cost (``1``).
+    The reflected aggregate ranges ``[0, 1+λ]``, so it is clamped to ``[0,1]``
+    (B1) — the clamp is monotone and only bites on *terrible* terms (cost > 1,
+    i.e. unstable **and** bad), so it is winner-preserving.
 
     Args:
-        values: The per-image scores for one term (higher = better).
+        values: The per-image costs for one term (lower = better).
         stability_weight: λ — how hard cross-image spread is penalized.
 
     Returns:
-        The stability-penalized central tendency. For a single value the IQR is
-        ``0`` and the result is that value.
+        The clamped stability-penalized central tendency in ``[0,1]``. For a
+        single value the IQR is ``0`` and the result is that value.
     """
     median, iqr = _median_iqr(values)
-    return median - stability_weight * iqr
+    return clamp01(median + stability_weight * iqr)
 
 
 def _per_trial_dispersion(
@@ -71,8 +79,11 @@ def _per_trial_dispersion(
     """The relative across-plate dispersion of the **primary (first) term**.
 
     The per-trial ``gap`` signal: the relative IQR
-    ``(q75 - q25) / max(|median|, eps)`` of the first term's per-image scores — a
-    cheap instability / overfit-risk flag, NOT a held-out generalization gap. A
+    ``(q75 - q25) / max(1 - median, eps)`` of the first term's per-image scores — a
+    cheap instability / overfit-risk flag, NOT a held-out generalization gap.
+    Under the cost convention a good candidate's median ≈ 0, so the ratio is
+    taken against the goodness-equivalent ``1 - median`` (keeps it finite — the
+    singularity moves to the harmless bad end — and ``GAP_FLAG_THRESHOLD`` valid). A
     single-image trial has no dispersion (``0.0``); below ``min_n`` images the
     estimate is unreliable (``None``, mirroring the stability small-n guard); a
     perfectly flat term is maximally stable (``0.0``).
@@ -98,7 +109,9 @@ def _per_trial_dispersion(
     if n < min_n:
         return None
     median, iqr = _median_iqr(values)
-    return _relative(iqr, median)
+    # Cost convention: a good candidate's median ≈ 0 would blow up the ratio, so
+    # divide by the goodness-equivalent (1 - median ≈ 1) — reflection-clean.
+    return _relative(iqr, 1.0 - median)
 
 
 def _is_suspicious(
@@ -108,37 +121,41 @@ def _is_suspicious(
     score_floor: float,
     count_floor: float,
 ) -> bool:
-    """Flag the qc §5 "great score on under-detection" gaming signature.
+    """Flag the qc §5 "great cost on under-detection" gaming signature.
 
-    A candidate is suspicious when a **high** finalized ``score`` is paired with a
-    **low** aggregated ``Count`` term — the signature of a pipeline that scores
-    well precisely *because* it under-detects (detecting fewer colonies dodges
-    the spread/quality penalties the score rewards). Read from already-computed
-    aggregates; a heuristic review flag, not a hard rejection. A missing ``Count``
-    term defaults to ``1.0`` (faithful) so a non-count objective is never flagged.
+    A candidate is suspicious when a **low** finalized ``score`` (great cost) is
+    paired with a **high** aggregated ``Count`` cost — the signature of a pipeline
+    that scores well precisely *because* it under-detects (detecting fewer
+    colonies dodges the spread/quality penalties). Read from already-computed
+    aggregates; a heuristic review flag, not a hard rejection. The intuitive
+    floors are mapped into cost-space here (``1 - floor``): a missing ``Count``
+    term defaults to ``0.0`` (faithful = best cost) so a non-count objective is
+    never flagged.
 
     Args:
-        score: The finalized scalar objective (higher = better).
-        terms: The robust-aggregated per-term scores; ``terms["Count"]`` is read.
-        score_floor: The minimum ``score`` for the "great score" half.
-        count_floor: The maximum ``terms["Count"]`` for the "under-detection" half.
+        score: The finalized scalar cost (lower = better).
+        terms: The robust-aggregated per-term costs; ``terms["Count"]`` is read.
+        score_floor: The "great score" threshold expressed intuitively; the cost
+            half fires when ``score <= 1 - score_floor``.
+        count_floor: The "under-detection" threshold expressed intuitively; the
+            cost half fires when ``terms["Count"] >= 1 - count_floor``.
 
     Returns:
-        ``True`` when ``score >= score_floor`` **and**
-        ``terms["Count"] <= count_floor``.
+        ``True`` when ``score <= (1 - score_floor)`` **and**
+        ``terms["Count"] >= (1 - count_floor)``.
     """
-    count = float(terms.get("Count", 1.0))
-    return score >= score_floor and count <= count_floor
+    count_cost = float(terms.get("Count", 0.0))
+    return score <= (1.0 - score_floor) and count_cost >= (1.0 - count_floor)
 
 
 class EvaluationResult(BaseModel):
     """The outcome of evaluating one candidate over the calibration set.
 
     Args:
-        score: The finalized scalar objective (higher = better). For a
-            multi-objective candidate this is the **scalar projection** of
-            ``objectives`` (``mean(objectives.values())``).
-        terms: Robust-aggregated per-term scores (``median - λ·IQR`` each).
+        score: The finalized scalar cost the optimizer **minimizes** (lower =
+            better). For a multi-objective candidate this is the **scalar
+            projection** of ``objectives`` (``mean(objectives.values())``).
+        terms: Robust-aggregated per-term costs (``clamp01(median + λ·IQR)`` each).
         n_images: Number of calibration images evaluated.
         objectives: The named multi-objective values (plan §0a sidecar), or
             ``None`` for a single-objective candidate. Set only when the scorer's
@@ -177,10 +194,11 @@ class Evaluator(BaseModel):
     """Score a candidate combo over a calibration set (CV-only MVP).
 
     Args:
-        stability_weight: λ in ``median - λ·IQR`` — how hard cross-image spread
-            is penalized when aggregating a term across the calibration set.
-        failure_score: The score assigned when a candidate fails to build,
-            measure, or score; the floor of the higher-is-better objective.
+        stability_weight: λ in ``clamp01(median + λ·IQR)`` — how hard cross-image
+            spread is penalized when aggregating a term (cost) across the
+            calibration set.
+        failure_score: The worst-cost ceiling assigned when a candidate fails
+            to build, measure, or score (lower-is-better objective).
         rung_floor: The minimum first-rung size for the ASHA-style fidelity
             ladder (robust-eval §7) — never prune on fewer plates than this.
         rung_factor: The geometric growth factor between rungs (×3 by default).
@@ -199,7 +217,7 @@ class Evaluator(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     stability_weight: float = 0.5
-    failure_score: float = 0.0
+    failure_score: float = 1.0
     rung_floor: int = 6
     rung_factor: int = 3
     min_rungs: int = 2
@@ -246,12 +264,12 @@ class Evaluator(BaseModel):
 
         The candidate is scored in growing rung blocks (:meth:`_rung_sizes`) over
         a **deterministic, id-sorted** subset (metadata-stratified rungs are
-        deferred). After each rung the running ``median - λ·IQR`` is reported to
+        deferred). After each rung the running ``clamp01(median + λ·IQR)`` is reported to
         ``channel`` and ``channel.should_prune()`` is checked *between* rungs; a
         prune short-circuits to a partial ``EvaluationResult(pruned=True)``. Each
         image is scored **once** (memoized across rungs). Failure taxonomy
         (robust-eval §10): a candidate that won't build is a true ``failed``; one
-        image raising mid-scoring contributes the worst term and the loop
+        image raising mid-scoring contributes the worst-cost term and the loop
         continues; only **all** images erroring is a whole-candidate ``failed``.
 
         Args:

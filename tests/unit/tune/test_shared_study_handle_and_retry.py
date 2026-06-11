@@ -19,7 +19,7 @@ import pytest
 _OPTUNA = importlib.util.find_spec("optuna") is not None
 pytestmark = pytest.mark.skipif(not _OPTUNA, reason="optuna extra not installed")
 
-_STUDY = "tune"
+_STUDY = "tune_cost_v1"
 
 
 def _store(url: str):

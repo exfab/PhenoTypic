@@ -19,14 +19,14 @@ from phenotypic.tune._scoring._scorer import Scorer
 class _ScalarScorer(Scorer):
     """Default ``finalize`` (mean) — the single-objective scalar shape."""
 
-    def score_image(self, image, measurements) -> dict[str, float]:
+    def _score_terms(self, image, measurements) -> dict[str, float]:
         return {"X": 1.0}
 
 
 class _MultiObjectiveScorer(Scorer):
     """A composite scorer whose ``finalize`` returns named objectives (a dict)."""
 
-    def score_image(self, image, measurements) -> dict[str, float]:
+    def _score_terms(self, image, measurements) -> dict[str, float]:
         return {"Dice": 0.8, "IoU": 0.6}
 
     def finalize(self, terms):

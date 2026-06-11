@@ -16,9 +16,11 @@ companion catalogue
 * **Count** — *optional* expected-vs-detected grid count, reused from
   ``QCScorer`` when a path-configured ``count_check`` is supplied (family C.6).
 
-Every term is **fixed-normalized** to ``[0, 1]`` (higher = better) so the
-optimum cannot migrate when the parameter grid's endpoints change — the "Böck
-trap" (``§B.3``) that min–max-over-the-tested-set normalization falls into.
+Every term is **fixed-normalized** to a natural-goodness value in ``[0, 1]``
+(higher = better; ``_TERM_SENSE = HIGHER_BETTER``, so the base
+:meth:`Scorer.score_image` complements each into **cost**) so the optimum cannot
+migrate when the parameter grid's endpoints change — the "Böck trap" (``§B.3``)
+that min–max-over-the-tested-set normalization falls into.
 
 The scorer is **gated** behind meta-validation (``D1``): :meth:`meta_validate`
 correlates the proxy against ground truth and caches an enable/abstain flag;
@@ -39,6 +41,7 @@ from pydantic import ConfigDict, PrivateAttr
 from phenotypic.analysis import ExpectedVsDetectedCount
 from phenotypic.schema import SHAPE, SIZE
 
+from ._orient import Sense
 from ._qc_scorer import fold_expected_vs_detected_count
 from ._scorer import Scorer
 
@@ -101,7 +104,8 @@ class ReferenceFreeScorer(Scorer):
     measurement columns — ``Shape_*`` and ``Size_*`` — for the shape and size
     terms (no geometry is recomputed), reads the image grayscale + mask for the
     contrast term, and optionally reuses :class:`QCScorer`'s expected-vs-detected
-    grid count. All terms are fixed-normalized to ``[0, 1]`` (higher = better).
+    grid count. All terms are fixed-normalized to a natural-goodness value in
+    ``[0, 1]`` (higher = better); the base complements each into cost.
 
     The scorer is **unavailable until meta-validated**: :meth:`availability`
     returns ``False`` (so the engine degrades to :class:`QCScorer`) until
@@ -147,6 +151,10 @@ class ReferenceFreeScorer(Scorer):
 
     #: The optional grid-count term name (present iff ``count_check`` is set).
     count_term_name: ClassVar[str] = "Count"
+
+    #: Every proxy term is bounded [0,1] goodness (fixed-normalized); the base
+    #: complements each into cost.
+    _TERM_SENSE: ClassVar[Sense] = Sense.HIGHER_BETTER
 
     count_check: Optional[ExpectedVsDetectedCount] = None
     replicate_groupby: Optional[list[str]] = None
@@ -291,7 +299,7 @@ class ReferenceFreeScorer(Scorer):
     # ----------------------------------------------------------------- #
     # the proxy terms (Task 1)
     # ----------------------------------------------------------------- #
-    def score_image(
+    def _score_terms(
         self, image: Any, measurements: pd.DataFrame
     ) -> dict[str, float]:
         """Score one image's segmentation as fixed-normalized proxy terms.
@@ -303,10 +311,11 @@ class ReferenceFreeScorer(Scorer):
                 the category-prefixed ``Shape_*``/``Size_*`` columns.
 
         Returns:
-            A mapping of proxy term → score in ``[0, 1]`` (higher = better):
-            ``ShapeRegularity``, ``Contrast``, ``SizeCV``, and — when a
-            ``count_check`` is configured — ``Count``. Keys are stable across
-            images so the ``Evaluator`` can aggregate per term.
+            A mapping of proxy term → natural goodness in ``[0, 1]`` (higher =
+            better): ``ShapeRegularity``, ``Contrast``, ``SizeCV``, and — when a
+            ``count_check`` is configured — ``Count``. The base complements these
+            goodness values to cost. Keys are stable across images so the
+            ``Evaluator`` can aggregate per term.
         """
         empty = measurements is None or len(measurements) == 0
         terms: dict[str, float] = {

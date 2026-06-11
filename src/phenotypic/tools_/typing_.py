@@ -70,6 +70,15 @@ CheckpointType = Literal["manifest", "finalize"]
 #: Python-side exceptions from SLURM sbatch failures.
 FailureSource = Literal["python", "slurm"]
 
+#: The single-objective composite blend selector — the serialized value of
+#: ``CompositeScorer.blend``. ``"tchebycheff"`` (default) is conjunctive
+#: (worst-axis-dominant, augmented Tchebycheff over per-child cost);
+#: ``"weighted_mean"`` is the compensatory opt-out. No Enum partner is needed —
+#: this is a serialized field value with no separate documentation surface
+#: (mirrors ``DetectMode`` / ``ExecutionMode``). The geometric-mean-of-cost
+#: blend is intentionally NOT offered (it inverts the conjunctive property).
+CompositeBlend = Literal["tchebycheff", "weighted_mean"]
+
 # ---------------------------------------------------------------------------
 # Pydantic-friendly array field — reusable annotated type for operation
 # parameters that carry a raw ``np.ndarray`` (kernels, footprints, masks,

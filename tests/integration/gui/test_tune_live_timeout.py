@@ -39,11 +39,18 @@ def _journal_with_live_url(path: Path, storage_url: str) -> TuneRunRoot:
     parquet.parent.mkdir(parents=True, exist_ok=True)
     store.to_parquet(parquet)
 
+    # Use the current cost-era study name so the poll exercises the generic
+    # timeout-degradation path (``_NOTE_LIVE_UNREACHABLE``). A legacy ``"tune"``
+    # study would short-circuit to the cost-cutover note before the live open is
+    # even attempted (Phase 2/4 legacy-study branch), which is a different code
+    # path than the C1 non-blocking-degradation behavior this test pins.
+    from phenotypic.tune._tune_cli._run import _STUDY_NAME
+
     return TuneRunRoot(
         path=path,
         trials_path=parquet,
         storage_url=storage_url,
-        study_name="tune",
+        study_name=_STUDY_NAME,
         directions=None,
         images_dir=None,
         best_pipeline_path=path / "best_pipeline.json",

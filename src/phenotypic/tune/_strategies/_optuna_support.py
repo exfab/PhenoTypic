@@ -90,11 +90,12 @@ def set_trial_user_attrs(
     if getattr(result, "suspicious", False):
         trial.set_user_attr(PHENO_SUSPICIOUS, True)
 
-#: Every objective in a tuning study is normalized higher-is-better
-#: (robust-eval §5), so a single-objective study (and every axis of a
-#: multi-objective one) maximizes. The one canonical ``"maximize"`` literal the
-#: strategy, the study store, and the multi-objective inference all share.
-_MAXIMIZE: Final[str] = "maximize"
+#: Every objective in a tuning study is normalized to a bounded ``[0,1]`` **cost**
+#: (lower-is-better, ``0`` perfect, ``1`` worst — cost convention §4), so a
+#: single-objective study (and every axis of a multi-objective one) **minimizes**.
+#: The one canonical ``"minimize"`` literal the strategy, the study store, and the
+#: multi-objective inference all share.
+_MINIMIZE: Final[str] = "minimize"
 
 
 def is_multi_objective_directions(directions: Optional[Sequence[str]]) -> bool:
@@ -119,22 +120,70 @@ def study_objective_kwargs(
 
     Maps the per-objective directions onto the mutually-exclusive ``create_study``
     objective argument: ``{"directions": [...]}`` for a multi-objective study,
-    else ``{"direction": "maximize"}`` for the single-objective scalar path. The
+    else ``{"direction": "minimize"}`` for the single-objective scalar path. The
     one place that decides the create-study objective shape, shared by
     ``OptunaStrategy`` and ``OptunaStudyStore``.
 
     Args:
         directions: Per-objective directions (≥2 → multi-objective), or ``None``
-            / a single axis for the scalar maximize study.
+            / a single axis for the scalar minimize study.
 
     Returns:
         ``{"directions": list(directions)}`` when multi-objective, else
-        ``{"direction": _MAXIMIZE}``.
+        ``{"direction": _MINIMIZE}``.
     """
     if is_multi_objective_directions(directions):
         assert directions is not None  # narrowed by is_multi_objective_directions
         return {"directions": list(directions)}
-    return {"direction": _MAXIMIZE}
+    return {"direction": _MINIMIZE}
+
+
+#: The pre-cutover study name. Correctness is the ``_STUDY_NAME`` bump (a legacy
+#: study is never reopened); these helpers are UX (friendly message) only.
+_LEGACY_STUDY_NAME: Final[str] = "tune"
+
+
+def is_legacy_study_name(study_name: str) -> bool:
+    """True for a pre-cutover study name (name-only — no storage probe).
+
+    The read-only GUI Monitor uses this to classify a run from its recorded
+    ``study_name`` without connecting to a (legacy) study.
+
+    Args:
+        study_name: The recorded study name to classify.
+
+    Returns:
+        ``True`` when ``study_name`` is the pre-cutover ``"tune"`` name.
+    """
+    return study_name == _LEGACY_STUDY_NAME
+
+
+def is_legacy_study_present(
+    storage: Any, *, study_name: str = _LEGACY_STUDY_NAME
+) -> bool:
+    """True iff a pre-cutover study exists in ``storage`` (storage-probing).
+
+    ``storage`` is a storage URL or an Optuna storage object. ``optuna`` is
+    imported function-local (the lazy boundary). ``load_study`` raises
+    ``KeyError`` when the study is absent (common case → ``False``); any other
+    error → ``False`` (best-effort detection must never abort study startup).
+
+    Args:
+        storage: An Optuna storage URL or storage object to probe.
+        study_name: The pre-cutover study name to look for.
+
+    Returns:
+        ``True`` when a study with ``study_name`` exists in ``storage``.
+    """
+    import optuna
+
+    try:
+        optuna.load_study(storage=storage, study_name=study_name)
+    except KeyError:
+        return False
+    except Exception:  # noqa: BLE001 - detection is best-effort UX
+        return False
+    return True
 
 
 def _require_optuna() -> ModuleType:

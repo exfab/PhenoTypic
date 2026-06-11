@@ -53,12 +53,12 @@ flowchart TD
     STRAT --> PARAMS
 
     PARAMS --> BUILD{"build_pipeline<br/>builds ok?"}
-    BUILD -- no --> FAIL[/"EvaluationResult<br/>failed=True, score=0.0"/]
+    BUILD -- no --> FAIL[/"EvaluationResult<br/>failed=True, cost=1.0"/]
     BUILD -- yes --> RUNG
 
     RUNG("rung ladder<br/>sizes = max(6, ⌈n/3⌉), x3, … , n")
-    SCORE("Scorer.score_image → terms in [0,1]<br/>supervised: Dice/IoU on matched objects<br/>ref-free: shape / contrast / sizeCV<br/>qc: exp(-ln2·m/thr) · composite: geo/weighted mean")
-    AGG("robust-aggregate per term<br/>median − λ·IQR  (λ=0.5)")
+    SCORE("Scorer.score_image → cost terms in [0,1]<br/>supervised: Dice/IoU on matched objects<br/>ref-free: shape / contrast / sizeCV<br/>qc: exp(-ln2·m/thr) · composite: augmented Tchebycheff / weighted mean")
+    AGG("robust-aggregate per term<br/>median + λ·IQR, clamp01  (λ=0.5)")
     FINAL("scorer.finalize → running scalar")
     PRUNE{"between rungs:<br/>should_prune()?"}
 
@@ -105,11 +105,11 @@ digraph tune_dataflow {
     params [shape=box, style=filled, fillcolor="#eef", label="params + PruningChannel"];
 
     build  [shape=diamond, label="build_pipeline\nbuilds ok?"];
-    fail   [shape=box, style=filled, fillcolor="#fdd", label="EvaluationResult\nfailed=True, score=0.0"];
+    fail   [shape=box, style=filled, fillcolor="#fdd", label="EvaluationResult\nfailed=True, cost=1.0"];
 
     rung   [shape=box, style=rounded, label="rung ladder\nsizes = max(6, ceil(n/3)), x3, ..., n"];
-    score  [shape=box, style=rounded, label="Scorer.score_image -> terms[0,1]\nsupervised Dice/IoU | ref-free shape/contrast/sizeCV\nqc exp(-ln2*m/thr) | composite geo/weighted mean"];
-    agg    [shape=box, style=rounded, label="robust-aggregate per term\nmedian - lambda*IQR  (lambda=0.5)"];
+    score  [shape=box, style=rounded, label="Scorer.score_image -> cost terms[0,1]\nsupervised Dice/IoU | ref-free shape/contrast/sizeCV\nqc exp(-ln2*m/thr) | composite augmented Tchebycheff / weighted mean"];
+    agg    [shape=box, style=rounded, label="robust-aggregate per term\nmedian + lambda*IQR, clamp01  (lambda=0.5)"];
     final  [shape=box, style=rounded, label="scorer.finalize -> running scalar"];
     prune  [shape=diamond, label="between rungs:\nshould_prune()?"];
     partial[shape=box, style=filled, fillcolor="#ffd", label="EvaluationResult\npruned=True (partial)"];
@@ -161,11 +161,12 @@ digraph tune_dataflow {
 | `infer_search_space` | `_search_space/_infer.py:685` | fields → Knobs; `[d/4, d·4]`, log auto-trip |
 | `Strategy.suggest()` | `_strategies/_optuna.py:268` | TPE EI ∝ `l(x)/g(x)`; sampler at `:248` |
 | `build_pipeline` | `_evaluation/_builder.py` | clone base + overlay params |
-| rung ladder | `_evaluation/_evaluator.py:210` | `max(6, ⌈n/3⌉)`, ×3, …, n |
-| `Scorer.score_image` | `_scoring/*` | four strategies, terms ∈ [0,1] |
-| robust-aggregate | `_evaluator.py:53` + `_aggregate_math.py:25` | `median − λ·IQR`, λ=0.5 |
+| rung ladder | `_evaluation/_evaluator.py:222` | `max(6, ⌈n/3⌉)`, ×3, …, n |
+| `Scorer.score_image` | `_scoring/*` | four strategies, **cost** terms ∈ [0,1] (oriented by `to_cost`) |
+| `Scorer.to_cost` | `_scoring/_orient.py` | natural value → cost ∈ [0,1] (Sense + anchor) |
+| robust-aggregate | `_evaluator.py:55` + `_aggregate_math.py:28` | `median + λ·IQR` (clamped), λ=0.5 |
 | `should_prune()` | `_optuna.py:218` (ASHA) | top `1/reduction_factor` survive |
 | `StudyStore` | `_study_store.py` / `_study/_optuna_store.py` | journal or Optuna RDB |
 | param importance | `_screening.py:85` | fANOVA vs RF-permutation |
-| Pareto knee | `_study/_pareto.py:53,113` | dominance + max chord distance |
-| generalization gap | `_generalization.py:58` | `rel>0.15 ∧ abs>0.05` flag |
+| Pareto knee | `_study/_pareto.py:54,115` | dominance + max chord distance |
+| generalization gap | `_generalization.py:58` | loss-space `heldout_cost − cal_cost`; `rel>0.15 ∧ abs>0.05` flag |

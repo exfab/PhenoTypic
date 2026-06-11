@@ -68,7 +68,7 @@ def test_discover_reads_storage_url_and_trials(tmp_path):
     root = TuneRunRoot.discover(out)
 
     assert root.storage_url == "sqlite:///x.db"
-    assert root.study_name == "tune"
+    assert root.study_name == "tune_cost_v1"
     assert root.trials_path == trials_parquet_path(out)
     assert root.best_pipeline_path == best_pipeline_path(out)
     # Single-objective spec → no Pareto directions.
@@ -87,7 +87,7 @@ def test_discover_reads_legacy_tuning_spec_json(tmp_path):
     root = TuneRunRoot.discover(out)
 
     assert root.storage_url == "sqlite:///legacy.db"
-    assert root.study_name == "tune"
+    assert root.study_name == "tune_cost_v1"
     assert root.best_pipeline_path == best_pipeline_path(out)
 
 
@@ -120,9 +120,9 @@ def test_discover_reads_run_marker_first(tmp_path):
     assert root.storage_url == "postgresql://host/tune"
     assert root.study_name == "tune"
     assert root.images_dir == tmp_path / "calib"
-    # is_multi_objective=True → two-axis maximize directions.
+    # is_multi_objective=True → two-axis minimize directions (cost convention).
     assert root.directions is not None
-    assert len(root.directions) >= 2
+    assert root.directions == ["minimize", "minimize"]
 
 
 def test_discover_raises_when_neither_study_nor_trials(tmp_path):

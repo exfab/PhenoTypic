@@ -73,8 +73,9 @@ def test_best_reads_from_study(tmp_path):
     store.append(_trial(2, 0.7))
     best = store.best()
     assert best is not None
-    assert best.score == 0.95
-    assert best.number == 1
+    # Cost convention (minimize): the lowest-cost trial wins.
+    assert best.score == 0.3
+    assert best.number == 0
 
 
 def test_best_none_when_only_failures(tmp_path):
@@ -106,7 +107,8 @@ def test_resume_loads_persisted_trials(tmp_path):
     reopened = _store(tmp_path, name="resume")
     assert len(reopened) == 2
     assert [t.score for t in reopened.trials] == [0.6, 0.8]
-    assert reopened.best().score == 0.8
+    # Cost convention (minimize): the lowest-cost trial wins.
+    assert reopened.best().score == 0.6
 
 
 def test_satisfies_study_store_protocol_by_calling(tmp_path):
@@ -139,8 +141,10 @@ def _mo_store(tmp_path, name="mo"):
     from phenotypic.tune._study._optuna_store import OptunaStudyStore
 
     url = f"sqlite:///{tmp_path / 'study.db'}"
+    # Cost convention: every axis minimizes (Optuna's best_trials domination
+    # must agree with the store-agnostic minimize-cost Pareto math).
     return OptunaStudyStore(
-        storage_url=url, study_name=name, directions=["maximize", "maximize"]
+        storage_url=url, study_name=name, directions=["minimize", "minimize"]
     )
 
 
@@ -158,16 +162,18 @@ def test_single_objective_optuna_store_has_empty_pareto_front(tmp_path):
     store.append(_trial(0, 0.3))
     store.append(_trial(1, 0.9))
     assert store.pareto_front() == []
-    assert store.best().score == 0.9
+    # Cost convention (minimize): the lowest-cost trial wins.
+    assert store.best().score == 0.3
 
 
 def test_multi_objective_optuna_store_pareto_front_excludes_dominated(tmp_path):
-    # best_trials must drop the dominated point and keep the non-dominated set.
+    # Cost coordinates (lower is better): best_trials must drop the HIGH-cost
+    # interior point and keep the non-dominated set.
     store = _mo_store(tmp_path)
-    store.append(_mo_trial(0, {"Dice": 0.9, "IoU": 0.2}))  # non-dominated
+    store.append(_mo_trial(0, {"Dice": 0.1, "IoU": 0.8}))  # non-dominated
     store.append(_mo_trial(1, {"Dice": 0.5, "IoU": 0.5}))  # non-dominated
-    store.append(_mo_trial(2, {"Dice": 0.2, "IoU": 0.9}))  # non-dominated
-    store.append(_mo_trial(3, {"Dice": 0.4, "IoU": 0.4}))  # dominated by #1
+    store.append(_mo_trial(2, {"Dice": 0.8, "IoU": 0.1}))  # non-dominated
+    store.append(_mo_trial(3, {"Dice": 0.6, "IoU": 0.6}))  # dominated by #1
     front_numbers = {t.number for t in store.pareto_front()}
     assert front_numbers == {0, 1, 2}
 
@@ -185,8 +191,9 @@ def test_multi_objective_knee_point_matches_shared_math(tmp_path):
     from phenotypic.tune._study._pareto import knee_point_of
 
     store = _mo_store(tmp_path)
+    # Cost coordinates: the elbow toward the origin (the low-cost corner) is #1.
     store.append(_mo_trial(0, {"Dice": 0.0, "IoU": 1.0}))
-    store.append(_mo_trial(1, {"Dice": 0.9, "IoU": 0.9}))  # elbow
+    store.append(_mo_trial(1, {"Dice": 0.1, "IoU": 0.1}))  # elbow (low-cost corner)
     store.append(_mo_trial(2, {"Dice": 1.0, "IoU": 0.0}))
     front = store.pareto_front()
     knee = store.knee_point(front)

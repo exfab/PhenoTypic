@@ -28,7 +28,7 @@ def _measurements(n: int, name: str = "p1") -> pd.DataFrame:
     )
 
 
-def test_score_image_perfect_match_is_one():
+def test_score_image_perfect_match_is_zero_cost():
     scorer = QCScorer(
         check=ExpectedVsDetectedCount(
             metadata=_layout(96), groupby=["Metadata_ImageName"]
@@ -36,11 +36,11 @@ def test_score_image_perfect_match_is_one():
     )
     out = scorer.score_image(None, _measurements(96))
     assert set(out) == {"Count"}
-    assert out["Count"] == pytest.approx(1.0)
+    assert out["Count"] == pytest.approx(0.0)  # perfect match = zero cost
 
 
 def test_score_image_at_fail_threshold_is_half():
-    # expected 100, detected 90 → metric 0.10 == fail_threshold → t 0.5
+    # expected 100, detected 90 → metric 0.10 == fail_threshold → goodness 0.5 → cost 0.5
     scorer = QCScorer(
         check=ExpectedVsDetectedCount(
             metadata=_layout(100), groupby=["Metadata_ImageName"]
@@ -49,23 +49,24 @@ def test_score_image_at_fail_threshold_is_half():
     assert scorer.score_image(None, _measurements(90))["Count"] == pytest.approx(0.5)
 
 
-def test_score_image_unmatched_group_is_zero():
-    # measurement group "p2" has no metadata counterpart → metric inf → t 0
+def test_score_image_unmatched_group_is_worst_cost():
+    # measurement group "p2" has no metadata counterpart → metric inf → goodness 0 → cost 1
     scorer = QCScorer(
         check=ExpectedVsDetectedCount(
             metadata=_layout(96, "p1"), groupby=["Metadata_ImageName"]
         )
     )
-    assert scorer.score_image(None, _measurements(10, "p2"))["Count"] == 0.0
+    assert scorer.score_image(None, _measurements(10, "p2"))["Count"] == pytest.approx(1.0)
 
 
-def test_score_image_empty_measurements_is_zero():
+def test_score_image_empty_measurements_is_worst_cost():
+    # empty frame floors goodness to 0 → cost 1
     scorer = QCScorer(
         check=ExpectedVsDetectedCount(
             metadata=_layout(96), groupby=["Metadata_ImageName"]
         )
     )
-    assert scorer.score_image(None, pd.DataFrame())["Count"] == 0.0
+    assert scorer.score_image(None, pd.DataFrame())["Count"] == pytest.approx(1.0)
 
 
 def test_availability_reflects_metadata():
@@ -89,4 +90,4 @@ def test_path_configured_scorer_round_trips(tmp_path):
     reloaded = QCScorer.model_validate_json(scorer.model_dump_json())
     assert reloaded.check.metadata_source == str(csv)
     # the reloaded scorer scores identically (re-read the layout from disk)
-    assert reloaded.score_image(None, _measurements(96))["Count"] == pytest.approx(1.0)
+    assert reloaded.score_image(None, _measurements(96))["Count"] == pytest.approx(0.0)

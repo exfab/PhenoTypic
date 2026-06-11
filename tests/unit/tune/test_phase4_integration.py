@@ -122,11 +122,14 @@ def test_supervised_composite_pareto_end_to_end(tmp_path):
     # best_pipeline.json IS the knee (reloads runnable + equals the knee build).
     from phenotypic.tune._evaluation import build_pipeline
     from phenotypic.tune._study._optuna_store import OptunaStudyStore
+    from phenotypic.tune._tune_cli._run import _STUDY_NAME
 
+    # Reopen the study the run actually created: the bumped name + the minimize
+    # (cost-convention) directions the multi-objective run wrote.
     store = OptunaStudyStore(
         storage_url=f"sqlite:///{io.tune_cache_study_db_path(out)}",
-        study_name="tune",
-        directions=["maximize", "maximize"],
+        study_name=_STUDY_NAME,
+        directions=["minimize", "minimize"],
     )
     knee = store.knee_point(store.pareto_front())
     assert knee is not None

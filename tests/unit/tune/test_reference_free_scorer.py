@@ -84,8 +84,8 @@ def test_score_image_includes_count_term_when_count_check_configured(tmp_path):
     image, measurements = _measured_plate()
     terms = scorer.score_image(image, measurements)
     assert set(terms) == {"Count", "ShapeRegularity", "Contrast", "SizeCV"}
-    # perfect 96-vs-96 grid count → Count term is 1.0
-    assert terms["Count"] == pytest.approx(1.0)
+    # perfect 96-vs-96 grid count → zero cost
+    assert terms["Count"] == pytest.approx(0.0)
 
 
 def test_keys_are_stable_across_images():
@@ -107,8 +107,8 @@ def test_shape_regularity_reuses_schema_columns_no_recompute(monkeypatch):
         columns=[c for c in measurements.columns if str(c).startswith("Shape_")]
     )
     terms = scorer.score_image(image, stripped)
-    # ShapeRegularity is still a key (stable), at the neutral floor when absent.
-    assert terms["ShapeRegularity"] == pytest.approx(0.0)
+    # ShapeRegularity is still a key (stable), at worst cost when absent.
+    assert terms["ShapeRegularity"] == pytest.approx(1.0)
 
 
 def test_shape_regularity_clamps_solidity_quirk_into_unit_interval():
@@ -120,14 +120,14 @@ def test_shape_regularity_clamps_solidity_quirk_into_unit_interval():
 
 def test_contrast_term_reads_image_foreground_background():
     # Otsu between-class separation η ∈ [0, 1]; the well-separated synth plate
-    # scores high (fixed-normalized, NOT min-max over a grid).
+    # has low cost (fixed-normalized, NOT min-max over a grid).
     scorer = ReferenceFreeScorer()
     image, measurements = _measured_plate()
-    assert scorer.score_image(image, measurements)["Contrast"] > 0.5
+    assert scorer.score_image(image, measurements)["Contrast"] < 0.5
 
 
-def test_size_cv_term_is_high_for_uniform_sizes():
-    # A frame whose Size_Area is constant has zero CV → SizeCV term == 1.0.
+def test_size_cv_term_is_low_cost_for_uniform_sizes():
+    # A frame whose Size_Area is constant has zero CV → SizeCV term == 0.0 cost.
     scorer = ReferenceFreeScorer()
     image, _ = _measured_plate()
     uniform = pd.DataFrame(
@@ -139,7 +139,7 @@ def test_size_cv_term_is_high_for_uniform_sizes():
             "Shape_Eccentricity": [0.1] * 24,
         }
     )
-    assert scorer.score_image(image, uniform)["SizeCV"] == pytest.approx(1.0)
+    assert scorer.score_image(image, uniform)["SizeCV"] == pytest.approx(0.0)
 
 
 def test_size_cv_uses_replicate_groups_when_configured():
@@ -154,19 +154,19 @@ def test_size_cv_uses_replicate_groups_when_configured():
         }
     )
     grouped = scorer.score_image(image, frame)["SizeCV"]
-    # Pooled (no grouping) would be dragged down by the across-strain spread.
+    # Pooled (no grouping) has higher cost due to across-strain spread.
     pooled = ReferenceFreeScorer().score_image(image, frame)["SizeCV"]
-    assert grouped == pytest.approx(1.0)
-    assert grouped > pooled
+    assert grouped == pytest.approx(0.0)
+    assert grouped < pooled
 
 
-def test_empty_measurements_floor_to_zero():
+def test_empty_measurements_floor_to_worst_cost():
     scorer = ReferenceFreeScorer()
     image, _ = _measured_plate()
     terms = scorer.score_image(image, pd.DataFrame())
     assert set(terms) == {"ShapeRegularity", "Contrast", "SizeCV"}
-    assert terms["ShapeRegularity"] == 0.0
-    assert terms["SizeCV"] == 0.0
+    assert terms["ShapeRegularity"] == 1.0
+    assert terms["SizeCV"] == 1.0
 
 
 # --------------------------------------------------------------------------- #
@@ -320,11 +320,12 @@ def test_coefficient_of_variation_two_value_group_ddof1():
 
 def test_size_cv_term_reflects_ddof1_fold():
     # End-to-end: a single [10,20,30] group folds via 1/(1+CV) with the ddof=1 CV.
+    # score_image now returns cost = 1 - goodness = 1 - _bounded_inverse(0.5).
     scorer = ReferenceFreeScorer()
     image, _ = _measured_plate()
     frame = pd.DataFrame({"Size_Area": [10.0, 20.0, 30.0]})
     assert scorer.score_image(image, frame)["SizeCV"] == pytest.approx(
-        _bounded_inverse(0.5)
+        1.0 - _bounded_inverse(0.5)
     )
 
 

@@ -77,8 +77,11 @@ def compute_generalization_gap(
     high the relative slack already covers it.
 
     Args:
-        cal_score: The winner's calibration (in-search) score (higher = better).
-        heldout_score: The winner's held-out score (higher = better).
+        cal_score: The winner's calibration (in-search) score (higher = better;
+            under the cost convention the caller passes the goodness-equivalent
+            ``1 − cal_cost`` — see Note).
+        heldout_score: The winner's held-out score (higher = better; under the
+            cost convention the caller passes ``1 − heldout_cost`` — see Note).
         rel_margin: The relative-drop margin (``HeldOutConfig.gap_margin_relative``).
         abs_margin: The absolute-drop margin (``HeldOutConfig.gap_margin_absolute``).
 
@@ -86,6 +89,11 @@ def compute_generalization_gap(
         A ``(relative_drop, absolute_drop, flagged)`` triple. The drops are
         signed (negative when the held-out score *improved*); ``flagged`` is
         ``True`` only when both exceed their margins.
+
+    Note:
+        This function is direction-agnostic. Under the cost convention the
+        caller passes goodness-equivalents (``1 − cost``) so the unchanged
+        formula is the standard loss-space gap (``heldout_cost − cal_cost``).
 
     Examples:
         >>> rel, absolute, flagged = compute_generalization_gap(
@@ -274,8 +282,14 @@ def run_held_out(
         spec.pipeline, spec.scorer, winner.params, held_out_images
     )
     heldout_score = float(result.score)
+    # Cost convention: pass goodness-equivalents (1 - cost) so the unchanged
+    # accuracy-space formula (cal_g - heldout_g) equals the standard loss-space
+    # gap (heldout_cost - cal_cost), positive = overfit. No bespoke sign flip.
     relative_drop, absolute_drop, flagged = compute_generalization_gap(
-        cal_score, heldout_score, rel_margin=rel_margin, abs_margin=abs_margin
+        1.0 - cal_score,
+        1.0 - heldout_score,
+        rel_margin=rel_margin,
+        abs_margin=abs_margin,
     )
 
     note = _WITHIN_GROUP_NOTE if split.within_group_caveat else None

@@ -158,12 +158,14 @@ def test_run_held_out_group():
     )
     evaluator = _StubEvaluator(heldout_score=0.5)
     spec = _StubSpec(evaluator)
-    winner = _Winner({"a": 1}, score=0.9, gap=0.12)
+    # Cost convention: a good winner has low cal cost (0.1); the higher held-out
+    # cost (0.5) gives gap = heldout_cost - cal_cost = 0.4 (positive = overfit).
+    winner = _Winner({"a": 1}, score=0.1, gap=0.12)
 
     report = run_held_out(spec, winner, split, images_by_name)
 
     assert report.kind == "group"
-    assert report.calibration_score == pytest.approx(0.9)
+    assert report.calibration_score == pytest.approx(0.1)
     assert report.heldout_score == pytest.approx(0.5)
     assert report.gap == pytest.approx(0.4)
     assert report.cv_deferred is False
@@ -187,7 +189,8 @@ def test_run_held_out_within_group_caveat():
     )
     evaluator = _StubEvaluator(heldout_score=0.6)
     spec = _StubSpec(evaluator)
-    winner = _Winner({"a": 1}, score=0.9, gap=0.1)
+    # Cost convention: cal cost 0.3, heldout cost 0.6 → gap = 0.6 - 0.3 = 0.3.
+    winner = _Winner({"a": 1}, score=0.3, gap=0.1)
 
     report = run_held_out(spec, winner, split, images_by_name)
 

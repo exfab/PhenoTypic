@@ -32,18 +32,20 @@ from phenotypic.tools_ import (
     tune_cache_run_marker_path,
 )
 
-#: The study name every tune run uses (mirrors ``_tune_cli._run._STUDY_NAME``).
-#: Used as the fallback when discovering from a ``tuning_spec.json`` (which, unlike
-#: the ``run.json`` marker, does not record a study name).
-_DEFAULT_STUDY_NAME: str = "tune"
+#: The study name every tune run uses (mirrors ``_tune_cli._run._STUDY_NAME``;
+#: kept in lockstep by ``test_study_name_cutover.py``). Used as the fallback when
+#: discovering from a ``tuning_spec.json`` (which, unlike the ``run.json`` marker,
+#: does not record a study name).
+_DEFAULT_STUDY_NAME: str = "tune_cost_v1"
 
 #: The placeholder multi-objective ``directions`` synthesized from the
 #: ``run.json`` ``is_multi_objective`` flag. The marker records only the boolean
 #: (not the per-axis names), so a multi-objective run is represented as a 2-axis
-#: maximize vector — enough for ``is_multi_objective(root)`` (len > 1) and the
-#: GUI's "this is a Pareto run" branch. Every tuning objective is higher-is-better
-#: (robust-eval §5), so the synthesized axes are both ``"maximize"``.
-_MULTI_OBJECTIVE_PLACEHOLDER_DIRECTIONS: list[str] = ["maximize", "maximize"]
+#: minimize vector — enough for ``is_multi_objective(root)`` (len > 1) and the
+#: GUI's "this is a Pareto run" branch. Every tuning objective is a cost
+#: (lower-is-better — cost convention), so the synthesized axes are both
+#: ``"minimize"``.
+_MULTI_OBJECTIVE_PLACEHOLDER_DIRECTIONS: list[str] = ["minimize", "minimize"]
 
 
 class TuneRunRootError(ValueError):
@@ -65,7 +67,7 @@ class TuneRunRoot:
             has not been written yet (a live run discovered via ``run.json``).
         storage_url: The resolved Optuna storage URL, or ``None`` when the run is
             parquet-journal-only.
-        study_name: The study name (``"tune"``).
+        study_name: The study name (``"tune_cost_v1"``).
         directions: The per-objective Optuna ``directions`` (length ≥ 2) for a
             multi-objective run, or ``None`` for a single-objective study.
         images_dir: The calibration image directory, or ``None`` when unknown

@@ -19,13 +19,14 @@ def test_append_and_len():
     assert len(store) == 2
 
 
-def test_best_picks_max_score_ignoring_failures():
+def test_best_picks_min_cost_ignoring_failures():
+    # Cost convention: lower score is better; best() returns the minimum.
     store = StudyStore()
     store.append(_trial(0, 0.3, a=1))
     store.append(_trial(1, 0.9, a=2))
-    store.append(_trial(2, 0.99, a=3, failed=True))  # failed → excluded
+    store.append(_trial(2, 0.05, a=3, failed=True))  # failed → excluded
     best = store.best()
-    assert best is not None and best.number == 1 and best.score == 0.9
+    assert best is not None and best.number == 0 and best.score == 0.3
 
 
 def test_best_none_when_empty_or_all_failed():
@@ -43,8 +44,9 @@ def test_parquet_round_trip(tmp_path):
     store.to_parquet(path)
     back = StudyStore.from_parquet(path)
     assert len(back) == 2
-    assert back.best().params == {"a": 2, "mode": "y"}
-    assert back.best().terms == {"Count": 0.9}
+    # Lower cost wins under minimize → trial 0 (score 0.3).
+    assert back.best().params == {"a": 1, "mode": "x"}
+    assert back.best().terms == {"Count": 0.3}
 
 
 def test_parquet_round_trip_empty_store(tmp_path):

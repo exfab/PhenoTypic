@@ -21,8 +21,9 @@ honestly compute, so the scorer degrades gracefully as annotations get cheaper:
   :class:`phenotypic.analysis.ExpectedVsDetectedCount` (the master's count QC
   check — do *not* re-implement counting, §1 "reuse, don't duplicate") to get
   each group's ``|detected − expected| / expected`` divergence, fold it to a
-  *higher-is-better* ``[0, 1]`` score anchored on the check's ``fail_threshold``,
-  and emit the ``"CountMAE"`` term.
+  natural-goodness ``[0, 1]`` value anchored on the check's ``fail_threshold``
+  (``_TERM_SENSE = HIGHER_BETTER``; the base complements it to cost), and emit
+  the ``"CountMAE"`` term.
 * **none tier** (abstain): no resolvable GT → :meth:`availability` is ``False``
   and the engine degrades to the configured fallback objective.
 
@@ -52,6 +53,7 @@ from phenotypic.analysis import ExpectedVsDetectedCount
 from ._gt_loader import GroundTruthMasks
 from ._matching import MatchPair, match_iou_greedy, match_per_grid_cell
 from ._metrics import dice, iou
+from ._orient import Sense
 from ._qc_scorer import fold_expected_vs_detected_count
 from ._scorer import Scorer
 
@@ -143,6 +145,9 @@ class SupervisedScorer(Scorer):
     region_term_name: ClassVar[str] = "Region"
     #: The count-tier folded-divergence term name.
     count_term_name: ClassVar[str] = "CountMAE"
+    #: Both tier terms (Region = Dice/IoU; CountMAE = folded count goodness) are
+    #: bounded [0,1] goodness; the base complements them into cost.
+    _TERM_SENSE = Sense.HIGHER_BETTER
 
     gt: GroundTruthMasks
     region_metric: RegionMetric = "dice"
@@ -199,10 +204,10 @@ class SupervisedScorer(Scorer):
             return self.count_check is not None
         return False
 
-    def score_image(
+    def _score_terms(
         self, image: Any, measurements: pd.DataFrame
     ) -> dict[str, float]:
-        """Score one image against its ground truth, by GT modality tier.
+        """Natural goodness terms by GT modality tier (the base complements to cost).
 
         Dispatches on :meth:`GroundTruthMasks.modality`:
 
@@ -214,8 +219,9 @@ class SupervisedScorer(Scorer):
           An unresolved name yields no term (nothing to score).
         * **count** — reuse the configured :attr:`count_check`
           (:class:`ExpectedVsDetectedCount`) to get each group's normalized
-          count divergence, fold it to a higher-is-better ``[0, 1]`` score
-          anchored on ``fail_threshold``, and emit ``"CountMAE"``.
+          count divergence, fold it to a natural goodness ``[0, 1]`` value
+          anchored on ``fail_threshold``, and emit ``"CountMAE"``. The base
+          :meth:`score_image` complements each term to cost.
         * **none** — abstain (empty mapping).
 
         Args:
@@ -225,9 +231,10 @@ class SupervisedScorer(Scorer):
             measurements: The candidate pipeline's measurement frame.
 
         Returns:
-            A mapping with the runnable tier's term — ``{"Region": ...}`` (mask),
-            ``{"CountMAE": ...}`` (count) — or ``{}`` when no tier can score this
-            image (no GT mask for the name, or count tier without a check).
+            A mapping with the runnable tier's natural goodness term —
+            ``{"Region": ...}`` (mask), ``{"CountMAE": ...}`` (count) — or
+            ``{}`` when no tier can score this image. Values are natural goodness
+            in ``[0, 1]``; the base ``score_image`` orients them to cost.
         """
         modality = self.gt.modality()
         if modality == "mask":

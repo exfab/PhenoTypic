@@ -88,4 +88,5 @@ def test_legacy_parquet_without_objectives_column_loads(tmp_path):
     back = StudyStore.from_parquet(path)
     assert len(back) == 2
     assert all(t.objectives is None for t in back.trials)
-    assert back.best().score == 0.9
+    # Cost convention (minimize): the lowest-cost trial wins.
+    assert back.best().score == 0.3

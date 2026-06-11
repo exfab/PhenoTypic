@@ -1,7 +1,7 @@
 """The trial journal — Phase-1 homegrown persistence (Optuna SQLite is Phase 2).
 
-A ``JournalStudyStore`` accumulates ``Trial`` records, reports the ``best`` (max
-score among non-failed trials), and round-trips through ``trials.parquet``
+A ``JournalStudyStore`` accumulates ``Trial`` records, reports the ``best``
+(**min** cost among non-failed trials), and round-trips through ``trials.parquet``
 (params and terms persisted as JSON columns — lossless across heterogeneous/
 conditional param sets). Reloading a store powers CLI resume (``_engine``
 fast-forwards a deterministic strategy past the recorded trials). It is the
@@ -26,10 +26,10 @@ class Trial(BaseModel):
     Args:
         number: The zero-based trial index in journaling order.
         params: The sampled combo (``{root-relative-key: value}``).
-        score: The finalized scalar objective (higher = better). For a
-            multi-objective trial this is the scalar projection of
-            ``objectives`` (``mean(objectives.values())``).
-        terms: The robust-aggregated per-term scores backing ``score``.
+        score: The finalized scalar objective **cost** the optimizer minimizes
+            (lower = better). For a multi-objective trial this is the scalar
+            projection of ``objectives`` (``mean(objectives.values())``).
+        terms: The robust-aggregated per-term costs backing ``score``.
         n_images: Number of calibration images evaluated.
         objectives: The named multi-objective values (plan §0a sidecar), or
             ``None`` for a single-objective trial. Carried from
@@ -95,11 +95,11 @@ class JournalStudyStore:
         return len(self._trials)
 
     def best(self) -> Optional[Trial]:
-        """The non-failed trial with the highest score, or ``None``."""
+        """The non-failed trial with the lowest cost score, or ``None``."""
         valid = [t for t in self._trials if not t.failed]
         if not valid:
             return None
-        return max(valid, key=lambda t: t.score)
+        return min(valid, key=lambda t: t.score)
 
     def is_resumable_in_place(self) -> bool:
         """Always ``False``: the journal resumes by deterministic replay."""
