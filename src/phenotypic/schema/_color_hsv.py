@@ -19,7 +19,7 @@ class ColorHSV(MeasurementInfo):
     HUE_ROBUST_MEAN = ("HueRobustMean", "Hue of the cone-embedded geometric-median robust center (circular-correct)")
     SATURATION_ROBUST_MEAN = ("SaturationRobustMean", "Saturation of the cone-embedded geometric-median robust center")
     VALUE_ROBUST_MEAN = ("ValueRobustMean", "Value (brightness) of the cone-embedded geometric-median robust center")
-    HSV_CONE_VARIANCE = ("HSVConeVariance", "Trace of the HSV cone-Cartesian covariance (single 3D HSV spread scalar)")
+    HSV_CONE_VARIANCE = ("HSVConeVariance", "Trace of the HSV cone-Cartesian covariance (single 3D HSV spread scalar); spread about the arithmetic mean of the cone coordinates (NOT about the reported RobustMean center)")
 
     @classmethod
     def robust_headers(cls):

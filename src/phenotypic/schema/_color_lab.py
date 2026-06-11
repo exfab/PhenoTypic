@@ -32,7 +32,7 @@ class ColorLab(MeasurementInfo):
     DELTA_E2000_P95 = ("DeltaE2000P95FromMedoid", "95th-percentile ΔE2000 of object pixels from the ΔE2000 medoid center (worst-case / sectoring flag)")
 
     # -- classical Euclidean spread --
-    LAB_TOTAL_VARIANCE = ("LabTotalVariance", "Trace of the 3x3 L*a*b* covariance (var L* + var a* + var b*); mean-squared ΔE76 about the arithmetic mean")
+    LAB_TOTAL_VARIANCE = ("LabTotalVariance", "Trace of the 3x3 L*a*b* covariance (var L* + var a* + var b*); mean-squared ΔE76 spread about the arithmetic mean (NOT about the reported GeoMedian/Medoid center)")
 
     # -- plot-only swatch --
     MEDOID_COLOR_HEX = ("MedoidColorHex", "sRGB hex string of the ΔE2000 medoid color; for plot visualization only (not a numeric measurement)")
