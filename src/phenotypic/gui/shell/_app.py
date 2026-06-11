@@ -42,6 +42,7 @@ from phenotypic.gui._config import (
     CFG_RUNNER,
     DEFAULT_IDLE_RELEASE_SECONDS,
     MOUNT_ANALYSIS,
+    MOUNT_BROWSE,
     MOUNT_BUILDER,
     MOUNT_HOME,
     MOUNT_RUN,
@@ -52,6 +53,7 @@ from phenotypic.gui._config import (
 from phenotypic.gui.shell._home import build_home_layout
 from phenotypic.gui.shell._ids import (
     SHELL_TAB_ANALYSIS,
+    SHELL_TAB_BROWSE,
     SHELL_TAB_BUILDER,
     SHELL_TAB_HOME,
     SHELL_TAB_RUN,
@@ -194,7 +196,14 @@ def compose_hub(
             so they don't leak background threads.
     """
     # Local imports to keep boot-time cycles minimal.
-    from phenotypic.gui import analysis, builder, results_viewer, run_console, tune
+    from phenotypic.gui import (
+        analysis,
+        browse,
+        builder,
+        results_viewer,
+        run_console,
+        tune,
+    )
     from phenotypic.gui.results_viewer._output_root import OutputRoot
 
     # Mutable handoff slot so the sidebar can hand a CLI output path to the
@@ -305,6 +314,12 @@ def compose_hub(
     )
     wrap_in_chrome(tune_app, active_tab=SHELL_TAB_TUNE, sandbox=sandbox)
 
+    # 4c. Browse Dash (eager — lightweight source-image viewer). No
+    #     ToolSession: it loads no heavy parquet, just lists files + serves
+    #     ephemeral tiles.
+    browse_app = browse.create_app(sandbox, url_prefix=MOUNT_BROWSE)
+    wrap_in_chrome(browse_app, active_tab=SHELL_TAB_BROWSE, sandbox=sandbox)
+
     # Stash on the shell server too so any future cross-tool callback
     # (e.g. the sidebar's "open in run console" hand-off) can reach the
     # same singletons.
@@ -329,17 +344,19 @@ def compose_hub(
             MOUNT_RUN.rstrip("/"): run_app.server,
             MOUNT_TUNE.rstrip("/"): tune_app.server,
             MOUNT_ANALYSIS.rstrip("/"): analysis_proxy,
+            MOUNT_BROWSE.rstrip("/"): browse_app.server,
         },
     )
 
     logger.info(
-        "GUI hub composed: sandbox=%s mounts=%s, %s, %s, %s, %s",
+        "GUI hub composed: sandbox=%s mounts=%s, %s, %s, %s, %s, %s",
         sandbox.root,
         MOUNT_BUILDER,
         MOUNT_VIEWER,
         MOUNT_RUN,
         MOUNT_TUNE,
         MOUNT_ANALYSIS,
+        MOUNT_BROWSE,
     )
 
     if start_idle_thread:

@@ -27,6 +27,7 @@ from dash import dcc, html
 
 from phenotypic.gui._config import (
     MOUNT_ANALYSIS,
+    MOUNT_BROWSE,
     MOUNT_BUILDER,
     MOUNT_HOME,
     MOUNT_RUN,
@@ -51,6 +52,7 @@ from phenotypic.gui.shell._ids import (
     SHELL_SOURCE_IMAGE_ROOT_LABEL,
     SHELL_SOURCE_IMAGE_ROOT_STORE,
     SHELL_TAB_ANALYSIS,
+    SHELL_TAB_BROWSE,
     SHELL_TAB_BUILDER,
     SHELL_TAB_GROUP_PIPELINE,
     SHELL_TAB_GROUP_RESULTS,
@@ -95,6 +97,7 @@ _SHELL_CSS = (Path(__file__).parent / "_assets" / "shell.css").read_text(
 #: against the cloud-deploy hook in ``shell/_sandbox.py``.
 _TAB_HREFS = {
     SHELL_TAB_HOME: MOUNT_HOME,
+    SHELL_TAB_BROWSE: MOUNT_BROWSE,
     SHELL_TAB_BUILDER: MOUNT_BUILDER,
     SHELL_TAB_VIEWER: MOUNT_VIEWER,
     SHELL_TAB_RUN: MOUNT_RUN,
@@ -104,6 +107,7 @@ _TAB_HREFS = {
 
 _TAB_LABELS = {
     SHELL_TAB_HOME: "Home",
+    SHELL_TAB_BROWSE: "Browse",
     SHELL_TAB_BUILDER: "Builder",
     SHELL_TAB_VIEWER: "Viewer",
     SHELL_TAB_RUN: "Run",
@@ -135,6 +139,7 @@ class _NavGroup(NamedTuple):
 #: Viewer, run downstream stats in Analysis).
 NAV_MODEL: tuple["str | _NavGroup", ...] = (
     SHELL_TAB_HOME,
+    SHELL_TAB_BROWSE,
     _NavGroup(
         "Pipeline",
         SHELL_TAB_GROUP_PIPELINE,
