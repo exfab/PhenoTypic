@@ -20,3 +20,16 @@ def test_colorlab_has_robust_headers_and_no_legacy_suite():
         assert not any(h == f"ColorLab_{chan}{suf}" for suf in legacy_suffixes for h in headers)
     assert not any("ChromaEstimated" in h for h in headers)
     assert len(ColorLab.robust_headers()) == 11
+
+
+def test_colorhsv_has_robust_headers_and_no_legacy_suite():
+    headers = ColorHSV.get_headers()
+    for expected in [
+        "ColorHSV_HueRobustMean",
+        "ColorHSV_SaturationRobustMean",
+        "ColorHSV_ValueRobustMean",
+        "ColorHSV_HSVConeVariance",
+    ]:
+        assert expected in headers
+    assert not any(h.endswith("Min") or h.endswith("Max") or h.endswith("Q1") for h in headers)
+    assert len(ColorHSV.robust_headers()) == 4
