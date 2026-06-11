@@ -130,3 +130,42 @@ def test_insufficient_error_returns_empty_frame():
     assert res.empty
     assert list(res.columns) == list(__import__("phenotypic.analysis._error_cutoffs",
                                                 fromlist=["RESULT_COLUMNS"]).RESULT_COLUMNS)
+
+
+def test_all_nan_measurement_is_skipped_not_crashed():
+    good = pd.DataFrame({"Object_Label": range(20), "Size_Area": np.r_[np.full(20, np.nan)],
+                         "Shape_Circularity": np.random.default_rng(0).normal(0.5, 0.1, 20)})
+    error = pd.DataFrame({"Object_Label": range(10), "Size_Area": np.full(10, np.nan),
+                          "Shape_Circularity": np.random.default_rng(1).normal(0.7, 0.1, 10)})
+    res = ErrorCutoffFinder(min_good_n=10, min_error_n=8).analyze(good, error)
+    assert "Size_Area" not in set(res["measurement"])  # all-NaN -> skipped
+    assert "Shape_Circularity" in set(res["measurement"])
+
+
+def test_constant_measurement_is_skipped():
+    good = pd.DataFrame({"Object_Label": range(20), "Size_Area": np.full(20, 3.0)})
+    error = pd.DataFrame({"Object_Label": range(10), "Size_Area": np.full(10, 3.0)})
+    res = ErrorCutoffFinder(min_good_n=10, min_error_n=8).analyze(good, error)
+    assert res.empty  # no separable measurement
+
+
+def test_perfect_separation_clean_cutoff_and_metrics():
+    good = pd.DataFrame({"Object_Label": range(20), "Size_Area": np.linspace(0, 1, 20)})
+    error = pd.DataFrame({"Object_Label": range(10), "Size_Area": np.linspace(10, 11, 10)})
+    res = ErrorCutoffFinder(min_good_n=10, min_error_n=8).analyze(good, error)
+    row = res.iloc[0]
+    assert row["auc"] == pytest.approx(1.0)
+    assert row["recall"] == pytest.approx(1.0)
+    assert row["specificity"] == pytest.approx(1.0)
+    assert row["good_flagged"] == 0
+    # Midpoint-nudge puts the cutoff IN the gap (≈ (1 + 10)/2), not on the edge.
+    assert 1.0 < row["cutoff"] < 10.0
+    assert row["cutoff"] == pytest.approx((1.0 + 10.0) / 2, abs=0.2)
+
+
+def test_measurement_only_in_good_is_ignored():
+    good = pd.DataFrame({"Object_Label": range(20), "Size_Area": np.random.default_rng(0).normal(0, 1, 20),
+                         "Shape_OnlyHere": np.random.default_rng(0).normal(0, 1, 20)})
+    error = pd.DataFrame({"Object_Label": range(10), "Size_Area": np.random.default_rng(1).normal(3, 1, 10)})
+    res = ErrorCutoffFinder(min_good_n=10, min_error_n=8).analyze(good, error)
+    assert "Shape_OnlyHere" not in set(res["measurement"])
