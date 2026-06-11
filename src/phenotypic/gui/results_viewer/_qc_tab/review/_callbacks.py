@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import functools
 import logging
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -67,11 +68,17 @@ from phenotypic.gui._design import (
     OI_ORANGE_TEXT,
     OI_VERMILION_TEXT,
 )
+from phenotypic.gui._shared._radial import (
+    RADIAL_RESTORE_SENTINEL,
+    build_radial_body,
+    build_radial_trigger,
+)
 from phenotypic.gui._shared.tiles import build_tile_grid
 from phenotypic.gui.results_viewer import _ids as viewer_ids
 from phenotypic.gui.results_viewer._filtered_state import (
     decode_removed_keys_payload,
 )
+from phenotypic.schema import ErrorCategory
 from phenotypic.gui.results_viewer._qc_tab.review import _data, _ids as rids
 from phenotypic.gui.results_viewer._qc_tab.review._layout import (
     _SUMMARY_HEADER_HEIGHT,
@@ -140,31 +147,48 @@ def _qc_crop_url(
     )
 
 
-def _review_tile_remove_button(
-    image_file: str, label: int, is_removed: bool
-) -> Component:
-    """Build a Review-gallery per-tile remove/restore button."""
-    return dbc.Button(
-        "↺" if is_removed else "✕",
-        id=rids.review_tile_remove_btn_id(image_file, label),
-        color="secondary" if is_removed else "danger",
-        outline=True,
-        size="sm",
-        className="colony-cell-remove-btn",
-        style={
-            "position": "absolute",
-            "top": "4px",
-            "right": "4px",
-            "zIndex": "2",
-            "padding": "0 0.4rem",
-            "lineHeight": "1.2",
-        },
-        title=(
-            "restore colony to measurements"
-            if is_removed
-            else "remove colony from measurements"
-        ),
-    )
+#: Core (built-in) error-category tokens. A token outside this set is a
+#: runtime-registered custom category, so its QC tile badge gets the
+#: ``radial-badge--custom`` discriminator (decision D) — mirrors the colony
+#: grid's ``_CORE_CATEGORY_TOKENS``.
+_CORE_CATEGORY_TOKENS: frozenset[str] = frozenset(ErrorCategory.labels())
+
+
+def _review_radial_trigger_builder(
+    category_of: dict[tuple[str, int], str],
+) -> Callable[[str, int, bool], list[Component]]:
+    """Return a ``remove_button_builder`` that injects the QC radial trigger.
+
+    The QC review gallery's binary ✕ remove button is replaced by the shared
+    nested radial category menu (``surface="qc"``), exactly mirroring the
+    colony grid (Task 4). ``build_tile_grid`` calls the returned closure as
+    ``(image_file, label, is_removed) -> Component | list[Component]``; the
+    radial returns a ``[trigger, popover, store]`` triple that
+    :func:`build_tile_cell` splices into the tile frame.
+
+    Args:
+        category_of: Snapshot mapping ``(image_file, label) -> category token``
+            for every currently-labeled colony, used to render each tile's
+            radial trigger as a colored category badge.
+
+    Returns:
+        A ``remove_button_builder`` closure.
+    """
+
+    def _build(image_file: str, label: int, _is_removed: bool) -> list[Component]:
+        current_category = category_of.get((image_file, label))
+        return build_radial_trigger(
+            "qc",
+            image_file,
+            label,
+            current_category=current_category,
+            is_custom=(
+                current_category is not None
+                and current_category not in _CORE_CATEGORY_TOKENS
+            ),
+        )
+
+    return _build
 
 
 # ---------------------------------------------------------------------------
@@ -476,6 +500,8 @@ def _render_faceted_gallery(
     display_size: int,
     has_overlay,
     dim_alpha: float = 0.0,
+    selected: set[tuple[str, int]] | None = None,
+    category_of: dict[tuple[str, int], str] | None = None,
 ) -> Component:
     """Render the faceted tile gallery: one row per timepoint facet.
 
@@ -493,20 +519,30 @@ def _render_faceted_gallery(
             ``&dim=`` via a :func:`functools.partial` over
             :func:`_qc_crop_url`. ``0.0`` (default) keeps the full-context
             crop.
+        selected: ``(image_file, label)`` keys currently multi-selected
+            (decision C: QC-review selection parity). Drives the tile
+            checkbox + ``is-selected`` chrome so the shared bulk bar works on
+            QC tiles. ``None`` (default) renders nothing selected.
+        category_of: Snapshot mapping ``(image_file, label) -> category
+            token`` for every labeled colony, used to render each tile's
+            radial trigger as the right colored category badge. ``None``
+            (default) renders every tile's trigger as a neutral ▾.
     """
     url_builder = functools.partial(_qc_crop_url, dim_alpha=dim_alpha)
+    selected_keys = selected if selected is not None else set()
+    remove_button_builder = _review_radial_trigger_builder(category_of or {})
     rows: list[Component] = []
     single_facet = len(facets) == 1 and facets[0][0] is None
     for timepoint, keys in facets:
         gallery, _order = build_tile_grid(
             keys,
             url_builder,
-            selected=set(),
+            selected=selected_keys,
             removed=removed,
             crop_size=crop_size,
             display_size=display_size,
             has_overlay=has_overlay,
-            remove_button_builder=_review_tile_remove_button,
+            remove_button_builder=remove_button_builder,
         )
         if single_facet:
             rows.append(gallery)
@@ -557,6 +593,20 @@ def _removed_keys_locked() -> set[tuple[str, int]]:
         return set()
     with filtered._lock:
         return set(filtered.removed_keys)
+
+
+def _category_of_locked() -> dict[tuple[str, int], str]:
+    """Snapshot the ``(image_file, label) -> category`` map under the lock.
+
+    Mirrors the colony grid's locked read (decision A): a coherent snapshot
+    of the durable store's per-object labels so each QC tile's radial trigger
+    renders the right category badge without racing a concurrent ``mark``.
+    """
+    filtered = _filtered_state()
+    if filtered is None:
+        return {}
+    with filtered._lock:
+        return dict(filtered.labels)
 
 
 def _load_review_state() -> ReviewState:
@@ -784,6 +834,8 @@ def register_review_callbacks(app: dash.Dash) -> None:
         Input({"type": "qc-worklist-row", "instance": ALL, "key": ALL}, "n_clicks"),
         Input(rids.STORE_QC_SELECTED_GROUP, "data"),
         Input(viewer_ids.STORE_TILE_DIM_ALPHA, "data"),
+        Input(viewer_ids.STORE_COLONY_SELECTION, "data"),
+        Input(viewer_ids.STORE_REMOVED_KEYS, "data"),
         State(rids.QC_REVIEW_MODULE_PICKER_ID, "value"),
         State(rids.STORE_QC_RECOMPUTE_DELTAS, "data"),
         State({"type": "qc-worklist-row", "instance": ALL, "key": ALL}, "id"),
@@ -793,6 +845,8 @@ def register_review_callbacks(app: dash.Dash) -> None:
         _row_clicks: list[int | None],
         selected_encoded: str | None,
         dim_alpha: float | None,
+        selection_payload: Any,
+        _removed_payload: Any,
         instance_id: str | None,
         deltas: dict[str, dict[str, Any]] | None,
         row_ids: list[dict[str, Any]] | None,
@@ -841,6 +895,18 @@ def register_review_callbacks(app: dash.Dash) -> None:
         delta = deltas.get(selected_encoded, {})
 
         alpha = TILE_DIM_DEFAULT if dim_alpha is None else float(dim_alpha)
+        # Decision C: QC-review selection parity. Pass the real multi-select
+        # set (shared STORE_COLONY_SELECTION) into the gallery so the bulk
+        # "Mark N as ▾" bar works on QC tiles. The category snapshot drives
+        # each tile's radial badge (decision A: locked read, no STORE_LABELS).
+        selected = set(
+            decode_removed_keys_payload(
+                (selection_payload or {}).get("selected")
+                if isinstance(selection_payload, dict)
+                else None
+            )
+        )
+        category_of = _category_of_locked()
         header = _render_detail_header(key_values, record, delta, n_removed)
         gallery = _render_faceted_gallery(
             facets,
@@ -849,6 +915,8 @@ def register_review_callbacks(app: dash.Dash) -> None:
             display_size=120,
             has_overlay=output_root.has_overlay,
             dim_alpha=alpha,
+            selected=selected,
+            category_of=category_of,
         )
         # Record last-visited group for this module.
         review_state = _load_review_state()
@@ -1034,6 +1102,38 @@ def toggle_review_tile(filtered, image_file: str, label: int) -> list[list]:
     )
 
 
+def mark_review_tile(
+    filtered, image_file: str, label: int, category: str
+) -> list[list]:
+    """Mark (or restore) one colony's category and return the new payload.
+
+    Module-level (not a callback closure) so the
+    :meth:`CurationLabels.mutate_and_payload` contract — the action receives
+    the state instance — is unit-testable without booting Dash. Mirrors the
+    colony view's ``_mark_colony_category`` semantics: a ``category`` equal to
+    :data:`~phenotypic.gui._shared._radial.RADIAL_RESTORE_SENTINEL` clears the
+    label (restore); any other token assigns it (a durable categorized
+    removal).
+
+    Args:
+        filtered: The shared :class:`CurationLabels`.
+        image_file: ``Metadata_ImageFile`` of the colony.
+        label: ``Object_Label`` of the colony.
+        category: The category token to assign, or
+            :data:`RADIAL_RESTORE_SENTINEL` to clear it.
+
+    Returns:
+        The updated removed-keys payload.
+    """
+    if category == RADIAL_RESTORE_SENTINEL:
+        return filtered.mutate_and_payload(
+            lambda state: state.unmark(image_file, label)
+        )
+    return filtered.mutate_and_payload(
+        lambda state: state.mark(image_file, label, category)
+    )
+
+
 def bulk_review_curation(
     filtered, remove: bool, selected: list[tuple[str, int]]
 ) -> list[list]:
@@ -1058,40 +1158,150 @@ def bulk_review_curation(
 
 
 def _register_curation_callbacks(app: dash.Dash) -> None:
-    """Register Review per-tile + bulk remove/restore callbacks.
+    """Register Review radial mark + lazy-populate + bulk remove/restore.
 
-    These mutate the **same** ``FilteredMeasurements`` removal set and the
+    These mutate the **same** ``CurationLabels`` removal set and the
     **same** ``STORE_REMOVED_KEYS`` store the colony view writes, so a
-    colony removed in Review is removed everywhere (spec §D.4). They share
+    colony curated in Review is curated everywhere (spec §D.4). They share
     the JS multi-select layer via ``STORE_COLONY_SELECTION`` (Review tiles
     carry the same ``data-key`` checkbox class as colony tiles). The
-    mutation bodies live in :func:`toggle_review_tile` /
+    mutation bodies live in :func:`mark_review_tile` /
     :func:`bulk_review_curation` so the ``mutate_and_payload`` contract is
     unit-tested.
+
+    The legacy binary ✕ remove button (``qc-review-tile-remove``) is retired
+    (MF4): the nested radial category menu (``surface="qc"``) subsumes it —
+    a wedge click categorizes + removes in one gesture; the center node
+    restores.
     """
 
+    # -- Radial category mark / restore (pattern-matching ALL) -------------
     @app.callback(
         Output(viewer_ids.STORE_REMOVED_KEYS, "data", allow_duplicate=True),
         Input(
-            {"type": "qc-review-tile-remove", "image_file": MATCH, "label": MATCH},
+            {
+                "type": "qc-cat-wedge",
+                "image_file": ALL,
+                "label": ALL,
+                "category": ALL,
+            },
             "n_clicks",
         ),
         prevent_initial_call=True,
     )
-    def _toggle_review_tile(_clicks: int | None):
-        """Toggle one colony's removal from a Review-gallery tile button."""
+    def _mark_qc_category(_n: list[int | None]):
+        """Mark (or restore) a colony's category from a QC radial wedge click.
+
+        Mirrors the colony view's ``_mark_colony_category`` exactly, with
+        ``surface="qc"``. The ALL pattern fires once at mount with every
+        ``n_clicks`` empty; guard against that before reading
+        ``triggered_id``. A wedge whose ``category`` is
+        :data:`RADIAL_RESTORE_SENTINEL` clears the label; the
+        ``"__custom_folder__"`` placeholder is inert (Task 7 wires the
+        custom-add flow); every other wedge assigns its category.
+        """
         triggered = callback_context.triggered_id
-        if not isinstance(triggered, dict):
+        if not triggered or not isinstance(triggered, dict):
+            return no_update
+        # Skip the initial empty-n_clicks fire from the ALL pattern.
+        if not any(
+            callback_context.triggered[i]["value"]
+            for i in range(len(callback_context.triggered))
+        ):
+            return no_update
+
+        filtered = _filtered_state()
+        if filtered is None:
+            return no_update
+
+        raw_image_file = triggered.get("image_file")
+        raw_label = triggered.get("label")
+        raw_category = triggered.get("category")
+        if raw_image_file is None or raw_label is None or raw_category is None:
+            return no_update
+        try:
+            image_file = str(raw_image_file)
+            label = int(raw_label)
+        except (TypeError, ValueError):
+            return no_update
+        category = str(raw_category)
+
+        # The custom-folder placeholder opens the folder (Task 7); never mark.
+        if category == "__custom_folder__":
+            return no_update
+
+        payload = mark_review_tile(filtered, image_file, label, category)
+        # ``STORE_REMOVED_KEYS`` is an ``allow_duplicate`` (multi-mode) output
+        # whose value is a list; restoring the LAST label yields ``[]`` which
+        # 500s the multi-mode validator unless wrapped in a 1-tuple (Task-4
+        # gotcha #1).
+        return (payload,)
+
+    # -- Lazy-populate the radial popover body on trigger click ------------
+    @app.callback(
+        Output(
+            {
+                "type": "qc-radial-popover-body",
+                "image_file": MATCH,
+                "label": MATCH,
+            },
+            "children",
+        ),
+        Input(
+            {
+                "type": "qc-radial-trigger",
+                "image_file": MATCH,
+                "label": MATCH,
+            },
+            "n_clicks",
+        ),
+        State(
+            {"type": "qc-radial-store", "image_file": MATCH, "label": MATCH},
+            "data",
+        ),
+        prevent_initial_call=True,
+    )
+    def _populate_qc_radial_body(n_clicks: int | None, data: Any):
+        """Render the QC radial wedge ring on first ▾ click (mirrors colony).
+
+        The trigger's co-located ``dcc.Store`` carries ``{image_file, label,
+        surface}``. This MATCH callback reads it and emits the wedge ring via
+        :func:`build_radial_body`, snapshotting the live category vocabulary
+        and the colony's current category under the store lock so a concurrent
+        ``mark`` can't tear the read.
+        """
+        if not n_clicks or not isinstance(data, dict):
             return no_update
         filtered = _filtered_state()
         if filtered is None:
             return no_update
-        raw_label = triggered.get("label")
-        if raw_label is None:
+        raw_image_file = data.get("image_file")
+        raw_label = data.get("label")
+        surface = str(data.get("surface") or "qc")
+        if raw_image_file is None or raw_label is None:
             return no_update
-        return toggle_review_tile(
-            filtered, str(triggered.get("image_file")), int(raw_label)
+        try:
+            image_file = str(raw_image_file)
+            label = int(raw_label)
+        except (TypeError, ValueError):
+            return no_update
+
+        with filtered._lock:
+            categories = filtered.categories()
+            custom_categories = list(filtered.custom_categories)
+            current_category = filtered.labels.get((image_file, label))
+
+        body = build_radial_body(
+            surface,
+            image_file,
+            label,
+            categories,
+            custom_categories,
+            current_category=current_category,
         )
+        # MATCH output is multi-mode: wrap the single Div so the validator sees
+        # exactly one output value (mirrors colony `_populate_radial_body`).
+        return (body,)
 
     @app.callback(
         Output(viewer_ids.STORE_REMOVED_KEYS, "data", allow_duplicate=True),
@@ -1441,6 +1651,7 @@ def _register_sidebar_callbacks(app: dash.Dash) -> None:
 __all__ = [
     "register_review_callbacks",
     "toggle_review_tile",
+    "mark_review_tile",
     "bulk_review_curation",
     "sidebar_layout_state",
     "render_worklist_row_metric_cell",

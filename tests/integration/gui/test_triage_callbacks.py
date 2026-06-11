@@ -353,3 +353,198 @@ def test_colony_radial_body_lazy_populates_on_trigger_click(
     assert "colony-cat-wedge" in body_text
     assert "debris" in body_text
     assert RADIAL_RESTORE_SENTINEL in body_text
+
+
+# ---------------------------------------------------------------------------
+# Plate-view (viewer-card) status-cell restore-to-empty 500 regression
+# ---------------------------------------------------------------------------
+
+
+def _post_status_cell_toggle(
+    app,
+    *,
+    card_index: str,
+    image_file: str,
+    label: int,
+):
+    """POST a plate-view Status-cell click via the ``card-details-table`` callback.
+
+    The ``_toggle_status_cell`` callback is an ALL-pattern over every card's
+    details DataTable; it resolves the card by id, reads the clicked row's
+    ``(Metadata_ImageFile, Object_Label)`` from the table ``data``, and toggles
+    the curated removal. Synthesizing one card's id + data + active_cell is
+    enough to drive it without a fully-rendered card.
+    """
+    client = app.server.test_client()
+    out_key = _find_output_key(app, "store-removed-keys.data", "card-details-table")
+    table_id = {"type": "card-details-table", "index": card_index}
+    row = {
+        "Status": "Removed",
+        "Metadata_ImageFile": image_file,
+        "Object_Label": label,
+    }
+    return client.post(
+        "/_dash-update-component",
+        json={
+            "output": out_key,
+            "outputs": _outputs_from_key(out_key),
+            "inputs": [
+                [
+                    {
+                        "id": table_id,
+                        "property": "active_cell",
+                        "value": {"row": 0, "column_id": "Status", "column": 0},
+                    }
+                ]
+            ],
+            "state": [
+                [{"id": table_id, "property": "data", "value": [row]}],
+                [{"id": table_id, "property": "id", "value": table_id}],
+            ],
+            "changedPropIds": [
+                '{"index":"%s","type":"card-details-table"}.active_cell' % card_index
+            ],
+        },
+    )
+
+
+def test_plate_view_status_cell_restore_to_empty_no_500(
+    output_root: OutputRoot,
+) -> None:
+    """Restoring the LAST removed object from a plate-view Status cell is a 200.
+
+    The bug: ``_toggle_status_cell`` returned the bare ``mutate_and_payload``
+    list; when restoring the final removal that list is ``[]``, which Dash's
+    multi-mode (``allow_duplicate``) response validator treats as zero output
+    values and 500s. The fix wraps the return in a 1-tuple so Dash always sees
+    exactly one output value.
+    """
+    app = create_app(output_root)
+    store: CurationLabels = app.server.config[CFG_FILTERED_STATE]
+
+    # Seed a single removal so the toggle below restores-to-empty.
+    store.toggle("img-A", 1)
+    assert store.is_removed("img-A", 1)
+
+    resp = _post_status_cell_toggle(
+        app, card_index="card0", image_file="img-A", label=1
+    )
+    assert resp.status_code == 200, (
+        f"Status-cell restore-to-empty returned {resp.status_code}: "
+        f"{resp.data[:200]}"
+    )
+    # The object is restored and the label set is now empty.
+    assert not store.is_removed("img-A", 1)
+    assert store.removed_keys == set()
+
+
+# ---------------------------------------------------------------------------
+# QC review radial triage (Task 5) — wedge mark + lazy populate
+# ---------------------------------------------------------------------------
+
+
+def _post_qc_wedge(app, *, image_file: str, label: int, category: str):
+    """POST a QC radial wedge click via the Dash update route (surface=qc)."""
+    client = app.server.test_client()
+    out_key = _find_output_key(app, "store-removed-keys.data", "qc-cat-wedge")
+    triggered_id = {
+        "type": "qc-cat-wedge",
+        "image_file": image_file,
+        "label": label,
+        "category": category,
+    }
+    changed_prop = (
+        '{"category":"%s","image_file":"%s","label":%d,"type":"qc-cat-wedge"}.n_clicks'
+        % (category, image_file, label)
+    )
+    return client.post(
+        "/_dash-update-component",
+        json={
+            "output": out_key,
+            "outputs": _outputs_from_key(out_key),
+            "inputs": [
+                [{"id": triggered_id, "property": "n_clicks", "value": 1}]
+            ],
+            "changedPropIds": [changed_prop],
+        },
+    )
+
+
+def test_qc_wedge_mark_writes_category_parquet_and_drops_mirror(
+    output_root: OutputRoot,
+    tmp_path: Path,
+) -> None:
+    """A QC ``merged`` wedge click categorizes the object and drops the mirror."""
+    app = create_app(output_root)
+
+    resp = _post_qc_wedge(app, image_file="img-B", label=1, category="merged")
+    assert resp.status_code == 200, (
+        f"QC wedge callback returned {resp.status_code}: {resp.data[:200]}"
+    )
+
+    merged_path = error_category_parquet_path(tmp_path, "merged")
+    assert merged_path.exists()
+    merged = pl.read_parquet(merged_path)
+    merged_keys = set(
+        zip(
+            merged.get_column("Metadata_ImageFile").to_list(),
+            merged.get_column("Object_Label").to_list(),
+        )
+    )
+    assert ("img-B", 1) in merged_keys
+
+    store: CurationLabels = app.server.config[CFG_FILTERED_STATE]
+    assert store.is_removed("img-B", 1)
+    assert store.labels[("img-B", 1)] == "merged"
+
+
+def test_qc_radial_body_lazy_populates_on_trigger_click(
+    output_root: OutputRoot,
+) -> None:
+    """Clicking a QC tile's ▾ trigger fills the empty radial popover body."""
+    app = create_app(output_root)
+    client = app.server.test_client()
+
+    image_file, label = "img-A", 2
+    trigger_id = {
+        "type": "qc-radial-trigger",
+        "image_file": image_file,
+        "label": label,
+    }
+    store_id = {"type": "qc-radial-store", "image_file": image_file, "label": label}
+    body_id = {
+        "type": "qc-radial-popover-body",
+        "image_file": image_file,
+        "label": label,
+    }
+    out_key = _find_output_key(app, "qc-radial-popover-body", "qc-radial-trigger")
+    resp = client.post(
+        "/_dash-update-component",
+        json={
+            "output": out_key,
+            "outputs": [{"id": body_id, "property": "children"}],
+            "inputs": [{"id": trigger_id, "property": "n_clicks", "value": 1}],
+            "state": [
+                {
+                    "id": store_id,
+                    "property": "data",
+                    "value": {
+                        "image_file": image_file,
+                        "label": label,
+                        "surface": "qc",
+                    },
+                }
+            ],
+            "changedPropIds": [
+                '{"image_file":"img-A","label":2,"type":"qc-radial-trigger"}.n_clicks'
+            ],
+        },
+    )
+
+    assert resp.status_code == 200, (
+        f"QC populate callback returned {resp.status_code}: {resp.data[:200]}"
+    )
+    body_text = resp.get_data(as_text=True)
+    assert "qc-cat-wedge" in body_text
+    assert "merged" in body_text
+    assert RADIAL_RESTORE_SENTINEL in body_text

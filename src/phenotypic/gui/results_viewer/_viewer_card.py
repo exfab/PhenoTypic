@@ -1001,7 +1001,7 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
             return no_update
 
         try:
-            return filtered_state.mutate_and_payload(
+            payload = filtered_state.mutate_and_payload(
                 lambda s: s.toggle(image_file, object_label)
             )
         except Exception:
@@ -1011,6 +1011,13 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
                 object_label,
             )
             return no_update
+        # ``STORE_REMOVED_KEYS`` is an ``allow_duplicate`` (multi-mode) output
+        # whose value is itself a list. Restoring the LAST removed object yields
+        # an empty payload ``[]``; a bare ``[]`` makes Dash's multi-mode response
+        # validator see *zero* output values and 500. Wrap in a 1-tuple so Dash
+        # sees exactly one value (the list) regardless of its length (matches
+        # ``colony_view._callbacks._mark_colony_category``).
+        return (payload,)
 
 
 __all__ = [

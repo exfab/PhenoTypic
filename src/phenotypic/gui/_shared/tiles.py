@@ -655,7 +655,9 @@ def build_tile_grid(
     crop_size: int,
     display_size: int,
     has_overlay: Callable[[str, str], bool],
-    remove_button_builder: Callable[[str, int, bool], Component],
+    remove_button_builder: Callable[
+        [str, int, bool], Component | list[Component]
+    ],
     gap_px: int = _GALLERY_GAP_PX,
 ) -> tuple[Component, list[tuple[str, int]]]:
     """Render a flat gallery of tiles and its row-major key order.
@@ -680,8 +682,11 @@ def build_tile_grid(
             whether the overlay PNG exists (typically
             :meth:`OutputRoot.has_overlay`).
         remove_button_builder: Callable ``(image_file, label, is_removed)
-            -> Component`` returning the tile's remove/restore button so
-            the gallery owner controls the button id + styling.
+            -> Component | list[Component]`` returning the tile's curation
+            affordance so the gallery owner controls the button id + styling.
+            May return a single button (legacy ✕) or a list of sibling
+            components (e.g. the radial trigger's ``[trigger, popover,
+            store]`` triple), which :func:`build_tile_cell` splices in.
         gap_px: CSS gap between tiles, in pixels. Defaults to 8.
 
     Returns:
