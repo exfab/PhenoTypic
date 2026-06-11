@@ -554,6 +554,20 @@ class CurationLabels:
         with self._lock:
             self._save_locked()
 
+    def write_error_partitions(self) -> None:
+        """Write the per-category error parquets + the (re-keyed) labels parquet.
+
+        Deliberately does **not** rewrite the curated ``measurements.parquet``
+        mirror — used by CLI finalize to re-emit the durable error deliverables
+        headlessly while leaving the post-applied measurements seed untouched
+        (curation of the mirror stays the GUI's live responsibility, re-derived
+        on the next viewer load from the re-keyed labels). Bypasses the mirror
+        mtime guard for the same reason. Dash-free.
+        """
+        with self._lock:
+            self._write_category_parquets()
+            self._write_labels_parquet()
+
     def _save_locked(self) -> None:
         """Write curated mirror + per-category files, then labels parquet (lock held).
 
