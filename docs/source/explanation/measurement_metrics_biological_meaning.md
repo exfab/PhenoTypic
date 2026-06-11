@@ -40,13 +40,56 @@ mutant morphology, or for detecting contamination.
 
 ## Color Metrics (MeasureColor)
 
-Color measurements use the CIELAB, HSV, and CIE XYZ color spaces.
-Key columns include mean, median, and standard deviation for each
-channel. These are essential for:
+Color measurements report compact, outlier-resistant colorimetric
+summaries rather than a per-channel statistical suite. The default output
+covers two perceptually meaningful spaces, CIE L\*a\*b\* and HSV.
+
+**Two robust center colors (CIE L\*a\*b\*).** L\*a\*b\* is designed so
+Euclidean distance approximates perceived color difference (ΔE76).
+
+- `L*GeoMedian`, `a*GeoMedian`, `b*GeoMedian` — the **ΔE76 (Euclidean)
+  geometric median** of the colony's pixels. The multivariate median
+  (breakdown point 0.5), so specular highlights, agar bleed-through, and
+  debris cannot drag the center color.
+- `L*Medoid`, `a*Medoid`, `b*Medoid` — the **ΔE2000 medoid**: the single
+  real colony pixel minimizing total ΔE2000 to all other pixels. Because
+  ΔE2000 is not a true metric, a medoid (which needs no metric axioms) is
+  used instead of a geometric median, and the result is always an actual
+  colony color.
+
+**Within-colony color consistency (ΔE2000, from the medoid).** A
+perceptually-corrected uniformity profile:
+
+- `DeltaE2000MedianFromMedoid` — robust "perceptual MAD."
+- `DeltaE2000MeanFromMedoid` — the color-science uniformity standard.
+- `DeltaE2000P95FromMedoid` — near-worst-case deviation; flags sectoring
+  and contamination without being dominated by a single stray pixel.
+- `LabTotalVariance` — the trace of the L\*a\*b\* covariance (var L\* +
+  var a\* + var b\*), a single Euclidean spread scalar.
+
+**Robust HSV.** Because hue is circular and HSV is not perceptually
+uniform, each pixel is embedded into Cartesian cone coordinates before
+the robust center is computed:
+
+- `HueRobustMean`, `SaturationRobustMean`, `ValueRobustMean` — the
+  cone-embedded geometric-median center converted back to H, S, V
+  (circular-correct; unreliable hue at low saturation collapses toward
+  the achromatic axis automatically).
+- `HSVConeVariance` — the trace of the cone-Cartesian covariance.
+
+**Plot swatch.** `MedoidColorHex` is the sRGB hex string of the ΔE2000
+medoid color, intended **for visualization only** — it is never used as a
+numeric measurement or analysis input.
+
+These metrics are essential for:
 
 - Quantifying pigmentation differences between strains
 - Detecting sectoring (regions of different color within a colony)
 - Normalizing color across imaging sessions (after `ColorCorrector`)
+
+CIE XYZ and xy chromaticity remain available as opt-in legacy per-channel
+suites (`MeasureColor(include_XYZ=True)`, `MeasureColor(include_xy=True)`)
+but are hidden from the default colorimetric output.
 
 ## Texture Metrics (MeasureTexture)
 

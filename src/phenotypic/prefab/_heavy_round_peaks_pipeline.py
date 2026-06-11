@@ -265,8 +265,6 @@ class HeavyRoundPeaksPipeline(PrefabPipeline):
         meas = [
             MeasureShape(),
             MeasureColor(
-                    white_chroma_max=color_white_chroma_max,
-                    chroma_min=color_chroma_min,
                     include_XYZ=color_include_XYZ,
             ),
             MeasureTexture(
