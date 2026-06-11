@@ -9,6 +9,11 @@ modeling across time courses, and Tukey-style outlier removal for colony metrics
 from ._double_softplus import DoubleSoftplus
 from ._edge_correction import EdgeCorrector
 from ._error_cutoffs import ErrorCutoffFinder
+from ._error_report import (
+    filter_spec_json,
+    filter_spec_query,
+    render_error_analysis_html,
+)
 from ._linear_softplus import LinearSoftplus
 from ._log_growth_model import LogGrowthModel
 from ._mad_outlier import MADOutlierRemover
@@ -36,4 +41,7 @@ __all__ = [
     "ReplicateAgreement",
     "TukeyOutlierFraction",
     "TukeyOutlierRemover",
+    "filter_spec_json",
+    "filter_spec_query",
+    "render_error_analysis_html",
 ]
