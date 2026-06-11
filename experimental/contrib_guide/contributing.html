@@ -632,6 +632,66 @@
 <h2>Code Standards<a class="headerlink" href="#code-standards" title="Link to this heading">#</a></h2>
 <p>This section will describe the coding standards and style guidelines for Phenotypic.</p>
 </section>
+<section id="adding-a-tuning-objective-scorer">
+<h2>Adding a tuning objective (Scorer)<a class="headerlink" href="#adding-a-tuning-objective-scorer" title="Link to this heading">#</a></h2>
+<p>A tuning <em>objective</em> is a <a class="reference internal" href="../api_reference/phenotypic.tune.html#phenotypic.tune.Scorer" title="phenotypic.tune.Scorer"><code class="xref py py-class docutils literal notranslate"><span class="pre">Scorer</span></code></a>. Every value the
+tuner optimizes is a bounded <strong>cost</strong> in <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1]</span></code> (<code class="docutils literal notranslate"><span class="pre">0</span></code> = perfect, <code class="docutils literal notranslate"><span class="pre">1</span></code> =
+worst) and the optimizer <strong>minimizes</strong> it. You emit your metric’s <em>natural</em>
+value and declare its <em>sense</em>; the framework orients, aggregates, and combines.</p>
+<p>The contract (canonical in the <code class="docutils literal notranslate"><span class="pre">Scorer</span></code> base-class docstring and
+<code class="docutils literal notranslate"><span class="pre">src/phenotypic/tune/CLAUDE.md</span></code> — keep all three in sync):</p>
+<ol class="arabic simple">
+<li><p><strong>Subclass</strong> <code class="docutils literal notranslate"><span class="pre">Scorer</span></code> and implement
+<code class="docutils literal notranslate"><span class="pre">_score_terms(image,</span> <span class="pre">measurements)</span> <span class="pre">-&gt;</span> <span class="pre">dict[str,</span> <span class="pre">float]</span></code> returning your
+<strong>natural</strong> per-term values. Do <strong>not</strong> flip or normalize by hand — a
+divergence stays a divergence, Dice stays Dice.</p></li>
+<li><p><strong>Declare the sense</strong> with the <code class="docutils literal notranslate"><span class="pre">_TERM_SENSE</span></code> class variable:
+<code class="docutils literal notranslate"><span class="pre">Sense.LOWER_BETTER</span></code> (the default) if a larger value is worse;
+<code class="docutils literal notranslate"><span class="pre">Sense.HIGHER_BETTER</span></code> if a larger value is better (Dice, IoU, ICC,
+solidity).</p></li>
+<li><p><strong>Supply an anchor only for an unbounded term</strong> by overriding
+<code class="docutils literal notranslate"><span class="pre">_term_anchor</span></code> to return the value at which cost should reach <code class="docutils literal notranslate"><span class="pre">0.5</span></code> (for
+a QC-backed term, its check’s <code class="docutils literal notranslate"><span class="pre">fail_threshold</span></code>). Bounded <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1]</span></code> terms
+need nothing.</p></li>
+<li><p><strong>Do not add scalarization parameters.</strong> The utopia shift <code class="docutils literal notranslate"><span class="pre">ε</span></code>, the
+augmentation coefficient <code class="docutils literal notranslate"><span class="pre">ρ</span></code>, per-axis normalization, and default weights
+are all framework-derived — a scorer never exposes them.</p></li>
+<li><p><strong>Register</strong> the class: re-export it from <code class="docutils literal notranslate"><span class="pre">phenotypic.tune</span></code> (its
+<code class="docutils literal notranslate"><span class="pre">__init__</span></code>) and the class registry, or the GUI and <code class="docutils literal notranslate"><span class="pre">from_json</span></code>
+deserialization cannot discover it.</p></li>
+</ol>
+<p>Minimal example — a reference-free scorer that rewards round colonies (Solidity
+is already <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1]</span></code> and higher-is-better, so it only declares the sense):</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">ClassVar</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tune</span><span class="w"> </span><span class="kn">import</span> <span class="n">Scorer</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tune._scoring._orient</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sense</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">SolidityScorer</span><span class="p">(</span><span class="n">Scorer</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Reward compact, non-jagged colonies (mean Solidity, higher = better).&quot;&quot;&quot;</span>
+
+    <span class="n">_TERM_SENSE</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="n">Sense</span><span class="p">]</span> <span class="o">=</span> <span class="n">Sense</span><span class="o">.</span><span class="n">HIGHER_BETTER</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_score_terms</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">measurements</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+        <span class="c1"># Solidity is bounded [0, 1]; emit it raw. The base score_image</span>
+        <span class="c1"># complements it into cost (1 - value) because _TERM_SENSE is</span>
+        <span class="c1"># HIGHER_BETTER — you write no flip.</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;Solidity&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">measurements</span><span class="p">[</span><span class="s2">&quot;Shape_Solidity&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">())}</span>
+</pre></div>
+</div>
+<p>The base <a class="reference internal" href="../api_reference/phenotypic.tune.html#phenotypic.tune.Scorer.score_image" title="phenotypic.tune.Scorer.score_image"><code class="xref py py-meth docutils literal notranslate"><span class="pre">score_image()</span></code></a> template method then turns
+each natural term into cost via <code class="docutils literal notranslate"><span class="pre">to_cost</span></code>; the <code class="docutils literal notranslate"><span class="pre">Evaluator</span></code> robust-aggregates
+(<code class="docutils literal notranslate"><span class="pre">median</span> <span class="pre">+</span> <span class="pre">λ·IQR</span></code>, clamped) and the optimizer minimizes. A
+<a class="reference internal" href="../api_reference/phenotypic.tune.html#phenotypic.tune.CompositeScorer" title="phenotypic.tune.CompositeScorer"><code class="xref py py-class docutils literal notranslate"><span class="pre">CompositeScorer</span></code></a> combines several scorers’ per-child
+cost with an <strong>augmented Tchebycheff</strong> scalarization (worst-axis-dominant by
+default) — see the explainer
+<code class="docutils literal notranslate"><span class="pre">docs/superpowers/explain/tune-with-optuna.md</span></code> for the math.</p>
+</section>
 <section id="pull-request-workflow">
 <h2>Pull Request Workflow<a class="headerlink" href="#pull-request-workflow" title="Link to this heading">#</a></h2>
 <p>This section will explain the process for submitting pull requests to the Phenotypic repository.</p>
@@ -667,6 +727,7 @@
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#getting-started">Getting Started</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#code-standards">Code Standards</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#adding-a-tuning-objective-scorer">Adding a tuning objective (Scorer)</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#pull-request-workflow">Pull Request Workflow</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#issue-reporting">Issue Reporting</a></li>
 </ul>

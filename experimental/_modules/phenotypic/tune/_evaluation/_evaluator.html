@@ -599,9 +599,9 @@
 <span></span><span class="sd">&quot;&quot;&quot;The candidate evaluator — the uniform 3-step robust-evaluation loop.</span>
 
 <span class="sd">For one parameter combo: build the candidate pipeline, ``score_image`` over the</span>
-<span class="sd">calibration set, robust-aggregate each term as ``median - λ·IQR`` (the spread</span>
-<span class="sd">penalty rewards parameters that are stable across images, not just good on</span>
-<span class="sd">average), then ``finalize`` to the scalar objective the optimizer maximizes.</span>
+<span class="sd">calibration set, robust-aggregate each term as ``clamp01(median + λ·IQR)`` (the</span>
+<span class="sd">spread penalty pushes the cost up, toward the worst), then ``finalize`` to the</span>
+<span class="sd">scalar cost the optimizer **minimizes** (lower = better).</span>
 <span class="sd">&quot;&quot;&quot;</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
@@ -610,15 +610,17 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span><span class="p">,</span> <span class="n">ConfigDict</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">.._scoring._orient</span><span class="w"> </span><span class="kn">import</span> <span class="n">clamp01</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.._scoring._scorer</span><span class="w"> </span><span class="kn">import</span> <span class="n">Scorer</span><span class="p">,</span> <span class="n">project_objectives_to_scalar</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.._strategies._pruning</span><span class="w"> </span><span class="kn">import</span> <span class="n">NoOpChannel</span><span class="p">,</span> <span class="n">PruningChannel</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._aggregate_math</span><span class="w"> </span><span class="kn">import</span> <span class="n">_median_iqr</span><span class="p">,</span> <span class="n">_relative</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._builder</span><span class="w"> </span><span class="kn">import</span> <span class="n">build_pipeline</span>
 
-<span class="c1">#: The worst possible per-image term score (higher-is-better objective floor).</span>
-<span class="c1">#: A per-image exception contributes this to every term so it honestly drags</span>
-<span class="c1">#: the aggregate (robust-eval §10) rather than dodging a bad plate by crashing.</span>
-<span class="n">_WORST_TERM</span> <span class="o">=</span> <span class="mf">0.0</span>
+<span class="c1">#: The worst possible per-image term **cost** (lower-is-better objective</span>
+<span class="c1">#: ceiling). A per-image exception contributes this to every term so it</span>
+<span class="c1">#: honestly drags the aggregate toward the worst (robust-eval §10) rather than</span>
+<span class="c1">#: dodging a bad plate by crashing.</span>
+<span class="n">_WORST_TERM</span> <span class="o">=</span> <span class="mf">1.0</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_project_finalize</span><span class="p">(</span>
@@ -649,18 +651,24 @@
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_robust_aggregate</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">stability_weight</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Reduce a term&#39;s per-image scores to ``median - stability_weight·IQR``.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Reduce a term&#39;s per-image **costs** to ``clamp01(median + λ·IQR)``.</span>
+
+<span class="sd">    Cost convention (lower = better): the spread penalty *adds* to the central</span>
+<span class="sd">    tendency, so an unstable term is penalized toward the worst cost (``1``).</span>
+<span class="sd">    The reflected aggregate ranges ``[0, 1+λ]``, so it is clamped to ``[0,1]``</span>
+<span class="sd">    (B1) — the clamp is monotone and only bites on *terrible* terms (cost &gt; 1,</span>
+<span class="sd">    i.e. unstable **and** bad), so it is winner-preserving.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        values: The per-image scores for one term (higher = better).</span>
+<span class="sd">        values: The per-image costs for one term (lower = better).</span>
 <span class="sd">        stability_weight: λ — how hard cross-image spread is penalized.</span>
 
 <span class="sd">    Returns:</span>
-<span class="sd">        The stability-penalized central tendency. For a single value the IQR is</span>
-<span class="sd">        ``0`` and the result is that value.</span>
+<span class="sd">        The clamped stability-penalized central tendency in ``[0,1]``. For a</span>
+<span class="sd">        single value the IQR is ``0`` and the result is that value.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">median</span><span class="p">,</span> <span class="n">iqr</span> <span class="o">=</span> <span class="n">_median_iqr</span><span class="p">(</span><span class="n">values</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">median</span> <span class="o">-</span> <span class="n">stability_weight</span> <span class="o">*</span> <span class="n">iqr</span>
+    <span class="k">return</span> <span class="n">clamp01</span><span class="p">(</span><span class="n">median</span> <span class="o">+</span> <span class="n">stability_weight</span> <span class="o">*</span> <span class="n">iqr</span><span class="p">)</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_per_trial_dispersion</span><span class="p">(</span>
@@ -669,8 +677,11 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;The relative across-plate dispersion of the **primary (first) term**.</span>
 
 <span class="sd">    The per-trial ``gap`` signal: the relative IQR</span>
-<span class="sd">    ``(q75 - q25) / max(|median|, eps)`` of the first term&#39;s per-image scores — a</span>
-<span class="sd">    cheap instability / overfit-risk flag, NOT a held-out generalization gap. A</span>
+<span class="sd">    ``(q75 - q25) / max(1 - median, eps)`` of the first term&#39;s per-image scores — a</span>
+<span class="sd">    cheap instability / overfit-risk flag, NOT a held-out generalization gap.</span>
+<span class="sd">    Under the cost convention a good candidate&#39;s median ≈ 0, so the ratio is</span>
+<span class="sd">    taken against the goodness-equivalent ``1 - median`` (keeps it finite — the</span>
+<span class="sd">    singularity moves to the harmless bad end — and ``GAP_FLAG_THRESHOLD`` valid). A</span>
 <span class="sd">    single-image trial has no dispersion (``0.0``); below ``min_n`` images the</span>
 <span class="sd">    estimate is unreliable (``None``, mirroring the stability small-n guard); a</span>
 <span class="sd">    perfectly flat term is maximally stable (``0.0``).</span>
@@ -696,7 +707,9 @@
     <span class="k">if</span> <span class="n">n</span> <span class="o">&lt;</span> <span class="n">min_n</span><span class="p">:</span>
         <span class="k">return</span> <span class="kc">None</span>
     <span class="n">median</span><span class="p">,</span> <span class="n">iqr</span> <span class="o">=</span> <span class="n">_median_iqr</span><span class="p">(</span><span class="n">values</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">_relative</span><span class="p">(</span><span class="n">iqr</span><span class="p">,</span> <span class="n">median</span><span class="p">)</span>
+    <span class="c1"># Cost convention: a good candidate&#39;s median ≈ 0 would blow up the ratio, so</span>
+    <span class="c1"># divide by the goodness-equivalent (1 - median ≈ 1) — reflection-clean.</span>
+    <span class="k">return</span> <span class="n">_relative</span><span class="p">(</span><span class="n">iqr</span><span class="p">,</span> <span class="mf">1.0</span> <span class="o">-</span> <span class="n">median</span><span class="p">)</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_is_suspicious</span><span class="p">(</span>
@@ -706,27 +719,31 @@
     <span class="n">score_floor</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
     <span class="n">count_floor</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Flag the qc §5 &quot;great score on under-detection&quot; gaming signature.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Flag the qc §5 &quot;great cost on under-detection&quot; gaming signature.</span>
 
-<span class="sd">    A candidate is suspicious when a **high** finalized ``score`` is paired with a</span>
-<span class="sd">    **low** aggregated ``Count`` term — the signature of a pipeline that scores</span>
-<span class="sd">    well precisely *because* it under-detects (detecting fewer colonies dodges</span>
-<span class="sd">    the spread/quality penalties the score rewards). Read from already-computed</span>
-<span class="sd">    aggregates; a heuristic review flag, not a hard rejection. A missing ``Count``</span>
-<span class="sd">    term defaults to ``1.0`` (faithful) so a non-count objective is never flagged.</span>
+<span class="sd">    A candidate is suspicious when a **low** finalized ``score`` (great cost) is</span>
+<span class="sd">    paired with a **high** aggregated ``Count`` cost — the signature of a pipeline</span>
+<span class="sd">    that scores well precisely *because* it under-detects (detecting fewer</span>
+<span class="sd">    colonies dodges the spread/quality penalties). Read from already-computed</span>
+<span class="sd">    aggregates; a heuristic review flag, not a hard rejection. The intuitive</span>
+<span class="sd">    floors are mapped into cost-space here (``1 - floor``): a missing ``Count``</span>
+<span class="sd">    term defaults to ``0.0`` (faithful = best cost) so a non-count objective is</span>
+<span class="sd">    never flagged.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        score: The finalized scalar objective (higher = better).</span>
-<span class="sd">        terms: The robust-aggregated per-term scores; ``terms[&quot;Count&quot;]`` is read.</span>
-<span class="sd">        score_floor: The minimum ``score`` for the &quot;great score&quot; half.</span>
-<span class="sd">        count_floor: The maximum ``terms[&quot;Count&quot;]`` for the &quot;under-detection&quot; half.</span>
+<span class="sd">        score: The finalized scalar cost (lower = better).</span>
+<span class="sd">        terms: The robust-aggregated per-term costs; ``terms[&quot;Count&quot;]`` is read.</span>
+<span class="sd">        score_floor: The &quot;great score&quot; threshold expressed intuitively; the cost</span>
+<span class="sd">            half fires when ``score &lt;= 1 - score_floor``.</span>
+<span class="sd">        count_floor: The &quot;under-detection&quot; threshold expressed intuitively; the</span>
+<span class="sd">            cost half fires when ``terms[&quot;Count&quot;] &gt;= 1 - count_floor``.</span>
 
 <span class="sd">    Returns:</span>
-<span class="sd">        ``True`` when ``score &gt;= score_floor`` **and**</span>
-<span class="sd">        ``terms[&quot;Count&quot;] &lt;= count_floor``.</span>
+<span class="sd">        ``True`` when ``score &lt;= (1 - score_floor)`` **and**</span>
+<span class="sd">        ``terms[&quot;Count&quot;] &gt;= (1 - count_floor)``.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">count</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">terms</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Count&quot;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">))</span>
-    <span class="k">return</span> <span class="n">score</span> <span class="o">&gt;=</span> <span class="n">score_floor</span> <span class="ow">and</span> <span class="n">count</span> <span class="o">&lt;=</span> <span class="n">count_floor</span>
+    <span class="n">count_cost</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">terms</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Count&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">score</span> <span class="o">&lt;=</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">score_floor</span><span class="p">)</span> <span class="ow">and</span> <span class="n">count_cost</span> <span class="o">&gt;=</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">count_floor</span><span class="p">)</span>
 
 
 <div class="viewcode-block" id="EvaluationResult">
@@ -735,10 +752,10 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;The outcome of evaluating one candidate over the calibration set.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        score: The finalized scalar objective (higher = better). For a</span>
-<span class="sd">            multi-objective candidate this is the **scalar projection** of</span>
-<span class="sd">            ``objectives`` (``mean(objectives.values())``).</span>
-<span class="sd">        terms: Robust-aggregated per-term scores (``median - λ·IQR`` each).</span>
+<span class="sd">        score: The finalized scalar cost the optimizer **minimizes** (lower =</span>
+<span class="sd">            better). For a multi-objective candidate this is the **scalar</span>
+<span class="sd">            projection** of ``objectives`` (``mean(objectives.values())``).</span>
+<span class="sd">        terms: Robust-aggregated per-term costs (``clamp01(median + λ·IQR)`` each).</span>
 <span class="sd">        n_images: Number of calibration images evaluated.</span>
 <span class="sd">        objectives: The named multi-objective values (plan §0a sidecar), or</span>
 <span class="sd">            ``None`` for a single-objective candidate. Set only when the scorer&#39;s</span>
@@ -780,10 +797,11 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Score a candidate combo over a calibration set (CV-only MVP).</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        stability_weight: λ in ``median - λ·IQR`` — how hard cross-image spread</span>
-<span class="sd">            is penalized when aggregating a term across the calibration set.</span>
-<span class="sd">        failure_score: The score assigned when a candidate fails to build,</span>
-<span class="sd">            measure, or score; the floor of the higher-is-better objective.</span>
+<span class="sd">        stability_weight: λ in ``clamp01(median + λ·IQR)`` — how hard cross-image</span>
+<span class="sd">            spread is penalized when aggregating a term (cost) across the</span>
+<span class="sd">            calibration set.</span>
+<span class="sd">        failure_score: The worst-cost ceiling assigned when a candidate fails</span>
+<span class="sd">            to build, measure, or score (lower-is-better objective).</span>
 <span class="sd">        rung_floor: The minimum first-rung size for the ASHA-style fidelity</span>
 <span class="sd">            ladder (robust-eval §7) — never prune on fewer plates than this.</span>
 <span class="sd">        rung_factor: The geometric growth factor between rungs (×3 by default).</span>
@@ -802,7 +820,7 @@
     <span class="n">model_config</span> <span class="o">=</span> <span class="n">ConfigDict</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
     <span class="n">stability_weight</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span>
-    <span class="n">failure_score</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="n">failure_score</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span>
     <span class="n">rung_floor</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">6</span>
     <span class="n">rung_factor</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span>
     <span class="n">min_rungs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span>
@@ -851,12 +869,12 @@
 
 <span class="sd">        The candidate is scored in growing rung blocks (:meth:`_rung_sizes`) over</span>
 <span class="sd">        a **deterministic, id-sorted** subset (metadata-stratified rungs are</span>
-<span class="sd">        deferred). After each rung the running ``median - λ·IQR`` is reported to</span>
+<span class="sd">        deferred). After each rung the running ``clamp01(median + λ·IQR)`` is reported to</span>
 <span class="sd">        ``channel`` and ``channel.should_prune()`` is checked *between* rungs; a</span>
 <span class="sd">        prune short-circuits to a partial ``EvaluationResult(pruned=True)``. Each</span>
 <span class="sd">        image is scored **once** (memoized across rungs). Failure taxonomy</span>
 <span class="sd">        (robust-eval §10): a candidate that won&#39;t build is a true ``failed``; one</span>
-<span class="sd">        image raising mid-scoring contributes the worst term and the loop</span>
+<span class="sd">        image raising mid-scoring contributes the worst-cost term and the loop</span>
 <span class="sd">        continues; only **all** images erroring is a whole-candidate ``failed``.</span>
 
 <span class="sd">        Args:</span>

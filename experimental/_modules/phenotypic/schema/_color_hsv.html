@@ -596,7 +596,7 @@
                 <article class="bd-article">
                   
   <h1>Source code for phenotypic.schema._color_hsv</h1><div class="highlight"><pre>
-<span></span><span class="sd">&quot;&quot;&quot;Per-object summary statistics in the HSV color space.&quot;&quot;&quot;</span>
+<span></span><span class="sd">&quot;&quot;&quot;Per-object robust summary in the HSV color space (cone-embedded).&quot;&quot;&quot;</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasurementInfo</span>
 
@@ -604,15 +604,12 @@
 <div class="viewcode-block" id="ColorHSV">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.schema.html#phenotypic.schema.ColorHSV">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ColorHSV</span><span class="p">(</span><span class="n">MeasurementInfo</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Measure colony color statistics across multiple perceptual color spaces.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Robust HSV summary for a colony.</span>
 
-<span class="sd">    Extract per-colony color features from CIE XYZ, chromaticity (xy),</span>
-<span class="sd">    CIE Lab (perceptually uniform), and HSV color spaces. For each</span>
-<span class="sd">    channel the standard statistical suite is computed (min, Q1, mean,</span>
-<span class="sd">    median, Q3, max, std dev, coefficient of variation), plus Lab chroma</span>
-<span class="sd">    estimates.</span>
-
-<span class="sd">    Covers the HSV channels (Hue, Saturation, Brightness).</span>
+<span class="sd">    HSV hue is circular and HSV is not perceptually uniform, so the robust</span>
+<span class="sd">    center is computed as the geometric median of cone-Cartesian coordinates</span>
+<span class="sd">    (S*V*cosθ, S*V*sinθ, V) and converted back to H,S,V. ``HSVConeVariance`` is</span>
+<span class="sd">    the trace of the cone-Cartesian covariance.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
 <div class="viewcode-block" id="ColorHSV.category">
@@ -622,93 +619,20 @@
         <span class="k">return</span> <span class="s2">&quot;ColorHSV&quot;</span></div>
 
 
-    <span class="n">HUE_MINIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;HueMin&quot;</span><span class="p">,</span> <span class="s2">&quot;The minimum hue of the object&quot;</span><span class="p">)</span>
-    <span class="n">HUE_Q1</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;HueQ1&quot;</span><span class="p">,</span> <span class="s2">&quot;The lower quartile (Q1) hue of the object&quot;</span><span class="p">)</span>
-    <span class="n">HUE_MEAN</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;HueMean&quot;</span><span class="p">,</span> <span class="s2">&quot;The mean hue of the object&quot;</span><span class="p">)</span>
-    <span class="n">HUE_MEDIAN</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;HueMedian&quot;</span><span class="p">,</span> <span class="s2">&quot;The median hue of the object&quot;</span><span class="p">)</span>
-    <span class="n">HUE_Q3</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;HueQ3&quot;</span><span class="p">,</span> <span class="s2">&quot;The upper quartile (Q3) hue of the object&quot;</span><span class="p">)</span>
-    <span class="n">HUE_MAXIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;HueMax&quot;</span><span class="p">,</span> <span class="s2">&quot;The maximum hue of the object&quot;</span><span class="p">)</span>
-    <span class="n">HUE_STDDEV</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;HueStdDev&quot;</span><span class="p">,</span> <span class="s2">&quot;The standard deviation of the hue of the object&quot;</span><span class="p">)</span>
-    <span class="n">HUE_COEFF_VARIANCE</span> <span class="o">=</span> <span class="p">(</span>
-        <span class="s2">&quot;HueCoeffVar&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;The coefficient of variation of the hue of the object&quot;</span><span class="p">,</span>
-    <span class="p">)</span>
+    <span class="n">HUE_ROBUST_MEAN</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;HueRobustMean&quot;</span><span class="p">,</span> <span class="s2">&quot;Hue of the cone-embedded geometric-median robust center (circular-correct)&quot;</span><span class="p">)</span>
+    <span class="n">SATURATION_ROBUST_MEAN</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;SaturationRobustMean&quot;</span><span class="p">,</span> <span class="s2">&quot;Saturation of the cone-embedded geometric-median robust center&quot;</span><span class="p">)</span>
+    <span class="n">VALUE_ROBUST_MEAN</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;ValueRobustMean&quot;</span><span class="p">,</span> <span class="s2">&quot;Value (brightness) of the cone-embedded geometric-median robust center&quot;</span><span class="p">)</span>
+    <span class="n">HSV_CONE_VARIANCE</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;HSVConeVariance&quot;</span><span class="p">,</span> <span class="s2">&quot;Trace of the HSV cone-Cartesian covariance (single 3D HSV spread scalar); spread about the arithmetic mean of the cone coordinates (NOT about the reported RobustMean center)&quot;</span><span class="p">)</span>
 
-<div class="viewcode-block" id="ColorHSV.hue_headers">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.schema.html#phenotypic.schema.ColorHSV.hue_headers">[docs]</a>
+<div class="viewcode-block" id="ColorHSV.robust_headers">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.schema.html#phenotypic.schema.ColorHSV.robust_headers">[docs]</a>
     <span class="nd">@classmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">hue_headers</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">robust_headers</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
         <span class="k">return</span> <span class="p">[</span>
-            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">HUE_MINIMUM</span><span class="p">),</span>
-            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">HUE_Q1</span><span class="p">),</span>
-            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">HUE_MEAN</span><span class="p">),</span>
-            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">HUE_MEDIAN</span><span class="p">),</span>
-            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">HUE_Q3</span><span class="p">),</span>
-            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">HUE_MAXIMUM</span><span class="p">),</span>
-            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">HUE_STDDEV</span><span class="p">),</span>
-            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">HUE_COEFF_VARIANCE</span><span class="p">),</span>
-        <span class="p">]</span></div>
-
-
-    <span class="n">SATURATION_MINIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;SaturationMin&quot;</span><span class="p">,</span> <span class="s2">&quot;The minimum saturation of the object&quot;</span><span class="p">)</span>
-    <span class="n">SATURATION_Q1</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;SaturationQ1&quot;</span><span class="p">,</span> <span class="s2">&quot;The lower quartile (Q1) saturation of the object&quot;</span><span class="p">)</span>
-    <span class="n">SATURATION_MEAN</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;SaturationMean&quot;</span><span class="p">,</span> <span class="s2">&quot;The mean saturation of the object&quot;</span><span class="p">)</span>
-    <span class="n">SATURATION_MEDIAN</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;SaturationMedian&quot;</span><span class="p">,</span> <span class="s2">&quot;The median saturation of the object&quot;</span><span class="p">)</span>
-    <span class="n">SATURATION_Q3</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;SaturationQ3&quot;</span><span class="p">,</span> <span class="s2">&quot;The upper quartile (Q3) saturation of the object&quot;</span><span class="p">)</span>
-    <span class="n">SATURATION_MAXIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;SaturationMax&quot;</span><span class="p">,</span> <span class="s2">&quot;The maximum saturation of the object&quot;</span><span class="p">)</span>
-    <span class="n">SATURATION_STDDEV</span> <span class="o">=</span> <span class="p">(</span>
-        <span class="s2">&quot;SaturationStdDev&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;The standard deviation of the saturation of the object&quot;</span><span class="p">,</span>
-    <span class="p">)</span>
-    <span class="n">SATURATION_COEFF_VARIANCE</span> <span class="o">=</span> <span class="p">(</span>
-        <span class="s2">&quot;SaturationCoeffVar&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;The coefficient of variation of the saturation of the object&quot;</span><span class="p">,</span>
-    <span class="p">)</span>
-
-<div class="viewcode-block" id="ColorHSV.saturation_headers">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.schema.html#phenotypic.schema.ColorHSV.saturation_headers">[docs]</a>
-    <span class="nd">@classmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">saturation_headers</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
-        <span class="k">return</span> <span class="p">[</span>
-            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">SATURATION_MINIMUM</span><span class="p">),</span>
-            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">SATURATION_Q1</span><span class="p">),</span>
-            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">SATURATION_MEAN</span><span class="p">),</span>
-            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">SATURATION_MEDIAN</span><span class="p">),</span>
-            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">SATURATION_Q3</span><span class="p">),</span>
-            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">SATURATION_MAXIMUM</span><span class="p">),</span>
-            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">SATURATION_STDDEV</span><span class="p">),</span>
-            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">SATURATION_COEFF_VARIANCE</span><span class="p">),</span>
-        <span class="p">]</span></div>
-
-
-    <span class="n">BRIGHTNESS_MINIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;BrightnessMin&quot;</span><span class="p">,</span> <span class="s2">&quot;The minimum brightness of the object&quot;</span><span class="p">)</span>
-    <span class="n">BRIGHTNESS_Q1</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;BrightnessQ1&quot;</span><span class="p">,</span> <span class="s2">&quot;The lower quartile (Q1) brightness of the object&quot;</span><span class="p">)</span>
-    <span class="n">BRIGHTNESS_MEAN</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;BrightnessMean&quot;</span><span class="p">,</span> <span class="s2">&quot;The mean brightness of the object&quot;</span><span class="p">)</span>
-    <span class="n">BRIGHTNESS_MEDIAN</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;BrightnessMedian&quot;</span><span class="p">,</span> <span class="s2">&quot;The median brightness of the object&quot;</span><span class="p">)</span>
-    <span class="n">BRIGHTNESS_Q3</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;BrightnessQ3&quot;</span><span class="p">,</span> <span class="s2">&quot;The upper quartile (Q3) brightness of the object&quot;</span><span class="p">)</span>
-    <span class="n">BRIGHTNESS_MAXIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;BrightnessMax&quot;</span><span class="p">,</span> <span class="s2">&quot;The maximum brightness of the object&quot;</span><span class="p">)</span>
-    <span class="n">BRIGHTNESS_STDDEV</span> <span class="o">=</span> <span class="p">(</span>
-        <span class="s2">&quot;BrightnessStdDev&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;The standard deviation of the brightness of the object&quot;</span><span class="p">,</span>
-    <span class="p">)</span>
-    <span class="n">BRIGHTNESS_COEFF_VARIANCE</span> <span class="o">=</span> <span class="p">(</span>
-        <span class="s2">&quot;BrightnessCoeffVar&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;The coefficient of variation of the brightness of the object&quot;</span><span class="p">,</span>
-    <span class="p">)</span>
-
-<div class="viewcode-block" id="ColorHSV.brightness_headers">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.schema.html#phenotypic.schema.ColorHSV.brightness_headers">[docs]</a>
-    <span class="nd">@classmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">brightness_headers</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
-        <span class="k">return</span> <span class="p">[</span>
-            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">BRIGHTNESS_MINIMUM</span><span class="p">),</span>
-            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">BRIGHTNESS_Q1</span><span class="p">),</span>
-            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">BRIGHTNESS_MEAN</span><span class="p">),</span>
-            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">BRIGHTNESS_MEDIAN</span><span class="p">),</span>
-            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">BRIGHTNESS_Q3</span><span class="p">),</span>
-            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">BRIGHTNESS_MAXIMUM</span><span class="p">),</span>
-            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">BRIGHTNESS_STDDEV</span><span class="p">),</span>
-            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">BRIGHTNESS_COEFF_VARIANCE</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">HUE_ROBUST_MEAN</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">SATURATION_ROBUST_MEAN</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">VALUE_ROBUST_MEAN</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">HSV_CONE_VARIANCE</span><span class="p">),</span>
         <span class="p">]</span></div>
 </div>
 

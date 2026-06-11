@@ -677,8 +677,11 @@
 <span class="sd">    high the relative slack already covers it.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        cal_score: The winner&#39;s calibration (in-search) score (higher = better).</span>
-<span class="sd">        heldout_score: The winner&#39;s held-out score (higher = better).</span>
+<span class="sd">        cal_score: The winner&#39;s calibration (in-search) score (higher = better;</span>
+<span class="sd">            under the cost convention the caller passes the goodness-equivalent</span>
+<span class="sd">            ``1 − cal_cost`` — see Note).</span>
+<span class="sd">        heldout_score: The winner&#39;s held-out score (higher = better; under the</span>
+<span class="sd">            cost convention the caller passes ``1 − heldout_cost`` — see Note).</span>
 <span class="sd">        rel_margin: The relative-drop margin (``HeldOutConfig.gap_margin_relative``).</span>
 <span class="sd">        abs_margin: The absolute-drop margin (``HeldOutConfig.gap_margin_absolute``).</span>
 
@@ -686,6 +689,11 @@
 <span class="sd">        A ``(relative_drop, absolute_drop, flagged)`` triple. The drops are</span>
 <span class="sd">        signed (negative when the held-out score *improved*); ``flagged`` is</span>
 <span class="sd">        ``True`` only when both exceed their margins.</span>
+
+<span class="sd">    Note:</span>
+<span class="sd">        This function is direction-agnostic. Under the cost convention the</span>
+<span class="sd">        caller passes goodness-equivalents (``1 − cost``) so the unchanged</span>
+<span class="sd">        formula is the standard loss-space gap (``heldout_cost − cal_cost``).</span>
 
 <span class="sd">    Examples:</span>
 <span class="sd">        &gt;&gt;&gt; rel, absolute, flagged = compute_generalization_gap(</span>
@@ -883,8 +891,14 @@
         <span class="n">spec</span><span class="o">.</span><span class="n">pipeline</span><span class="p">,</span> <span class="n">spec</span><span class="o">.</span><span class="n">scorer</span><span class="p">,</span> <span class="n">winner</span><span class="o">.</span><span class="n">params</span><span class="p">,</span> <span class="n">held_out_images</span>
     <span class="p">)</span>
     <span class="n">heldout_score</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">score</span><span class="p">)</span>
+    <span class="c1"># Cost convention: pass goodness-equivalents (1 - cost) so the unchanged</span>
+    <span class="c1"># accuracy-space formula (cal_g - heldout_g) equals the standard loss-space</span>
+    <span class="c1"># gap (heldout_cost - cal_cost), positive = overfit. No bespoke sign flip.</span>
     <span class="n">relative_drop</span><span class="p">,</span> <span class="n">absolute_drop</span><span class="p">,</span> <span class="n">flagged</span> <span class="o">=</span> <span class="n">compute_generalization_gap</span><span class="p">(</span>
-        <span class="n">cal_score</span><span class="p">,</span> <span class="n">heldout_score</span><span class="p">,</span> <span class="n">rel_margin</span><span class="o">=</span><span class="n">rel_margin</span><span class="p">,</span> <span class="n">abs_margin</span><span class="o">=</span><span class="n">abs_margin</span>
+        <span class="mf">1.0</span> <span class="o">-</span> <span class="n">cal_score</span><span class="p">,</span>
+        <span class="mf">1.0</span> <span class="o">-</span> <span class="n">heldout_score</span><span class="p">,</span>
+        <span class="n">rel_margin</span><span class="o">=</span><span class="n">rel_margin</span><span class="p">,</span>
+        <span class="n">abs_margin</span><span class="o">=</span><span class="n">abs_margin</span><span class="p">,</span>
     <span class="p">)</span>
 
     <span class="n">note</span> <span class="o">=</span> <span class="n">_WITHIN_GROUP_NOTE</span> <span class="k">if</span> <span class="n">split</span><span class="o">.</span><span class="n">within_group_caveat</span> <span class="k">else</span> <span class="kc">None</span>

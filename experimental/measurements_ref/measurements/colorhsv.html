@@ -660,13 +660,11 @@
   <section id="colorhsv">
 <h1>ColorHSV<a class="headerlink" href="#colorhsv" title="Link to this heading">#</a></h1>
 <p>Python object: <code class="docutils literal notranslate"><span class="pre">phenotypic.schema._color_hsv.ColorHSV</span></code></p>
-<p>Measure colony color statistics across multiple perceptual color spaces.</p>
-<p>Extract per-colony color features from CIE XYZ, chromaticity (xy),
-CIE Lab (perceptually uniform), and HSV color spaces. For each
-channel the standard statistical suite is computed (min, Q1, mean,
-median, Q3, max, std dev, coefficient of variation), plus Lab chroma
-estimates.</p>
-<p>Covers the HSV channels (Hue, Saturation, Brightness).</p>
+<p>Robust HSV summary for a colony.</p>
+<p>HSV hue is circular and HSV is not perceptually uniform, so the robust
+center is computed as the geometric median of cone-Cartesian coordinates
+(S*V*cosθ, S*V*sinθ, V) and converted back to H,S,V. <code class="docutils literal notranslate"><span class="pre">HSVConeVariance</span></code> is
+the trace of the cone-Cartesian covariance.</p>
 <div class="pst-scrollable-table-container"><table class="table" id="id1">
 <caption><span class="caption-text">Category: <strong>ColorHSV</strong></span><a class="headerlink" href="#id1" title="Link to this table">#</a></caption>
 <thead>
@@ -675,77 +673,17 @@ estimates.</p>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ColorHSV_HueMin</span></code></p></td>
-<td><p>The minimum hue of the object</p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ColorHSV_HueRobustMean</span></code></p></td>
+<td><p>Hue of the cone-embedded geometric-median robust center (circular-correct)</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ColorHSV_HueQ1</span></code></p></td>
-<td><p>The lower quartile (Q1) hue of the object</p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ColorHSV_SaturationRobustMean</span></code></p></td>
+<td><p>Saturation of the cone-embedded geometric-median robust center</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ColorHSV_HueMean</span></code></p></td>
-<td><p>The mean hue of the object</p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ColorHSV_ValueRobustMean</span></code></p></td>
+<td><p>Value (brightness) of the cone-embedded geometric-median robust center</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ColorHSV_HueMedian</span></code></p></td>
-<td><p>The median hue of the object</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ColorHSV_HueQ3</span></code></p></td>
-<td><p>The upper quartile (Q3) hue of the object</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ColorHSV_HueMax</span></code></p></td>
-<td><p>The maximum hue of the object</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ColorHSV_HueStdDev</span></code></p></td>
-<td><p>The standard deviation of the hue of the object</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ColorHSV_HueCoeffVar</span></code></p></td>
-<td><p>The coefficient of variation of the hue of the object</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ColorHSV_SaturationMin</span></code></p></td>
-<td><p>The minimum saturation of the object</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ColorHSV_SaturationQ1</span></code></p></td>
-<td><p>The lower quartile (Q1) saturation of the object</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ColorHSV_SaturationMean</span></code></p></td>
-<td><p>The mean saturation of the object</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ColorHSV_SaturationMedian</span></code></p></td>
-<td><p>The median saturation of the object</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ColorHSV_SaturationQ3</span></code></p></td>
-<td><p>The upper quartile (Q3) saturation of the object</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ColorHSV_SaturationMax</span></code></p></td>
-<td><p>The maximum saturation of the object</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ColorHSV_SaturationStdDev</span></code></p></td>
-<td><p>The standard deviation of the saturation of the object</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ColorHSV_SaturationCoeffVar</span></code></p></td>
-<td><p>The coefficient of variation of the saturation of the object</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ColorHSV_BrightnessMin</span></code></p></td>
-<td><p>The minimum brightness of the object</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ColorHSV_BrightnessQ1</span></code></p></td>
-<td><p>The lower quartile (Q1) brightness of the object</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ColorHSV_BrightnessMean</span></code></p></td>
-<td><p>The mean brightness of the object</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ColorHSV_BrightnessMedian</span></code></p></td>
-<td><p>The median brightness of the object</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ColorHSV_BrightnessQ3</span></code></p></td>
-<td><p>The upper quartile (Q3) brightness of the object</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ColorHSV_BrightnessMax</span></code></p></td>
-<td><p>The maximum brightness of the object</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ColorHSV_BrightnessStdDev</span></code></p></td>
-<td><p>The standard deviation of the brightness of the object</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ColorHSV_BrightnessCoeffVar</span></code></p></td>
-<td><p>The coefficient of variation of the brightness of the object</p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ColorHSV_HSVConeVariance</span></code></p></td>
+<td><p>Trace of the HSV cone-Cartesian covariance (single 3D HSV spread scalar); spread about the arithmetic mean of the cone coordinates (NOT about the reported RobustMean center)</p></td>
 </tr>
 </tbody>
 </table>

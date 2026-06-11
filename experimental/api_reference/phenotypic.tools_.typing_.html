@@ -716,6 +716,19 @@ models must set <code class="docutils literal notranslate"><span class="pre">mod
 </dd></dl>
 
 <dl class="py data">
+<dt class="sig sig-object py" id="phenotypic.tools_.typing_.CompositeBlend">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.typing_.</span></span><span class="sig-name descname"><span class="pre">CompositeBlend</span></span><a class="headerlink" href="#phenotypic.tools_.typing_.CompositeBlend" title="Link to this definition">#</a></dt>
+<dd><p>The single-objective composite blend selector — the serialized value of
+<code class="docutils literal notranslate"><span class="pre">CompositeScorer.blend</span></code>. <code class="docutils literal notranslate"><span class="pre">&quot;tchebycheff&quot;</span></code> (default) is conjunctive
+(worst-axis-dominant, augmented Tchebycheff over per-child cost);
+<code class="docutils literal notranslate"><span class="pre">&quot;weighted_mean&quot;</span></code> is the compensatory opt-out. No Enum partner is needed —
+this is a serialized field value with no separate documentation surface
+(mirrors <code class="docutils literal notranslate"><span class="pre">DetectMode</span></code> / <code class="docutils literal notranslate"><span class="pre">ExecutionMode</span></code>). The geometric-mean-of-cost
+blend is intentionally NOT offered (it inverts the conjunctive property).</p>
+<p>alias of <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Literal</span></code></a>[‘tchebycheff’, ‘weighted_mean’]</p>
+</dd></dl>
+
+<dl class="py data">
 <dt class="sig sig-object py" id="phenotypic.tools_.typing_.ExecutionMode">
 <span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.typing_.</span></span><span class="sig-name descname"><span class="pre">ExecutionMode</span></span><a class="headerlink" href="#phenotypic.tools_.typing_.ExecutionMode" title="Link to this definition">#</a></dt>
 <dd><p>Forward-run / recompile execution backend. Bare-string carrier for
@@ -853,6 +866,7 @@ the bare-string <code class="docutils literal notranslate"><span class="pre">TAS
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.typing_.polymorphic_field"><code class="docutils literal notranslate"><span class="pre">polymorphic_field()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.typing_.CheckpointType"><code class="docutils literal notranslate"><span class="pre">CheckpointType</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.typing_.CompositeBlend"><code class="docutils literal notranslate"><span class="pre">CompositeBlend</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.typing_.ExecutionMode"><code class="docutils literal notranslate"><span class="pre">ExecutionMode</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.typing_.FailureSource"><code class="docutils literal notranslate"><span class="pre">FailureSource</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.typing_.ImageTypeName"><code class="docutils literal notranslate"><span class="pre">ImageTypeName</span></code></a></li>

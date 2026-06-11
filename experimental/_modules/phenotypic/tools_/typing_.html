@@ -668,6 +668,15 @@
 <span class="c1">#: Python-side exceptions from SLURM sbatch failures.</span>
 <span class="n">FailureSource</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;python&quot;</span><span class="p">,</span> <span class="s2">&quot;slurm&quot;</span><span class="p">]</span>
 
+<span class="c1">#: The single-objective composite blend selector — the serialized value of</span>
+<span class="c1">#: ``CompositeScorer.blend``. ``&quot;tchebycheff&quot;`` (default) is conjunctive</span>
+<span class="c1">#: (worst-axis-dominant, augmented Tchebycheff over per-child cost);</span>
+<span class="c1">#: ``&quot;weighted_mean&quot;`` is the compensatory opt-out. No Enum partner is needed —</span>
+<span class="c1">#: this is a serialized field value with no separate documentation surface</span>
+<span class="c1">#: (mirrors ``DetectMode`` / ``ExecutionMode``). The geometric-mean-of-cost</span>
+<span class="c1">#: blend is intentionally NOT offered (it inverts the conjunctive property).</span>
+<span class="n">CompositeBlend</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;tchebycheff&quot;</span><span class="p">,</span> <span class="s2">&quot;weighted_mean&quot;</span><span class="p">]</span>
+
 <span class="c1"># ---------------------------------------------------------------------------</span>
 <span class="c1"># Pydantic-friendly array field — reusable annotated type for operation</span>
 <span class="c1"># parameters that carry a raw ``np.ndarray`` (kernels, footprints, masks,</span>

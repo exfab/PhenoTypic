@@ -3480,13 +3480,11 @@ which category it belongs to without explicitly referencing the class.</p>
 <dt class="sig sig-object py" id="phenotypic.schema.ColorHSV">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.schema.</span></span><span class="sig-name descname"><span class="pre">ColorHSV</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/schema/_color_hsv.html#ColorHSV"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.schema.ColorHSV" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#phenotypic.schema.MeasurementInfo" title="phenotypic.schema._measurement_info.MeasurementInfo"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasurementInfo</span></code></a></p>
-<p>Measure colony color statistics across multiple perceptual color spaces.</p>
-<p>Extract per-colony color features from CIE XYZ, chromaticity (xy),
-CIE Lab (perceptually uniform), and HSV color spaces. For each
-channel the standard statistical suite is computed (min, Q1, mean,
-median, Q3, max, std dev, coefficient of variation), plus Lab chroma
-estimates.</p>
-<p>Covers the HSV channels (Hue, Saturation, Brightness).</p>
+<p>Robust HSV summary for a colony.</p>
+<p>HSV hue is circular and HSV is not perceptually uniform, so the robust
+center is computed as the geometric median of cone-Cartesian coordinates
+(S*V*cosθ, S*V*sinθ, V) and converted back to H,S,V. <code class="docutils literal notranslate"><span class="pre">HSVConeVariance</span></code> is
+the trace of the cone-Cartesian covariance.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.schema.ColorHSV.append_rst_to_doc">
 <em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">append_rst_to_doc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">module</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><span class="pre">object</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.schema.ColorHSV.append_rst_to_doc" title="Link to this definition">#</a></dt>
@@ -3516,11 +3514,6 @@ to the target’s __doc__ attribute.</p>
 </dd>
 </dl>
 </dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="phenotypic.schema.ColorHSV.brightness_headers">
-<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">brightness_headers</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/schema/_color_hsv.html#ColorHSV.brightness_headers"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.schema.ColorHSV.brightness_headers" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.schema.ColorHSV.category">
@@ -3594,8 +3587,8 @@ prefixed names, use get_headers().</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="phenotypic.schema.ColorHSV.hue_headers">
-<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">hue_headers</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/schema/_color_hsv.html#ColorHSV.hue_headers"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.schema.ColorHSV.hue_headers" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="phenotypic.schema.ColorHSV.robust_headers">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">robust_headers</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/schema/_color_hsv.html#ColorHSV.robust_headers"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.schema.ColorHSV.robust_headers" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
@@ -3635,11 +3628,6 @@ or appended to docstrings.</p>
 </dd>
 </dl>
 </dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="phenotypic.schema.ColorHSV.saturation_headers">
-<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">saturation_headers</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/schema/_color_hsv.html#ColorHSV.saturation_headers"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.schema.ColorHSV.saturation_headers" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.schema.ColorHSV.maketrans">
@@ -4124,46 +4112,6 @@ left untouched.  Characters mapped to None are deleted.</p>
 <p>The string is never truncated.</p>
 </dd></dl>
 
-<dl class="py attribute">
-<dt class="sig sig-object py" id="phenotypic.schema.ColorHSV.BRIGHTNESS_COEFF_VARIANCE">
-<span class="sig-name descname"><span class="pre">BRIGHTNESS_COEFF_VARIANCE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorHSV_BrightnessCoeffVar'</span></em><a class="headerlink" href="#phenotypic.schema.ColorHSV.BRIGHTNESS_COEFF_VARIANCE" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="phenotypic.schema.ColorHSV.BRIGHTNESS_MAXIMUM">
-<span class="sig-name descname"><span class="pre">BRIGHTNESS_MAXIMUM</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorHSV_BrightnessMax'</span></em><a class="headerlink" href="#phenotypic.schema.ColorHSV.BRIGHTNESS_MAXIMUM" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="phenotypic.schema.ColorHSV.BRIGHTNESS_MEAN">
-<span class="sig-name descname"><span class="pre">BRIGHTNESS_MEAN</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorHSV_BrightnessMean'</span></em><a class="headerlink" href="#phenotypic.schema.ColorHSV.BRIGHTNESS_MEAN" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="phenotypic.schema.ColorHSV.BRIGHTNESS_MEDIAN">
-<span class="sig-name descname"><span class="pre">BRIGHTNESS_MEDIAN</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorHSV_BrightnessMedian'</span></em><a class="headerlink" href="#phenotypic.schema.ColorHSV.BRIGHTNESS_MEDIAN" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="phenotypic.schema.ColorHSV.BRIGHTNESS_MINIMUM">
-<span class="sig-name descname"><span class="pre">BRIGHTNESS_MINIMUM</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorHSV_BrightnessMin'</span></em><a class="headerlink" href="#phenotypic.schema.ColorHSV.BRIGHTNESS_MINIMUM" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="phenotypic.schema.ColorHSV.BRIGHTNESS_Q1">
-<span class="sig-name descname"><span class="pre">BRIGHTNESS_Q1</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorHSV_BrightnessQ1'</span></em><a class="headerlink" href="#phenotypic.schema.ColorHSV.BRIGHTNESS_Q1" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="phenotypic.schema.ColorHSV.BRIGHTNESS_Q3">
-<span class="sig-name descname"><span class="pre">BRIGHTNESS_Q3</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorHSV_BrightnessQ3'</span></em><a class="headerlink" href="#phenotypic.schema.ColorHSV.BRIGHTNESS_Q3" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="phenotypic.schema.ColorHSV.BRIGHTNESS_STDDEV">
-<span class="sig-name descname"><span class="pre">BRIGHTNESS_STDDEV</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorHSV_BrightnessStdDev'</span></em><a class="headerlink" href="#phenotypic.schema.ColorHSV.BRIGHTNESS_STDDEV" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
 <dl class="py property">
 <dt class="sig sig-object py" id="phenotypic.schema.ColorHSV.CATEGORY">
 <em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">CATEGORY</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#phenotypic.schema.ColorHSV.CATEGORY" title="Link to this definition">#</a></dt>
@@ -4182,83 +4130,23 @@ which category it belongs to without explicitly referencing the class.</p>
 </dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="phenotypic.schema.ColorHSV.HUE_COEFF_VARIANCE">
-<span class="sig-name descname"><span class="pre">HUE_COEFF_VARIANCE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorHSV_HueCoeffVar'</span></em><a class="headerlink" href="#phenotypic.schema.ColorHSV.HUE_COEFF_VARIANCE" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="phenotypic.schema.ColorHSV.HSV_CONE_VARIANCE">
+<span class="sig-name descname"><span class="pre">HSV_CONE_VARIANCE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorHSV_HSVConeVariance'</span></em><a class="headerlink" href="#phenotypic.schema.ColorHSV.HSV_CONE_VARIANCE" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="phenotypic.schema.ColorHSV.HUE_MAXIMUM">
-<span class="sig-name descname"><span class="pre">HUE_MAXIMUM</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorHSV_HueMax'</span></em><a class="headerlink" href="#phenotypic.schema.ColorHSV.HUE_MAXIMUM" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="phenotypic.schema.ColorHSV.HUE_ROBUST_MEAN">
+<span class="sig-name descname"><span class="pre">HUE_ROBUST_MEAN</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorHSV_HueRobustMean'</span></em><a class="headerlink" href="#phenotypic.schema.ColorHSV.HUE_ROBUST_MEAN" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="phenotypic.schema.ColorHSV.HUE_MEAN">
-<span class="sig-name descname"><span class="pre">HUE_MEAN</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorHSV_HueMean'</span></em><a class="headerlink" href="#phenotypic.schema.ColorHSV.HUE_MEAN" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="phenotypic.schema.ColorHSV.SATURATION_ROBUST_MEAN">
+<span class="sig-name descname"><span class="pre">SATURATION_ROBUST_MEAN</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorHSV_SaturationRobustMean'</span></em><a class="headerlink" href="#phenotypic.schema.ColorHSV.SATURATION_ROBUST_MEAN" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="phenotypic.schema.ColorHSV.HUE_MEDIAN">
-<span class="sig-name descname"><span class="pre">HUE_MEDIAN</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorHSV_HueMedian'</span></em><a class="headerlink" href="#phenotypic.schema.ColorHSV.HUE_MEDIAN" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="phenotypic.schema.ColorHSV.HUE_MINIMUM">
-<span class="sig-name descname"><span class="pre">HUE_MINIMUM</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorHSV_HueMin'</span></em><a class="headerlink" href="#phenotypic.schema.ColorHSV.HUE_MINIMUM" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="phenotypic.schema.ColorHSV.HUE_Q1">
-<span class="sig-name descname"><span class="pre">HUE_Q1</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorHSV_HueQ1'</span></em><a class="headerlink" href="#phenotypic.schema.ColorHSV.HUE_Q1" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="phenotypic.schema.ColorHSV.HUE_Q3">
-<span class="sig-name descname"><span class="pre">HUE_Q3</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorHSV_HueQ3'</span></em><a class="headerlink" href="#phenotypic.schema.ColorHSV.HUE_Q3" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="phenotypic.schema.ColorHSV.HUE_STDDEV">
-<span class="sig-name descname"><span class="pre">HUE_STDDEV</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorHSV_HueStdDev'</span></em><a class="headerlink" href="#phenotypic.schema.ColorHSV.HUE_STDDEV" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="phenotypic.schema.ColorHSV.SATURATION_COEFF_VARIANCE">
-<span class="sig-name descname"><span class="pre">SATURATION_COEFF_VARIANCE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorHSV_SaturationCoeffVar'</span></em><a class="headerlink" href="#phenotypic.schema.ColorHSV.SATURATION_COEFF_VARIANCE" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="phenotypic.schema.ColorHSV.SATURATION_MAXIMUM">
-<span class="sig-name descname"><span class="pre">SATURATION_MAXIMUM</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorHSV_SaturationMax'</span></em><a class="headerlink" href="#phenotypic.schema.ColorHSV.SATURATION_MAXIMUM" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="phenotypic.schema.ColorHSV.SATURATION_MEAN">
-<span class="sig-name descname"><span class="pre">SATURATION_MEAN</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorHSV_SaturationMean'</span></em><a class="headerlink" href="#phenotypic.schema.ColorHSV.SATURATION_MEAN" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="phenotypic.schema.ColorHSV.SATURATION_MEDIAN">
-<span class="sig-name descname"><span class="pre">SATURATION_MEDIAN</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorHSV_SaturationMedian'</span></em><a class="headerlink" href="#phenotypic.schema.ColorHSV.SATURATION_MEDIAN" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="phenotypic.schema.ColorHSV.SATURATION_MINIMUM">
-<span class="sig-name descname"><span class="pre">SATURATION_MINIMUM</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorHSV_SaturationMin'</span></em><a class="headerlink" href="#phenotypic.schema.ColorHSV.SATURATION_MINIMUM" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="phenotypic.schema.ColorHSV.SATURATION_Q1">
-<span class="sig-name descname"><span class="pre">SATURATION_Q1</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorHSV_SaturationQ1'</span></em><a class="headerlink" href="#phenotypic.schema.ColorHSV.SATURATION_Q1" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="phenotypic.schema.ColorHSV.SATURATION_Q3">
-<span class="sig-name descname"><span class="pre">SATURATION_Q3</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorHSV_SaturationQ3'</span></em><a class="headerlink" href="#phenotypic.schema.ColorHSV.SATURATION_Q3" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="phenotypic.schema.ColorHSV.SATURATION_STDDEV">
-<span class="sig-name descname"><span class="pre">SATURATION_STDDEV</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorHSV_SaturationStdDev'</span></em><a class="headerlink" href="#phenotypic.schema.ColorHSV.SATURATION_STDDEV" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="phenotypic.schema.ColorHSV.VALUE_ROBUST_MEAN">
+<span class="sig-name descname"><span class="pre">VALUE_ROBUST_MEAN</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorHSV_ValueRobustMean'</span></em><a class="headerlink" href="#phenotypic.schema.ColorHSV.VALUE_ROBUST_MEAN" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
@@ -4282,18 +4170,11 @@ which category it belongs to without explicitly referencing the class.</p>
 <dt class="sig sig-object py" id="phenotypic.schema.ColorLab">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.schema.</span></span><span class="sig-name descname"><span class="pre">ColorLab</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/schema/_color_lab.html#ColorLab"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.schema.ColorLab" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#phenotypic.schema.MeasurementInfo" title="phenotypic.schema._measurement_info.MeasurementInfo"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasurementInfo</span></code></a></p>
-<p>Measure colony color statistics across multiple perceptual color spaces.</p>
-<p>Extract per-colony color features from CIE XYZ, chromaticity (xy),
-CIE Lab (perceptually uniform), and HSV color spaces. For each
-channel the standard statistical suite is computed (min, Q1, mean,
-median, Q3, max, std dev, coefficient of variation), plus Lab chroma
-estimates.</p>
-<p>Covers the CIE L*a*b* channels (L*, a*, b*) plus chroma estimates.</p>
-<dl class="py method">
-<dt class="sig sig-object py" id="phenotypic.schema.ColorLab.a_star_headers">
-<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">a_star_headers</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/schema/_color_lab.html#ColorLab.a_star_headers"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.schema.ColorLab.a_star_headers" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
+<p>Robust CIE L*a*b* colorimetric summary for a colony.</p>
+<p>Reports two robust center colors – the ΔE76 (Euclidean) geometric median
+and the ΔE2000 medoid – plus ΔE2000 within-colony consistency scalars, the
+total Euclidean color variance, and an sRGB hex swatch (plot-only) derived
+from the medoid.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.schema.ColorLab.append_rst_to_doc">
 <em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">append_rst_to_doc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">module</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><span class="pre">object</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.schema.ColorLab.append_rst_to_doc" title="Link to this definition">#</a></dt>
@@ -4323,11 +4204,6 @@ to the target’s __doc__ attribute.</p>
 </dd>
 </dl>
 </dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="phenotypic.schema.ColorLab.b_star_headers">
-<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">b_star_headers</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/schema/_color_lab.html#ColorLab.b_star_headers"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.schema.ColorLab.b_star_headers" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.schema.ColorLab.category">
@@ -4401,8 +4277,8 @@ prefixed names, use get_headers().</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="phenotypic.schema.ColorLab.l_star_headers">
-<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">l_star_headers</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/schema/_color_lab.html#ColorLab.l_star_headers"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.schema.ColorLab.l_star_headers" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="phenotypic.schema.ColorLab.robust_headers">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">robust_headers</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/schema/_color_lab.html#ColorLab.robust_headers"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.schema.ColorLab.robust_headers" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
@@ -4927,83 +4803,23 @@ left untouched.  Characters mapped to None are deleted.</p>
 </dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="phenotypic.schema.ColorLab.A_STAR_COEFF_VARIANCE">
-<span class="sig-name descname"><span class="pre">A_STAR_COEFF_VARIANCE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorLab_a*CoeffVar'</span></em><a class="headerlink" href="#phenotypic.schema.ColorLab.A_STAR_COEFF_VARIANCE" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="phenotypic.schema.ColorLab.A_STAR_GEOMEDIAN">
+<span class="sig-name descname"><span class="pre">A_STAR_GEOMEDIAN</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorLab_a*GeoMedian'</span></em><a class="headerlink" href="#phenotypic.schema.ColorLab.A_STAR_GEOMEDIAN" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="phenotypic.schema.ColorLab.A_STAR_MAXIMUM">
-<span class="sig-name descname"><span class="pre">A_STAR_MAXIMUM</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorLab_a*Max'</span></em><a class="headerlink" href="#phenotypic.schema.ColorLab.A_STAR_MAXIMUM" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="phenotypic.schema.ColorLab.A_STAR_MEDOID">
+<span class="sig-name descname"><span class="pre">A_STAR_MEDOID</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorLab_a*Medoid'</span></em><a class="headerlink" href="#phenotypic.schema.ColorLab.A_STAR_MEDOID" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="phenotypic.schema.ColorLab.A_STAR_MEAN">
-<span class="sig-name descname"><span class="pre">A_STAR_MEAN</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorLab_a*Mean'</span></em><a class="headerlink" href="#phenotypic.schema.ColorLab.A_STAR_MEAN" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="phenotypic.schema.ColorLab.B_STAR_GEOMEDIAN">
+<span class="sig-name descname"><span class="pre">B_STAR_GEOMEDIAN</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorLab_b*GeoMedian'</span></em><a class="headerlink" href="#phenotypic.schema.ColorLab.B_STAR_GEOMEDIAN" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="phenotypic.schema.ColorLab.A_STAR_MEDIAN">
-<span class="sig-name descname"><span class="pre">A_STAR_MEDIAN</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorLab_a*Median'</span></em><a class="headerlink" href="#phenotypic.schema.ColorLab.A_STAR_MEDIAN" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="phenotypic.schema.ColorLab.A_STAR_MINIMUM">
-<span class="sig-name descname"><span class="pre">A_STAR_MINIMUM</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorLab_a*Min'</span></em><a class="headerlink" href="#phenotypic.schema.ColorLab.A_STAR_MINIMUM" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="phenotypic.schema.ColorLab.A_STAR_Q1">
-<span class="sig-name descname"><span class="pre">A_STAR_Q1</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorLab_a*Q1'</span></em><a class="headerlink" href="#phenotypic.schema.ColorLab.A_STAR_Q1" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="phenotypic.schema.ColorLab.A_STAR_Q3">
-<span class="sig-name descname"><span class="pre">A_STAR_Q3</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorLab_a*Q3'</span></em><a class="headerlink" href="#phenotypic.schema.ColorLab.A_STAR_Q3" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="phenotypic.schema.ColorLab.A_STAR_STDDEV">
-<span class="sig-name descname"><span class="pre">A_STAR_STDDEV</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorLab_a*StdDev'</span></em><a class="headerlink" href="#phenotypic.schema.ColorLab.A_STAR_STDDEV" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="phenotypic.schema.ColorLab.B_STAR_COEFF_VARIANCE">
-<span class="sig-name descname"><span class="pre">B_STAR_COEFF_VARIANCE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorLab_b*CoeffVar'</span></em><a class="headerlink" href="#phenotypic.schema.ColorLab.B_STAR_COEFF_VARIANCE" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="phenotypic.schema.ColorLab.B_STAR_MAXIMUM">
-<span class="sig-name descname"><span class="pre">B_STAR_MAXIMUM</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorLab_b*Max'</span></em><a class="headerlink" href="#phenotypic.schema.ColorLab.B_STAR_MAXIMUM" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="phenotypic.schema.ColorLab.B_STAR_MEAN">
-<span class="sig-name descname"><span class="pre">B_STAR_MEAN</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorLab_b*Mean'</span></em><a class="headerlink" href="#phenotypic.schema.ColorLab.B_STAR_MEAN" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="phenotypic.schema.ColorLab.B_STAR_MEDIAN">
-<span class="sig-name descname"><span class="pre">B_STAR_MEDIAN</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorLab_b*Median'</span></em><a class="headerlink" href="#phenotypic.schema.ColorLab.B_STAR_MEDIAN" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="phenotypic.schema.ColorLab.B_STAR_MINIMUM">
-<span class="sig-name descname"><span class="pre">B_STAR_MINIMUM</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorLab_b*Min'</span></em><a class="headerlink" href="#phenotypic.schema.ColorLab.B_STAR_MINIMUM" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="phenotypic.schema.ColorLab.B_STAR_Q1">
-<span class="sig-name descname"><span class="pre">B_STAR_Q1</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorLab_b*Q1'</span></em><a class="headerlink" href="#phenotypic.schema.ColorLab.B_STAR_Q1" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="phenotypic.schema.ColorLab.B_STAR_Q3">
-<span class="sig-name descname"><span class="pre">B_STAR_Q3</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorLab_b*Q3'</span></em><a class="headerlink" href="#phenotypic.schema.ColorLab.B_STAR_Q3" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="phenotypic.schema.ColorLab.B_STAR_STDDEV">
-<span class="sig-name descname"><span class="pre">B_STAR_STDDEV</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorLab_b*StdDev'</span></em><a class="headerlink" href="#phenotypic.schema.ColorLab.B_STAR_STDDEV" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="phenotypic.schema.ColorLab.B_STAR_MEDOID">
+<span class="sig-name descname"><span class="pre">B_STAR_MEDOID</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorLab_b*Medoid'</span></em><a class="headerlink" href="#phenotypic.schema.ColorLab.B_STAR_MEDOID" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py property">
@@ -5024,53 +4840,38 @@ which category it belongs to without explicitly referencing the class.</p>
 </dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="phenotypic.schema.ColorLab.CHROMA_EST_MEAN">
-<span class="sig-name descname"><span class="pre">CHROMA_EST_MEAN</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorLab_ChromaEstimatedMean'</span></em><a class="headerlink" href="#phenotypic.schema.ColorLab.CHROMA_EST_MEAN" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="phenotypic.schema.ColorLab.DELTA_E2000_MEAN">
+<span class="sig-name descname"><span class="pre">DELTA_E2000_MEAN</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorLab_DeltaE2000MeanFromMedoid'</span></em><a class="headerlink" href="#phenotypic.schema.ColorLab.DELTA_E2000_MEAN" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="phenotypic.schema.ColorLab.CHROMA_EST_MEDIAN">
-<span class="sig-name descname"><span class="pre">CHROMA_EST_MEDIAN</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorLab_ChromaEstimatedMedian'</span></em><a class="headerlink" href="#phenotypic.schema.ColorLab.CHROMA_EST_MEDIAN" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="phenotypic.schema.ColorLab.DELTA_E2000_MEDIAN">
+<span class="sig-name descname"><span class="pre">DELTA_E2000_MEDIAN</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorLab_DeltaE2000MedianFromMedoid'</span></em><a class="headerlink" href="#phenotypic.schema.ColorLab.DELTA_E2000_MEDIAN" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="phenotypic.schema.ColorLab.L_STAR_COEFF_VARIANCE">
-<span class="sig-name descname"><span class="pre">L_STAR_COEFF_VARIANCE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorLab_L*CoeffVar'</span></em><a class="headerlink" href="#phenotypic.schema.ColorLab.L_STAR_COEFF_VARIANCE" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="phenotypic.schema.ColorLab.DELTA_E2000_P95">
+<span class="sig-name descname"><span class="pre">DELTA_E2000_P95</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorLab_DeltaE2000P95FromMedoid'</span></em><a class="headerlink" href="#phenotypic.schema.ColorLab.DELTA_E2000_P95" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="phenotypic.schema.ColorLab.L_STAR_MAXIMUM">
-<span class="sig-name descname"><span class="pre">L_STAR_MAXIMUM</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorLab_L*Max'</span></em><a class="headerlink" href="#phenotypic.schema.ColorLab.L_STAR_MAXIMUM" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="phenotypic.schema.ColorLab.LAB_TOTAL_VARIANCE">
+<span class="sig-name descname"><span class="pre">LAB_TOTAL_VARIANCE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorLab_LabTotalVariance'</span></em><a class="headerlink" href="#phenotypic.schema.ColorLab.LAB_TOTAL_VARIANCE" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="phenotypic.schema.ColorLab.L_STAR_MEAN">
-<span class="sig-name descname"><span class="pre">L_STAR_MEAN</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorLab_L*Mean'</span></em><a class="headerlink" href="#phenotypic.schema.ColorLab.L_STAR_MEAN" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="phenotypic.schema.ColorLab.L_STAR_GEOMEDIAN">
+<span class="sig-name descname"><span class="pre">L_STAR_GEOMEDIAN</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorLab_L*GeoMedian'</span></em><a class="headerlink" href="#phenotypic.schema.ColorLab.L_STAR_GEOMEDIAN" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="phenotypic.schema.ColorLab.L_STAR_MEDIAN">
-<span class="sig-name descname"><span class="pre">L_STAR_MEDIAN</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorLab_L*Median'</span></em><a class="headerlink" href="#phenotypic.schema.ColorLab.L_STAR_MEDIAN" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="phenotypic.schema.ColorLab.L_STAR_MEDOID">
+<span class="sig-name descname"><span class="pre">L_STAR_MEDOID</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorLab_L*Medoid'</span></em><a class="headerlink" href="#phenotypic.schema.ColorLab.L_STAR_MEDOID" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="phenotypic.schema.ColorLab.L_STAR_MINIMUM">
-<span class="sig-name descname"><span class="pre">L_STAR_MINIMUM</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorLab_L*Min'</span></em><a class="headerlink" href="#phenotypic.schema.ColorLab.L_STAR_MINIMUM" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="phenotypic.schema.ColorLab.L_STAR_Q1">
-<span class="sig-name descname"><span class="pre">L_STAR_Q1</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorLab_L*Q1'</span></em><a class="headerlink" href="#phenotypic.schema.ColorLab.L_STAR_Q1" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="phenotypic.schema.ColorLab.L_STAR_Q3">
-<span class="sig-name descname"><span class="pre">L_STAR_Q3</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorLab_L*Q3'</span></em><a class="headerlink" href="#phenotypic.schema.ColorLab.L_STAR_Q3" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="phenotypic.schema.ColorLab.L_STAR_STDDEV">
-<span class="sig-name descname"><span class="pre">L_STAR_STDDEV</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorLab_L*StdDev'</span></em><a class="headerlink" href="#phenotypic.schema.ColorLab.L_STAR_STDDEV" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="phenotypic.schema.ColorLab.MEDOID_COLOR_HEX">
+<span class="sig-name descname"><span class="pre">MEDOID_COLOR_HEX</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColorLab_MedoidColorHex'</span></em><a class="headerlink" href="#phenotypic.schema.ColorLab.MEDOID_COLOR_HEX" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
@@ -27935,13 +27736,11 @@ which category it belongs to without explicitly referencing the class.</p>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorHSV"><code class="docutils literal notranslate"><span class="pre">ColorHSV</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorHSV.append_rst_to_doc"><code class="docutils literal notranslate"><span class="pre">ColorHSV.append_rst_to_doc()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorHSV.brightness_headers"><code class="docutils literal notranslate"><span class="pre">ColorHSV.brightness_headers()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorHSV.category"><code class="docutils literal notranslate"><span class="pre">ColorHSV.category()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorHSV.get_headers"><code class="docutils literal notranslate"><span class="pre">ColorHSV.get_headers()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorHSV.get_labels"><code class="docutils literal notranslate"><span class="pre">ColorHSV.get_labels()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorHSV.hue_headers"><code class="docutils literal notranslate"><span class="pre">ColorHSV.hue_headers()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorHSV.robust_headers"><code class="docutils literal notranslate"><span class="pre">ColorHSV.robust_headers()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorHSV.rst_table"><code class="docutils literal notranslate"><span class="pre">ColorHSV.rst_table()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorHSV.saturation_headers"><code class="docutils literal notranslate"><span class="pre">ColorHSV.saturation_headers()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorHSV.maketrans"><code class="docutils literal notranslate"><span class="pre">ColorHSV.maketrans()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorHSV.__dir__"><code class="docutils literal notranslate"><span class="pre">ColorHSV.__dir__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorHSV.__new_member__"><code class="docutils literal notranslate"><span class="pre">ColorHSV.__new_member__()</span></code></a></li>
@@ -27992,44 +27791,22 @@ which category it belongs to without explicitly referencing the class.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorHSV.translate"><code class="docutils literal notranslate"><span class="pre">ColorHSV.translate()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorHSV.upper"><code class="docutils literal notranslate"><span class="pre">ColorHSV.upper()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorHSV.zfill"><code class="docutils literal notranslate"><span class="pre">ColorHSV.zfill()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorHSV.BRIGHTNESS_COEFF_VARIANCE"><code class="docutils literal notranslate"><span class="pre">ColorHSV.BRIGHTNESS_COEFF_VARIANCE</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorHSV.BRIGHTNESS_MAXIMUM"><code class="docutils literal notranslate"><span class="pre">ColorHSV.BRIGHTNESS_MAXIMUM</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorHSV.BRIGHTNESS_MEAN"><code class="docutils literal notranslate"><span class="pre">ColorHSV.BRIGHTNESS_MEAN</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorHSV.BRIGHTNESS_MEDIAN"><code class="docutils literal notranslate"><span class="pre">ColorHSV.BRIGHTNESS_MEDIAN</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorHSV.BRIGHTNESS_MINIMUM"><code class="docutils literal notranslate"><span class="pre">ColorHSV.BRIGHTNESS_MINIMUM</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorHSV.BRIGHTNESS_Q1"><code class="docutils literal notranslate"><span class="pre">ColorHSV.BRIGHTNESS_Q1</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorHSV.BRIGHTNESS_Q3"><code class="docutils literal notranslate"><span class="pre">ColorHSV.BRIGHTNESS_Q3</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorHSV.BRIGHTNESS_STDDEV"><code class="docutils literal notranslate"><span class="pre">ColorHSV.BRIGHTNESS_STDDEV</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorHSV.CATEGORY"><code class="docutils literal notranslate"><span class="pre">ColorHSV.CATEGORY</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorHSV.HUE_COEFF_VARIANCE"><code class="docutils literal notranslate"><span class="pre">ColorHSV.HUE_COEFF_VARIANCE</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorHSV.HUE_MAXIMUM"><code class="docutils literal notranslate"><span class="pre">ColorHSV.HUE_MAXIMUM</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorHSV.HUE_MEAN"><code class="docutils literal notranslate"><span class="pre">ColorHSV.HUE_MEAN</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorHSV.HUE_MEDIAN"><code class="docutils literal notranslate"><span class="pre">ColorHSV.HUE_MEDIAN</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorHSV.HUE_MINIMUM"><code class="docutils literal notranslate"><span class="pre">ColorHSV.HUE_MINIMUM</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorHSV.HUE_Q1"><code class="docutils literal notranslate"><span class="pre">ColorHSV.HUE_Q1</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorHSV.HUE_Q3"><code class="docutils literal notranslate"><span class="pre">ColorHSV.HUE_Q3</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorHSV.HUE_STDDEV"><code class="docutils literal notranslate"><span class="pre">ColorHSV.HUE_STDDEV</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorHSV.SATURATION_COEFF_VARIANCE"><code class="docutils literal notranslate"><span class="pre">ColorHSV.SATURATION_COEFF_VARIANCE</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorHSV.SATURATION_MAXIMUM"><code class="docutils literal notranslate"><span class="pre">ColorHSV.SATURATION_MAXIMUM</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorHSV.SATURATION_MEAN"><code class="docutils literal notranslate"><span class="pre">ColorHSV.SATURATION_MEAN</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorHSV.SATURATION_MEDIAN"><code class="docutils literal notranslate"><span class="pre">ColorHSV.SATURATION_MEDIAN</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorHSV.SATURATION_MINIMUM"><code class="docutils literal notranslate"><span class="pre">ColorHSV.SATURATION_MINIMUM</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorHSV.SATURATION_Q1"><code class="docutils literal notranslate"><span class="pre">ColorHSV.SATURATION_Q1</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorHSV.SATURATION_Q3"><code class="docutils literal notranslate"><span class="pre">ColorHSV.SATURATION_Q3</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorHSV.SATURATION_STDDEV"><code class="docutils literal notranslate"><span class="pre">ColorHSV.SATURATION_STDDEV</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorHSV.HSV_CONE_VARIANCE"><code class="docutils literal notranslate"><span class="pre">ColorHSV.HSV_CONE_VARIANCE</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorHSV.HUE_ROBUST_MEAN"><code class="docutils literal notranslate"><span class="pre">ColorHSV.HUE_ROBUST_MEAN</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorHSV.SATURATION_ROBUST_MEAN"><code class="docutils literal notranslate"><span class="pre">ColorHSV.SATURATION_ROBUST_MEAN</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorHSV.VALUE_ROBUST_MEAN"><code class="docutils literal notranslate"><span class="pre">ColorHSV.VALUE_ROBUST_MEAN</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorHSV.desc"><code class="docutils literal notranslate"><span class="pre">ColorHSV.desc</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorHSV.label"><code class="docutils literal notranslate"><span class="pre">ColorHSV.label</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorHSV.pair"><code class="docutils literal notranslate"><span class="pre">ColorHSV.pair</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorLab"><code class="docutils literal notranslate"><span class="pre">ColorLab</span></code></a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorLab.a_star_headers"><code class="docutils literal notranslate"><span class="pre">ColorLab.a_star_headers()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorLab.append_rst_to_doc"><code class="docutils literal notranslate"><span class="pre">ColorLab.append_rst_to_doc()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorLab.b_star_headers"><code class="docutils literal notranslate"><span class="pre">ColorLab.b_star_headers()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorLab.category"><code class="docutils literal notranslate"><span class="pre">ColorLab.category()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorLab.get_headers"><code class="docutils literal notranslate"><span class="pre">ColorLab.get_headers()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorLab.get_labels"><code class="docutils literal notranslate"><span class="pre">ColorLab.get_labels()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorLab.l_star_headers"><code class="docutils literal notranslate"><span class="pre">ColorLab.l_star_headers()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorLab.robust_headers"><code class="docutils literal notranslate"><span class="pre">ColorLab.robust_headers()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorLab.rst_table"><code class="docutils literal notranslate"><span class="pre">ColorLab.rst_table()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorLab.maketrans"><code class="docutils literal notranslate"><span class="pre">ColorLab.maketrans()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorLab.__dir__"><code class="docutils literal notranslate"><span class="pre">ColorLab.__dir__()</span></code></a></li>
@@ -28081,33 +27858,18 @@ which category it belongs to without explicitly referencing the class.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorLab.translate"><code class="docutils literal notranslate"><span class="pre">ColorLab.translate()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorLab.upper"><code class="docutils literal notranslate"><span class="pre">ColorLab.upper()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorLab.zfill"><code class="docutils literal notranslate"><span class="pre">ColorLab.zfill()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorLab.A_STAR_COEFF_VARIANCE"><code class="docutils literal notranslate"><span class="pre">ColorLab.A_STAR_COEFF_VARIANCE</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorLab.A_STAR_MAXIMUM"><code class="docutils literal notranslate"><span class="pre">ColorLab.A_STAR_MAXIMUM</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorLab.A_STAR_MEAN"><code class="docutils literal notranslate"><span class="pre">ColorLab.A_STAR_MEAN</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorLab.A_STAR_MEDIAN"><code class="docutils literal notranslate"><span class="pre">ColorLab.A_STAR_MEDIAN</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorLab.A_STAR_MINIMUM"><code class="docutils literal notranslate"><span class="pre">ColorLab.A_STAR_MINIMUM</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorLab.A_STAR_Q1"><code class="docutils literal notranslate"><span class="pre">ColorLab.A_STAR_Q1</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorLab.A_STAR_Q3"><code class="docutils literal notranslate"><span class="pre">ColorLab.A_STAR_Q3</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorLab.A_STAR_STDDEV"><code class="docutils literal notranslate"><span class="pre">ColorLab.A_STAR_STDDEV</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorLab.B_STAR_COEFF_VARIANCE"><code class="docutils literal notranslate"><span class="pre">ColorLab.B_STAR_COEFF_VARIANCE</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorLab.B_STAR_MAXIMUM"><code class="docutils literal notranslate"><span class="pre">ColorLab.B_STAR_MAXIMUM</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorLab.B_STAR_MEAN"><code class="docutils literal notranslate"><span class="pre">ColorLab.B_STAR_MEAN</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorLab.B_STAR_MEDIAN"><code class="docutils literal notranslate"><span class="pre">ColorLab.B_STAR_MEDIAN</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorLab.B_STAR_MINIMUM"><code class="docutils literal notranslate"><span class="pre">ColorLab.B_STAR_MINIMUM</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorLab.B_STAR_Q1"><code class="docutils literal notranslate"><span class="pre">ColorLab.B_STAR_Q1</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorLab.B_STAR_Q3"><code class="docutils literal notranslate"><span class="pre">ColorLab.B_STAR_Q3</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorLab.B_STAR_STDDEV"><code class="docutils literal notranslate"><span class="pre">ColorLab.B_STAR_STDDEV</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorLab.A_STAR_GEOMEDIAN"><code class="docutils literal notranslate"><span class="pre">ColorLab.A_STAR_GEOMEDIAN</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorLab.A_STAR_MEDOID"><code class="docutils literal notranslate"><span class="pre">ColorLab.A_STAR_MEDOID</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorLab.B_STAR_GEOMEDIAN"><code class="docutils literal notranslate"><span class="pre">ColorLab.B_STAR_GEOMEDIAN</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorLab.B_STAR_MEDOID"><code class="docutils literal notranslate"><span class="pre">ColorLab.B_STAR_MEDOID</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorLab.CATEGORY"><code class="docutils literal notranslate"><span class="pre">ColorLab.CATEGORY</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorLab.CHROMA_EST_MEAN"><code class="docutils literal notranslate"><span class="pre">ColorLab.CHROMA_EST_MEAN</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorLab.CHROMA_EST_MEDIAN"><code class="docutils literal notranslate"><span class="pre">ColorLab.CHROMA_EST_MEDIAN</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorLab.L_STAR_COEFF_VARIANCE"><code class="docutils literal notranslate"><span class="pre">ColorLab.L_STAR_COEFF_VARIANCE</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorLab.L_STAR_MAXIMUM"><code class="docutils literal notranslate"><span class="pre">ColorLab.L_STAR_MAXIMUM</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorLab.L_STAR_MEAN"><code class="docutils literal notranslate"><span class="pre">ColorLab.L_STAR_MEAN</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorLab.L_STAR_MEDIAN"><code class="docutils literal notranslate"><span class="pre">ColorLab.L_STAR_MEDIAN</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorLab.L_STAR_MINIMUM"><code class="docutils literal notranslate"><span class="pre">ColorLab.L_STAR_MINIMUM</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorLab.L_STAR_Q1"><code class="docutils literal notranslate"><span class="pre">ColorLab.L_STAR_Q1</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorLab.L_STAR_Q3"><code class="docutils literal notranslate"><span class="pre">ColorLab.L_STAR_Q3</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorLab.L_STAR_STDDEV"><code class="docutils literal notranslate"><span class="pre">ColorLab.L_STAR_STDDEV</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorLab.DELTA_E2000_MEAN"><code class="docutils literal notranslate"><span class="pre">ColorLab.DELTA_E2000_MEAN</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorLab.DELTA_E2000_MEDIAN"><code class="docutils literal notranslate"><span class="pre">ColorLab.DELTA_E2000_MEDIAN</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorLab.DELTA_E2000_P95"><code class="docutils literal notranslate"><span class="pre">ColorLab.DELTA_E2000_P95</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorLab.LAB_TOTAL_VARIANCE"><code class="docutils literal notranslate"><span class="pre">ColorLab.LAB_TOTAL_VARIANCE</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorLab.L_STAR_GEOMEDIAN"><code class="docutils literal notranslate"><span class="pre">ColorLab.L_STAR_GEOMEDIAN</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorLab.L_STAR_MEDOID"><code class="docutils literal notranslate"><span class="pre">ColorLab.L_STAR_MEDOID</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorLab.MEDOID_COLOR_HEX"><code class="docutils literal notranslate"><span class="pre">ColorLab.MEDOID_COLOR_HEX</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorLab.desc"><code class="docutils literal notranslate"><span class="pre">ColorLab.desc</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorLab.label"><code class="docutils literal notranslate"><span class="pre">ColorLab.label</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorLab.pair"><code class="docutils literal notranslate"><span class="pre">ColorLab.pair</span></code></a></li>

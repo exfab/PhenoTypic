@@ -604,10 +604,13 @@
 <span class="sd">merge, boundary, count, and small-colony errors at once — the scorer must be a</span>
 <span class="sd">small complementary panel&quot;). It composes children two ways:</span>
 
-<span class="sd">* **single-objective** (default): :meth:`finalize` returns one ``float`` — a</span>
-<span class="sd">  **weighted** arithmetic blend of the per-child scalars when ``weights`` are</span>
-<span class="sd">  given, else their **geometric** mean (so a single weak axis cannot be hidden</span>
-<span class="sd">  by a strong one — the geometric mean is dominated by its smallest term).</span>
+<span class="sd">* **single-objective** (default): :meth:`finalize` returns one ``float`` — the</span>
+<span class="sd">  conjunctive **augmented Tchebycheff** cost over the per-child cost scalars</span>
+<span class="sd">  (``blend=&quot;tchebycheff&quot;``), so a single weak (high-cost) axis dominates the</span>
+<span class="sd">  ``max`` and cannot be masked by a strong one. ``blend=&quot;weighted_mean&quot;`` is the</span>
+<span class="sd">  compensatory arithmetic-mean opt-out (``weights`` then weight that mean). The</span>
+<span class="sd">  geometric-mean blend is no longer offered (it inverts the conjunctive property</span>
+<span class="sd">  under cost — a single perfect axis would annihilate the product).</span>
 <span class="sd">* **multi-objective** (``multi_objective=True``): :meth:`finalize` returns a</span>
 <span class="sd">  ``dict[str, float]`` of per-child objectives — the plan §0a *sidecar* path.</span>
 <span class="sd">  The ``Evaluator`` stashes that dict on ``EvaluationResult.objectives`` and</span>
@@ -626,12 +629,14 @@
 <span class="sd">&quot;&quot;&quot;</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
-<span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Final</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">,</span> <span class="n">Optional</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConfigDict</span><span class="p">,</span> <span class="n">model_validator</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConfigDict</span><span class="p">,</span> <span class="n">PrivateAttr</span><span class="p">,</span> <span class="n">model_validator</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">CompositeBlend</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">._orient</span><span class="w"> </span><span class="kn">import</span> <span class="n">clamp01</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._scorer</span><span class="w"> </span><span class="kn">import</span> <span class="n">Scorer</span><span class="p">,</span> <span class="n">ScorerField</span><span class="p">,</span> <span class="n">project_objectives_to_scalar</span>
 
 <span class="c1">#: The per-child handle prefix: child ``i`` owns the ``&quot;s{i}.&quot;`` term namespace,</span>
@@ -641,6 +646,14 @@
 
 <span class="c1">#: The separator between a child handle and the child&#39;s own term name.</span>
 <span class="n">_SEP</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;.&quot;</span>
+
+<span class="c1">#: The utopia-point shift ``z*ᵢ = −ε`` for the augmented Tchebycheff combiner.</span>
+<span class="c1">#: A small, fixed numerical safety margin (~0.1% of the [0,1] cost scale): it</span>
+<span class="c1">#: pushes the reference strictly below the achievable front so every</span>
+<span class="c1">#: ``bᵢ − z*ᵢ = bᵢ + ε &gt; 0`` (the unsigned ``max`` is valid) and caps the</span>
+<span class="c1">#: weight realizer ``1/(bᵢ + ε)`` at ``≤ 1000×``. Internal — never a field</span>
+<span class="c1">#: (spec §6.4/§6.6).</span>
+<span class="n">_UTOPIA_EPS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1e-3</span>
 
 
 <div class="viewcode-block" id="CompositeScorer">
@@ -654,13 +667,28 @@
 <span class="sd">            round-trips through the polymorphic registry. Child ``i`` owns the</span>
 <span class="sd">            ``&quot;s{i}.&quot;`` term namespace.</span>
 <span class="sd">        weights: Optional per-child weights for the **single-objective** scalar</span>
-<span class="sd">            blend, keyed by child handle (``&quot;s0&quot;``, ``&quot;s1&quot;``, …). When given,</span>
-<span class="sd">            :meth:`finalize` returns the weighted arithmetic mean of the</span>
-<span class="sd">            per-child scalars; when ``None`` it returns their geometric mean.</span>
-<span class="sd">            Ignored when ``multi_objective`` is ``True``.</span>
+<span class="sd">            blend, keyed by child handle (``&quot;s0&quot;``, ``&quot;s1&quot;``, …). The meaning is</span>
+<span class="sd">            **blend-dependent**: under ``blend=&quot;tchebycheff&quot;`` they are per-axis</span>
+<span class="sd">            Tchebycheff weights (they steer the ``max`` term, uniform ``1.0``</span>
+<span class="sd">            when ``None``); under ``blend=&quot;weighted_mean&quot;`` they are arithmetic</span>
+<span class="sd">            weights for the compensatory mean. Ignored when ``multi_objective``</span>
+<span class="sd">            is ``True``.</span>
 <span class="sd">        multi_objective: When ``True``, :meth:`finalize` returns a</span>
 <span class="sd">            ``dict[str, float]`` of per-child objectives (the plan §0a sidecar)</span>
 <span class="sd">            instead of a scalar, so the composite can drive a Pareto study.</span>
+<span class="sd">        blend: The single-objective combiner. ``&quot;tchebycheff&quot;`` (default) is the</span>
+<span class="sd">            conjunctive augmented-Tchebycheff cost over the pinned study-global</span>
+<span class="sd">            active set — worst-axis-dominant, so a single weak axis cannot be</span>
+<span class="sd">            masked by a strong one. ``&quot;weighted_mean&quot;`` is the compensatory</span>
+<span class="sd">            arithmetic-mean opt-out. The geometric-mean-of-cost blend is no</span>
+<span class="sd">            longer offered (it inverts the conjunctive property — a single</span>
+<span class="sd">            perfect axis would annihilate the product).</span>
+<span class="sd">        rho: The augmented-Tchebycheff augmentation coefficient (advanced-only;</span>
+<span class="sd">            default ``0.05``). It scales the weighted-L1 term that breaks ties</span>
+<span class="sd">            between weakly-dominated points; ``→0`` recovers the plain</span>
+<span class="sd">            Tchebycheff (admits weakly-dominated winners), large values drift</span>
+<span class="sd">            toward the weighted sum (spec §6.4). Ignored under</span>
+<span class="sd">            ``blend=&quot;weighted_mean&quot;`` / ``multi_objective``.</span>
 
 <span class="sd">    Raises:</span>
 <span class="sd">        pydantic.ValidationError: If the nested scorer graph contains a cycle —</span>
@@ -686,14 +714,14 @@
 <span class="sd">        &gt;&gt;&gt; terms = comp.score_image(None, layout)</span>
 <span class="sd">        &gt;&gt;&gt; sorted(terms)</span>
 <span class="sd">        [&#39;s0.Count&#39;, &#39;s1.Count&#39;]</span>
-<span class="sd">        &gt;&gt;&gt; round(comp.finalize(terms), 3)  # geometric mean of the two child scalars</span>
-<span class="sd">        1.0</span>
+<span class="sd">        &gt;&gt;&gt; round(comp.finalize(terms), 3)  # augmented Tchebycheff of two perfect (cost-0) children</span>
+<span class="sd">        0.001</span>
 
 <span class="sd">        Flip to multi-objective and ``finalize`` returns the per-child sidecar:</span>
 
 <span class="sd">        &gt;&gt;&gt; comp_mo = CompositeScorer(scorers=[qc, qc], multi_objective=True)</span>
 <span class="sd">        &gt;&gt;&gt; {k: round(v, 3) for k, v in comp_mo.finalize(terms).items()}</span>
-<span class="sd">        {&#39;s0&#39;: 1.0, &#39;s1&#39;: 1.0}</span>
+<span class="sd">        {&#39;s0&#39;: 0.0, &#39;s1&#39;: 0.0}</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">model_config</span> <span class="o">=</span> <span class="n">ConfigDict</span><span class="p">(</span><span class="n">arbitrary_types_allowed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -701,6 +729,32 @@
     <span class="n">scorers</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">ScorerField</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="n">weights</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">multi_objective</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">blend</span><span class="p">:</span> <span class="n">CompositeBlend</span> <span class="o">=</span> <span class="s2">&quot;tchebycheff&quot;</span>
+    <span class="n">rho</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.05</span>
+
+    <span class="c1">#: The pinned study-global active set — child handles available study-wide,</span>
+    <span class="c1">#: fixed once at study start by :meth:`set_active_set`. Used as the roster for</span>
+    <span class="c1">#: BOTH the Tchebycheff ``max`` numerator and the normalizer so the</span>
+    <span class="c1">#: normalizer is a study-global constant (§6.2/§6.3). ``None`` (never pinned —</span>
+    <span class="c1">#: e.g. a direct ``finalize`` unit call) falls back to the in-call roster.</span>
+    <span class="c1">#: A ``PrivateAttr`` so it never serializes (it is run/study state, not recipe).</span>
+    <span class="n">_active_handles</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]]</span> <span class="o">=</span> <span class="n">PrivateAttr</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+
+<div class="viewcode-block" id="CompositeScorer.set_active_set">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.html#phenotypic.tune.CompositeScorer.set_active_set">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">set_active_set</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">handles</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Pin the study-global active set (child handles available study-wide).</span>
+
+<span class="sd">        Called once by the engine after meta-validation, before the trial loop,</span>
+<span class="sd">        so every trial&#39;s Tchebycheff ``max`` and normalizer use the same fixed</span>
+<span class="sd">        roster (§6.3 plumbing SF3). Idempotent.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            handles: The available child handles (a subset of</span>
+<span class="sd">                :meth:`objective_names`), in objective order.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_active_handles</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">handles</span><span class="p">)</span></div>
+
 
     <span class="nd">@model_validator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;after&quot;</span><span class="p">)</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_reject_cycles</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;CompositeScorer&quot;</span><span class="p">:</span>
@@ -781,6 +835,24 @@
         <span class="k">return</span> <span class="nb">any</span><span class="p">(</span><span class="n">child</span><span class="o">.</span><span class="n">availability</span><span class="p">()</span> <span class="k">for</span> <span class="n">child</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">scorers</span><span class="p">)</span></div>
 
 
+    <span class="k">def</span><span class="w"> </span><span class="nf">_score_terms</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">measurements</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Not used — the composite overrides :meth:`score_image` instead.</span>
+
+<span class="sd">        ``_score_terms`` is abstract on the base, but a composite&#39;s children</span>
+<span class="sd">        already returned **cost** (each child&#39;s own ``score_image`` oriented its</span>
+<span class="sd">        terms), so the composite must **not** re-orient: it overrides the merge</span>
+<span class="sd">        in :meth:`score_image` directly. This stub satisfies the abstract base.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            NotImplementedError: Always — call :meth:`score_image`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
+            <span class="s2">&quot;CompositeScorer overrides score_image (it merges already-cost &quot;</span>
+            <span class="s2">&quot;children); _score_terms is not used.&quot;</span>
+        <span class="p">)</span>
+
 <div class="viewcode-block" id="CompositeScorer.score_image">
 <a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.html#phenotypic.tune.CompositeScorer.score_image">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">score_image</span><span class="p">(</span>
@@ -823,17 +895,25 @@
 <span class="sd">        * ``multi_objective=True`` → returns ``{handle: child_scalar}`` over</span>
 <span class="sd">          **every** axis in :meth:`objective_names` order — the plan §0a sidecar</span>
 <span class="sd">          the ``Evaluator`` stashes on ``EvaluationResult.objectives``. A child</span>
-<span class="sd">          that abstains (no terms this run) is floored to ``0.0`` (the</span>
-<span class="sd">          higher-is-better worst score) rather than dropped, so the dict keys +</span>
+<span class="sd">          that abstains (no terms this run) is floored to ``1.0`` (the worst</span>
+<span class="sd">          cost; the study minimizes) rather than dropped, so the dict keys +</span>
 <span class="sd">          order stay invariant and exactly match the multi-objective study&#39;s</span>
-<span class="sd">          fixed ``directions``. A dropped axis would otherwise make the NSGA-II</span>
-<span class="sd">          value vector the wrong length and crash Optuna&#39;s ``tell`` mid-run; the</span>
-<span class="sd">          ``0.0`` floor also mirrors the journal Pareto ``_vector`` fill so the</span>
-<span class="sd">          journal and Optuna backends agree on an abstaining axis.</span>
-<span class="sd">        * with :attr:`weights` → the weighted arithmetic mean of the per-child</span>
-<span class="sd">          scalars (missing weights default to ``1.0``).</span>
-<span class="sd">        * otherwise → the geometric mean of the per-child scalars (so a single</span>
-<span class="sd">          weak axis dominates — it cannot be masked by a strong one).</span>
+<span class="sd">          fixed ``directions`` (now ``minimize``). A dropped axis would otherwise</span>
+<span class="sd">          make the NSGA-II value vector the wrong length and crash Optuna&#39;s</span>
+<span class="sd">          ``tell`` mid-run; the ``1.0`` floor also mirrors the journal Pareto</span>
+<span class="sd">          ``_vector`` fill so the journal and Optuna backends agree on an</span>
+<span class="sd">          abstaining axis.</span>
+<span class="sd">        * ``blend=&quot;weighted_mean&quot;`` → the compensatory weighted arithmetic mean</span>
+<span class="sd">          of the per-child **cost** scalars (missing weights default to ``1.0``).</span>
+<span class="sd">        * ``blend=&quot;tchebycheff&quot;`` (default) → the conjunctive augmented</span>
+<span class="sd">          Tchebycheff cost (:meth:`_tchebycheff`) over the pinned study-global</span>
+<span class="sd">          active set, so a single weak (high-cost) axis dominates the ``max`` and</span>
+<span class="sd">          cannot be masked by a strong one. The roster is restricted to the</span>
+<span class="sd">          pinned active set (the children available study-wide, §6.3): a</span>
+<span class="sd">          study-wide abstainer is simply not an objective (dropped from both the</span>
+<span class="sd">          ``max`` and the normalizer), while per-image abstention is already a</span>
+<span class="sd">          fewer-samples matter handled upstream by the robust aggregate — so a</span>
+<span class="sd">          present-but-absent-this-call child is NOT flooded into the ``max``.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            terms: The robust-aggregated, child-prefixed terms (the output of</span>
@@ -841,22 +921,35 @@
 <span class="sd">                aggregation).</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            The scalar objective (``0.0`` for no children/terms) for the</span>
-<span class="sd">            single-objective path, or the per-child ``dict`` (one entry per axis,</span>
-<span class="sd">            abstainers floored to ``0.0``) for the multi-objective path.</span>
+<span class="sd">            The scalar objective for the single-objective path (worst cost</span>
+<span class="sd">            ``1.0`` for no scored children/terms), or the per-child ``dict`` (one</span>
+<span class="sd">            entry per axis, abstainers floored) for the multi-objective path.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">child_scalars</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_per_child_scalars</span><span class="p">(</span><span class="n">terms</span><span class="p">)</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">multi_objective</span><span class="p">:</span>
             <span class="k">return</span> <span class="p">{</span>
-                <span class="n">handle</span><span class="p">:</span> <span class="n">child_scalars</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">handle</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+                <span class="n">handle</span><span class="p">:</span> <span class="n">child_scalars</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">handle</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>  <span class="c1"># was 0.0 (goodness worst)</span>
                 <span class="k">for</span> <span class="n">handle</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">objective_names</span><span class="p">()</span>
             <span class="p">}</span>
-        <span class="n">values</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">child_scalars</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">values</span><span class="p">:</span>
-            <span class="k">return</span> <span class="mf">0.0</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">weights</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">blend</span> <span class="o">==</span> <span class="s2">&quot;weighted_mean&quot;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">child_scalars</span><span class="p">:</span>
+                <span class="k">return</span> <span class="mf">1.0</span>  <span class="c1"># worst cost (cost-convention floor; was 0.0 goodness)</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_weighted_mean</span><span class="p">(</span><span class="n">child_scalars</span><span class="p">)</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_geometric_mean</span><span class="p">(</span><span class="n">values</span><span class="p">)</span></div>
+        <span class="c1"># Default conjunctive blend: augmented Tchebycheff over the pinned</span>
+        <span class="c1"># study-global active set (§6.3). Restrict to the active roster so a</span>
+        <span class="c1"># study-wide abstainer is simply not an objective (dropped from both the</span>
+        <span class="c1"># max and the normalizer); per-image abstention is already a fewer-samples</span>
+        <span class="c1"># matter handled by the robust aggregate, so a present-but-absent-this-call</span>
+        <span class="c1"># child is NOT flooded into the max.</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_active_handles</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">roster</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">child_scalars</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">roster</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="n">handle</span><span class="p">:</span> <span class="n">child_scalars</span><span class="p">[</span><span class="n">handle</span><span class="p">]</span>
+                <span class="k">for</span> <span class="n">handle</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_active_handles</span>
+                <span class="k">if</span> <span class="n">handle</span> <span class="ow">in</span> <span class="n">child_scalars</span>
+            <span class="p">}</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tchebycheff</span><span class="p">(</span><span class="n">roster</span><span class="p">)</span></div>
 
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_per_child_scalars</span><span class="p">(</span>
@@ -928,27 +1021,72 @@
             <span class="k">return</span> <span class="mf">0.0</span>
         <span class="k">return</span> <span class="n">weighted_sum</span> <span class="o">/</span> <span class="n">total_weight</span>
 
-    <span class="nd">@staticmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">_geometric_mean</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;The geometric mean of non-negative per-child scalars.</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_tchebycheff</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">child_costs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Augmented weighted Tchebycheff of per-child **cost** scalars (§6.1/§6.2).</span>
 
-<span class="sd">        A single near-zero axis drags the product toward ``0`` — the property</span>
-<span class="sd">        that makes the geometric mean the default composite blend (a weak axis</span>
-<span class="sd">        cannot be masked by a strong one).</span>
+<span class="sd">        ``Tᵨ(b) = maxᵢ wᵢ(bᵢ + ε) + ρ·Σᵢ wᵢ·bᵢ``, minimized, with utopia point</span>
+<span class="sd">        ``z*ᵢ = −ε`` (``_UTOPIA_EPS``). The ``max`` drops the absolute value</span>
+<span class="sd">        because ``z*ᵢ = −ε &lt; 0 ≤ bᵢ`` makes every ``bᵢ − z*ᵢ = bᵢ + ε &gt; 0`` — an</span>
+<span class="sd">        invariant asserted here (the Phase 1 ``[0,1]`` clamp guarantees the upper</span>
+<span class="sd">        bound; the assert fires loudly if that clamp ever regresses).</span>
+
+<span class="sd">        **Normalization is a study-global constant (§6.2).** The raw ``Tᵨ``</span>
+<span class="sd">        ranges over ``[ε·(…), (1+ε)·(…)]``, so it is normalized by the theoretical</span>
+<span class="sd">        worst ``Tᵨ(1…1)`` to give a normalized cost in ``(0, 1]``. That worst-case</span>
+<span class="sd">        denominator is computed over the **full pinned active set**</span>
+<span class="sd">        (:attr:`_active_handles`) — every child available study-wide — **not**</span>
+<span class="sd">        the in-call roster. Otherwise a pinned child that produces zero terms</span>
+<span class="sd">        across a whole trial&#39;s calibration set would drop the trial&#39;s denominator</span>
+<span class="sd">        from ``(1+ε)+ρ·n`` to ``(1+ε)+ρ·(n−1)`` while other trials keep ``n``,</span>
+<span class="sd">        normalizing different trials by different constants and perturbing the</span>
+<span class="sd">        cross-trial argmin (the winner-equivalence this migration must preserve).</span>
+<span class="sd">        The **numerator** (``max_term`` / ``l1``) stays over the in-call</span>
+<span class="sd">        ``child_costs``: a child that genuinely abstained this trial contributes</span>
+<span class="sd">        no cost to the numerator, which is correct. When :attr:`_active_handles`</span>
+<span class="sd">        is ``None`` (direct-``finalize`` unit calls with no engine pin), the</span>
+<span class="sd">        denominator falls back to the in-call roster.</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">            values: The per-child scalars (clamped at ``0`` — scores are</span>
-<span class="sd">                higher-is-better in ``[0, 1]``, never negative).</span>
+<span class="sd">            child_costs: ``{handle: cost}`` over the children that scored this</span>
+<span class="sd">                call (each ``bᵢ ∈ [0,1]``).</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            ``(Π max(vᵢ, 0))^(1/n)``; ``0.0`` for an empty list.</span>
+<span class="sd">            The normalized composite cost in ``(0, 1]``. Empty roster → ``1.0``</span>
+<span class="sd">            (the worst floor; the engine degrades — guards the ``max([])``).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">values</span><span class="p">:</span>
-            <span class="k">return</span> <span class="mf">0.0</span>
-        <span class="n">product</span> <span class="o">=</span> <span class="mf">1.0</span>
-        <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">values</span><span class="p">:</span>
-            <span class="n">product</span> <span class="o">*=</span> <span class="nb">max</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
-        <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">pow</span><span class="p">(</span><span class="n">product</span><span class="p">,</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">values</span><span class="p">)))</span></div>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">child_costs</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">1.0</span>
+        <span class="n">eps</span> <span class="o">=</span> <span class="n">_UTOPIA_EPS</span>
+        <span class="n">weights</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">weights</span> <span class="ow">or</span> <span class="p">{}</span>
+        <span class="n">max_term</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="n">l1</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="k">for</span> <span class="n">handle</span><span class="p">,</span> <span class="n">cost</span> <span class="ow">in</span> <span class="n">child_costs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">assert</span> <span class="mf">0.0</span> <span class="o">&lt;=</span> <span class="n">cost</span> <span class="o">&lt;=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="p">(</span>  <span class="c1"># noqa: S101 — B1 invariant guard</span>
+                <span class="sa">f</span><span class="s2">&quot;per-child cost </span><span class="si">{</span><span class="n">handle</span><span class="si">}</span><span class="s2">=</span><span class="si">{</span><span class="n">cost</span><span class="si">!r}</span><span class="s2"> escaped [0,1]; the Phase 1 &quot;</span>
+                <span class="s2">&quot;robust-aggregate clamp regressed&quot;</span>
+            <span class="p">)</span>
+            <span class="n">weight</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">weights</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">handle</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">))</span>
+            <span class="n">max_term</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">max_term</span><span class="p">,</span> <span class="n">weight</span> <span class="o">*</span> <span class="p">(</span><span class="n">cost</span> <span class="o">+</span> <span class="n">eps</span><span class="p">))</span>
+            <span class="n">l1</span> <span class="o">+=</span> <span class="n">weight</span> <span class="o">*</span> <span class="n">cost</span>
+        <span class="c1"># Denominator roster = the full pinned active set (study-global constant),</span>
+        <span class="c1"># falling back to the in-call roster when unpinned (direct-finalize unit</span>
+        <span class="c1"># calls). Each pinned handle contributes its weight at the worst cost 1.0,</span>
+        <span class="c1"># independent of whether it scored this call.</span>
+        <span class="n">denom_handles</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_active_handles</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_active_handles</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="k">else</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">child_costs</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">denom_max</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="n">denom_l1</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="k">for</span> <span class="n">handle</span> <span class="ow">in</span> <span class="n">denom_handles</span><span class="p">:</span>
+            <span class="n">weight</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">weights</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">handle</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">))</span>
+            <span class="n">denom_max</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">denom_max</span><span class="p">,</span> <span class="n">weight</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">eps</span><span class="p">))</span>
+            <span class="n">denom_l1</span> <span class="o">+=</span> <span class="n">weight</span>
+        <span class="n">numerator</span> <span class="o">=</span> <span class="n">max_term</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">rho</span> <span class="o">*</span> <span class="n">l1</span>
+        <span class="n">denominator</span> <span class="o">=</span> <span class="n">denom_max</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">rho</span> <span class="o">*</span> <span class="n">denom_l1</span>
+        <span class="k">if</span> <span class="n">denominator</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">1.0</span>
+        <span class="k">return</span> <span class="n">clamp01</span><span class="p">(</span><span class="n">numerator</span> <span class="o">/</span> <span class="n">denominator</span><span class="p">)</span></div>
 
 </pre></div>
 

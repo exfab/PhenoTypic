@@ -57,8 +57,11 @@ phenotypic.measure.MeasureColor
       ~MeasureColor.model_extra
       ~MeasureColor.model_fields
       ~MeasureColor.model_fields_set
-      ~MeasureColor.white_chroma_max
-      ~MeasureColor.chroma_min
       ~MeasureColor.include_XYZ
+      ~MeasureColor.include_xy
+      ~MeasureColor.geomedian_max_iter
+      ~MeasureColor.geomedian_tol
+      ~MeasureColor.medoid_max_pixels
+      ~MeasureColor.random_seed
    
    

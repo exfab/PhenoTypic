@@ -733,14 +733,54 @@ mutant morphology, or for detecting contamination.</p>
 </section>
 <section id="color-metrics-measurecolor">
 <h2>Color Metrics (MeasureColor)<a class="headerlink" href="#color-metrics-measurecolor" title="Link to this heading">#</a></h2>
-<p>Color measurements use the CIELAB, HSV, and CIE XYZ color spaces.
-Key columns include mean, median, and standard deviation for each
-channel. These are essential for:</p>
+<p>Color measurements report compact, outlier-resistant colorimetric
+summaries rather than a per-channel statistical suite. The default output
+covers two perceptually meaningful spaces, CIE L*a*b* and HSV.</p>
+<p><strong>Two robust center colors (CIE L*a*b*).</strong> L*a*b* is designed so
+Euclidean distance approximates perceived color difference (ΔE76).</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">L*GeoMedian</span></code>, <code class="docutils literal notranslate"><span class="pre">a*GeoMedian</span></code>, <code class="docutils literal notranslate"><span class="pre">b*GeoMedian</span></code> — the <strong>ΔE76 (Euclidean)
+geometric median</strong> of the colony’s pixels. The multivariate median
+(breakdown point 0.5), so specular highlights, agar bleed-through, and
+debris cannot drag the center color.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">L*Medoid</span></code>, <code class="docutils literal notranslate"><span class="pre">a*Medoid</span></code>, <code class="docutils literal notranslate"><span class="pre">b*Medoid</span></code> — the <strong>ΔE2000 medoid</strong>: the single
+real colony pixel minimizing total ΔE2000 to all other pixels. Because
+ΔE2000 is not a true metric, a medoid (which needs no metric axioms) is
+used instead of a geometric median, and the result is always an actual
+colony color.</p></li>
+</ul>
+<p><strong>Within-colony color consistency (ΔE2000, from the medoid).</strong> A
+perceptually-corrected uniformity profile:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">DeltaE2000MedianFromMedoid</span></code> — robust “perceptual MAD.”</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">DeltaE2000MeanFromMedoid</span></code> — the color-science uniformity standard.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">DeltaE2000P95FromMedoid</span></code> — near-worst-case deviation; flags sectoring
+and contamination without being dominated by a single stray pixel.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">LabTotalVariance</span></code> — the trace of the L*a*b* covariance (var L* +
+var a* + var b*), a single Euclidean spread scalar.</p></li>
+</ul>
+<p><strong>Robust HSV.</strong> Because hue is circular and HSV is not perceptually
+uniform, each pixel is embedded into Cartesian cone coordinates before
+the robust center is computed:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">HueRobustMean</span></code>, <code class="docutils literal notranslate"><span class="pre">SaturationRobustMean</span></code>, <code class="docutils literal notranslate"><span class="pre">ValueRobustMean</span></code> — the
+cone-embedded geometric-median center converted back to H, S, V
+(circular-correct; unreliable hue at low saturation collapses toward
+the achromatic axis automatically).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">HSVConeVariance</span></code> — the trace of the cone-Cartesian covariance.</p></li>
+</ul>
+<p><strong>Plot swatch.</strong> <code class="docutils literal notranslate"><span class="pre">MedoidColorHex</span></code> is the sRGB hex string of the ΔE2000
+medoid color, intended <strong>for visualization only</strong> — it is never used as a
+numeric measurement or analysis input.</p>
+<p>These metrics are essential for:</p>
 <ul class="simple">
 <li><p>Quantifying pigmentation differences between strains</p></li>
 <li><p>Detecting sectoring (regions of different color within a colony)</p></li>
 <li><p>Normalizing color across imaging sessions (after <code class="docutils literal notranslate"><span class="pre">ColorCorrector</span></code>)</p></li>
 </ul>
+<p>CIE XYZ and xy chromaticity remain available as opt-in legacy per-channel
+suites (<code class="docutils literal notranslate"><span class="pre">MeasureColor(include_XYZ=True)</span></code>, <code class="docutils literal notranslate"><span class="pre">MeasureColor(include_xy=True)</span></code>)
+but are hidden from the default colorimetric output.</p>
 </section>
 <section id="texture-metrics-measuretexture">
 <h2>Texture Metrics (MeasureTexture)<a class="headerlink" href="#texture-metrics-measuretexture" title="Link to this heading">#</a></h2>

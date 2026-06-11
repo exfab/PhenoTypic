@@ -1038,6 +1038,12 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.geometric_median.html">phenotypic.util.geometric_median</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.generate_output_key.html">phenotypic.util.generate_output_key</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.split_measurements.html">phenotypic.util.split_measurements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.robust_color_center.html">phenotypic.util.robust_color_center</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.medoid_ciede2000.html">phenotypic.util.medoid_ciede2000</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.delta_e2000_spread.html">phenotypic.util.delta_e2000_spread</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.hsv_to_cone.html">phenotypic.util.hsv_to_cone</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.cone_to_hsv.html">phenotypic.util.cone_to_hsv</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.lab_to_srgb_hex.html">phenotypic.util.lab_to_srgb_hex</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.decode_well_position.html">phenotypic.util.decode_well_position</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.ImageMetricsCalculator.html">phenotypic.util.ImageMetricsCalculator</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.NoiseMetrics.html">phenotypic.util.NoiseMetrics</a></li>
@@ -1114,7 +1120,7 @@
 <h1>phenotypic.tune.CompositeScorer<a class="headerlink" href="#phenotypic-tune-compositescorer" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="phenotypic.tune.CompositeScorer">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tune.</span></span><span class="sig-name descname"><span class="pre">CompositeScorer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scorers:</span> <span class="pre">list[~typing.Annotated[~typing.Any</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">~pydantic.functional_validators.BeforeValidator(func=~phenotypic.tools_.typing_._deserialize_operation_value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">json_schema_input_type=PydanticUndefined)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">~pydantic.functional_validators.AfterValidator(func=~phenotypic.tools_.typing_._make_require_value.&lt;locals&gt;._require)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">~pydantic.functional_serializers.PlainSerializer(func=~phenotypic.tools_.typing_._serialize_operation_value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_type=PydanticUndefined</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">when_used=always)]]</span> <span class="pre">=</span> <span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">weights:</span> <span class="pre">dict[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">float]</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">multi_objective:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/tune/_scoring/_composite.html#CompositeScorer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tune.CompositeScorer" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tune.</span></span><span class="sig-name descname"><span class="pre">CompositeScorer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scorers:</span> <span class="pre">list[~typing.Annotated[~typing.Any</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">~pydantic.functional_validators.BeforeValidator(func=~phenotypic.tools_.typing_._deserialize_operation_value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">json_schema_input_type=PydanticUndefined)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">~pydantic.functional_validators.AfterValidator(func=~phenotypic.tools_.typing_._make_require_value.&lt;locals&gt;._require)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">~pydantic.functional_serializers.PlainSerializer(func=~phenotypic.tools_.typing_._serialize_operation_value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_type=PydanticUndefined</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">when_used=always)]]</span> <span class="pre">=</span> <span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">weights:</span> <span class="pre">dict[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">float]</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">multi_objective:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">blend:</span> <span class="pre">~typing.Literal['tchebycheff'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">'weighted_mean']</span> <span class="pre">=</span> <span class="pre">'tchebycheff'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rho:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.05</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/tune/_scoring/_composite.html#CompositeScorer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tune.CompositeScorer" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.Scorer" title="phenotypic.tune._scoring._scorer.Scorer"><code class="xref py py-class docutils literal notranslate"><span class="pre">Scorer</span></code></a></p>
 <p>Blend several <code class="docutils literal notranslate"><span class="pre">Scorer</span></code> children into one objective (scalar or Pareto).</p>
 <dl class="field-list simple">
@@ -1125,13 +1131,28 @@ any <code class="docutils literal notranslate"><span class="pre">Scorer</span></
 round-trips through the polymorphic registry. Child <code class="docutils literal notranslate"><span class="pre">i</span></code> owns the
 <code class="docutils literal notranslate"><span class="pre">&quot;s{i}.&quot;</span></code> term namespace.</p></li>
 <li><p><strong>weights</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>] </em><em>| </em><em>None</em>) – Optional per-child weights for the <strong>single-objective</strong> scalar
-blend, keyed by child handle (<code class="docutils literal notranslate"><span class="pre">&quot;s0&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;s1&quot;</span></code>, …). When given,
-<a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.CompositeScorer.finalize" title="phenotypic.tune.CompositeScorer.finalize"><code class="xref py py-meth docutils literal notranslate"><span class="pre">finalize()</span></code></a> returns the weighted arithmetic mean of the
-per-child scalars; when <code class="docutils literal notranslate"><span class="pre">None</span></code> it returns their geometric mean.
-Ignored when <code class="docutils literal notranslate"><span class="pre">multi_objective</span></code> is <code class="docutils literal notranslate"><span class="pre">True</span></code>.</p></li>
+blend, keyed by child handle (<code class="docutils literal notranslate"><span class="pre">&quot;s0&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;s1&quot;</span></code>, …). The meaning is
+<strong>blend-dependent</strong>: under <code class="docutils literal notranslate"><span class="pre">blend=&quot;tchebycheff&quot;</span></code> they are per-axis
+Tchebycheff weights (they steer the <code class="docutils literal notranslate"><span class="pre">max</span></code> term, uniform <code class="docutils literal notranslate"><span class="pre">1.0</span></code>
+when <code class="docutils literal notranslate"><span class="pre">None</span></code>); under <code class="docutils literal notranslate"><span class="pre">blend=&quot;weighted_mean&quot;</span></code> they are arithmetic
+weights for the compensatory mean. Ignored when <code class="docutils literal notranslate"><span class="pre">multi_objective</span></code>
+is <code class="docutils literal notranslate"><span class="pre">True</span></code>.</p></li>
 <li><p><strong>multi_objective</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – When <code class="docutils literal notranslate"><span class="pre">True</span></code>, <a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.CompositeScorer.finalize" title="phenotypic.tune.CompositeScorer.finalize"><code class="xref py py-meth docutils literal notranslate"><span class="pre">finalize()</span></code></a> returns a
 <code class="docutils literal notranslate"><span class="pre">dict[str,</span> <span class="pre">float]</span></code> of per-child objectives (the plan §0a sidecar)
 instead of a scalar, so the composite can drive a Pareto study.</p></li>
+<li><p><strong>blend</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><em>Literal</em></a><em>[</em><em>'tchebycheff'</em><em>, </em><em>'weighted_mean'</em><em>]</em>) – The single-objective combiner. <code class="docutils literal notranslate"><span class="pre">&quot;tchebycheff&quot;</span></code> (default) is the
+conjunctive augmented-Tchebycheff cost over the pinned study-global
+active set — worst-axis-dominant, so a single weak axis cannot be
+masked by a strong one. <code class="docutils literal notranslate"><span class="pre">&quot;weighted_mean&quot;</span></code> is the compensatory
+arithmetic-mean opt-out. The geometric-mean-of-cost blend is no
+longer offered (it inverts the conjunctive property — a single
+perfect axis would annihilate the product).</p></li>
+<li><p><strong>rho</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – The augmented-Tchebycheff augmentation coefficient (advanced-only;
+default <code class="docutils literal notranslate"><span class="pre">0.05</span></code>). It scales the weighted-L1 term that breaks ties
+between weakly-dominated points; <code class="docutils literal notranslate"><span class="pre">→0</span></code> recovers the plain
+Tchebycheff (admits weakly-dominated winners), large values drift
+toward the weighted sum (spec §6.4). Ignored under
+<code class="docutils literal notranslate"><span class="pre">blend=&quot;weighted_mean&quot;</span></code> / <code class="docutils literal notranslate"><span class="pre">multi_objective</span></code>.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Raises<span class="colon">:</span></dt>
@@ -1159,14 +1180,14 @@ instead of a scalar, so the composite can drive a Pareto study.</p></li>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">terms</span> <span class="o">=</span> <span class="n">comp</span><span class="o">.</span><span class="n">score_image</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">layout</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="nb">sorted</span><span class="p">(</span><span class="n">terms</span><span class="p">)</span>
 <span class="go">[&#39;s0.Count&#39;, &#39;s1.Count&#39;]</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="nb">round</span><span class="p">(</span><span class="n">comp</span><span class="o">.</span><span class="n">finalize</span><span class="p">(</span><span class="n">terms</span><span class="p">),</span> <span class="mi">3</span><span class="p">)</span>  <span class="c1"># geometric mean of the two child scalars</span>
-<span class="go">1.0</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">round</span><span class="p">(</span><span class="n">comp</span><span class="o">.</span><span class="n">finalize</span><span class="p">(</span><span class="n">terms</span><span class="p">),</span> <span class="mi">3</span><span class="p">)</span>  <span class="c1"># augmented Tchebycheff of two perfect (cost-0) children</span>
+<span class="go">0.001</span>
 </pre></div>
 </div>
 <p>Flip to multi-objective and <code class="docutils literal notranslate"><span class="pre">finalize</span></code> returns the per-child sidecar:</p>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">comp_mo</span> <span class="o">=</span> <span class="n">CompositeScorer</span><span class="p">(</span><span class="n">scorers</span><span class="o">=</span><span class="p">[</span><span class="n">qc</span><span class="p">,</span> <span class="n">qc</span><span class="p">],</span> <span class="n">multi_objective</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="nb">round</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">comp_mo</span><span class="o">.</span><span class="n">finalize</span><span class="p">(</span><span class="n">terms</span><span class="p">)</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
-<span class="go">{&#39;s0&#39;: 1.0, &#39;s1&#39;: 1.0}</span>
+<span class="go">{&#39;s0&#39;: 0.0, &#39;s1&#39;: 0.0}</span>
 </pre></div>
 </div>
 </div>
@@ -1216,7 +1237,7 @@ instead of a scalar, so the composite can drive a Pareto study.</p></li>
 <td><p>Compute the class name for parametrizations of generic classes.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.CompositeScorer.model_post_init" title="phenotypic.tune.CompositeScorer.model_post_init"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_post_init</span></code></a></p></td>
-<td><p>Override this method to perform additional initialization after <cite>__init__</cite> and <cite>model_construct</cite>.</p></td>
+<td><p>This function is meant to behave like a BaseModel method to initialise private attributes.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.CompositeScorer.model_rebuild" title="phenotypic.tune.CompositeScorer.model_rebuild"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_rebuild</span></code></a></p></td>
 <td><p>Try to rebuild the pydantic-core schema for the model.</p></td>
@@ -1251,10 +1272,13 @@ instead of a scalar, so the composite can drive a Pareto study.</p></li>
 <tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.CompositeScorer.score_image" title="phenotypic.tune.CompositeScorer.score_image"><code class="xref py py-obj docutils literal notranslate"><span class="pre">score_image</span></code></a></p></td>
 <td><p>Merge every child's per-image terms under a per-child prefix.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.CompositeScorer.update_forward_refs" title="phenotypic.tune.CompositeScorer.update_forward_refs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_forward_refs</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.CompositeScorer.set_active_set" title="phenotypic.tune.CompositeScorer.set_active_set"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_active_set</span></code></a></p></td>
+<td><p>Pin the study-global active set (child handles available study-wide).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.CompositeScorer.update_forward_refs" title="phenotypic.tune.CompositeScorer.update_forward_refs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_forward_refs</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.CompositeScorer.validate" title="phenotypic.tune.CompositeScorer.validate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">validate</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.CompositeScorer.validate" title="phenotypic.tune.CompositeScorer.validate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">validate</span></code></a></p></td>
 <td><p></p></td>
 </tr>
 </tbody>
@@ -1287,6 +1311,12 @@ instead of a scalar, so the composite can drive a Pareto study.</p></li>
 <tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.CompositeScorer.multi_objective" title="phenotypic.tune.CompositeScorer.multi_objective"><code class="xref py py-obj docutils literal notranslate"><span class="pre">multi_objective</span></code></a></p></td>
 <td><p></p></td>
 </tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.CompositeScorer.blend" title="phenotypic.tune.CompositeScorer.blend"><code class="xref py py-obj docutils literal notranslate"><span class="pre">blend</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.CompositeScorer.rho" title="phenotypic.tune.CompositeScorer.rho"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rho</span></code></a></p></td>
+<td><p></p></td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -1310,6 +1340,34 @@ instead of a scalar, so the composite can drive a Pareto study.</p></li>
 <dt class="sig sig-object py" id="phenotypic.tune.CompositeScorer.multi_objective">
 <span class="sig-name descname"><span class="pre">multi_objective</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></em><a class="headerlink" href="#phenotypic.tune.CompositeScorer.multi_objective" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.tune.CompositeScorer.blend">
+<span class="sig-name descname"><span class="pre">blend</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">CompositeBlend</span></em><a class="headerlink" href="#phenotypic.tune.CompositeScorer.blend" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.tune.CompositeScorer.rho">
+<span class="sig-name descname"><span class="pre">rho</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></em><a class="headerlink" href="#phenotypic.tune.CompositeScorer.rho" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tune.CompositeScorer.set_active_set">
+<span class="sig-name descname"><span class="pre">set_active_set</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">handles</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/tune/_scoring/_composite.html#CompositeScorer.set_active_set"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tune.CompositeScorer.set_active_set" title="Link to this definition">#</a></dt>
+<dd><p>Pin the study-global active set (child handles available study-wide).</p>
+<p>Called once by the engine after meta-validation, before the trial loop,
+so every trial’s Tchebycheff <code class="docutils literal notranslate"><span class="pre">max</span></code> and normalizer use the same fixed
+roster (§6.3 plumbing SF3). Idempotent.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>handles</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>...</em><em>]</em>) – The available child handles (a subset of
+<a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.CompositeScorer.objective_names" title="phenotypic.tune.CompositeScorer.objective_names"><code class="xref py py-meth docutils literal notranslate"><span class="pre">objective_names()</span></code></a>), in objective order.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tune.CompositeScorer.objective_names">
@@ -1387,17 +1445,25 @@ each child’s own <a class="reference internal" href="../phenotypic.tune.html#p
 <li><p><code class="docutils literal notranslate"><span class="pre">multi_objective=True</span></code> → returns <code class="docutils literal notranslate"><span class="pre">{handle:</span> <span class="pre">child_scalar}</span></code> over
 <strong>every</strong> axis in <a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.CompositeScorer.objective_names" title="phenotypic.tune.CompositeScorer.objective_names"><code class="xref py py-meth docutils literal notranslate"><span class="pre">objective_names()</span></code></a> order — the plan §0a sidecar
 the <code class="docutils literal notranslate"><span class="pre">Evaluator</span></code> stashes on <code class="docutils literal notranslate"><span class="pre">EvaluationResult.objectives</span></code>. A child
-that abstains (no terms this run) is floored to <code class="docutils literal notranslate"><span class="pre">0.0</span></code> (the
-higher-is-better worst score) rather than dropped, so the dict keys +
+that abstains (no terms this run) is floored to <code class="docutils literal notranslate"><span class="pre">1.0</span></code> (the worst
+cost; the study minimizes) rather than dropped, so the dict keys +
 order stay invariant and exactly match the multi-objective study’s
-fixed <code class="docutils literal notranslate"><span class="pre">directions</span></code>. A dropped axis would otherwise make the NSGA-II
-value vector the wrong length and crash Optuna’s <code class="docutils literal notranslate"><span class="pre">tell</span></code> mid-run; the
-<code class="docutils literal notranslate"><span class="pre">0.0</span></code> floor also mirrors the journal Pareto <code class="docutils literal notranslate"><span class="pre">_vector</span></code> fill so the
-journal and Optuna backends agree on an abstaining axis.</p></li>
-<li><p>with <a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.CompositeScorer.weights" title="phenotypic.tune.CompositeScorer.weights"><code class="xref py py-attr docutils literal notranslate"><span class="pre">weights</span></code></a> → the weighted arithmetic mean of the per-child
-scalars (missing weights default to <code class="docutils literal notranslate"><span class="pre">1.0</span></code>).</p></li>
-<li><p>otherwise → the geometric mean of the per-child scalars (so a single
-weak axis dominates — it cannot be masked by a strong one).</p></li>
+fixed <code class="docutils literal notranslate"><span class="pre">directions</span></code> (now <code class="docutils literal notranslate"><span class="pre">minimize</span></code>). A dropped axis would otherwise
+make the NSGA-II value vector the wrong length and crash Optuna’s
+<code class="docutils literal notranslate"><span class="pre">tell</span></code> mid-run; the <code class="docutils literal notranslate"><span class="pre">1.0</span></code> floor also mirrors the journal Pareto
+<code class="docutils literal notranslate"><span class="pre">_vector</span></code> fill so the journal and Optuna backends agree on an
+abstaining axis.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">blend=&quot;weighted_mean&quot;</span></code> → the compensatory weighted arithmetic mean
+of the per-child <strong>cost</strong> scalars (missing weights default to <code class="docutils literal notranslate"><span class="pre">1.0</span></code>).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">blend=&quot;tchebycheff&quot;</span></code> (default) → the conjunctive augmented
+Tchebycheff cost (<code class="xref py py-meth docutils literal notranslate"><span class="pre">_tchebycheff()</span></code>) over the pinned study-global
+active set, so a single weak (high-cost) axis dominates the <code class="docutils literal notranslate"><span class="pre">max</span></code> and
+cannot be masked by a strong one. The roster is restricted to the
+pinned active set (the children available study-wide, §6.3): a
+study-wide abstainer is simply not an objective (dropped from both the
+<code class="docutils literal notranslate"><span class="pre">max</span></code> and the normalizer), while per-image abstention is already a
+fewer-samples matter handled upstream by the robust aggregate — so a
+present-but-absent-this-call child is NOT flooded into the <code class="docutils literal notranslate"><span class="pre">max</span></code>.</p></li>
 </ul>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1406,9 +1472,9 @@ weak axis dominates — it cannot be masked by a strong one).</p></li>
 aggregation).</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The scalar objective (<code class="docutils literal notranslate"><span class="pre">0.0</span></code> for no children/terms) for the
-single-objective path, or the per-child <code class="docutils literal notranslate"><span class="pre">dict</span></code> (one entry per axis,
-abstainers floored to <code class="docutils literal notranslate"><span class="pre">0.0</span></code>) for the multi-objective path.</p>
+<dd class="field-even"><p>The scalar objective for the single-objective path (worst cost
+<code class="docutils literal notranslate"><span class="pre">1.0</span></code> for no scored children/terms), or the per-child <code class="docutils literal notranslate"><span class="pre">dict</span></code> (one
+entry per axis, abstainers floored) for the multi-objective path.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a> | <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)">dict</a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a>, <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a>]</p>
@@ -1861,7 +1927,7 @@ a [<cite>PydanticSerializationError</cite>][pydantic_core.PydanticSerializationE
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="phenotypic.tune.CompositeScorer.model_fields">
-<span class="sig-name descname"><span class="pre">model_fields</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'multi_objective':</span> <span class="pre">FieldInfo(annotation=bool,</span> <span class="pre">required=False,</span> <span class="pre">default=False),</span> <span class="pre">'scorers':</span> <span class="pre">FieldInfo(annotation=list[Annotated[Any,</span> <span class="pre">BeforeValidator,</span> <span class="pre">AfterValidator,</span> <span class="pre">PlainSerializer]],</span> <span class="pre">required=False,</span> <span class="pre">default=[]),</span> <span class="pre">'weights':</span> <span class="pre">FieldInfo(annotation=Union[dict[str,</span> <span class="pre">float],</span> <span class="pre">NoneType],</span> <span class="pre">required=False,</span> <span class="pre">default=None)}</span></em><a class="headerlink" href="#phenotypic.tune.CompositeScorer.model_fields" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">model_fields</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'blend':</span> <span class="pre">FieldInfo(annotation=Literal['tchebycheff',</span> <span class="pre">'weighted_mean'],</span> <span class="pre">required=False,</span> <span class="pre">default='tchebycheff'),</span> <span class="pre">'multi_objective':</span> <span class="pre">FieldInfo(annotation=bool,</span> <span class="pre">required=False,</span> <span class="pre">default=False),</span> <span class="pre">'rho':</span> <span class="pre">FieldInfo(annotation=float,</span> <span class="pre">required=False,</span> <span class="pre">default=0.05),</span> <span class="pre">'scorers':</span> <span class="pre">FieldInfo(annotation=list[Annotated[Any,</span> <span class="pre">BeforeValidator,</span> <span class="pre">AfterValidator,</span> <span class="pre">PlainSerializer]],</span> <span class="pre">required=False,</span> <span class="pre">default=[]),</span> <span class="pre">'weights':</span> <span class="pre">FieldInfo(annotation=Union[dict[str,</span> <span class="pre">float],</span> <span class="pre">NoneType],</span> <span class="pre">required=False,</span> <span class="pre">default=None)}</span></em><a class="headerlink" href="#phenotypic.tune.CompositeScorer.model_fields" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py property">
@@ -1937,12 +2003,15 @@ the value <cite>(str, int)</cite> would be passed to <cite>params</cite>.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tune.CompositeScorer.model_post_init">
-<span class="sig-name descname"><span class="pre">model_post_init</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">context</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.tune.CompositeScorer.model_post_init" title="Link to this definition">#</a></dt>
-<dd><p>Override this method to perform additional initialization after <cite>__init__</cite> and <cite>model_construct</cite>.
-This is useful if you want to do some validation that requires the entire model to be initialized.</p>
+<span class="sig-name descname"><span class="pre">model_post_init</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">context</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.tune.CompositeScorer.model_post_init" title="Link to this definition">#</a></dt>
+<dd><p>This function is meant to behave like a BaseModel method to initialise private attributes.</p>
+<p>It takes context as an argument since that’s what pydantic-core passes when calling it.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>context</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a>)</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>self</strong> (<em>BaseModel</em>) – The BaseModel instance.</p></li>
+<li><p><strong>context</strong> (<em>Any</em>) – The context.</p></li>
+</ul>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>None</p>
@@ -2203,6 +2272,9 @@ See the [<cite>extra</cite> configuration value][pydantic.ConfigDict.extra] for 
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tune.CompositeScorer.scorers"><code class="docutils literal notranslate"><span class="pre">CompositeScorer.scorers</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tune.CompositeScorer.weights"><code class="docutils literal notranslate"><span class="pre">CompositeScorer.weights</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tune.CompositeScorer.multi_objective"><code class="docutils literal notranslate"><span class="pre">CompositeScorer.multi_objective</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tune.CompositeScorer.blend"><code class="docutils literal notranslate"><span class="pre">CompositeScorer.blend</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tune.CompositeScorer.rho"><code class="docutils literal notranslate"><span class="pre">CompositeScorer.rho</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tune.CompositeScorer.set_active_set"><code class="docutils literal notranslate"><span class="pre">CompositeScorer.set_active_set()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tune.CompositeScorer.objective_names"><code class="docutils literal notranslate"><span class="pre">CompositeScorer.objective_names()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tune.CompositeScorer.availability"><code class="docutils literal notranslate"><span class="pre">CompositeScorer.availability()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tune.CompositeScorer.score_image"><code class="docutils literal notranslate"><span class="pre">CompositeScorer.score_image()</span></code></a></li>

@@ -598,23 +598,47 @@
   <h1>Source code for phenotypic.tune._scoring._scorer</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;The pluggable scoring objective — a pydantic ABC.</span>
 
-<span class="sd">A ``Scorer`` turns one image&#39;s measurement frame into a dict of **named term</span>
-<span class="sd">scores** (``score_image``), where *higher is better* and each term is a clean,</span>
-<span class="sd">comparable signal (typically normalized to ``[0, 1]``). The ``Evaluator``</span>
-<span class="sd">collects the per-image terms across a calibration set, robust-aggregates each</span>
-<span class="sd">term, then asks the scorer to ``finalize`` the aggregated terms into the single</span>
-<span class="sd">scalar objective the optimizer maximizes. ``availability`` lets a scorer report</span>
-<span class="sd">that it cannot run (e.g. missing metadata) so the engine can degrade gracefully.</span>
+<span class="sd">A ``Scorer`` emits one image&#39;s **natural per-term values** (``_score_terms``);</span>
+<span class="sd">the base-class template method ``score_image`` orients each term into bounded</span>
+<span class="sd">**cost** ``∈ [0, 1]`` (``0`` = perfect, ``1`` = worst) via the shared</span>
+<span class="sd">:func:`~phenotypic.tune._scoring._orient.to_cost`, reading the scorer&#39;s</span>
+<span class="sd">``_TERM_SENSE`` and optional ``_term_anchor``. The ``Evaluator`` collects the</span>
+<span class="sd">per-image cost terms across a calibration set, robust-aggregates each term</span>
+<span class="sd">(``median + λ·IQR``, clamped to ``[0, 1]``), then asks the scorer to</span>
+<span class="sd">``finalize`` the aggregated terms into the single scalar **the optimizer</span>
+<span class="sd">minimizes**. ``availability`` lets a scorer report that it cannot run (e.g.</span>
+<span class="sd">missing metadata) so the engine can degrade gracefully.</span>
+
+<span class="sd">Authoring a new ``Scorer`` (the canonical contract — kept in sync with</span>
+<span class="sd">``tune/CLAUDE.md`` and ``docs/source/contrib_guide/contributing.rst``):</span>
+
+<span class="sd">  1. Implement ``_score_terms(image, measurements) -&gt; dict[str, float]``</span>
+<span class="sd">     returning your **natural** per-term values — do **not** flip or normalize</span>
+<span class="sd">     by hand.</span>
+<span class="sd">  2. Declare ``_TERM_SENSE`` (``Sense.LOWER_BETTER`` if larger = worse — the</span>
+<span class="sd">     default; ``Sense.HIGHER_BETTER`` if larger = better, e.g. Dice/ICC).</span>
+<span class="sd">  3. Override ``_term_anchor`` **only** if a term is unbounded, returning the</span>
+<span class="sd">     half-cost scale (for a QC-backed term, its check&#39;s ``fail_threshold``);</span>
+<span class="sd">     bounded ``[0, 1]`` terms need nothing.</span>
+<span class="sd">  4. Do **not** add scalarization parameters (``ε``, ``ρ``, normalization,</span>
+<span class="sd">     default weights are framework-derived).</span>
+<span class="sd">  5. Register: re-export from ``tune/__init__.py`` and the class registry, or</span>
+<span class="sd">     the GUI and ``from_json`` cannot see it.</span>
+
+<span class="sd">The framework then orients (``to_cost``), robust-aggregates, reduces per child,</span>
+<span class="sd">and combines (augmented Tchebycheff) — the author writes none of that.</span>
 <span class="sd">&quot;&quot;&quot;</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">ABC</span><span class="p">,</span> <span class="n">abstractmethod</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">,</span> <span class="n">TypeAlias</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">ClassVar</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">,</span> <span class="n">TypeAlias</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span><span class="p">,</span> <span class="n">ConfigDict</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">polymorphic_field</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">._orient</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sense</span><span class="p">,</span> <span class="n">to_cost</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">project_objectives_to_scalar</span><span class="p">(</span><span class="n">mapping</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
@@ -624,14 +648,16 @@
 <span class="sd">    reduction shared by every multi-objective → scalar projection: the</span>
 <span class="sd">    :meth:`Scorer.finalize` default, ``CompositeScorer._as_scalar``, and the</span>
 <span class="sd">    ``Evaluator``&#39;s ``_project_finalize`` sidecar all collapse a dict of named</span>
-<span class="sd">    objectives the same way (higher = better, ``0.0`` is the worst score).</span>
+<span class="sd">    objectives the same way (lower = better cost, ``0.0`` is the best and the</span>
+<span class="sd">    empty-mapping default).</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        mapping: Objective name → value (the robust-aggregated terms, or a</span>
 <span class="sd">            scorer&#39;s named-objectives sidecar).</span>
 
 <span class="sd">    Returns:</span>
-<span class="sd">        ``mean(mapping.values())`` as a ``float``; ``0.0`` for an empty mapping.</span>
+<span class="sd">        ``mean(mapping.values())`` as a ``float``; ``0.0`` for an empty mapping</span>
+<span class="sd">        (a perfect/empty cost).</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">values</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">mapping</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">values</span><span class="p">:</span>
@@ -644,21 +670,50 @@
 <span class="k">class</span><span class="w"> </span><span class="nc">Scorer</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">,</span> <span class="n">ABC</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Base class for tuning objectives (no-GT, supervised, reference-free, …).</span>
 
-<span class="sd">    Production scorers must be **stateless** across ``score_image`` calls: the</span>
-<span class="sd">    engine (Phase 1d) reuses one scorer instance for every trial, so per-trial</span>
-<span class="sd">    mutable state would bleed across candidates. (A test double that deliberately</span>
-<span class="sd">    returns a preset sequence via a private cursor is the documented exception.)</span>
+<span class="sd">    **Orientation is a base-class template method (the one cost boundary).** A</span>
+<span class="sd">    scorer emits its *natural* per-term values in :meth:`_score_terms` (a</span>
+<span class="sd">    divergence stays a divergence; Dice stays Dice), declares the *sense* of</span>
+<span class="sd">    those values once via :attr:`_TERM_SENSE`, and the base :meth:`score_image`</span>
+<span class="sd">    wraps each term into **cost ∈ [0,1]** (``0`` perfect, ``1`` worst, lower is</span>
+<span class="sd">    better — the optimizer minimizes) via the shared :func:`to_cost` helper.</span>
+
+<span class="sd">    To add a scorer (the canonical contract — kept in sync with</span>
+<span class="sd">    ``tune/CLAUDE.md`` and ``docs/source/contrib_guide/contributing.rst``):</span>
+
+<span class="sd">    1. Implement ``_score_terms(image, measurements) -&gt; dict[str, float]``</span>
+<span class="sd">       returning your **natural** per-term values — do **not** flip or normalize</span>
+<span class="sd">       by hand.</span>
+<span class="sd">    2. Declare ``_TERM_SENSE`` (``Sense.LOWER_BETTER`` if larger = worse — the</span>
+<span class="sd">       default; ``Sense.HIGHER_BETTER`` if larger = better, e.g. Dice/ICC).</span>
+<span class="sd">    3. Override ``_term_anchor`` **only** if a term is unbounded, returning the</span>
+<span class="sd">       half-cost scale (for a QC-backed term, its check&#39;s ``fail_threshold``);</span>
+<span class="sd">       bounded ``[0, 1]`` terms need nothing.</span>
+<span class="sd">    4. Do **not** add scalarization parameters (``ε``, ``ρ``, normalization,</span>
+<span class="sd">       default weights are framework-derived).</span>
+<span class="sd">    5. Register: re-export from ``tune/__init__.py`` and the class registry, or</span>
+<span class="sd">       the GUI and ``from_json`` cannot see it.</span>
+
+<span class="sd">    The framework then orients (``to_cost``), robust-aggregates, reduces per</span>
+<span class="sd">    child, and combines (augmented Tchebycheff) — the author writes none of that.</span>
+
+<span class="sd">    Production scorers must be **stateless** across :meth:`score_image` calls:</span>
+<span class="sd">    the engine reuses one scorer instance for every trial, so per-trial mutable</span>
+<span class="sd">    state would bleed across candidates. (A test double that deliberately returns</span>
+<span class="sd">    a preset sequence via a private cursor is the documented exception.)</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">model_config</span> <span class="o">=</span> <span class="n">ConfigDict</span><span class="p">(</span><span class="n">arbitrary_types_allowed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
-<div class="viewcode-block" id="Scorer.score_image">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.html#phenotypic.tune.Scorer.score_image">[docs]</a>
+    <span class="c1">#: Sense of this scorer&#39;s natural per-term values (v1: uniform per scorer).</span>
+    <span class="c1">#: ``LOWER_BETTER`` is cost-native — a raw-loss scorer needs no annotation; a</span>
+    <span class="c1">#: goodness-emitting scorer must declare ``HIGHER_BETTER``.</span>
+    <span class="n">_TERM_SENSE</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="n">Sense</span><span class="p">]</span> <span class="o">=</span> <span class="n">Sense</span><span class="o">.</span><span class="n">LOWER_BETTER</span>
+
     <span class="nd">@abstractmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">score_image</span><span class="p">(</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_score_terms</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">measurements</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Score one image&#39;s measurements as named terms (higher = better).</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;This scorer&#39;s **natural** per-term values (its own convention).</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            image: The (already-processed) image — duck-typed; reference-free</span>
@@ -667,10 +722,50 @@
 <span class="sd">                for ``image`` (the output of ``ImagePipeline.measure``).</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            A mapping of term name → score for this image. Keys must be stable</span>
-<span class="sd">            across images so the ``Evaluator`` can aggregate per term.</span>
+<span class="sd">            A mapping of term name → natural value for this image (its own</span>
+<span class="sd">            sense, not yet oriented to cost). Keys must be stable across images</span>
+<span class="sd">            so the ``Evaluator`` can aggregate per term.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span></div>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_term_anchor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">term</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The half-cost anchor for an unbounded term, else ``None``.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            term: The term name from :meth:`_score_terms`.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ``None`` when the term is already bounded in ``[0,1]`` (the default —</span>
+<span class="sd">            no anchoring); a positive float (the half-cost scale) for an</span>
+<span class="sd">            unbounded magnitude that :func:`to_cost` should threshold-anchor.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="Scorer.score_image">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.html#phenotypic.tune.Scorer.score_image">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">score_image</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">measurements</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Orient this scorer&#39;s natural terms into **cost ∈ [0,1]** (lower = better).</span>
+
+<span class="sd">        The single orientation point: each natural term from</span>
+<span class="sd">        :meth:`_score_terms` is mapped to cost via :func:`to_cost`, using this</span>
+<span class="sd">        scorer&#39;s :attr:`_TERM_SENSE` and :meth:`_term_anchor`.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            image: The processed image (passed through to :meth:`_score_terms`).</span>
+<span class="sd">            measurements: The candidate pipeline&#39;s measurement frame.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            A mapping of term name → cost in ``[0,1]`` (``0`` perfect, ``1``</span>
+<span class="sd">            worst). Keys are stable across images for per-term aggregation.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="n">term</span><span class="p">:</span> <span class="n">to_cost</span><span class="p">(</span>
+                <span class="n">value</span><span class="p">,</span> <span class="n">sense</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_TERM_SENSE</span><span class="p">,</span> <span class="n">anchor</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_term_anchor</span><span class="p">(</span><span class="n">term</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="k">for</span> <span class="n">term</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_score_terms</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">measurements</span><span class="p">)</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+        <span class="p">}</span></div>
 
 
 <div class="viewcode-block" id="Scorer.availability">
@@ -704,8 +799,8 @@
 <span class="sd">                the calibration set by the ``Evaluator``).</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            The scalar objective (higher = better; ``0.0`` for no terms) for</span>
-<span class="sd">            single-objective scorers, or a ``dict[str, float]`` of named</span>
+<span class="sd">            The scalar objective **cost** (lower = better; ``0.0`` for no terms)</span>
+<span class="sd">            for single-objective scorers, or a ``dict[str, float]`` of named</span>
 <span class="sd">            objectives for a multi-objective scorer.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="n">project_objectives_to_scalar</span><span class="p">(</span><span class="n">terms</span><span class="p">)</span></div>

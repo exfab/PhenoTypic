@@ -602,9 +602,11 @@
 <span class="sd">unit it compares the detected colony count against an expected count from a</span>
 <span class="sd">layout frame, yielding ``QC_Count_Metric = |detected - expected| / expected``</span>
 <span class="sd">(``inf`` when a measurement group has no metadata counterpart). The metric is a</span>
-<span class="sd">*lower-is-better* divergence in ``[0, ∞)``; ``_threshold_anchored`` flips and</span>
-<span class="sd">normalizes it to a *higher-is-better* term in ``[0, 1]`` anchored on the check&#39;s</span>
-<span class="sd">``fail_threshold``.</span>
+<span class="sd">*lower-is-better* divergence in ``[0, ∞)``; ``_threshold_anchored`` folds it to a</span>
+<span class="sd">**natural goodness** term in ``[0, 1]`` anchored on the check&#39;s</span>
+<span class="sd">``fail_threshold`` (``_TERM_SENSE = HIGHER_BETTER``), which the base</span>
+<span class="sd">:meth:`Scorer.score_image` then complements into **cost** (lower = better — the</span>
+<span class="sd">optimizer minimizes).</span>
 <span class="sd">&quot;&quot;&quot;</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
@@ -615,14 +617,17 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.analysis</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExpectedVsDetectedCount</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">._orient</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sense</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._scorer</span><span class="w"> </span><span class="kn">import</span> <span class="n">Scorer</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_threshold_anchored</span><span class="p">(</span><span class="n">metric</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">fail_threshold</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Map a lower-is-better divergence to a higher-is-better score in ``[0, 1]``.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Fold a lower-is-better divergence to a natural-goodness value in ``[0, 1]``.</span>
 
 <span class="sd">    ``t = exp(-ln2 * metric / fail_threshold)`` — so ``metric == 0`` → ``1.0``,</span>
-<span class="sd">    ``metric == fail_threshold`` → ``0.5``, ``metric == inf`` → ``0.0``.</span>
+<span class="sd">    ``metric == fail_threshold`` → ``0.5``, ``metric == inf`` → ``0.0``. This is</span>
+<span class="sd">    the scorer&#39;s **natural** (higher-better) value; the base ``score_image``</span>
+<span class="sd">    complements it into cost.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        metric: The non-negative divergence (``|detected-expected|/expected``);</span>
@@ -631,7 +636,8 @@
 <span class="sd">            half-score anchor.</span>
 
 <span class="sd">    Returns:</span>
-<span class="sd">        The normalized score in ``[0, 1]`` (higher = better).</span>
+<span class="sd">        The natural-goodness value in ``[0, 1]`` (higher = better; the base</span>
+<span class="sd">        complements it to cost).</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">math</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">metric</span><span class="p">):</span>
         <span class="k">return</span> <span class="mf">0.0</span>
@@ -643,23 +649,25 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">fold_expected_vs_detected_count</span><span class="p">(</span>
     <span class="n">check</span><span class="p">:</span> <span class="n">ExpectedVsDetectedCount</span><span class="p">,</span> <span class="n">measurements</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Fold a count check&#39;s per-group divergence into one higher-is-better score.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Fold a count check&#39;s per-group divergence into one natural-goodness value.</span>
 
 <span class="sd">    The shared count-tier reduction used by :class:`QCScorer`,</span>
 <span class="sd">    :class:`SupervisedScorer` (count tier), and :class:`ReferenceFreeScorer`</span>
 <span class="sd">    (optional count term): run ``check`` over ``measurements``, anchor each</span>
 <span class="sd">    ``groupby`` group&#39;s ``QC_Count_Metric`` on the check&#39;s ``fail_threshold`` via</span>
 <span class="sd">    :func:`_threshold_anchored`, and average across groups — turning the</span>
-<span class="sd">    lower-is-better divergence into a higher-is-better ``[0, 1]`` score. An empty</span>
-<span class="sd">    or ``None`` frame scores ``0.0`` (every caller&#39;s empty-frame floor).</span>
+<span class="sd">    lower-is-better divergence into a natural-goodness ``[0, 1]`` value (the base</span>
+<span class="sd">    ``score_image`` complements it to cost). An empty or ``None`` frame scores</span>
+<span class="sd">    ``0.0`` (every caller&#39;s empty-frame floor).</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        check: A configured :class:`ExpectedVsDetectedCount` count check.</span>
 <span class="sd">        measurements: The candidate pipeline&#39;s measurement frame.</span>
 
 <span class="sd">    Returns:</span>
-<span class="sd">        The averaged anchored count score in ``[0, 1]`` (higher = better);</span>
-<span class="sd">        ``0.0`` for an empty or ``None`` frame.</span>
+<span class="sd">        The averaged anchored count value in ``[0, 1]`` (natural goodness, higher</span>
+<span class="sd">        = better; the base complements it to cost); ``0.0`` for an empty or</span>
+<span class="sd">        ``None`` frame.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">measurements</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">measurements</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
         <span class="k">return</span> <span class="mf">0.0</span>
@@ -698,11 +706,15 @@
 <span class="sd">        &gt;&gt;&gt; measured = pd.DataFrame(</span>
 <span class="sd">        ...     {&quot;Metadata_ImageName&quot;: [&quot;p1&quot;] * 96, &quot;Object_Label&quot;: list(range(96))}</span>
 <span class="sd">        ... )</span>
+<span class="sd">        &gt;&gt;&gt; # a perfect 96-well count match → zero cost</span>
 <span class="sd">        &gt;&gt;&gt; round(scorer.score_image(None, measured)[&quot;Count&quot;], 3)</span>
-<span class="sd">        1.0</span>
+<span class="sd">        0.0</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">term_name</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Count&quot;</span>
+    <span class="c1">#: The folded count term is a bounded [0,1] goodness; the base complements</span>
+    <span class="c1">#: it (1 - value) into cost.</span>
+    <span class="n">_TERM_SENSE</span> <span class="o">=</span> <span class="n">Sense</span><span class="o">.</span><span class="n">HIGHER_BETTER</span>
 
     <span class="n">check</span><span class="p">:</span> <span class="n">ExpectedVsDetectedCount</span>
 
@@ -713,31 +725,30 @@
         <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">check</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">empty</span></div>
 
 
-<div class="viewcode-block" id="QCScorer.score_image">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.html#phenotypic.tune.QCScorer.score_image">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">score_image</span><span class="p">(</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_score_terms</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">measurements</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return ``{&quot;Count&quot;: t}`` — the normalized per-image count score.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return ``{&quot;Count&quot;: t}`` — the natural per-image count goodness.</span>
 
 <span class="sd">        Runs the count check on ``measurements``, normalizes each group&#39;s</span>
 <span class="sd">        ``QC_Count_Metric`` via :func:`_threshold_anchored`, and averages across</span>
 <span class="sd">        groups (a single-plate frame has one group, so the mean is that group&#39;s</span>
-<span class="sd">        score). An empty frame scores ``0.0``.</span>
+<span class="sd">        score). An empty frame scores ``0.0``. The base :meth:`score_image`</span>
+<span class="sd">        complements this natural goodness in ``[0, 1]`` to cost.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            image: Unused (the count objective reads only the frame).</span>
 <span class="sd">            measurements: The candidate pipeline&#39;s measurement frame.</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            ``{&quot;Count&quot;: &lt;score in [0, 1]&gt;}`` (higher = better).</span>
+<span class="sd">            ``{&quot;Count&quot;: &lt;natural goodness in [0, 1]&gt;}`` (the base complements it</span>
+<span class="sd">            to cost).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="p">{</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">term_name</span><span class="p">:</span> <span class="n">fold_expected_vs_detected_count</span><span class="p">(</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">check</span><span class="p">,</span> <span class="n">measurements</span>
             <span class="p">)</span>
         <span class="p">}</span></div>
-</div>
 
 </pre></div>
 

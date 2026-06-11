@@ -774,7 +774,7 @@
 
 <span class="sd">    Numeric values → the **median**; non-numeric (categorical/bool) → the **mode**</span>
 <span class="sd">    (&quot;the value good configs tend to use&quot;, robust to single-trial noise). Only the</span>
-<span class="sd">    ``top_k`` highest-scoring non-failed trials that actually carry ``key`` count.</span>
+<span class="sd">    ``top_k`` lowest-cost non-failed trials that actually carry ``key`` count.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        key: The frozen param&#39;s combo key.</span>
@@ -790,7 +790,7 @@
     <span class="n">ranked</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span>
         <span class="p">(</span><span class="n">t</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">trials</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">t</span><span class="o">.</span><span class="n">failed</span> <span class="ow">and</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">t</span><span class="o">.</span><span class="n">params</span><span class="p">),</span>
         <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">t</span><span class="p">:</span> <span class="n">t</span><span class="o">.</span><span class="n">score</span><span class="p">,</span>
-        <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">reverse</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>            <span class="c1"># cost: lowest score = best</span>
     <span class="p">)[:</span><span class="n">top_k</span><span class="p">]</span>
     <span class="n">values</span> <span class="o">=</span> <span class="p">[</span><span class="n">t</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">ranked</span><span class="p">]</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">values</span><span class="p">:</span>
@@ -857,9 +857,9 @@
 <span class="sd">            deterministic freeze decision.</span>
 <span class="sd">        engine_factory: Builds a tuning engine from ``(spec, store)``; defaults to</span>
 <span class="sd">            the real :class:`~phenotypic.tune.TuningEngine`. Injectable for tests.</span>
-<span class="sd">        _focused_score_penalty: Test seam — subtract this from every fresh</span>
-<span class="sd">            focused-round score to exercise the wrong-freeze recovery path. Never</span>
-<span class="sd">            set in production (default ``0.0``).</span>
+<span class="sd">        _focused_score_penalty: Test seam — add this to every fresh</span>
+<span class="sd">            focused-round score (raise its cost) to exercise the wrong-freeze</span>
+<span class="sd">            recovery path. Never set in production (default ``0.0``).</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
@@ -988,7 +988,7 @@
         <span class="n">top</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span>
             <span class="p">(</span><span class="n">t</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">explore_store</span><span class="o">.</span><span class="n">trials</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">t</span><span class="o">.</span><span class="n">failed</span><span class="p">),</span>
             <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">t</span><span class="p">:</span> <span class="n">t</span><span class="o">.</span><span class="n">score</span><span class="p">,</span>
-            <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">reverse</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>            <span class="c1"># cost: lowest score = best</span>
         <span class="p">)[:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_config</span><span class="o">.</span><span class="n">top_k</span><span class="p">]</span>
 
         <span class="n">store</span> <span class="o">=</span> <span class="n">JournalStudyStore</span><span class="p">()</span>
@@ -1023,7 +1023,12 @@
         <span class="k">return</span> <span class="n">store</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_apply_focused_penalty</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Depress genuinely-focused scores (test-only seam for G3 recovery).&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Penalize genuinely-focused scores (test-only seam for G3 recovery).</span>
+
+<span class="sd">        Under the cost convention a penalty ADDS cost (makes a focused trial</span>
+<span class="sd">        worse), so a positive penalty pushes the genuinely-focused best above the</span>
+<span class="sd">        explore best and trips the wrong-freeze recovery branch.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_focused_penalty</span> <span class="o">==</span> <span class="mf">0.0</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">focused_store</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">return</span>
         <span class="n">penalized</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Trial</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
@@ -1031,7 +1036,7 @@
             <span class="k">if</span> <span class="n">index</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_warm_count</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">trial</span><span class="o">.</span><span class="n">failed</span><span class="p">:</span>
                 <span class="n">penalized</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
                     <span class="n">trial</span><span class="o">.</span><span class="n">model_copy</span><span class="p">(</span>
-                        <span class="n">update</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;score&quot;</span><span class="p">:</span> <span class="n">trial</span><span class="o">.</span><span class="n">score</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_focused_penalty</span><span class="p">}</span>
+                        <span class="n">update</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;score&quot;</span><span class="p">:</span> <span class="n">trial</span><span class="o">.</span><span class="n">score</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_focused_penalty</span><span class="p">}</span>
                     <span class="p">)</span>
                 <span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
@@ -1054,7 +1059,7 @@
         <span class="p">]</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">fresh</span><span class="p">:</span>
             <span class="k">return</span> <span class="kc">None</span>
-        <span class="k">return</span> <span class="nb">max</span><span class="p">(</span><span class="n">fresh</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">t</span><span class="p">:</span> <span class="n">t</span><span class="o">.</span><span class="n">score</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">min</span><span class="p">(</span><span class="n">fresh</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">t</span><span class="p">:</span> <span class="n">t</span><span class="o">.</span><span class="n">score</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_resolve_winner</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
@@ -1067,17 +1072,17 @@
         <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">focused_store</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
 
         <span class="n">explore_score</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="n">explore_best</span><span class="o">.</span><span class="n">score</span> <span class="k">if</span> <span class="n">explore_best</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;-inf&quot;</span><span class="p">)</span>
+            <span class="n">explore_best</span><span class="o">.</span><span class="n">score</span> <span class="k">if</span> <span class="n">explore_best</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;inf&quot;</span><span class="p">)</span>
         <span class="p">)</span>
         <span class="n">focused_best</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_genuinely_focused_best</span><span class="p">()</span>
         <span class="n">focused_score</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="n">focused_best</span><span class="o">.</span><span class="n">score</span> <span class="k">if</span> <span class="n">focused_best</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;-inf&quot;</span><span class="p">)</span>
+            <span class="n">focused_best</span><span class="o">.</span><span class="n">score</span> <span class="k">if</span> <span class="n">focused_best</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;inf&quot;</span><span class="p">)</span>
         <span class="p">)</span>
 
         <span class="c1"># Wrong-freeze recovery: the genuinely-focused round underperformed</span>
-        <span class="c1"># explore on held-out → flag the freeze, return the explore best,</span>
-        <span class="c1"># recommend re-run (no mid-study unfreeze).</span>
-        <span class="k">if</span> <span class="n">focused_score</span> <span class="o">&lt;</span> <span class="n">explore_score</span><span class="p">:</span>
+        <span class="c1"># explore on held-out (focused cost exceeded explore cost) → flag the</span>
+        <span class="c1"># freeze, return the explore best, recommend re-run (no mid-study unfreeze).</span>
+        <span class="k">if</span> <span class="n">focused_score</span> <span class="o">&gt;</span> <span class="n">explore_score</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">ScreeningResult</span><span class="p">(</span>
                 <span class="n">winner</span><span class="o">=</span><span class="n">explore_best</span><span class="p">,</span>
                 <span class="n">frozen</span><span class="o">=</span><span class="n">frozen_values</span><span class="p">,</span>
@@ -1096,7 +1101,7 @@
         <span class="c1"># Winner = best held-out across both rounds (the full union, including</span>
         <span class="c1"># warm-start seeds), so freezing never beats the explore best by accident.</span>
         <span class="n">union</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">explore_store</span><span class="o">.</span><span class="n">trials</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">focused_store</span><span class="o">.</span><span class="n">trials</span>
-        <span class="n">winner</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span>
+        <span class="n">winner</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span>
             <span class="p">(</span><span class="n">t</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">union</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">t</span><span class="o">.</span><span class="n">failed</span><span class="p">),</span>
             <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">t</span><span class="p">:</span> <span class="n">t</span><span class="o">.</span><span class="n">score</span><span class="p">,</span>
             <span class="n">default</span><span class="o">=</span><span class="n">explore_best</span><span class="p">,</span>

@@ -596,7 +596,7 @@
                 <article class="bd-article">
                   
   <h1>Source code for phenotypic.schema._color_lab</h1><div class="highlight"><pre>
-<span></span><span class="sd">&quot;&quot;&quot;Per-object summary statistics in the CIE L*a*b* color space.&quot;&quot;&quot;</span>
+<span></span><span class="sd">&quot;&quot;&quot;Per-object robust colorimetric statistics in the CIE L*a*b* color space.&quot;&quot;&quot;</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasurementInfo</span>
 
@@ -604,15 +604,12 @@
 <div class="viewcode-block" id="ColorLab">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.schema.html#phenotypic.schema.ColorLab">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ColorLab</span><span class="p">(</span><span class="n">MeasurementInfo</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Measure colony color statistics across multiple perceptual color spaces.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Robust CIE L*a*b* colorimetric summary for a colony.</span>
 
-<span class="sd">    Extract per-colony color features from CIE XYZ, chromaticity (xy),</span>
-<span class="sd">    CIE Lab (perceptually uniform), and HSV color spaces. For each</span>
-<span class="sd">    channel the standard statistical suite is computed (min, Q1, mean,</span>
-<span class="sd">    median, Q3, max, std dev, coefficient of variation), plus Lab chroma</span>
-<span class="sd">    estimates.</span>
-
-<span class="sd">    Covers the CIE L*a*b* channels (L*, a*, b*) plus chroma estimates.</span>
+<span class="sd">    Reports two robust center colors -- the ΔE76 (Euclidean) geometric median</span>
+<span class="sd">    and the ΔE2000 medoid -- plus ΔE2000 within-colony consistency scalars, the</span>
+<span class="sd">    total Euclidean color variance, and an sRGB hex swatch (plot-only) derived</span>
+<span class="sd">    from the medoid.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
 <div class="viewcode-block" id="ColorLab.category">
@@ -622,98 +619,45 @@
         <span class="k">return</span> <span class="s2">&quot;ColorLab&quot;</span></div>
 
 
-    <span class="n">L_STAR_MINIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;L*Min&quot;</span><span class="p">,</span> <span class="s2">&quot;The minimum L* value of the object&quot;</span><span class="p">)</span>
-    <span class="n">L_STAR_Q1</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;L*Q1&quot;</span><span class="p">,</span> <span class="s2">&quot;The lower quartile (Q1) L* value of the object&quot;</span><span class="p">)</span>
-    <span class="n">L_STAR_MEAN</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;L*Mean&quot;</span><span class="p">,</span> <span class="s2">&quot;The mean L* value of the object&quot;</span><span class="p">)</span>
-    <span class="n">L_STAR_MEDIAN</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;L*Median&quot;</span><span class="p">,</span> <span class="s2">&quot;The median L* value of the object&quot;</span><span class="p">)</span>
-    <span class="n">L_STAR_Q3</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;L*Q3&quot;</span><span class="p">,</span> <span class="s2">&quot;The upper quartile (Q3) L* value of the object&quot;</span><span class="p">)</span>
-    <span class="n">L_STAR_MAXIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;L*Max&quot;</span><span class="p">,</span> <span class="s2">&quot;The maximum L* value of the object&quot;</span><span class="p">)</span>
-    <span class="n">L_STAR_STDDEV</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;L*StdDev&quot;</span><span class="p">,</span> <span class="s2">&quot;The standard deviation of the L* value of the object&quot;</span><span class="p">)</span>
-    <span class="n">L_STAR_COEFF_VARIANCE</span> <span class="o">=</span> <span class="p">(</span>
-        <span class="s2">&quot;L*CoeffVar&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;The coefficient of variation of the L* value of the object&quot;</span><span class="p">,</span>
-    <span class="p">)</span>
+    <span class="c1"># -- ΔE76 geometric-median center (continuous, 0.5 breakdown) --</span>
+    <span class="n">L_STAR_GEOMEDIAN</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;L*GeoMedian&quot;</span><span class="p">,</span> <span class="s2">&quot;L* of the ΔE76 (Euclidean) geometric-median center color of the object&quot;</span><span class="p">)</span>
+    <span class="n">A_STAR_GEOMEDIAN</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;a*GeoMedian&quot;</span><span class="p">,</span> <span class="s2">&quot;a* of the ΔE76 (Euclidean) geometric-median center color of the object&quot;</span><span class="p">)</span>
+    <span class="n">B_STAR_GEOMEDIAN</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;b*GeoMedian&quot;</span><span class="p">,</span> <span class="s2">&quot;b* of the ΔE76 (Euclidean) geometric-median center color of the object&quot;</span><span class="p">)</span>
 
-<div class="viewcode-block" id="ColorLab.l_star_headers">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.schema.html#phenotypic.schema.ColorLab.l_star_headers">[docs]</a>
+    <span class="c1"># -- ΔE2000 medoid center (real pixel, perceptually-corrected) --</span>
+    <span class="n">L_STAR_MEDOID</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;L*Medoid&quot;</span><span class="p">,</span> <span class="s2">&quot;L* of the ΔE2000 medoid center color (real pixel minimizing total ΔE2000)&quot;</span><span class="p">)</span>
+    <span class="n">A_STAR_MEDOID</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;a*Medoid&quot;</span><span class="p">,</span> <span class="s2">&quot;a* of the ΔE2000 medoid center color (real pixel minimizing total ΔE2000)&quot;</span><span class="p">)</span>
+    <span class="n">B_STAR_MEDOID</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;b*Medoid&quot;</span><span class="p">,</span> <span class="s2">&quot;b* of the ΔE2000 medoid center color (real pixel minimizing total ΔE2000)&quot;</span><span class="p">)</span>
+
+    <span class="c1"># -- ΔE2000 within-colony consistency, measured from the medoid --</span>
+    <span class="n">DELTA_E2000_MEDIAN</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;DeltaE2000MedianFromMedoid&quot;</span><span class="p">,</span> <span class="s2">&quot;Median ΔE2000 of object pixels from the ΔE2000 medoid center (robust perceptual MAD)&quot;</span><span class="p">)</span>
+    <span class="n">DELTA_E2000_MEAN</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;DeltaE2000MeanFromMedoid&quot;</span><span class="p">,</span> <span class="s2">&quot;Mean ΔE2000 of object pixels from the ΔE2000 medoid center (color-uniformity standard)&quot;</span><span class="p">)</span>
+    <span class="n">DELTA_E2000_P95</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;DeltaE2000P95FromMedoid&quot;</span><span class="p">,</span> <span class="s2">&quot;95th-percentile ΔE2000 of object pixels from the ΔE2000 medoid center (worst-case / sectoring flag)&quot;</span><span class="p">)</span>
+
+    <span class="c1"># -- classical Euclidean spread --</span>
+    <span class="n">LAB_TOTAL_VARIANCE</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;LabTotalVariance&quot;</span><span class="p">,</span> <span class="s2">&quot;Trace of the 3x3 L*a*b* covariance (var L* + var a* + var b*); mean-squared ΔE76 spread about the arithmetic mean (NOT about the reported GeoMedian/Medoid center)&quot;</span><span class="p">)</span>
+
+    <span class="c1"># -- plot-only swatch --</span>
+    <span class="n">MEDOID_COLOR_HEX</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;MedoidColorHex&quot;</span><span class="p">,</span> <span class="s2">&quot;sRGB hex string of the ΔE2000 medoid color; for plot visualization only (not a numeric measurement)&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ColorLab.robust_headers">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.schema.html#phenotypic.schema.ColorLab.robust_headers">[docs]</a>
     <span class="nd">@classmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">l_star_headers</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">robust_headers</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
         <span class="k">return</span> <span class="p">[</span>
-            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">L_STAR_MINIMUM</span><span class="p">),</span>
-            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">L_STAR_Q1</span><span class="p">),</span>
-            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">L_STAR_MEAN</span><span class="p">),</span>
-            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">L_STAR_MEDIAN</span><span class="p">),</span>
-            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">L_STAR_Q3</span><span class="p">),</span>
-            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">L_STAR_MAXIMUM</span><span class="p">),</span>
-            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">L_STAR_STDDEV</span><span class="p">),</span>
-            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">L_STAR_COEFF_VARIANCE</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">L_STAR_GEOMEDIAN</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">A_STAR_GEOMEDIAN</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">B_STAR_GEOMEDIAN</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">L_STAR_MEDOID</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">A_STAR_MEDOID</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">B_STAR_MEDOID</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">DELTA_E2000_MEDIAN</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">DELTA_E2000_MEAN</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">DELTA_E2000_P95</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">LAB_TOTAL_VARIANCE</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">MEDOID_COLOR_HEX</span><span class="p">),</span>
         <span class="p">]</span></div>
-
-
-    <span class="n">A_STAR_MINIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;a*Min&quot;</span><span class="p">,</span> <span class="s2">&quot;The minimum a* value of the object&quot;</span><span class="p">)</span>
-    <span class="n">A_STAR_Q1</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;a*Q1&quot;</span><span class="p">,</span> <span class="s2">&quot;The lower quartile (Q1) a* value of the object&quot;</span><span class="p">)</span>
-    <span class="n">A_STAR_MEAN</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;a*Mean&quot;</span><span class="p">,</span> <span class="s2">&quot;The mean a* value of the object&quot;</span><span class="p">)</span>
-    <span class="n">A_STAR_MEDIAN</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;a*Median&quot;</span><span class="p">,</span> <span class="s2">&quot;The median a* value of the object&quot;</span><span class="p">)</span>
-    <span class="n">A_STAR_Q3</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;a*Q3&quot;</span><span class="p">,</span> <span class="s2">&quot;The upper quartile (Q3) a* value of the object&quot;</span><span class="p">)</span>
-    <span class="n">A_STAR_MAXIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;a*Max&quot;</span><span class="p">,</span> <span class="s2">&quot;The maximum a* value of the object&quot;</span><span class="p">)</span>
-    <span class="n">A_STAR_STDDEV</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;a*StdDev&quot;</span><span class="p">,</span> <span class="s2">&quot;The standard deviation of the a* value of the object&quot;</span><span class="p">)</span>
-    <span class="n">A_STAR_COEFF_VARIANCE</span> <span class="o">=</span> <span class="p">(</span>
-        <span class="s2">&quot;a*CoeffVar&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;The coefficient of variation of the a* value of the object&quot;</span><span class="p">,</span>
-    <span class="p">)</span>
-
-<div class="viewcode-block" id="ColorLab.a_star_headers">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.schema.html#phenotypic.schema.ColorLab.a_star_headers">[docs]</a>
-    <span class="nd">@classmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">a_star_headers</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
-        <span class="k">return</span> <span class="p">[</span>
-            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">A_STAR_MINIMUM</span><span class="p">),</span>
-            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">A_STAR_Q1</span><span class="p">),</span>
-            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">A_STAR_MEAN</span><span class="p">),</span>
-            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">A_STAR_MEDIAN</span><span class="p">),</span>
-            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">A_STAR_Q3</span><span class="p">),</span>
-            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">A_STAR_MAXIMUM</span><span class="p">),</span>
-            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">A_STAR_STDDEV</span><span class="p">),</span>
-            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">A_STAR_COEFF_VARIANCE</span><span class="p">),</span>
-        <span class="p">]</span></div>
-
-
-    <span class="n">B_STAR_MINIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;b*Min&quot;</span><span class="p">,</span> <span class="s2">&quot;The minimum b* value of the object&quot;</span><span class="p">)</span>
-    <span class="n">B_STAR_Q1</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;b*Q1&quot;</span><span class="p">,</span> <span class="s2">&quot;The lower quartile (Q1) b* value of the object&quot;</span><span class="p">)</span>
-    <span class="n">B_STAR_MEAN</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;b*Mean&quot;</span><span class="p">,</span> <span class="s2">&quot;The mean b* value of the object&quot;</span><span class="p">)</span>
-    <span class="n">B_STAR_MEDIAN</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;b*Median&quot;</span><span class="p">,</span> <span class="s2">&quot;The median b* value of the object&quot;</span><span class="p">)</span>
-    <span class="n">B_STAR_Q3</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;b*Q3&quot;</span><span class="p">,</span> <span class="s2">&quot;The upper quartile (Q3) b* value of the object&quot;</span><span class="p">)</span>
-    <span class="n">B_STAR_MAXIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;b*Max&quot;</span><span class="p">,</span> <span class="s2">&quot;The maximum b* value of the object&quot;</span><span class="p">)</span>
-    <span class="n">B_STAR_STDDEV</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;b*StdDev&quot;</span><span class="p">,</span> <span class="s2">&quot;The standard deviation of the b* value of the object&quot;</span><span class="p">)</span>
-    <span class="n">B_STAR_COEFF_VARIANCE</span> <span class="o">=</span> <span class="p">(</span>
-        <span class="s2">&quot;b*CoeffVar&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;The coefficient of variation of the b* value of the object&quot;</span><span class="p">,</span>
-    <span class="p">)</span>
-
-<div class="viewcode-block" id="ColorLab.b_star_headers">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.schema.html#phenotypic.schema.ColorLab.b_star_headers">[docs]</a>
-    <span class="nd">@classmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">b_star_headers</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
-        <span class="k">return</span> <span class="p">[</span>
-            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">B_STAR_MINIMUM</span><span class="p">),</span>
-            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">B_STAR_Q1</span><span class="p">),</span>
-            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">B_STAR_MEAN</span><span class="p">),</span>
-            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">B_STAR_MEDIAN</span><span class="p">),</span>
-            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">B_STAR_Q3</span><span class="p">),</span>
-            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">B_STAR_MAXIMUM</span><span class="p">),</span>
-            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">B_STAR_STDDEV</span><span class="p">),</span>
-            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">B_STAR_COEFF_VARIANCE</span><span class="p">),</span>
-        <span class="p">]</span></div>
-
-
-    <span class="n">CHROMA_EST_MEAN</span> <span class="o">=</span> <span class="p">(</span>
-        <span class="s2">&quot;ChromaEstimatedMean&quot;</span><span class="p">,</span>
-        <span class="sa">r</span><span class="s2">&quot;The mean chroma estimation of the object calculated using :math:`\(sqrt(a^{*}_</span><span class="si">{mean}</span><span class="s2">^2 + b^{*}_</span><span class="si">{mean}</span><span class="s2">)^2}`&quot;</span><span class="p">,</span>
-    <span class="p">)</span>
-    <span class="n">CHROMA_EST_MEDIAN</span> <span class="o">=</span> <span class="p">(</span>
-        <span class="s2">&quot;ChromaEstimatedMedian&quot;</span><span class="p">,</span>
-        <span class="sa">r</span><span class="s2">&quot;The median chroma estimation of the object using :math:`\sqrt({a*_</span><span class="si">{median}</span><span class="s2">^2 + b*_</span><span class="si">{median}</span><span class="s2">)^2}`&quot;</span><span class="p">,</span>
-    <span class="p">)</span></div>
+</div>
 
 </pre></div>
 

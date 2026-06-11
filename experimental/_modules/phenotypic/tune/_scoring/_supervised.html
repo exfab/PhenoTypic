@@ -619,8 +619,9 @@
 <span class="sd">  :class:`phenotypic.analysis.ExpectedVsDetectedCount` (the master&#39;s count QC</span>
 <span class="sd">  check — do *not* re-implement counting, §1 &quot;reuse, don&#39;t duplicate&quot;) to get</span>
 <span class="sd">  each group&#39;s ``|detected − expected| / expected`` divergence, fold it to a</span>
-<span class="sd">  *higher-is-better* ``[0, 1]`` score anchored on the check&#39;s ``fail_threshold``,</span>
-<span class="sd">  and emit the ``&quot;CountMAE&quot;`` term.</span>
+<span class="sd">  natural-goodness ``[0, 1]`` value anchored on the check&#39;s ``fail_threshold``</span>
+<span class="sd">  (``_TERM_SENSE = HIGHER_BETTER``; the base complements it to cost), and emit</span>
+<span class="sd">  the ``&quot;CountMAE&quot;`` term.</span>
 <span class="sd">* **none tier** (abstain): no resolvable GT → :meth:`availability` is ``False``</span>
 <span class="sd">  and the engine degrades to the configured fallback objective.</span>
 
@@ -650,6 +651,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">._gt_loader</span><span class="w"> </span><span class="kn">import</span> <span class="n">GroundTruthMasks</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._matching</span><span class="w"> </span><span class="kn">import</span> <span class="n">MatchPair</span><span class="p">,</span> <span class="n">match_iou_greedy</span><span class="p">,</span> <span class="n">match_per_grid_cell</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._metrics</span><span class="w"> </span><span class="kn">import</span> <span class="n">dice</span><span class="p">,</span> <span class="n">iou</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._orient</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sense</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._qc_scorer</span><span class="w"> </span><span class="kn">import</span> <span class="n">fold_expected_vs_detected_count</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._scorer</span><span class="w"> </span><span class="kn">import</span> <span class="n">Scorer</span>
 
@@ -743,6 +745,9 @@
     <span class="n">region_term_name</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Region&quot;</span>
     <span class="c1">#: The count-tier folded-divergence term name.</span>
     <span class="n">count_term_name</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;CountMAE&quot;</span>
+    <span class="c1">#: Both tier terms (Region = Dice/IoU; CountMAE = folded count goodness) are</span>
+    <span class="c1">#: bounded [0,1] goodness; the base complements them into cost.</span>
+    <span class="n">_TERM_SENSE</span> <span class="o">=</span> <span class="n">Sense</span><span class="o">.</span><span class="n">HIGHER_BETTER</span>
 
     <span class="n">gt</span><span class="p">:</span> <span class="n">GroundTruthMasks</span>
     <span class="n">region_metric</span><span class="p">:</span> <span class="n">RegionMetric</span> <span class="o">=</span> <span class="s2">&quot;dice&quot;</span>
@@ -802,12 +807,10 @@
         <span class="k">return</span> <span class="kc">False</span></div>
 
 
-<div class="viewcode-block" id="SupervisedScorer.score_image">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.html#phenotypic.tune.SupervisedScorer.score_image">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">score_image</span><span class="p">(</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_score_terms</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">measurements</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Score one image against its ground truth, by GT modality tier.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Natural goodness terms by GT modality tier (the base complements to cost).</span>
 
 <span class="sd">        Dispatches on :meth:`GroundTruthMasks.modality`:</span>
 
@@ -819,8 +822,9 @@
 <span class="sd">          An unresolved name yields no term (nothing to score).</span>
 <span class="sd">        * **count** — reuse the configured :attr:`count_check`</span>
 <span class="sd">          (:class:`ExpectedVsDetectedCount`) to get each group&#39;s normalized</span>
-<span class="sd">          count divergence, fold it to a higher-is-better ``[0, 1]`` score</span>
-<span class="sd">          anchored on ``fail_threshold``, and emit ``&quot;CountMAE&quot;``.</span>
+<span class="sd">          count divergence, fold it to a natural goodness ``[0, 1]`` value</span>
+<span class="sd">          anchored on ``fail_threshold``, and emit ``&quot;CountMAE&quot;``. The base</span>
+<span class="sd">          :meth:`score_image` complements each term to cost.</span>
 <span class="sd">        * **none** — abstain (empty mapping).</span>
 
 <span class="sd">        Args:</span>
@@ -830,17 +834,17 @@
 <span class="sd">            measurements: The candidate pipeline&#39;s measurement frame.</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            A mapping with the runnable tier&#39;s term — ``{&quot;Region&quot;: ...}`` (mask),</span>
-<span class="sd">            ``{&quot;CountMAE&quot;: ...}`` (count) — or ``{}`` when no tier can score this</span>
-<span class="sd">            image (no GT mask for the name, or count tier without a check).</span>
+<span class="sd">            A mapping with the runnable tier&#39;s natural goodness term —</span>
+<span class="sd">            ``{&quot;Region&quot;: ...}`` (mask), ``{&quot;CountMAE&quot;: ...}`` (count) — or</span>
+<span class="sd">            ``{}`` when no tier can score this image. Values are natural goodness</span>
+<span class="sd">            in ``[0, 1]``; the base ``score_image`` orients them to cost.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">modality</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">gt</span><span class="o">.</span><span class="n">modality</span><span class="p">()</span>
         <span class="k">if</span> <span class="n">modality</span> <span class="o">==</span> <span class="s2">&quot;mask&quot;</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_score_mask_tier</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">measurements</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">modality</span> <span class="o">==</span> <span class="s2">&quot;count&quot;</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_score_count_tier</span><span class="p">(</span><span class="n">measurements</span><span class="p">)</span>
-        <span class="k">return</span> <span class="p">{}</span></div>
-
+        <span class="k">return</span> <span class="p">{}</span>
 
     <span class="c1"># ------------------------------------------------------------------ #</span>
     <span class="c1"># mask tier — match → per-pair region metric → macro-average</span>

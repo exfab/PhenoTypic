@@ -614,9 +614,11 @@
 <span class="sd">* **Count** — *optional* expected-vs-detected grid count, reused from</span>
 <span class="sd">  ``QCScorer`` when a path-configured ``count_check`` is supplied (family C.6).</span>
 
-<span class="sd">Every term is **fixed-normalized** to ``[0, 1]`` (higher = better) so the</span>
-<span class="sd">optimum cannot migrate when the parameter grid&#39;s endpoints change — the &quot;Böck</span>
-<span class="sd">trap&quot; (``§B.3``) that min–max-over-the-tested-set normalization falls into.</span>
+<span class="sd">Every term is **fixed-normalized** to a natural-goodness value in ``[0, 1]``</span>
+<span class="sd">(higher = better; ``_TERM_SENSE = HIGHER_BETTER``, so the base</span>
+<span class="sd">:meth:`Scorer.score_image` complements each into **cost**) so the optimum cannot</span>
+<span class="sd">migrate when the parameter grid&#39;s endpoints change — the &quot;Böck trap&quot; (``§B.3``)</span>
+<span class="sd">that min–max-over-the-tested-set normalization falls into.</span>
 
 <span class="sd">The scorer is **gated** behind meta-validation (``D1``): :meth:`meta_validate`</span>
 <span class="sd">correlates the proxy against ground truth and caches an enable/abstain flag;</span>
@@ -637,6 +639,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.analysis</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExpectedVsDetectedCount</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">SHAPE</span><span class="p">,</span> <span class="n">SIZE</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">._orient</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sense</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._qc_scorer</span><span class="w"> </span><span class="kn">import</span> <span class="n">fold_expected_vs_detected_count</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._scorer</span><span class="w"> </span><span class="kn">import</span> <span class="n">Scorer</span>
 
@@ -701,7 +704,8 @@
 <span class="sd">    measurement columns — ``Shape_*`` and ``Size_*`` — for the shape and size</span>
 <span class="sd">    terms (no geometry is recomputed), reads the image grayscale + mask for the</span>
 <span class="sd">    contrast term, and optionally reuses :class:`QCScorer`&#39;s expected-vs-detected</span>
-<span class="sd">    grid count. All terms are fixed-normalized to ``[0, 1]`` (higher = better).</span>
+<span class="sd">    grid count. All terms are fixed-normalized to a natural-goodness value in</span>
+<span class="sd">    ``[0, 1]`` (higher = better); the base complements each into cost.</span>
 
 <span class="sd">    The scorer is **unavailable until meta-validated**: :meth:`availability`</span>
 <span class="sd">    returns ``False`` (so the engine degrades to :class:`QCScorer`) until</span>
@@ -747,6 +751,10 @@
 
     <span class="c1">#: The optional grid-count term name (present iff ``count_check`` is set).</span>
     <span class="n">count_term_name</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Count&quot;</span>
+
+    <span class="c1">#: Every proxy term is bounded [0,1] goodness (fixed-normalized); the base</span>
+    <span class="c1">#: complements each into cost.</span>
+    <span class="n">_TERM_SENSE</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="n">Sense</span><span class="p">]</span> <span class="o">=</span> <span class="n">Sense</span><span class="o">.</span><span class="n">HIGHER_BETTER</span>
 
     <span class="n">count_check</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ExpectedVsDetectedCount</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">replicate_groupby</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>
@@ -900,9 +908,7 @@
     <span class="c1"># ----------------------------------------------------------------- #</span>
     <span class="c1"># the proxy terms (Task 1)</span>
     <span class="c1"># ----------------------------------------------------------------- #</span>
-<div class="viewcode-block" id="ReferenceFreeScorer.score_image">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.html#phenotypic.tune.ReferenceFreeScorer.score_image">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">score_image</span><span class="p">(</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_score_terms</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">measurements</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Score one image&#39;s segmentation as fixed-normalized proxy terms.</span>
@@ -914,10 +920,11 @@
 <span class="sd">                the category-prefixed ``Shape_*``/``Size_*`` columns.</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            A mapping of proxy term → score in ``[0, 1]`` (higher = better):</span>
-<span class="sd">            ``ShapeRegularity``, ``Contrast``, ``SizeCV``, and — when a</span>
-<span class="sd">            ``count_check`` is configured — ``Count``. Keys are stable across</span>
-<span class="sd">            images so the ``Evaluator`` can aggregate per term.</span>
+<span class="sd">            A mapping of proxy term → natural goodness in ``[0, 1]`` (higher =</span>
+<span class="sd">            better): ``ShapeRegularity``, ``Contrast``, ``SizeCV``, and — when a</span>
+<span class="sd">            ``count_check`` is configured — ``Count``. The base complements these</span>
+<span class="sd">            goodness values to cost. Keys are stable across images so the</span>
+<span class="sd">            ``Evaluator`` can aggregate per term.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">empty</span> <span class="o">=</span> <span class="n">measurements</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">measurements</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span>
         <span class="n">terms</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
@@ -927,8 +934,7 @@
         <span class="p">}</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">count_check</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">terms</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">count_term_name</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_count</span><span class="p">(</span><span class="n">measurements</span><span class="p">,</span> <span class="n">empty</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">terms</span></div>
-
+        <span class="k">return</span> <span class="n">terms</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_shape_regularity</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">measurements</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">empty</span><span class="p">:</span> <span class="nb">bool</span>

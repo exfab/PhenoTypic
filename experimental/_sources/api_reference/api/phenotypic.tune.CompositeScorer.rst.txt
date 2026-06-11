@@ -42,6 +42,7 @@ phenotypic.tune.CompositeScorer
       ~CompositeScorer.schema
       ~CompositeScorer.schema_json
       ~CompositeScorer.score_image
+      ~CompositeScorer.set_active_set
       ~CompositeScorer.update_forward_refs
       ~CompositeScorer.validate
    
@@ -61,5 +62,7 @@ phenotypic.tune.CompositeScorer
       ~CompositeScorer.scorers
       ~CompositeScorer.weights
       ~CompositeScorer.multi_objective
+      ~CompositeScorer.blend
+      ~CompositeScorer.rho
    
    

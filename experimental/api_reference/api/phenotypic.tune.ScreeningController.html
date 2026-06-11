@@ -1038,6 +1038,12 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.geometric_median.html">phenotypic.util.geometric_median</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.generate_output_key.html">phenotypic.util.generate_output_key</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.split_measurements.html">phenotypic.util.split_measurements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.robust_color_center.html">phenotypic.util.robust_color_center</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.medoid_ciede2000.html">phenotypic.util.medoid_ciede2000</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.delta_e2000_spread.html">phenotypic.util.delta_e2000_spread</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.hsv_to_cone.html">phenotypic.util.hsv_to_cone</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.cone_to_hsv.html">phenotypic.util.cone_to_hsv</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.lab_to_srgb_hex.html">phenotypic.util.lab_to_srgb_hex</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.decode_well_position.html">phenotypic.util.decode_well_position</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.ImageMetricsCalculator.html">phenotypic.util.ImageMetricsCalculator</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.NoiseMetrics.html">phenotypic.util.NoiseMetrics</a></li>
@@ -1133,9 +1139,9 @@ focused round runs the reduced space).</p></li>
 deterministic freeze decision.</p></li>
 <li><p><strong>engine_factory</strong> (<em>Optional</em><em>[</em><em>Callable</em><em>[</em><em>[</em><a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.TuningSpec" title="phenotypic.tune.TuningSpec"><em>TuningSpec</em></a><em>, </em><em>Any</em><em>]</em><em>, </em><em>Any</em><em>]</em><em>]</em>) – Builds a tuning engine from <code class="docutils literal notranslate"><span class="pre">(spec,</span> <span class="pre">store)</span></code>; defaults to
 the real <a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.TuningEngine" title="phenotypic.tune.TuningEngine"><code class="xref py py-class docutils literal notranslate"><span class="pre">TuningEngine</span></code></a>. Injectable for tests.</p></li>
-<li><p><strong>_focused_score_penalty</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Test seam — subtract this from every fresh
-focused-round score to exercise the wrong-freeze recovery path. Never
-set in production (default <code class="docutils literal notranslate"><span class="pre">0.0</span></code>).</p></li>
+<li><p><strong>_focused_score_penalty</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Test seam — add this to every fresh
+focused-round score (raise its cost) to exercise the wrong-freeze
+recovery path. Never set in production (default <code class="docutils literal notranslate"><span class="pre">0.0</span></code>).</p></li>
 </ul>
 </dd>
 </dl>

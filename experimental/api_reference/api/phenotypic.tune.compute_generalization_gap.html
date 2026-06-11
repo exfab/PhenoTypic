@@ -1038,6 +1038,12 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.geometric_median.html">phenotypic.util.geometric_median</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.generate_output_key.html">phenotypic.util.generate_output_key</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.split_measurements.html">phenotypic.util.split_measurements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.robust_color_center.html">phenotypic.util.robust_color_center</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.medoid_ciede2000.html">phenotypic.util.medoid_ciede2000</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.delta_e2000_spread.html">phenotypic.util.delta_e2000_spread</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.hsv_to_cone.html">phenotypic.util.hsv_to_cone</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.cone_to_hsv.html">phenotypic.util.cone_to_hsv</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.lab_to_srgb_hex.html">phenotypic.util.lab_to_srgb_hex</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.decode_well_position.html">phenotypic.util.decode_well_position</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.ImageMetricsCalculator.html">phenotypic.util.ImageMetricsCalculator</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.NoiseMetrics.html">phenotypic.util.NoiseMetrics</a></li>
@@ -1130,8 +1136,11 @@ high the relative slack already covers it.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>cal_score</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – The winner’s calibration (in-search) score (higher = better).</p></li>
-<li><p><strong>heldout_score</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – The winner’s held-out score (higher = better).</p></li>
+<li><p><strong>cal_score</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – The winner’s calibration (in-search) score (higher = better;
+under the cost convention the caller passes the goodness-equivalent
+<code class="docutils literal notranslate"><span class="pre">1</span> <span class="pre">−</span> <span class="pre">cal_cost</span></code> — see Note).</p></li>
+<li><p><strong>heldout_score</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – The winner’s held-out score (higher = better; under the
+cost convention the caller passes <code class="docutils literal notranslate"><span class="pre">1</span> <span class="pre">−</span> <span class="pre">heldout_cost</span></code> — see Note).</p></li>
 <li><p><strong>rel_margin</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – The relative-drop margin (<code class="docutils literal notranslate"><span class="pre">HeldOutConfig.gap_margin_relative</span></code>).</p></li>
 <li><p><strong>abs_margin</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – The absolute-drop margin (<code class="docutils literal notranslate"><span class="pre">HeldOutConfig.gap_margin_absolute</span></code>).</p></li>
 </ul>
@@ -1145,6 +1154,12 @@ signed (negative when the held-out score <em>improved</em>); <code class="docuti
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a>[<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a>, <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a>, <a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)">bool</a>]</p>
 </dd>
 </dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This function is direction-agnostic. Under the cost convention the
+caller passes goodness-equivalents (<code class="docutils literal notranslate"><span class="pre">1</span> <span class="pre">−</span> <span class="pre">cost</span></code>) so the unchanged
+formula is the standard loss-space gap (<code class="docutils literal notranslate"><span class="pre">heldout_cost</span> <span class="pre">−</span> <span class="pre">cal_cost</span></code>).</p>
+</div>
 <div class="admonition-examples admonition">
 <p class="admonition-title">Examples</p>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">rel</span><span class="p">,</span> <span class="n">absolute</span><span class="p">,</span> <span class="n">flagged</span> <span class="o">=</span> <span class="n">compute_generalization_gap</span><span class="p">(</span>

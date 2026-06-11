@@ -677,7 +677,7 @@
 <span class="sd">                uniform factory signature but unused by the zero-dependency</span>
 <span class="sd">                grid/random strategies.</span>
 <span class="sd">            directions: Per-objective Optuna ``directions`` for a multi-objective</span>
-<span class="sd">                run (``[&quot;maximize&quot;] * n``), inferred from the scorer by the</span>
+<span class="sd">                run (``[&quot;minimize&quot;] * n``), inferred from the scorer by the</span>
 <span class="sd">                engine. ``None`` → single-objective. Only the Optuna backend</span>
 <span class="sd">                honors it; grid/random ignore it (4.8 rejects pairing them with a</span>
 <span class="sd">                multi-objective scorer at validation, so they never receive it).</span>
@@ -797,7 +797,7 @@
 <span class="sd">            space: The search space to materialize each trial from.</span>
 <span class="sd">            store: The study store (the Optuna study owns persistence; passed for</span>
 <span class="sd">                the uniform factory signature).</span>
-<span class="sd">            directions: Per-objective ``[&quot;maximize&quot;] * n`` for a multi-objective</span>
+<span class="sd">            directions: Per-objective ``[&quot;minimize&quot;] * n`` for a multi-objective</span>
 <span class="sd">                run, inferred from the scorer; ``None`` → single-objective.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">._optuna</span><span class="w"> </span><span class="kn">import</span> <span class="n">OptunaStrategy</span>

@@ -1038,6 +1038,12 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.geometric_median.html">phenotypic.util.geometric_median</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.generate_output_key.html">phenotypic.util.generate_output_key</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.split_measurements.html">phenotypic.util.split_measurements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.robust_color_center.html">phenotypic.util.robust_color_center</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.medoid_ciede2000.html">phenotypic.util.medoid_ciede2000</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.delta_e2000_spread.html">phenotypic.util.delta_e2000_spread</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.hsv_to_cone.html">phenotypic.util.hsv_to_cone</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.cone_to_hsv.html">phenotypic.util.cone_to_hsv</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.lab_to_srgb_hex.html">phenotypic.util.lab_to_srgb_hex</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.decode_well_position.html">phenotypic.util.decode_well_position</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.ImageMetricsCalculator.html">phenotypic.util.ImageMetricsCalculator</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.NoiseMetrics.html">phenotypic.util.NoiseMetrics</a></li>
@@ -1132,7 +1138,7 @@ whose own storage reconstructs the sampler state.</p>
 <td><p>Record one completed <code class="docutils literal notranslate"><span class="pre">trial</span></code>.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.JournalStudyStore.best" title="phenotypic.tune.JournalStudyStore.best"><code class="xref py py-obj docutils literal notranslate"><span class="pre">best</span></code></a></p></td>
-<td><p>The non-failed trial with the highest score, or <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></td>
+<td><p>The non-failed trial with the lowest cost score, or <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.JournalStudyStore.completed_count" title="phenotypic.tune.JournalStudyStore.completed_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">completed_count</span></code></a></p></td>
 <td><p>The number of completed (non-failed) trials; pruned counts as done.</p></td>
@@ -1212,7 +1218,7 @@ whose own storage reconstructs the sampler state.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tune.JournalStudyStore.best">
 <span class="sig-name descname"><span class="pre">best</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.Trial" title="phenotypic.tune._study_store.Trial"><span class="pre">Trial</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/tune/_study_store.html#JournalStudyStore.best"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tune.JournalStudyStore.best" title="Link to this definition">#</a></dt>
-<dd><p>The non-failed trial with the highest score, or <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p>
+<dd><p>The non-failed trial with the lowest cost score, or <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.Trial" title="phenotypic.tune._study_store.Trial"><em>Trial</em></a> | None</p>

@@ -664,8 +664,11 @@
 
 <span class="c1">#: The study name every tune run uses (the Optuna ``study_name`` + the marker&#39;s</span>
 <span class="c1">#: ``study_name`` field). A single constant keeps the store, the SLURM fleet, and</span>
-<span class="c1">#: the marker in lockstep.</span>
-<span class="n">_STUDY_NAME</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;tune&quot;</span>
+<span class="c1">#: the marker in lockstep. **Bumped from ``&quot;tune&quot;`` for the minimize-cost cutover</span>
+<span class="c1">#: (spec §7 Phase 2, OQ7):** new code only ever opens this study, so a pre-cutover</span>
+<span class="c1">#: ``&quot;tune&quot;`` (maximize) study is never reopened — the silent-maximize hazard is</span>
+<span class="c1">#: impossible by construction, not contingent on a runtime guard.</span>
+<span class="n">_STUDY_NAME</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;tune_cost_v1&quot;</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_default_study_db_url</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
@@ -1034,7 +1037,7 @@
 <span class="sd">            3-way fallback (env var &gt; local ``study.db``) in</span>
 <span class="sd">            :func:`_resolve_storage_url`.</span>
 <span class="sd">        resume_path: The ``trials.parquet`` path the journal resumes from.</span>
-<span class="sd">        directions: Per-objective ``[&quot;maximize&quot;] * n`` for a multi-objective run</span>
+<span class="sd">        directions: Per-objective ``[&quot;minimize&quot;] * n`` for a multi-objective run</span>
 <span class="sd">            (Optuna store only); ``None`` → single-objective.</span>
 
 <span class="sd">    Returns:</span>
@@ -1562,8 +1565,9 @@
 
 <span class="sd">    * ``pareto_front.parquet`` — the front&#39;s trials (same schema as</span>
 <span class="sd">      ``trials.parquet``, ``objectives_json`` populated);</span>
-<span class="sd">    * ``best_&lt;objective&gt;.json`` — the front pipeline maximizing each objective</span>
-<span class="sd">      axis, plus that axis&#39;s :func:`compute_param_importance`;</span>
+<span class="sd">    * ``best_&lt;objective&gt;.json`` — the front pipeline minimizing each objective</span>
+<span class="sd">      axis&#39;s cost (lowest-cost trial per axis), plus that axis&#39;s</span>
+<span class="sd">      :func:`compute_param_importance`;</span>
 <span class="sd">    * and it overwrites the top-level ``best_pipeline.json`` with the **knee**</span>
 <span class="sd">      (the max-curvature compromise pick).</span>
 
@@ -1595,7 +1599,7 @@
         <span class="n">front</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">objectives</span> <span class="ow">or</span> <span class="p">{}</span>
     <span class="p">)</span>
     <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">objective_axes</span><span class="p">:</span>
-        <span class="n">winner</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span>
+        <span class="n">winner</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span>
             <span class="p">(</span><span class="n">t</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">front</span> <span class="k">if</span> <span class="n">t</span><span class="o">.</span><span class="n">objectives</span> <span class="ow">and</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">t</span><span class="o">.</span><span class="n">objectives</span><span class="p">),</span>
             <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">t</span><span class="p">:</span> <span class="n">t</span><span class="o">.</span><span class="n">objectives</span><span class="p">[</span><span class="n">name</span><span class="p">],</span>  <span class="c1"># type: ignore[index]</span>
             <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>

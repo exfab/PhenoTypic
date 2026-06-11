@@ -610,6 +610,7 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">._evaluation</span><span class="w"> </span><span class="kn">import</span> <span class="n">build_pipeline</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._multi_objective</span><span class="w"> </span><span class="kn">import</span> <span class="n">objective_directions</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._scoring</span><span class="w"> </span><span class="kn">import</span> <span class="n">CompositeScorer</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._spec</span><span class="w"> </span><span class="kn">import</span> <span class="n">TuningSpec</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._study._protocol</span><span class="w"> </span><span class="kn">import</span> <span class="n">StudyStore</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._study_store</span><span class="w"> </span><span class="kn">import</span> <span class="n">JournalStudyStore</span><span class="p">,</span> <span class="n">Trial</span>
@@ -667,6 +668,30 @@
         <span class="c1"># scorer yields per-objective ``directions`` the Optuna backend turns into</span>
         <span class="c1"># an NSGA-II Pareto study; ``None`` keeps the scalar single-objective path.</span>
         <span class="n">directions</span> <span class="o">=</span> <span class="n">objective_directions</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">scorer</span><span class="p">)</span>
+
+        <span class="c1"># Pin the study-global active set for the augmented Tchebycheff composite</span>
+        <span class="c1"># (§6.3): the children available study-wide form the fixed roster for both</span>
+        <span class="c1"># the Tchebycheff max numerator and the normalizer, so the normalizer is a</span>
+        <span class="c1"># study-global constant and per-image abstention stays a robust-aggregate</span>
+        <span class="c1"># matter (not a max-composition one). Non-composite / non-Tchebycheff</span>
+        <span class="c1"># scorers ignore this.</span>
+        <span class="c1">#</span>
+        <span class="c1"># Meta-validation ordering caveat (SF3): ReferenceFreeScorer.availability()</span>
+        <span class="c1"># is False until meta_validate() runs; the engine does not invoke</span>
+        <span class="c1"># meta_validate today (it is referenced only as a guard message in the CLI</span>
+        <span class="c1"># path), so a ReferenceFreeScorer child is correctly dropped from the</span>
+        <span class="c1"># roster here and the engine degrades to its fallback — matching today&#39;s</span>
+        <span class="c1"># behavior. If a later phase wires meta_validate into the engine, move this</span>
+        <span class="c1"># pin to immediately after it.</span>
+        <span class="n">scorer</span> <span class="o">=</span> <span class="n">spec</span><span class="o">.</span><span class="n">scorer</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">scorer</span><span class="p">,</span> <span class="n">CompositeScorer</span><span class="p">):</span>
+            <span class="n">active</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span>
+                <span class="n">handle</span>
+                <span class="k">for</span> <span class="n">handle</span><span class="p">,</span> <span class="n">child</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">scorer</span><span class="o">.</span><span class="n">objective_names</span><span class="p">(),</span> <span class="n">scorer</span><span class="o">.</span><span class="n">scorers</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">child</span><span class="o">.</span><span class="n">availability</span><span class="p">()</span>
+            <span class="p">)</span>
+            <span class="n">scorer</span><span class="o">.</span><span class="n">set_active_set</span><span class="p">(</span><span class="n">active</span><span class="p">)</span>
+
         <span class="n">strategy</span> <span class="o">=</span> <span class="n">spec</span><span class="o">.</span><span class="n">strategy</span><span class="o">.</span><span class="n">build</span><span class="p">(</span>
             <span class="n">spec</span><span class="o">.</span><span class="n">search_space</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_store</span><span class="p">,</span> <span class="n">directions</span><span class="o">=</span><span class="n">directions</span>
         <span class="p">)</span>

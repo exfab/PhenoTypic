@@ -607,9 +607,19 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy</span><span class="w"> </span><span class="kn">import</span> <span class="n">ndimage</span>
+
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasureFeatures</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">OBJECT</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColorXYZ</span><span class="p">,</span> <span class="n">Colorxy</span><span class="p">,</span> <span class="n">ColorLab</span><span class="p">,</span> <span class="n">ColorHSV</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.util</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">robust_color_center</span><span class="p">,</span>
+    <span class="n">medoid_ciede2000</span><span class="p">,</span>
+    <span class="n">delta_e2000_spread</span><span class="p">,</span>
+    <span class="n">hsv_to_cone</span><span class="p">,</span>
+    <span class="n">cone_to_hsv</span><span class="p">,</span>
+    <span class="n">lab_to_srgb_hex</span><span class="p">,</span>
+<span class="p">)</span>
 
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 
@@ -617,191 +627,162 @@
 <div class="viewcode-block" id="MeasureColor">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.measure.html#phenotypic.measure.MeasureColor">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">MeasureColor</span><span class="p">(</span><span class="n">MeasureFeatures</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Measure colony color statistics across multiple perceptual color spaces.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Measure robust colorimetric statistics for each colony.</span>
 
-<span class="sd">    Extract per-colony color features from CIE XYZ, chromaticity (xy),</span>
-<span class="sd">    CIE Lab (perceptually uniform), and HSV color spaces. For each</span>
-<span class="sd">    channel the standard statistical suite is computed (min, Q1, mean,</span>
-<span class="sd">    median, Q3, max, std dev, coefficient of variation), plus Lab chroma</span>
-<span class="sd">    estimates.</span>
+<span class="sd">    Default output (always on):</span>
+
+<span class="sd">    - **CIE L*a*b*** -- ΔE76 geometric-median center, ΔE2000 medoid center,</span>
+<span class="sd">      ΔE2000 within-colony consistency (median/mean/P95 from the medoid),</span>
+<span class="sd">      ``LabTotalVariance``, and an sRGB hex swatch (plot-only).</span>
+<span class="sd">    - **HSV** -- a cone-embedded robust center (circular-correct) and</span>
+<span class="sd">      ``HSVConeVariance``.</span>
+
+<span class="sd">    Opt-in, hidden from the reference doc:</span>
+
+<span class="sd">    - **CIE XYZ** (``include_XYZ=True``) and **xy chromaticity**</span>
+<span class="sd">      (``include_xy=True``) -- legacy per-channel min/Q1/mean/median/Q3/max/</span>
+<span class="sd">      stddev/CoeffVar suites.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        white_chroma_max: Lab chroma threshold below which a colony is</span>
-<span class="sd">            classified as achromatic (white). Default: ``4.0``.</span>
-<span class="sd">        chroma_min: Minimum chroma value retained in analysis; colonies</span>
-<span class="sd">            below this are treated as colorless. Default: ``8.0``.</span>
-<span class="sd">        include_XYZ: Compute CIE XYZ tristimulus statistics (slower).</span>
-<span class="sd">            Default: ``False``.</span>
+<span class="sd">        include_XYZ: Emit the legacy CIE XYZ per-channel suite. Default ``False``.</span>
+<span class="sd">        include_xy: Emit the legacy xy chromaticity per-channel suite. Default</span>
+<span class="sd">            ``False``.</span>
+<span class="sd">        geomedian_max_iter: Weiszfeld iteration cap for the L*a*b* geometric</span>
+<span class="sd">            median. Default ``50``.</span>
+<span class="sd">        geomedian_tol: Weiszfeld convergence tolerance. Default ``1e-4``.</span>
+<span class="sd">        medoid_max_pixels: Subsample cap for the O(N^2) ΔE2000 medoid selection;</span>
+<span class="sd">            consistency scalars still use all pixels. Default ``1000``.</span>
+<span class="sd">        random_seed: Seed for reproducible medoid subsampling. Default ``0``.</span>
 
-<span class="sd">    Returns:</span>
-<span class="sd">        pd.DataFrame: Object-level color statistics with column groups:</span>
+<span class="sd">    Examples:</span>
+<span class="sd">        Measure robust colorimetric statistics for a detected plate:</span>
 
-<span class="sd">            - ColorXYZ (X, Y, Z) -- only when ``include_XYZ=True``.</span>
-<span class="sd">            - Colorxy (x, y chromaticity).</span>
-<span class="sd">            - ColorLab (L*, a*, b*, ChromaEstimated).</span>
-<span class="sd">            - ColorHSV (Hue, Saturation, Brightness).</span>
-<span class="sd">            - Each channel has Min, Q1, Mean, Median, Q3, Max, StdDev,</span>
-<span class="sd">              CoeffVar sub-columns.</span>
-
-<span class="sd">    Best For:</span>
-<span class="sd">        - Distinguishing pigmented colonies (carotenoid, melanin) from</span>
-<span class="sd">          colorless ones to stratify phenotypes by pigmentation profile.</span>
-<span class="sd">        - Detecting sectoring and growth heterogeneity via high</span>
-<span class="sd">          within-colony color variance.</span>
-<span class="sd">        - Cross-plate comparison of colony pigmentation using</span>
-<span class="sd">          perceptually uniform Lab distances.</span>
-
-<span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`MeasureIntensity` for grayscale-only brightness and</span>
-<span class="sd">          variability statistics.</span>
-<span class="sd">        - :class:`MeasureColorComposition` for proportion-based color</span>
-<span class="sd">          classification of colony pixels.</span>
-<span class="sd">        - :class:`MeasureTexture` for surface-roughness features that</span>
-<span class="sd">          complement color metrics.</span>
-
-<span class="sd">    See Also:</span>
-<span class="sd">        :doc:`/tutorials/notebooks/07_measuring_and_exporting` for a</span>
-<span class="sd">        walkthrough of measuring and exporting colony data.</span>
-<span class="sd">        :doc:`/explanation/measurement_metrics_biological_meaning` for</span>
-<span class="sd">        interpreting color metrics in a biological context.</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.data import load_synth_yeast_plate</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.detect import OtsuDetector</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.measure import MeasureColor</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.schema import ColorLab</span>
+<span class="sd">        &gt;&gt;&gt; image = OtsuDetector().apply(load_synth_yeast_plate())</span>
+<span class="sd">        &gt;&gt;&gt; df = MeasureColor().measure(image)</span>
+<span class="sd">        &gt;&gt;&gt; str(ColorLab.MEDOID_COLOR_HEX) in df.columns</span>
+<span class="sd">        True</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">_measurement_infoclasses</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">type</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[</span>
         <span class="n">ColorXYZ</span><span class="p">,</span> <span class="n">Colorxy</span><span class="p">,</span> <span class="n">ColorLab</span><span class="p">,</span> <span class="n">ColorHSV</span><span class="p">]</span>
 
-    <span class="n">white_chroma_max</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">4.0</span>
-    <span class="n">chroma_min</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">8.0</span>
     <span class="n">include_XYZ</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">include_xy</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">geomedian_max_iter</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">50</span>
+    <span class="n">geomedian_tol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-4</span>
+    <span class="n">medoid_max_pixels</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span>
+    <span class="n">random_seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">):</span>
-        <span class="n">data</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+        <span class="n">objmap</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="p">{</span><span class="n">OBJECT</span><span class="o">.</span><span class="n">LABEL</span><span class="p">:</span> <span class="n">image</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">labels2series</span><span class="p">()}</span>
+
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">include_XYZ</span><span class="p">:</span>
-            <span class="n">cieXYZ_foreground</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">color</span><span class="o">.</span><span class="n">XYZ</span><span class="o">.</span><span class="n">foreground</span><span class="p">()</span>
-            <span class="n">X_meas</span> <span class="o">=</span> <span class="n">MeasureColor</span><span class="o">.</span><span class="n">_compute_color_metrics</span><span class="p">(</span>
-                    <span class="n">foreground</span><span class="o">=</span><span class="n">cieXYZ_foreground</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">objmap</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span>
-            <span class="p">)</span>
-            <span class="n">X_meas</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">value</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">ColorXYZ</span><span class="o">.</span><span class="n">cieX_headers</span><span class="p">(),</span> <span class="n">X_meas</span><span class="p">)}</span>
+            <span class="n">data</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_legacy_xyz_metrics</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">objmap</span><span class="p">))</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">include_xy</span><span class="p">:</span>
+            <span class="n">data</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_legacy_xy_metrics</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">objmap</span><span class="p">))</span>
 
-            <span class="n">Y_meas</span> <span class="o">=</span> <span class="n">MeasureColor</span><span class="o">.</span><span class="n">_compute_color_metrics</span><span class="p">(</span>
-                    <span class="n">foreground</span><span class="o">=</span><span class="n">cieXYZ_foreground</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">objmap</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span>
-            <span class="p">)</span>
-            <span class="n">Y_meas</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">value</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">ColorXYZ</span><span class="o">.</span><span class="n">cieY_headers</span><span class="p">(),</span> <span class="n">Y_meas</span><span class="p">)}</span>
+        <span class="n">data</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_robust_lab_hsv_metrics</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">objmap</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">data</span><span class="p">)</span>
 
-            <span class="n">Z_meas</span> <span class="o">=</span> <span class="n">MeasureColor</span><span class="o">.</span><span class="n">_compute_color_metrics</span><span class="p">(</span>
-                    <span class="n">foreground</span><span class="o">=</span><span class="n">cieXYZ_foreground</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="n">objmap</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span>
-            <span class="p">)</span>
-            <span class="n">Z_meas</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">value</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">ColorXYZ</span><span class="o">.</span><span class="n">cieZ_headers</span><span class="p">(),</span> <span class="n">Z_meas</span><span class="p">)}</span>
+    <span class="c1"># ------------------------------------------------------------------</span>
+    <span class="c1"># Robust default block</span>
+    <span class="c1"># ------------------------------------------------------------------</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_robust_lab_hsv_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">,</span> <span class="n">objmap</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+        <span class="n">lab</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">color</span><span class="o">.</span><span class="n">Lab</span><span class="p">[:]</span>
+        <span class="n">hsv</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">color</span><span class="o">.</span><span class="n">hsv</span><span class="p">[:]</span>
+        <span class="n">labels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">objmap</span><span class="p">)</span>
+        <span class="n">labels</span> <span class="o">=</span> <span class="n">labels</span><span class="p">[</span><span class="n">labels</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">]</span>
 
-            <span class="k">del</span> <span class="n">cieXYZ_foreground</span>
-            <span class="n">data</span> <span class="o">=</span> <span class="p">{</span><span class="o">**</span><span class="n">data</span><span class="p">,</span> <span class="o">**</span><span class="n">X_meas</span><span class="p">,</span> <span class="o">**</span><span class="n">Y_meas</span><span class="p">,</span> <span class="o">**</span><span class="n">Z_meas</span><span class="p">}</span>
+        <span class="c1"># One linear pass yields each label&#39;s bounding-box slices, so per-object</span>
+        <span class="c1"># work touches only that colony&#39;s window instead of rescanning the whole</span>
+        <span class="c1"># image (O(N) total vs O(K*N) full-image masks). bbox_slices[L - 1] is the</span>
+        <span class="c1"># slice tuple for label L (None for absent labels).</span>
+        <span class="n">bbox_slices</span> <span class="o">=</span> <span class="n">ndimage</span><span class="o">.</span><span class="n">find_objects</span><span class="p">(</span><span class="n">objmap</span><span class="p">)</span>
 
-        <span class="n">xy_foreground</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">color</span><span class="o">.</span><span class="n">xy</span><span class="o">.</span><span class="n">foreground</span><span class="p">()</span>
-        <span class="n">x_meas</span> <span class="o">=</span> <span class="n">MeasureColor</span><span class="o">.</span><span class="n">_compute_color_metrics</span><span class="p">(</span>
-                <span class="n">foreground</span><span class="o">=</span><span class="n">xy_foreground</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">objmap</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span>
+        <span class="n">rows</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">labels</span><span class="p">:</span>
+            <span class="n">sl</span> <span class="o">=</span> <span class="n">bbox_slices</span><span class="p">[</span><span class="n">label</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span>
+            <span class="n">submask</span> <span class="o">=</span> <span class="n">objmap</span><span class="p">[</span><span class="n">sl</span><span class="p">]</span> <span class="o">==</span> <span class="n">label</span>  <span class="c1"># exclude neighbours sharing the bbox</span>
+            <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">_robust_lab_row</span><span class="p">(</span><span class="n">lab</span><span class="p">[</span><span class="n">sl</span><span class="p">][</span><span class="n">submask</span><span class="p">]),</span>
+                         <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">_robust_hsv_row</span><span class="p">(</span><span class="n">hsv</span><span class="p">[</span><span class="n">sl</span><span class="p">][</span><span class="n">submask</span><span class="p">])})</span>
+
+        <span class="c1"># Assemble column-major dict; preserve header order.</span>
+        <span class="n">columns</span> <span class="o">=</span> <span class="n">ColorLab</span><span class="o">.</span><span class="n">robust_headers</span><span class="p">()</span> <span class="o">+</span> <span class="n">ColorHSV</span><span class="o">.</span><span class="n">robust_headers</span><span class="p">()</span>
+        <span class="k">return</span> <span class="p">{</span><span class="n">col</span><span class="p">:</span> <span class="p">[</span><span class="n">row</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">rows</span><span class="p">]</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">columns</span><span class="p">}</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_robust_lab_row</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lab_px</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+        <span class="n">gm</span> <span class="o">=</span> <span class="n">robust_color_center</span><span class="p">(</span>
+            <span class="n">lab_px</span><span class="p">,</span> <span class="n">max_iter</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">geomedian_max_iter</span><span class="p">,</span> <span class="n">tol</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">geomedian_tol</span>
         <span class="p">)</span>
-        <span class="n">x_meas</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">value</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">Colorxy</span><span class="o">.</span><span class="n">x_headers</span><span class="p">(),</span> <span class="n">x_meas</span><span class="p">)}</span>
-
-        <span class="n">y_meas</span> <span class="o">=</span> <span class="n">MeasureColor</span><span class="o">.</span><span class="n">_compute_color_metrics</span><span class="p">(</span>
-                <span class="n">foreground</span><span class="o">=</span><span class="n">xy_foreground</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">objmap</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span>
+        <span class="n">medoid</span><span class="p">,</span> <span class="n">deltas</span> <span class="o">=</span> <span class="n">medoid_ciede2000</span><span class="p">(</span>
+            <span class="n">lab_px</span><span class="p">,</span> <span class="n">max_pixels</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">medoid_max_pixels</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">random_seed</span>
         <span class="p">)</span>
-        <span class="n">y_meas</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">value</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">Colorxy</span><span class="o">.</span><span class="n">y_headers</span><span class="p">(),</span> <span class="n">y_meas</span><span class="p">)}</span>
-
-        <span class="k">del</span> <span class="n">xy_foreground</span>
-        <span class="n">data</span> <span class="o">=</span> <span class="p">{</span><span class="o">**</span><span class="n">data</span><span class="p">,</span> <span class="o">**</span><span class="n">x_meas</span><span class="p">,</span> <span class="o">**</span><span class="n">y_meas</span><span class="p">}</span>
-
-        <span class="n">Lab_foreground</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">color</span><span class="o">.</span><span class="n">Lab</span><span class="o">.</span><span class="n">foreground</span><span class="p">()</span>
-        <span class="n">lstar_meas</span> <span class="o">=</span> <span class="n">MeasureColor</span><span class="o">.</span><span class="n">_compute_color_metrics</span><span class="p">(</span>
-                <span class="n">foreground</span><span class="o">=</span><span class="n">Lab_foreground</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">objmap</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span>
+        <span class="n">de_median</span><span class="p">,</span> <span class="n">de_mean</span><span class="p">,</span> <span class="n">de_p95</span> <span class="o">=</span> <span class="n">delta_e2000_spread</span><span class="p">(</span><span class="n">deltas</span><span class="p">)</span>
+        <span class="n">total_var</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="nb">float</span><span class="p">(</span><span class="n">lab_px</span><span class="o">.</span><span class="n">var</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">ddof</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span> <span class="k">if</span> <span class="n">lab_px</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">else</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;nan&quot;</span><span class="p">)</span>
         <span class="p">)</span>
-        <span class="n">lstar_meas</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="n">key</span><span class="p">:</span> <span class="n">value</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">ColorLab</span><span class="o">.</span><span class="n">l_star_headers</span><span class="p">(),</span> <span class="n">lstar_meas</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">ColorLab</span><span class="o">.</span><span class="n">L_STAR_GEOMEDIAN</span><span class="p">):</span> <span class="nb">float</span><span class="p">(</span><span class="n">gm</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">ColorLab</span><span class="o">.</span><span class="n">A_STAR_GEOMEDIAN</span><span class="p">):</span> <span class="nb">float</span><span class="p">(</span><span class="n">gm</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">ColorLab</span><span class="o">.</span><span class="n">B_STAR_GEOMEDIAN</span><span class="p">):</span> <span class="nb">float</span><span class="p">(</span><span class="n">gm</span><span class="p">[</span><span class="mi">2</span><span class="p">]),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">ColorLab</span><span class="o">.</span><span class="n">L_STAR_MEDOID</span><span class="p">):</span> <span class="nb">float</span><span class="p">(</span><span class="n">medoid</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">ColorLab</span><span class="o">.</span><span class="n">A_STAR_MEDOID</span><span class="p">):</span> <span class="nb">float</span><span class="p">(</span><span class="n">medoid</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">ColorLab</span><span class="o">.</span><span class="n">B_STAR_MEDOID</span><span class="p">):</span> <span class="nb">float</span><span class="p">(</span><span class="n">medoid</span><span class="p">[</span><span class="mi">2</span><span class="p">]),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">ColorLab</span><span class="o">.</span><span class="n">DELTA_E2000_MEDIAN</span><span class="p">):</span> <span class="n">de_median</span><span class="p">,</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">ColorLab</span><span class="o">.</span><span class="n">DELTA_E2000_MEAN</span><span class="p">):</span> <span class="n">de_mean</span><span class="p">,</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">ColorLab</span><span class="o">.</span><span class="n">DELTA_E2000_P95</span><span class="p">):</span> <span class="n">de_p95</span><span class="p">,</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">ColorLab</span><span class="o">.</span><span class="n">LAB_TOTAL_VARIANCE</span><span class="p">):</span> <span class="n">total_var</span><span class="p">,</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">ColorLab</span><span class="o">.</span><span class="n">MEDOID_COLOR_HEX</span><span class="p">):</span> <span class="n">lab_to_srgb_hex</span><span class="p">(</span><span class="n">medoid</span><span class="p">),</span>
         <span class="p">}</span>
 
-        <span class="n">astar_meas</span> <span class="o">=</span> <span class="n">MeasureColor</span><span class="o">.</span><span class="n">_compute_color_metrics</span><span class="p">(</span>
-                <span class="n">foreground</span><span class="o">=</span><span class="n">Lab_foreground</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">objmap</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_robust_hsv_row</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hsv_px</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+        <span class="n">cone</span> <span class="o">=</span> <span class="n">hsv_to_cone</span><span class="p">(</span><span class="n">hsv_px</span><span class="p">)</span>
+        <span class="n">center_cone</span> <span class="o">=</span> <span class="n">robust_color_center</span><span class="p">(</span>
+            <span class="n">cone</span><span class="p">,</span> <span class="n">max_iter</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">geomedian_max_iter</span><span class="p">,</span> <span class="n">tol</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">geomedian_tol</span>
         <span class="p">)</span>
-        <span class="n">astar_meas</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="n">key</span><span class="p">:</span> <span class="n">value</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">ColorLab</span><span class="o">.</span><span class="n">a_star_headers</span><span class="p">(),</span> <span class="n">astar_meas</span><span class="p">)</span>
+        <span class="n">center_hsv</span> <span class="o">=</span> <span class="n">cone_to_hsv</span><span class="p">(</span><span class="n">center_cone</span><span class="p">)</span>
+        <span class="n">cone_var</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="nb">float</span><span class="p">(</span><span class="n">cone</span><span class="o">.</span><span class="n">var</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">ddof</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span> <span class="k">if</span> <span class="n">cone</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">else</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;nan&quot;</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">ColorHSV</span><span class="o">.</span><span class="n">HUE_ROBUST_MEAN</span><span class="p">):</span> <span class="nb">float</span><span class="p">(</span><span class="n">center_hsv</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">ColorHSV</span><span class="o">.</span><span class="n">SATURATION_ROBUST_MEAN</span><span class="p">):</span> <span class="nb">float</span><span class="p">(</span><span class="n">center_hsv</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">ColorHSV</span><span class="o">.</span><span class="n">VALUE_ROBUST_MEAN</span><span class="p">):</span> <span class="nb">float</span><span class="p">(</span><span class="n">center_hsv</span><span class="p">[</span><span class="mi">2</span><span class="p">]),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">ColorHSV</span><span class="o">.</span><span class="n">HSV_CONE_VARIANCE</span><span class="p">):</span> <span class="n">cone_var</span><span class="p">,</span>
         <span class="p">}</span>
 
-        <span class="n">bstar_meas</span> <span class="o">=</span> <span class="n">MeasureColor</span><span class="o">.</span><span class="n">_compute_color_metrics</span><span class="p">(</span>
-                <span class="n">foreground</span><span class="o">=</span><span class="n">Lab_foreground</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="n">objmap</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span>
-        <span class="p">)</span>
-        <span class="n">bstar_meas</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="n">key</span><span class="p">:</span> <span class="n">value</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">ColorLab</span><span class="o">.</span><span class="n">b_star_headers</span><span class="p">(),</span> <span class="n">bstar_meas</span><span class="p">)</span>
-        <span class="p">}</span>
+    <span class="c1"># ------------------------------------------------------------------</span>
+    <span class="c1"># Legacy opt-in blocks (8-stat suites)</span>
+    <span class="c1"># ------------------------------------------------------------------</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_legacy_xyz_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">,</span> <span class="n">objmap</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+        <span class="n">fg</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">color</span><span class="o">.</span><span class="n">XYZ</span><span class="o">.</span><span class="n">foreground</span><span class="p">()</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">ch</span><span class="p">,</span> <span class="n">headers</span> <span class="ow">in</span> <span class="p">(</span>
+            <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">ColorXYZ</span><span class="o">.</span><span class="n">cieX_headers</span><span class="p">()),</span>
+            <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">ColorXYZ</span><span class="o">.</span><span class="n">cieY_headers</span><span class="p">()),</span>
+            <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">ColorXYZ</span><span class="o">.</span><span class="n">cieZ_headers</span><span class="p">()),</span>
+        <span class="p">):</span>
+            <span class="n">metrics</span> <span class="o">=</span> <span class="n">MeasureColor</span><span class="o">.</span><span class="n">_compute_color_metrics</span><span class="p">(</span><span class="n">foreground</span><span class="o">=</span><span class="n">fg</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">ch</span><span class="p">],</span> <span class="n">objmap</span><span class="o">=</span><span class="n">objmap</span><span class="p">)</span>
+            <span class="n">out</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">headers</span><span class="p">,</span> <span class="n">metrics</span><span class="p">)})</span>
+        <span class="k">return</span> <span class="n">out</span>
 
-        <span class="k">del</span> <span class="n">Lab_foreground</span>
-        <span class="n">data</span> <span class="o">=</span> <span class="p">{</span><span class="o">**</span><span class="n">data</span><span class="p">,</span> <span class="o">**</span><span class="n">lstar_meas</span><span class="p">,</span> <span class="o">**</span><span class="n">astar_meas</span><span class="p">,</span> <span class="o">**</span><span class="n">bstar_meas</span><span class="p">}</span>
-
-        <span class="c1"># HSB Measurements</span>
-        <span class="n">hsb_foreground</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">color</span><span class="o">.</span><span class="n">hsv</span><span class="o">.</span><span class="n">foreground</span><span class="p">()</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Computing color metrics for hue array&quot;</span><span class="p">)</span>
-        <span class="n">hue_meas</span> <span class="o">=</span> <span class="n">MeasureColor</span><span class="o">.</span><span class="n">_compute_color_metrics</span><span class="p">(</span>
-                <span class="n">foreground</span><span class="o">=</span><span class="n">hsb_foreground</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
-                <span class="n">objmap</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:],</span>
-        <span class="p">)</span>
-        <span class="n">hue_meas</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">value</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">ColorHSV</span><span class="o">.</span><span class="n">hue_headers</span><span class="p">(),</span> <span class="n">hue_meas</span><span class="p">)}</span>
-
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Computing color metrics for saturation array&quot;</span><span class="p">)</span>
-        <span class="n">saturation_meas</span> <span class="o">=</span> <span class="n">MeasureColor</span><span class="o">.</span><span class="n">_compute_color_metrics</span><span class="p">(</span>
-                <span class="n">foreground</span><span class="o">=</span><span class="n">hsb_foreground</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
-                <span class="n">objmap</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:],</span>
-        <span class="p">)</span>
-        <span class="n">saturation_meas</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="n">key</span><span class="p">:</span> <span class="n">value</span>
-            <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">ColorHSV</span><span class="o">.</span><span class="n">saturation_headers</span><span class="p">(),</span> <span class="n">saturation_meas</span><span class="p">)</span>
-        <span class="p">}</span>
-
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Computing color metrics for brightness array&quot;</span><span class="p">)</span>
-        <span class="n">brightness_meas</span> <span class="o">=</span> <span class="n">MeasureColor</span><span class="o">.</span><span class="n">_compute_color_metrics</span><span class="p">(</span>
-                <span class="n">foreground</span><span class="o">=</span><span class="n">hsb_foreground</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span>
-                <span class="n">objmap</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:],</span>
-        <span class="p">)</span>
-        <span class="n">brightness_meas</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="n">key</span><span class="p">:</span> <span class="n">value</span>
-            <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">ColorHSV</span><span class="o">.</span><span class="n">brightness_headers</span><span class="p">(),</span> <span class="n">brightness_meas</span><span class="p">)</span>
-        <span class="p">}</span>
-
-        <span class="k">del</span> <span class="n">hsb_foreground</span>
-        <span class="n">data</span> <span class="o">=</span> <span class="p">{</span><span class="o">**</span><span class="n">data</span><span class="p">,</span> <span class="o">**</span><span class="n">hue_meas</span><span class="p">,</span> <span class="o">**</span><span class="n">saturation_meas</span><span class="p">,</span> <span class="o">**</span><span class="n">brightness_meas</span><span class="p">}</span>
-
-        <span class="n">meas</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">data</span><span class="p">)</span>
-
-        <span class="n">meas</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">column</span><span class="o">=</span><span class="n">OBJECT</span><span class="o">.</span><span class="n">LABEL</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">labels2series</span><span class="p">())</span>
-        <span class="n">meas</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="nb">str</span><span class="p">(</span><span class="n">ColorLab</span><span class="o">.</span><span class="n">CHROMA_EST_MEAN</span><span class="p">)]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span>
-                <span class="p">(</span><span class="n">meas</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="nb">str</span><span class="p">(</span><span class="n">ColorLab</span><span class="o">.</span><span class="n">A_STAR_MEAN</span><span class="p">)]</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
-                <span class="o">+</span> <span class="n">meas</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="nb">str</span><span class="p">(</span><span class="n">ColorLab</span><span class="o">.</span><span class="n">B_STAR_MEAN</span><span class="p">)]</span> <span class="o">**</span> <span class="mi">2</span>
-        <span class="p">)</span>
-        <span class="n">meas</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="nb">str</span><span class="p">(</span><span class="n">ColorLab</span><span class="o">.</span><span class="n">CHROMA_EST_MEDIAN</span><span class="p">)]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span>
-                <span class="p">(</span><span class="n">meas</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="nb">str</span><span class="p">(</span><span class="n">ColorLab</span><span class="o">.</span><span class="n">A_STAR_MEDIAN</span><span class="p">)]</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
-                <span class="o">+</span> <span class="n">meas</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="nb">str</span><span class="p">(</span><span class="n">ColorLab</span><span class="o">.</span><span class="n">B_STAR_MEDIAN</span><span class="p">)]</span> <span class="o">**</span> <span class="mi">2</span>
-        <span class="p">)</span>
-
-        <span class="k">return</span> <span class="n">meas</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_legacy_xy_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">,</span> <span class="n">objmap</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+        <span class="n">fg</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">color</span><span class="o">.</span><span class="n">xy</span><span class="o">.</span><span class="n">foreground</span><span class="p">()</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">ch</span><span class="p">,</span> <span class="n">headers</span> <span class="ow">in</span> <span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="n">Colorxy</span><span class="o">.</span><span class="n">x_headers</span><span class="p">()),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">Colorxy</span><span class="o">.</span><span class="n">y_headers</span><span class="p">())):</span>
+            <span class="n">metrics</span> <span class="o">=</span> <span class="n">MeasureColor</span><span class="o">.</span><span class="n">_compute_color_metrics</span><span class="p">(</span><span class="n">foreground</span><span class="o">=</span><span class="n">fg</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">ch</span><span class="p">],</span> <span class="n">objmap</span><span class="o">=</span><span class="n">objmap</span><span class="p">)</span>
+            <span class="n">out</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">headers</span><span class="p">,</span> <span class="n">metrics</span><span class="p">)})</span>
+        <span class="k">return</span> <span class="n">out</span>
 
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_compute_color_metrics</span><span class="p">(</span><span class="n">foreground</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">objmap</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Computes texture metrics from arr image data and a binary foreground mask.</span>
-
-<span class="sd">        This function processes gridded image objects and calculates various texture</span>
-<span class="sd">        features using Haralick descriptors across segmented objects. The calculated</span>
-<span class="sd">        texture metrics include statistical data and Haralick texture features, which</span>
-<span class="sd">        are useful in descriptive and diagnostic analyses for image processing applications.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            foreground (numpy.ndarray): A matrix array with all background pixels set</span>
-<span class="sd">                to 0, defining the binary mask.</span>
-<span class="sd">            objmap (numpy.ndarray): Array of labels of the same shape as the foreground array.</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            dict: A dictionary containing calculated measurements, including object</span>
-<span class="sd">                labels, statistical data (e.g., area, mean, standard deviation), and</span>
-<span class="sd">                multiple Haralick texture metrics (e.g., contrast, entropy).</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-
-        <span class="n">measurements</span> <span class="o">=</span> <span class="p">[</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Per-object 8-stat suite for the legacy opt-in XYZ/xy paths.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">[</span>
             <span class="n">MeasureFeatures</span><span class="o">.</span><span class="n">_calculate_minimum</span><span class="p">(</span><span class="n">array</span><span class="o">=</span><span class="n">foreground</span><span class="p">,</span> <span class="n">objmap</span><span class="o">=</span><span class="n">objmap</span><span class="p">),</span>
             <span class="n">MeasureFeatures</span><span class="o">.</span><span class="n">_calculate_q1</span><span class="p">(</span><span class="n">array</span><span class="o">=</span><span class="n">foreground</span><span class="p">,</span> <span class="n">objmap</span><span class="o">=</span><span class="n">objmap</span><span class="p">),</span>
             <span class="n">MeasureFeatures</span><span class="o">.</span><span class="n">_calculate_mean</span><span class="p">(</span><span class="n">array</span><span class="o">=</span><span class="n">foreground</span><span class="p">,</span> <span class="n">objmap</span><span class="o">=</span><span class="n">objmap</span><span class="p">),</span>
@@ -810,15 +791,13 @@
             <span class="n">MeasureFeatures</span><span class="o">.</span><span class="n">_calculate_maximum</span><span class="p">(</span><span class="n">array</span><span class="o">=</span><span class="n">foreground</span><span class="p">,</span> <span class="n">objmap</span><span class="o">=</span><span class="n">objmap</span><span class="p">),</span>
             <span class="n">MeasureFeatures</span><span class="o">.</span><span class="n">_calculate_stddev</span><span class="p">(</span><span class="n">array</span><span class="o">=</span><span class="n">foreground</span><span class="p">,</span> <span class="n">objmap</span><span class="o">=</span><span class="n">objmap</span><span class="p">),</span>
             <span class="n">MeasureFeatures</span><span class="o">.</span><span class="n">_calculate_coeff_variation</span><span class="p">(</span><span class="n">array</span><span class="o">=</span><span class="n">foreground</span><span class="p">,</span> <span class="n">objmap</span><span class="o">=</span><span class="n">objmap</span><span class="p">),</span>
-        <span class="p">]</span>
-        <span class="k">return</span> <span class="n">measurements</span></div>
+        <span class="p">]</span></div>
 
 
 
+<span class="c1"># Reference-doc RST: only the default colorimetric spaces (Lab, HSV).</span>
 <span class="n">MeasureColor</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="n">ColorHSV</span><span class="o">.</span><span class="n">append_rst_to_doc</span><span class="p">(</span>
-        <span class="n">ColorLab</span><span class="o">.</span><span class="n">append_rst_to_doc</span><span class="p">(</span>
-                <span class="n">Colorxy</span><span class="o">.</span><span class="n">append_rst_to_doc</span><span class="p">(</span><span class="n">ColorXYZ</span><span class="o">.</span><span class="n">append_rst_to_doc</span><span class="p">(</span><span class="n">MeasureColor</span><span class="p">))</span>
-        <span class="p">)</span>
+    <span class="n">ColorLab</span><span class="o">.</span><span class="n">append_rst_to_doc</span><span class="p">(</span><span class="n">MeasureColor</span><span class="p">)</span>
 <span class="p">)</span>
 </pre></div>
 

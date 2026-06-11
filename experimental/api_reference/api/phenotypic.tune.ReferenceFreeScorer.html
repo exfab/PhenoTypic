@@ -1038,6 +1038,12 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.geometric_median.html">phenotypic.util.geometric_median</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.generate_output_key.html">phenotypic.util.generate_output_key</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.split_measurements.html">phenotypic.util.split_measurements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.robust_color_center.html">phenotypic.util.robust_color_center</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.medoid_ciede2000.html">phenotypic.util.medoid_ciede2000</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.delta_e2000_spread.html">phenotypic.util.delta_e2000_spread</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.hsv_to_cone.html">phenotypic.util.hsv_to_cone</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.cone_to_hsv.html">phenotypic.util.cone_to_hsv</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.lab_to_srgb_hex.html">phenotypic.util.lab_to_srgb_hex</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.decode_well_position.html">phenotypic.util.decode_well_position</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.ImageMetricsCalculator.html">phenotypic.util.ImageMetricsCalculator</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.NoiseMetrics.html">phenotypic.util.NoiseMetrics</a></li>
@@ -1121,7 +1127,8 @@
 measurement columns — <code class="docutils literal notranslate"><span class="pre">Shape_*</span></code> and <code class="docutils literal notranslate"><span class="pre">Size_*</span></code> — for the shape and size
 terms (no geometry is recomputed), reads the image grayscale + mask for the
 contrast term, and optionally reuses <a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.QCScorer" title="phenotypic.tune.QCScorer"><code class="xref py py-class docutils literal notranslate"><span class="pre">QCScorer</span></code></a>’s expected-vs-detected
-grid count. All terms are fixed-normalized to <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1]</span></code> (higher = better).</p>
+grid count. All terms are fixed-normalized to a natural-goodness value in
+<code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1]</span></code> (higher = better); the base complements each into cost.</p>
 <p>The scorer is <strong>unavailable until meta-validated</strong>: <a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.ReferenceFreeScorer.availability" title="phenotypic.tune.ReferenceFreeScorer.availability"><code class="xref py py-meth docutils literal notranslate"><span class="pre">availability()</span></code></a>
 returns <code class="docutils literal notranslate"><span class="pre">False</span></code> (so the engine degrades to <a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.QCScorer" title="phenotypic.tune.QCScorer"><code class="xref py py-class docutils literal notranslate"><span class="pre">QCScorer</span></code></a>) until
 <a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.ReferenceFreeScorer.meta_validate" title="phenotypic.tune.ReferenceFreeScorer.meta_validate"><code class="xref py py-meth docutils literal notranslate"><span class="pre">meta_validate()</span></code></a> correlates the proxy against ground truth and caches a
@@ -1249,7 +1256,7 @@ few pixels (<code class="docutils literal notranslate"><span class="pre">§C</sp
 <td><p></p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.ReferenceFreeScorer.score_image" title="phenotypic.tune.ReferenceFreeScorer.score_image"><code class="xref py py-obj docutils literal notranslate"><span class="pre">score_image</span></code></a></p></td>
-<td><p>Score one image's segmentation as fixed-normalized proxy terms.</p></td>
+<td><p>Orient this scorer's natural terms into <strong>cost ∈ [0,1]</strong> (lower = better).</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.ReferenceFreeScorer.update_forward_refs" title="phenotypic.tune.ReferenceFreeScorer.update_forward_refs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_forward_refs</span></code></a></p></td>
 <td><p></p></td>
@@ -1400,30 +1407,6 @@ threshold (<code class="docutils literal notranslate"><span class="pre">≥</spa
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)">bool</a></p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="phenotypic.tune.ReferenceFreeScorer.score_image">
-<span class="sig-name descname"><span class="pre">score_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">measurements</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.3)"><span class="pre">pandas.DataFrame</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/phenotypic/tune/_scoring/_reference_free_scorer.html#ReferenceFreeScorer.score_image"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tune.ReferenceFreeScorer.score_image" title="Link to this definition">#</a></dt>
-<dd><p>Score one image’s segmentation as fixed-normalized proxy terms.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>image</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a>) – The processed image — the contrast term reads its
-<code class="docutils literal notranslate"><span class="pre">gray</span></code>/<code class="docutils literal notranslate"><span class="pre">objmask</span></code> accessors; the other terms read the frame.</p></li>
-<li><p><strong>measurements</strong> (<a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.3)"><em>pandas.DataFrame</em></a>) – The candidate pipeline’s measurement frame, carrying
-the category-prefixed <code class="docutils literal notranslate"><span class="pre">Shape_*</span></code>/<code class="docutils literal notranslate"><span class="pre">Size_*</span></code> columns.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">ShapeRegularity</span></code>, <code class="docutils literal notranslate"><span class="pre">Contrast</span></code>, <code class="docutils literal notranslate"><span class="pre">SizeCV</span></code>, and — when a
-<code class="docutils literal notranslate"><span class="pre">count_check</span></code> is configured — <code class="docutils literal notranslate"><span class="pre">Count</span></code>. Keys are stable across
-images so the <code class="docutils literal notranslate"><span class="pre">Evaluator</span></code> can aggregate per term.</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>A mapping of proxy term → score in <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1]</span></code> (higher = better)</p>
 </dd>
 </dl>
 </dd></dl>
@@ -1692,8 +1675,8 @@ fires when an override returns a dict.</p>
 the calibration set by the <code class="docutils literal notranslate"><span class="pre">Evaluator</span></code>).</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The scalar objective (higher = better; <code class="docutils literal notranslate"><span class="pre">0.0</span></code> for no terms) for
-single-objective scorers, or a <code class="docutils literal notranslate"><span class="pre">dict[str,</span> <span class="pre">float]</span></code> of named
+<dd class="field-even"><p>The scalar objective <strong>cost</strong> (lower = better; <code class="docutils literal notranslate"><span class="pre">0.0</span></code> for no terms)
+for single-objective scorers, or a <code class="docutils literal notranslate"><span class="pre">dict[str,</span> <span class="pre">float]</span></code> of named
 objectives for a multi-objective scorer.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
@@ -2189,6 +2172,30 @@ See the [<cite>extra</cite> configuration value][pydantic.ConfigDict.extra] for 
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tune.ReferenceFreeScorer.score_image">
+<span class="sig-name descname"><span class="pre">score_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">measurements</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.3)"><span class="pre">pandas.DataFrame</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#phenotypic.tune.ReferenceFreeScorer.score_image" title="Link to this definition">#</a></dt>
+<dd><p>Orient this scorer’s natural terms into <strong>cost ∈ [0,1]</strong> (lower = better).</p>
+<p>The single orientation point: each natural term from
+<code class="xref py py-meth docutils literal notranslate"><span class="pre">_score_terms()</span></code> is mapped to cost via <code class="xref py py-func docutils literal notranslate"><span class="pre">to_cost()</span></code>, using this
+scorer’s <code class="xref py py-attr docutils literal notranslate"><span class="pre">_TERM_SENSE</span></code> and <code class="xref py py-meth docutils literal notranslate"><span class="pre">_term_anchor()</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a>) – The processed image (passed through to <code class="xref py py-meth docutils literal notranslate"><span class="pre">_score_terms()</span></code>).</p></li>
+<li><p><strong>measurements</strong> (<a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.3)"><em>pandas.DataFrame</em></a>) – The candidate pipeline’s measurement frame.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A mapping of term name → cost in <code class="docutils literal notranslate"><span class="pre">[0,1]</span></code> (<code class="docutils literal notranslate"><span class="pre">0</span></code> perfect, <code class="docutils literal notranslate"><span class="pre">1</span></code>
+worst). Keys are stable across images for per-term aggregation.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)">dict</a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a>, <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tune.ReferenceFreeScorer.update_forward_refs">
 <em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">update_forward_refs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">localns</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.tune.ReferenceFreeScorer.update_forward_refs" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
@@ -2251,7 +2258,6 @@ See the [<cite>extra</cite> configuration value][pydantic.ConfigDict.extra] for 
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tune.ReferenceFreeScorer.availability"><code class="docutils literal notranslate"><span class="pre">ReferenceFreeScorer.availability()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tune.ReferenceFreeScorer.meta_validate"><code class="docutils literal notranslate"><span class="pre">ReferenceFreeScorer.meta_validate()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tune.ReferenceFreeScorer.is_unattended_safe"><code class="docutils literal notranslate"><span class="pre">ReferenceFreeScorer.is_unattended_safe()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tune.ReferenceFreeScorer.score_image"><code class="docutils literal notranslate"><span class="pre">ReferenceFreeScorer.score_image()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tune.ReferenceFreeScorer.__copy__"><code class="docutils literal notranslate"><span class="pre">ReferenceFreeScorer.__copy__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tune.ReferenceFreeScorer.__deepcopy__"><code class="docutils literal notranslate"><span class="pre">ReferenceFreeScorer.__deepcopy__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tune.ReferenceFreeScorer.__get_pydantic_json_schema__"><code class="docutils literal notranslate"><span class="pre">ReferenceFreeScorer.__get_pydantic_json_schema__()</span></code></a></li>
@@ -2289,6 +2295,7 @@ See the [<cite>extra</cite> configuration value][pydantic.ConfigDict.extra] for 
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tune.ReferenceFreeScorer.parse_raw"><code class="docutils literal notranslate"><span class="pre">ReferenceFreeScorer.parse_raw()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tune.ReferenceFreeScorer.schema"><code class="docutils literal notranslate"><span class="pre">ReferenceFreeScorer.schema()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tune.ReferenceFreeScorer.schema_json"><code class="docutils literal notranslate"><span class="pre">ReferenceFreeScorer.schema_json()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tune.ReferenceFreeScorer.score_image"><code class="docutils literal notranslate"><span class="pre">ReferenceFreeScorer.score_image()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tune.ReferenceFreeScorer.update_forward_refs"><code class="docutils literal notranslate"><span class="pre">ReferenceFreeScorer.update_forward_refs()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tune.ReferenceFreeScorer.validate"><code class="docutils literal notranslate"><span class="pre">ReferenceFreeScorer.validate()</span></code></a></li>
 </ul>

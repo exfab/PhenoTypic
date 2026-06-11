@@ -1038,6 +1038,12 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.geometric_median.html">phenotypic.util.geometric_median</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.generate_output_key.html">phenotypic.util.generate_output_key</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.split_measurements.html">phenotypic.util.split_measurements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.robust_color_center.html">phenotypic.util.robust_color_center</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.medoid_ciede2000.html">phenotypic.util.medoid_ciede2000</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.delta_e2000_spread.html">phenotypic.util.delta_e2000_spread</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.hsv_to_cone.html">phenotypic.util.hsv_to_cone</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.cone_to_hsv.html">phenotypic.util.cone_to_hsv</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.lab_to_srgb_hex.html">phenotypic.util.lab_to_srgb_hex</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.decode_well_position.html">phenotypic.util.decode_well_position</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.ImageMetricsCalculator.html">phenotypic.util.ImageMetricsCalculator</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.NoiseMetrics.html">phenotypic.util.NoiseMetrics</a></li>
@@ -1230,7 +1236,7 @@ modality-tiered availability gate only; numeric GT scoring is deferred):</p>
 <td><p>Compute the class name for parametrizations of generic classes.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.SupervisedScorer.model_post_init" title="phenotypic.tune.SupervisedScorer.model_post_init"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_post_init</span></code></a></p></td>
-<td><p>Override this method to perform additional initialization after <cite>__init__</cite> and <cite>model_construct</cite>.</p></td>
+<td><p>This function is meant to behave like a BaseModel method to initialise private attributes.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.SupervisedScorer.model_rebuild" title="phenotypic.tune.SupervisedScorer.model_rebuild"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_rebuild</span></code></a></p></td>
 <td><p>Try to rebuild the pydantic-core schema for the model.</p></td>
@@ -1260,7 +1266,7 @@ modality-tiered availability gate only; numeric GT scoring is deferred):</p>
 <td><p></p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.SupervisedScorer.score_image" title="phenotypic.tune.SupervisedScorer.score_image"><code class="xref py py-obj docutils literal notranslate"><span class="pre">score_image</span></code></a></p></td>
-<td><p>Score one image against its ground truth, by GT modality tier.</p></td>
+<td><p>Orient this scorer's natural terms into <strong>cost ∈ [0,1]</strong> (lower = better).</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.SupervisedScorer.update_forward_refs" title="phenotypic.tune.SupervisedScorer.update_forward_refs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_forward_refs</span></code></a></p></td>
 <td><p></p></td>
@@ -1373,44 +1379,6 @@ otherwise.</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)">bool</a></p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="phenotypic.tune.SupervisedScorer.score_image">
-<span class="sig-name descname"><span class="pre">score_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">measurements</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.3)"><span class="pre">pandas.DataFrame</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/phenotypic/tune/_scoring/_supervised.html#SupervisedScorer.score_image"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tune.SupervisedScorer.score_image" title="Link to this definition">#</a></dt>
-<dd><p>Score one image against its ground truth, by GT modality tier.</p>
-<p>Dispatches on <a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.GroundTruthMasks.modality" title="phenotypic.tune.GroundTruthMasks.modality"><code class="xref py py-meth docutils literal notranslate"><span class="pre">GroundTruthMasks.modality()</span></code></a>:</p>
-<ul class="simple">
-<li><p><strong>mask</strong> — resolve the per-image GT mask via
-<a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.GroundTruthMasks.masks_for" title="phenotypic.tune.GroundTruthMasks.masks_for"><code class="xref py py-meth docutils literal notranslate"><span class="pre">GroundTruthMasks.masks_for()</span></code></a> (keyed by <code class="docutils literal notranslate"><span class="pre">image.name</span></code>); when it
-resolves, match predicted vs. GT objects (<code class="xref py py-mod docutils literal notranslate"><span class="pre">_matching</span></code>), score
-each matched pair with the chosen single region metric
-(<code class="xref py py-mod docutils literal notranslate"><span class="pre">_metrics</span></code>), and <strong>macro-average per image</strong> into <code class="docutils literal notranslate"><span class="pre">&quot;Region&quot;</span></code>.
-An unresolved name yields no term (nothing to score).</p></li>
-<li><p><strong>count</strong> — reuse the configured <a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.SupervisedScorer.count_check" title="phenotypic.tune.SupervisedScorer.count_check"><code class="xref py py-attr docutils literal notranslate"><span class="pre">count_check</span></code></a>
-(<code class="xref py py-class docutils literal notranslate"><span class="pre">ExpectedVsDetectedCount</span></code>) to get each group’s normalized
-count divergence, fold it to a higher-is-better <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1]</span></code> score
-anchored on <code class="docutils literal notranslate"><span class="pre">fail_threshold</span></code>, and emit <code class="docutils literal notranslate"><span class="pre">&quot;CountMAE&quot;</span></code>.</p></li>
-<li><p><strong>none</strong> — abstain (empty mapping).</p></li>
-</ul>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>image</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a>) – The processed image — a <code class="docutils literal notranslate"><span class="pre">GridImage</span></code> (duck-typed: <code class="docutils literal notranslate"><span class="pre">name</span></code>,
-<code class="docutils literal notranslate"><span class="pre">objmap</span></code>, <code class="docutils literal notranslate"><span class="pre">grid.get_section_map</span></code>) on the mask tier; unused on
-the count tier.</p></li>
-<li><p><strong>measurements</strong> (<a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.3)"><em>pandas.DataFrame</em></a>) – The candidate pipeline’s measurement frame.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>A mapping with the runnable tier’s term — <code class="docutils literal notranslate"><span class="pre">{&quot;Region&quot;:</span> <span class="pre">...}</span></code> (mask),
-<code class="docutils literal notranslate"><span class="pre">{&quot;CountMAE&quot;:</span> <span class="pre">...}</span></code> (count) — or <code class="docutils literal notranslate"><span class="pre">{}</span></code> when no tier can score this
-image (no GT mask for the name, or count tier without a check).</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)">dict</a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a>, <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a>]</p>
 </dd>
 </dl>
 </dd></dl>
@@ -1679,8 +1647,8 @@ fires when an override returns a dict.</p>
 the calibration set by the <code class="docutils literal notranslate"><span class="pre">Evaluator</span></code>).</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The scalar objective (higher = better; <code class="docutils literal notranslate"><span class="pre">0.0</span></code> for no terms) for
-single-objective scorers, or a <code class="docutils literal notranslate"><span class="pre">dict[str,</span> <span class="pre">float]</span></code> of named
+<dd class="field-even"><p>The scalar objective <strong>cost</strong> (lower = better; <code class="docutils literal notranslate"><span class="pre">0.0</span></code> for no terms)
+for single-objective scorers, or a <code class="docutils literal notranslate"><span class="pre">dict[str,</span> <span class="pre">float]</span></code> of named
 objectives for a multi-objective scorer.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
@@ -1964,12 +1932,15 @@ the value <cite>(str, int)</cite> would be passed to <cite>params</cite>.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tune.SupervisedScorer.model_post_init">
-<span class="sig-name descname"><span class="pre">model_post_init</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">context</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.tune.SupervisedScorer.model_post_init" title="Link to this definition">#</a></dt>
-<dd><p>Override this method to perform additional initialization after <cite>__init__</cite> and <cite>model_construct</cite>.
-This is useful if you want to do some validation that requires the entire model to be initialized.</p>
+<span class="sig-name descname"><span class="pre">model_post_init</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">context</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.tune.SupervisedScorer.model_post_init" title="Link to this definition">#</a></dt>
+<dd><p>This function is meant to behave like a BaseModel method to initialise private attributes.</p>
+<p>It takes context as an argument since that’s what pydantic-core passes when calling it.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>context</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a>)</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>self</strong> (<em>BaseModel</em>) – The BaseModel instance.</p></li>
+<li><p><strong>context</strong> (<em>Any</em>) – The context.</p></li>
+</ul>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>None</p>
@@ -2173,6 +2144,30 @@ See the [<cite>extra</cite> configuration value][pydantic.ConfigDict.extra] for 
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tune.SupervisedScorer.score_image">
+<span class="sig-name descname"><span class="pre">score_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">measurements</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.3)"><span class="pre">pandas.DataFrame</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#phenotypic.tune.SupervisedScorer.score_image" title="Link to this definition">#</a></dt>
+<dd><p>Orient this scorer’s natural terms into <strong>cost ∈ [0,1]</strong> (lower = better).</p>
+<p>The single orientation point: each natural term from
+<code class="xref py py-meth docutils literal notranslate"><span class="pre">_score_terms()</span></code> is mapped to cost via <code class="xref py py-func docutils literal notranslate"><span class="pre">to_cost()</span></code>, using this
+scorer’s <code class="xref py py-attr docutils literal notranslate"><span class="pre">_TERM_SENSE</span></code> and <code class="xref py py-meth docutils literal notranslate"><span class="pre">_term_anchor()</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a>) – The processed image (passed through to <code class="xref py py-meth docutils literal notranslate"><span class="pre">_score_terms()</span></code>).</p></li>
+<li><p><strong>measurements</strong> (<a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.3)"><em>pandas.DataFrame</em></a>) – The candidate pipeline’s measurement frame.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A mapping of term name → cost in <code class="docutils literal notranslate"><span class="pre">[0,1]</span></code> (<code class="docutils literal notranslate"><span class="pre">0</span></code> perfect, <code class="docutils literal notranslate"><span class="pre">1</span></code>
+worst). Keys are stable across images for per-term aggregation.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)">dict</a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a>, <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tune.SupervisedScorer.update_forward_refs">
 <em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">update_forward_refs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">localns</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.tune.SupervisedScorer.update_forward_refs" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
@@ -2235,7 +2230,6 @@ See the [<cite>extra</cite> configuration value][pydantic.ConfigDict.extra] for 
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tune.SupervisedScorer.iou_tau"><code class="docutils literal notranslate"><span class="pre">SupervisedScorer.iou_tau</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tune.SupervisedScorer.count_check"><code class="docutils literal notranslate"><span class="pre">SupervisedScorer.count_check</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tune.SupervisedScorer.availability"><code class="docutils literal notranslate"><span class="pre">SupervisedScorer.availability()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tune.SupervisedScorer.score_image"><code class="docutils literal notranslate"><span class="pre">SupervisedScorer.score_image()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tune.SupervisedScorer.__copy__"><code class="docutils literal notranslate"><span class="pre">SupervisedScorer.__copy__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tune.SupervisedScorer.__deepcopy__"><code class="docutils literal notranslate"><span class="pre">SupervisedScorer.__deepcopy__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tune.SupervisedScorer.__get_pydantic_json_schema__"><code class="docutils literal notranslate"><span class="pre">SupervisedScorer.__get_pydantic_json_schema__()</span></code></a></li>
@@ -2273,6 +2267,7 @@ See the [<cite>extra</cite> configuration value][pydantic.ConfigDict.extra] for 
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tune.SupervisedScorer.parse_raw"><code class="docutils literal notranslate"><span class="pre">SupervisedScorer.parse_raw()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tune.SupervisedScorer.schema"><code class="docutils literal notranslate"><span class="pre">SupervisedScorer.schema()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tune.SupervisedScorer.schema_json"><code class="docutils literal notranslate"><span class="pre">SupervisedScorer.schema_json()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tune.SupervisedScorer.score_image"><code class="docutils literal notranslate"><span class="pre">SupervisedScorer.score_image()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tune.SupervisedScorer.update_forward_refs"><code class="docutils literal notranslate"><span class="pre">SupervisedScorer.update_forward_refs()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tune.SupervisedScorer.validate"><code class="docutils literal notranslate"><span class="pre">SupervisedScorer.validate()</span></code></a></li>
 </ul>

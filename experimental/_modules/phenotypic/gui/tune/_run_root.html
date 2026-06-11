@@ -633,18 +633,20 @@
     <span class="n">tune_cache_run_marker_path</span><span class="p">,</span>
 <span class="p">)</span>
 
-<span class="c1">#: The study name every tune run uses (mirrors ``_tune_cli._run._STUDY_NAME``).</span>
-<span class="c1">#: Used as the fallback when discovering from a ``tuning_spec.json`` (which, unlike</span>
-<span class="c1">#: the ``run.json`` marker, does not record a study name).</span>
-<span class="n">_DEFAULT_STUDY_NAME</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;tune&quot;</span>
+<span class="c1">#: The study name every tune run uses (mirrors ``_tune_cli._run._STUDY_NAME``;</span>
+<span class="c1">#: kept in lockstep by ``test_study_name_cutover.py``). Used as the fallback when</span>
+<span class="c1">#: discovering from a ``tuning_spec.json`` (which, unlike the ``run.json`` marker,</span>
+<span class="c1">#: does not record a study name).</span>
+<span class="n">_DEFAULT_STUDY_NAME</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;tune_cost_v1&quot;</span>
 
 <span class="c1">#: The placeholder multi-objective ``directions`` synthesized from the</span>
 <span class="c1">#: ``run.json`` ``is_multi_objective`` flag. The marker records only the boolean</span>
 <span class="c1">#: (not the per-axis names), so a multi-objective run is represented as a 2-axis</span>
-<span class="c1">#: maximize vector — enough for ``is_multi_objective(root)`` (len &gt; 1) and the</span>
-<span class="c1">#: GUI&#39;s &quot;this is a Pareto run&quot; branch. Every tuning objective is higher-is-better</span>
-<span class="c1">#: (robust-eval §5), so the synthesized axes are both ``&quot;maximize&quot;``.</span>
-<span class="n">_MULTI_OBJECTIVE_PLACEHOLDER_DIRECTIONS</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;maximize&quot;</span><span class="p">,</span> <span class="s2">&quot;maximize&quot;</span><span class="p">]</span>
+<span class="c1">#: minimize vector — enough for ``is_multi_objective(root)`` (len &gt; 1) and the</span>
+<span class="c1">#: GUI&#39;s &quot;this is a Pareto run&quot; branch. Every tuning objective is a cost</span>
+<span class="c1">#: (lower-is-better — cost convention), so the synthesized axes are both</span>
+<span class="c1">#: ``&quot;minimize&quot;``.</span>
+<span class="n">_MULTI_OBJECTIVE_PLACEHOLDER_DIRECTIONS</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;minimize&quot;</span><span class="p">,</span> <span class="s2">&quot;minimize&quot;</span><span class="p">]</span>
 
 
 <div class="viewcode-block" id="TuneRunRootError">
@@ -671,7 +673,7 @@
 <span class="sd">            has not been written yet (a live run discovered via ``run.json``).</span>
 <span class="sd">        storage_url: The resolved Optuna storage URL, or ``None`` when the run is</span>
 <span class="sd">            parquet-journal-only.</span>
-<span class="sd">        study_name: The study name (``&quot;tune&quot;``).</span>
+<span class="sd">        study_name: The study name (``&quot;tune_cost_v1&quot;``).</span>
 <span class="sd">        directions: The per-objective Optuna ``directions`` (length ≥ 2) for a</span>
 <span class="sd">            multi-objective run, or ``None`` for a single-objective study.</span>
 <span class="sd">        images_dir: The calibration image directory, or ``None`` when unknown</span>

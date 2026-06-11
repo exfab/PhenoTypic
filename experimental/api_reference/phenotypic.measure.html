@@ -1645,372 +1645,118 @@ string is returned instead. Accepts a <code class="docutils literal notranslate"
 
 <dl class="py class">
 <dt class="sig sig-object py" id="phenotypic.measure.MeasureColor">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.measure.</span></span><span class="sig-name descname"><span class="pre">MeasureColor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">white_chroma_max</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">4.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chroma_min</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">8.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_XYZ</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/measure/_measure_color.html#MeasureColor"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.measure.MeasureColor" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.measure.</span></span><span class="sig-name descname"><span class="pre">MeasureColor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_XYZ</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_xy</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">geomedian_max_iter</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">50</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">geomedian_tol</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0001</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">medoid_max_pixels</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">random_seed</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/measure/_measure_color.html#MeasureColor"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.measure.MeasureColor" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.MeasureFeatures" title="phenotypic.abc_._measure_features.MeasureFeatures"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasureFeatures</span></code></a></p>
-<p>Measure colony color statistics across multiple perceptual color spaces.</p>
+<p>Measure robust colorimetric statistics for each colony.</p>
 <blockquote>
-<div><p>Extract per-colony color features from CIE XYZ, chromaticity (xy),
-CIE Lab (perceptually uniform), and HSV color spaces. For each
-channel the standard statistical suite is computed (min, Q1, mean,
-median, Q3, max, std dev, coefficient of variation), plus Lab chroma
-estimates.</p>
+<div><p>Default output (always on):</p>
+<ul class="simple">
+<li><p><strong>CIE L*a*b*</strong> – ΔE76 geometric-median center, ΔE2000 medoid center,
+ΔE2000 within-colony consistency (median/mean/P95 from the medoid),
+<code class="docutils literal notranslate"><span class="pre">LabTotalVariance</span></code>, and an sRGB hex swatch (plot-only).</p></li>
+<li><p><strong>HSV</strong> – a cone-embedded robust center (circular-correct) and
+<code class="docutils literal notranslate"><span class="pre">HSVConeVariance</span></code>.</p></li>
+</ul>
+<p>Opt-in, hidden from the reference doc:</p>
+<ul class="simple">
+<li><p><strong>CIE XYZ</strong> (<code class="docutils literal notranslate"><span class="pre">include_XYZ=True</span></code>) and <strong>xy chromaticity</strong>
+(<code class="docutils literal notranslate"><span class="pre">include_xy=True</span></code>) – legacy per-channel min/Q1/mean/median/Q3/max/
+stddev/CoeffVar suites.</p></li>
+</ul>
 <dl>
-<dt>Args:</dt><dd><dl class="simple">
-<dt>white_chroma_max: Lab chroma threshold below which a colony is</dt><dd><p>classified as achromatic (white). Default: <code class="docutils literal notranslate"><span class="pre">4.0</span></code>.</p>
-</dd>
-<dt>chroma_min: Minimum chroma value retained in analysis; colonies</dt><dd><p>below this are treated as colorless. Default: <code class="docutils literal notranslate"><span class="pre">8.0</span></code>.</p>
-</dd>
-<dt>include_XYZ: Compute CIE XYZ tristimulus statistics (slower).</dt><dd><p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p>
+<dt>Args:</dt><dd><p>include_XYZ: Emit the legacy CIE XYZ per-channel suite. Default <code class="docutils literal notranslate"><span class="pre">False</span></code>.
+include_xy: Emit the legacy xy chromaticity per-channel suite. Default</p>
+<blockquote>
+<div><p><code class="docutils literal notranslate"><span class="pre">False</span></code>.</p>
+</div></blockquote>
+<dl class="simple">
+<dt>geomedian_max_iter: Weiszfeld iteration cap for the L*a*b* geometric</dt><dd><p>median. Default <code class="docutils literal notranslate"><span class="pre">50</span></code>.</p>
 </dd>
 </dl>
-</dd>
-<dt>Returns:</dt><dd><p>pd.DataFrame: Object-level color statistics with column groups:</p>
+<p>geomedian_tol: Weiszfeld convergence tolerance. Default <code class="docutils literal notranslate"><span class="pre">1e-4</span></code>.
+medoid_max_pixels: Subsample cap for the O(N^2) ΔE2000 medoid selection;</p>
 <blockquote>
-<div><ul class="simple">
-<li><p>ColorXYZ (X, Y, Z) – only when <code class="docutils literal notranslate"><span class="pre">include_XYZ=True</span></code>.</p></li>
-<li><p>Colorxy (x, y chromaticity).</p></li>
-<li><p>ColorLab (L*, a*, b*, ChromaEstimated).</p></li>
-<li><p>ColorHSV (Hue, Saturation, Brightness).</p></li>
-<li><p>Each channel has Min, Q1, Mean, Median, Q3, Max, StdDev,
-CoeffVar sub-columns.</p></li>
-</ul>
+<div><p>consistency scalars still use all pixels. Default <code class="docutils literal notranslate"><span class="pre">1000</span></code>.</p>
 </div></blockquote>
+<p>random_seed: Seed for reproducible medoid subsampling. Default <code class="docutils literal notranslate"><span class="pre">0</span></code>.</p>
 </dd>
-<dt>Best For:</dt><dd><ul class="simple">
-<li><p>Distinguishing pigmented colonies (carotenoid, melanin) from
-colorless ones to stratify phenotypes by pigmentation profile.</p></li>
-<li><p>Detecting sectoring and growth heterogeneity via high
-within-colony color variance.</p></li>
-<li><p>Cross-plate comparison of colony pigmentation using
-perceptually uniform Lab distances.</p></li>
-</ul>
-</dd>
-<dt>Consider Also:</dt><dd><ul class="simple">
-<li><p><a class="reference internal" href="#phenotypic.measure.MeasureIntensity" title="phenotypic.measure.MeasureIntensity"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasureIntensity</span></code></a> for grayscale-only brightness and
-variability statistics.</p></li>
-<li><p><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasureColorComposition</span></code> for proportion-based color
-classification of colony pixels.</p></li>
-<li><p><a class="reference internal" href="#phenotypic.measure.MeasureTexture" title="phenotypic.measure.MeasureTexture"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasureTexture</span></code></a> for surface-roughness features that
-complement color metrics.</p></li>
-</ul>
-</dd>
-<dt>See Also:</dt><dd><p><a class="reference internal" href="../tutorials/notebooks/07_measuring_and_exporting.html"><span class="doc">Tutorial 7: Measuring and Exporting</span></a> for a
-walkthrough of measuring and exporting colony data.
-<a class="reference internal" href="../explanation/measurement_metrics_biological_meaning.html"><span class="doc">Measurement Metrics and Their Biological Meaning</span></a> for
-interpreting color metrics in a biological context.</p>
+<dt>Examples:</dt><dd><p>Measure robust colorimetric statistics for a detected plate:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.data</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_synth_yeast_plate</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect</span><span class="w"> </span><span class="kn">import</span> <span class="n">OtsuDetector</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.measure</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasureColor</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColorLab</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">image</span> <span class="o">=</span> <span class="n">OtsuDetector</span><span class="p">()</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">load_synth_yeast_plate</span><span class="p">())</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">df</span> <span class="o">=</span> <span class="n">MeasureColor</span><span class="p">()</span><span class="o">.</span><span class="n">measure</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">str</span><span class="p">(</span><span class="n">ColorLab</span><span class="o">.</span><span class="n">MEDOID_COLOR_HEX</span><span class="p">)</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span>
+<span class="go">True</span>
+</pre></div>
+</div>
 </dd>
 </dl>
 </div></blockquote>
 <div class="pst-scrollable-table-container"><table class="table" id="id2">
-<caption><span class="caption-text">Category: <strong>ColorXYZ</strong></span><a class="headerlink" href="#id2" title="Link to this table">#</a></caption>
+<caption><span class="caption-text">Category: <strong>ColorLab</strong></span><a class="headerlink" href="#id2" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Name</p></th>
 <th class="head"><p>Description</p></th>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">CieXMin</span></code></p></td>
-<td><p>The minimum X value of the object in CIE XYZ color space</p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">L*GeoMedian</span></code></p></td>
+<td><p>L* of the ΔE76 (Euclidean) geometric-median center color of the object</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">CieXQ1</span></code></p></td>
-<td><p>The lower quartile (Q1) X value of the object in CIE XYZ color space</p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">a*GeoMedian</span></code></p></td>
+<td><p>a* of the ΔE76 (Euclidean) geometric-median center color of the object</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">CieXMean</span></code></p></td>
-<td><p>The mean X value of the object in CIE XYZ color space</p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">b*GeoMedian</span></code></p></td>
+<td><p>b* of the ΔE76 (Euclidean) geometric-median center color of the object</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">CieXMedian</span></code></p></td>
-<td><p>The median X value of the object in CIE XYZ color space</p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">L*Medoid</span></code></p></td>
+<td><p>L* of the ΔE2000 medoid center color (real pixel minimizing total ΔE2000)</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">CieXQ3</span></code></p></td>
-<td><p>The upper quartile (Q3) X value of the object in CIE XYZ color space</p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">a*Medoid</span></code></p></td>
+<td><p>a* of the ΔE2000 medoid center color (real pixel minimizing total ΔE2000)</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">CieXMax</span></code></p></td>
-<td><p>The maximum X value of the object in CIE XYZ color space</p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">b*Medoid</span></code></p></td>
+<td><p>b* of the ΔE2000 medoid center color (real pixel minimizing total ΔE2000)</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">CieXStdDev</span></code></p></td>
-<td><p>The standard deviation of the X value of the object in CIE XYZ color space</p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">DeltaE2000MedianFromMedoid</span></code></p></td>
+<td><p>Median ΔE2000 of object pixels from the ΔE2000 medoid center (robust perceptual MAD)</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">CieXCoeffVar</span></code></p></td>
-<td><p>The coefficient of variation of the X value of the object in CIE XYZ color space</p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">DeltaE2000MeanFromMedoid</span></code></p></td>
+<td><p>Mean ΔE2000 of object pixels from the ΔE2000 medoid center (color-uniformity standard)</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">CieYMin</span></code></p></td>
-<td><p>The minimum Y value of the object in CIE XYZ color space</p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">DeltaE2000P95FromMedoid</span></code></p></td>
+<td><p>95th-percentile ΔE2000 of object pixels from the ΔE2000 medoid center (worst-case / sectoring flag)</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">CieYQ1</span></code></p></td>
-<td><p>The lower quartile (Q1) Y value of the object in CIE XYZ color space</p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">LabTotalVariance</span></code></p></td>
+<td><p>Trace of the 3x3 L*a*b* covariance (var L* + var a* + var b*); mean-squared ΔE76 spread about the arithmetic mean (NOT about the reported GeoMedian/Medoid center)</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">CieYMean</span></code></p></td>
-<td><p>The mean Y value of the object in CIE XYZ color space</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">CieYMedian</span></code></p></td>
-<td><p>The median Y value of the object in CIE XYZ color space</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">CieYQ3</span></code></p></td>
-<td><p>The upper quartile (Q3) Y value of the object in CIE XYZ color space</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">CieYMax</span></code></p></td>
-<td><p>The maximum Y value of the object in CIE XYZ color space</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">CieYStdDev</span></code></p></td>
-<td><p>The standard deviation of the Y value of the object in CIE XYZ color space</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">CieYCoeffVar</span></code></p></td>
-<td><p>The coefficient of variation of the Y value of the object in CIE XYZ color space</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">CieZMin</span></code></p></td>
-<td><p>The minimum Z value of the object in CIE XYZ color space</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">CieZQ1</span></code></p></td>
-<td><p>The lower quartile (Q1) Z value of the object in CIE XYZ color space</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">CieZMean</span></code></p></td>
-<td><p>The mean Z value of the object in CIE XYZ color space</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">CieZMedian</span></code></p></td>
-<td><p>The median Z value of the object in CIE XYZ color space</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">CieZQ3</span></code></p></td>
-<td><p>The upper quartile (Q3) Z value of the object in CIE XYZ color space</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">CieZMax</span></code></p></td>
-<td><p>The maximum Z value of the object in CIE XYZ color space</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">CieZStdDev</span></code></p></td>
-<td><p>The standard deviation of the Z value of the object in CIE XYZ color space</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">CieZCoeffVar</span></code></p></td>
-<td><p>The coefficient of variation of the Z value of the object in CIE XYZ color space</p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MedoidColorHex</span></code></p></td>
+<td><p>sRGB hex string of the ΔE2000 medoid color; for plot visualization only (not a numeric measurement)</p></td>
 </tr>
 </tbody>
 </table>
 </div>
 <div class="pst-scrollable-table-container"><table class="table" id="id3">
-<caption><span class="caption-text">Category: <strong>Colorxy</strong></span><a class="headerlink" href="#id3" title="Link to this table">#</a></caption>
+<caption><span class="caption-text">Category: <strong>ColorHSV</strong></span><a class="headerlink" href="#id3" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Name</p></th>
 <th class="head"><p>Description</p></th>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">xMin</span></code></p></td>
-<td><p>The minimum chromaticity x coordinate of the object</p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">HueRobustMean</span></code></p></td>
+<td><p>Hue of the cone-embedded geometric-median robust center (circular-correct)</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">xQ1</span></code></p></td>
-<td><p>The lower quartile (Q1) chromaticity x coordinate of the object</p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">SaturationRobustMean</span></code></p></td>
+<td><p>Saturation of the cone-embedded geometric-median robust center</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">xMean</span></code></p></td>
-<td><p>The mean chromaticity x coordinate of the object</p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ValueRobustMean</span></code></p></td>
+<td><p>Value (brightness) of the cone-embedded geometric-median robust center</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">xMedian</span></code></p></td>
-<td><p>The median chromaticity x coordinate of the object</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">xQ3</span></code></p></td>
-<td><p>The upper quartile (Q3) chromaticity x coordinate of the object</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">xMax</span></code></p></td>
-<td><p>The maximum chromaticity x coordinate of the object</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">xStdDev</span></code></p></td>
-<td><p>The standard deviation of the chromaticity x coordinate of the object</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">xCoeffVar</span></code></p></td>
-<td><p>The coefficient of variation of the chromaticity x coordinate of the object</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">yMin</span></code></p></td>
-<td><p>The minimum chromaticity y coordinate of the object</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">yQ1</span></code></p></td>
-<td><p>The lower quartile (Q1) chromaticity y coordinate of the object</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">yMean</span></code></p></td>
-<td><p>The mean chromaticity y coordinate of the object</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">yMedian</span></code></p></td>
-<td><p>The median chromaticity y coordinate of the object</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">yQ3</span></code></p></td>
-<td><p>The upper quartile (Q3) chromaticity y coordinate of the object</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">yMax</span></code></p></td>
-<td><p>The maximum chromaticity y coordinate of the object</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">yStdDev</span></code></p></td>
-<td><p>The standard deviation of the chromaticity y coordinate of the object</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">yCoeffVar</span></code></p></td>
-<td><p>The coefficient of variation of the chromaticity y coordinate of the object</p></td>
-</tr>
-</tbody>
-</table>
-</div>
-<div class="pst-scrollable-table-container"><table class="table" id="id4">
-<caption><span class="caption-text">Category: <strong>ColorLab</strong></span><a class="headerlink" href="#id4" title="Link to this table">#</a></caption>
-<thead>
-<tr class="row-odd"><th class="head"><p>Name</p></th>
-<th class="head"><p>Description</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">L*Min</span></code></p></td>
-<td><p>The minimum L* value of the object</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">L*Q1</span></code></p></td>
-<td><p>The lower quartile (Q1) L* value of the object</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">L*Mean</span></code></p></td>
-<td><p>The mean L* value of the object</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">L*Median</span></code></p></td>
-<td><p>The median L* value of the object</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">L*Q3</span></code></p></td>
-<td><p>The upper quartile (Q3) L* value of the object</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">L*Max</span></code></p></td>
-<td><p>The maximum L* value of the object</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">L*StdDev</span></code></p></td>
-<td><p>The standard deviation of the L* value of the object</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">L*CoeffVar</span></code></p></td>
-<td><p>The coefficient of variation of the L* value of the object</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">a*Min</span></code></p></td>
-<td><p>The minimum a* value of the object</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">a*Q1</span></code></p></td>
-<td><p>The lower quartile (Q1) a* value of the object</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">a*Mean</span></code></p></td>
-<td><p>The mean a* value of the object</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">a*Median</span></code></p></td>
-<td><p>The median a* value of the object</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">a*Q3</span></code></p></td>
-<td><p>The upper quartile (Q3) a* value of the object</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">a*Max</span></code></p></td>
-<td><p>The maximum a* value of the object</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">a*StdDev</span></code></p></td>
-<td><p>The standard deviation of the a* value of the object</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">a*CoeffVar</span></code></p></td>
-<td><p>The coefficient of variation of the a* value of the object</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">b*Min</span></code></p></td>
-<td><p>The minimum b* value of the object</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">b*Q1</span></code></p></td>
-<td><p>The lower quartile (Q1) b* value of the object</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">b*Mean</span></code></p></td>
-<td><p>The mean b* value of the object</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">b*Median</span></code></p></td>
-<td><p>The median b* value of the object</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">b*Q3</span></code></p></td>
-<td><p>The upper quartile (Q3) b* value of the object</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">b*Max</span></code></p></td>
-<td><p>The maximum b* value of the object</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">b*StdDev</span></code></p></td>
-<td><p>The standard deviation of the b* value of the object</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">b*CoeffVar</span></code></p></td>
-<td><p>The coefficient of variation of the b* value of the object</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ChromaEstimatedMean</span></code></p></td>
-<td><p>The mean chroma estimation of the object calculated using <span class="math notranslate nohighlight">\(\(sqrt(a^{*}_{mean}^2 + b^{*}_{mean})^2}\)</span></p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ChromaEstimatedMedian</span></code></p></td>
-<td><p>The median chroma estimation of the object using <span class="math notranslate nohighlight">\(\sqrt({a*_{median}^2 + b*_{median})^2}\)</span></p></td>
-</tr>
-</tbody>
-</table>
-</div>
-<div class="pst-scrollable-table-container"><table class="table" id="id5">
-<caption><span class="caption-text">Category: <strong>ColorHSV</strong></span><a class="headerlink" href="#id5" title="Link to this table">#</a></caption>
-<thead>
-<tr class="row-odd"><th class="head"><p>Name</p></th>
-<th class="head"><p>Description</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">HueMin</span></code></p></td>
-<td><p>The minimum hue of the object</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">HueQ1</span></code></p></td>
-<td><p>The lower quartile (Q1) hue of the object</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">HueMean</span></code></p></td>
-<td><p>The mean hue of the object</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">HueMedian</span></code></p></td>
-<td><p>The median hue of the object</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">HueQ3</span></code></p></td>
-<td><p>The upper quartile (Q3) hue of the object</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">HueMax</span></code></p></td>
-<td><p>The maximum hue of the object</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">HueStdDev</span></code></p></td>
-<td><p>The standard deviation of the hue of the object</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">HueCoeffVar</span></code></p></td>
-<td><p>The coefficient of variation of the hue of the object</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">SaturationMin</span></code></p></td>
-<td><p>The minimum saturation of the object</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">SaturationQ1</span></code></p></td>
-<td><p>The lower quartile (Q1) saturation of the object</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">SaturationMean</span></code></p></td>
-<td><p>The mean saturation of the object</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">SaturationMedian</span></code></p></td>
-<td><p>The median saturation of the object</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">SaturationQ3</span></code></p></td>
-<td><p>The upper quartile (Q3) saturation of the object</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">SaturationMax</span></code></p></td>
-<td><p>The maximum saturation of the object</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">SaturationStdDev</span></code></p></td>
-<td><p>The standard deviation of the saturation of the object</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">SaturationCoeffVar</span></code></p></td>
-<td><p>The coefficient of variation of the saturation of the object</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">BrightnessMin</span></code></p></td>
-<td><p>The minimum brightness of the object</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">BrightnessQ1</span></code></p></td>
-<td><p>The lower quartile (Q1) brightness of the object</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">BrightnessMean</span></code></p></td>
-<td><p>The mean brightness of the object</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">BrightnessMedian</span></code></p></td>
-<td><p>The median brightness of the object</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">BrightnessQ3</span></code></p></td>
-<td><p>The upper quartile (Q3) brightness of the object</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">BrightnessMax</span></code></p></td>
-<td><p>The maximum brightness of the object</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">BrightnessStdDev</span></code></p></td>
-<td><p>The standard deviation of the brightness of the object</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">BrightnessCoeffVar</span></code></p></td>
-<td><p>The coefficient of variation of the brightness of the object</p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">HSVConeVariance</span></code></p></td>
+<td><p>Trace of the HSV cone-Cartesian covariance (single 3D HSV spread scalar); spread about the arithmetic mean of the cone coordinates (NOT about the reported RobustMean center)</p></td>
 </tr>
 </tbody>
 </table>
@@ -2018,9 +1764,12 @@ interpreting color metrics in a biological context.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>white_chroma_max</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
-<li><p><strong>chroma_min</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
 <li><p><strong>include_XYZ</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>)</p></li>
+<li><p><strong>include_xy</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>)</p></li>
+<li><p><strong>geomedian_max_iter</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+<li><p><strong>geomedian_tol</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>medoid_max_pixels</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+<li><p><strong>random_seed</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
 </ul>
 </dd>
 </dl>
@@ -2925,13 +2674,28 @@ string is returned instead. Accepts a <code class="docutils literal notranslate"
 </dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="phenotypic.measure.MeasureColor.chroma_min">
-<span class="sig-name descname"><span class="pre">chroma_min</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></em><a class="headerlink" href="#phenotypic.measure.MeasureColor.chroma_min" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="phenotypic.measure.MeasureColor.geomedian_max_iter">
+<span class="sig-name descname"><span class="pre">geomedian_max_iter</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="headerlink" href="#phenotypic.measure.MeasureColor.geomedian_max_iter" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.measure.MeasureColor.geomedian_tol">
+<span class="sig-name descname"><span class="pre">geomedian_tol</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></em><a class="headerlink" href="#phenotypic.measure.MeasureColor.geomedian_tol" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="phenotypic.measure.MeasureColor.include_XYZ">
 <span class="sig-name descname"><span class="pre">include_XYZ</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></em><a class="headerlink" href="#phenotypic.measure.MeasureColor.include_XYZ" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.measure.MeasureColor.include_xy">
+<span class="sig-name descname"><span class="pre">include_xy</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></em><a class="headerlink" href="#phenotypic.measure.MeasureColor.include_xy" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.measure.MeasureColor.medoid_max_pixels">
+<span class="sig-name descname"><span class="pre">medoid_max_pixels</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="headerlink" href="#phenotypic.measure.MeasureColor.medoid_max_pixels" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
@@ -2958,7 +2722,7 @@ string is returned instead. Accepts a <code class="docutils literal notranslate"
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="phenotypic.measure.MeasureColor.model_fields">
-<span class="sig-name descname"><span class="pre">model_fields</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'chroma_min':</span> <span class="pre">FieldInfo(annotation=float,</span> <span class="pre">required=False,</span> <span class="pre">default=8.0,</span> <span class="pre">description='Minimum</span> <span class="pre">chroma</span> <span class="pre">value</span> <span class="pre">retained</span> <span class="pre">in</span> <span class="pre">analysis;</span> <span class="pre">colonies</span> <span class="pre">below</span> <span class="pre">this</span> <span class="pre">are</span> <span class="pre">treated</span> <span class="pre">as</span> <span class="pre">colorless.</span> <span class="pre">Default:</span> <span class="pre">``8.0``.'),</span> <span class="pre">'include_XYZ':</span> <span class="pre">FieldInfo(annotation=bool,</span> <span class="pre">required=False,</span> <span class="pre">default=False,</span> <span class="pre">description='Compute</span> <span class="pre">CIE</span> <span class="pre">XYZ</span> <span class="pre">tristimulus</span> <span class="pre">statistics</span> <span class="pre">(slower).'),</span> <span class="pre">'white_chroma_max':</span> <span class="pre">FieldInfo(annotation=float,</span> <span class="pre">required=False,</span> <span class="pre">default=4.0,</span> <span class="pre">description='Lab</span> <span class="pre">chroma</span> <span class="pre">threshold</span> <span class="pre">below</span> <span class="pre">which</span> <span class="pre">a</span> <span class="pre">colony</span> <span class="pre">is</span> <span class="pre">classified</span> <span class="pre">as</span> <span class="pre">achromatic</span> <span class="pre">(white).</span> <span class="pre">Default:</span> <span class="pre">``4.0``.')}</span></em><a class="headerlink" href="#phenotypic.measure.MeasureColor.model_fields" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">model_fields</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'geomedian_max_iter':</span> <span class="pre">FieldInfo(annotation=int,</span> <span class="pre">required=False,</span> <span class="pre">default=50,</span> <span class="pre">description='Weiszfeld</span> <span class="pre">iteration</span> <span class="pre">cap</span> <span class="pre">for</span> <span class="pre">the</span> <span class="pre">L*a*b*</span> <span class="pre">geometric</span> <span class="pre">median.</span> <span class="pre">Default</span> <span class="pre">``50``.'),</span> <span class="pre">'geomedian_tol':</span> <span class="pre">FieldInfo(annotation=float,</span> <span class="pre">required=False,</span> <span class="pre">default=0.0001,</span> <span class="pre">description='Weiszfeld</span> <span class="pre">convergence</span> <span class="pre">tolerance.</span> <span class="pre">Default</span> <span class="pre">``1e-4``.'),</span> <span class="pre">'include_XYZ':</span> <span class="pre">FieldInfo(annotation=bool,</span> <span class="pre">required=False,</span> <span class="pre">default=False,</span> <span class="pre">description='Emit</span> <span class="pre">the</span> <span class="pre">legacy</span> <span class="pre">CIE</span> <span class="pre">XYZ</span> <span class="pre">per-channel</span> <span class="pre">suite.</span> <span class="pre">Default</span> <span class="pre">``False``.'),</span> <span class="pre">'include_xy':</span> <span class="pre">FieldInfo(annotation=bool,</span> <span class="pre">required=False,</span> <span class="pre">default=False,</span> <span class="pre">description='Emit</span> <span class="pre">the</span> <span class="pre">legacy</span> <span class="pre">xy</span> <span class="pre">chromaticity</span> <span class="pre">per-channel</span> <span class="pre">suite.</span> <span class="pre">Default</span> <span class="pre">``False``.'),</span> <span class="pre">'medoid_max_pixels':</span> <span class="pre">FieldInfo(annotation=int,</span> <span class="pre">required=False,</span> <span class="pre">default=1000,</span> <span class="pre">description='Subsample</span> <span class="pre">cap</span> <span class="pre">for</span> <span class="pre">the</span> <span class="pre">O(N^2)</span> <span class="pre">ΔE2000</span> <span class="pre">medoid</span> <span class="pre">selection;</span> <span class="pre">consistency</span> <span class="pre">scalars</span> <span class="pre">still</span> <span class="pre">use</span> <span class="pre">all</span> <span class="pre">pixels.</span> <span class="pre">Default</span> <span class="pre">``1000``.'),</span> <span class="pre">'random_seed':</span> <span class="pre">FieldInfo(annotation=int,</span> <span class="pre">required=False,</span> <span class="pre">default=0,</span> <span class="pre">description='Seed</span> <span class="pre">for</span> <span class="pre">reproducible</span> <span class="pre">medoid</span> <span class="pre">subsampling.</span> <span class="pre">Default</span> <span class="pre">``0``.')}</span></em><a class="headerlink" href="#phenotypic.measure.MeasureColor.model_fields" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py property">
@@ -2977,8 +2741,8 @@ string is returned instead. Accepts a <code class="docutils literal notranslate"
 </dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="phenotypic.measure.MeasureColor.white_chroma_max">
-<span class="sig-name descname"><span class="pre">white_chroma_max</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></em><a class="headerlink" href="#phenotypic.measure.MeasureColor.white_chroma_max" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="phenotypic.measure.MeasureColor.random_seed">
+<span class="sig-name descname"><span class="pre">random_seed</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="headerlink" href="#phenotypic.measure.MeasureColor.random_seed" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 </dd></dl>
@@ -3034,8 +2798,8 @@ walkthrough of grid-level measurements.</p>
 </dd>
 </dl>
 </div></blockquote>
-<div class="pst-scrollable-table-container"><table class="table" id="id6">
-<caption><span class="caption-text">Category: <strong>GridLinReg</strong></span><a class="headerlink" href="#id6" title="Link to this table">#</a></caption>
+<div class="pst-scrollable-table-container"><table class="table" id="id4">
+<caption><span class="caption-text">Category: <strong>GridLinReg</strong></span><a class="headerlink" href="#id4" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Name</p></th>
 <th class="head"><p>Description</p></th>
@@ -3994,8 +3758,8 @@ walkthrough of grid-level measurements.</p>
 </dd>
 </dl>
 </div></blockquote>
-<div class="pst-scrollable-table-container"><table class="table" id="id7">
-<caption><span class="caption-text">Category: <strong>GridSpatial</strong></span><a class="headerlink" href="#id7" title="Link to this table">#</a></caption>
+<div class="pst-scrollable-table-container"><table class="table" id="id5">
+<caption><span class="caption-text">Category: <strong>GridSpatial</strong></span><a class="headerlink" href="#id5" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Name</p></th>
 <th class="head"><p>Description</p></th>
@@ -4940,8 +4704,8 @@ walkthrough of grid-level measurements.</p>
 </dd>
 </dl>
 </div></blockquote>
-<div class="pst-scrollable-table-container"><table class="table" id="id8">
-<caption><span class="caption-text">Category: <strong>GridSpread</strong></span><a class="headerlink" href="#id8" title="Link to this table">#</a></caption>
+<div class="pst-scrollable-table-container"><table class="table" id="id6">
+<caption><span class="caption-text">Category: <strong>GridSpread</strong></span><a class="headerlink" href="#id6" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Name</p></th>
 <th class="head"><p>Description</p></th>
@@ -5873,8 +5637,8 @@ interpreting intensity metrics in a biological context.</p>
 </dd>
 </dl>
 </div></blockquote>
-<div class="pst-scrollable-table-container"><table class="table" id="id9">
-<caption><span class="caption-text">Category: <strong>Intensity</strong></span><a class="headerlink" href="#id9" title="Link to this table">#</a></caption>
+<div class="pst-scrollable-table-container"><table class="table" id="id7">
+<caption><span class="caption-text">Category: <strong>Intensity</strong></span><a class="headerlink" href="#id7" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Name</p></th>
 <th class="head"><p>Description</p></th>
@@ -6918,8 +6682,8 @@ interpreting shape metrics in a biological context.</p>
 </dd>
 </dl>
 </div></blockquote>
-<div class="pst-scrollable-table-container"><table class="table" id="id10">
-<caption><span class="caption-text">Category: <strong>Shape</strong></span><a class="headerlink" href="#id10" title="Link to this table">#</a></caption>
+<div class="pst-scrollable-table-container"><table class="table" id="id8">
+<caption><span class="caption-text">Category: <strong>Shape</strong></span><a class="headerlink" href="#id8" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Name</p></th>
 <th class="head"><p>Description</p></th>
@@ -7971,8 +7735,8 @@ interpreting size metrics in a biological context.</p>
 </dd>
 </dl>
 </div></blockquote>
-<div class="pst-scrollable-table-container"><table class="table" id="id11">
-<caption><span class="caption-text">Category: <strong>Size</strong></span><a class="headerlink" href="#id11" title="Link to this table">#</a></caption>
+<div class="pst-scrollable-table-container"><table class="table" id="id9">
+<caption><span class="caption-text">Category: <strong>Size</strong></span><a class="headerlink" href="#id9" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Name</p></th>
 <th class="head"><p>Description</p></th>
@@ -9071,8 +8835,8 @@ walkthrough of measuring and exporting colony data.</p>
 </dd>
 </dl>
 </div></blockquote>
-<div class="pst-scrollable-table-container"><table class="table" id="id12">
-<caption><span class="caption-text">Category: <strong>SymZones</strong></span><a class="headerlink" href="#id12" title="Link to this table">#</a></caption>
+<div class="pst-scrollable-table-container"><table class="table" id="id10">
+<caption><span class="caption-text">Category: <strong>SymZones</strong></span><a class="headerlink" href="#id10" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Name</p></th>
 <th class="head"><p>Description</p></th>
@@ -10283,8 +10047,8 @@ interpreting texture metrics in a biological context.</p>
 </dd>
 </dl>
 </div></blockquote>
-<div class="pst-scrollable-table-container"><table class="table" id="id13">
-<caption><span class="caption-text">Category: <strong>Texture</strong></span><a class="headerlink" href="#id13" title="Link to this table">#</a></caption>
+<div class="pst-scrollable-table-container"><table class="table" id="id11">
+<caption><span class="caption-text">Category: <strong>Texture</strong></span><a class="headerlink" href="#id11" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Name</p></th>
 <th class="head"><p>Description</p></th>
@@ -11491,14 +11255,17 @@ string is returned instead. Accepts a <code class="docutils literal notranslate"
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureColor.model_dump_json"><code class="docutils literal notranslate"><span class="pre">MeasureColor.model_dump_json()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureColor.model_post_init"><code class="docutils literal notranslate"><span class="pre">MeasureColor.model_post_init()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureColor.to_json"><code class="docutils literal notranslate"><span class="pre">MeasureColor.to_json()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureColor.chroma_min"><code class="docutils literal notranslate"><span class="pre">MeasureColor.chroma_min</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureColor.geomedian_max_iter"><code class="docutils literal notranslate"><span class="pre">MeasureColor.geomedian_max_iter</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureColor.geomedian_tol"><code class="docutils literal notranslate"><span class="pre">MeasureColor.geomedian_tol</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureColor.include_XYZ"><code class="docutils literal notranslate"><span class="pre">MeasureColor.include_XYZ</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureColor.include_xy"><code class="docutils literal notranslate"><span class="pre">MeasureColor.include_xy</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureColor.medoid_max_pixels"><code class="docutils literal notranslate"><span class="pre">MeasureColor.medoid_max_pixels</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureColor.model_computed_fields"><code class="docutils literal notranslate"><span class="pre">MeasureColor.model_computed_fields</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureColor.model_config"><code class="docutils literal notranslate"><span class="pre">MeasureColor.model_config</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureColor.model_extra"><code class="docutils literal notranslate"><span class="pre">MeasureColor.model_extra</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureColor.model_fields"><code class="docutils literal notranslate"><span class="pre">MeasureColor.model_fields</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureColor.model_fields_set"><code class="docutils literal notranslate"><span class="pre">MeasureColor.model_fields_set</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureColor.white_chroma_max"><code class="docutils literal notranslate"><span class="pre">MeasureColor.white_chroma_max</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureColor.random_seed"><code class="docutils literal notranslate"><span class="pre">MeasureColor.random_seed</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureGridLinRegStats"><code class="docutils literal notranslate"><span class="pre">MeasureGridLinRegStats</span></code></a><ul class="visible nav section-nav flex-column">

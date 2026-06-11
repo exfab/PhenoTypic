@@ -1038,6 +1038,12 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.geometric_median.html">phenotypic.util.geometric_median</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.generate_output_key.html">phenotypic.util.generate_output_key</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.split_measurements.html">phenotypic.util.split_measurements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.robust_color_center.html">phenotypic.util.robust_color_center</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.medoid_ciede2000.html">phenotypic.util.medoid_ciede2000</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.delta_e2000_spread.html">phenotypic.util.delta_e2000_spread</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.hsv_to_cone.html">phenotypic.util.hsv_to_cone</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.cone_to_hsv.html">phenotypic.util.cone_to_hsv</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.lab_to_srgb_hex.html">phenotypic.util.lab_to_srgb_hex</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.decode_well_position.html">phenotypic.util.decode_well_position</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.ImageMetricsCalculator.html">phenotypic.util.ImageMetricsCalculator</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.NoiseMetrics.html">phenotypic.util.NoiseMetrics</a></li>
@@ -1121,6 +1127,24 @@
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.util.html#phenotypic.util.split_measurements" title="phenotypic.util.split_measurements"><code class="xref py py-obj docutils literal notranslate"><span class="pre">split_measurements</span></code></a></p></td>
 <td><p>Split a measurements table into producer-specific data frames.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.util.html#phenotypic.util.robust_color_center" title="phenotypic.util.robust_color_center"><code class="xref py py-obj docutils literal notranslate"><span class="pre">robust_color_center</span></code></a></p></td>
+<td><p>Euclidean geometric median of <code class="docutils literal notranslate"><span class="pre">points</span></code> (N, D), as a bare (D,) array.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.util.html#phenotypic.util.medoid_ciede2000" title="phenotypic.util.medoid_ciede2000"><code class="xref py py-obj docutils literal notranslate"><span class="pre">medoid_ciede2000</span></code></a></p></td>
+<td><p>ΔE2000 medoid center and per-pixel ΔE2000 distances to it.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.util.html#phenotypic.util.delta_e2000_spread" title="phenotypic.util.delta_e2000_spread"><code class="xref py py-obj docutils literal notranslate"><span class="pre">delta_e2000_spread</span></code></a></p></td>
+<td><p>Return (median, mean, P95) of a ΔE2000 distance array; NaNs if empty.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.util.html#phenotypic.util.hsv_to_cone" title="phenotypic.util.hsv_to_cone"><code class="xref py py-obj docutils literal notranslate"><span class="pre">hsv_to_cone</span></code></a></p></td>
+<td><p>Embed HSV (H,S,V in [0,1]) into Cartesian cone coords (S*V*cosθ, S*V*sinθ, V).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.util.html#phenotypic.util.cone_to_hsv" title="phenotypic.util.cone_to_hsv"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cone_to_hsv</span></code></a></p></td>
+<td><p>Inverse of <a class="reference internal" href="../phenotypic.util.html#phenotypic.util.hsv_to_cone" title="phenotypic.util.hsv_to_cone"><code class="xref py py-func docutils literal notranslate"><span class="pre">hsv_to_cone()</span></code></a>; returns H,S,V in [0,1].</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.util.html#phenotypic.util.lab_to_srgb_hex" title="phenotypic.util.lab_to_srgb_hex"><code class="xref py py-obj docutils literal notranslate"><span class="pre">lab_to_srgb_hex</span></code></a></p></td>
+<td><p>Convert a single CIE L*a*b* (D65) color to an sRGB <code class="docutils literal notranslate"><span class="pre">#RRGGBB</span></code> string.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.util.html#phenotypic.util.decode_well_position" title="phenotypic.util.decode_well_position"><code class="xref py py-obj docutils literal notranslate"><span class="pre">decode_well_position</span></code></a></p></td>
 <td><p>Decode microplate well identifiers to 0-based linear indices.</p></td>
@@ -1904,6 +1928,20 @@ In either case, this is followed by: for k in F:  D[k] = F[k]</p>
 
 <dl class="py function">
 <dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.util.</span></span><span class="sig-name descname"><span class="pre">cone_to_hsv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cone</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><span class="pre">numpy.ndarray</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><span class="pre">numpy.ndarray</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/util/_robust_color_stats.html#cone_to_hsv"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Inverse of <a class="reference internal" href="../phenotypic.util.html#phenotypic.util.hsv_to_cone" title="phenotypic.util.hsv_to_cone"><code class="xref py py-func docutils literal notranslate"><span class="pre">hsv_to_cone()</span></code></a>; returns H,S,V in [0,1].</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>cone</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><em>numpy.ndarray</em></a>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)">numpy.ndarray</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
 <span class="sig-prename descclassname"><span class="pre">phenotypic.util.</span></span><span class="sig-name descname"><span class="pre">decode_well_position</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">well</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_rows</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">order</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'column'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><span class="pre">ndarray</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/util/_well_pos_decoder.html#decode_well_position"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
 <dd><p>Decode microplate well identifiers to 0-based linear indices.</p>
 <p>Supports scalar strings, Python lists, NumPy arrays, Pandas Series, and
@@ -1951,6 +1989,20 @@ int32 when a single string is passed.</p>
 </pre></div>
 </div>
 </div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.util.</span></span><span class="sig-name descname"><span class="pre">delta_e2000_spread</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">deltas</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><span class="pre">numpy.ndarray</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/phenotypic/util/_robust_color_stats.html#delta_e2000_spread"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Return (median, mean, P95) of a ΔE2000 distance array; NaNs if empty.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>deltas</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><em>numpy.ndarray</em></a>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a>[<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a>, <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a>, <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a>]</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -2043,6 +2095,91 @@ info: Dictionary with algorithm statistics:</p>
 <p>Cohen, M. B., Lee, Y. T., Miller, G., Pachocki, J., &amp; Sidford, A. (2016).
 Geometric median in nearly linear time. STOC 2016.</p>
 </div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.util.</span></span><span class="sig-name descname"><span class="pre">hsv_to_cone</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">hsv</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><span class="pre">numpy.ndarray</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><span class="pre">numpy.ndarray</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/util/_robust_color_stats.html#hsv_to_cone"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Embed HSV (H,S,V in [0,1]) into Cartesian cone coords (S*V*cosθ, S*V*sinθ, V).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>hsv</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><em>numpy.ndarray</em></a>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)">numpy.ndarray</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.util.</span></span><span class="sig-name descname"><span class="pre">lab_to_srgb_hex</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lab</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><span class="pre">numpy.ndarray</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/util/_robust_color_stats.html#lab_to_srgb_hex"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Convert a single CIE L*a*b* (D65) color to an sRGB <code class="docutils literal notranslate"><span class="pre">#RRGGBB</span></code> string.</p>
+<p>Returns <code class="docutils literal notranslate"><span class="pre">&quot;&quot;</span></code> if any coordinate is NaN (e.g. an empty object).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>lab</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><em>numpy.ndarray</em></a>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.util.</span></span><span class="sig-name descname"><span class="pre">medoid_ciede2000</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lab_points</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><span class="pre">numpy.ndarray</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_pixels</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chunk_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">128</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><span class="pre">TypeAliasForwardRef</span><span class="p"><span class="pre">(</span></span><span class="s"><span class="pre">'numpy.ndarray'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">TypeAliasForwardRef</span><span class="p"><span class="pre">(</span></span><span class="s"><span class="pre">'numpy.ndarray'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/phenotypic/util/_robust_color_stats.html#medoid_ciede2000"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>ΔE2000 medoid center and per-pixel ΔE2000 distances to it.</p>
+<p>The medoid (real pixel minimizing total ΔE2000) is selected from a seeded
+subsample of at most <code class="docutils literal notranslate"><span class="pre">max_pixels</span></code>; the returned distances are computed from
+the chosen medoid to <strong>all</strong> input pixels.</p>
+<p>The total-distance (“row sum”) used to pick the medoid is accumulated in
+candidate blocks of <code class="docutils literal notranslate"><span class="pre">chunk_size</span></code> rows rather than materializing the full
+<code class="docutils literal notranslate"><span class="pre">m</span> <span class="pre">x</span> <span class="pre">m</span></code> pairwise matrix. Peak memory is therefore <code class="docutils literal notranslate"><span class="pre">O(chunk_size</span> <span class="pre">*</span> <span class="pre">m)</span></code>
+instead of <code class="docutils literal notranslate"><span class="pre">O(m^2)</span></code> (CIEDE2000 allocates many intermediate arrays the size
+of its broadcast grid). The result is bit-identical to the full-matrix form
+for any <code class="docutils literal notranslate"><span class="pre">chunk_size</span></code> – chunking bounds memory, not accuracy.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>lab_points</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><em>numpy.ndarray</em></a>) – (N, 3) CIE L*a*b* pixel vectors.</p></li>
+<li><p><strong>max_pixels</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Subsample cap for medoid selection.</p></li>
+<li><p><strong>seed</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – RNG seed for reproducible subsampling.</p></li>
+<li><p><strong>chunk_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of candidate rows scored per block; caps peak memory.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>(center (3,), all_deltas (N,)). center is all-NaN and all_deltas empty
+when <code class="docutils literal notranslate"><span class="pre">lab_points</span></code> is empty.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a>[TypeAliasForwardRef(‘numpy.ndarray’), TypeAliasForwardRef(‘numpy.ndarray’)]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.util.</span></span><span class="sig-name descname"><span class="pre">robust_color_center</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">points</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><span class="pre">numpy.ndarray</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_iter</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">50</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tol</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0001</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><span class="pre">numpy.ndarray</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/util/_robust_color_stats.html#robust_color_center"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Euclidean geometric median of <code class="docutils literal notranslate"><span class="pre">points</span></code> (N, D), as a bare (D,) array.</p>
+<p>Reuses <code class="docutils literal notranslate"><span class="pre">phenotypic.util.geometric_median</span></code> (Weiszfeld). Returns all-NaN for
+empty input and the sole point for <code class="docutils literal notranslate"><span class="pre">N</span> <span class="pre">==</span> <span class="pre">1</span></code> (the underlying solver requires
+<code class="docutils literal notranslate"><span class="pre">N</span> <span class="pre">&gt;=</span> <span class="pre">1</span></code> and a defined centroid).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>points</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><em>numpy.ndarray</em></a>) – (N, D) coordinates (Lab pixels, or HSV cone coordinates).</p></li>
+<li><p><strong>max_iter</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Weiszfeld iteration cap.</p></li>
+<li><p><strong>tol</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Convergence tolerance (forwarded as <code class="docutils literal notranslate"><span class="pre">eps</span></code>).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>(D,) geometric-median coordinate.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)">numpy.ndarray</a></p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">

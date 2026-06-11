@@ -598,8 +598,8 @@
   <h1>Source code for phenotypic.tune._study_store</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;The trial journal — Phase-1 homegrown persistence (Optuna SQLite is Phase 2).</span>
 
-<span class="sd">A ``JournalStudyStore`` accumulates ``Trial`` records, reports the ``best`` (max</span>
-<span class="sd">score among non-failed trials), and round-trips through ``trials.parquet``</span>
+<span class="sd">A ``JournalStudyStore`` accumulates ``Trial`` records, reports the ``best``</span>
+<span class="sd">(**min** cost among non-failed trials), and round-trips through ``trials.parquet``</span>
 <span class="sd">(params and terms persisted as JSON columns — lossless across heterogeneous/</span>
 <span class="sd">conditional param sets). Reloading a store powers CLI resume (``_engine``</span>
 <span class="sd">fast-forwards a deterministic strategy past the recorded trials). It is the</span>
@@ -626,10 +626,10 @@
 <span class="sd">    Args:</span>
 <span class="sd">        number: The zero-based trial index in journaling order.</span>
 <span class="sd">        params: The sampled combo (``{root-relative-key: value}``).</span>
-<span class="sd">        score: The finalized scalar objective (higher = better). For a</span>
-<span class="sd">            multi-objective trial this is the scalar projection of</span>
-<span class="sd">            ``objectives`` (``mean(objectives.values())``).</span>
-<span class="sd">        terms: The robust-aggregated per-term scores backing ``score``.</span>
+<span class="sd">        score: The finalized scalar objective **cost** the optimizer minimizes</span>
+<span class="sd">            (lower = better). For a multi-objective trial this is the scalar</span>
+<span class="sd">            projection of ``objectives`` (``mean(objectives.values())``).</span>
+<span class="sd">        terms: The robust-aggregated per-term costs backing ``score``.</span>
 <span class="sd">        n_images: Number of calibration images evaluated.</span>
 <span class="sd">        objectives: The named multi-objective values (plan §0a sidecar), or</span>
 <span class="sd">            ``None`` for a single-objective trial. Carried from</span>
@@ -706,11 +706,11 @@
 <div class="viewcode-block" id="JournalStudyStore.best">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.tune.html#phenotypic.tune.JournalStudyStore.best">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">best</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Trial</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;The non-failed trial with the highest score, or ``None``.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The non-failed trial with the lowest cost score, or ``None``.&quot;&quot;&quot;</span>
         <span class="n">valid</span> <span class="o">=</span> <span class="p">[</span><span class="n">t</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_trials</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">t</span><span class="o">.</span><span class="n">failed</span><span class="p">]</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">valid</span><span class="p">:</span>
             <span class="k">return</span> <span class="kc">None</span>
-        <span class="k">return</span> <span class="nb">max</span><span class="p">(</span><span class="n">valid</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">t</span><span class="p">:</span> <span class="n">t</span><span class="o">.</span><span class="n">score</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="nb">min</span><span class="p">(</span><span class="n">valid</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">t</span><span class="p">:</span> <span class="n">t</span><span class="o">.</span><span class="n">score</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="JournalStudyStore.is_resumable_in_place">

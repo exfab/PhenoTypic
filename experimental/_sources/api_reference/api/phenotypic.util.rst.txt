@@ -19,6 +19,12 @@
       geometric_median
       generate_output_key
       split_measurements
+      robust_color_center
+      medoid_ciede2000
+      delta_e2000_spread
+      hsv_to_cone
+      cone_to_hsv
+      lab_to_srgb_hex
       decode_well_position
    
    

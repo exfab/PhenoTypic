@@ -297,111 +297,15 @@ that distinguish colony morphotypes.
 MeasureColor
 ^^^^^^^^^^^^
 
-Measure colony color statistics across multiple perceptual color spaces.
+Measure robust colorimetric statistics for each colony.
 
-Extract per-colony color features from CIE XYZ, chromaticity (xy),
-CIE Lab (perceptually uniform), and HSV color spaces. For each
-channel the standard statistical suite is computed (min, Q1, mean,
-median, Q3, max, std dev, coefficient of variation), plus Lab chroma
-estimates.
+Default output (always on):
 
-ColorXYZ
-""""""""
-
-.. list-table:: Category: **ColorXYZ**
-   :header-rows: 1
-
-   * - Name
-     - Description
-   * - ``CieXMin``
-     - The minimum X value of the object in CIE XYZ color space
-   * - ``CieXQ1``
-     - The lower quartile (Q1) X value of the object in CIE XYZ color space
-   * - ``CieXMean``
-     - The mean X value of the object in CIE XYZ color space
-   * - ``CieXMedian``
-     - The median X value of the object in CIE XYZ color space
-   * - ``CieXQ3``
-     - The upper quartile (Q3) X value of the object in CIE XYZ color space
-   * - ``CieXMax``
-     - The maximum X value of the object in CIE XYZ color space
-   * - ``CieXStdDev``
-     - The standard deviation of the X value of the object in CIE XYZ color space
-   * - ``CieXCoeffVar``
-     - The coefficient of variation of the X value of the object in CIE XYZ color space
-   * - ``CieYMin``
-     - The minimum Y value of the object in CIE XYZ color space
-   * - ``CieYQ1``
-     - The lower quartile (Q1) Y value of the object in CIE XYZ color space
-   * - ``CieYMean``
-     - The mean Y value of the object in CIE XYZ color space
-   * - ``CieYMedian``
-     - The median Y value of the object in CIE XYZ color space
-   * - ``CieYQ3``
-     - The upper quartile (Q3) Y value of the object in CIE XYZ color space
-   * - ``CieYMax``
-     - The maximum Y value of the object in CIE XYZ color space
-   * - ``CieYStdDev``
-     - The standard deviation of the Y value of the object in CIE XYZ color space
-   * - ``CieYCoeffVar``
-     - The coefficient of variation of the Y value of the object in CIE XYZ color space
-   * - ``CieZMin``
-     - The minimum Z value of the object in CIE XYZ color space
-   * - ``CieZQ1``
-     - The lower quartile (Q1) Z value of the object in CIE XYZ color space
-   * - ``CieZMean``
-     - The mean Z value of the object in CIE XYZ color space
-   * - ``CieZMedian``
-     - The median Z value of the object in CIE XYZ color space
-   * - ``CieZQ3``
-     - The upper quartile (Q3) Z value of the object in CIE XYZ color space
-   * - ``CieZMax``
-     - The maximum Z value of the object in CIE XYZ color space
-   * - ``CieZStdDev``
-     - The standard deviation of the Z value of the object in CIE XYZ color space
-   * - ``CieZCoeffVar``
-     - The coefficient of variation of the Z value of the object in CIE XYZ color space
-
-Colorxy
-"""""""
-
-.. list-table:: Category: **Colorxy**
-   :header-rows: 1
-
-   * - Name
-     - Description
-   * - ``xMin``
-     - The minimum chromaticity x coordinate of the object
-   * - ``xQ1``
-     - The lower quartile (Q1) chromaticity x coordinate of the object
-   * - ``xMean``
-     - The mean chromaticity x coordinate of the object
-   * - ``xMedian``
-     - The median chromaticity x coordinate of the object
-   * - ``xQ3``
-     - The upper quartile (Q3) chromaticity x coordinate of the object
-   * - ``xMax``
-     - The maximum chromaticity x coordinate of the object
-   * - ``xStdDev``
-     - The standard deviation of the chromaticity x coordinate of the object
-   * - ``xCoeffVar``
-     - The coefficient of variation of the chromaticity x coordinate of the object
-   * - ``yMin``
-     - The minimum chromaticity y coordinate of the object
-   * - ``yQ1``
-     - The lower quartile (Q1) chromaticity y coordinate of the object
-   * - ``yMean``
-     - The mean chromaticity y coordinate of the object
-   * - ``yMedian``
-     - The median chromaticity y coordinate of the object
-   * - ``yQ3``
-     - The upper quartile (Q3) chromaticity y coordinate of the object
-   * - ``yMax``
-     - The maximum chromaticity y coordinate of the object
-   * - ``yStdDev``
-     - The standard deviation of the chromaticity y coordinate of the object
-   * - ``yCoeffVar``
-     - The coefficient of variation of the chromaticity y coordinate of the object
+- **CIE L*a*b*** -- ΔE76 geometric-median center, ΔE2000 medoid center,
+  ΔE2000 within-colony consistency (median/mean/P95 from the medoid),
+  ``LabTotalVariance``, and an sRGB hex swatch (plot-only).
+- **HSV** -- a cone-embedded robust center (circular-correct) and
+  ``HSVConeVariance``.
 
 ColorLab
 """"""""
@@ -411,58 +315,28 @@ ColorLab
 
    * - Name
      - Description
-   * - ``L*Min``
-     - The minimum L* value of the object
-   * - ``L*Q1``
-     - The lower quartile (Q1) L* value of the object
-   * - ``L*Mean``
-     - The mean L* value of the object
-   * - ``L*Median``
-     - The median L* value of the object
-   * - ``L*Q3``
-     - The upper quartile (Q3) L* value of the object
-   * - ``L*Max``
-     - The maximum L* value of the object
-   * - ``L*StdDev``
-     - The standard deviation of the L* value of the object
-   * - ``L*CoeffVar``
-     - The coefficient of variation of the L* value of the object
-   * - ``a*Min``
-     - The minimum a* value of the object
-   * - ``a*Q1``
-     - The lower quartile (Q1) a* value of the object
-   * - ``a*Mean``
-     - The mean a* value of the object
-   * - ``a*Median``
-     - The median a* value of the object
-   * - ``a*Q3``
-     - The upper quartile (Q3) a* value of the object
-   * - ``a*Max``
-     - The maximum a* value of the object
-   * - ``a*StdDev``
-     - The standard deviation of the a* value of the object
-   * - ``a*CoeffVar``
-     - The coefficient of variation of the a* value of the object
-   * - ``b*Min``
-     - The minimum b* value of the object
-   * - ``b*Q1``
-     - The lower quartile (Q1) b* value of the object
-   * - ``b*Mean``
-     - The mean b* value of the object
-   * - ``b*Median``
-     - The median b* value of the object
-   * - ``b*Q3``
-     - The upper quartile (Q3) b* value of the object
-   * - ``b*Max``
-     - The maximum b* value of the object
-   * - ``b*StdDev``
-     - The standard deviation of the b* value of the object
-   * - ``b*CoeffVar``
-     - The coefficient of variation of the b* value of the object
-   * - ``ChromaEstimatedMean``
-     - The mean chroma estimation of the object calculated using :math:`\(sqrt(a^{*}_{mean}^2 + b^{*}_{mean})^2}`
-   * - ``ChromaEstimatedMedian``
-     - The median chroma estimation of the object using :math:`\sqrt({a*_{median}^2 + b*_{median})^2}`
+   * - ``L*GeoMedian``
+     - L* of the ΔE76 (Euclidean) geometric-median center color of the object
+   * - ``a*GeoMedian``
+     - a* of the ΔE76 (Euclidean) geometric-median center color of the object
+   * - ``b*GeoMedian``
+     - b* of the ΔE76 (Euclidean) geometric-median center color of the object
+   * - ``L*Medoid``
+     - L* of the ΔE2000 medoid center color (real pixel minimizing total ΔE2000)
+   * - ``a*Medoid``
+     - a* of the ΔE2000 medoid center color (real pixel minimizing total ΔE2000)
+   * - ``b*Medoid``
+     - b* of the ΔE2000 medoid center color (real pixel minimizing total ΔE2000)
+   * - ``DeltaE2000MedianFromMedoid``
+     - Median ΔE2000 of object pixels from the ΔE2000 medoid center (robust perceptual MAD)
+   * - ``DeltaE2000MeanFromMedoid``
+     - Mean ΔE2000 of object pixels from the ΔE2000 medoid center (color-uniformity standard)
+   * - ``DeltaE2000P95FromMedoid``
+     - 95th-percentile ΔE2000 of object pixels from the ΔE2000 medoid center (worst-case / sectoring flag)
+   * - ``LabTotalVariance``
+     - Trace of the 3x3 L*a*b* covariance (var L* + var a* + var b*); mean-squared ΔE76 spread about the arithmetic mean (NOT about the reported GeoMedian/Medoid center)
+   * - ``MedoidColorHex``
+     - sRGB hex string of the ΔE2000 medoid color; for plot visualization only (not a numeric measurement)
 
 ColorHSV
 """"""""
@@ -472,54 +346,14 @@ ColorHSV
 
    * - Name
      - Description
-   * - ``HueMin``
-     - The minimum hue of the object
-   * - ``HueQ1``
-     - The lower quartile (Q1) hue of the object
-   * - ``HueMean``
-     - The mean hue of the object
-   * - ``HueMedian``
-     - The median hue of the object
-   * - ``HueQ3``
-     - The upper quartile (Q3) hue of the object
-   * - ``HueMax``
-     - The maximum hue of the object
-   * - ``HueStdDev``
-     - The standard deviation of the hue of the object
-   * - ``HueCoeffVar``
-     - The coefficient of variation of the hue of the object
-   * - ``SaturationMin``
-     - The minimum saturation of the object
-   * - ``SaturationQ1``
-     - The lower quartile (Q1) saturation of the object
-   * - ``SaturationMean``
-     - The mean saturation of the object
-   * - ``SaturationMedian``
-     - The median saturation of the object
-   * - ``SaturationQ3``
-     - The upper quartile (Q3) saturation of the object
-   * - ``SaturationMax``
-     - The maximum saturation of the object
-   * - ``SaturationStdDev``
-     - The standard deviation of the saturation of the object
-   * - ``SaturationCoeffVar``
-     - The coefficient of variation of the saturation of the object
-   * - ``BrightnessMin``
-     - The minimum brightness of the object
-   * - ``BrightnessQ1``
-     - The lower quartile (Q1) brightness of the object
-   * - ``BrightnessMean``
-     - The mean brightness of the object
-   * - ``BrightnessMedian``
-     - The median brightness of the object
-   * - ``BrightnessQ3``
-     - The upper quartile (Q3) brightness of the object
-   * - ``BrightnessMax``
-     - The maximum brightness of the object
-   * - ``BrightnessStdDev``
-     - The standard deviation of the brightness of the object
-   * - ``BrightnessCoeffVar``
-     - The coefficient of variation of the brightness of the object
+   * - ``HueRobustMean``
+     - Hue of the cone-embedded geometric-median robust center (circular-correct)
+   * - ``SaturationRobustMean``
+     - Saturation of the cone-embedded geometric-median robust center
+   * - ``ValueRobustMean``
+     - Value (brightness) of the cone-embedded geometric-median robust center
+   * - ``HSVConeVariance``
+     - Trace of the HSV cone-Cartesian covariance (single 3D HSV spread scalar); spread about the arithmetic mean of the cone coordinates (NOT about the reported RobustMean center)
 
 
 MeasureGridSpatial
