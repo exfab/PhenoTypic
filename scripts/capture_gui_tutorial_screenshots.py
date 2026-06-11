@@ -198,35 +198,79 @@ def _seed_error_triage_labels() -> None:
 
     The Error-analysis tab only ranks measurements once a category carries
     ``>= ErrorCutoffFinder().min_error_n`` labels (8); the synthetic run carries
-    none, so seed ~12 ``background_noise`` labels (the smallest colonies —
+    none, so seed 12 ``background_noise`` labels (the smallest colonies —
     plausible debris/noise) for a populated, meaningful screenshot. The seeded
     labels give the cutoff finder real separation → a ranked table + a
-    distribution plot with a cutoff line. Idempotent: re-marking the same keys
-    is a no-op set-write. Must run AFTER ``run_cli_once`` (it needs the master
-    parquet) and BEFORE the standalone viewer boots (so ``qc/curation_labels.parquet``
-    + ``deliverables/errors/background_noise.parquet`` exist when the tab loads).
+    distribution plot with a cutoff line.
+
+    **The labeled rows must stay PRESENT in the frame the viewer reloads.** The
+    results viewer (and the Error tab) reads good/error frames from
+    ``OutputRoot.master_df``, which prefers the post-applied
+    ``deliverables/measurements.parquet`` mirror. But ``CurationLabels`` treats a
+    label as a *removal*: ``mark_many`` rewrites the mirror with the labeled rows
+    anti-joined OUT. A freshly-booted standalone viewer would then reload that
+    shrunken mirror, fail to find the 12 labeled keys, drop every label in
+    re-keying, and render the empty state — exactly what a naive seed produces.
+
+    In a *live* GUI session this never bites because ``master_df`` is the full
+    frame held in memory from before any curation; only the on-disk mirror
+    shrinks. To reproduce that for a freshly-booted capture viewer, this helper:
+
+    1. restores a FULL mirror from the clean ``master_measurements.parquet`` (so
+       the chosen objects + their fingerprints are present and stable),
+    2. clears any stale labels parquet from a prior run and marks exactly the 12
+       smallest-``Size_Area`` objects as ``background_noise`` (this writes the
+       durable labels store + ``errors/background_noise.parquet`` and curates the
+       mirror),
+    3. restores the FULL mirror again so the reloaded viewer's ``master_df``
+       still carries the 12 labeled (error-class) rows alongside the good rows.
+
+    Must run AFTER ``run_cli_once`` (it needs the master parquet) and BEFORE the
+    standalone viewer boots.
     """
     import polars as pl
 
     from phenotypic.gui.results_viewer._curation_labels import CurationLabels
-    from phenotypic.tools_ import master_measurements_parquet_path
+    from phenotypic.tools_ import (
+        curation_labels_parquet_path,
+        master_measurements_parquet_path,
+        measurements_parquet_path,
+    )
 
     master_path = master_measurements_parquet_path(OUTPUT_DIR)
     if not master_path.is_file():
         print("[seed] no master parquet — Error-tab label seeding skipped")
         return
-    master = pl.read_parquet(master_path)
+
+    full = pl.read_parquet(master_path)
+    mirror_path = measurements_parquet_path(OUTPUT_DIR)
+    mirror_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # (1) Restore the full mirror so the labeled rows are present + fingerprintable.
+    full.write_parquet(mirror_path)
+
+    # (2) Start from a clean label set (a prior run may have left stale keys),
+    #     then mark exactly the 12 smallest-Size_Area objects.
+    labels_path = curation_labels_parquet_path(OUTPUT_DIR)
+    if labels_path.exists():
+        labels_path.unlink()
     smallest = (
-        master.sort("Size_Area")
+        full.sort("Size_Area")
         .head(12)
         .select(["Metadata_ImageFile", "Object_Label"])
     )
     keys = [(str(f), int(label)) for f, label in smallest.iter_rows()]
-    store = CurationLabels.load(OUTPUT_DIR, master)
+    store = CurationLabels.load(OUTPUT_DIR, full)
     store.mark_many(keys, "background_noise")
+
+    # (3) Restore the full mirror again — mark_many curated the labeled rows OUT,
+    #     but the Error tab needs them present in OutputRoot.master_df to rank the
+    #     error class. The durable labels parquet (written in step 2) is what the
+    #     reloaded viewer re-keys onto this full frame.
+    full.write_parquet(mirror_path)
     print(
         f"[seed] labeled {len(keys)} smallest-Size_Area objects as "
-        f"'background_noise' for the Error tab"
+        f"'background_noise' (full mirror restored for the Error tab)"
     )
 
 
