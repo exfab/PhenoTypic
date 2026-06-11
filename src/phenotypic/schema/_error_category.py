@@ -63,7 +63,8 @@ class ErrorCategory(MeasurementInfo):
     )
     UNDERSEGMENTED = (
         "undersegmented",
-        "A single colony detected as too small or fragmented low.",
+        "A single colony under-detected — its mask captured too small or "
+        "only partially covering the colony.",
     )
     MERGED = (
         "merged",
