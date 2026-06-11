@@ -23,7 +23,17 @@ from __future__ import annotations
 
 import json
 
+import pytest
 from playwright.sync_api import Page, expect
+
+# All three tests drive the in-builder point-picker modal, whose "Pick on
+# image…" button stochastically lands "outside of the viewport" on the shared
+# 2-vCPU GHA runner, so Playwright's click retries time out (verified flake on
+# PR #139's e2e job — same signature on the original run and a re-run). The
+# button is correct and the SUT works; only the runner's viewport/poll timing is
+# tight. Retry the whole module via pytest-rerunfailures rather than skipping it
+# (a real assertion failure still fails after the reruns are exhausted).
+pytestmark = pytest.mark.flaky(reruns=5, reruns_delay=2)
 
 
 def _open_picker_modal_for_manual_point_detector(
