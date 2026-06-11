@@ -233,27 +233,6 @@ QC_REVIEW_BULK_MARK_DROPDOWN_ID: str = "qc-review-bulk-mark-dropdown"
 QC_REVIEW_EMPTY_STATE_ID: str = "qc-review-empty-state"
 
 
-def review_tile_remove_btn_id(image_file: str, label: int) -> Dict[str, object]:
-    """Pattern-matching id for a Review-gallery per-tile remove/restore button.
-
-    Distinct ``type`` from the colony view's button so the two galleries'
-    ``MATCH`` callbacks never cross-fire, while the curation target (the
-    ``FilteredMeasurements`` removal set) is shared.
-
-    Args:
-        image_file: ``Metadata_ImageFile`` of the tile's colony.
-        label: ``Object_Label`` of the tile's colony.
-
-    Returns:
-        ``{"type": "qc-review-tile-remove", "image_file": …, "label": …}``.
-    """
-    return {
-        "type": "qc-review-tile-remove",
-        "image_file": image_file,
-        "label": label,
-    }
-
-
 __all__ = [
     # Toggle
     "QC_SUBVIEW_TOGGLE_ID",
@@ -300,5 +279,4 @@ __all__ = [
     "QC_REVIEW_BULK_RESTORE_BTN_ID",
     "QC_REVIEW_BULK_MARK_DROPDOWN_ID",
     "QC_REVIEW_EMPTY_STATE_ID",
-    "review_tile_remove_btn_id",
 ]

@@ -814,6 +814,13 @@ def register_callbacks(
     # empties as an inline message), then re-render THIS tile's body so the
     # new custom chip appears and bump STORE_CATEGORY_VOCAB_REVISION so every
     # bulk-mark dropdown refreshes its options.
+    #
+    # NOTE (invariant): this callback and ``_populate_radial_body`` both write
+    # the ``colony-radial-popover-body`` MATCH ``children`` output (the latter
+    # plain, this one ``allow_duplicate``). They must NEVER be triggerable by
+    # the same Input — ``_populate_radial_body`` fires on the trigger
+    # ``n_clicks``; this fires on the custom-submit ``n_clicks`` / input
+    # ``n_submit`` — or Dash raises a duplicate-output collision.
 
     @app.callback(
         Output(
@@ -842,6 +849,15 @@ def register_callbacks(
             },
             "n_clicks",
         ),
+        # Enter in the input submits too (debounce=True fires n_submit).
+        Input(
+            {
+                "type": "colony-radial-custom-input",
+                "image_file": MATCH,
+                "label": MATCH,
+            },
+            "n_submit",
+        ),
         State(
             {
                 "type": "colony-radial-custom-input",
@@ -855,18 +871,22 @@ def register_callbacks(
     )
     def _add_custom_category(
         n_clicks: int | None,
+        n_submit: int | None,
         name: str | None,
         revision: int | None,
     ) -> Any:
         """Register a custom category from a tile's ＋ Add affordance.
 
-        On success: re-render this tile's radial body (so the new chip shows)
-        and bump the vocabulary revision (so bulk-mark dropdowns refresh). On
-        failure (empty / collision): leave the body untouched and surface the
-        reason in the inline message slot. ``MATCH`` keys the input value, the
-        message slot, and the body to the same tile automatically.
+        Fires on the ``＋ Add`` button click OR Enter in the input
+        (``n_submit``). On success: re-render this tile's radial body (so the
+        new chip shows) and bump the vocabulary revision (so bulk-mark
+        dropdowns refresh). On failure (empty / collision): leave the body
+        untouched and surface the reason in the inline message slot. ``MATCH``
+        keys the input value, the message slot, and the body to the same tile
+        automatically.
         """
-        if not n_clicks:
+        del n_clicks, n_submit  # either Input fires; gate on triggered below.
+        if not callback_context.triggered:
             raise PreventUpdate
         triggered = callback_context.triggered_id
         if not isinstance(triggered, dict):

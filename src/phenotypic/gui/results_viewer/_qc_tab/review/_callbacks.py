@@ -1338,6 +1338,13 @@ def _register_curation_callbacks(app: dash.Dash) -> None:
     # Mirrors the colony view's `_add_custom_category` exactly. On success,
     # re-render THIS tile's body so the new chip shows + bump the shared
     # vocabulary revision so every bulk-mark dropdown refreshes.
+    #
+    # NOTE (invariant): this callback and ``_populate_qc_radial_body`` both
+    # write the ``qc-radial-popover-body`` MATCH ``children`` output (the
+    # latter plain, this one ``allow_duplicate``). They must NEVER be
+    # triggerable by the same Input — populate fires on the trigger
+    # ``n_clicks``; this fires on the custom-submit ``n_clicks`` / input
+    # ``n_submit`` — or Dash raises a duplicate-output collision.
     from phenotypic.gui.results_viewer.colony_view._callbacks import (
         register_custom_category_safe,
     )
@@ -1371,6 +1378,15 @@ def _register_curation_callbacks(app: dash.Dash) -> None:
             },
             "n_clicks",
         ),
+        # Enter in the input submits too (debounce=True fires n_submit).
+        Input(
+            {
+                "type": "qc-radial-custom-input",
+                "image_file": MATCH,
+                "label": MATCH,
+            },
+            "n_submit",
+        ),
         State(
             {
                 "type": "qc-radial-custom-input",
@@ -1384,11 +1400,17 @@ def _register_curation_callbacks(app: dash.Dash) -> None:
     )
     def _add_qc_custom_category(
         n_clicks: int | None,
+        n_submit: int | None,
         name: str | None,
         revision: int | None,
     ):
-        """Register a custom category from a QC tile's ＋ Add affordance."""
-        if not n_clicks:
+        """Register a custom category from a QC tile's ＋ Add affordance.
+
+        Fires on the ``＋ Add`` button click OR Enter in the input
+        (``n_submit``).
+        """
+        del n_clicks, n_submit  # either Input fires; gate on triggered below.
+        if not callback_context.triggered:
             return no_update, no_update, no_update
         triggered = callback_context.triggered_id
         filtered = _filtered_state()

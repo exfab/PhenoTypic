@@ -783,7 +783,12 @@ def _post_radial_custom_add(
                 {"id": msg_id, "property": "children"},
                 {"id": "store-category-vocab-revision", "property": "data"},
             ],
-            "inputs": [{"id": submit_id, "property": "n_clicks", "value": 1}],
+            "inputs": [
+                # The ＋ Add button n_clicks (the firing Input here) plus the
+                # input's n_submit (Enter-to-submit, S1) — registration order.
+                {"id": submit_id, "property": "n_clicks", "value": 1},
+                {"id": input_id, "property": "n_submit", "value": None},
+            ],
             "state": [
                 {"id": input_id, "property": "value", "value": name},
                 {
@@ -830,6 +835,58 @@ def test_colony_custom_add_registers_and_persists(
     body_text = resp.get_data(as_text=True)
     assert "halo" in body_text
     assert "colony-cat-wedge" in body_text
+
+
+def test_colony_custom_add_via_enter_submits(
+    output_root: OutputRoot,
+    tmp_path: Path,
+) -> None:
+    """Pressing Enter in the ＋ Add input (``n_submit``) registers the category (S1).
+
+    The submit callback now also has the input's ``n_submit`` as an Input;
+    this drives that path (the input id is the trigger, not the button) and
+    asserts the category is registered exactly as a button click would.
+    """
+    app = create_app(output_root)
+    store: CurationLabels = app.server.config[CFG_FILTERED_STATE]
+    client = app.server.test_client()
+
+    out_key = _find_output_key(
+        app, "colony-radial-popover-body", "colony-radial-custom-submit"
+    )
+    submit_id = {"type": "colony-radial-custom-submit", "image_file": "img-A", "label": 1}
+    input_id = {"type": "colony-radial-custom-input", "image_file": "img-A", "label": 1}
+    body_id = {"type": "colony-radial-popover-body", "image_file": "img-A", "label": 1}
+    msg_id = {"type": "colony-radial-custom-msg", "image_file": "img-A", "label": 1}
+    resp = client.post(
+        "/_dash-update-component",
+        json={
+            "output": out_key,
+            "outputs": [
+                {"id": body_id, "property": "children"},
+                {"id": msg_id, "property": "children"},
+                {"id": "store-category-vocab-revision", "property": "data"},
+            ],
+            "inputs": [
+                {"id": submit_id, "property": "n_clicks", "value": None},
+                {"id": input_id, "property": "n_submit", "value": 1},
+            ],
+            "state": [
+                {"id": input_id, "property": "value", "value": "Ghost"},
+                {"id": "store-category-vocab-revision", "property": "data", "value": 0},
+            ],
+            # Enter fires the INPUT's n_submit, not the button.
+            "changedPropIds": [
+                '{"image_file":"img-A","label":1,"type":"colony-radial-custom-input"}.n_submit'
+            ],
+        },
+    )
+    assert resp.status_code == 200, (
+        f"Enter-submit returned {resp.status_code}: {resp.data[:200]}"
+    )
+    assert "ghost" in store.categories()
+    body_text = resp.get_data(as_text=True)
+    assert "ghost" in body_text
 
 
 def test_colony_custom_add_empty_name_is_rejected_inline(
