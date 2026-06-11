@@ -197,8 +197,12 @@ def test_rekey_drops_when_object_gone(tmp_path: Path):
     assert store.rekey_report.dropped == 1
 
 
-def test_migrates_legacy_measurements_parquet_as_other(tmp_path: Path):
-    # A legacy curated mirror missing object 3 -> object 3 imported as "other".
+def test_no_legacy_migration_from_measurements_parquet(tmp_path: Path):
+    # A mirror missing object 3 must NOT be auto-migrated into an "other"
+    # label. Now that re-keying uses the clean master, a mirror-missing row is
+    # ambiguous — it may be an old curation removal OR a post-op / --metadata
+    # drop — so importing it would fabricate a spurious removal. Without a
+    # durable curation_labels.parquet, the store loads empty.
     master = _master()
     curated = master.filter(pl.col("Object_Label") != 3)
     legacy = tools_.measurements_parquet_path(tmp_path)
@@ -206,7 +210,8 @@ def test_migrates_legacy_measurements_parquet_as_other(tmp_path: Path):
     curated.write_parquet(legacy)
 
     store = CurationLabels.load(tmp_path, master)
-    assert store.labels == {("plateA", 3): "other"}
+    assert store.labels == {}
+    assert store.rekey_report.migrated == 0
 
 
 def test_rekey_drops_rather_than_attaching_to_neighbor(tmp_path: Path):

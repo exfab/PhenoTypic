@@ -126,10 +126,11 @@ class RekeyReport:
         kept: Labels whose exact key matched and passed fingerprint validation.
         rekeyed: Labels re-attached to a renumbered object by fingerprint.
         dropped: Labels with no confident match in the current master (dropped).
-        migrated: Legacy removals inferred from a pre-existing
-            ``measurements.parquet`` (no prior labels store) and imported as
-            ``other`` — counted separately from ``kept`` so the stale banner is
-            accurate.
+        migrated: Reserved (always ``0``). Legacy auto-migration of a curated
+            ``measurements.parquet`` into ``other`` labels was removed once
+            re-keying moved to the clean master: the mirror's missing rows can
+            no longer be distinguished from post-op / ``--metadata`` row drops,
+            so importing them would fabricate spurious removals.
     """
 
     kept: int = 0
@@ -277,12 +278,14 @@ class CurationLabels:
         if labels_path.exists():
             stored = cls._read_labels_parquet(labels_path)
             labels, fingerprints, report = cls._rekey(stored, clean_master)
-        elif measurements_parquet_path(root).exists():
-            labels, fingerprints = cls._migrate_legacy(root, clean_master)
-            n = len(labels)
-            if n > 0:
-                logger.info("Imported %d legacy removal(s) from measurements.parquet as 'other'.", n)
-            report = RekeyReport(migrated=n)
+        # No legacy migration from ``measurements.parquet``: now that re-keying
+        # uses the CLEAN master, the rows the curated mirror is missing are
+        # ambiguous — they may be old curation removals OR objects a post op
+        # (e.g. outlier removal) or an external ``--metadata`` inner-join
+        # legitimately dropped from the post-applied mirror. Importing the
+        # latter as ``other`` would silently fabricate error labels and delete
+        # valid objects on first GUI load, so we start empty (matching the CLI
+        # finalize decision). A genuine durable store re-keys above.
 
         # Capture the mtime of the curated mirror so _save_locked can detect
         # an external re-seed (e.g. CLI --measure) while the session is open.
@@ -492,26 +495,6 @@ class CurationLabels:
 
         dropped += direct_drops
         return labels, fingerprints, RekeyReport(kept=kept, rekeyed=rekeyed, dropped=dropped)
-
-    @classmethod
-    def _migrate_legacy(
-        cls, root: Path, master_df: pl.DataFrame
-    ) -> tuple[dict[LabelKey, str], dict[LabelKey, tuple[float, float]]]:
-        """Import a legacy ``measurements.parquet`` mirror as ``other`` labels.
-
-        Removed objects are ``master_keys - curated_keys``; each is labeled
-        ``other`` with its fingerprint taken from the master.
-        """
-        curated = pl.read_parquet(measurements_parquet_path(root))
-        exact, _ = cls._master_index(master_df)
-        curated_keys = _keys_of(curated)
-        labels: dict[LabelKey, str] = {}
-        fingerprints: dict[LabelKey, tuple[float, float]] = {}
-        for key, fp in exact.items():
-            if key not in curated_keys:
-                labels[key] = OTHER_CATEGORY
-                fingerprints[key] = fp
-        return labels, fingerprints
 
     # -- queries -------------------------------------------------------------
     def filtered_df(self, master_df: pl.DataFrame) -> pl.DataFrame:

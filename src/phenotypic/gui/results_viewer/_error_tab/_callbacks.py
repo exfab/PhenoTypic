@@ -235,9 +235,15 @@ def _recompute(
         "error_values": error_values.tolist(),
     }
 
-    _persist(output_root, category, res)
-    if good_mode == "verified":
-        _persist_verified(output_root, good_pdf)
+    # Don't publish deliverables derived from a stale cached master: once the
+    # curation store is stale (a concurrent CLI --measure/--recompile rewrote
+    # measurements.parquet), the in-memory frames may no longer match disk, and
+    # finalize will re-emit error_analysis.* authoritatively anyway. The table /
+    # figure still render in-session; we just skip the on-disk write.
+    if not filtered_state.stale:
+        _persist(output_root, category, res)
+        if good_mode == "verified":
+            _persist_verified(output_root, good_pdf)
 
     return RecomputeResult(
         category=category,
