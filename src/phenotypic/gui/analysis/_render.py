@@ -26,7 +26,7 @@ matplotlib.use("Agg")  # safe in dash worker threads; must precede pyplot import
 import matplotlib.pyplot as plt
 from dash import dcc, html
 
-from phenotypic.viz.figures import apply_theme, phenotypic_mpl_context
+from phenotypic.tools_.viz.figures import apply_theme, phenotypic_mpl_context
 
 if TYPE_CHECKING:
     from phenotypic.analysis.abc_ import SetAnalyzer

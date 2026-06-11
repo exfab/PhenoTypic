@@ -19,7 +19,7 @@ from phenotypic.abc_ import (
     FigureSpec,
     figure,
 )
-from phenotypic.viz.figures._theme import OKABE_ITO
+from phenotypic.tools_.viz.figures._theme import OKABE_ITO
 
 
 # -- Control validation -----------------------------------------------------
@@ -291,7 +291,7 @@ class TestControlIdentity:
             def b(self, *, sigma) -> go.Figure:
                 return go.Figure()
 
-        from phenotypic.viz.notebook._adapter import unique_controls
+        from phenotypic.tools_.viz.notebook._adapter import unique_controls
 
         specs = P().iter_figures()
         assert len(unique_controls(specs)) == 1
@@ -309,7 +309,7 @@ class TestControlIdentity:
             def b(self, *, sigma) -> go.Figure:
                 return go.Figure()
 
-        from phenotypic.viz.notebook._adapter import unique_controls
+        from phenotypic.tools_.viz.notebook._adapter import unique_controls
 
         assert len(unique_controls(P().iter_figures())) == 2
 

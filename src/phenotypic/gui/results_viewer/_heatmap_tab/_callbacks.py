@@ -35,7 +35,7 @@ from phenotypic.gui._config import (
     CFG_OUTPUT_ROOT,
     CFG_QC_AUGMENTED_FRAME,
 )
-from phenotypic.viz.figures import apply_theme
+from phenotypic.tools_.viz.figures import apply_theme
 
 from phenotypic.gui.results_viewer import _ids as viewer_ids
 from phenotypic.gui.results_viewer._filtered_state import get_curated_frame

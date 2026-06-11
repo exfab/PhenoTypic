@@ -2,7 +2,7 @@
 
 The contract (``abc_/_figure_provider.py``) must import only stdlib at module
 level — no UI toolkit and not even plotly (it touches plotly lazily). The theme
-(``viz/figures/_theme.py``) may import plotly but no UI toolkit. UI toolkits
+(``tools_/viz/figures/_theme.py``) may import plotly but no UI toolkit. UI toolkits
 (dash / ipywidgets / panel / bokeh / param) are confined to the shells.
 
 Checking the AST's top-level statements (not nested ``if TYPE_CHECKING:`` blocks
@@ -40,12 +40,12 @@ def test_contract_imports_stdlib_only():
 
 
 def test_theme_imports_no_ui_toolkit():
-    imports = _toplevel_imports(_SRC / "viz" / "figures" / "_theme.py")
+    imports = _toplevel_imports(_SRC / "tools_" / "viz" / "figures" / "_theme.py")
     assert not (imports & _UI_TOOLKITS), f"theme imports UI toolkit: {imports}"
 
 
 def test_notebook_adapter_does_not_import_ipywidgets_at_module_level():
-    imports = _toplevel_imports(_SRC / "viz" / "notebook" / "_adapter.py")
+    imports = _toplevel_imports(_SRC / "tools_" / "viz" / "notebook" / "_adapter.py")
     # ipywidgets and IPython are imported lazily inside the builder, not at module top
     assert "ipywidgets" not in imports
     assert "IPython" not in imports

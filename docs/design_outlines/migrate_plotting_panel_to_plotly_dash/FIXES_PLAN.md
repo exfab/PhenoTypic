@@ -226,7 +226,7 @@ Add to `tests/unit/viz/test_theme.py`:
 ```python
 def test_paper_bgcolor_matches_design_bg():
     import plotly.io as pio
-    from phenotypic.viz.figures._theme import BG, PHENOTYPIC_TEMPLATE_NAME
+    from phenotypic.tools_.viz.figures._theme import BG, PHENOTYPIC_TEMPLATE_NAME
 
     tmpl = pio.templates[PHENOTYPIC_TEMPLATE_NAME]
     assert tmpl.layout.paper_bgcolor == BG  # #f5f7fa, not white
@@ -234,7 +234,7 @@ def test_paper_bgcolor_matches_design_bg():
 
 def test_font_family_does_not_drift_from_gui_design():
     from phenotypic.gui._design import FONT_FAMILY_BODY
-    from phenotypic.viz.figures._theme import FONT_FAMILY
+    from phenotypic.tools_.viz.figures._theme import FONT_FAMILY
 
     assert FONT_FAMILY == FONT_FAMILY_BODY
 ```
