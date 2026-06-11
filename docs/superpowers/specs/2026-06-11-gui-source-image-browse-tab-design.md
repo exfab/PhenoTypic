@@ -43,8 +43,10 @@ behind a port forward on a possibly-offline cluster. (The tab is named
   on the image dropdown. The dataset dropdown is **hidden when the source
   root is flat** (images directly under it).
 - **Mixed input formats:** standard (`.png/.tif/.tiff/.jpg/.jpeg`) tile
-  directly; camera **RAW** (`.raw/.nef/.cr2/.arw/.dng`) is decoded through
-  `phenotypic.Image` (rawpy) first.
+  directly; camera **RAW** (`.cr2/.cr3/.nef/.arw/.dng`) is decoded through
+  `phenotypic.Image` (rawpy) first. (Phase 1 extends the core
+  `IO.RAW_FILE_EXTENSIONS` — previously Canon `.cr3` only — to this set so
+  both Browse and the pipeline decode them.)
 - **Faithful rendering** — the image is shown as decoded (no auto-contrast
   / enhancement); what you see matches the true capture.
 - A **metadata panel**: pixel dimensions, file size, and EXIF (capture
@@ -205,8 +207,9 @@ normalize_to_png(original: Path, cache_png: Path) -> Path
     return cache_png
 ```
 
-- `_RAW_EXTS = {".raw", ".nef", ".cr2", ".arw", ".dng"}` (subset of the
-  shared `IMAGE_EXTS`).
+- `RAW_IMAGE_EXTS = {".cr2", ".cr3", ".nef", ".arw", ".dng"}` (in
+  `gui/_config.py`, a subset of the shared `IMAGE_EXTS`; mirrors the
+  extended `IO.RAW_FILE_EXTENSIONS`).
 - **Faithful (R1):** `img_as_ubyte` is a fixed full-range scale (uint16 →
   ÷257, float[0,1] → ×255), no per-image auto-contrast/percentile stretch;
   `Image.rgb` already applied the capture's gamma/illuminant, so the
