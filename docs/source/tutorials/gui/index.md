@@ -32,6 +32,7 @@ the images aligned with the implementation.
 | [Fix validation issues](14_fix_validation_issues.md) | Triage the toolbar issue badge, fix missing side values, and understand unsupported development DAG states. |
 | [QC review walkthrough](15_qc_review.md) | Switch the QC tab to Review; walk worst-first groups for a module, curate in the tile gallery, mark reviewed, and watch the metric recompute in place. |
 | [Tune co-pilot](16_tune_copilot.md) | Open the `/tune/` read-only co-pilot over a tune output: monitor trials, curate A/B overlays, review the search space, and launch the next run. |
+| [Error analysis](17_error_analysis.md) | Rank the measurements that separate an error category from the good baseline, read off a cutoff, and copy a filter spec. |
 
 ## Prerequisites
 
@@ -63,4 +64,5 @@ hub, see the [GUI hub guide](../../how_to/pages/gui_hub.md). This walkthrough is
 14_fix_validation_issues
 15_qc_review
 16_tune_copilot
+17_error_analysis
 ```
