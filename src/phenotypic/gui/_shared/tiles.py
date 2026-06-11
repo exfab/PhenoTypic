@@ -491,7 +491,7 @@ def build_tile_cell(
     is_removed: bool,
     is_selected: bool,
     url_builder: Callable[[str, str, int, int], str],
-    remove_button: Component,
+    remove_button: Component | list[Component],
     extra_children: Iterable[Component] | None = None,
     outer_height: int | None = None,
 ) -> Component:
@@ -531,9 +531,11 @@ def build_tile_cell(
         url_builder: Callable ``(dataset, image_file, label, crop_size) ->
             str`` returning the crop ``<img>`` src. Each tab supplies a
             builder bound to its own crop-route segment + url prefix.
-        remove_button: The tab's remove/restore ``dbc.Button`` (already
-            built with the tab's pattern-matched id and removed/active
-            styling).
+        remove_button: The tab's per-tile curation affordance. Either a
+            single ``dbc.Button`` (the legacy remove/restore button) or a
+            list of sibling components (e.g. the radial trigger's
+            ``[trigger, popover, store]`` triple). A list is spliced into
+            the frame as separate children.
         extra_children: Optional siblings appended after the frame inside
             the outer cell ``<div>`` (e.g. a stack badge + popover).
         outer_height: Outer cell height, in pixels. Defaults to
@@ -607,8 +609,13 @@ def build_tile_cell(
     # crop, checkbox, and remove button. Sits in front of any sibling
     # (e.g. the stack tab) via z-index so the sibling can peek out from
     # beneath the bottom edge.
+    remove_children: list[Component] = (
+        list(remove_button)
+        if isinstance(remove_button, list)
+        else [remove_button]
+    )
     frame = html.Div(
-        [crop_node, checkbox, remove_button],
+        [crop_node, checkbox, *remove_children],
         className="colony-cell-frame",
     )
 
