@@ -29,6 +29,42 @@ td:first-child, th:first-child { text-align: left; }
 """.strip()
 
 
+def _render_section(category: str, result_df: pd.DataFrame) -> str:
+    """Render one category's heading + ranked result table (a report fragment).
+
+    Args:
+        category: The error-category token (e.g. ``"debris"``).
+        result_df: The ranked :meth:`ErrorCutoffFinder.analyze` frame for
+            ``category`` (may be empty — a placeholder paragraph is emitted).
+
+    Returns:
+        An HTML fragment (``<h1>`` + table or placeholder), **not** a full
+        document — :func:`render_error_analysis_html` and
+        :func:`render_error_analysis_report` wrap one or more sections.
+    """
+    safe_category = _html.escape(str(category))
+    if result_df.empty:
+        table_html = "<p>No discriminative measurements for this category.</p>"
+    else:
+        table_html = result_df.to_html(
+            index=False, border=0, float_format=lambda v: f"{v:.4g}"
+        )
+    return f"<h1>Error analysis — {safe_category}</h1>\n{table_html}\n"
+
+
+def _wrap_document(title: str, body: str) -> str:
+    """Wrap one or more report sections in a self-contained ``<html>`` document."""
+    safe_title = _html.escape(str(title))
+    return (
+        "<!DOCTYPE html>\n"
+        '<html lang="en">\n<head>\n<meta charset="utf-8">\n'
+        f"<title>{safe_title}</title>\n"
+        f"<style>\n{_REPORT_STYLE}\n</style>\n</head>\n<body>\n"
+        f"{body}"
+        "</body>\n</html>\n"
+    )
+
+
 def render_error_analysis_html(category: str, result_df: pd.DataFrame) -> str:
     """Render a self-contained HTML report for one error category.
 
@@ -43,22 +79,36 @@ def render_error_analysis_html(category: str, result_df: pd.DataFrame) -> str:
         category plus the ranked result table. Pure string build (pandas
         ``to_html`` + a small inline ``<style>``); no Plotly/Dash import.
     """
-    safe_category = _html.escape(str(category))
-    if result_df.empty:
-        table_html = "<p>No discriminative measurements for this category.</p>"
-    else:
-        table_html = result_df.to_html(
-            index=False, border=0, float_format=lambda v: f"{v:.4g}"
-        )
-    return (
-        "<!DOCTYPE html>\n"
-        '<html lang="en">\n<head>\n<meta charset="utf-8">\n'
-        f"<title>Error analysis — {safe_category}</title>\n"
-        f"<style>\n{_REPORT_STYLE}\n</style>\n</head>\n<body>\n"
-        f"<h1>Error analysis — {safe_category}</h1>\n"
-        f"{table_html}\n"
-        "</body>\n</html>\n"
+    return _wrap_document(
+        f"Error analysis — {category}", _render_section(category, result_df)
     )
+
+
+def render_error_analysis_report(results_by_category: dict[str, pd.DataFrame]) -> str:
+    """Render one self-contained HTML report with a section per category.
+
+    Used by headless CLI finalize, which writes a single
+    ``deliverables/error_analysis.html`` covering **every** labeled category
+    (the GUI's :func:`render_error_analysis_html` is single-category and
+    transient). Sections are ordered by category token for a stable artifact.
+
+    Args:
+        results_by_category: Mapping ``category token -> ErrorCutoffFinder
+            result frame`` (category-free ``RESULT_COLUMNS``). An empty mapping
+            yields a valid "no error categories" document.
+
+    Returns:
+        A full ``<html>`` document; a "no error categories" body when empty.
+        Pure string build; no Plotly/Dash import.
+    """
+    if not results_by_category:
+        body = "<h1>Error analysis</h1>\n<p>No error categories were labeled.</p>\n"
+        return _wrap_document("Error analysis", body)
+    sections = [
+        _render_section(category, results_by_category[category])
+        for category in sorted(results_by_category)
+    ]
+    return _wrap_document("Error analysis", "".join(sections))
 
 
 def filter_spec_json(measurement: str, direction: str, cutoff: float) -> str:
@@ -97,4 +147,5 @@ __all__ = [
     "filter_spec_json",
     "filter_spec_query",
     "render_error_analysis_html",
+    "render_error_analysis_report",
 ]

@@ -13,6 +13,7 @@ from ._error_report import (
     filter_spec_json,
     filter_spec_query,
     render_error_analysis_html,
+    render_error_analysis_report,
 )
 from ._linear_softplus import LinearSoftplus
 from ._log_growth_model import LogGrowthModel
@@ -44,4 +45,5 @@ __all__ = [
     "filter_spec_json",
     "filter_spec_query",
     "render_error_analysis_html",
+    "render_error_analysis_report",
 ]
