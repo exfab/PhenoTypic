@@ -20,7 +20,7 @@ import logging
 import os
 import re
 import threading
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -555,6 +555,76 @@ class CurationLabels:
                     existing.unlink()
                 except OSError:
                     logger.warning("Could not remove stale category file %s", existing)
+
+    # -- FilteredMeasurements-compatible surface -----------------------------
+    @property
+    def removed_keys(self) -> set[LabelKey]:
+        """Snapshot copy of all labeled keys (any category) — the removal set.
+
+        Returns a fresh ``set`` each call. Unlike the old ``FilteredMeasurements``
+        field, mutating the returned set does **not** change stored state —
+        mutate via :meth:`mark`/:meth:`unmark`/:meth:`remove`/:meth:`restore`.
+        """
+        return set(self.labels.keys())
+
+    def is_removed(self, image_file: str, object_label: int) -> bool:
+        """Return whether the object carries any label."""
+        return (image_file, object_label) in self.labels
+
+    def removed_count_in(self, df: pl.DataFrame) -> int:
+        """Count rows of ``df`` whose key is currently labeled."""
+        if df.is_empty() or not self.labels:
+            return 0
+        df_keys = {
+            (str(f), int(lbl))
+            for f, lbl in zip(
+                df.get_column(KEY_COLUMNS[0]).to_list(),
+                df.get_column(KEY_COLUMNS[1]).to_list(),
+            )
+        }
+        return len(df_keys & set(self.labels.keys()))
+
+    def remove(self, image_file: str, object_label: int) -> None:
+        """Mark as the reasonless ``other`` category (legacy remove)."""
+        self.mark(image_file, object_label, OTHER_CATEGORY)
+
+    def restore(self, image_file: str, object_label: int) -> None:
+        """Clear any label (legacy restore)."""
+        self.unmark(image_file, object_label)
+
+    def remove_many(self, keys: Iterable[LabelKey]) -> None:
+        """Mark a batch as ``other`` in one save."""
+        self.mark_many(keys, OTHER_CATEGORY)
+
+    def restore_many(self, keys: Iterable[LabelKey]) -> None:
+        """Remove labels for a batch in one save."""
+        self.unmark_many(keys)
+
+    def toggle(self, image_file: str, object_label: int) -> None:
+        """Flip label state for one object (clears if labeled, else ``other``)."""
+        key = (image_file, object_label)
+        with self._lock:
+            if key in self.labels:
+                self.unmark(image_file, object_label)
+            else:
+                self.mark(image_file, object_label, OTHER_CATEGORY)
+
+    def removed_keys_payload(self) -> list[list]:
+        """``[[image_file, object_label], ...]`` sorted, for the dcc.Store."""
+        return [[f, lbl] for f, lbl in sorted(self.labels.keys(), key=lambda k: (k[0], k[1]))]
+
+    def labels_payload(self) -> list[list]:
+        """``[[image_file, object_label, category], ...]`` sorted, category-aware."""
+        return [
+            [f, lbl, self.labels[(f, lbl)]]
+            for f, lbl in sorted(self.labels.keys(), key=lambda k: (k[0], k[1]))
+        ]
+
+    def mutate_and_payload(self, action: Callable[["CurationLabels"], None]) -> list[list]:
+        """Apply ``action`` and return the removed-keys payload, all under the lock."""
+        with self._lock:
+            action(self)
+            return self.removed_keys_payload()
 
 
 def _atomic_write_parquet(df: pl.DataFrame, path: Path) -> None:

@@ -208,3 +208,37 @@ def test_rekey_degrades_without_bbox(tmp_path: Path):
     # exact key (plateA, 2) still exists -> kept on the exact-key-only fallback
     assert store.labels == {("plateA", 2): "debris"}
     assert store.rekey_report.kept == 1
+
+
+def test_filtered_measurements_compat_surface(tmp_path: Path):
+    store = CurationLabels.load(tmp_path, _master())
+
+    # remove == mark as "other"
+    store.remove("plateA", 1)
+    assert store.is_removed("plateA", 1)
+    assert store.labels[("plateA", 1)] == "other"
+    assert store.removed_keys == {("plateA", 1)}
+
+    # toggle off / on
+    store.toggle("plateA", 1)
+    assert not store.is_removed("plateA", 1)
+    store.toggle("plateA", 3)
+    assert store.is_removed("plateA", 3)
+
+    # restore
+    store.restore("plateA", 3)
+    assert store.removed_keys == set()
+
+    # payloads
+    store.mark("plateA", 2, "debris")
+    assert store.removed_keys_payload() == [["plateA", 2]]
+    assert store.labels_payload() == [["plateA", 2, "debris"]]
+
+    # removed_count_in
+    assert store.removed_count_in(_master()) == 1
+
+
+def test_mutate_and_payload_runs_under_lock(tmp_path: Path):
+    store = CurationLabels.load(tmp_path, _master())
+    payload = store.mutate_and_payload(lambda s: s.mark("plateA", 1, "merged"))
+    assert payload == [["plateA", 1]]
