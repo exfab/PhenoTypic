@@ -21,7 +21,7 @@ import warnings
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 from scipy.stats import f_oneway, false_discovery_control
 from sklearn.metrics import roc_auc_score, roc_curve
 
@@ -58,14 +58,39 @@ RESULT_COLUMNS: tuple[str, ...] = (
     "error_n",
 )
 
+#: Column dtypes for the output frame, so the empty and populated shapes agree
+#: (downstream ``concat``/parquet must not infer ``object`` for an empty result).
+_RESULT_DTYPES: dict[str, str] = {
+    "measurement": "object",
+    "auc": "float64",
+    "direction": "object",
+    "cutoff": "float64",
+    "recall": "float64",
+    "specificity": "float64",
+    "good_flagged": "int64",
+    "f_stat": "float64",
+    "p_value": "float64",
+    "p_bh": "float64",
+    "good_n": "int64",
+    "error_n": "int64",
+}
+
 
 class ErrorCutoffFinder(BaseModel):
     """Rank measurements by good-vs-error separability with suggested cutoffs.
 
+    Note:
+        ``p_value``/``p_bh`` are reported for reference only — ranking and
+        cutoffs are distribution-free (AUC / ROC + Youden's J), because the
+        ANOVA normality / equal-variance assumptions rarely hold on error
+        subpopulations. ``good_n``/``error_n`` are the per-measurement non-NaN
+        counts and may individually fall below ``min_good_n``/``min_error_n``
+        (which is a frame-level guard, not a per-measurement one).
+
     Args:
-        min_error_n: Minimum error-class sample size; below it, :meth:`analyze`
-            returns an empty frame (the statistics would be unstable).
-        min_good_n: Minimum good-class sample size; same behaviour.
+        min_error_n: Minimum error-class sample size (>= 2); below it,
+            :meth:`analyze` returns an empty frame (the statistics are unstable).
+        min_good_n: Minimum good-class sample size (>= 2); same behaviour.
         measurement_prefixes: Column-name prefixes treated as numeric
             measurements. Defaults to :data:`MEASUREMENT_PREFIXES`.
     """
@@ -75,6 +100,14 @@ class ErrorCutoffFinder(BaseModel):
     min_error_n: int = 8
     min_good_n: int = 8
     measurement_prefixes: tuple[str, ...] = MEASUREMENT_PREFIXES
+
+    @field_validator("min_error_n", "min_good_n")
+    @classmethod
+    def _min_n_at_least_two(cls, value: int) -> int:
+        """Reject min sample sizes below 2 (separability is undefined below 2)."""
+        if value < 2:
+            raise ValueError("min sample sizes must be >= 2.")
+        return value
 
     def measurement_columns(self, df: pd.DataFrame) -> list[str]:
         """Return the numeric measurement columns of ``df`` in column order.
@@ -100,6 +133,24 @@ class ErrorCutoffFinder(BaseModel):
         """Return whether both classes meet their minimum sample sizes."""
         return len(good) >= self.min_good_n and len(error) >= self.min_error_n
 
+    @staticmethod
+    def _empty_result() -> pd.DataFrame:
+        """Return a typed 0-row result (dtypes match the populated frame)."""
+        return pd.DataFrame(
+            {c: pd.Series(dtype=_RESULT_DTYPES[c]) for c in RESULT_COLUMNS}
+        )
+
+    @staticmethod
+    def _clean(series: pd.Series) -> "npt.NDArray[np.float64]":
+        """Return the NaN-free values of ``series`` as a float array.
+
+        Fast-paths already-numeric columns (the common case post-measurement),
+        coercing only non-numeric ones.
+        """
+        if not pd.api.types.is_numeric_dtype(series):
+            series = pd.to_numeric(series, errors="coerce")
+        return series.dropna().to_numpy(dtype=np.float64)
+
     def analyze(self, good: pd.DataFrame, error: pd.DataFrame) -> pd.DataFrame:
         """Screen every measurement for good-vs-error separation.
 
@@ -124,16 +175,15 @@ class ErrorCutoffFinder(BaseModel):
             >>> res.iloc[0]["measurement"], bool(res.iloc[0]["auc"] > 0.9)
             ('Size_Area', True)
         """
-        empty = pd.DataFrame(columns=list(RESULT_COLUMNS))
         if not self.enough_data(good, error):
-            return empty
+            return self._empty_result()
 
         rows: list[dict[str, object]] = []
         for col in self.measurement_columns(good):
             if col not in error.columns:
                 continue
-            g = pd.to_numeric(good[col], errors="coerce").dropna().to_numpy()
-            e = pd.to_numeric(error[col], errors="coerce").dropna().to_numpy()
+            g = self._clean(good[col])
+            e = self._clean(error[col])
             scored = self._score_measurement(g, e)
             if scored is None:
                 continue
@@ -141,12 +191,20 @@ class ErrorCutoffFinder(BaseModel):
             rows.append(scored)
 
         if not rows:
-            return empty
+            return self._empty_result()
 
         res = pd.DataFrame(rows)
         # Benjamini-Hochberg across the screened measurements.
         res["p_bh"] = false_discovery_control(res["p_value"].to_numpy(), method="bh")
-        res = res.sort_values("auc", ascending=False, ignore_index=True)
+        # Stable, deterministic order: AUC desc, then raw p asc, then name — so
+        # AUC ties (common when several measurements separate cleanly) are
+        # reproducible across runs and pandas versions.
+        res = res.sort_values(
+            ["auc", "p_value", "measurement"],
+            ascending=[False, True, True],
+            kind="stable",
+            ignore_index=True,
+        )
         return res[list(RESULT_COLUMNS)]
 
     @staticmethod

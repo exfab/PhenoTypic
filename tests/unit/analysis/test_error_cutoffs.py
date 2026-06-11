@@ -5,6 +5,7 @@ import pandas as pd
 import pytest
 
 from phenotypic.analysis import ErrorCutoffFinder
+from phenotypic.analysis._error_cutoffs import RESULT_COLUMNS
 
 
 def _frame(values: dict[str, list[float]], n: int) -> pd.DataFrame:
@@ -135,6 +136,45 @@ def test_specificity_and_good_flagged_match_the_reported_cutoff_on_overlap():
     flagged = vals > row["cutoff"] if row["direction"] == ">" else vals < row["cutoff"]
     assert int(flagged.sum()) == row["good_flagged"]
     assert (1.0 - flagged.mean()) == pytest.approx(row["specificity"], abs=1e-9)
+
+
+def test_min_sample_sizes_below_two_are_rejected():
+    with pytest.raises(Exception):
+        ErrorCutoffFinder(min_good_n=1)
+    with pytest.raises(Exception):
+        ErrorCutoffFinder(min_error_n=0)
+
+
+def test_empty_result_has_numeric_dtypes():
+    # Insufficient error -> empty frame whose numeric columns stay numeric
+    # (so Phase-4/5 concat/parquet doesn't infer object).
+    finder = ErrorCutoffFinder(min_good_n=3, min_error_n=3)
+    res = finder.analyze(_frame({"Size_Area": [1.0] * 5}, n=5),
+                         _frame({"Size_Area": [9.0] * 2}, n=2))
+    assert res.empty
+    assert list(res.columns) == list(RESULT_COLUMNS)
+    assert str(res["auc"].dtype) == "float64"
+    assert str(res["good_flagged"].dtype) == "int64"
+    assert str(res["good_n"].dtype) == "int64"
+
+
+def test_prefix_set_detects_phenotype_headers_and_excludes_position():
+    # Drift guard: every listed phenotype prefix matches a representative
+    # column; absolute position (Bbox_) and ids are excluded.
+    from phenotypic.schema import BBOX
+
+    pheno = [
+        "Size_Area", "Shape_Circularity", "Intensity_MeanIntensity",
+        "SymZones_Foo", "GridSpatial_Foo", "RadialExpansion_Foo",
+        "TextureGray_Contrast",
+    ]
+    df = pd.DataFrame({c: [1.0, 2.0, 3.0] for c in pheno})
+    df[str(BBOX.CENTER_RR)] = [1.0, 2.0, 3.0]  # absolute plate position
+    df["Object_Label"] = [1, 2, 3]
+    cols = set(ErrorCutoffFinder().measurement_columns(df))
+    assert set(pheno).issubset(cols)
+    assert str(BBOX.CENTER_RR) not in cols
+    assert "Object_Label" not in cols
 
 
 def test_insufficient_error_returns_empty_frame():
