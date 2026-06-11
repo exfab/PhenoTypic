@@ -145,6 +145,19 @@ def test_colony_radial_debris_mark_writes_category_parquet(
     output_dir = fake_sandbox / "results" / _OUTPUT_NAME
     output_rel = f"results/{_OUTPUT_NAME}"
 
+    # Regression guard for a real-browser bug the unit/integration tests missed
+    # (caught by a live Playwright-MCP walkthrough): a colony mark changes
+    # ``STORE_REMOVED_KEYS``, which fires the QC review ``_render_detail``
+    # callback; with zero matched ``qc-worklist-row`` components its wildcard
+    # ``.style`` (ALL) output must return a LIST, not ``no_update`` — otherwise
+    # Dash raises ``InvalidCallbackReturnValue`` and the POST 500s in the
+    # background (the colony assertions still pass, hiding it).
+    console_errors: list[str] = []
+    page.on(
+        "console",
+        lambda msg: console_errors.append(msg.text) if msg.type == "error" else None,
+    )
+
     _hand_off_viewer(page, hub_url, output_rel)
 
     # Load the viewer; the colony grid is on the default Plate/Colony surface.
@@ -187,3 +200,10 @@ def test_colony_radial_debris_mark_writes_category_parquet(
         "button.radial-badge", has_text="debris"
     ).first
     expect(debris_badge).to_be_visible(timeout=15_000)
+
+    # No background callback 500 fired from the mark (e.g. the QC review
+    # ``_render_detail`` wildcard-output regression).
+    server_errors = [
+        e for e in console_errors if "500" in e or "Callback error" in e
+    ]
+    assert not server_errors, f"Background callback errors after mark: {server_errors}"

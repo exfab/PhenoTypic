@@ -886,6 +886,12 @@ def register_review_callbacks(app: dash.Dash) -> None:
         row_ids: list[dict[str, Any]] | None,
     ):
         triggered = callback_context.triggered_id
+        # The ``qc-worklist-row.style`` (ALL) wildcard output demands a LIST
+        # whose length matches the number of matched rows — Dash rejects a
+        # bare ``no_update`` when zero rows are matched (e.g. the QC tab was
+        # never rendered and a colony mark fires this via STORE_REMOVED_KEYS).
+        # ``[no_update] * N`` is the safe per-component skip for any N (incl. 0).
+        skip_styles = [no_update] * len(row_ids or [])
         is_row_click = (
             isinstance(triggered, dict)
             and triggered.get("type") == "qc-worklist-row"
@@ -899,22 +905,22 @@ def register_review_callbacks(app: dash.Dash) -> None:
             # group leaves the store unchanged and so never echoes, so we
             # still fall through and render to refresh it.)
             if clicked_key != selected_encoded:
-                return no_update, no_update, clicked_key, no_update, no_update
+                return no_update, no_update, clicked_key, skip_styles, no_update
             selected_encoded = clicked_key
         if not instance_id or not selected_encoded:
-            return [], [], no_update, no_update, no_update
+            return [], [], no_update, skip_styles, no_update
 
         output_root = _output_root()
         summary = _data.load_qc_summary(output_root)
         members = _data.load_qc_members(output_root)
         if summary is None or members is None:
-            return [], [], selected_encoded, no_update, no_update
+            return [], [], selected_encoded, skip_styles, no_update
 
         groupby_cols = _data.groupby_cols_for(summary, instance_id)
         key_values = decode_group_key(selected_encoded)
         record = _data.group_record(summary, instance_id, groupby_cols, key_values)
         if record is None:
-            return [], [], selected_encoded, no_update, no_update
+            return [], [], selected_encoded, skip_styles, no_update
 
         dataset_by_image = _data.dataset_by_image_map(output_root)
         keys = _data.group_member_keys(
