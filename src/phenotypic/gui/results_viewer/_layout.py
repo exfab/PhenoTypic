@@ -56,6 +56,7 @@ from phenotypic.gui._design import (
     FONT_SIZE_LABEL,
 )
 from phenotypic.gui.results_viewer import _filter_panel, _ids as ids, colony_view
+from phenotypic.gui.results_viewer._error_tab import build_error_tab_body
 from phenotypic.gui.results_viewer._heatmap_tab import build_heatmap_tab_body
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 from phenotypic.gui.results_viewer._qc_tab import build_qc_tab_body
@@ -456,6 +457,7 @@ def build_app_layout(
     # keeps the cache hits warm across tabs.
     schema = _resolve_measurement_schema(output_root)
     heatmap_tab_body = build_heatmap_tab_body(output_root, schema)
+    error_tab_body = build_error_tab_body(output_root, schema)
     qc_tab_body = build_qc_tab_body(_resolve_qc_recipe(output_root))
     stores = _build_stores(filtered_state)
 
@@ -480,6 +482,11 @@ def build_app_layout(
                 heatmap_tab_body,
                 label="Heatmap",
                 tab_id=ids.TAB_HEATMAP_ID,
+            ),
+            dbc.Tab(
+                error_tab_body,
+                label="Error",
+                tab_id=ids.TAB_ERROR_ID,
             ),
         ],
         id=ids.TABS_ID,

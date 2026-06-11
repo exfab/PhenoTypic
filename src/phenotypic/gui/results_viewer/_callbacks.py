@@ -62,6 +62,7 @@ from phenotypic.gui.results_viewer import (
     _viewer_card,
 )
 from phenotypic.gui.results_viewer._curation_labels import CurationLabels
+from phenotypic.gui.results_viewer._error_tab import register_error_callbacks
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 from phenotypic.gui.results_viewer._heatmap_tab import register_heatmap_callbacks
 from phenotypic.gui.results_viewer._qc_tab import register_qc_callbacks
@@ -97,6 +98,7 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
     _colony_callbacks.register_callbacks(app, output_root, filtered_state)
     register_heatmap_callbacks(app)
     register_qc_callbacks(app)
+    register_error_callbacks(app, output_root, filtered_state)
     _register_clientside_callbacks(app)
 
 

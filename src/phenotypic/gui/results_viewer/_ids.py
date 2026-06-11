@@ -443,6 +443,11 @@ TAB_QC_ID = "tab-qc"
 #: ``dbc.Tab`` value for the heatmap view (per-image grid view).
 TAB_HEATMAP_ID = "tab-heatmap"
 
+#: ``dbc.Tab`` value for the Error-analysis view. The 5th tab; its
+#: recompute callback gates on ``active_tab == TAB_ERROR_ID`` so the
+#: cutoff finder never runs while the user is curating on another tab.
+TAB_ERROR_ID = "tab-error"
+
 
 # ---------------------------------------------------------------------------
 # QC stores (Wave D mounts the stores; Wave E writes to them)
@@ -746,6 +751,7 @@ __all__ = [
     "TAB_COLONY_ID",
     "TAB_QC_ID",
     "TAB_HEATMAP_ID",
+    "TAB_ERROR_ID",
     "STORE_QC_RECIPE_REVISION",
     "STORE_QC_AUGMENTED_REVISION",
     "COLONY_X_AXIS_DROPDOWN_ID",
