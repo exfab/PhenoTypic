@@ -242,3 +242,15 @@ def test_mutate_and_payload_runs_under_lock(tmp_path: Path):
     store = CurationLabels.load(tmp_path, _master())
     payload = store.mutate_and_payload(lambda s: s.mark("plateA", 1, "merged"))
     assert payload == [["plateA", 1]]
+
+
+def test_imports_alongside_existing_viewer_modules():
+    # The new store must not introduce an import cycle with the viewer package.
+    import phenotypic.gui.results_viewer._curation_labels as cl
+    import phenotypic.gui.results_viewer._filtered_state as fs  # still present
+
+    assert hasattr(cl.CurationLabels, "load")
+    # Compat surface matches the methods the app currently calls on the old store.
+    for name in ("remove", "restore", "toggle", "is_removed", "removed_keys_payload"):
+        assert hasattr(cl.CurationLabels, name)
+        assert hasattr(fs.FilteredMeasurements, name)
