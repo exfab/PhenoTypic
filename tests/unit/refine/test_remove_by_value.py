@@ -1,6 +1,6 @@
-"""Unit tests for the generic ``RemoveByValue`` refiner.
+"""Unit tests for the generic ``RemoveByFeature`` refiner.
 
-``RemoveByValue`` names a ``MeasureFeatures`` subclass, runs it, and zeros every
+``RemoveByFeature`` names a ``MeasureFeatures`` subclass, runs it, and zeros every
 object whose chosen value falls outside an inclusive ``[min, max]`` band.
 """
 
@@ -12,7 +12,7 @@ import pytest
 
 from phenotypic.data import load_synth_yeast_plate
 from phenotypic.measure import MeasureSize, MeasureColor
-from phenotypic.refine import RemoveByValue
+from phenotypic.refine import RemoveByFeature
 from phenotypic.schema import OBJECT, SIZE
 
 
@@ -46,18 +46,18 @@ class TestNoOpContract:
     def test_default_construction_is_a_noop(self, plate):
         """All-None defaults must construct and leave the image untouched."""
         before = _surviving_labels(plate)
-        result = RemoveByValue().apply(plate)
+        result = RemoveByFeature().apply(plate)
         assert _surviving_labels(result) == before
 
     def test_missing_bounds_is_a_noop(self, plate):
         """Feature + value set but no bounds removes nothing."""
         before = _surviving_labels(plate)
-        result = RemoveByValue(feature="MeasureSize", value="Size_Area").apply(plate)
+        result = RemoveByFeature(feature="MeasureSize", value="Size_Area").apply(plate)
         assert _surviving_labels(result) == before
 
     def test_missing_value_is_a_noop(self, plate):
         before = _surviving_labels(plate)
-        result = RemoveByValue(feature="MeasureSize", min_value=10).apply(plate)
+        result = RemoveByFeature(feature="MeasureSize", min_value=10).apply(plate)
         assert _surviving_labels(result) == before
 
 
@@ -69,7 +69,7 @@ class TestFiltering:
                 size_table, SIZE.AREA, min_value=threshold
         )
 
-        result = RemoveByValue(
+        result = RemoveByFeature(
                 feature="MeasureSize", value="Size_Area", min_value=threshold
         ).apply(plate)
 
@@ -85,7 +85,7 @@ class TestFiltering:
                 size_table, SIZE.AREA, min_value=lo, max_value=hi
         )
 
-        result = RemoveByValue(
+        result = RemoveByFeature(
                 feature="MeasureSize", value="Size_Area", min_value=lo, max_value=hi
         ).apply(plate)
 
@@ -94,8 +94,8 @@ class TestFiltering:
     def test_bare_label_matches_prefixed_column(self, plate):
         """``value="Area"`` resolves to the same result as ``"Size_Area"``."""
         kw = dict(feature="MeasureSize", min_value=40.0, max_value=900.0)
-        prefixed = RemoveByValue(value="Size_Area", **kw).apply(plate.copy())
-        bare = RemoveByValue(value="Area", **kw).apply(plate.copy())
+        prefixed = RemoveByFeature(value="Size_Area", **kw).apply(plate.copy())
+        bare = RemoveByFeature(value="Area", **kw).apply(plate.copy())
         assert _surviving_labels(prefixed) == _surviving_labels(bare)
 
     def test_one_sided_max_bound(self, plate, size_table):
@@ -104,7 +104,7 @@ class TestFiltering:
         expected_removed = _labels_outside(
                 size_table, SIZE.AREA, max_value=threshold
         )
-        result = RemoveByValue(
+        result = RemoveByFeature(
                 feature="MeasureSize", value="Size_Area", max_value=threshold
         ).apply(plate)
         assert _surviving_labels(result) == _surviving_labels(plate) - expected_removed
@@ -112,7 +112,7 @@ class TestFiltering:
     def test_apply_is_out_of_place_by_default(self, plate):
         """The source image is not mutated when ``inplace`` is left False."""
         before = _surviving_labels(plate)
-        RemoveByValue(
+        RemoveByFeature(
                 feature="MeasureSize", value="Size_Area", min_value=10_000
         ).apply(plate)
         assert _surviving_labels(plate) == before
@@ -124,7 +124,7 @@ class TestMeasureKwargs:
         # MeasureColor exposes an include_XYZ flag; with it off the XYZ columns
         # are absent, so filtering on an XYZ value would fail — but a Lab value
         # still resolves, proving the kwarg reached the constructor.
-        op = RemoveByValue(
+        op = RemoveByFeature(
                 feature="MeasureColor",
                 value=str(next(iter(MeasureColor().measure(plate).columns[1:]))),
                 min_value=-1e9,
@@ -138,16 +138,16 @@ class TestMeasureKwargs:
 class TestValidation:
     def test_unknown_feature_rejected_at_construction(self):
         with pytest.raises(ValueError, match="MeasureFeatures subclass"):
-            RemoveByValue(feature="NotAMeasurer")
+            RemoveByFeature(feature="NotAMeasurer")
 
     def test_non_measurer_feature_rejected(self):
         """A real phenotypic class that is not a MeasureFeatures is rejected."""
         with pytest.raises(ValueError, match="MeasureFeatures subclass"):
-            RemoveByValue(feature="OtsuDetector")
+            RemoveByFeature(feature="OtsuDetector")
 
     def test_inverted_bounds_rejected(self):
         with pytest.raises(ValueError, match="must not exceed"):
-            RemoveByValue(
+            RemoveByFeature(
                     feature="MeasureSize",
                     value="Size_Area",
                     min_value=100,
@@ -155,7 +155,7 @@ class TestValidation:
             )
 
     def test_unknown_value_raises_on_apply(self, plate):
-        op = RemoveByValue(
+        op = RemoveByFeature(
                 feature="MeasureSize", value="Nonexistent", min_value=1
         )
         with pytest.raises(Exception, match="not a measured value|Nonexistent"):
@@ -164,14 +164,14 @@ class TestValidation:
 
 class TestSerialization:
     def test_round_trips_through_json(self):
-        op = RemoveByValue(
+        op = RemoveByFeature(
                 feature="MeasureSize",
                 value="Size_Area",
                 min_value=20.0,
                 max_value=500.0,
                 measure_kwargs={"foo": 1},
         )
-        restored = RemoveByValue.from_json(op.to_json())
+        restored = RemoveByFeature.from_json(op.to_json())
         assert restored.feature == "MeasureSize"
         assert restored.value == "Size_Area"
         assert restored.min_value == 20.0

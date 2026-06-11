@@ -14,7 +14,7 @@ from ..tools_.typing_ import TuneSpec
 from phenotypic.schema import OBJECT
 
 
-class RemoveByValue(ObjectRefiner):
+class RemoveByFeature(ObjectRefiner):
     """Remove objects whose measured feature value falls outside a ``[min, max]`` band.
 
     A generic, measurer-driven cleanup step: name any
@@ -83,10 +83,10 @@ class RemoveByValue(ObjectRefiner):
         Keep only colonies whose area is at least 50 px, dropping smaller debris:
 
         >>> from phenotypic.data import load_synth_yeast_plate
-        >>> from phenotypic.refine import RemoveByValue
+        >>> from phenotypic.refine import RemoveByFeature
         >>> plate = load_synth_yeast_plate()
         >>> before = plate.num_objects
-        >>> remover = RemoveByValue(feature="MeasureSize", value="Size_Area", min_value=50)
+        >>> remover = RemoveByFeature(feature="MeasureSize", value="Size_Area", min_value=50)
         >>> result = remover.apply(plate)
         >>> result.num_objects <= before
         True
@@ -94,7 +94,7 @@ class RemoveByValue(ObjectRefiner):
         Constructed with defaults it is an inert no-op, so it is always safe to
         place in a pipeline before its parameters are configured:
 
-        >>> RemoveByValue().apply(load_synth_yeast_plate()).num_objects > 0
+        >>> RemoveByFeature().apply(load_synth_yeast_plate()).num_objects > 0
         True
     """
 
@@ -127,9 +127,9 @@ class RemoveByValue(ObjectRefiner):
     def _validate_bounds(self) -> Self:
         """Reject an inverted ``[min_value, max_value]`` band."""
         if (
-            self.min_value is not None
-            and self.max_value is not None
-            and self.min_value > self.max_value
+                self.min_value is not None
+                and self.max_value is not None
+                and self.min_value > self.max_value
         ):
             raise ValueError(
                     f"min_value ({self.min_value}) must not exceed "
@@ -147,8 +147,8 @@ class RemoveByValue(ObjectRefiner):
 
         op_class = SerializablePipeline._find_class_in_phenotypic(feature)
         if (
-            isinstance(op_class, type)
-            and issubclass(op_class, MeasureFeatures)
+                isinstance(op_class, type)
+                and issubclass(op_class, MeasureFeatures)
         ):
             return op_class
         return None
@@ -176,9 +176,9 @@ class RemoveByValue(ObjectRefiner):
 
     def _operate(self, image: Image) -> Image:
         if (
-            self.feature is None
-            or self.value is None
-            or (self.min_value is None and self.max_value is None)
+                self.feature is None
+                or self.value is None
+                or (self.min_value is None and self.max_value is None)
         ):
             return image
 
