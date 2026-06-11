@@ -362,6 +362,14 @@ def _build_detail_action_bar() -> Component:
                 **cast(Any, {"aria-label": "Next group"}),
             ),
             html.Div(style={"flex": "1 1 auto"}),
+            dcc.Dropdown(
+                id=rids.QC_REVIEW_BULK_MARK_DROPDOWN_ID,
+                options=[],
+                value=None,
+                placeholder="Mark selected as…",
+                clearable=False,
+                style={"minWidth": "12rem"},
+            ),
             dbc.Button(
                 "Remove selected",
                 id=rids.QC_REVIEW_BULK_REMOVE_BTN_ID,

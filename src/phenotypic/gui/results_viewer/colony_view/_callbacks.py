@@ -93,6 +93,53 @@ def _selection_payload(
     }
 
 
+def category_dropdown_options(categories: list[str]) -> list[dict[str, str]]:
+    """Build the bulk-mark dropdown options from a category vocabulary.
+
+    Module-level + pure so the option shape is unit-testable without booting
+    Dash. Each token renders with a human-friendly label (underscores → spaces,
+    title-cased) while the ``value`` stays the bare token the mark callback
+    feeds to :meth:`CurationLabels.mark_many`.
+
+    Args:
+        categories: Ordered category tokens (core enum labels then custom),
+            typically from :meth:`CurationLabels.categories`.
+
+    Returns:
+        A list of ``{"label", "value"}`` dicts for a ``dcc.Dropdown``.
+    """
+    return [
+        {"label": token.replace("_", " ").title(), "value": token}
+        for token in categories
+    ]
+
+
+def bulk_mark(
+    filtered: CurationLabels,
+    selected: list[tuple[str, int]],
+    category: str,
+) -> list[list]:
+    """Mark every selected colony with ``category`` and return the new payload.
+
+    Module-level (not a callback closure) so the
+    :meth:`CurationLabels.mutate_and_payload` contract — the action receives
+    the state instance — is unit-testable without booting Dash. Mirrors
+    :func:`bulk_review_curation` but assigns a chosen category in one batched
+    save via :meth:`CurationLabels.mark_many`.
+
+    Args:
+        filtered: The shared :class:`CurationLabels`.
+        selected: The ``(image_file, label)`` keys to mark.
+        category: The category token to assign to every selected key.
+
+    Returns:
+        The updated removed-keys payload.
+    """
+    return filtered.mutate_and_payload(
+        lambda state: state.mark_many(selected, category)
+    )
+
+
 # ---------------------------------------------------------------------------
 # Callback registration
 # ---------------------------------------------------------------------------
@@ -494,6 +541,55 @@ def register_callbacks(
 
         payload = filtered_state.mutate_and_payload(_apply)
         return payload, _EMPTY_SELECTION
+
+    # ----------------------------------------------------------------------
+    # 6b. Bulk "Mark N selected as ▾" — category dropdown
+    # ----------------------------------------------------------------------
+    #
+    # Populate the dropdown options from the live vocabulary (core + custom),
+    # refreshed when a custom category is registered (vocab-revision tick).
+
+    @app.callback(
+        Output(ids.COLONY_BULK_MARK_DROPDOWN_ID, "options"),
+        Input(ids.STORE_CATEGORY_VOCAB_REVISION, "data"),
+    )
+    def _populate_bulk_mark_options(_revision: int | None) -> list[dict[str, str]]:
+        """Refresh the bulk-mark dropdown options from the category vocabulary."""
+        with filtered_state._lock:
+            categories = filtered_state.categories()
+        return category_dropdown_options(categories)
+
+    @app.callback(
+        Output(ids.STORE_REMOVED_KEYS, "data", allow_duplicate=True),
+        Output(ids.STORE_COLONY_SELECTION, "data", allow_duplicate=True),
+        Output(ids.COLONY_BULK_MARK_DROPDOWN_ID, "value"),
+        Input(ids.COLONY_BULK_MARK_DROPDOWN_ID, "value"),
+        State(ids.STORE_COLONY_SELECTION, "data"),
+        prevent_initial_call=True,
+    )
+    def _bulk_mark_selected(
+        category: str | None,
+        selection_payload: Any,
+    ) -> tuple[Any, Any, Any]:
+        """Mark the active selection with the chosen category, then clear.
+
+        Reset the dropdown ``value`` to ``None`` afterward so re-picking the
+        same category on a fresh selection fires again (a dropdown that keeps
+        its value would not re-trigger).
+        """
+        if not category:
+            return no_update, no_update, no_update
+        selected: list[tuple[str, int]] = []
+        if isinstance(selection_payload, dict):
+            selected = decode_removed_keys_payload(selection_payload.get("selected"))
+        if not selected:
+            return no_update, no_update, None
+        try:
+            payload = bulk_mark(filtered_state, selected, category)
+        except ValueError:
+            logger.warning("Bulk-mark rejected unknown category %r", category)
+            return no_update, no_update, None
+        return payload, _EMPTY_SELECTION, None
 
     # ----------------------------------------------------------------------
     # 7. Bulk Clear

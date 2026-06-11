@@ -548,3 +548,89 @@ def test_qc_radial_body_lazy_populates_on_trigger_click(
     assert "qc-cat-wedge" in body_text
     assert "merged" in body_text
     assert RADIAL_RESTORE_SENTINEL in body_text
+
+
+# ---------------------------------------------------------------------------
+# Bulk "Mark N selected as ▾" (Task 6) — colony + QC
+# ---------------------------------------------------------------------------
+
+
+def _post_bulk_mark(app, *, dropdown_id: str, category: str, selected):
+    """POST a bulk-mark dropdown selection via the Dash update route.
+
+    The bulk-mark callbacks are 3-output (multi-output), so the response is a
+    fixed-arity list — no empty-payload 500 risk. The selection is passed as
+    the ``STORE_COLONY_SELECTION`` State.
+    """
+    client = app.server.test_client()
+    out_key = _find_output_key(app, "store-removed-keys.data", dropdown_id)
+    selection = {
+        "anchor": None,
+        "selected": [[im, lbl] for im, lbl in selected],
+    }
+    return client.post(
+        "/_dash-update-component",
+        json={
+            "output": out_key,
+            "outputs": _outputs_from_key(out_key),
+            "inputs": [{"id": dropdown_id, "property": "value", "value": category}],
+            "state": [
+                {
+                    "id": "store-colony-selection",
+                    "property": "data",
+                    "value": selection,
+                }
+            ],
+            "changedPropIds": [f"{dropdown_id}.value"],
+        },
+    )
+
+
+def test_colony_bulk_mark_marks_whole_selection(
+    output_root: OutputRoot,
+    tmp_path: Path,
+) -> None:
+    """The colony bulk-mark dropdown marks every selected colony with a category."""
+    app = create_app(output_root)
+    store: CurationLabels = app.server.config[CFG_FILTERED_STATE]
+
+    resp = _post_bulk_mark(
+        app,
+        dropdown_id="colony-bulk-mark-dropdown",
+        category="debris",
+        selected=[("img-A", 1), ("img-B", 2)],
+    )
+    assert resp.status_code == 200, (
+        f"Colony bulk-mark returned {resp.status_code}: {resp.data[:200]}"
+    )
+    assert store.labels[("img-A", 1)] == "debris"
+    assert store.labels[("img-B", 2)] == "debris"
+    # Per-category parquet carries both keys.
+    debris = pl.read_parquet(error_category_parquet_path(tmp_path, "debris"))
+    debris_keys = set(
+        zip(
+            debris.get_column("Metadata_ImageFile").to_list(),
+            debris.get_column("Object_Label").to_list(),
+        )
+    )
+    assert {("img-A", 1), ("img-B", 2)} <= debris_keys
+
+
+def test_qc_bulk_mark_marks_whole_selection(
+    output_root: OutputRoot,
+) -> None:
+    """The QC bulk-mark dropdown marks every selected colony with a category."""
+    app = create_app(output_root)
+    store: CurationLabels = app.server.config[CFG_FILTERED_STATE]
+
+    resp = _post_bulk_mark(
+        app,
+        dropdown_id="qc-review-bulk-mark-dropdown",
+        category="merged",
+        selected=[("img-A", 2), ("img-B", 1)],
+    )
+    assert resp.status_code == 200, (
+        f"QC bulk-mark returned {resp.status_code}: {resp.data[:200]}"
+    )
+    assert store.labels[("img-A", 2)] == "merged"
+    assert store.labels[("img-B", 1)] == "merged"

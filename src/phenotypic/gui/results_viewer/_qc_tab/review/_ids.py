@@ -203,6 +203,12 @@ QC_REVIEW_BULK_REMOVE_BTN_ID: str = "qc-review-bulk-remove-btn"
 #: Bulk-restore button for the multi-selected tiles in the open group.
 QC_REVIEW_BULK_RESTORE_BTN_ID: str = "qc-review-bulk-restore-btn"
 
+#: Category dropdown in the Review detail action bar — "Mark selected as ▾".
+#: Options are ``filtered_state.categories()`` (core + custom); selecting one
+#: marks the active selection via ``mark_many(selected, category)``. The
+#: explicit Remove(=other)/Restore buttons stay.
+QC_REVIEW_BULK_MARK_DROPDOWN_ID: str = "qc-review-bulk-mark-dropdown"
+
 #: Empty-state placeholder shown when no QC artifact exists / no module
 #: selected.
 QC_REVIEW_EMPTY_STATE_ID: str = "qc-review-empty-state"
@@ -271,6 +277,7 @@ __all__ = [
     "QC_REVIEW_NEXT_BTN_ID",
     "QC_REVIEW_BULK_REMOVE_BTN_ID",
     "QC_REVIEW_BULK_RESTORE_BTN_ID",
+    "QC_REVIEW_BULK_MARK_DROPDOWN_ID",
     "QC_REVIEW_EMPTY_STATE_ID",
     "review_tile_remove_btn_id",
 ]

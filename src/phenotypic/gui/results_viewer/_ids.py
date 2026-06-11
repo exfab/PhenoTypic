@@ -545,6 +545,17 @@ COLONY_BULK_RESTORE_BTN_ID = "colony-bulk-restore-btn"
 #: Button clearing the active selection without touching the curated set.
 COLONY_BULK_CLEAR_BTN_ID = "colony-bulk-clear-btn"
 
+#: Category dropdown in the bulk bar — "Mark N selected as ▾". Options are
+#: ``filtered_state.categories()`` (core + custom); selecting one marks the
+#: active selection via ``mark_many(selected, category)``. Distinct from the
+#: explicit Remove(=other)/Restore buttons, which stay.
+COLONY_BULK_MARK_DROPDOWN_ID = "colony-bulk-mark-dropdown"
+
+#: ``dcc.Store`` ticked whenever the category vocabulary changes (a custom
+#: category is registered), so the bulk-mark dropdowns + open radial wheels
+#: refresh their options/body. Bumped by the custom-add callbacks (Task 7).
+STORE_CATEGORY_VOCAB_REVISION = "store-category-vocab-revision"
+
 
 # ---------------------------------------------------------------------------
 # Curation
@@ -756,6 +767,8 @@ __all__ = [
     "COLONY_BULK_REMOVE_BTN_ID",
     "COLONY_BULK_RESTORE_BTN_ID",
     "COLONY_BULK_CLEAR_BTN_ID",
+    "COLONY_BULK_MARK_DROPDOWN_ID",
+    "STORE_CATEGORY_VOCAB_REVISION",
     "STORE_REMOVED_KEYS",
     "STORE_TILE_DIM_ALPHA",
     "STORE_COLONY_SELECTION",

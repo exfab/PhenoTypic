@@ -1331,6 +1331,59 @@ def _register_curation_callbacks(app: dash.Dash) -> None:
         )
         return payload, {"selected": []}
 
+    # -- Bulk "Mark selected as ▾" category dropdown (shared helpers) -------
+    # Reuses the colony view's pure helpers so the option shape + mark
+    # semantics stay single-sourced across the two surfaces.
+    from phenotypic.gui.results_viewer.colony_view._callbacks import (
+        bulk_mark,
+        category_dropdown_options,
+    )
+
+    @app.callback(
+        Output(rids.QC_REVIEW_BULK_MARK_DROPDOWN_ID, "options"),
+        Input(viewer_ids.STORE_CATEGORY_VOCAB_REVISION, "data"),
+    )
+    def _populate_qc_bulk_mark_options(
+        _revision: int | None,
+    ) -> list[dict[str, str]]:
+        """Refresh the QC bulk-mark dropdown options from the vocabulary."""
+        filtered = _filtered_state()
+        if filtered is None:
+            return []
+        with filtered._lock:
+            categories = filtered.categories()
+        return category_dropdown_options(categories)
+
+    @app.callback(
+        Output(viewer_ids.STORE_REMOVED_KEYS, "data", allow_duplicate=True),
+        Output(viewer_ids.STORE_COLONY_SELECTION, "data", allow_duplicate=True),
+        Output(rids.QC_REVIEW_BULK_MARK_DROPDOWN_ID, "value"),
+        Input(rids.QC_REVIEW_BULK_MARK_DROPDOWN_ID, "value"),
+        State(viewer_ids.STORE_COLONY_SELECTION, "data"),
+        prevent_initial_call=True,
+    )
+    def _bulk_mark_qc_selected(
+        category: str | None,
+        selection_payload: Any,
+    ):
+        """Mark the multi-selected QC tiles with the chosen category, then clear."""
+        if not category:
+            return no_update, no_update, no_update
+        filtered = _filtered_state()
+        if filtered is None:
+            return no_update, no_update, None
+        selected = decode_removed_keys_payload(
+            (selection_payload or {}).get("selected")
+        )
+        if not selected:
+            return no_update, no_update, None
+        try:
+            payload = bulk_mark(filtered, selected, category)
+        except ValueError:
+            logger.warning("QC bulk-mark rejected unknown category %r", category)
+            return no_update, no_update, None
+        return payload, {"selected": []}, None
+
 
 # ---------------------------------------------------------------------------
 # Review-progress callbacks (mark reviewed / next + recompute)
