@@ -370,6 +370,50 @@ menu**, not a binary remove. The shared component is
 
 ---
 
+## Error-analysis tab
+
+The results viewer's **Error** tab (`results_viewer/_error_tab/`, the 5th
+tab, `TAB_ERROR_ID`) ranks the single measurements that best separate a
+chosen error category from a good baseline, via
+`phenotypic.analysis.ErrorCutoffFinder`. The package splits the usual way:
+`_data.py` (pure good/error frame construction + verified-good resolution),
+`_figure.py` (the pure good-vs-error distribution figure), `_layout.py`
+(the static layout), `_callbacks.py` (the recompute + cutoff-drag wiring),
+and `_ids.py` (all-static component ids, e.g. `error-cutoff-table`,
+`error-distribution-figure`, `error-good-mode-toggle`).
+
+- **Good-baseline toggle (`ERROR_GOOD_MODE_TOGGLE_ID`):** `all_unlabeled`
+  (default — every unlabeled object is good) vs `verified` (the good class
+  is restricted to `verified_good_keys`, the unlabeled members of
+  QC-reviewed groups, derived from `qc/qc_summary.parquet` +
+  `qc/qc_members.parquet` + `qc/review_state.json`). The verified-good
+  count badge (`ERROR_VERIFIED_COUNT_ID`) reports that set's size.
+- **Server-side state, recompute on activation:** the recompute callback
+  reads `filtered_state.labels` under `filtered_state._lock` (the shared
+  `CurationLabels`; there is **no** `STORE_LABELS` Dash store) and builds
+  the error frame by looking the labeled keys up in `output_root.master_df`
+  (the post-applied mirror). It gates on `active_tab == TAB_ERROR_ID` and
+  raises `PreventUpdate` off-tab, so marking a colony on another tab never
+  runs the finder — returning to the Error tab recomputes from the current
+  durable labels store (R2).
+- **Live persistence (focused category):** each recompute writes
+  `deliverables/error_analysis.{parquet,csv}` for the *focused* category
+  (leading `category` column, transient last-viewed-in-session) via
+  `_persist`, and in verified mode writes `deliverables/verified.parquet`
+  via `_persist_verified`. The HTML report is written only on explicit
+  `Save analysis report`. The per-category `deliverables/errors/<category>.parquet`
+  are written by the curation layer (`CurationLabels._save_locked`), not here.
+- **CLI finalize re-emits (all categories):** `reemit_error_deliverables`
+  (`_cli/_cli_error_outputs.py`, called from `finalize_post_master_outputs`)
+  re-runs the finder per labeled category against the clean master and
+  authoritatively rewrites `errors/*` + `error_analysis.*` (columns
+  `[category, *RESULT_COLUMNS]`) from the durable `qc/curation_labels.parquet`,
+  so headless output matches the live GUI. `verified.parquet` is **GUI-only**
+  — finalize never writes it (it would be stale: `review_state.json` is reset
+  on recompile). Resolve every path via `phenotypic.tools_` helpers
+  (`error_analysis_parquet_path`, `errors_dir`, `verified_parquet_path`, …),
+  never by hand-joining names.
+
 ## Builder preview cache
 
 The builder's `Run preview` does NOT cache full `Image` instances. Each

@@ -430,7 +430,10 @@ DIR_DELIVERABLES: Final[str] = "deliverables"
 
 #: Per-category error-object parquet subdirectory under deliverables:
 #: ``<output>/deliverables/errors/<category>.parquet``. Holds the master rows
-#: for each triaged error category (GUI-written live, CLI-re-emitted).
+#: for each triaged error category. **Dual-owned:** the GUI writes them live as
+#: the user curates (via ``CurationLabels._save_locked``) and CLI finalize
+#: re-emits them (all categories) from the durable ``qc/curation_labels.parquet``
+#: via ``reemit_error_deliverables`` — so headless == live.
 DIR_ERRORS: Final[str] = "errors"
 
 #: Durable curation-labels store: ``<output>/qc/curation_labels.parquet``.
@@ -441,7 +444,14 @@ CURATION_LABELS_PARQUET: Final[str] = "curation_labels.parquet"
 #: Ordered custom-category registry sidecar: ``<output>/qc/custom_categories.json``.
 CUSTOM_CATEGORIES_JSON: Final[str] = "custom_categories.json"
 
-#: Ranked error-cutoff analysis deliverables.
+#: Ranked error-cutoff analysis deliverables (``ErrorCutoffFinder`` output;
+#: columns ``[category, *RESULT_COLUMNS]``). **Dual-owned, but with differing
+#: scope:** the GUI's Error tab writes the parquet/csv live for the *focused*
+#: category (transient, last-viewed-in-session) on each recompute, while CLI
+#: finalize (``reemit_error_deliverables``) authoritatively rewrites them across
+#: *all* labeled categories from the durable labels store. The HTML is written
+#: only on an explicit GUI ``Save analysis report`` or by CLI finalize — never on
+#: a live recompute.
 ERROR_ANALYSIS_PARQUET: Final[str] = "error_analysis.parquet"
 ERROR_ANALYSIS_CSV: Final[str] = "error_analysis.csv"
 ERROR_ANALYSIS_HTML: Final[str] = "error_analysis.html"
