@@ -1,0 +1,12 @@
+.browse-osd-canvas {
+    background: var(--color-bg, #0b0b0b);
+    border: 1px solid var(--color-border, #ccc);
+    border-radius: var(--radius, 6px);
+}
+.browse-meta-panel {
+    font-size: var(--font-size-caption);
+    color: var(--color-body);
+}
+.browse-meta-chip span:last-child {
+    font-family: var(--font-mono);
+}
