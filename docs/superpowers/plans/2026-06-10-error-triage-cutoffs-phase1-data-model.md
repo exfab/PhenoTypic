@@ -385,11 +385,9 @@ def custom_categories_json_path(output_dir: Path) -> Path:
     return qc_dir(output_dir) / CUSTOM_CATEGORIES_JSON
 ```
 
-- [ ] **Step 5: Add to `_io_constants.py` `__all__`**
+- [ ] **Step 5: Re-export from `tools_/__init__.py`**
 
-Find the module's `__all__` list and add: `"DIR_ERRORS"`, `"CURATION_LABELS_PARQUET"`, `"CUSTOM_CATEGORIES_JSON"`, `"ERROR_ANALYSIS_PARQUET"`, `"ERROR_ANALYSIS_CSV"`, `"ERROR_ANALYSIS_HTML"`, `"errors_dir"`, `"error_category_parquet_path"`, `"error_analysis_parquet_path"`, `"error_analysis_csv_path"`, `"error_analysis_html_path"`, `"curation_labels_parquet_path"`, `"custom_categories_json_path"`.
-
-- [ ] **Step 6: Re-export from `tools_/__init__.py`**
+(Note: `_io_constants.py` has **no** `__all__` — re-export and `__all__` registration happen only in `tools_/__init__.py`, below.)
 
 In `src/phenotypic/tools_/__init__.py`, add the new names to the existing `from ._io_constants import (...)` block (next to `deliverables_dir`, `qc_dir`, `measurements_parquet_path`) **and** to the package `__all__` list:
 
@@ -405,12 +403,12 @@ In `src/phenotypic/tools_/__init__.py`, add the new names to the existing `from 
 
 (and the matching `"..."` string entries in `__all__`.)
 
-- [ ] **Step 7: Run the test to verify it passes**
+- [ ] **Step 6: Run the test to verify it passes**
 
 Run: `uv run pytest tests/unit/tools_/test_error_paths.py -v`
 Expected: PASS (4 tests).
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
 git add src/phenotypic/tools_/_io_constants.py src/phenotypic/tools_/__init__.py tests/unit/tools_/test_error_paths.py
@@ -589,15 +587,20 @@ class RekeyReport:
         kept: Labels whose exact key matched and passed fingerprint validation.
         rekeyed: Labels re-attached to a renumbered object by fingerprint.
         dropped: Labels with no confident match in the current master (dropped).
+        migrated: Legacy removals inferred from a pre-existing
+            ``measurements.parquet`` (no prior labels store) and imported as
+            ``other`` — counted separately from ``kept`` so the stale banner is
+            accurate.
     """
 
     kept: int = 0
     rekeyed: int = 0
     dropped: int = 0
+    migrated: int = 0
 
     @property
     def total(self) -> int:
-        return self.kept + self.rekeyed + self.dropped
+        return self.kept + self.rekeyed + self.dropped + self.migrated
 
 
 @dataclass
@@ -865,6 +868,27 @@ def test_mark_many_single_save(tmp_path: Path):
         tools_.error_category_parquet_path(tmp_path, "oversegmented")
     )
     assert sorted(errs.get_column("Object_Label").to_list()) == [1, 3]
+
+
+def test_unmark_one_of_two_categories_keeps_other(tmp_path: Path):
+    store = CurationLabels.load(tmp_path, _master())
+    store.mark("plateA", 1, "debris")
+    store.mark("plateA", 2, "merged")
+    store.unmark("plateA", 1)
+    # the emptied category file is removed; the other survives intact
+    assert not tools_.error_category_parquet_path(tmp_path, "debris").exists()
+    merged = pl.read_parquet(tools_.error_category_parquet_path(tmp_path, "merged"))
+    assert merged.get_column("Object_Label").to_list() == [2]
+
+
+def test_mark_absent_key_degrades_to_nan_fingerprint(tmp_path: Path):
+    store = CurationLabels.load(tmp_path, _master())
+    store.mark("plateA", 999, "debris")  # object 999 is not in master
+    assert store.labels[("plateA", 999)] == "debris"
+    assert ("plateA", 999) not in store.fingerprints  # no centroid to capture
+    # persisted with NaN fingerprint -> dropped on the next re-key load
+    reloaded = CurationLabels.load(tmp_path, _master())
+    assert ("plateA", 999) not in reloaded.labels
 ```
 
 - [ ] **Step 2: Run the test to verify it fails**
@@ -1019,7 +1043,10 @@ Add these methods to the `CurationLabels` class in `_curation_labels.py`:
         # Write present categories; remove files for categories no longer present.
         present = set()
         for cat, keys in by_cat.items():
-            token = sanitize_category(cat) or cat
+            token = sanitize_category(cat)
+            if not token:
+                logger.warning("Skipping category with no filename-safe token: %r", cat)
+                continue
             present.add(token)
             sub = pl.DataFrame(
                 {
@@ -1147,12 +1174,31 @@ def test_migrates_legacy_measurements_parquet_as_other(tmp_path: Path):
 
     store = CurationLabels.load(tmp_path, master)
     assert store.labels == {("plateA", 3): "other"}
+
+
+def test_rekey_drops_rather_than_attaching_to_neighbor(tmp_path: Path):
+    # Object 2 still exists (exact key present at (20,40)) but the STORED centroid
+    # is (10,20) == object 1's position. The label must DROP, never silently
+    # re-key onto the neighbour at the stored centroid.
+    _write_store_with_label(tmp_path, "plateA", 2, "debris", 10.0, 20.0)
+    store = CurationLabels.load(tmp_path, _master())
+    assert store.labels == {}
+    assert store.rekey_report.dropped == 1
+
+
+def test_rekey_degrades_without_bbox(tmp_path: Path):
+    _write_store_with_label(tmp_path, "plateA", 2, "debris", 20.0, 40.0)
+    master = _master().drop(["Bbox_CenterRR", "Bbox_CenterCC"])
+    store = CurationLabels.load(tmp_path, master)
+    # exact key (plateA, 2) still exists -> kept on the exact-key-only fallback
+    assert store.labels == {("plateA", 2): "debris"}
+    assert store.rekey_report.kept == 1
 ```
 
 - [ ] **Step 2: Run the test to verify it fails**
 
 Run: `uv run pytest tests/unit/gui/results_viewer/test_curation_labels.py -k "rekey or migrate" -v`
-Expected: FAIL — renumber recovery + migration not implemented (the Task 3 stub only keeps exact keys; renumber test expects key `99`, migration test expects a non-empty store).
+Expected: FAIL — the Task 3 stub keeps exact keys unconditionally (no fingerprint), so: the renumber test expects key `99` (stub drops it), the migration test expects a non-empty store, and `test_rekey_drops_rather_than_attaching_to_neighbor` expects an empty store (the stub keeps object 2 instead of dropping it). `test_rekey_degrades_without_bbox` may already pass under the stub — it is a regression guard for the no-Bbox branch.
 
 - [ ] **Step 3: Replace `_rekey` and add migration to `load`**
 
@@ -1198,24 +1244,59 @@ Replace the Task-3 `_rekey` stub with the fingerprint version, and add a `_migra
         master_df: pl.DataFrame,
         tol: float = FINGERPRINT_TOL_PX,
     ) -> tuple[dict[LabelKey, str], dict[LabelKey, tuple[float, float]], RekeyReport]:
-        """Re-attach stored labels to the current master via fingerprint.
+        """Re-attach stored labels to the current master.
 
-        For each stored label: if the exact key exists and its centroid is
-        within ``tol``, keep it; else if exactly one object in the same image is
-        within ``tol`` of the stored centroid, re-key to that object; else drop.
+        Policy (resolved during plan review):
+
+        * **No Bbox columns** (``Bbox_CenterRR/CC`` absent — e.g. a pipeline
+          without ``MeasureBounds``): fingerprint validation is impossible, so
+          *degrade gracefully* — keep every stored label whose exact
+          ``(image_file, object_label)`` still exists in master, drop the rest,
+          and log a single WARNING. Renumber-recovery is unavailable here.
+        * **Bbox present**: if the exact key exists AND its centroid is within
+          ``tol`` → keep. If the exact key exists but the centroid moved beyond
+          ``tol`` → **drop immediately** (ambiguous identity; do NOT search
+          neighbours, which could mis-attach to an adjacent colony). If the exact
+          key is absent → re-key only when exactly one object in the same image
+          is within ``tol`` of the stored centroid, else drop.
         """
+        has_fp = (
+            KEY_CENTER_RR in master_df.columns and KEY_CENTER_CC in master_df.columns
+        )
         exact, per_image = cls._master_index(master_df)
         labels: dict[LabelKey, str] = {}
         fingerprints: dict[LabelKey, tuple[float, float]] = {}
         kept = rekeyed = dropped = 0
+
+        if not has_fp:
+            logger.warning(
+                "Master frame lacks %s/%s; fingerprint re-keying disabled "
+                "(exact-key only). Add MeasureBounds to enable renumber recovery.",
+                KEY_CENTER_RR,
+                KEY_CENTER_CC,
+            )
+            for image_file, label, category, _rr, _cc in stored:
+                key = (image_file, label)
+                if key in exact:
+                    labels[key] = category  # no fingerprint available to store
+                    kept += 1
+                else:
+                    dropped += 1
+            return labels, fingerprints, RekeyReport(kept=kept, dropped=dropped)
+
         for image_file, label, category, rr, cc in stored:
             key = (image_file, label)
             mfp = exact.get(key)
-            if mfp is not None and ((mfp[0] - rr) ** 2 + (mfp[1] - cc) ** 2) ** 0.5 <= tol:
-                labels[key] = category
-                fingerprints[key] = mfp
-                kept += 1
+            if mfp is not None:
+                # Exact key survived: trust it only while the centroid is stable.
+                if ((mfp[0] - rr) ** 2 + (mfp[1] - cc) ** 2) ** 0.5 <= tol:
+                    labels[key] = category
+                    fingerprints[key] = mfp
+                    kept += 1
+                else:
+                    dropped += 1  # moved too far — drop, never risk a neighbour
                 continue
+            # Exact key gone (renumbered?): recover only on a unique fingerprint.
             match = cls._nearest_unique(per_image.get(image_file, []), rr, cc, tol)
             if match is not None:
                 new_label, mrr, mcc = match
@@ -1223,8 +1304,8 @@ Replace the Task-3 `_rekey` stub with the fingerprint version, and add a `_migra
                 labels[nkey] = category
                 fingerprints[nkey] = (mrr, mcc)
                 rekeyed += 1
-                continue
-            dropped += 1
+            else:
+                dropped += 1
         return labels, fingerprints, RekeyReport(kept=kept, rekeyed=rekeyed, dropped=dropped)
 
     @classmethod
@@ -1263,7 +1344,7 @@ Then update `load` so its labels-source branch reads:
             labels, fingerprints, report = cls._rekey(stored, master_df)
         elif measurements_parquet_path(root).exists():
             labels, fingerprints = cls._migrate_legacy(root, master_df)
-            report = RekeyReport(kept=len(labels))
+            report = RekeyReport(migrated=len(labels))
 ```
 
 - [ ] **Step 4: Run the test to verify it passes**
@@ -1340,7 +1421,12 @@ Add these methods to `CurationLabels`:
     # -- FilteredMeasurements-compatible surface -----------------------------
     @property
     def removed_keys(self) -> set[LabelKey]:
-        """All labeled keys (any category) — the removal set."""
+        """Snapshot copy of all labeled keys (any category) — the removal set.
+
+        Returns a fresh ``set`` each call. Unlike the old ``FilteredMeasurements``
+        field, mutating the returned set does **not** change stored state —
+        mutate via :meth:`mark`/:meth:`unmark`/:meth:`remove`/:meth:`restore`.
+        """
         return set(self.labels.keys())
 
     def is_removed(self, image_file: str, object_label: int) -> bool:
@@ -1477,13 +1563,23 @@ git commit -m "test(viewer): import-smoke + phase-1 boundary for CurationLabels"
 
 Not in Phase 1 (correctly deferred): app wiring, the `Curation_Category` value actually surfaced in the UI, colors, the ANOVA engine, the tab, CLI finalize, docs ledgers.
 
+## Review decisions applied (2026-06-10)
+
+Independent plan review + user decisions folded in:
+
+- **Bbox absent → degrade + warn** (Q1): `_rekey` keeps exact keys only and logs a WARNING when `Bbox_CenterRR/CC` are missing. (`Bbox_*` already a de-facto requirement of the colony/QC crop tiles.)
+- **Exact key + centroid moved beyond tol → drop immediately** (Q2): never fall through to a neighbour search; `test_rekey_drops_rather_than_attaching_to_neighbor` guards it.
+- **Stale-session mtime guard → Phase 2** (Q3): added to the Phase 2 roadmap item.
+- **Fixes:** deleted the bogus `_io_constants.py` `__all__` step; removed the `sanitize_category(cat) or cat` path-injection fallback; added a `RekeyReport.migrated` field (migrations no longer mis-counted as `kept`); documented `removed_keys` as a snapshot copy; added multi-category-unmark, absent-key-NaN, neighbour-drop, and no-Bbox tests.
+- **Phase 5/6 docs:** add a one-line `CLAUDE.md` note that `deliverables/errors/*` and `deliverables/error_analysis.*` are GUI-written-live **and** CLI-re-emitted at finalize (the documented "finalize owns deliverables" exception, alongside the existing curated-mirror precedent).
+
 ---
 
 ## Roadmap — Phases 2–6 (expanded into their own plans as each lands)
 
 Each subsequent phase binds to the concrete `CurationLabels` API and `io_constants` paths created here, so its detailed plan is authored once Phase 1 is merged and those APIs are real (keeps every code block accurate, not speculative).
 
-- **Phase 2 — Tile UI + app integration.** Swap `FilteredMeasurements.load` → `CurationLabels.load` in `results_viewer/_app.py` (drop-in via the compat surface; plain removals now durable). Build the shared nested **radial menu** component in `gui/_shared/` (core wheel + `Other` + `Custom ▸` folder + `＋ Add custom`), the per-tile category badge, and the **bulk "Mark N selected as ▾"** bar, wired on both colony-view and QC tiles through `build_tile_cell`. Category→`OI_*` color map in `_design.py`. Pattern-matched per-wedge callbacks. `FEATURES.md` rows.
+- **Phase 2 — Tile UI + app integration.** Swap `FilteredMeasurements.load` → `CurationLabels.load` in `results_viewer/_app.py` (drop-in via the compat surface; plain removals now durable). **Add an mtime guard** on `measurements.parquet` (restoring the protection `FilteredMeasurements._seed_mtime_ns` gave): a viewer session open across a CLI re-run must refuse to clobber the freshly-seeded measurements file and trigger a reload instead — re-keying alone only runs at load, so a long-lived session needs this guard. Build the shared nested **radial menu** component in `gui/_shared/` (core wheel + `Other` + `Custom ▸` folder + `＋ Add custom`), the per-tile category badge, and the **bulk "Mark N selected as ▾"** bar, wired on both colony-view and QC tiles through `build_tile_cell`. Category→`OI_*` color map in `_design.py`. Pattern-matched per-wedge callbacks. `FEATURES.md` rows.
 - **Phase 3 — Cutoff engine.** `analysis/_error_cutoffs.py`: per-measurement one-way ANOVA (`scipy.stats.f_oneway`, good vs. category), effect size + AUC, ROC/Youden cutoff with recall/precision, BH-FDR; min-n guard; exported from `analysis/__init__.py`. Pure, fully unit-testable.
 - **Phase 4 — Error-analysis tab.** `gui/results_viewer/_error_tab/`: category switcher + counts, ranked table, good-vs-error boxplot with draggable cutoff, recall/precision readout, copy-filter-spec; debounced live recompute on label change; stale banner from `rekey_report`. `FEATURES.md` + `WORKFLOWS.md` rows.
 - **Phase 5 — CLI finalize wiring.** `finalize_post_master_outputs` re-emits `deliverables/errors/*.parquet` + `deliverables/error_analysis.{parquet,csv,html}` and **preserves + re-keys** the labels store (no wipe); chunk writers untouched.

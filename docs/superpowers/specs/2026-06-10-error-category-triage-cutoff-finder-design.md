@@ -162,17 +162,27 @@ generalizing `FilteredMeasurements`:
 
 - **Migration:** on first load against a `<root>` that has a legacy
   `measurements.parquet` but no labels store, infer removed keys (master −
-  curated) and import them as `OTHER`.
-- **Re-keying (⚠️ confirmed):** on load/recompile, intersect stored labels with
-  the fresh master on `(image_file, object_label)`. Because re-detection can
-  renumber `Object_Label`, a key match is **validated against the stored
-  centroid fingerprint** (within a small pixel tolerance of the new row's
-  `Bbox_Center*`). Matches that fail the fingerprint are **dropped, not moved**.
-  Counts of `{kept, re-keyed, dropped}` feed the stale banner.
+  curated) and import them as `OTHER`. These are tallied as `migrated` (a
+  distinct `RekeyReport` field, not `kept`) so the stale banner stays accurate.
+- **Re-keying (⚠️ confirmed):** on load/recompile, re-attach stored labels to
+  the fresh master:
+  - **Bbox present** (`Bbox_CenterRR/CC`): if the exact `(image_file,
+    object_label)` survives and its centroid is within a small pixel tolerance →
+    keep. If the exact key survives but the centroid moved beyond tolerance →
+    **drop immediately** (do *not* search neighbours — avoids mis-attaching to an
+    adjacent colony). If the exact key is gone (renumbered) → re-key only to a
+    *unique* object within tolerance of the stored centroid, else drop.
+  - **Bbox absent** (no `MeasureBounds`): fingerprinting is impossible →
+    **degrade gracefully** — keep labels whose exact key survives, drop the rest,
+    emit one WARNING. `Bbox_*` is already a de-facto requirement of the
+    colony/QC crop tiles, so this is an edge case, not the norm.
+  - Counts `{kept, re-keyed, dropped, migrated}` feed the stale banner.
 - ⚠️ **Behavior change (confirmed):** because `OTHER` (plain remove) now lives
   in this durable store, plain removals survive CLI re-runs instead of being
-  wiped. The legacy `_seed_mtime_ns` clobber-guard is superseded by the
-  re-keying step.
+  wiped. Re-keying runs at **load** time only; a viewer session left open
+  *across* a CLI re-run still needs an explicit `measurements.parquet`
+  **mtime guard** (restoring the protection `FilteredMeasurements._seed_mtime_ns`
+  gave) to avoid clobbering the fresh seed — added in **Phase 2**, not Phase 1.
 
 ## 6. Tile UI
 
