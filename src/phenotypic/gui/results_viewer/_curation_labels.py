@@ -198,6 +198,9 @@ class CurationLabels:
         if labels_path.exists():
             stored = cls._read_labels_parquet(labels_path)
             labels, fingerprints, report = cls._rekey(stored, master_df)
+        elif measurements_parquet_path(root).exists():
+            labels, fingerprints = cls._migrate_legacy(root, master_df)
+            report = RekeyReport(migrated=len(labels))
 
         return cls(
             root=root,
@@ -236,7 +239,7 @@ class CurationLabels:
         tmp.write_text(payload, encoding="utf-8")
         os.replace(tmp, self.custom_path)
 
-    # -- labels parquet IO (re-keying added in Task 5) -----------------------
+    # -- labels parquet IO + re-keying --------------------------------------
     @staticmethod
     def _read_labels_parquet(path: Path) -> list[tuple[str, int, str, float, float]]:
         """Read the labels parquet into raw tuples (no re-keying)."""
@@ -255,34 +258,133 @@ class CurationLabels:
         return rows
 
     @staticmethod
+    def _master_index(
+        master_df: pl.DataFrame,
+    ) -> tuple[dict[LabelKey, tuple[float, float]], dict[str, list[tuple[int, float, float]]]]:
+        """Build (exact-key -> centroid) and (image -> [(label, rr, cc)]) indexes."""
+        exact: dict[LabelKey, tuple[float, float]] = {}
+        per_image: dict[str, list[tuple[int, float, float]]] = {}
+        has_fp = KEY_CENTER_RR in master_df.columns and KEY_CENTER_CC in master_df.columns
+        cols = [KEY_IMAGE_FILE, KEY_OBJECT_LABEL]
+        if has_fp:
+            cols += [KEY_CENTER_RR, KEY_CENTER_CC]
+        for row in master_df.select(cols).iter_rows(named=True):
+            image_file = str(row[KEY_IMAGE_FILE])
+            label = int(row[KEY_OBJECT_LABEL])
+            rr = float(row[KEY_CENTER_RR]) if has_fp else float("nan")
+            cc = float(row[KEY_CENTER_CC]) if has_fp else float("nan")
+            exact[(image_file, label)] = (rr, cc)
+            per_image.setdefault(image_file, []).append((label, rr, cc))
+        return exact, per_image
+
+    @staticmethod
+    def _nearest_unique(
+        candidates: list[tuple[int, float, float]], rr: float, cc: float, tol: float
+    ) -> tuple[int, float, float] | None:
+        """Return the single candidate within ``tol`` of (rr, cc), else None."""
+        within = [
+            (label, crr, ccc)
+            for (label, crr, ccc) in candidates
+            if ((crr - rr) ** 2 + (ccc - cc) ** 2) ** 0.5 <= tol
+        ]
+        return within[0] if len(within) == 1 else None
+
+    @classmethod
     def _rekey(
+        cls,
         stored: list[tuple[str, int, str, float, float]],
         master_df: pl.DataFrame,
+        tol: float = FINGERPRINT_TOL_PX,
     ) -> tuple[dict[LabelKey, str], dict[LabelKey, tuple[float, float]], RekeyReport]:
-        """Exact-key re-key (Task 3 stub).
+        """Re-attach stored labels to the current master.
 
-        Task 5 replaces this with fingerprint validation + renumber recovery.
-        For now: keep a stored label iff its exact key exists in master.
+        Policy (resolved during plan review):
+
+        * **No Bbox columns** (``Bbox_CenterRR/CC`` absent — e.g. a pipeline
+          without ``MeasureBounds``): fingerprint validation is impossible, so
+          *degrade gracefully* — keep every stored label whose exact
+          ``(image_file, object_label)`` still exists in master, drop the rest,
+          and log a single WARNING. Renumber-recovery is unavailable here.
+        * **Bbox present**: if the exact key exists AND its centroid is within
+          ``tol`` → keep. If the exact key exists but the centroid moved beyond
+          ``tol`` → **drop immediately** (ambiguous identity; do NOT search
+          neighbours, which could mis-attach to an adjacent colony). If the exact
+          key is absent → re-key only when exactly one object in the same image
+          is within ``tol`` of the stored centroid, else drop.
         """
-        master_keys = {
+        has_fp = (
+            KEY_CENTER_RR in master_df.columns and KEY_CENTER_CC in master_df.columns
+        )
+        exact, per_image = cls._master_index(master_df)
+        labels: dict[LabelKey, str] = {}
+        fingerprints: dict[LabelKey, tuple[float, float]] = {}
+        kept = rekeyed = dropped = 0
+
+        if not has_fp:
+            logger.warning(
+                "Master frame lacks %s/%s; fingerprint re-keying disabled "
+                "(exact-key only). Add MeasureBounds to enable renumber recovery.",
+                KEY_CENTER_RR,
+                KEY_CENTER_CC,
+            )
+            for image_file, label, category, _rr, _cc in stored:
+                key = (image_file, label)
+                if key in exact:
+                    labels[key] = category  # no fingerprint available to store
+                    kept += 1
+                else:
+                    dropped += 1
+            return labels, fingerprints, RekeyReport(kept=kept, dropped=dropped)
+
+        for image_file, label, category, rr, cc in stored:
+            key = (image_file, label)
+            mfp = exact.get(key)
+            if mfp is not None:
+                # Exact key survived: trust it only while the centroid is stable.
+                if ((mfp[0] - rr) ** 2 + (mfp[1] - cc) ** 2) ** 0.5 <= tol:
+                    labels[key] = category
+                    fingerprints[key] = mfp
+                    kept += 1
+                else:
+                    dropped += 1  # moved too far — drop, never risk a neighbour
+                continue
+            # Exact key gone (renumbered?): recover only on a unique fingerprint.
+            match = cls._nearest_unique(per_image.get(image_file, []), rr, cc, tol)
+            if match is not None:
+                new_label, mrr, mcc = match
+                nkey = (image_file, new_label)
+                labels[nkey] = category
+                fingerprints[nkey] = (mrr, mcc)
+                rekeyed += 1
+            else:
+                dropped += 1
+        return labels, fingerprints, RekeyReport(kept=kept, rekeyed=rekeyed, dropped=dropped)
+
+    @classmethod
+    def _migrate_legacy(
+        cls, root: Path, master_df: pl.DataFrame
+    ) -> tuple[dict[LabelKey, str], dict[LabelKey, tuple[float, float]]]:
+        """Import a legacy ``measurements.parquet`` mirror as ``other`` labels.
+
+        Removed objects are ``master_keys - curated_keys``; each is labeled
+        ``other`` with its fingerprint taken from the master.
+        """
+        curated = pl.read_parquet(measurements_parquet_path(root))
+        exact, _ = cls._master_index(master_df)
+        curated_keys = {
             (str(img), int(lbl))
             for img, lbl in zip(
-                master_df.get_column(KEY_IMAGE_FILE).to_list(),
-                master_df.get_column(KEY_OBJECT_LABEL).to_list(),
+                curated.get_column(KEY_IMAGE_FILE).to_list(),
+                curated.get_column(KEY_OBJECT_LABEL).to_list(),
             )
         }
         labels: dict[LabelKey, str] = {}
         fingerprints: dict[LabelKey, tuple[float, float]] = {}
-        kept = dropped = 0
-        for image_file, label, category, rr, cc in stored:
-            key = (image_file, label)
-            if key in master_keys:
-                labels[key] = category
-                fingerprints[key] = (rr, cc)
-                kept += 1
-            else:
-                dropped += 1
-        return labels, fingerprints, RekeyReport(kept=kept, dropped=dropped)
+        for key, fp in exact.items():
+            if key not in curated_keys:
+                labels[key] = OTHER_CATEGORY
+                fingerprints[key] = fp
+        return labels, fingerprints
 
     # -- queries -------------------------------------------------------------
     def filtered_df(self, master_df: pl.DataFrame) -> pl.DataFrame:

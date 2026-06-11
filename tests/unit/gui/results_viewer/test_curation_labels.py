@@ -131,3 +131,80 @@ def test_mark_absent_key_degrades_to_nan_fingerprint(tmp_path: Path):
     # persisted with NaN fingerprint -> dropped on the next re-key load
     reloaded = CurationLabels.load(tmp_path, _master())
     assert ("plateA", 999) not in reloaded.labels
+
+
+def _write_store_with_label(tmp_path, image_file, label, category, rr, cc):
+    """Helper: seed a labels parquet directly (simulating a prior session)."""
+    df = pl.DataFrame(
+        {
+            "Metadata_ImageFile": [image_file],
+            "Object_Label": [label],
+            "Curation_Category": [category],
+            "Bbox_CenterRR": [rr],
+            "Bbox_CenterCC": [cc],
+        }
+    )
+    path = tools_.curation_labels_parquet_path(tmp_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    df.write_parquet(path)
+
+
+def test_rekey_keeps_exact_match(tmp_path: Path):
+    _write_store_with_label(tmp_path, "plateA", 2, "debris", 20.0, 40.0)
+    store = CurationLabels.load(tmp_path, _master())
+    assert store.labels == {("plateA", 2): "debris"}
+    assert store.rekey_report.kept == 1
+
+
+def test_rekey_recovers_renumbered_object(tmp_path: Path):
+    # Stored label was object 2 at (20,40). New master renumbered it to 99 but
+    # the centroid is unchanged -> re-key to 99.
+    _write_store_with_label(tmp_path, "plateA", 2, "debris", 20.0, 40.0)
+    master = _master().with_columns(
+        pl.when(pl.col("Object_Label") == 2)
+        .then(99)
+        .otherwise(pl.col("Object_Label"))
+        .alias("Object_Label")
+    )
+    store = CurationLabels.load(tmp_path, master)
+    assert store.labels == {("plateA", 99): "debris"}
+    assert store.rekey_report.rekeyed == 1
+
+
+def test_rekey_drops_when_object_gone(tmp_path: Path):
+    # Stored centroid (500,500) matches nothing in master -> dropped.
+    _write_store_with_label(tmp_path, "plateA", 2, "debris", 500.0, 500.0)
+    store = CurationLabels.load(tmp_path, _master())
+    assert store.labels == {}
+    assert store.rekey_report.dropped == 1
+
+
+def test_migrates_legacy_measurements_parquet_as_other(tmp_path: Path):
+    # A legacy curated mirror missing object 3 -> object 3 imported as "other".
+    master = _master()
+    curated = master.filter(pl.col("Object_Label") != 3)
+    legacy = tools_.measurements_parquet_path(tmp_path)
+    legacy.parent.mkdir(parents=True, exist_ok=True)
+    curated.write_parquet(legacy)
+
+    store = CurationLabels.load(tmp_path, master)
+    assert store.labels == {("plateA", 3): "other"}
+
+
+def test_rekey_drops_rather_than_attaching_to_neighbor(tmp_path: Path):
+    # Object 2 still exists (exact key present at (20,40)) but the STORED centroid
+    # is (10,20) == object 1's position. The label must DROP, never silently
+    # re-key onto the neighbour at the stored centroid.
+    _write_store_with_label(tmp_path, "plateA", 2, "debris", 10.0, 20.0)
+    store = CurationLabels.load(tmp_path, _master())
+    assert store.labels == {}
+    assert store.rekey_report.dropped == 1
+
+
+def test_rekey_degrades_without_bbox(tmp_path: Path):
+    _write_store_with_label(tmp_path, "plateA", 2, "debris", 20.0, 40.0)
+    master = _master().drop(["Bbox_CenterRR", "Bbox_CenterCC"])
+    store = CurationLabels.load(tmp_path, master)
+    # exact key (plateA, 2) still exists -> kept on the exact-key-only fallback
+    assert store.labels == {("plateA", 2): "debris"}
+    assert store.rekey_report.kept == 1
