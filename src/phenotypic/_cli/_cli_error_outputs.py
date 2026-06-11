@@ -13,6 +13,7 @@ left untouched (spec §9 decisions 2 + 4).
 from __future__ import annotations
 
 import logging
+import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -20,7 +21,7 @@ import pandas as pd
 import polars as pl
 
 from phenotypic.analysis import ErrorCutoffFinder, render_error_analysis_report
-from phenotypic.analysis._error_cutoffs import RESULT_COLUMNS
+from phenotypic.analysis._error_cutoffs import RESULT_COLUMNS, _RESULT_DTYPES
 from phenotypic.tools_ import (
     curation_labels_parquet_path,
     error_analysis_csv_path,
@@ -89,17 +90,24 @@ def _write_error_analysis(
             tagged.insert(0, "category", category)
             frames.append(tagged[list(_PERSIST_COLUMNS)])
 
-    combined = (
-        pd.concat(frames, ignore_index=True)
-        if frames
-        else pd.DataFrame(columns=list(_PERSIST_COLUMNS))
-    )
+    combined = pd.concat(frames, ignore_index=True) if frames else _empty_combined()
     error_analysis_parquet_path(output_dir).parent.mkdir(parents=True, exist_ok=True)
-    pl.from_pandas(combined).write_parquet(error_analysis_parquet_path(output_dir))
-    pl.from_pandas(combined).write_csv(error_analysis_csv_path(output_dir))
-    error_analysis_html_path(output_dir).write_text(
-        render_error_analysis_report(reports), encoding="utf-8"
+    _atomic_write_parquet(combined, error_analysis_parquet_path(output_dir))
+    _atomic_write_csv(combined, error_analysis_csv_path(output_dir))
+    _atomic_write_text(
+        render_error_analysis_report(reports), error_analysis_html_path(output_dir)
     )
+
+
+def _empty_combined() -> pd.DataFrame:
+    """Typed 0-row ``error_analysis`` frame (empty + populated schemas agree).
+
+    Mirrors the engine's own ``_empty_result`` discipline so a labels-but-no-
+    separation run writes a frame whose ``auc``/``cutoff``/... stay numeric
+    instead of inferring ``object`` (L3).
+    """
+    dtypes = {"category": "object", **_RESULT_DTYPES}
+    return pd.DataFrame({c: pd.Series(dtype=dtypes[c]) for c in _PERSIST_COLUMNS})
 
 
 def _rows_for_keys(
@@ -113,3 +121,30 @@ def _rows_for_keys(
     from phenotypic.gui.results_viewer._curation_labels import _join_on_keys
 
     return _join_on_keys(master_df, keys, "semi").to_pandas()
+
+
+# ---------------------------------------------------------------------------
+# Atomic writers (temp + os.replace) — match the GUI/curation-store discipline
+# so a concurrent viewer or a mid-write crash never sees a truncated artifact.
+# ---------------------------------------------------------------------------
+
+
+def _atomic_write_parquet(df: pd.DataFrame, path: Path) -> None:
+    """Write ``df`` to ``path`` as parquet via a sibling temp file + replace."""
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    pl.from_pandas(df).write_parquet(tmp)
+    os.replace(tmp, path)
+
+
+def _atomic_write_csv(df: pd.DataFrame, path: Path) -> None:
+    """Write ``df`` to ``path`` as CSV via a sibling temp file + replace."""
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    pl.from_pandas(df).write_csv(tmp)
+    os.replace(tmp, path)
+
+
+def _atomic_write_text(text: str, path: Path) -> None:
+    """Write ``text`` to ``path`` via a sibling temp file + replace."""
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(text, encoding="utf-8")
+    os.replace(tmp, path)
