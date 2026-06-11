@@ -292,3 +292,107 @@
 /* Toolbar / bulk action bar */
 .colony-toolbar { /* sized inline by colony_view._layout */ }
 .colony-bulk-bar { /* dbc.Alert handles base styling */ }
+
+/* ---------- Radial category menu (colony + QC-review tiles) ----------
+ *
+ * The radial menu is a per-tile ▾ trigger anchoring a dbc.Popover that
+ * ships an empty body populated lazily on first open.  All geometry is set
+ * inline by _radial.py's _wedge_positions(); these classes provide shape,
+ * z-index, and the custom-badge discriminator (decision D).
+ *
+ * DO NOT redefine :root vars here — use var(--*) references only.
+ * -------------------------------------------------------------------- */
+
+/* The Popover container for the radial ring — high z-index to float above
+ * tile chrome and neighbour tiles. */
+.radial-popover {
+    z-index: 1090;
+}
+
+/* Square container for the wedge ring.  width/height set inline by the
+ * Python builder. */
+.radial-ring-container {
+    position: relative;
+    /* Inline width/height come from _CONTAINER_SIZE in _radial.py */
+}
+
+/* Each primary wedge button: circular shape, centered text. */
+.radial-wedge {
+    position: absolute;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-size: 0.55rem;
+    line-height: 1.1;
+    padding: 2px;
+    cursor: pointer;
+    transition: transform 80ms ease, box-shadow 80ms ease;
+    /* width/height/left/top set inline */
+}
+
+.radial-wedge:hover,
+.radial-wedge:focus {
+    transform: scale(1.15);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+    outline: none;
+}
+
+/* Active wedge (currently assigned category) gets a ring. */
+.radial-wedge--active {
+    box-shadow: 0 0 0 2px var(--color-surface, #fff), 0 0 0 4px currentColor;
+}
+
+/* Custom-folder wedge: folder icon tint, slightly different shape. */
+.radial-wedge--folder {
+    border-radius: 25%;
+}
+
+/* Center restore/close node: neutral surface color, circular. */
+.radial-center {
+    position: absolute;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    padding: 2px;
+    cursor: pointer;
+    transition: transform 80ms ease;
+    /* width/height/left/top set inline */
+}
+
+.radial-center:hover,
+.radial-center:focus {
+    transform: scale(1.1);
+    outline: none;
+}
+
+/* Per-tile category badge (trigger button when a category is assigned). */
+.radial-badge {
+    border-radius: var(--radius-sm, 0.25rem);
+    font-size: var(--font-size-caption, 0.7rem);
+    padding: 1px 6px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: opacity 80ms ease;
+}
+
+.radial-badge:hover {
+    opacity: 0.85;
+}
+
+/* Neutral trigger (no category assigned yet). */
+.radial-badge--neutral {
+    background: var(--color-surface, #f8f9fa);
+    border-color: var(--color-border, #dee2e6);
+    color: var(--color-body, #333);
+}
+
+/* Custom-category discriminator: an inset ring so custom badges are never
+ * visually identical to core-category badges (design decision D). */
+.radial-badge--custom {
+    box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.30);
+}
