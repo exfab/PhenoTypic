@@ -52,3 +52,14 @@ def test_serialization_roundtrip(detected_image):
     restored = MeasureColor.from_json(op.to_json())
     assert restored.medoid_max_pixels == 300
     assert restored.random_seed == 3
+
+
+def test_hex_column_survives_numeric_aggregation(detected_image):
+    df = MeasureColor().measure(detected_image)
+    # Simulate the master-aggregation numeric reduction: must not raise on the
+    # string hex column and must skip it.
+    numeric_means = df.drop(columns=[OBJECT.LABEL]).mean(numeric_only=True)
+    assert str(ColorLab.MEDOID_COLOR_HEX) not in numeric_means.index
+    # group-mean (replicate aggregation shape) also tolerates the string column
+    grouped = df.groupby(OBJECT.LABEL).mean(numeric_only=True)
+    assert str(ColorLab.MEDOID_COLOR_HEX) not in grouped.columns
