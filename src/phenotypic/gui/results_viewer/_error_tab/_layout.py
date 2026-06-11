@@ -20,8 +20,6 @@ chips / table / figure / badges. No data reads happen at build time.
 """
 from __future__ import annotations
 
-import logging
-
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 from dash import dash_table, dcc, html
 from dash.development.base_component import Component
@@ -38,8 +36,6 @@ from phenotypic.gui._design import (
 from phenotypic.gui._schema_cache import MeasurementSchema
 from phenotypic.gui.results_viewer._error_tab import _ids as ids
 from phenotypic.gui.results_viewer._output_root import OutputRoot
-
-logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------

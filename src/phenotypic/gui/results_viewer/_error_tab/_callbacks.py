@@ -70,6 +70,10 @@ logger = logging.getLogger(__name__)
 #: shape matches Phase 5's all-category emit.
 _PERSIST_COLUMNS: tuple[str, ...] = ("category", *RESULT_COLUMNS)
 
+#: Pattern-matching id ``type`` for the per-category chip buttons. Single-sourced
+#: so :func:`_chip_id` and the category-select callback's trigger check agree.
+_CHIP_TYPE = "error-category-chip"
+
 
 # ---------------------------------------------------------------------------
 # Recompute result seam
@@ -352,7 +356,7 @@ def _chip_id(token: Any) -> dict[str, Any]:
     ``token`` is normally a category string; ``dash.ALL`` is also accepted
     so the category-select callback's ``Input`` can match every chip.
     """
-    return {"type": "error-category-chip", "token": token}
+    return {"type": _CHIP_TYPE, "token": token}
 
 
 def _render_readout(metrics: dict[str, float]) -> list[Any]:
@@ -534,7 +538,7 @@ def register_error_callbacks(
     )
     def _select_category(_clicks: list[int | None]) -> Any:
         triggered = ctx.triggered_id
-        if isinstance(triggered, dict) and triggered.get("type") == "error-category-chip":
+        if isinstance(triggered, dict) and triggered.get("type") == _CHIP_TYPE:
             return triggered.get("token")
         return no_update
 

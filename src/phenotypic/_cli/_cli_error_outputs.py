@@ -12,7 +12,6 @@ left untouched (spec §9 decisions 2 + 4).
 
 from __future__ import annotations
 
-import logging
 import os
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -31,8 +30,6 @@ from phenotypic.tools_ import (
 
 if TYPE_CHECKING:
     from phenotypic.gui.results_viewer._curation_labels import CurationLabels
-
-logger = logging.getLogger(__name__)
 
 #: Columns of the persisted ``error_analysis.{parquet,csv}`` (the leading
 #: ``category`` tag plus the category-free ``ErrorCutoffFinder`` result columns).

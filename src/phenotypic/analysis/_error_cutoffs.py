@@ -121,13 +121,12 @@ class ErrorCutoffFinder(BaseModel):
         Returns:
             The qualifying measurement column names.
         """
-        out: list[str] = []
-        for col in df.columns:
-            if not col.startswith(self.measurement_prefixes):
-                continue
-            if pd.api.types.is_numeric_dtype(df[col]):
-                out.append(col)
-        return out
+        return [
+            col
+            for col in df.columns
+            if col.startswith(self.measurement_prefixes)
+            and pd.api.types.is_numeric_dtype(df[col])
+        ]
 
     def enough_data(self, good: pd.DataFrame, error: pd.DataFrame) -> bool:
         """Return whether both classes meet their minimum sample sizes."""
