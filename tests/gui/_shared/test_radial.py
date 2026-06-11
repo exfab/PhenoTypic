@@ -162,7 +162,6 @@ def test_restore_sentinel_differs_from_all_core_tokens() -> None:
 class TestBuildRadialBody:
     """Tests for :func:`build_radial_body` component structure."""
 
-    _CATEGORIES = ErrorCategory.labels()
     _CUSTOM: list[str] = []
 
     def _body(
@@ -170,7 +169,6 @@ class TestBuildRadialBody:
         surface: str = "colony",
         image_file: str = "plateA.tif",
         label: int = 2,
-        categories: list[str] | None = None,
         custom: list[str] | None = None,
         current_category: str | None = None,
     ) -> Component:
@@ -178,7 +176,6 @@ class TestBuildRadialBody:
             surface,
             image_file,
             label,
-            categories if categories is not None else self._CATEGORIES,
             custom if custom is not None else self._CUSTOM,
             current_category,
         )
@@ -465,14 +462,11 @@ def _walk_components(root):
 class TestBuildRadialBodyCustomSection:
     """Tests for the expanded Custom folder section of ``build_radial_body``."""
 
-    _CATEGORIES = ErrorCategory.labels()
-
     def _body(self, custom: list[str], current_category: str | None = None):
         return build_radial_body(
             "colony",
             "plateA.tif",
             2,
-            [*self._CATEGORIES, *custom],
             custom,
             current_category,
         )
@@ -544,9 +538,7 @@ class TestBuildRadialBodyCustomSection:
 
     def test_custom_section_ids_carry_surface(self) -> None:
         """QC surface custom-add ids are distinct from colony's."""
-        qc_body = build_radial_body(
-            "qc", "p.tif", 1, [*self._CATEGORIES, "halo"], ["halo"], None
-        )
+        qc_body = build_radial_body("qc", "p.tif", 1, ["halo"], None)
         ids = {
             n.id.get("type")
             for n in _walk_components(qc_body)

@@ -129,3 +129,81 @@ def test_register_custom_safe_core_collision_rejected(tmp_path: Path) -> None:
     assert token is None
     assert "debris" in message
     assert "debris" not in store.custom_categories
+
+
+# ---------------------------------------------------------------------------
+# decode_wedge_trigger / apply_wedge_mark (shared radial-mark dispatch, P1)
+# ---------------------------------------------------------------------------
+
+
+def test_decode_wedge_trigger_returns_keys_on_real_click() -> None:
+    """A concrete wedge id with a non-empty fire decodes to (image, label, cat)."""
+    from phenotypic.gui._shared._triage_callbacks import decode_wedge_trigger
+
+    triggered_id = {
+        "type": "colony-cat-wedge",
+        "image_file": "img-A",
+        "label": "3",
+        "category": "debris",
+    }
+    triggered_list = [{"prop_id": "x.n_clicks", "value": 1}]
+    assert decode_wedge_trigger(triggered_id, triggered_list) == ("img-A", 3, "debris")
+
+
+def test_decode_wedge_trigger_initial_empty_fire_is_none() -> None:
+    """The ALL pattern's initial all-empty-n_clicks fire decodes to None."""
+    from phenotypic.gui._shared._triage_callbacks import decode_wedge_trigger
+
+    triggered_id = {
+        "type": "colony-cat-wedge",
+        "image_file": "img-A",
+        "label": 3,
+        "category": "debris",
+    }
+    triggered_list = [{"prop_id": "x.n_clicks", "value": None}]
+    assert decode_wedge_trigger(triggered_id, triggered_list) is None
+
+
+def test_decode_wedge_trigger_none_id_is_none() -> None:
+    """A missing / non-dict triggered_id decodes to None."""
+    from phenotypic.gui._shared._triage_callbacks import decode_wedge_trigger
+
+    assert decode_wedge_trigger(None, []) is None
+
+
+def test_decode_wedge_trigger_custom_folder_is_none() -> None:
+    """The custom-folder placeholder is inert (opens the folder, never marks)."""
+    from phenotypic.gui._shared._radial import RADIAL_CUSTOM_FOLDER_SENTINEL
+    from phenotypic.gui._shared._triage_callbacks import decode_wedge_trigger
+
+    triggered_id = {
+        "type": "colony-cat-wedge",
+        "image_file": "img-A",
+        "label": 3,
+        "category": RADIAL_CUSTOM_FOLDER_SENTINEL,
+    }
+    triggered_list = [{"prop_id": "x.n_clicks", "value": 1}]
+    assert decode_wedge_trigger(triggered_id, triggered_list) is None
+
+
+def test_apply_wedge_mark_assigns_category(tmp_path: Path) -> None:
+    """A non-sentinel category marks the colony (durable removal)."""
+    from phenotypic.gui._shared._triage_callbacks import apply_wedge_mark
+
+    store = _store(tmp_path)
+    apply_wedge_mark(store, "img-A", 1, "debris")
+    assert store.labels[("img-A", 1)] == "debris"
+    assert store.is_removed("img-A", 1)
+
+
+def test_apply_wedge_mark_restore_sentinel_unmarks(tmp_path: Path) -> None:
+    """The RADIAL_RESTORE_SENTINEL category clears a prior label (restore)."""
+    from phenotypic.gui._shared._radial import RADIAL_RESTORE_SENTINEL
+    from phenotypic.gui._shared._triage_callbacks import apply_wedge_mark
+
+    store = _store(tmp_path)
+    apply_wedge_mark(store, "img-A", 1, "debris")
+    assert store.is_removed("img-A", 1)
+    apply_wedge_mark(store, "img-A", 1, RADIAL_RESTORE_SENTINEL)
+    assert not store.is_removed("img-A", 1)
+    assert ("img-A", 1) not in store.labels

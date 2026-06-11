@@ -40,11 +40,15 @@ from phenotypic.gui._config import (
     stepped_colony_tile_size_from_trigger,
     stepped_alpha_from_trigger,
 )
-from phenotypic.gui._shared._radial import (
-    RADIAL_RESTORE_SENTINEL,
-    build_radial_body,
+from phenotypic.gui._shared._radial import build_radial_body
+from phenotypic.gui._shared._triage_callbacks import (
+    apply_wedge_mark,
+    bulk_mark,
+    category_dropdown_options,
+    decode_wedge_trigger,
+    fold_selection_delta,
+    register_custom_category_safe,
 )
-from phenotypic.gui._shared._triage_callbacks import fold_selection_delta
 from phenotypic.gui.results_viewer import _ids as ids
 from phenotypic.gui.results_viewer._qc_tab.review import _ids as qc_review_ids
 from phenotypic.gui.results_viewer._filter_state import FilterSpec
@@ -73,83 +77,9 @@ logger = logging.getLogger(__name__)
 _EMPTY_SELECTION: dict[str, Any] = {"anchor": None, "selected": []}
 
 
-def category_dropdown_options(categories: list[str]) -> list[dict[str, str]]:
-    """Build the bulk-mark dropdown options from a category vocabulary.
-
-    Module-level + pure so the option shape is unit-testable without booting
-    Dash. Each token renders with a human-friendly label (underscores → spaces,
-    title-cased) while the ``value`` stays the bare token the mark callback
-    feeds to :meth:`CurationLabels.mark_many`.
-
-    Args:
-        categories: Ordered category tokens (core enum labels then custom),
-            typically from :meth:`CurationLabels.categories`.
-
-    Returns:
-        A list of ``{"label", "value"}`` dicts for a ``dcc.Dropdown``.
-    """
-    return [
-        {"label": token.replace("_", " ").title(), "value": token}
-        for token in categories
-    ]
-
-
-def bulk_mark(
-    filtered: CurationLabels,
-    selected: list[tuple[str, int]],
-    category: str,
-) -> list[list]:
-    """Mark every selected colony with ``category`` and return the new payload.
-
-    Module-level (not a callback closure) so the
-    :meth:`CurationLabels.mutate_and_payload` contract — the action receives
-    the state instance — is unit-testable without booting Dash. Mirrors
-    :func:`bulk_review_curation` but assigns a chosen category in one batched
-    save via :meth:`CurationLabels.mark_many`.
-
-    Args:
-        filtered: The shared :class:`CurationLabels`.
-        selected: The ``(image_file, label)`` keys to mark.
-        category: The category token to assign to every selected key.
-
-    Returns:
-        The updated removed-keys payload.
-    """
-    return filtered.mutate_and_payload(
-        lambda state: state.mark_many(selected, category)
-    )
-
-
-def register_custom_category_safe(
-    filtered: CurationLabels, name: str | None
-) -> tuple[str | None, str]:
-    """Register a custom category, returning ``(token_or_None, message)``.
-
-    Module-level + pure so the radial custom-add submit callbacks (colony and
-    QC) share one validation path and it is unit-testable without booting
-    Dash. Sanitizes + registers via
-    :meth:`CurationLabels.register_custom_category`, catching its
-    ``ValueError`` (empty name / collision with a core token) and turning it
-    into an inline message.
-
-    Args:
-        filtered: The shared :class:`CurationLabels`.
-        name: The user-entered category name (``None`` / blank rejected).
-
-    Returns:
-        ``(token, message)`` where ``token`` is the registered bare token on
-        success (``message`` is a short confirmation) or ``None`` on failure
-        (``message`` is the reason to surface inline).
-    """
-    if not name or not name.strip():
-        return None, "Enter a category name."
-    try:
-        token = filtered.register_custom_category(name)
-    except ValueError as exc:
-        return None, str(exc)
-    return token, f"Added “{token}”."
-
-
+# These pure helpers now live in the shared triage module so the colony and
+# QC surfaces single-source them; re-exported here for back-compat with
+# existing imports (e.g. the colony helper unit test).
 # ---------------------------------------------------------------------------
 # Callback registration
 # ---------------------------------------------------------------------------
@@ -349,55 +279,26 @@ def register_callbacks(
     def _mark_colony_category(_n: list[int | None]) -> Any:
         """Mark (or restore) a colony's category from a radial wedge click.
 
-        The ALL pattern fires once at mount with every ``n_clicks`` empty;
-        guard against that before reading ``triggered_id``. A wedge whose
-        ``category`` is :data:`RADIAL_RESTORE_SENTINEL` clears the label;
-        every other wedge assigns its category (a durable removal). The
-        ``"__custom_folder__"`` placeholder wedge is inert here (Task 7
-        wires the custom-add flow); marking it as a literal category would
-        be wrong, so it is ignored.
+        Thin adapter over the shared, Dash-free
+        :func:`~phenotypic.gui._shared._triage_callbacks.decode_wedge_trigger`
+        (ALL-pattern decode + initial-empty-fire guard + custom-folder
+        short-circuit) and :func:`apply_wedge_mark` (restore-sentinel → unmark
+        else mark). ``None`` from the decode → ``PreventUpdate`` (the colony
+        no-op).
         """
-        triggered = callback_context.triggered_id
-        if not triggered or not isinstance(triggered, dict):
+        decoded = decode_wedge_trigger(
+            callback_context.triggered_id, callback_context.triggered
+        )
+        if decoded is None:
             raise PreventUpdate
-        # Skip the initial empty-n_clicks fire from the ALL pattern.
-        if not any(
-            callback_context.triggered[i]["value"]
-            for i in range(len(callback_context.triggered))
-        ):
-            raise PreventUpdate
-
-        raw_image_file = triggered.get("image_file")
-        raw_label = triggered.get("label")
-        raw_category = triggered.get("category")
-        if raw_image_file is None or raw_label is None or raw_category is None:
-            raise PreventUpdate
-        try:
-            image_file = str(raw_image_file)
-            label = int(raw_label)
-        except (TypeError, ValueError):
-            raise PreventUpdate
-        category = str(raw_category)
-
-        # The custom-folder placeholder opens the folder (Task 7); it is not
-        # a real category, so never mark on it.
-        if category == "__custom_folder__":
-            raise PreventUpdate
-
-        if category == RADIAL_RESTORE_SENTINEL:
-            payload = filtered_state.mutate_and_payload(
-                lambda s: s.unmark(image_file, label)
-            )
-        else:
-            payload = filtered_state.mutate_and_payload(
-                lambda s: s.mark(image_file, label, category)
-            )
+        image_file, label, category = decoded
+        payload = apply_wedge_mark(filtered_state, image_file, label, category)
         # ``STORE_REMOVED_KEYS`` is an ``allow_duplicate`` (multi-mode) output
         # whose value is itself a list. Restoring the LAST labeled object
         # yields an empty payload ``[]``; a bare ``[]`` makes Dash's multi-mode
         # response validator see *zero* output values and 500. Wrap in a
         # 1-tuple so Dash sees exactly one value (the list) regardless of its
-        # length.
+        # length. (Dash multi-mode artifact — kept at the callback layer.)
         return (payload,)
 
     # ----------------------------------------------------------------------
@@ -782,11 +683,12 @@ def register_callbacks(
         except (TypeError, ValueError):
             return no_update
 
-        # Snapshot the vocabulary + this colony's current category under the
-        # lock so the populated ring matches live store state (decision A /
-        # concurrency note).
+        # Snapshot the custom vocabulary + this colony's current category under
+        # the lock so the populated ring matches live store state (decision A /
+        # concurrency note). The core ring is built from the fixed
+        # ErrorCategory tokens inside build_radial_body — no active-category
+        # list needed.
         with filtered_state._lock:
-            categories = filtered_state.categories()
             custom_categories = list(filtered_state.custom_categories)
             current_category = filtered_state.labels.get((image_file, label))
 
@@ -794,7 +696,6 @@ def register_callbacks(
             surface,
             image_file,
             label,
-            categories,
             custom_categories,
             current_category=current_category,
         )
@@ -905,14 +806,12 @@ def register_callbacks(
         # Re-render this tile's body with the new custom chip; bump the vocab
         # revision so every bulk-mark dropdown re-reads the vocabulary.
         with filtered_state._lock:
-            categories = filtered_state.categories()
             custom_categories = list(filtered_state.custom_categories)
             current_category = filtered_state.labels.get((image_file, label))
         body = build_radial_body(
             "colony",
             image_file,
             label,
-            categories,
             custom_categories,
             current_category=current_category,
         )

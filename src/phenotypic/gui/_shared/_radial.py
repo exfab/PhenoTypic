@@ -39,6 +39,12 @@ from phenotypic.schema import ErrorCategory
 #: in Task 4 checks ``cat == RADIAL_RESTORE_SENTINEL`` to call ``unmark``.
 RADIAL_RESTORE_SENTINEL: str = "__restore__"
 
+#: Category value for the ``Custom ▸`` folder wedge.  It is a UI affordance
+#: (it expands the custom-category section), not a real category, so the mark
+#: callbacks short-circuit on ``cat == RADIAL_CUSTOM_FOLDER_SENTINEL`` and
+#: never mark a colony with it.
+RADIAL_CUSTOM_FOLDER_SENTINEL: str = "__custom_folder__"
+
 # ---------------------------------------------------------------------------
 # Id factories (pattern-matched dict ids)
 # ---------------------------------------------------------------------------
@@ -377,7 +383,6 @@ def build_radial_body(
     surface: str,
     image_file: str,
     label: int,
-    categories: list[str],
     custom_categories: list[str],
     current_category: str | None = None,
 ) -> Component:
@@ -403,13 +408,13 @@ def build_radial_body(
         surface: Tile surface — ``"colony"`` or ``"qc"``.
         image_file: ``Metadata_ImageFile`` of the colony.
         label: ``Object_Label`` integer.
-        categories: Ordered list of all active category tokens (core + custom).
-            Used to determine the current active ring order.
         custom_categories: List of registered custom category tokens (e.g.
             ``["halo", "ghost"]``).  Each renders as a chip in the expanded
             Custom folder section beneath the ring (with the
             ``radial-badge--custom`` discriminator), alongside an
-            ``＋ Add custom`` input that registers a new one.
+            ``＋ Add custom`` input that registers a new one.  The core ring
+            itself is built from the fixed :data:`ErrorCategory` tokens — no
+            active-category list is needed.
         current_category: Currently assigned category, or ``None``.  The
             matching wedge is highlighted with an ``active`` modifier.
 
@@ -419,9 +424,7 @@ def build_radial_body(
 
     Examples:
         >>> from phenotypic.gui._shared._radial import build_radial_body
-        >>> from phenotypic.schema import ErrorCategory
-        >>> cats = ErrorCategory.labels()
-        >>> body = build_radial_body("colony", "p.tif", 1, cats, [])
+        >>> body = build_radial_body("colony", "p.tif", 1, [])
         >>> body.className
         'radial-body-wrap'
     """
@@ -429,7 +432,7 @@ def build_radial_body(
     # Max 7 primary wedges per plan.
     primary_tokens: list[str] = list(_CORE_TOKENS)  # up to 5 core tokens
     primary_tokens.append("other")  # the catch-all slot
-    primary_tokens.append("__custom_folder__")  # folder placeholder
+    primary_tokens.append(RADIAL_CUSTOM_FOLDER_SENTINEL)  # folder placeholder
 
     # Clamp to 7 primaries.
     primary_tokens = primary_tokens[:7]
@@ -443,12 +446,14 @@ def build_radial_body(
     for i, token in enumerate(primary_tokens):
         left, top = positions[i]
         is_active = token == current_category
-        is_custom_folder = token == "__custom_folder__"
+        is_custom_folder = token == RADIAL_CUSTOM_FOLDER_SENTINEL
 
         if is_custom_folder:
             color = "#888888"
             label_text = "Custom ▸"
-            btn_id = radial_wedge_id(surface, image_file, label, "__custom_folder__")
+            btn_id = radial_wedge_id(
+                surface, image_file, label, RADIAL_CUSTOM_FOLDER_SENTINEL
+            )
             classes = "radial-wedge radial-wedge--folder"
         else:
             color = category_color(token)

@@ -69,11 +69,17 @@ from phenotypic.gui._design import (
     OI_VERMILION_TEXT,
 )
 from phenotypic.gui._shared._radial import (
-    RADIAL_RESTORE_SENTINEL,
     build_radial_body,
     build_radial_trigger,
 )
-from phenotypic.gui._shared._triage_callbacks import fold_selection_delta
+from phenotypic.gui._shared._triage_callbacks import (
+    apply_wedge_mark,
+    bulk_mark,
+    category_dropdown_options,
+    decode_wedge_trigger,
+    fold_selection_delta,
+    register_custom_category_safe,
+)
 from phenotypic.gui._shared.tiles import build_tile_grid
 from phenotypic.gui.results_viewer import _ids as viewer_ids
 from phenotypic.gui.results_viewer._filtered_state import (
@@ -1138,13 +1144,13 @@ def mark_review_tile(
 ) -> list[list]:
     """Mark (or restore) one colony's category and return the new payload.
 
-    Module-level (not a callback closure) so the
-    :meth:`CurationLabels.mutate_and_payload` contract — the action receives
-    the state instance — is unit-testable without booting Dash. Mirrors the
-    colony view's ``_mark_colony_category`` semantics: a ``category`` equal to
+    Back-compat thin delegate to the shared, surface-agnostic
+    :func:`~phenotypic.gui._shared._triage_callbacks.apply_wedge_mark`: a
+    ``category`` equal to
     :data:`~phenotypic.gui._shared._radial.RADIAL_RESTORE_SENTINEL` clears the
     label (restore); any other token assigns it (a durable categorized
-    removal).
+    removal). Kept as a named function so the existing QC helper unit test
+    (and the ``mutate_and_payload`` contract it pins) stays valid.
 
     Args:
         filtered: The shared :class:`CurationLabels`.
@@ -1156,13 +1162,7 @@ def mark_review_tile(
     Returns:
         The updated removed-keys payload.
     """
-    if category == RADIAL_RESTORE_SENTINEL:
-        return filtered.mutate_and_payload(
-            lambda state: state.unmark(image_file, label)
-        )
-    return filtered.mutate_and_payload(
-        lambda state: state.mark(image_file, label, category)
-    )
+    return apply_wedge_mark(filtered, image_file, label, category)
 
 
 def bulk_review_curation(
@@ -1223,45 +1223,23 @@ def _register_curation_callbacks(app: dash.Dash) -> None:
     def _mark_qc_category(_n: list[int | None]):
         """Mark (or restore) a colony's category from a QC radial wedge click.
 
-        Mirrors the colony view's ``_mark_colony_category`` exactly, with
-        ``surface="qc"``. The ALL pattern fires once at mount with every
-        ``n_clicks`` empty; guard against that before reading
-        ``triggered_id``. A wedge whose ``category`` is
-        :data:`RADIAL_RESTORE_SENTINEL` clears the label; the
-        ``"__custom_folder__"`` placeholder is inert (Task 7 wires the
-        custom-add flow); every other wedge assigns its category.
+        Thin adapter over the shared, Dash-free
+        :func:`~phenotypic.gui._shared._triage_callbacks.decode_wedge_trigger`
+        + :func:`apply_wedge_mark` (the same helpers the colony
+        ``_mark_colony_category`` uses, surface-agnostic). ``None`` from the
+        decode → ``no_update`` (the QC no-op); the QC-specific
+        ``filtered is None`` guard stays here.
         """
-        triggered = callback_context.triggered_id
-        if not triggered or not isinstance(triggered, dict):
-            return no_update
-        # Skip the initial empty-n_clicks fire from the ALL pattern.
-        if not any(
-            callback_context.triggered[i]["value"]
-            for i in range(len(callback_context.triggered))
-        ):
-            return no_update
-
         filtered = _filtered_state()
         if filtered is None:
             return no_update
-
-        raw_image_file = triggered.get("image_file")
-        raw_label = triggered.get("label")
-        raw_category = triggered.get("category")
-        if raw_image_file is None or raw_label is None or raw_category is None:
+        decoded = decode_wedge_trigger(
+            callback_context.triggered_id, callback_context.triggered
+        )
+        if decoded is None:
             return no_update
-        try:
-            image_file = str(raw_image_file)
-            label = int(raw_label)
-        except (TypeError, ValueError):
-            return no_update
-        category = str(raw_category)
-
-        # The custom-folder placeholder opens the folder (Task 7); never mark.
-        if category == "__custom_folder__":
-            return no_update
-
-        payload = mark_review_tile(filtered, image_file, label, category)
+        image_file, label, category = decoded
+        payload = apply_wedge_mark(filtered, image_file, label, category)
         # ``STORE_REMOVED_KEYS`` is an ``allow_duplicate`` (multi-mode) output
         # whose value is a list; restoring the LAST label yields ``[]`` which
         # 500s the multi-mode validator unless wrapped in a 1-tuple (Task-4
@@ -1318,7 +1296,6 @@ def _register_curation_callbacks(app: dash.Dash) -> None:
             return no_update
 
         with filtered._lock:
-            categories = filtered.categories()
             custom_categories = list(filtered.custom_categories)
             current_category = filtered.labels.get((image_file, label))
 
@@ -1326,7 +1303,6 @@ def _register_curation_callbacks(app: dash.Dash) -> None:
             surface,
             image_file,
             label,
-            categories,
             custom_categories,
             current_category=current_category,
         )
@@ -1345,10 +1321,6 @@ def _register_curation_callbacks(app: dash.Dash) -> None:
     # triggerable by the same Input — populate fires on the trigger
     # ``n_clicks``; this fires on the custom-submit ``n_clicks`` / input
     # ``n_submit`` — or Dash raises a duplicate-output collision.
-    from phenotypic.gui.results_viewer.colony_view._callbacks import (
-        register_custom_category_safe,
-    )
-
     @app.callback(
         Output(
             {
@@ -1427,14 +1399,12 @@ def _register_curation_callbacks(app: dash.Dash) -> None:
             return no_update, message, no_update
 
         with filtered._lock:
-            categories = filtered.categories()
             custom_categories = list(filtered.custom_categories)
             current_category = filtered.labels.get((image_file, label))
         body = build_radial_body(
             "qc",
             image_file,
             label,
-            categories,
             custom_categories,
             current_category=current_category,
         )
@@ -1504,13 +1474,8 @@ def _register_curation_callbacks(app: dash.Dash) -> None:
         return payload, {"selected": []}
 
     # -- Bulk "Mark selected as ▾" category dropdown (shared helpers) -------
-    # Reuses the colony view's pure helpers so the option shape + mark
-    # semantics stay single-sourced across the two surfaces.
-    from phenotypic.gui.results_viewer.colony_view._callbacks import (
-        bulk_mark,
-        category_dropdown_options,
-    )
-
+    # Reuses the shared pure helpers so the option shape + mark semantics stay
+    # single-sourced across the colony + QC surfaces.
     @app.callback(
         Output(rids.QC_REVIEW_BULK_MARK_DROPDOWN_ID, "options"),
         Input(viewer_ids.STORE_CATEGORY_VOCAB_REVISION, "data"),
