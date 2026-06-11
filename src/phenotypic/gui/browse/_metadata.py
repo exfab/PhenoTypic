@@ -19,19 +19,37 @@ __all__ = ["read"]
 
 
 def _extract_exif(imported: dict[str, Any]) -> dict[str, str]:
-    """Pull capture-time + camera make/model from an exifread-style dict."""
+    """Pull capture-time + camera make/model from an exifread-style dict.
 
-    def _find(*needles: str) -> str | None:
+    The matching is deliberately defensive about EXIF's near-duplicate keys:
+
+    * ``captured`` prefers ``DateTimeOriginal`` (true capture time) over the
+      bare ``DateTime`` (often the file/scan *write* time), so the two are
+      tried in separate ordered passes rather than as one substring set.
+    * ``make`` / ``model`` match keys whose lowercased form *ends with* the
+      target word and does **not** contain ``"lens"``, so ``Image Model`` /
+      ``Image Make`` win while ``LensModel`` / ``CameraModelName`` are
+      ignored.
+    """
+
+    def _find_substring(needle: str) -> str | None:
+        for key, value in imported.items():
+            if needle in key.lower():
+                return str(value)
+        return None
+
+    def _find_body_field(word: str) -> str | None:
         for key, value in imported.items():
             key_lower = key.lower()
-            if any(needle in key_lower for needle in needles):
+            if key_lower.endswith(word) and "lens" not in key_lower:
                 return str(value)
         return None
 
     out: dict[str, str] = {}
-    captured = _find("datetimeoriginal", "datetime")
-    make = _find("make")
-    model = _find("model")
+    # Ordered fallback: true capture time first, file/scan write time second.
+    captured = _find_substring("datetimeoriginal") or _find_substring("datetime")
+    make = _find_body_field("make")
+    model = _find_body_field("model")
     if captured:
         out["captured"] = captured
     if make:

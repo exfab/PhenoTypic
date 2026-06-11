@@ -346,12 +346,14 @@ BROWSE_CACHE_TMP_SUBPATH: tuple[str, str] = ("phenotypic", "browse")
 # builder package. ``builder/_directory_browser`` re-exports IMAGE_EXTS.
 # ---------------------------------------------------------------------------
 IMAGE_EXTS: frozenset[str] = frozenset(
-    {".png", ".tif", ".tiff", ".jpg", ".jpeg", ".raw", ".nef", ".cr2", ".arw", ".dng"}
+    {".png", ".tif", ".tiff", ".jpg", ".jpeg", ".cr2", ".cr3", ".nef", ".arw", ".dng"}
 )
 
 #: Camera-RAW subset of :data:`IMAGE_EXTS`. These require rawpy (absent on
-#: Windows) and decode through ``phenotypic.Image.imread``.
-RAW_IMAGE_EXTS: frozenset[str] = frozenset({".raw", ".nef", ".cr2", ".arw", ".dng"})
+#: Windows) and decode through ``phenotypic.Image.imread`` — mirroring the
+#: core ``IO.RAW_FILE_EXTENSIONS`` decode set. Bare ``.raw`` is intentionally
+#: excluded (libraw can't reliably decode the ambiguous container).
+RAW_IMAGE_EXTS: frozenset[str] = frozenset({".cr2", ".cr3", ".nef", ".arw", ".dng"})
 
 # ---------------------------------------------------------------------------
 # Output filenames (CLI ↔ GUI shared layout) — re-exported from phenotypic.tools_

@@ -1,3 +1,5 @@
+import pytest
+
 from phenotypic.gui.browse._source_lister import list_datasets
 
 
@@ -32,3 +34,20 @@ def test_non_image_and_hidden_skipped(tmp_path):
 
 def test_empty_dir(tmp_path):
     assert list_datasets(tmp_path) == {}
+
+
+def test_symlink_escaping_source_root_is_excluded(tmp_path):
+    # An image whose real target lives OUTSIDE the source root must not be
+    # listed, even though the symlink itself sits under the root.
+    source_root = tmp_path / "source"
+    outside = tmp_path / "outside"
+    _touch(source_root / "real.png")  # genuine in-root image (must survive)
+    _touch(outside / "secret.png")  # lives outside the source root
+
+    link = source_root / "escapes.png"
+    try:
+        link.symlink_to(outside / "secret.png")
+    except (OSError, NotImplementedError):  # pragma: no cover - platform guard
+        pytest.skip("symlinks not supported on this platform/filesystem")
+
+    assert list_datasets(source_root) == {".": ["real.png"]}
