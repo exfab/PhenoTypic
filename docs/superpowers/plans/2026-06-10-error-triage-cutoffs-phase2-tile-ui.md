@@ -288,3 +288,10 @@ Design (implement exactly):
 - **stale-banner consumer is Phase 4:** the `stale` property + guard ship here; the viewer banner that reads it is Phase 4 (no premature UI callback in Phase 2).
 
 **The plan's 7 Open-Questions are consolidated into 4 decisions surfaced to the user (grid category channel, plate-view scope, QC selection parity, custom-category colors); the rest are resolved by the corrections above.**
+
+## Resolved design decisions (user, 2026-06-10)
+
+- **A — grid category channel → server-side read.** The grid re-render callback reads `filtered_state.labels` (snapshot under `filtered_state._lock`) when `STORE_REMOVED_KEYS` fires. **No** new `STORE_LABELS` store. Task 4a threads a `category_of` map built from that locked snapshot.
+- **B — plate view stays plain.** `_viewer_card.py`'s Status-cell remove keeps today's plain toggle (now durably `other`); the radial is colony-grid + QC-review tiles only. No radial work in `_viewer_card.py` — just the duck-typed store swap (Task 1).
+- **C — QC-review selection parity (added to Task 5/6).** Enable multi-select on the QC-review gallery: pass the real `selected` set into `build_tile_grid` (instead of `set()` at `review/_callbacks.py:504`) and ensure the shared `STORE_COLONY_SELECTION` + JS shift-click bridge drives QC tiles (the tile checkboxes already exist via `build_tile_cell`; only the `selected` wiring + read is missing). Then the bulk "Mark N as ▾" (Task 6) works on both surfaces.
+- **D — custom colors get a discriminator (Task 2 + Task 3).** `category_color` still cycles the OI palette for custom tokens, but the badge/wedge for a **custom** category renders an extra discriminator (a ring/outline or a small marker) so it never reads identically to a core category. Add a `is_custom` flag to the badge/wedge builders and a `.radial-badge--custom` CSS modifier.
