@@ -506,6 +506,7 @@ def capture_workflow_screenshots(base_url: str, headed: bool = False) -> None:
         try:
             context = browser.new_context(viewport=VIEWPORT)
             _capture_setup(context, base_url)
+            _capture_browse(context, base_url)
             _capture_file_explorer(context, base_url)
             _capture_build_pipeline(context, base_url)
             _capture_run_local(context, base_url)
@@ -696,6 +697,81 @@ def _capture_setup(context, base_url: str) -> None:
             context, base_url, "/", "setup", "01_landing_page.png",
             log="[shot] workflow=setup",
     )
+
+
+# --- browse (source image viewer) ---------------------------------------
+
+def _browse_source_payload() -> dict | None:
+    """Build the shared-source-root store payload for the Browse capture.
+
+    The hub is booted rooted at :data:`DATASET_DIR`, so a ``SandboxRoot`` built
+    here over the same root produces the exact versioned payload the shell's
+    ``SHELL_SOURCE_IMAGE_ROOT_STORE`` expects. Pointing the source root at the
+    dataset (rather than ``PLATES_DIR``) keeps ``plates/`` a nested dataset, so
+    both cascading dropdowns are exercised. Returns ``None`` if the helper
+    cannot resolve the path (e.g. the dataset was not built).
+    """
+    try:
+        from phenotypic.gui.shell._sandbox import SandboxRoot
+        from phenotypic.gui.shell._source_context import source_payload_from_path
+    except Exception as exc:  # pragma: no cover - best-effort
+        print(f"[shot]   browse: source payload import failed: {exc!r}")
+        return None
+    sandbox = SandboxRoot.from_path(DATASET_DIR)
+    payload = source_payload_from_path(sandbox, DATASET_DIR, source="manual")
+    if payload is None:
+        print("[shot]   browse: source payload could not be resolved")
+    return payload
+
+
+def _capture_browse(context, base_url: str) -> None:
+    """Drive the Browse tab and capture the deep-zoom viewport + metadata.
+
+    Mirrors ``docs/source/tutorials/gui/18_browse.md``:
+
+    1. ``01_empty_state.png`` — the Browse tab with no source root selected
+       (the empty hint prompts the user to pick a source from the top bar).
+    2. ``02_viewer.png`` — after setting the source root (pushed into the
+       shared ``SHELL_SOURCE_IMAGE_ROOT_STORE`` via ``set_props``, exactly as
+       the top-bar source picker would), the dataset + image dropdowns
+       populate, the first image auto-selects, and the OpenSeadragon viewport
+       deep-zooms the plate with the metadata panel below it.
+
+    The source root is set by writing the real versioned store payload rather
+    than driving the modal picker — the same deterministic store-injection the
+    point-picker capture uses for ``picker-staged-store``.
+    """
+    print("[shot] workflow=browse")
+    page = _new_page(context, base_url, "/browse/")
+
+    # 1) Empty state — no source root bound yet, so the empty hint shows.
+    page.wait_for_timeout(500)
+    _save(page, "browse", "01_empty_state.png")
+
+    # 2) Set the shared source root, then let the dataset/image dropdowns
+    #    populate and the OSD viewport render the first image.
+    payload = _browse_source_payload()
+    if payload is not None:
+        page.evaluate(
+                """payload => {
+                    window.dash_clientside.set_props(
+                        'shell-source-image-root-store', {data: payload}
+                    );
+                }""",
+                payload,
+        )
+        # The dataset callback repopulates the pickers; the image callback then
+        # auto-selects the first image, whose token feeds the clientside OSD
+        # mount. Wait for the OSD canvas to actually draw a tile <canvas> before
+        # the screenshot so the viewport is not blank.
+        page.wait_for_timeout(1500)
+        try:
+            page.wait_for_selector("#browse-osd-div canvas", timeout=10_000)
+        except Exception:  # pragma: no cover - best-effort
+            pass
+        page.wait_for_timeout(1500)
+    _save(page, "browse", "02_viewer.png")
+    page.close()
 
 
 # --- file explorer ------------------------------------------------------
