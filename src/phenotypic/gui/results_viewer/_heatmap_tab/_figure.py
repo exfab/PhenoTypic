@@ -36,7 +36,7 @@ import plotly.graph_objects as go
 import polars as pl
 
 from phenotypic.gui._design import COLOR_MUTED, OI_VERMILION
-from phenotypic.viz.figures import SEQUENTIAL_COLORSCALE, apply_theme
+from phenotypic.tools_.viz.figures import SEQUENTIAL_COLORSCALE, apply_theme
 
 from .._filtered_state import KEY_OBJECT_LABEL
 

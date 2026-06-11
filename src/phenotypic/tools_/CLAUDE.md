@@ -50,3 +50,9 @@ Location: `mixin/_clip_control_mixin.py`.
 - `hdf_.py` — HDF5 storage utilities.
 - `slurm_.py` / `submitit_.py` / `monitor_slurm_jobs.py` — SLURM integration.
 - `generate_report.py` — report generation.
+- `viz/` — shared visualization layer: the centralized Plotly theme
+  (`viz.figures.apply_theme`, `PHENOTYPIC_TEMPLATE_NAME`, Okabe-Ito palette),
+  the matplotlib rcParams mirror (`phenotypic_mpl_context`/`phenotypic_rc`),
+  and the ipywidgets notebook shell (`viz.notebook.build_notebook_dashboard`).
+  UI toolkits stay lazily imported; the theme imports plotly but no toolkit
+  (enforced by `tests/unit/viz/test_import_rules.py`).

@@ -15,7 +15,7 @@ from skimage.filters import sobel
 from phenotypic.abc_ import Control, FigureProvider, figure
 from phenotypic.tools_.register import register_plotter
 from phenotypic.util.image_metrics import ImageMetricsCalculator, THRESHOLDS
-from phenotypic.viz.figures._theme import NAVY, OKABE_ITO
+from phenotypic.tools_.viz.figures._theme import NAVY, OKABE_ITO
 
 from ._base_plotter import BasePlotter
 from ._diagnostics_types import (

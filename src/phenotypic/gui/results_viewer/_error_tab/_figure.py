@@ -12,7 +12,7 @@ category owns (and is absent from the custom-cycle palette), so the good
 box never collides with the focused category's color (e.g. ``COLOR_INFO``
 / OI_SKY would clash with ``undersegmented``). The error series uses
 ``category_color(category, custom_index)`` from the Okabe-Ito data
-palette. :func:`phenotypic.viz.figures.apply_theme` is applied before the
+palette. :func:`phenotypic.tools_.viz.figures.apply_theme` is applied before the
 figure is returned.
 """
 from __future__ import annotations
@@ -21,7 +21,7 @@ import numpy as np
 import plotly.graph_objects as go
 
 from phenotypic.gui._design import OI_NAVY, category_color
-from phenotypic.viz.figures import apply_theme
+from phenotypic.tools_.viz.figures import apply_theme
 
 #: Display name of the good-baseline box trace.
 _GOOD_TRACE_NAME = "Good kept"

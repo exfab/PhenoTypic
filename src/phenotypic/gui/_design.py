@@ -170,7 +170,7 @@ _MONO_PRIMARY = "JetBrains Mono"
 _SPECIES_PRIMARY = "IBM Plex Serif"
 
 # The @import loads more than the four chrome roles: the chart subsystem
-# (``phenotypic.viz.figures._theme``) is intentionally NOT migrated to
+# (``phenotypic.tools_.viz.figures._theme``) is intentionally NOT migrated to
 # Comfortaa -- it keeps IBM Plex Sans for plot titles / legend names and IBM
 # Plex Serif for donut center values (DESIGN.md "06 -- Charts"). Those plots
 # render inside GUI Dash pages, so the IBM Plex families must stay loaded here

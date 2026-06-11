@@ -26,7 +26,7 @@ import plotly.graph_objects as go
 
 from phenotypic.abc_ import FigureProvider, figure
 from phenotypic.schema import BBOX, GRID
-from phenotypic.viz.figures._theme import MUTED, NAVY, OKABE_ITO
+from phenotypic.tools_.viz.figures._theme import MUTED, NAVY, OKABE_ITO
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     import pandas as pd
@@ -133,7 +133,7 @@ class GridFitReport(FigureProvider):
         """
         from plotly.subplots import make_subplots
 
-        from phenotypic.viz.figures._theme import apply_theme
+        from phenotypic.tools_.viz.figures._theme import apply_theme
 
         specs = self.iter_figures()
         rendered = [self._render_spec(spec) for spec in specs]
