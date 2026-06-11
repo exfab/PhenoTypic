@@ -221,9 +221,31 @@ A pydantic model (subclassing `SetAnalyzer` for consistency, or a focused
 analyzer if the `on/groupby` fields don't fit cleanly — to be settled in the
 plan), exported from `analysis/__init__.py`.
 
-- **Inputs:** `master_measurements.parquet` (all objects + measurements) and the
-  labels store. Good = unlabeled rows; error = rows labeled with the target
-  category.
+- **Inputs:** `master_measurements.parquet` (all objects + measurements), the
+  labels store, and (verified mode) the QC review state. The engine takes the
+  **good** baseline frame + the per-category **error** rows as inputs (so it
+  stays mode-agnostic and unit-testable); the panel chooses which good set.
+- **Good-baseline modes (a panel toggle).** The error set is always the rows
+  labeled with the target category (unchanged). The *good* baseline has two
+  modes:
+  - **All unlabeled** (default) — every object with no curation label
+    (`master − labeled`). Simple, but includes any *un-triaged* noise the user
+    hasn't reached yet, which dilutes the good distribution.
+  - **Verified-only** — only unlabeled objects in QC-review groups the user has
+    **marked reviewed in any QC module** (resolved decision: any-module). This is
+    the `deliverables/verified.parquet` set: a reviewed group's unlabeled members
+    are *confirmed* good, so un-triaged noise (in not-yet-reviewed groups) can't
+    contaminate the baseline. **Only the good set is restricted** — error
+    examples from any group still count (a marked error is confirmed regardless
+    of its group's review state; resolved decision: good-only).
+  - **Verified-good derivation:** an object is verified-good iff it is unlabeled
+    AND its `(image_file, object_label)` is a member of ≥1 group whose key
+    appears in `review_state.json`'s `reviewed` set for *any* module. The
+    group→member mapping comes from `qc/qc_members.parquet`
+    (`_data.group_member_keys`); the review state from `ReviewState`
+    (`qc/review_state.json`). A GUI/data helper builds this frame and (verified
+    mode) materializes `deliverables/verified.parquet`; the engine just consumes
+    the resulting good frame.
 - **Measurement selection:** numeric measurement columns auto-detected by the
   category prefixes (`Size_`, `Shape_`, `Intensity_`, `TextureGray_`,
   `SymZones_`, `GridSpatial_`, `Bbox_` extents), excluding metadata/grid-key and
@@ -237,8 +259,10 @@ plan), exported from `analysis/__init__.py`.
   - **Benjamini-Hochberg** FDR adjustment of p across all tested measurements.
 - **Output:** a tidy frame `[measurement, auc, f, p, p_bh, cutoff, direction,
   recall, precision, good_n, error_n]` sorted by AUC desc.
-- **Guard:** below a minimum error-n (default 8; configurable), return a
-  "insufficient labels" sentinel rather than unstable statistics.
+- **Guard:** below a minimum error-n (default 8; configurable) — or, in
+  verified-only mode, below a minimum verified-good-n — return an
+  "insufficient labels / review more QC groups" sentinel rather than unstable
+  statistics.
 
 ## 8. "Error analysis" tab (`gui/results_viewer/_error_tab/`)
 
@@ -246,6 +270,11 @@ A new tab alongside Colony view / QC / Heatmap:
 
 - **Category switcher** — chips per category with live label counts; defaults to
   the highest-count non-`OTHER` category.
+- **Good-baseline toggle** — switches the *good* comparison set between
+  **All unlabeled** (default) and **Verified-only** (the `verified.parquet` set).
+  Shows the live verified-good count; when verified mode is on but that count is
+  below the guard, a "review more QC groups to use verified mode" state. Flipping
+  it recomputes the ANOVA against the chosen baseline.
 - **Ranked table** — the engine's frame (measurement, AUC, suggested cutoff,
   BH-p), top-discriminative first.
 - **Distribution plot** — box/violin of good vs. the selected error category for
@@ -261,7 +290,9 @@ A new tab alongside Colony view / QC / Heatmap:
   persisted `deliverables/error_analysis.{parquet,csv}` is written debounced as
   labels change, while the heavier `error_analysis.html` report is regenerated
   only at CLI finalize and via an explicit "Save analysis report" action (not on
-  every click), to avoid report churn.
+  every click), to avoid report churn. **`deliverables/verified.parquet`** is
+  (re)written debounced from the QC review state whenever verified mode is active
+  and the reviewed-group set changes.
 - **Stale banner** — surfaces the re-keying `{kept, re-keyed, dropped}` summary
   after a CLI re-run.
 
@@ -270,7 +301,13 @@ A new tab alongside Colony view / QC / Heatmap:
 - New `io_constants` constants + path helpers: `DIR_ERRORS` (`errors`),
   `errors_dir(output)`, `error_category_parquet_path(output, category)`,
   `ERROR_ANALYSIS_PARQUET`/`_CSV`/`_HTML` + `error_analysis_*_path(output)`,
+  `VERIFIED_PARQUET` (`verified.parquet`) + `verified_parquet_path(output)`,
   `curation_labels_parquet_path(output)`, and the custom-registry path.
+- **`deliverables/verified.parquet` is GUI-written, not CLI-emitted.** It is
+  derived from `qc/review_state.json`, which `finalize_post_master_outputs`
+  **resets** on every CLI re-run — so a headless finalize has no reviewed groups.
+  The GUI owns this file (live/debounced while verified mode is active); finalize
+  leaves it untouched rather than overwriting it with an empty set.
 - `finalize_post_master_outputs` (and the `--recompile` worker path) is the
   **authoritative, idempotent** writer of the per-category
   `deliverables/errors/*.parquet` and `deliverables/error_analysis.{parquet,csv,html}`
@@ -285,8 +322,9 @@ A new tab alongside Colony view / QC / Heatmap:
 
 - `gui/FEATURES.md` rows: radial trigger, each core wedge, Other wedge, Custom
   folder, Add-custom, per-tile category badge, bulk mark bar, Error-analysis tab,
-  category switcher, ranked table, draggable cutoff, copy-filter-spec, stale
-  banner. Each `✅ shipping` row needs a `Test ref`.
+  category switcher, good-baseline (all-unlabeled / verified-only) toggle, ranked
+  table, draggable cutoff, copy-filter-spec, stale banner. Each `✅ shipping` row
+  needs a `Test ref`.
 - `gui/WORKFLOWS.md` row for the end-to-end triage→cutoffs flow + a matching
   `_capture_<id>` in `scripts/capture_gui_tutorial_screenshots.py` + a
   walkthrough page under `docs/source/tutorials/gui/`. Re-run the capture and
