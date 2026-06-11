@@ -273,6 +273,28 @@ _CORE_TOKENS: list[str] = [
     m.label for m in ErrorCategory if m.label != "other"
 ]
 
+#: Short display labels for the long segmentation tokens so the wedge text fits
+#: inside the small circular button. The persisted category **token** is
+#: unchanged (still ``"oversegmented"`` / ``"undersegmented"``) — this only
+#: affects the rendered wedge/badge text.
+_DISPLAY_LABELS: dict[str, str] = {
+    "oversegmented": "OverS",
+    "undersegmented": "UnderS",
+}
+
+
+def _wedge_label(token: str) -> str:
+    """Return the short display label for a category token.
+
+    Args:
+        token: The bare category token (e.g. ``"oversegmented"``).
+
+    Returns:
+        The short label (``"OverS"``/``"UnderS"``) for the long segmentation
+        tokens, else the token with underscores rendered as spaces.
+    """
+    return _DISPLAY_LABELS.get(token, token.replace("_", " "))
+
 
 def build_radial_trigger(
     surface: str,
@@ -332,7 +354,7 @@ def build_radial_trigger(
         if is_custom:
             classes.append("radial-badge--custom")
         trigger_button = dbc.Button(
-            current_category,
+            _wedge_label(current_category),
             id=trigger_id,
             title=current_category,
             className=" ".join(classes),
@@ -457,7 +479,7 @@ def build_radial_body(
             classes = "radial-wedge radial-wedge--folder"
         else:
             color = category_color(token)
-            label_text = token.replace("_", " ")
+            label_text = _wedge_label(token)
             btn_id = radial_wedge_id(surface, image_file, label, token)
             classes = "radial-wedge"
             if is_active:
@@ -474,12 +496,18 @@ def build_radial_body(
                     "top": f"{top:.1f}px",
                     "width": f"{_WEDGE_SIZE}px",
                     "height": f"{_WEDGE_SIZE}px",
-                    "backgroundColor": color,
-                    "borderColor": color,
-                    "color": "#fff",
+                    # Inline 50% beats Bootstrap's ``.btn-sm`` radius so the
+                    # wedge is a true circle.
+                    "borderRadius": "50%",
+                    # Transparent fill: the category color reads as the circle's
+                    # outline + label text instead of a solid disc.
+                    "backgroundColor": "transparent",
+                    "border": f"2px solid {color}",
+                    "color": color,
                     "fontSize": "0.55rem",
                     "lineHeight": "1.1",
                     "padding": "2px",
+                    "fontWeight": "600",
                 },
                 title=label_text,
                 size="sm",
@@ -498,6 +526,7 @@ def build_radial_body(
             "top": f"{center_offset:.1f}px",
             "width": f"{_CENTER_SIZE}px",
             "height": f"{_CENTER_SIZE}px",
+            "borderRadius": "50%",
             "backgroundColor": "var(--color-surface, #f8f9fa)",
             "borderColor": "var(--color-border, #dee2e6)",
             "color": "var(--color-body, #333)",

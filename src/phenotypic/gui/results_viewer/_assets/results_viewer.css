@@ -344,9 +344,10 @@
     box-shadow: 0 0 0 2px var(--color-surface, #fff), 0 0 0 4px currentColor;
 }
 
-/* Custom-folder wedge: folder icon tint, slightly different shape. */
+/* Custom-folder wedge: a circle like the rest (the "Custom ▸" label sets it
+ * apart, not the shape). */
 .radial-wedge--folder {
-    border-radius: 25%;
+    border-radius: 50%;
 }
 
 /* Center restore/close node: neutral surface color, circular. */

@@ -291,7 +291,26 @@ class TestBuildRadialBody:
         )
         assert debris_btn is not None
         expected_color = category_color("debris")
-        assert debris_btn.style.get("backgroundColor") == expected_color
+        # Transparent fill: the category color reads as the circle's outline +
+        # label text, not a solid disc.
+        assert debris_btn.style.get("backgroundColor") == "transparent"
+        assert expected_color in debris_btn.style.get("border", "")
+        assert debris_btn.style.get("color") == expected_color
+
+    def test_long_segmentation_tokens_use_short_wedge_labels(self) -> None:
+        """The over/under tokens render as OverS/UnderS; tokens are unchanged."""
+        body = self._body()
+        buttons = _buttons(body)
+        text_by_category = {
+            btn.id.get("category"): btn.children
+            for btn in buttons
+            if isinstance(btn.id, dict)
+        }
+        assert text_by_category["oversegmented"] == "OverS"
+        assert text_by_category["undersegmented"] == "UnderS"
+        # Other tokens keep their (spaced) token text.
+        assert text_by_category["debris"] == "debris"
+        assert text_by_category["background_noise"] == "background noise"
 
     def test_at_most_7_primary_wedges(self) -> None:
         """Primary ring must not exceed 7 wedges (excl. the center restore node)."""
