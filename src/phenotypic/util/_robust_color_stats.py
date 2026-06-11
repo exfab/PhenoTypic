@@ -47,18 +47,29 @@ def robust_color_center(
 
 
 def medoid_ciede2000(
-    lab_points: np.ndarray, max_pixels: int = 1000, seed: int = 0
+    lab_points: np.ndarray,
+    max_pixels: int = 1000,
+    seed: int = 0,
+    chunk_size: int = 128,
 ) -> tuple[np.ndarray, np.ndarray]:
     """ΔE2000 medoid center and per-pixel ΔE2000 distances to it.
 
     The medoid (real pixel minimizing total ΔE2000) is selected from a seeded
-    subsample of at most ``max_pixels`` (the selection is O(m^2)); the returned
-    distances are computed from the chosen medoid to **all** input pixels.
+    subsample of at most ``max_pixels``; the returned distances are computed from
+    the chosen medoid to **all** input pixels.
+
+    The total-distance ("row sum") used to pick the medoid is accumulated in
+    candidate blocks of ``chunk_size`` rows rather than materializing the full
+    ``m x m`` pairwise matrix. Peak memory is therefore ``O(chunk_size * m)``
+    instead of ``O(m^2)`` (CIEDE2000 allocates many intermediate arrays the size
+    of its broadcast grid). The result is bit-identical to the full-matrix form
+    for any ``chunk_size`` -- chunking bounds memory, not accuracy.
 
     Args:
         lab_points: (N, 3) CIE L*a*b* pixel vectors.
         max_pixels: Subsample cap for medoid selection.
         seed: RNG seed for reproducible subsampling.
+        chunk_size: Number of candidate rows scored per block; caps peak memory.
 
     Returns:
         (center (3,), all_deltas (N,)). center is all-NaN and all_deltas empty
@@ -77,10 +88,18 @@ def medoid_ciede2000(
     else:
         sample = lab
 
-    pairwise = colour.difference.delta_E_CIE2000(
-        sample[:, None, :], sample[None, :, :]
-    )
-    medoid = sample[pairwise.sum(axis=1).argmin()]
+    # Accumulate each candidate's total ΔE2000 to all sample points in blocks,
+    # so we never allocate the full (m, m) pairwise matrix at once.
+    m = sample.shape[0]
+    row_sums = np.empty(m, dtype=np.float64)
+    for start in range(0, m, chunk_size):
+        block = sample[start : start + chunk_size]  # (b, 3)
+        block_dists = colour.difference.delta_E_CIE2000(
+            block[:, None, :], sample[None, :, :]
+        )  # (b, m)
+        row_sums[start : start + chunk_size] = np.asarray(block_dists).sum(axis=1)
+
+    medoid = sample[row_sums.argmin()]
     all_deltas = np.asarray(colour.difference.delta_E_CIE2000(lab, medoid))
     return medoid, all_deltas
 

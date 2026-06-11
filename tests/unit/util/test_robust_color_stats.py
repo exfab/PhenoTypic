@@ -59,6 +59,18 @@ def test_medoid_subsample_is_reproducible():
     assert d1.shape == (5000,)  # spread uses ALL pixels, not the subsample
 
 
+def test_medoid_chunk_size_is_invariant():
+    # Chunked row-sum selection must give the identical medoid + deltas
+    # regardless of chunk_size (it only bounds peak memory, not the result).
+    rng = np.random.default_rng(2)
+    lab = rng.uniform([20, -10, -10], [80, 40, 40], size=(300, 3))
+    c_full, d_full = medoid_ciede2000(lab, max_pixels=1000, seed=0, chunk_size=10_000)
+    for cs in (1, 7, 64, 299):
+        c, d = medoid_ciede2000(lab, max_pixels=1000, seed=0, chunk_size=cs)
+        assert np.array_equal(c, c_full)  # bit-identical center
+        assert np.array_equal(d, d_full)  # bit-identical spread
+
+
 def test_medoid_single_and_empty():
     c, d = medoid_ciede2000(np.array([[40.0, 5.0, -5.0]]))
     assert np.allclose(c, [40.0, 5.0, -5.0]) and np.allclose(d, [0.0])
