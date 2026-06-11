@@ -131,6 +131,8 @@ def test_mark_absent_key_degrades_to_nan_fingerprint(tmp_path: Path):
     # persisted with NaN fingerprint -> dropped on the next re-key load
     reloaded = CurationLabels.load(tmp_path, _master())
     assert ("plateA", 999) not in reloaded.labels
+    # S1: no 0-row category parquet written for absent object
+    assert not tools_.error_category_parquet_path(tmp_path, "debris").exists()
 
 
 def _write_store_with_label(tmp_path, image_file, label, category, rr, cc):
@@ -142,6 +144,22 @@ def _write_store_with_label(tmp_path, image_file, label, category, rr, cc):
             "Curation_Category": [category],
             "Bbox_CenterRR": [rr],
             "Bbox_CenterCC": [cc],
+        }
+    )
+    path = tools_.curation_labels_parquet_path(tmp_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    df.write_parquet(path)
+
+
+def _write_store_with_labels(tmp_path, rows):
+    """Helper: seed a labels parquet with multiple rows."""
+    df = pl.DataFrame(
+        {
+            "Metadata_ImageFile": [r[0] for r in rows],
+            "Object_Label": [r[1] for r in rows],
+            "Curation_Category": [r[2] for r in rows],
+            "Bbox_CenterRR": [r[3] for r in rows],
+            "Bbox_CenterCC": [r[4] for r in rows],
         }
     )
     path = tools_.curation_labels_parquet_path(tmp_path)
@@ -254,3 +272,111 @@ def test_imports_alongside_existing_viewer_modules():
     for name in ("remove", "restore", "toggle", "is_removed", "removed_keys_payload"):
         assert hasattr(cl.CurationLabels, name)
         assert hasattr(fs.FilteredMeasurements, name)
+
+
+# ---------------------------------------------------------------------------
+# FIX-1 (M1): two stored labels claiming the same master object both drop
+# ---------------------------------------------------------------------------
+
+
+def test_rekey_drops_when_two_labels_claim_one_object(tmp_path: Path):
+    """Two stored labels whose centroids both point to the same surviving object.
+
+    Master has object 2 at (20, 40).  We store label 2 (exact key gone via
+    renumber — we use a master where label 2 is absent so BOTH entries must
+    go through the nearest-unique path) and label 5, both fingerprinted at
+    (20, 40).  Neither should survive: two candidates claim the same target,
+    so both are dropped (rekeyed == 0, dropped == 2).
+    """
+    # Build a master where the original label 2 is gone but a new label 99
+    # sits at the same centroid (20, 40).
+    master = pl.DataFrame(
+        {
+            "Metadata_ImageFile": ["plateA", "plateA", "plateA", "plateA"],
+            "Metadata_Dataset": ["ds1", "ds1", "ds1", "ds1"],
+            "Object_Label": [1, 99, 3, 4],
+            "Bbox_CenterRR": [10.0, 20.0, 30.0, 40.0],
+            "Bbox_CenterCC": [20.0, 40.0, 60.0, 80.0],
+            "Size_Area": [100.0, 200.0, 300.0, 400.0],
+        }
+    )
+    # Two stored labels both with centroids at (20, 40) — label 2 (exact key
+    # gone) and label 5 (also gone) — both fingerprint-match object 99.
+    _write_store_with_labels(
+        tmp_path,
+        [
+            ("plateA", 2, "debris", 20.0, 40.0),
+            ("plateA", 5, "merged", 20.0, 40.0),
+        ],
+    )
+    store = CurationLabels.load(tmp_path, master)
+    # Both candidates claimed the same target -> both dropped
+    assert store.labels == {}
+    assert store.rekey_report.dropped == 2
+    assert store.rekey_report.rekeyed == 0
+
+
+# ---------------------------------------------------------------------------
+# FIX-2 (M2): stale-file sweep must not delete foreign (non-category) files
+# ---------------------------------------------------------------------------
+
+
+def test_stale_sweep_preserves_foreign_files(tmp_path: Path):
+    """A file in errors/ whose stem is not a known category token is untouched."""
+    errs = tools_.errors_dir(tmp_path)
+    errs.mkdir(parents=True, exist_ok=True)
+    foreign = errs / "notes.parquet"
+    # Write a simple 1-column frame as the "foreign" file
+    pl.DataFrame({"note": ["do not delete"]}).write_parquet(foreign)
+
+    store = CurationLabels.load(tmp_path, _master())
+    store.mark("plateA", 1, "debris")
+
+    assert foreign.exists(), "Foreign file must survive the stale-sweep"
+
+
+# ---------------------------------------------------------------------------
+# M4: mark across multiple images
+# ---------------------------------------------------------------------------
+
+
+def test_mark_across_multiple_images(tmp_path: Path):
+    """Two images, one marked object each in different categories."""
+    master = pl.DataFrame(
+        {
+            "Metadata_ImageFile": ["pA", "pA", "pB", "pB"],
+            "Metadata_Dataset": ["ds1"] * 4,
+            "Object_Label": [1, 2, 1, 2],
+            "Bbox_CenterRR": [10.0, 20.0, 10.0, 20.0],
+            "Bbox_CenterCC": [10.0, 20.0, 10.0, 20.0],
+            "Size_Area": [100.0, 200.0, 100.0, 200.0],
+        }
+    )
+    store = CurationLabels.load(tmp_path, master)
+    store.mark("pA", 1, "debris")
+    store.mark("pB", 2, "merged")
+
+    # Both keys are in removed_keys
+    assert ("pA", 1) in store.removed_keys
+    assert ("pB", 2) in store.removed_keys
+
+    # Curated mirror drops both
+    curated = pl.read_parquet(tools_.measurements_parquet_path(tmp_path))
+    assert curated.height == 2
+    remaining_keys = list(
+        zip(
+            curated.get_column("Metadata_ImageFile").to_list(),
+            curated.get_column("Object_Label").to_list(),
+        )
+    )
+    assert ("pA", 1) not in remaining_keys
+    assert ("pB", 2) not in remaining_keys
+
+    # Per-category parquets have the right objects
+    debris_df = pl.read_parquet(tools_.error_category_parquet_path(tmp_path, "debris"))
+    assert debris_df.get_column("Object_Label").to_list() == [1]
+    assert debris_df.get_column("Metadata_ImageFile").to_list() == ["pA"]
+
+    merged_df = pl.read_parquet(tools_.error_category_parquet_path(tmp_path, "merged"))
+    assert merged_df.get_column("Object_Label").to_list() == [2]
+    assert merged_df.get_column("Metadata_ImageFile").to_list() == ["pB"]

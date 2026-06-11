@@ -15,6 +15,7 @@ kept/re-keyed/dropped tallies feed the viewer's stale banner.
 
 from __future__ import annotations
 
+import collections
 import json
 import logging
 import os
@@ -23,6 +24,7 @@ import threading
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Literal
 
 import polars as pl
 
@@ -40,7 +42,6 @@ logger = logging.getLogger(__name__)
 
 KEY_IMAGE_FILE: str = "Metadata_ImageFile"
 KEY_OBJECT_LABEL: str = str(OBJECT.LABEL)
-KEY_DATASET: str = "Metadata_Dataset"
 KEY_CATEGORY: str = str(CURATION.ERROR_CATEGORY)  # "Curation_Category"
 KEY_CENTER_RR: str = "Bbox_CenterRR"
 KEY_CENTER_CC: str = "Bbox_CenterCC"
@@ -51,6 +52,9 @@ OTHER_CATEGORY: str = ErrorCategory.OTHER.label
 
 #: Max centroid drift (px, Euclidean) tolerated when validating/re-keying.
 FINGERPRINT_TOL_PX: float = 2.0
+
+#: Sentinel NaN fingerprint used when no centroid is available.
+_NAN_FP: tuple[float, float] = (float("nan"), float("nan"))
 
 _UNSAFE_CHARS = re.compile(r"[^a-z0-9._-]+")
 
@@ -73,6 +77,44 @@ def sanitize_category(name: str) -> str:
     """
     cleaned = _UNSAFE_CHARS.sub("_", name.strip().lower())
     return cleaned.strip("._-")
+
+
+def _within_tol(rr0: float, cc0: float, rr1: float, cc1: float, tol: float) -> bool:
+    """Whether two centroids are within ``tol`` px (Euclidean)."""
+    return ((rr0 - rr1) ** 2 + (cc0 - cc1) ** 2) ** 0.5 <= tol
+
+
+def _key_frame(keys: Iterable[LabelKey]) -> pl.DataFrame:
+    """Build the synthetic 2-column (String, Int64) join frame from keys."""
+    key_list = list(keys)
+    return pl.DataFrame(
+        {KEY_COLUMNS[0]: [k[0] for k in key_list], KEY_COLUMNS[1]: [k[1] for k in key_list]},
+        schema={KEY_COLUMNS[0]: pl.String, KEY_COLUMNS[1]: pl.Int64},
+    )
+
+
+def _join_on_keys(
+    master_df: pl.DataFrame,
+    keys: Iterable[LabelKey],
+    how: Literal["anti", "semi"],
+) -> pl.DataFrame:
+    """Cast master key columns to (String, Int64) and {anti,semi}-join against the key frame."""
+    keyed = master_df.with_columns(
+        pl.col(KEY_COLUMNS[0]).cast(pl.String),
+        pl.col(KEY_COLUMNS[1]).cast(pl.Int64),
+    )
+    return keyed.join(_key_frame(keys), on=list(KEY_COLUMNS), how=how)
+
+
+def _keys_of(df: pl.DataFrame) -> set[tuple[str, int]]:
+    """Extract the (image_file, object_label) key set from a frame."""
+    return {
+        (str(f), int(lbl))
+        for f, lbl in zip(
+            df.get_column(KEY_COLUMNS[0]).to_list(),
+            df.get_column(KEY_COLUMNS[1]).to_list(),
+        )
+    }
 
 
 @dataclass(frozen=True)
@@ -200,7 +242,10 @@ class CurationLabels:
             labels, fingerprints, report = cls._rekey(stored, master_df)
         elif measurements_parquet_path(root).exists():
             labels, fingerprints = cls._migrate_legacy(root, master_df)
-            report = RekeyReport(migrated=len(labels))
+            n = len(labels)
+            if n > 0:
+                logger.info("Imported %d legacy removal(s) from measurements.parquet as 'other'.", n)
+            report = RekeyReport(migrated=n)
 
         return cls(
             root=root,
@@ -285,7 +330,7 @@ class CurationLabels:
         within = [
             (label, crr, ccc)
             for (label, crr, ccc) in candidates
-            if ((crr - rr) ** 2 + (ccc - cc) ** 2) ** 0.5 <= tol
+            if _within_tol(crr, ccc, rr, cc, tol)
         ]
         return within[0] if len(within) == 1 else None
 
@@ -311,6 +356,9 @@ class CurationLabels:
           neighbours, which could mis-attach to an adjacent colony). If the exact
           key is absent → re-key only when exactly one object in the same image
           is within ``tol`` of the stored centroid, else drop.
+        * **Two-pass conflict resolution**: when two stored labels both
+          fingerprint-match the same surviving object, both are dropped (last-wins
+          is not correct behaviour; the collision signals ambiguity).
         """
         has_fp = (
             KEY_CENTER_RR in master_df.columns and KEY_CENTER_CC in master_df.columns
@@ -336,28 +384,47 @@ class CurationLabels:
                     dropped += 1
             return labels, fingerprints, RekeyReport(kept=kept, dropped=dropped)
 
+        # PASS 1: classify each stored entry as a direct drop or a candidate.
+        # candidate: (source_stored_key, target_key, category, fingerprint, kind)
+        # kind: "kept" | "rekeyed"
+        direct_drops = 0
+        candidates: list[tuple[LabelKey, LabelKey, str, tuple[float, float], str]] = []
+
         for image_file, label, category, rr, cc in stored:
             key = (image_file, label)
             mfp = exact.get(key)
             if mfp is not None:
                 # Exact key survived: trust it only while the centroid is stable.
-                if ((mfp[0] - rr) ** 2 + (mfp[1] - cc) ** 2) ** 0.5 <= tol:
-                    labels[key] = category
-                    fingerprints[key] = mfp
-                    kept += 1
+                if _within_tol(mfp[0], mfp[1], rr, cc, tol):
+                    candidates.append((key, key, category, mfp, "kept"))
                 else:
-                    dropped += 1  # moved too far — drop, never risk a neighbour
+                    direct_drops += 1  # moved too far — drop, never risk a neighbour
                 continue
             # Exact key gone (renumbered?): recover only on a unique fingerprint.
             match = cls._nearest_unique(per_image.get(image_file, []), rr, cc, tol)
             if match is not None:
                 new_label, mrr, mcc = match
                 nkey = (image_file, new_label)
-                labels[nkey] = category
-                fingerprints[nkey] = (mrr, mcc)
-                rekeyed += 1
+                candidates.append((key, nkey, category, (mrr, mcc), "rekeyed"))
+            else:
+                direct_drops += 1
+
+        # PASS 2: commit only candidates whose target is claimed exactly once.
+        target_counts: collections.Counter[LabelKey] = collections.Counter(
+            c[1] for c in candidates
+        )
+        for _src, target, category, fp, kind in candidates:
+            if target_counts[target] == 1:
+                labels[target] = category
+                fingerprints[target] = fp
+                if kind == "kept":
+                    kept += 1
+                else:
+                    rekeyed += 1
             else:
                 dropped += 1
+
+        dropped += direct_drops
         return labels, fingerprints, RekeyReport(kept=kept, rekeyed=rekeyed, dropped=dropped)
 
     @classmethod
@@ -371,13 +438,7 @@ class CurationLabels:
         """
         curated = pl.read_parquet(measurements_parquet_path(root))
         exact, _ = cls._master_index(master_df)
-        curated_keys = {
-            (str(img), int(lbl))
-            for img, lbl in zip(
-                curated.get_column(KEY_IMAGE_FILE).to_list(),
-                curated.get_column(KEY_OBJECT_LABEL).to_list(),
-            )
-        }
+        curated_keys = _keys_of(curated)
         labels: dict[LabelKey, str] = {}
         fingerprints: dict[LabelKey, tuple[float, float]] = {}
         for key, fp in exact.items():
@@ -391,22 +452,11 @@ class CurationLabels:
         """Return ``master_df`` with all labeled (removed) rows dropped."""
         if not self.labels:
             return master_df
-        removed = pl.DataFrame(
-            {
-                KEY_COLUMNS[0]: [k[0] for k in self.labels],
-                KEY_COLUMNS[1]: [k[1] for k in self.labels],
-            },
-            schema={KEY_COLUMNS[0]: pl.String, KEY_COLUMNS[1]: pl.Int64},
-        )
-        keyed = master_df.with_columns(
-            pl.col(KEY_COLUMNS[0]).cast(pl.String),
-            pl.col(KEY_COLUMNS[1]).cast(pl.Int64),
-        )
-        return keyed.join(removed, on=list(KEY_COLUMNS), how="anti")
+        return _join_on_keys(master_df, self.labels, "anti")
 
     def _fingerprint_of(self, image_file: str, label: int) -> tuple[float, float] | None:
         """Look up an object's centroid in the cached master, or ``None``."""
-        if KEY_CENTER_RR not in self._master_df.columns:
+        if KEY_CENTER_RR not in self._master_df.columns or KEY_CENTER_CC not in self._master_df.columns:
             return None
         row = (
             self._master_df.filter(
@@ -482,20 +532,26 @@ class CurationLabels:
             self._save_locked()
 
     def _save_locked(self) -> None:
-        """Write labels parquet + curated mirror + per-category files (lock held)."""
-        self._write_labels_parquet()
+        """Write curated mirror + per-category files, then labels parquet (lock held).
+
+        The labels parquet is written LAST so that a crash mid-save leaves the
+        durable store consistent with the previously written derived outputs,
+        not ahead of them.
+        """
         self._write_curated_mirror()
         self._write_category_parquets()
+        self._write_labels_parquet()
 
     def _write_labels_parquet(self) -> None:
         path = self.labels_path
         path.parent.mkdir(parents=True, exist_ok=True)
+        fps = [self.fingerprints.get(k, _NAN_FP) for k in self.labels]
         rows = {
             KEY_IMAGE_FILE: [k[0] for k in self.labels],
             KEY_OBJECT_LABEL: [k[1] for k in self.labels],
             KEY_CATEGORY: [self.labels[k] for k in self.labels],
-            KEY_CENTER_RR: [self.fingerprints.get(k, (float("nan"), float("nan")))[0] for k in self.labels],
-            KEY_CENTER_CC: [self.fingerprints.get(k, (float("nan"), float("nan")))[1] for k in self.labels],
+            KEY_CENTER_RR: [fp[0] for fp in fps],
+            KEY_CENTER_CC: [fp[1] for fp in fps],
         }
         df = pl.DataFrame(
             rows,
@@ -525,36 +581,34 @@ class CurationLabels:
         by_cat: dict[str, list[LabelKey]] = {}
         for key, cat in self.labels.items():
             by_cat.setdefault(cat, []).append(key)
-        # Write present categories; remove files for categories no longer present.
-        present = set()
+        # Write present categories; collect the known-category tokens to sweep.
+        present: set[str] = set()
         for cat, keys in by_cat.items():
             token = sanitize_category(cat)
             if not token:
                 logger.warning("Skipping category with no filename-safe token: %r", cat)
                 continue
-            present.add(token)
-            sub = pl.DataFrame(
-                {
-                    KEY_COLUMNS[0]: [k[0] for k in keys],
-                    KEY_COLUMNS[1]: [k[1] for k in keys],
-                },
-                schema={KEY_COLUMNS[0]: pl.String, KEY_COLUMNS[1]: pl.Int64},
-            )
-            keyed = self._master_df.with_columns(
-                pl.col(KEY_COLUMNS[0]).cast(pl.String),
-                pl.col(KEY_COLUMNS[1]).cast(pl.Int64),
-            )
-            frame = keyed.join(sub, on=list(KEY_COLUMNS), how="semi").with_columns(
+            frame = _join_on_keys(self._master_df, keys, "semi").with_columns(
                 pl.lit(cat).alias(KEY_CATEGORY)
             )
+            # S1: skip writing 0-row category parquets; don't add to present so
+            # any prior stale file for this token gets pruned below.
+            if frame.is_empty():
+                continue
+            present.add(token)
             _atomic_write_parquet(frame, error_category_parquet_path(self.root, token))
-        # Clean up stale category files.
-        for existing in errs_dir.glob("*.parquet"):
-            if existing.stem not in present:
-                try:
-                    existing.unlink()
-                except OSError:
-                    logger.warning("Could not remove stale category file %s", existing)
+        # Clean up stale category files — restrict sweep to the KNOWN vocabulary
+        # only, so unrelated files in errors/ are never touched (FIX-2).
+        known_filenames = {f"{sanitize_category(c)}.parquet" for c in self.categories()}
+        for fname in known_filenames:
+            stem = fname[: -len(".parquet")]
+            if stem not in present:
+                candidate = errs_dir / fname
+                if candidate.exists():
+                    try:
+                        candidate.unlink()
+                    except OSError:
+                        logger.warning("Could not remove stale category file %s", candidate)
 
     # -- FilteredMeasurements-compatible surface -----------------------------
     @property
@@ -575,13 +629,7 @@ class CurationLabels:
         """Count rows of ``df`` whose key is currently labeled."""
         if df.is_empty() or not self.labels:
             return 0
-        df_keys = {
-            (str(f), int(lbl))
-            for f, lbl in zip(
-                df.get_column(KEY_COLUMNS[0]).to_list(),
-                df.get_column(KEY_COLUMNS[1]).to_list(),
-            )
-        }
+        df_keys = _keys_of(df)
         return len(df_keys & set(self.labels.keys()))
 
     def remove(self, image_file: str, object_label: int) -> None:
