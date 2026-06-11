@@ -170,13 +170,15 @@ visualization** — must not enter numeric analysis (see §7 risk).
 
 ## 6. Implementation outline
 
-- **New pure-function helper module** `measure/_robust_color_stats.py`
-  (testable in isolation): `geometric_median(pixels, max_iter, tol)`,
+- **New pure-function helper module** `util/_robust_color_stats.py`
+  (testable in isolation): `robust_color_center(pixels, max_iter, tol)`,
   `medoid_ciede2000(pixels, max_pixels, seed) -> (center, all_pixel_deltas)`,
   `delta_e2000_spread(deltas) -> (median, mean, p95)`, `hsv_to_cone(hsv)`,
-  `cone_to_hsv(xyz)`, `lab_to_srgb_hex(lab)`.
-  - `geometric_median`: vectorized Weiszfeld with a zero-distance guard
-    (Vardi–Zhang style) and mean initialization.
+  `cone_to_hsv(xyz)`, `lab_to_srgb_hex(lab)`. Exported from `phenotypic.util`.
+  - `robust_color_center`: **reuses the existing, verified
+    `phenotypic.util.geometric_median`** (Weiszfeld path) — pinned to
+    `method='weiszfeld'` because the default `method='cohen'` is unimplemented
+    (raises) — and adds empty/`n==1` guards. No new Weiszfeld code.
   - `medoid_ciede2000`: subsample to `max_pixels` (seeded) for the pairwise
     selection; compute final spread distances from the chosen medoid to **all**
     pixels (O(N)).

@@ -4,7 +4,9 @@
 
 **Goal:** Replace `MeasureColor`'s per-channel "kitchen-sink" statistics for L\*a\*b\* and HSV with compact, robust, multivariate colorimetric summaries (ΔE76 geometric median + ΔE2000 medoid centers, ΔE2000 consistency scalars, total variance, cone-embedded robust HSV, and a Lab-medoid hex swatch), and demote CIE XYZ / xy chromaticity to opt-in columns hidden from the reference doc.
 
-**Architecture:** Pure, unit-testable math lives in a new `measure/_robust_color_stats.py`. `MeasureColor._operate` extracts per-object L\*a\*b\* and HSV pixel vectors in one pass and calls those helpers; the legacy 8-stat suites survive only for opt-in XYZ/xy. New columns are declared as `MeasurementInfo` members in `schema/_color_lab.py` and `schema/_color_hsv.py`, which automatically flow into `get_headers()` and the generated reference table.
+**Architecture:** Pure, unit-testable math lives in a new `util/_robust_color_stats.py`. The robust center **reuses the existing, verified `phenotypic.util.geometric_median`** (pinned to `method='weiszfeld'`); the rest (ΔE2000 medoid, ΔE2000 spread, HSV cone transform, Lab→hex) are new pure functions. `MeasureColor._operate` extracts per-object L\*a\*b\* and HSV pixel vectors in one pass and calls those helpers; the legacy 8-stat suites survive only for opt-in XYZ/xy. New columns are declared as `MeasurementInfo` members in `schema/_color_lab.py` and `schema/_color_hsv.py`, which automatically flow into `get_headers()` and the generated reference table.
+
+**Reuse note (verified):** `phenotypic.util.geometric_median(points, method='weiszfeld', eps=tol, max_iter=..., verbose=False) -> (median, info)` is correct on all our cases (symmetric cloud→origin, single-outlier resistance, collinear→middle, n=2 midpoint, identical points via zero-distance guard, n=1). **Caveat:** its *default* `method='cohen'` is unimplemented and raises `ValueError("Method 'cohen' is not implemented yet.")`, and it raises `ValueError("Need at least one point")` on empty input. Therefore our wrapper ALWAYS passes `method='weiszfeld'` and guards empty/`n==1` itself. (Pre-existing `cohen` default bug is out of scope — noted, not fixed here.)
 
 **Tech Stack:** Python, NumPy, pandas, `colour-science` (`colour.difference.delta_E_CIE2000`, `colour.Lab_to_XYZ`, `colour.XYZ_to_sRGB`), pydantic v2 (operation fields), pytest, `uv`.
 
@@ -21,11 +23,12 @@
 ## File Structure
 
 **Create:**
-- `src/phenotypic/measure/_robust_color_stats.py` — pure functions: `geometric_median`, `medoid_ciede2000`, `delta_e2000_spread`, `hsv_to_cone`, `cone_to_hsv`, `lab_to_srgb_hex`.
-- `tests/unit/measure/test_robust_color_stats.py` — unit tests for the pure helpers.
+- `src/phenotypic/util/_robust_color_stats.py` — pure functions: `robust_color_center` (thin wrapper reusing `util.geometric_median`, weiszfeld), `medoid_ciede2000`, `delta_e2000_spread`, `hsv_to_cone`, `cone_to_hsv`, `lab_to_srgb_hex`.
+- `tests/unit/util/test_robust_color_stats.py` — unit tests for the pure helpers.
 - `tests/unit/measure/test_measure_color.py` — behavior tests for the rewritten `MeasureColor` (no dedicated file exists today).
 
 **Modify:**
+- `src/phenotypic/util/__init__.py` — export the new helpers.
 - `src/phenotypic/schema/_color_lab.py` — drop per-channel 8-stat members + `ChromaEstimated*`; add robust members + `robust_headers()`.
 - `src/phenotypic/schema/_color_hsv.py` — drop per-channel 8-stat members; add robust members + `robust_headers()`.
 - `src/phenotypic/measure/_measure_color.py` — new `_operate`, `include_xy` field, robust per-object helpers, opt-in XYZ/xy, updated docstring RST chain.
@@ -40,78 +43,89 @@
 
 ---
 
-## Task 1: Pure helper — `geometric_median` (Weiszfeld)
+## Task 1: Util helper module — `robust_color_center` (reuses `util.geometric_median`)
+
+Do NOT reimplement Weiszfeld. Reuse the existing, verified
+`phenotypic.util.geometric_median` (pinned to `method='weiszfeld'`) behind a thin
+wrapper that adds empty/`n==1` guards and returns just the array.
 
 **Files:**
-- Create: `src/phenotypic/measure/_robust_color_stats.py`
-- Test: `tests/unit/measure/test_robust_color_stats.py`
+- Create: `src/phenotypic/util/_robust_color_stats.py`
+- Modify: `src/phenotypic/util/__init__.py`
+- Test: `tests/unit/util/test_robust_color_stats.py`
 
 - [ ] **Step 1: Write the failing test**
 
 ```python
-# tests/unit/measure/test_robust_color_stats.py
+# tests/unit/util/test_robust_color_stats.py
 import numpy as np
 import pytest
-from phenotypic.measure._robust_color_stats import geometric_median
+from phenotypic.util._robust_color_stats import robust_color_center
 
 
-def test_geometric_median_centered_symmetric_cloud():
-    # Symmetric points about the origin -> median at origin.
+def test_robust_center_symmetric_cloud():
     pts = np.array([[1.0, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0]])
-    c = geometric_median(pts)
-    assert np.allclose(c, [0.0, 0.0, 0.0], atol=1e-3)
+    assert np.allclose(robust_color_center(pts), [0.0, 0.0, 0.0], atol=1e-3)
 
 
-def test_geometric_median_resists_single_outlier():
-    # 99 tight points + 1 gross outlier; median stays near the cluster.
+def test_robust_center_resists_single_outlier():
     cluster = np.tile([50.0, 10.0, 20.0], (99, 1))
     pts = np.vstack([cluster, [50_000.0, 50_000.0, 50_000.0]])
-    c = geometric_median(pts)
-    assert np.allclose(c, [50.0, 10.0, 20.0], atol=1.0)
+    assert np.allclose(robust_color_center(pts), [50.0, 10.0, 20.0], atol=1.0)
 
 
-def test_geometric_median_single_point_returns_it():
-    assert np.allclose(geometric_median(np.array([[3.0, 4.0, 5.0]])), [3.0, 4.0, 5.0])
+def test_robust_center_single_point_returns_it():
+    assert np.allclose(robust_color_center(np.array([[3.0, 4.0, 5.0]])), [3.0, 4.0, 5.0])
 
 
-def test_geometric_median_empty_returns_nan():
-    out = geometric_median(np.empty((0, 3)))
+def test_robust_center_identical_points():
+    assert np.allclose(robust_color_center(np.tile([7.0, 7.0, 7.0], (5, 1))), [7.0, 7.0, 7.0])
+
+
+def test_robust_center_empty_returns_nan():
+    out = robust_color_center(np.empty((0, 3)))
     assert out.shape == (3,) and np.isnan(out).all()
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/measure/test_robust_color_stats.py -q`
-Expected: FAIL — `ModuleNotFoundError: No module named 'phenotypic.measure._robust_color_stats'`.
+Run: `QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/util/test_robust_color_stats.py -q`
+Expected: FAIL — `ModuleNotFoundError: No module named 'phenotypic.util._robust_color_stats'`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [ ] **Step 3: Write the module**
 
 ```python
-# src/phenotypic/measure/_robust_color_stats.py
-"""Pure, unit-testable robust colorimetric estimators for MeasureColor.
+# src/phenotypic/util/_robust_color_stats.py
+"""Pure, unit-testable robust colorimetric estimators used by MeasureColor.
 
-All functions are free of Image/accessor dependencies so they can be tested in
-isolation. See docs/superpowers/specs/2026-06-10-robust-lab-color-measures-design.md.
+Free of Image/accessor dependencies so they can be tested in isolation. The
+robust center reuses the verified ``phenotypic.util.geometric_median`` (the
+``cohen`` method is unimplemented, so we always pin ``method='weiszfeld'``).
+See docs/superpowers/specs/2026-06-10-robust-lab-color-measures-design.md.
 """
 from __future__ import annotations
 
 import numpy as np
 
-_EPS = 1e-12
+from phenotypic.util._geometric_median import geometric_median as _geometric_median
 
 
-def geometric_median(
+def robust_color_center(
     points: np.ndarray, max_iter: int = 50, tol: float = 1e-4
 ) -> np.ndarray:
-    """ΔE76 (Euclidean) geometric median via Weiszfeld iteration.
+    """Euclidean geometric median of ``points`` (N, D), as a bare (D,) array.
+
+    Reuses ``phenotypic.util.geometric_median`` (Weiszfeld). Returns all-NaN for
+    empty input and the sole point for ``N == 1`` (the underlying solver requires
+    ``N >= 1`` and a defined centroid).
 
     Args:
-        points: (N, D) array of coordinates.
-        max_iter: Maximum Weiszfeld iterations.
-        tol: Stop when the center moves less than this (Euclidean).
+        points: (N, D) coordinates (Lab pixels, or HSV cone coordinates).
+        max_iter: Weiszfeld iteration cap.
+        tol: Convergence tolerance (forwarded as ``eps``).
 
     Returns:
-        (D,) geometric-median coordinate. All-NaN if ``points`` is empty.
+        (D,) geometric-median coordinate.
     """
     points = np.asarray(points, dtype=np.float64)
     if points.ndim != 2:
@@ -121,44 +135,51 @@ def geometric_median(
         return np.full(d, np.nan)
     if n == 1:
         return points[0].copy()
-
-    center = points.mean(axis=0)
-    for _ in range(max_iter):
-        diff = points - center
-        dist = np.sqrt((diff * diff).sum(axis=1))
-        nonzero = dist > _EPS
-        if not nonzero.any():
-            return center
-        weights = 1.0 / dist[nonzero]
-        weighted = (points[nonzero] * weights[:, None]).sum(axis=0) / weights.sum()
-
-        # Vardi-Zhang guard: if the estimate sits on a data point, blend.
-        num_coincident = int((~nonzero).sum())
-        if num_coincident > 0:
-            r = np.linalg.norm(
-                (weights[:, None] * (points[nonzero] - center)).sum(axis=0)
-            )
-            if r <= _EPS:
-                return center
-            gamma = min(1.0, num_coincident / r)
-            weighted = (1.0 - gamma) * weighted + gamma * center
-
-        if np.linalg.norm(weighted - center) < tol:
-            return weighted
-        center = weighted
-    return center
+    center, _info = _geometric_median(
+        points, method="weiszfeld", eps=tol, max_iter=max_iter, verbose=False
+    )
+    return np.asarray(center, dtype=np.float64)
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/measure/test_robust_color_stats.py -q`
-Expected: PASS (4 passed).
+Run: `QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/util/test_robust_color_stats.py -q`
+Expected: PASS (5 passed).
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Export from the util package**
+
+Add to `src/phenotypic/util/__init__.py` (extend the existing imports and
+`__all__`):
+
+```python
+from ._robust_color_stats import (
+    robust_color_center,
+    medoid_ciede2000,
+    delta_e2000_spread,
+    hsv_to_cone,
+    cone_to_hsv,
+    lab_to_srgb_hex,
+)
+```
+
+and add those six names to the `__all__` list. (The `medoid_ciede2000` etc.
+symbols are added in Tasks 2–3; importing them now will fail, so either add this
+export block at the END of Task 3, or add names incrementally as each is
+implemented. Simplest: do the `__init__.py` export edit as the final step of
+Task 3, not here. For Task 1, only export `robust_color_center`.)
+
+For Task 1, add just:
+
+```python
+from ._robust_color_stats import robust_color_center
+```
+and `"robust_color_center"` to `__all__`.
+
+- [ ] **Step 6: Commit**
 
 ```bash
-git add src/phenotypic/measure/_robust_color_stats.py tests/unit/measure/test_robust_color_stats.py
-git commit -m "feat(measure): add geometric_median robust color helper"
+git add src/phenotypic/util/_robust_color_stats.py src/phenotypic/util/__init__.py tests/unit/util/test_robust_color_stats.py
+git commit -m "feat(util): robust_color_center reusing geometric_median (weiszfeld)"
 ```
 
 ---
@@ -166,14 +187,14 @@ git commit -m "feat(measure): add geometric_median robust color helper"
 ## Task 2: Pure helpers — `medoid_ciede2000` + `delta_e2000_spread`
 
 **Files:**
-- Modify: `src/phenotypic/measure/_robust_color_stats.py`
-- Test: `tests/unit/measure/test_robust_color_stats.py`
+- Modify: `src/phenotypic/util/_robust_color_stats.py`
+- Test: `tests/unit/util/test_robust_color_stats.py`
 
 - [ ] **Step 1: Write the failing tests**
 
 ```python
-# append to tests/unit/measure/test_robust_color_stats.py
-from phenotypic.measure._robust_color_stats import (
+# append to tests/unit/util/test_robust_color_stats.py
+from phenotypic.util._robust_color_stats import (
     medoid_ciede2000,
     delta_e2000_spread,
 )
@@ -226,13 +247,13 @@ def test_delta_e2000_spread_empty_is_nan():
 
 - [ ] **Step 2: Run to verify it fails**
 
-Run: `QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/measure/test_robust_color_stats.py -q`
+Run: `QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/util/test_robust_color_stats.py -q`
 Expected: FAIL — `ImportError: cannot import name 'medoid_ciede2000'`.
 
 - [ ] **Step 3: Add the implementation**
 
 ```python
-# add to src/phenotypic/measure/_robust_color_stats.py
+# add to src/phenotypic/util/_robust_color_stats.py (module-level import + funcs)
 import colour
 
 
@@ -289,14 +310,14 @@ def delta_e2000_spread(deltas: np.ndarray) -> tuple[float, float, float]:
 
 - [ ] **Step 4: Run to verify it passes**
 
-Run: `QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/measure/test_robust_color_stats.py -q`
+Run: `QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/util/test_robust_color_stats.py -q`
 Expected: PASS (10 passed).
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/phenotypic/measure/_robust_color_stats.py tests/unit/measure/test_robust_color_stats.py
-git commit -m "feat(measure): add ciede2000 medoid + spread helpers"
+git add src/phenotypic/util/_robust_color_stats.py tests/unit/util/test_robust_color_stats.py
+git commit -m "feat(util): add ciede2000 medoid + spread helpers"
 ```
 
 ---
@@ -304,14 +325,15 @@ git commit -m "feat(measure): add ciede2000 medoid + spread helpers"
 ## Task 3: Pure helpers — HSV cone transform + Lab→hex
 
 **Files:**
-- Modify: `src/phenotypic/measure/_robust_color_stats.py`
-- Test: `tests/unit/measure/test_robust_color_stats.py`
+- Modify: `src/phenotypic/util/_robust_color_stats.py`
+- Modify: `src/phenotypic/util/__init__.py` (export all six helpers)
+- Test: `tests/unit/util/test_robust_color_stats.py`
 
 - [ ] **Step 1: Write the failing tests**
 
 ```python
-# append to tests/unit/measure/test_robust_color_stats.py
-from phenotypic.measure._robust_color_stats import (
+# append to tests/unit/util/test_robust_color_stats.py
+from phenotypic.util._robust_color_stats import (
     hsv_to_cone,
     cone_to_hsv,
     lab_to_srgb_hex,
@@ -349,13 +371,13 @@ def test_lab_to_srgb_hex_nan_returns_empty():
 
 - [ ] **Step 2: Run to verify it fails**
 
-Run: `QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/measure/test_robust_color_stats.py -q`
+Run: `QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/util/test_robust_color_stats.py -q`
 Expected: FAIL — `ImportError: cannot import name 'hsv_to_cone'`.
 
 - [ ] **Step 3: Add the implementation**
 
 ```python
-# add to src/phenotypic/measure/_robust_color_stats.py
+# add to src/phenotypic/util/_robust_color_stats.py
 def hsv_to_cone(hsv: np.ndarray) -> np.ndarray:
     """Embed HSV (H,S,V in [0,1]) into Cartesian cone coords (S*V*cosθ, S*V*sinθ, V)."""
     hsv = np.asarray(hsv, dtype=np.float64)
@@ -394,14 +416,34 @@ def lab_to_srgb_hex(lab: np.ndarray) -> str:
 
 - [ ] **Step 4: Run to verify it passes**
 
-Run: `QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/measure/test_robust_color_stats.py -q`
-Expected: PASS (15 passed). If `test_lab_to_srgb_hex_format` asserts a different hex than your `colour` version yields, update the expected value to the printed actual (compute once with `uv run python -c "import numpy as np; from phenotypic.measure._robust_color_stats import lab_to_srgb_hex; print(lab_to_srgb_hex(np.array([60.,20.,30.])))"`).
+Run: `QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/util/test_robust_color_stats.py -q`
+Expected: PASS (15 passed). If `test_lab_to_srgb_hex_format` asserts a different hex than your `colour` version yields, update the expected value to the printed actual (compute once with `QT_QPA_PLATFORM=offscreen uv run python -c "import numpy as np; from phenotypic.util._robust_color_stats import lab_to_srgb_hex; print(lab_to_srgb_hex(np.array([60.,20.,30.])))"`). (Verified value at plan-writing time: `#c1825d`.)
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Export all six helpers from the util package**
+
+Replace the Task-1 single-symbol export in `src/phenotypic/util/__init__.py` with
+the full block, and ensure all six names are in `__all__`:
+
+```python
+from ._robust_color_stats import (
+    robust_color_center,
+    medoid_ciede2000,
+    delta_e2000_spread,
+    hsv_to_cone,
+    cone_to_hsv,
+    lab_to_srgb_hex,
+)
+```
+
+Verify the package imports cleanly:
+Run: `QT_QPA_PLATFORM=offscreen uv run python -c "from phenotypic.util import robust_color_center, medoid_ciede2000, delta_e2000_spread, hsv_to_cone, cone_to_hsv, lab_to_srgb_hex; print('ok')"`
+Expected: `ok`.
+
+- [ ] **Step 6: Commit**
 
 ```bash
-git add src/phenotypic/measure/_robust_color_stats.py tests/unit/measure/test_robust_color_stats.py
-git commit -m "feat(measure): add HSV cone transform + Lab->sRGB hex helpers"
+git add src/phenotypic/util/_robust_color_stats.py src/phenotypic/util/__init__.py tests/unit/util/test_robust_color_stats.py
+git commit -m "feat(util): add HSV cone transform + Lab->sRGB hex helpers; export all"
 ```
 
 ---
@@ -410,7 +452,7 @@ git commit -m "feat(measure): add HSV cone transform + Lab->sRGB hex helpers"
 
 **Files:**
 - Modify: `src/phenotypic/schema/_color_lab.py`
-- Test: `tests/unit/measure/test_robust_color_stats.py` (schema assertions can live here or in a new `tests/unit/schema/test_color_schema.py`)
+- Test: new `tests/unit/schema/test_color_schema.py` (schema assertions; create the `tests/unit/schema/` dir + empty `__init__.py` if absent)
 
 - [ ] **Step 1: Write the failing test**
 
@@ -684,8 +726,8 @@ import logging
 from phenotypic.abc_ import MeasureFeatures
 from phenotypic.schema import OBJECT
 from phenotypic.schema import ColorXYZ, Colorxy, ColorLab, ColorHSV
-from phenotypic.measure._robust_color_stats import (
-    geometric_median,
+from phenotypic.util import (
+    robust_color_center,
     medoid_ciede2000,
     delta_e2000_spread,
     hsv_to_cone,
@@ -767,7 +809,7 @@ class MeasureColor(MeasureFeatures):
         return {col: [row[col] for row in rows] for col in columns}
 
     def _robust_lab_row(self, lab_px: np.ndarray) -> dict:
-        gm = geometric_median(
+        gm = robust_color_center(
             lab_px, max_iter=self.geomedian_max_iter, tol=self.geomedian_tol
         )
         medoid, deltas = medoid_ciede2000(
@@ -793,7 +835,7 @@ class MeasureColor(MeasureFeatures):
 
     def _robust_hsv_row(self, hsv_px: np.ndarray) -> dict:
         cone = hsv_to_cone(hsv_px)
-        center_cone = geometric_median(
+        center_cone = robust_color_center(
             cone, max_iter=self.geomedian_max_iter, tol=self.geomedian_tol
         )
         center_hsv = cone_to_hsv(center_cone)
@@ -1055,7 +1097,7 @@ Expected: clean (fix any unused imports from removed schema usage).
 
 - [ ] **Step 2: Type check**
 
-Run: `uv run mypy src/phenotypic/measure/_robust_color_stats.py src/phenotypic/measure/_measure_color.py src/phenotypic/schema/_color_lab.py src/phenotypic/schema/_color_hsv.py`
+Run: `uv run mypy src/phenotypic/util/_robust_color_stats.py src/phenotypic/measure/_measure_color.py src/phenotypic/schema/_color_lab.py src/phenotypic/schema/_color_hsv.py`
 Expected: no errors. (`colour` is untyped; add `# type: ignore[import-untyped]` on the `import colour` line only if mypy flags it, matching existing repo usage.)
 
 - [ ] **Step 3: Run the full relevant suite**
@@ -1063,7 +1105,7 @@ Expected: no errors. (`colour` is untyped; add `# type: ignore[import-untyped]` 
 Run:
 ```bash
 QT_QPA_PLATFORM=offscreen uv run pytest \
-  tests/unit/measure/test_robust_color_stats.py \
+  tests/unit/util/test_robust_color_stats.py \
   tests/unit/measure/test_measure_color.py \
   tests/unit/schema/test_color_schema.py \
   tests/unit/core/test_pipeline_serialization.py \
@@ -1076,7 +1118,7 @@ Expected: all PASS.
 
 - [ ] **Step 4: Doctest the docstrings touched**
 
-Run: `QT_QPA_PLATFORM=offscreen uv run pytest --doctest-modules src/phenotypic/measure/_measure_color.py src/phenotypic/measure/_robust_color_stats.py -q`
+Run: `QT_QPA_PLATFORM=offscreen uv run pytest --doctest-modules src/phenotypic/measure/_measure_color.py src/phenotypic/util/_robust_color_stats.py -q`
 Expected: PASS (add at least one runnable `>>>` example using `load_synth_yeast_plate()` to `MeasureColor` if none exists).
 
 - [ ] **Step 5: Final commit**
@@ -1091,6 +1133,6 @@ git commit -m "chore(measure): lint/type/doctest pass for robust color measures"
 ## Self-Review (completed against the spec)
 
 - **§3.1 robust centers** → Tasks 1, 2, 6. **§3.2 consistency + LabTotalVariance** → Tasks 2, 6. **§3.3 cone HSV** → Tasks 3, 6. **§3.4 hex** → Tasks 3, 6. **§4.1/§4.2 schema** → Tasks 4, 5. **§4.3 opt-in XYZ/xy + doc-hide** → Tasks 6, 8. **§5 params** → Task 6. **§7 hex numeric risk** → Task 7. **§7 golden risk** → Task 10. **§7 downstream refs** → Tasks 8, 9. **§8 testing** → Tasks 1–3, 6, 7, 10, 11.
-- **Naming consistency:** `geometric_median`, `medoid_ciede2000`, `delta_e2000_spread`, `hsv_to_cone`, `cone_to_hsv`, `lab_to_srgb_hex` are used identically in Tasks 1–3 and Task 6. Schema member names match between Tasks 4/5 and their use in Task 6.
+- **Naming consistency:** `robust_color_center` (reuses `util.geometric_median`), `medoid_ciede2000`, `delta_e2000_spread`, `hsv_to_cone`, `cone_to_hsv`, `lab_to_srgb_hex` are used identically in Tasks 1–3 and Task 6, all living in `phenotypic.util`. Schema member names match between Tasks 4/5 and their use in Task 6.
 - **Open items deferred to review (spec §9):** column naming, opt-in suites staying classical, hex provenance — flagged for the user, defaults chosen.
 - **Verify-before-edit reminders** embedded where schema helper names (`cieX_headers`, scenario accessor) must be confirmed against the live code.
