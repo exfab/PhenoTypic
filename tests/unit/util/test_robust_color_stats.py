@@ -74,3 +74,37 @@ def test_delta_e2000_spread_values():
 def test_delta_e2000_spread_empty_is_nan():
     med, mean, p95 = delta_e2000_spread(np.array([]))
     assert np.isnan(med) and np.isnan(mean) and np.isnan(p95)
+from phenotypic.util._robust_color_stats import (
+    hsv_to_cone,
+    cone_to_hsv,
+    lab_to_srgb_hex,
+)
+
+
+def test_cone_roundtrip_recovers_hsv():
+    hsv = np.array([[0.0, 1.0, 1.0], [0.25, 0.5, 0.8], [0.99, 0.3, 0.6]])
+    back = cone_to_hsv(hsv_to_cone(hsv))
+    assert np.allclose(back, hsv, atol=1e-6)
+
+
+def test_cone_collapses_unreliable_hue_at_zero_saturation():
+    # Two grays with different (meaningless) hues map to the same cone point.
+    a = hsv_to_cone(np.array([0.1, 0.0, 0.5]))
+    b = hsv_to_cone(np.array([0.7, 0.0, 0.5]))
+    assert np.allclose(a, b)
+
+
+def test_cone_handles_hue_wraparound():
+    # Hues near 0 and near 1 are adjacent, not opposite.
+    near_zero = hsv_to_cone(np.array([0.001, 1.0, 1.0]))
+    near_one = hsv_to_cone(np.array([0.999, 1.0, 1.0]))
+    assert np.linalg.norm(near_zero - near_one) < 0.05
+
+
+def test_lab_to_srgb_hex_format():
+    h = lab_to_srgb_hex(np.array([60.0, 20.0, 30.0]))
+    assert h == "#c1825d"
+
+
+def test_lab_to_srgb_hex_nan_returns_empty():
+    assert lab_to_srgb_hex(np.array([np.nan, 0.0, 0.0])) == ""

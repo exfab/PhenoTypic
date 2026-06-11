@@ -12,6 +12,8 @@ import numpy as np
 
 from phenotypic.util._geometric_median import geometric_median as _geometric_median
 
+_EPS = 1e-12
+
 
 def robust_color_center(
     points: np.ndarray, max_iter: int = 50, tol: float = 1e-4
@@ -93,3 +95,39 @@ def delta_e2000_spread(deltas: np.ndarray) -> tuple[float, float, float]:
         float(np.mean(deltas)),
         float(np.percentile(deltas, 95)),
     )
+
+
+def hsv_to_cone(hsv: np.ndarray) -> np.ndarray:
+    """Embed HSV (H,S,V in [0,1]) into Cartesian cone coords (S*V*cosθ, S*V*sinθ, V)."""
+    hsv = np.asarray(hsv, dtype=np.float64)
+    theta = 2.0 * np.pi * hsv[..., 0]
+    chroma = hsv[..., 1] * hsv[..., 2]
+    x = chroma * np.cos(theta)
+    y = chroma * np.sin(theta)
+    z = hsv[..., 2]
+    return np.stack([x, y, z], axis=-1)
+
+
+def cone_to_hsv(cone: np.ndarray) -> np.ndarray:
+    """Inverse of :func:`hsv_to_cone`; returns H,S,V in [0,1]."""
+    cone = np.asarray(cone, dtype=np.float64)
+    x, y, z = cone[..., 0], cone[..., 1], cone[..., 2]
+    hue = (np.arctan2(y, x) / (2.0 * np.pi)) % 1.0
+    chroma = np.sqrt(x * x + y * y)
+    value = z
+    sat = np.where(value > _EPS, np.clip(chroma / np.where(value > _EPS, value, 1.0), 0.0, 1.0), 0.0)
+    return np.stack([hue, sat, value], axis=-1)
+
+
+def lab_to_srgb_hex(lab: np.ndarray) -> str:
+    """Convert a single CIE L*a*b* (D65) color to an sRGB ``#RRGGBB`` string.
+
+    Returns ``""`` if any coordinate is NaN (e.g. an empty object).
+    """
+    lab = np.asarray(lab, dtype=np.float64)
+    if np.isnan(lab).any():
+        return ""
+    xyz = colour.Lab_to_XYZ(lab)
+    srgb = np.clip(colour.XYZ_to_sRGB(xyz), 0.0, 1.0)
+    r, g, b = (np.round(srgb * 255.0).astype(int))
+    return f"#{r:02x}{g:02x}{b:02x}"
