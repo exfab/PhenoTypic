@@ -40,7 +40,10 @@ from phenotypic.gui._config import (
     stepped_colony_tile_size_from_trigger,
     stepped_alpha_from_trigger,
 )
-from phenotypic.gui._shared._radial import RADIAL_RESTORE_SENTINEL
+from phenotypic.gui._shared._radial import (
+    RADIAL_RESTORE_SENTINEL,
+    build_radial_body,
+)
 from phenotypic.gui.results_viewer import _ids as ids
 from phenotypic.gui.results_viewer._qc_tab.review import _ids as qc_review_ids
 from phenotypic.gui.results_viewer._filter_state import FilterSpec
@@ -647,6 +650,87 @@ def register_callbacks(
             removed_keys=removed_keys,
             dim_alpha=dim_alpha,
         )
+
+    # ----------------------------------------------------------------------
+    # 8b. Lazy-populate the radial popover body on trigger click (4c)
+    # ----------------------------------------------------------------------
+    #
+    # Mirrors the stack-popover populate-on-click pattern: tiles ship with an
+    # EMPTY radial popover body (build_radial_trigger) so a grid of many tiles
+    # stays light. The first time a tile's ▾ trigger is clicked, this MATCH
+    # callback fills the body with the wedge ring via build_radial_body,
+    # reading the vocabulary + the colony's current category under the store
+    # lock for a consistent snapshot.
+
+    @app.callback(
+        Output(
+            {
+                "type": "colony-radial-popover-body",
+                "image_file": MATCH,
+                "label": MATCH,
+            },
+            "children",
+        ),
+        Input(
+            {
+                "type": "colony-radial-trigger",
+                "image_file": MATCH,
+                "label": MATCH,
+            },
+            "n_clicks",
+        ),
+        State(
+            {"type": "colony-radial-store", "image_file": MATCH, "label": MATCH},
+            "data",
+        ),
+        prevent_initial_call=True,
+    )
+    def _populate_radial_body(n_clicks: int | None, data: Any) -> Any:
+        """Render the radial wedge ring the first time a tile's ▾ is clicked.
+
+        The trigger's co-located ``dcc.Store`` carries ``{image_file, label,
+        surface}``. This MATCH callback reads it on click and emits the wedge
+        body via :func:`build_radial_body`, snapshotting the live category
+        vocabulary and the colony's current category under
+        ``filtered_state._lock`` so a concurrent ``mark`` can't tear the read.
+        Subsequent clicks re-emit (idempotent given identical state) so
+        toggling the popover open/closed never re-fetches.
+        """
+        if not n_clicks or not isinstance(data, dict):
+            return no_update
+        raw_image_file = data.get("image_file")
+        raw_label = data.get("label")
+        surface = str(data.get("surface") or "colony")
+        if raw_image_file is None or raw_label is None:
+            return no_update
+        try:
+            image_file = str(raw_image_file)
+            label = int(raw_label)
+        except (TypeError, ValueError):
+            return no_update
+
+        # Snapshot the vocabulary + this colony's current category under the
+        # lock so the populated ring matches live store state (decision A /
+        # concurrency note).
+        with filtered_state._lock:
+            categories = filtered_state.categories()
+            custom_categories = list(filtered_state.custom_categories)
+            current_category = filtered_state.labels.get((image_file, label))
+
+        body = build_radial_body(
+            surface,
+            image_file,
+            label,
+            categories,
+            custom_categories,
+            current_category=current_category,
+        )
+        # This is a wildcard (MATCH) output, which Dash treats as multi-mode:
+        # a single ``Div`` return must be wrapped so the multi-return validator
+        # sees exactly one output value (the body) rather than trying to flatten
+        # the Div's children list. (The stack-popover callback dodges this only
+        # because it happens to return a list of rows.)
+        return (body,)
 
     # ----------------------------------------------------------------------
     # 8. Colony rendered tile-size stepper → tile-size store

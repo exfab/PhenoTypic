@@ -285,3 +285,71 @@ def test_colony_wedge_restore_round_trip(
         )
     )
     assert ("img-A", 1) in mirror_keys, "restored object should be back in the mirror"
+
+
+def test_colony_radial_body_lazy_populates_on_trigger_click(
+    output_root: OutputRoot,
+) -> None:
+    """Clicking a tile's ▾ trigger fills the empty radial popover body.
+
+    The body ships empty (build_radial_trigger); the populate-on-click MATCH
+    callback fills it with the wedge ring. POST the trigger ``n_clicks`` and
+    assert the response carries the core category wedges (e.g. ``debris``).
+    """
+    app = create_app(output_root)
+    client = app.server.test_client()
+
+    image_file, label = "img-A", 1
+    trigger_id = {
+        "type": "colony-radial-trigger",
+        "image_file": image_file,
+        "label": label,
+    }
+    store_id = {
+        "type": "colony-radial-store",
+        "image_file": image_file,
+        "label": label,
+    }
+    body_id = {
+        "type": "colony-radial-popover-body",
+        "image_file": image_file,
+        "label": label,
+    }
+    # Dispatch a MATCH callback: the ``output`` field is the registered
+    # pattern key (with ``MATCH`` placeholders) from callback_map, while the
+    # ``outputs``/``inputs``/``state`` carry the CONCRETE resolved ids.
+    out_key = _find_output_key(
+        app, "colony-radial-popover-body", "colony-radial-trigger"
+    )
+    resp = client.post(
+        "/_dash-update-component",
+        json={
+            "output": out_key,
+            "outputs": [{"id": body_id, "property": "children"}],
+            "inputs": [{"id": trigger_id, "property": "n_clicks", "value": 1}],
+            "state": [
+                {
+                    "id": store_id,
+                    "property": "data",
+                    "value": {
+                        "image_file": image_file,
+                        "label": label,
+                        "surface": "colony",
+                    },
+                }
+            ],
+            "changedPropIds": [
+                '{"image_file":"img-A","label":1,"type":"colony-radial-trigger"}.n_clicks'
+            ],
+        },
+    )
+
+    assert resp.status_code == 200, (
+        f"Populate callback returned {resp.status_code}: {resp.data[:200]}"
+    )
+    # The response carries the wedge ring; assert a couple of core wedge ids
+    # made it into the rendered body.
+    body_text = resp.get_data(as_text=True)
+    assert "colony-cat-wedge" in body_text
+    assert "debris" in body_text
+    assert RADIAL_RESTORE_SENTINEL in body_text
