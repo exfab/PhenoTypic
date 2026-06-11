@@ -77,8 +77,11 @@ def compute_generalization_gap(
     high the relative slack already covers it.
 
     Args:
-        cal_score: The winner's calibration (in-search) score (higher = better).
-        heldout_score: The winner's held-out score (higher = better).
+        cal_score: The winner's calibration (in-search) score (higher = better;
+            under the cost convention the caller passes the goodness-equivalent
+            ``1 − cal_cost`` — see Note).
+        heldout_score: The winner's held-out score (higher = better; under the
+            cost convention the caller passes ``1 − heldout_cost`` — see Note).
         rel_margin: The relative-drop margin (``HeldOutConfig.gap_margin_relative``).
         abs_margin: The absolute-drop margin (``HeldOutConfig.gap_margin_absolute``).
 

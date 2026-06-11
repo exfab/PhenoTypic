@@ -67,7 +67,7 @@ class TuneRunRoot:
             has not been written yet (a live run discovered via ``run.json``).
         storage_url: The resolved Optuna storage URL, or ``None`` when the run is
             parquet-journal-only.
-        study_name: The study name (``"tune"``).
+        study_name: The study name (``"tune_cost_v1"``).
         directions: The per-objective Optuna ``directions`` (length ≥ 2) for a
             multi-objective run, or ``None`` for a single-objective study.
         images_dir: The calibration image directory, or ``None`` when unknown
