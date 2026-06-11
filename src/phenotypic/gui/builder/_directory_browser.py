@@ -20,27 +20,12 @@ from typing import FrozenSet, List, Optional
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 from dash import dcc, html
 
+from phenotypic.gui._config import IMAGE_EXTS  # re-exported for back-compat
 from phenotypic.tools_ import PIPELINE_CONFIG_SUFFIXES, matches_any_suffix
 
 # ---------------------------------------------------------------------------
 # Public constants
 # ---------------------------------------------------------------------------
-
-#: Image file extensions surfaced by the directory tree (case-insensitive).
-IMAGE_EXTS: FrozenSet[str] = frozenset(
-    {
-        ".png",
-        ".tif",
-        ".tiff",
-        ".jpg",
-        ".jpeg",
-        ".raw",
-        ".nef",
-        ".cr2",
-        ".arw",
-        ".dng",
-    }
-)
 
 #: Pipeline-config file extensions surfaced when the modal is loading a saved
 #: pipeline. Includes the typed pipeline suffix plus legacy plain JSON files.

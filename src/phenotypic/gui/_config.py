@@ -112,6 +112,9 @@ __all__ = [
     "SANDBOX_BUILDER_TILES_SUBDIR",
     "RUN_LOG_DIRNAME",
     "VIEWER_CACHE_DIRNAME",
+    # Image file extensions
+    "IMAGE_EXTS",
+    "RAW_IMAGE_EXTS",
     # Output filenames (CLI ↔ GUI shared layout) — re-exported from phenotypic.tools_
     "MASTER_MEASUREMENTS_CSV",
     "MASTER_MEASUREMENTS_PARQUET",
@@ -326,6 +329,19 @@ RUN_LOG_DIRNAME: str = ".gui_log"
 #: Hidden directory inside the results viewer's *output* directory
 #: holding cached DZI tiles.
 VIEWER_CACHE_DIRNAME: str = ".viewer_cache"
+
+# ---------------------------------------------------------------------------
+# Image file extensions (shared by the directory browser, classifier, and the
+# Browse tab). Lifted here so neither browse nor the classifier imports the
+# builder package. ``builder/_directory_browser`` re-exports IMAGE_EXTS.
+# ---------------------------------------------------------------------------
+IMAGE_EXTS: frozenset[str] = frozenset(
+    {".png", ".tif", ".tiff", ".jpg", ".jpeg", ".raw", ".nef", ".cr2", ".arw", ".dng"}
+)
+
+#: Camera-RAW subset of :data:`IMAGE_EXTS`. These require rawpy (absent on
+#: Windows) and decode through ``phenotypic.Image.imread``.
+RAW_IMAGE_EXTS: frozenset[str] = frozenset({".raw", ".nef", ".cr2", ".arw", ".dng"})
 
 # ---------------------------------------------------------------------------
 # Output filenames (CLI ↔ GUI shared layout) — re-exported from phenotypic.tools_
