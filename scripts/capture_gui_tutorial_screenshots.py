@@ -193,6 +193,43 @@ def run_cli_once() -> None:
     print("[cli]   done")
 
 
+def _seed_error_triage_labels() -> None:
+    """Label the smallest-``Size_Area`` synthetic objects so the Error tab renders.
+
+    The Error-analysis tab only ranks measurements once a category carries
+    ``>= ErrorCutoffFinder().min_error_n`` labels (8); the synthetic run carries
+    none, so seed ~12 ``background_noise`` labels (the smallest colonies —
+    plausible debris/noise) for a populated, meaningful screenshot. The seeded
+    labels give the cutoff finder real separation → a ranked table + a
+    distribution plot with a cutoff line. Idempotent: re-marking the same keys
+    is a no-op set-write. Must run AFTER ``run_cli_once`` (it needs the master
+    parquet) and BEFORE the standalone viewer boots (so ``qc/curation_labels.parquet``
+    + ``deliverables/errors/background_noise.parquet`` exist when the tab loads).
+    """
+    import polars as pl
+
+    from phenotypic.gui.results_viewer._curation_labels import CurationLabels
+    from phenotypic.tools_ import master_measurements_parquet_path
+
+    master_path = master_measurements_parquet_path(OUTPUT_DIR)
+    if not master_path.is_file():
+        print("[seed] no master parquet — Error-tab label seeding skipped")
+        return
+    master = pl.read_parquet(master_path)
+    smallest = (
+        master.sort("Size_Area")
+        .head(12)
+        .select(["Metadata_ImageFile", "Object_Label"])
+    )
+    keys = [(str(f), int(label)) for f, label in smallest.iter_rows()]
+    store = CurationLabels.load(OUTPUT_DIR, master)
+    store.mark_many(keys, "background_noise")
+    print(
+        f"[seed] labeled {len(keys)} smallest-Size_Area objects as "
+        f"'background_noise' for the Error tab"
+    )
+
+
 def run_tune_once() -> None:
     """Produce a hermetic ``python -m phenotypic.tune`` output for the co-pilot.
 
@@ -436,6 +473,7 @@ def capture_workflow_screenshots(base_url: str, headed: bool = False) -> None:
             _capture_qc_curation_loop(context, base_url)
             _capture_qc_review(context, base_url)
             _capture_heatmap_exploration(context, base_url)
+            _capture_error_analysis(context, base_url)
             _capture_aux_wire_in_dag(context, base_url)
             _capture_wire_pipeline_as_aux(context, base_url)
             _capture_fix_validation_issues(context, base_url)
@@ -1187,6 +1225,30 @@ def _capture_heatmap_exploration(context, base_url: str) -> None:
     page.close()
 
 
+def _capture_error_analysis(context, base_url: str) -> None:
+    """Capture the Error-analysis walkthrough (empty-state via the hub viewer).
+
+    The hub-mounted viewer has no ``output_root`` until the sidebar binds
+    one, so the Error tab renders its "need more labels" empty state — the
+    natural entry-point shot for the tutorial. The populated ranked table +
+    distribution plot + good-baseline toggle are captured from the standalone
+    viewer in :func:`_error_analysis_loaded_shots` (it has a real
+    ``output_root`` carrying the seeded ``qc/curation_labels.parquet``).
+    """
+    print("[shot] workflow=error_analysis")
+    page = _new_page(context, base_url, "/results/")
+    page.wait_for_timeout(800)
+    tab = page.locator('a[role="tab"]:has-text("Error")').first
+    if tab.count() > 0:
+        try:
+            tab.click(timeout=2000)
+            page.wait_for_timeout(600)
+        except Exception:  # pragma: no cover - best-effort
+            pass
+    _save(page, "error_analysis", "01_empty_state.png")
+    page.close()
+
+
 def _expand_palette_accordions(page) -> None:
     """Open every collapsed palette accordion section.
 
@@ -1585,6 +1647,7 @@ def capture_standalone_viewer_screenshots(headed: bool = False) -> None:
                 _qc_curation_loop_loaded_shots(page)
                 _qc_review_loaded_shots(page)
                 _heatmap_exploration_loaded_shots(page)
+                _error_analysis_loaded_shots(page)
 
                 page.close()
             finally:
@@ -1710,6 +1773,60 @@ def _heatmap_exploration_loaded_shots(page) -> None:
             _save(page, "heatmap_exploration", "03_color_picker_open.png")
         except Exception:  # pragma: no cover - best-effort
             pass
+
+
+def _error_analysis_loaded_shots(page) -> None:
+    """Capture the populated Error-analysis tab in the standalone viewer.
+
+    The standalone launcher has a real ``output_root`` carrying the seeded
+    ``qc/curation_labels.parquet`` (12 ``background_noise`` labels written by
+    :func:`_seed_error_triage_labels`), so flipping to the Error tab ranks the
+    measurements that separate that error category from the all-unlabeled good
+    baseline. The recompute only fires when the tab is active (off-tab
+    ``PreventUpdate``), so click the tab and wait for the ranked
+    ``dash_table.DataTable`` cells before shooting. Captures:
+
+    * ``02_ranked_table.png`` — category chips + ranked cutoff table
+      (measurement, AUC, suggested cutoff, recall/specificity, BH-p).
+    * ``03_distribution_cutoff.png`` — the good-vs-error distribution figure
+      with the draggable cutoff line + recall/specificity readout.
+    * ``04_good_baseline_toggle.png`` — the All-unlabeled / Verified-only
+      good-baseline toggle + the verified-good count badge.
+    """
+    tab = page.locator('a[role="tab"]:has-text("Error")').first
+    if tab.count() == 0:
+        print("[shot]   error_analysis: Error tab not found — loaded captures skipped")
+        return
+    try:
+        tab.click(timeout=3000)
+        # The ranked table is a dash_table.DataTable; its rendered body cells
+        # carry the ``.dash-cell`` class. Wait for them so the screenshot lands
+        # on the populated table, not the recompute-in-flight or empty state.
+        page.wait_for_selector("#error-cutoff-table .dash-cell", timeout=8000)
+        page.wait_for_timeout(800)
+    except Exception:  # pragma: no cover - best-effort
+        pass
+    _save(page, "error_analysis", "02_ranked_table.png")
+
+    # The good-vs-error distribution figure (dcc.Graph) with the cutoff line.
+    figure = page.locator("#error-distribution-figure")
+    if figure.count() > 0:
+        try:
+            figure.scroll_into_view_if_needed(timeout=1500)
+        except Exception:  # pragma: no cover - best-effort
+            pass
+        page.wait_for_timeout(400)
+        _save(page, "error_analysis", "03_distribution_cutoff.png")
+
+    # Good-baseline toggle (All unlabeled / Verified only) + verified count.
+    toggle = page.locator("#error-good-mode-toggle").first
+    if toggle.count() > 0:
+        try:
+            toggle.scroll_into_view_if_needed(timeout=1500)
+            page.wait_for_timeout(300)
+        except Exception:  # pragma: no cover - best-effort
+            pass
+        _save(page, "error_analysis", "04_good_baseline_toggle.png")
 
 
 # ---------------------------------------------------------------------------
@@ -2026,6 +2143,19 @@ def main(argv: list[str] | None = None) -> int:
                     "an empty sandbox).",
                     file=sys.stderr,
             )
+
+    # Seed synthetic error-category labels so the Error-analysis tab renders a
+    # populated ranked table in the standalone-viewer capture. Runs after the
+    # CLI master exists (or after a ``--skip-cli`` reuse of a prior master) and
+    # before any GUI boots. Idempotent + non-fatal.
+    try:
+        _seed_error_triage_labels()
+    except Exception as exc:  # noqa: BLE001 - capture run must not abort here
+        print(
+                f"[seed] FAILED ({exc!r}); continuing — the Error-analysis "
+                "loaded screenshots may show the empty state.",
+                file=sys.stderr,
+        )
 
     # Build the hermetic tune output the loaded co-pilot capture reads. A
     # failure here is non-fatal: the standalone-tune capture skips (no marker)
