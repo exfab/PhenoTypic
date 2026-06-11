@@ -2325,6 +2325,34 @@ records from — the prior run’s events.</p>
 </dd></dl>
 
 <dl class="py function">
+<dt class="sig sig-object py" id="phenotypic.tools_.curation_labels_parquet_path">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.</span></span><span class="sig-name descname"><span class="pre">curation_labels_parquet_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></span><a class="reference internal" href="../_modules/phenotypic/tools_/_io_constants.html#curation_labels_parquet_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.curation_labels_parquet_path" title="Link to this definition">#</a></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/qc/curation_labels.parquet</span></code> (durable labels store).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>output_dir</strong> (<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="phenotypic.tools_.custom_categories_json_path">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.</span></span><span class="sig-name descname"><span class="pre">custom_categories_json_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></span><a class="reference internal" href="../_modules/phenotypic/tools_/_io_constants.html#custom_categories_json_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.custom_categories_json_path" title="Link to this definition">#</a></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/qc/custom_categories.json</span></code> (custom-category registry).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>output_dir</strong> (<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
 <dt class="sig sig-object py" id="phenotypic.tools_.dashboard_html_path">
 <span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.</span></span><span class="sig-name descname"><span class="pre">dashboard_html_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></span><a class="reference internal" href="../_modules/phenotypic/tools_/_io_constants.html#dashboard_html_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.dashboard_html_path" title="Link to this definition">#</a></dt>
 <dd><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/dashboard.html</span></code>.</p>
@@ -2461,6 +2489,80 @@ only the typed tail, preserving the user-provided stem and case.</p>
 <li><p><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a>)</p></li>
 <li><p><strong>suffix</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>)</p></li>
 </ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="phenotypic.tools_.error_analysis_csv_path">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.</span></span><span class="sig-name descname"><span class="pre">error_analysis_csv_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></span><a class="reference internal" href="../_modules/phenotypic/tools_/_io_constants.html#error_analysis_csv_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.error_analysis_csv_path" title="Link to this definition">#</a></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/error_analysis.csv</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>output_dir</strong> (<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="phenotypic.tools_.error_analysis_html_path">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.</span></span><span class="sig-name descname"><span class="pre">error_analysis_html_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></span><a class="reference internal" href="../_modules/phenotypic/tools_/_io_constants.html#error_analysis_html_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.error_analysis_html_path" title="Link to this definition">#</a></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/error_analysis.html</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>output_dir</strong> (<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="phenotypic.tools_.error_analysis_parquet_path">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.</span></span><span class="sig-name descname"><span class="pre">error_analysis_parquet_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></span><a class="reference internal" href="../_modules/phenotypic/tools_/_io_constants.html#error_analysis_parquet_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.error_analysis_parquet_path" title="Link to this definition">#</a></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/error_analysis.parquet</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>output_dir</strong> (<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="phenotypic.tools_.error_category_parquet_path">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.</span></span><span class="sig-name descname"><span class="pre">error_category_parquet_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">category</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></span><a class="reference internal" href="../_modules/phenotypic/tools_/_io_constants.html#error_category_parquet_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.error_category_parquet_path" title="Link to this definition">#</a></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/errors/&lt;category&gt;.parquet</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>output_dir</strong> (<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a>) – Run output directory.</p></li>
+<li><p><strong>category</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – A bare, already-sanitized category token (e.g.
+<code class="docutils literal notranslate"><span class="pre">&quot;background_noise&quot;</span></code>). The caller is responsible for sanitization.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="phenotypic.tools_.errors_dir">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.</span></span><span class="sig-name descname"><span class="pre">errors_dir</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></span><a class="reference internal" href="../_modules/phenotypic/tools_/_io_constants.html#errors_dir"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.errors_dir" title="Link to this definition">#</a></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/errors/</span></code> (per-category error parquets).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>output_dir</strong> (<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a>)</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a></p>
@@ -3473,6 +3575,20 @@ into the hidden tune cache. A legacy run wrote it at the output root; use
 <dt class="sig sig-object py" id="phenotypic.tools_.tuning_spec_path">
 <span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.</span></span><span class="sig-name descname"><span class="pre">tuning_spec_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></span><a class="reference internal" href="../_modules/phenotypic/tools_/_io_constants.html#tuning_spec_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.tuning_spec_path" title="Link to this definition">#</a></dt>
 <dd><p>Return the canonical typed tuning spec path under <code class="docutils literal notranslate"><span class="pre">deliverables/</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>output_dir</strong> (<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="phenotypic.tools_.verified_parquet_path">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.</span></span><span class="sig-name descname"><span class="pre">verified_parquet_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></span><a class="reference internal" href="../_modules/phenotypic/tools_/_io_constants.html#verified_parquet_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.verified_parquet_path" title="Link to this definition">#</a></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/verified.parquet</span></code> (GUI-written, §9).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>output_dir</strong> (<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a>)</p>
@@ -4496,6 +4612,8 @@ into the hidden tune cache. A legacy run wrote it at the output root; use
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.chunk_state_path"><code class="docutils literal notranslate"><span class="pre">chunk_state_path()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.chunks_dir"><code class="docutils literal notranslate"><span class="pre">chunks_dir()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.clear_machine_state"><code class="docutils literal notranslate"><span class="pre">clear_machine_state()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.curation_labels_parquet_path"><code class="docutils literal notranslate"><span class="pre">curation_labels_parquet_path()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.custom_categories_json_path"><code class="docutils literal notranslate"><span class="pre">custom_categories_json_path()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.dashboard_html_path"><code class="docutils literal notranslate"><span class="pre">dashboard_html_path()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.dataset_hdf_dir"><code class="docutils literal notranslate"><span class="pre">dataset_hdf_dir()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.dataset_measurements_dir"><code class="docutils literal notranslate"><span class="pre">dataset_measurements_dir()</span></code></a></li>
@@ -4504,6 +4622,11 @@ into the hidden tune cache. A legacy run wrote it at the output root; use
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.default_output_dir_name"><code class="docutils literal notranslate"><span class="pre">default_output_dir_name()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.deliverables_dir"><code class="docutils literal notranslate"><span class="pre">deliverables_dir()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.ensure_typed_json_suffix"><code class="docutils literal notranslate"><span class="pre">ensure_typed_json_suffix()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.error_analysis_csv_path"><code class="docutils literal notranslate"><span class="pre">error_analysis_csv_path()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.error_analysis_html_path"><code class="docutils literal notranslate"><span class="pre">error_analysis_html_path()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.error_analysis_parquet_path"><code class="docutils literal notranslate"><span class="pre">error_analysis_parquet_path()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.error_category_parquet_path"><code class="docutils literal notranslate"><span class="pre">error_category_parquet_path()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.errors_dir"><code class="docutils literal notranslate"><span class="pre">errors_dir()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.event_log_path"><code class="docutils literal notranslate"><span class="pre">event_log_path()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.failures_jsonl_path"><code class="docutils literal notranslate"><span class="pre">failures_jsonl_path()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.generalization_path"><code class="docutils literal notranslate"><span class="pre">generalization_path()</span></code></a></li>
@@ -4566,6 +4689,7 @@ into the hidden tune cache. A legacy run wrote it at the output root; use
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.tune_cache_splits_dir"><code class="docutils literal notranslate"><span class="pre">tune_cache_splits_dir()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.tune_cache_study_db_path"><code class="docutils literal notranslate"><span class="pre">tune_cache_study_db_path()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.tuning_spec_path"><code class="docutils literal notranslate"><span class="pre">tuning_spec_path()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.verified_parquet_path"><code class="docutils literal notranslate"><span class="pre">verified_parquet_path()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#subpackages">Subpackages</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#submodules">Submodules</a></li>
 </ul>

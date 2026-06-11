@@ -2746,6 +2746,675 @@ which category it belongs to without explicitly referencing the class.</p>
 </dd></dl>
 
 <dl class="py class">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.schema.</span></span><span class="sig-name descname"><span class="pre">CURATION</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/schema/_curation.html#CURATION"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.schema.CURATION" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#phenotypic.schema.MeasurementInfo" title="phenotypic.schema._measurement_info.MeasurementInfo"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasurementInfo</span></code></a></p>
+<p>Curation-state columns attached to derived measurement frames.</p>
+<p><code class="docutils literal notranslate"><span class="pre">Curation_Category</span></code> carries the <a class="reference internal" href="#phenotypic.schema.ErrorCategory" title="phenotypic.schema.ErrorCategory"><code class="xref py py-class docutils literal notranslate"><span class="pre">ErrorCategory</span></code></a> bare label (or a
+custom category token) for each removed object in the per-category error
+parquets.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.append_rst_to_doc">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">append_rst_to_doc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">module</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><span class="pre">object</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.schema.CURATION.append_rst_to_doc" title="Link to this definition">#</a></dt>
+<dd><p>Append the measurement documentation table to a module or class docstring.</p>
+<p>Generates the RST documentation table for this measurement enumeration and appends
+it to the provided module’s or class’s existing docstring. This is useful for
+automatically documenting which measurements a class produces or uses.</p>
+<p>If the input is a string, it is treated as the docstring itself. If it is an object
+(class, function, module), its __doc__ attribute is used.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>module</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><em>object</em></a>) – Either a docstring string or an object (class, function,
+module) whose __doc__ attribute contains the docstring. The existing
+docstring is preserved, and the measurement table is appended with a blank
+line separator.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>The original docstring (or string) with the RST measurement table appended,</dt><dd><p>separated by two blank lines. The returned string is ready to be assigned back
+to the target’s __doc__ attribute.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.category">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">category</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../_modules/phenotypic/schema/_curation.html#CURATION.category"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.schema.CURATION.category" title="Link to this definition">#</a></dt>
+<dd><p>Return the category name for this measurement enumeration.</p>
+<p>Subclasses must implement this method to provide a category name that will be used
+to prefix all measurement labels. This ensures consistent naming conventions across
+the codebase.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><dl class="simple">
+<dt>The category name (e.g., ‘Shape’, ‘Color’, ‘Texture’). This string is</dt><dd><p>prepended to each measurement label with an underscore separator to form
+the full header name (e.g., ‘Shape_Area’).</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.14)"><strong>NotImplementedError</strong></a> – If not implemented by a subclass.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.get_headers">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_headers</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#phenotypic.schema.CURATION.get_headers" title="Link to this definition">#</a></dt>
+<dd><p>Get all measurement headers with category prefix.</p>
+<p>Returns a list of the full enumeration values (with category prefix) for all
+measurements defined in this enumeration. These strings are suitable for use as
+DataFrame column names, dictionary keys, or in any context where the full
+categorized name is needed.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><dl class="simple">
+<dt>List of prefixed measurement names in enumeration order</dt><dd><p>(e.g., [‘Shape_Area’, ‘Shape_Perimeter’]). Each header includes the
+category prefix separated by an underscore.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)">list</a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.get_labels">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_labels</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#phenotypic.schema.CURATION.get_labels" title="Link to this definition">#</a></dt>
+<dd><p>Get all measurement labels without category prefix.</p>
+<p>Returns a list of the short labels (without category prefix) for all measurements
+defined in this enumeration. These are the first element of each enum value tuple.
+Useful for creating human-readable lists or column names when the category context
+is already established.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><dl class="simple">
+<dt>List of measurement labels in enumeration order (e.g.,</dt><dd><p>[‘Area’, ‘Perimeter’]). Does not include the category prefix; to get
+prefixed names, use get_headers().</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)">list</a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.rst_table">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">rst_table</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">header</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">('Name',</span> <span class="pre">'Description')</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.schema.CURATION.rst_table" title="Link to this definition">#</a></dt>
+<dd><p>Generate an RST (reStructuredText) table documenting the measurements.</p>
+<p>Creates a formatted list-table in reStructuredText format that documents all
+measurements in this enumeration, including their labels and descriptions. This
+is useful for generating API documentation, parameter guides, or measurement
+reference tables that will be rendered in Sphinx documentation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>title</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – The title for the RST table. Defaults to the class name
+(e.g., ‘SHAPE’). The title is formatted as “Category: <strong>{title}</strong>” in the
+output.</p></li>
+<li><p><strong>header</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>]</em><em>, </em><em>optional</em>) – A tuple of (left_column, right_column)
+header names. Defaults to (“Name”, “Description”). The left column typically
+contains measurement labels and the right column contains their descriptions.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl>
+<dt>A formatted reStructuredText list-table string. The output includes:</dt><dd><ul class="simple">
+<li><p>RST list-table directive with the title</p></li>
+<li><p>Column headers (Name and Description by default)</p></li>
+<li><p>One row per measurement with label and description</p></li>
+</ul>
+<p>The returned string is ready to be embedded in Sphinx documentation files
+or appended to docstrings.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.maketrans">
+<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">maketrans</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.CURATION.maketrans" title="Link to this definition">#</a></dt>
+<dd><p>Return a translation table usable for str.translate().</p>
+<p>If there is only one argument, it must be a dictionary mapping Unicode
+ordinals (integers) or characters to Unicode ordinals, strings or None.
+Character keys will be then converted to ordinals.
+If there are two arguments, they must be strings of equal length, and
+in the resulting dictionary, each character in x will be mapped to the
+character at the same position in y. If there is a third argument, it
+must be a string, whose characters will be mapped to None in the result.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.__dir__">
+<span class="sig-name descname"><span class="pre">__dir__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.CURATION.__dir__" title="Link to this definition">#</a></dt>
+<dd><p>Returns public methods and other interesting attributes.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.__new_member__">
+<span class="sig-name descname"><span class="pre">__new_member__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">label</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">desc</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.CURATION.__new_member__" title="Link to this definition">#</a></dt>
+<dd><p>Create a new measurement enumeration member with prefixed name.</p>
+<p>Converts the input label and description into an enumeration member whose string
+value is automatically prefixed with the category name. The label and description
+are stored as instance attributes for convenient access.</p>
+<p>This method is called automatically by Python’s Enum machinery when defining enum
+members. The enum member’s value becomes the full prefixed name (e.g.,
+‘Shape_Area’), while the label and description are stored separately as instance
+attributes.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>label</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – The short label for the measurement without category prefix
+(e.g., ‘Area’). This will be combined with the category name to create
+the full enumeration value.</p></li>
+<li><p><strong>desc</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – The description of what the measurement represents. If
+not provided, defaults to an empty string. This should briefly explain
+what the measurement measures.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>An enumeration member that behaves as a string with the value</dt><dd><p>’{category}_{label}’ (e.g., ‘Shape_Area’). The instance also has label,
+desc, and pair attributes set.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#phenotypic.schema.MeasurementInfo" title="phenotypic.schema.MeasurementInfo">MeasurementInfo</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.__str__">
+<span class="sig-name descname"><span class="pre">__str__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.schema.CURATION.__str__" title="Link to this definition">#</a></dt>
+<dd><p>Return the string representation of this measurement as the prefixed name.</p>
+<p>Returns the full enumeration value, which is the category-prefixed label
+(e.g., ‘Shape_Area’). This is used when the measurement is converted to a string
+or used in string formatting.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The full prefixed name of the measurement (e.g., ‘{category}_{label}’).</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.capitalize">
+<span class="sig-name descname"><span class="pre">capitalize</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.CURATION.capitalize" title="Link to this definition">#</a></dt>
+<dd><p>Return a capitalized version of the string.</p>
+<p>More specifically, make the first character have upper case and the rest lower
+case.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.casefold">
+<span class="sig-name descname"><span class="pre">casefold</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.CURATION.casefold" title="Link to this definition">#</a></dt>
+<dd><p>Return a version of the string suitable for caseless comparisons.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.center">
+<span class="sig-name descname"><span class="pre">center</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">width</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fillchar</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'</span> <span class="pre">'</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.CURATION.center" title="Link to this definition">#</a></dt>
+<dd><p>Return a centered string of length width.</p>
+<p>Padding is done using the specified fill character (default is a space).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.count">
+<span class="sig-name descname"><span class="pre">count</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sub</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">start</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em><span class="optional">]</span><span class="optional">]</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="headerlink" href="#phenotypic.schema.CURATION.count" title="Link to this definition">#</a></dt>
+<dd><p>Return the number of non-overlapping occurrences of substring sub in
+string S[start:end].  Optional arguments start and end are
+interpreted as in slice notation.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.encode">
+<span class="sig-name descname"><span class="pre">encode</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">encoding</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'utf-8'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">errors</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'strict'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.CURATION.encode" title="Link to this definition">#</a></dt>
+<dd><p>Encode the string using the codec registered for encoding.</p>
+<dl class="simple">
+<dt>encoding</dt><dd><p>The encoding in which to encode the string.</p>
+</dd>
+<dt>errors</dt><dd><p>The error handling scheme to use for encoding errors.
+The default is ‘strict’ meaning that encoding errors raise a
+UnicodeEncodeError.  Other possible values are ‘ignore’, ‘replace’ and
+‘xmlcharrefreplace’ as well as any other name registered with
+codecs.register_error that can handle UnicodeEncodeErrors.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.endswith">
+<span class="sig-name descname"><span class="pre">endswith</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">suffix</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">start</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em><span class="optional">]</span><span class="optional">]</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="headerlink" href="#phenotypic.schema.CURATION.endswith" title="Link to this definition">#</a></dt>
+<dd><p>Return True if S ends with the specified suffix, False otherwise.
+With optional start, test S beginning at that position.
+With optional end, stop comparing S at that position.
+suffix can also be a tuple of strings to try.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.expandtabs">
+<span class="sig-name descname"><span class="pre">expandtabs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tabsize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">8</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.CURATION.expandtabs" title="Link to this definition">#</a></dt>
+<dd><p>Return a copy where all tab characters are expanded using spaces.</p>
+<p>If tabsize is not given, a tab size of 8 characters is assumed.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.find">
+<span class="sig-name descname"><span class="pre">find</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sub</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">start</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em><span class="optional">]</span><span class="optional">]</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="headerlink" href="#phenotypic.schema.CURATION.find" title="Link to this definition">#</a></dt>
+<dd><p>Return the lowest index in S where substring sub is found,
+such that sub is contained within S[start:end].  Optional
+arguments start and end are interpreted as in slice notation.</p>
+<p>Return -1 on failure.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.format">
+<span class="sig-name descname"><span class="pre">format</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.schema.CURATION.format" title="Link to this definition">#</a></dt>
+<dd><p>Return a formatted version of S, using substitutions from args and kwargs.
+The substitutions are identified by braces (‘{’ and ‘}’).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.format_map">
+<span class="sig-name descname"><span class="pre">format_map</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mapping</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.schema.CURATION.format_map" title="Link to this definition">#</a></dt>
+<dd><p>Return a formatted version of S, using substitutions from mapping.
+The substitutions are identified by braces (‘{’ and ‘}’).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.index">
+<span class="sig-name descname"><span class="pre">index</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sub</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">start</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em><span class="optional">]</span><span class="optional">]</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="headerlink" href="#phenotypic.schema.CURATION.index" title="Link to this definition">#</a></dt>
+<dd><p>Return the lowest index in S where substring sub is found,
+such that sub is contained within S[start:end].  Optional
+arguments start and end are interpreted as in slice notation.</p>
+<p>Raises ValueError when the substring is not found.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.isalnum">
+<span class="sig-name descname"><span class="pre">isalnum</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.CURATION.isalnum" title="Link to this definition">#</a></dt>
+<dd><p>Return True if the string is an alpha-numeric string, False otherwise.</p>
+<p>A string is alpha-numeric if all characters in the string are alpha-numeric and
+there is at least one character in the string.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.isalpha">
+<span class="sig-name descname"><span class="pre">isalpha</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.CURATION.isalpha" title="Link to this definition">#</a></dt>
+<dd><p>Return True if the string is an alphabetic string, False otherwise.</p>
+<p>A string is alphabetic if all characters in the string are alphabetic and there
+is at least one character in the string.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.isascii">
+<span class="sig-name descname"><span class="pre">isascii</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.CURATION.isascii" title="Link to this definition">#</a></dt>
+<dd><p>Return True if all characters in the string are ASCII, False otherwise.</p>
+<p>ASCII characters have code points in the range U+0000-U+007F.
+Empty string is ASCII too.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.isdecimal">
+<span class="sig-name descname"><span class="pre">isdecimal</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.CURATION.isdecimal" title="Link to this definition">#</a></dt>
+<dd><p>Return True if the string is a decimal string, False otherwise.</p>
+<p>A string is a decimal string if all characters in the string are decimal and
+there is at least one character in the string.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.isdigit">
+<span class="sig-name descname"><span class="pre">isdigit</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.CURATION.isdigit" title="Link to this definition">#</a></dt>
+<dd><p>Return True if the string is a digit string, False otherwise.</p>
+<p>A string is a digit string if all characters in the string are digits and there
+is at least one character in the string.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.isidentifier">
+<span class="sig-name descname"><span class="pre">isidentifier</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.CURATION.isidentifier" title="Link to this definition">#</a></dt>
+<dd><p>Return True if the string is a valid Python identifier, False otherwise.</p>
+<p>Call keyword.iskeyword(s) to test whether string s is a reserved identifier,
+such as “def” or “class”.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.islower">
+<span class="sig-name descname"><span class="pre">islower</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.CURATION.islower" title="Link to this definition">#</a></dt>
+<dd><p>Return True if the string is a lowercase string, False otherwise.</p>
+<p>A string is lowercase if all cased characters in the string are lowercase and
+there is at least one cased character in the string.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.isnumeric">
+<span class="sig-name descname"><span class="pre">isnumeric</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.CURATION.isnumeric" title="Link to this definition">#</a></dt>
+<dd><p>Return True if the string is a numeric string, False otherwise.</p>
+<p>A string is numeric if all characters in the string are numeric and there is at
+least one character in the string.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.isprintable">
+<span class="sig-name descname"><span class="pre">isprintable</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.CURATION.isprintable" title="Link to this definition">#</a></dt>
+<dd><p>Return True if all characters in the string are printable, False otherwise.</p>
+<p>A character is printable if repr() may use it in its output.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.isspace">
+<span class="sig-name descname"><span class="pre">isspace</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.CURATION.isspace" title="Link to this definition">#</a></dt>
+<dd><p>Return True if the string is a whitespace string, False otherwise.</p>
+<p>A string is whitespace if all characters in the string are whitespace and there
+is at least one character in the string.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.istitle">
+<span class="sig-name descname"><span class="pre">istitle</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.CURATION.istitle" title="Link to this definition">#</a></dt>
+<dd><p>Return True if the string is a title-cased string, False otherwise.</p>
+<p>In a title-cased string, upper- and title-case characters may only
+follow uncased characters and lowercase characters only cased ones.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.isupper">
+<span class="sig-name descname"><span class="pre">isupper</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.CURATION.isupper" title="Link to this definition">#</a></dt>
+<dd><p>Return True if the string is an uppercase string, False otherwise.</p>
+<p>A string is uppercase if all cased characters in the string are uppercase and
+there is at least one cased character in the string.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.join">
+<span class="sig-name descname"><span class="pre">join</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">iterable</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.CURATION.join" title="Link to this definition">#</a></dt>
+<dd><p>Concatenate any number of strings.</p>
+<p>The string whose method is called is inserted in between each given string.
+The result is returned as a new string.</p>
+<p>Example: ‘.’.join([‘ab’, ‘pq’, ‘rs’]) -&gt; ‘ab.pq.rs’</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.ljust">
+<span class="sig-name descname"><span class="pre">ljust</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">width</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fillchar</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'</span> <span class="pre">'</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.CURATION.ljust" title="Link to this definition">#</a></dt>
+<dd><p>Return a left-justified string of length width.</p>
+<p>Padding is done using the specified fill character (default is a space).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.lower">
+<span class="sig-name descname"><span class="pre">lower</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.CURATION.lower" title="Link to this definition">#</a></dt>
+<dd><p>Return a copy of the string converted to lowercase.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.lstrip">
+<span class="sig-name descname"><span class="pre">lstrip</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">chars</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.CURATION.lstrip" title="Link to this definition">#</a></dt>
+<dd><p>Return a copy of the string with leading whitespace removed.</p>
+<p>If chars is given and not None, remove characters in chars instead.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.partition">
+<span class="sig-name descname"><span class="pre">partition</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sep</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.CURATION.partition" title="Link to this definition">#</a></dt>
+<dd><p>Partition the string into three parts using the given separator.</p>
+<p>This will search for the separator in the string.  If the separator is found,
+returns a 3-tuple containing the part before the separator, the separator
+itself, and the part after it.</p>
+<p>If the separator is not found, returns a 3-tuple containing the original string
+and two empty strings.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.removeprefix">
+<span class="sig-name descname"><span class="pre">removeprefix</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prefix</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.CURATION.removeprefix" title="Link to this definition">#</a></dt>
+<dd><p>Return a str with the given prefix string removed if present.</p>
+<p>If the string starts with the prefix string, return string[len(prefix):].
+Otherwise, return a copy of the original string.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.removesuffix">
+<span class="sig-name descname"><span class="pre">removesuffix</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">suffix</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.CURATION.removesuffix" title="Link to this definition">#</a></dt>
+<dd><p>Return a str with the given suffix string removed if present.</p>
+<p>If the string ends with the suffix string and that suffix is not empty,
+return string[:-len(suffix)]. Otherwise, return a copy of the original
+string.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.replace">
+<span class="sig-name descname"><span class="pre">replace</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">old</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">new</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.CURATION.replace" title="Link to this definition">#</a></dt>
+<dd><p>Return a copy with all occurrences of substring old replaced by new.</p>
+<blockquote>
+<div><dl class="simple">
+<dt>count</dt><dd><p>Maximum number of occurrences to replace.
+-1 (the default value) means replace all occurrences.</p>
+</dd>
+</dl>
+</div></blockquote>
+<p>If the optional argument count is given, only the first count occurrences are
+replaced.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.rfind">
+<span class="sig-name descname"><span class="pre">rfind</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sub</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">start</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em><span class="optional">]</span><span class="optional">]</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="headerlink" href="#phenotypic.schema.CURATION.rfind" title="Link to this definition">#</a></dt>
+<dd><p>Return the highest index in S where substring sub is found,
+such that sub is contained within S[start:end].  Optional
+arguments start and end are interpreted as in slice notation.</p>
+<p>Return -1 on failure.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.rindex">
+<span class="sig-name descname"><span class="pre">rindex</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sub</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">start</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em><span class="optional">]</span><span class="optional">]</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="headerlink" href="#phenotypic.schema.CURATION.rindex" title="Link to this definition">#</a></dt>
+<dd><p>Return the highest index in S where substring sub is found,
+such that sub is contained within S[start:end].  Optional
+arguments start and end are interpreted as in slice notation.</p>
+<p>Raises ValueError when the substring is not found.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.rjust">
+<span class="sig-name descname"><span class="pre">rjust</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">width</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fillchar</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'</span> <span class="pre">'</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.CURATION.rjust" title="Link to this definition">#</a></dt>
+<dd><p>Return a right-justified string of length width.</p>
+<p>Padding is done using the specified fill character (default is a space).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.rpartition">
+<span class="sig-name descname"><span class="pre">rpartition</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sep</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.CURATION.rpartition" title="Link to this definition">#</a></dt>
+<dd><p>Partition the string into three parts using the given separator.</p>
+<p>This will search for the separator in the string, starting at the end. If
+the separator is found, returns a 3-tuple containing the part before the
+separator, the separator itself, and the part after it.</p>
+<p>If the separator is not found, returns a 3-tuple containing two empty strings
+and the original string.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.rsplit">
+<span class="sig-name descname"><span class="pre">rsplit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sep</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">maxsplit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.CURATION.rsplit" title="Link to this definition">#</a></dt>
+<dd><p>Return a list of the substrings in the string, using sep as the separator string.</p>
+<blockquote>
+<div><dl>
+<dt>sep</dt><dd><p>The separator used to split the string.</p>
+<p>When set to None (the default value), will split on any whitespace
+character (including n r t f and spaces) and will discard
+empty strings from the result.</p>
+</dd>
+<dt>maxsplit</dt><dd><p>Maximum number of splits.
+-1 (the default value) means no limit.</p>
+</dd>
+</dl>
+</div></blockquote>
+<p>Splitting starts at the end of the string and works to the front.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.rstrip">
+<span class="sig-name descname"><span class="pre">rstrip</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">chars</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.CURATION.rstrip" title="Link to this definition">#</a></dt>
+<dd><p>Return a copy of the string with trailing whitespace removed.</p>
+<p>If chars is given and not None, remove characters in chars instead.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.split">
+<span class="sig-name descname"><span class="pre">split</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sep</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">maxsplit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.CURATION.split" title="Link to this definition">#</a></dt>
+<dd><p>Return a list of the substrings in the string, using sep as the separator string.</p>
+<blockquote>
+<div><dl>
+<dt>sep</dt><dd><p>The separator used to split the string.</p>
+<p>When set to None (the default value), will split on any whitespace
+character (including n r t f and spaces) and will discard
+empty strings from the result.</p>
+</dd>
+<dt>maxsplit</dt><dd><p>Maximum number of splits.
+-1 (the default value) means no limit.</p>
+</dd>
+</dl>
+</div></blockquote>
+<p>Splitting starts at the front of the string and works to the end.</p>
+<p>Note, str.split() is mainly useful for data that has been intentionally
+delimited.  With natural text that includes punctuation, consider using
+the regular expression module.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.splitlines">
+<span class="sig-name descname"><span class="pre">splitlines</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">keepends</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.CURATION.splitlines" title="Link to this definition">#</a></dt>
+<dd><p>Return a list of the lines in the string, breaking at line boundaries.</p>
+<p>Line breaks are not included in the resulting list unless keepends is given and
+true.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.startswith">
+<span class="sig-name descname"><span class="pre">startswith</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prefix</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">start</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em><span class="optional">]</span><span class="optional">]</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="headerlink" href="#phenotypic.schema.CURATION.startswith" title="Link to this definition">#</a></dt>
+<dd><p>Return True if S starts with the specified prefix, False otherwise.
+With optional start, test S beginning at that position.
+With optional end, stop comparing S at that position.
+prefix can also be a tuple of strings to try.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.strip">
+<span class="sig-name descname"><span class="pre">strip</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">chars</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.CURATION.strip" title="Link to this definition">#</a></dt>
+<dd><p>Return a copy of the string with leading and trailing whitespace removed.</p>
+<p>If chars is given and not None, remove characters in chars instead.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.swapcase">
+<span class="sig-name descname"><span class="pre">swapcase</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.CURATION.swapcase" title="Link to this definition">#</a></dt>
+<dd><p>Convert uppercase characters to lowercase and lowercase characters to uppercase.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.title">
+<span class="sig-name descname"><span class="pre">title</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.CURATION.title" title="Link to this definition">#</a></dt>
+<dd><p>Return a version of the string where each word is titlecased.</p>
+<p>More specifically, words start with uppercased characters and all remaining
+cased characters have lower case.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.translate">
+<span class="sig-name descname"><span class="pre">translate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">table</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.CURATION.translate" title="Link to this definition">#</a></dt>
+<dd><p>Replace each character in the string using the given translation table.</p>
+<blockquote>
+<div><dl class="simple">
+<dt>table</dt><dd><p>Translation table, which must be a mapping of Unicode ordinals to
+Unicode ordinals, strings, or None.</p>
+</dd>
+</dl>
+</div></blockquote>
+<p>The table must implement lookup/indexing via __getitem__, for instance a
+dictionary or list.  If this operation raises LookupError, the character is
+left untouched.  Characters mapped to None are deleted.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.upper">
+<span class="sig-name descname"><span class="pre">upper</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.CURATION.upper" title="Link to this definition">#</a></dt>
+<dd><p>Return a copy of the string converted to uppercase.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.zfill">
+<span class="sig-name descname"><span class="pre">zfill</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">width</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.CURATION.zfill" title="Link to this definition">#</a></dt>
+<dd><p>Pad a numeric string with zeros on the left, to fill a field of the given width.</p>
+<p>The string is never truncated.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.CATEGORY">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">CATEGORY</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#phenotypic.schema.CURATION.CATEGORY" title="Link to this definition">#</a></dt>
+<dd><p>Get the category name for this measurement instance.</p>
+<p>Provides instance-level access to the category name defined by the category()
+classmethod. This is useful when you have a measurement instance and need to know
+which category it belongs to without explicitly referencing the class.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The category name from the enum class’s category() method.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.ERROR_CATEGORY">
+<span class="sig-name descname"><span class="pre">ERROR_CATEGORY</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'Curation_Category'</span></em><a class="headerlink" href="#phenotypic.schema.CURATION.ERROR_CATEGORY" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.desc">
+<span class="sig-name descname"><span class="pre">desc</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#phenotypic.schema.CURATION.desc" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.label">
+<span class="sig-name descname"><span class="pre">label</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#phenotypic.schema.CURATION.label" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.schema.CURATION.pair">
+<span class="sig-name descname"><span class="pre">pair</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#phenotypic.schema.CURATION.pair" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
 <dt class="sig sig-object py" id="phenotypic.schema.ColorComposition">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.schema.</span></span><span class="sig-name descname"><span class="pre">ColorComposition</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/schema/_color_composition.html#ColorComposition"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.schema.ColorComposition" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#phenotypic.schema.MeasurementInfo" title="phenotypic.schema._measurement_info.MeasurementInfo"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasurementInfo</span></code></a></p>
@@ -8505,6 +9174,734 @@ which category it belongs to without explicitly referencing the class.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="phenotypic.schema.EXPERIMENT_METADATA.pair">
 <span class="sig-name descname"><span class="pre">pair</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#phenotypic.schema.EXPERIMENT_METADATA.pair" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.schema.</span></span><span class="sig-name descname"><span class="pre">ErrorCategory</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/schema/_error_category.html#ErrorCategory"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.schema.ErrorCategory" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#phenotypic.schema.MeasurementInfo" title="phenotypic.schema._measurement_info.MeasurementInfo"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasurementInfo</span></code></a></p>
+<p>Closed taxonomy of detection-error categories for object triage.</p>
+<p>The enum <em>value</em> is the category-prefixed header (<code class="docutils literal notranslate"><span class="pre">ErrorCategory_&lt;label&gt;</span></code>)
+per the <code class="docutils literal notranslate"><span class="pre">MeasurementInfo</span></code> convention, but callers persist and compare on
+the bare <a class="reference internal" href="#id2" title="phenotypic.schema.MeasurementInfo.label"><code class="xref py py-attr docutils literal notranslate"><span class="pre">label</span></code></a> (e.g. <code class="docutils literal notranslate"><span class="pre">&quot;debris&quot;</span></code>). Use
+<a class="reference internal" href="#phenotypic.schema.ErrorCategory.from_label" title="phenotypic.schema.ErrorCategory.from_label"><code class="xref py py-meth docutils literal notranslate"><span class="pre">from_label()</span></code></a> to resolve a stored token back to a member.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.append_rst_to_doc">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">append_rst_to_doc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">module</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><span class="pre">object</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.schema.ErrorCategory.append_rst_to_doc" title="Link to this definition">#</a></dt>
+<dd><p>Append the measurement documentation table to a module or class docstring.</p>
+<p>Generates the RST documentation table for this measurement enumeration and appends
+it to the provided module’s or class’s existing docstring. This is useful for
+automatically documenting which measurements a class produces or uses.</p>
+<p>If the input is a string, it is treated as the docstring itself. If it is an object
+(class, function, module), its __doc__ attribute is used.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>module</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><em>object</em></a>) – Either a docstring string or an object (class, function,
+module) whose __doc__ attribute contains the docstring. The existing
+docstring is preserved, and the measurement table is appended with a blank
+line separator.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>The original docstring (or string) with the RST measurement table appended,</dt><dd><p>separated by two blank lines. The returned string is ready to be assigned back
+to the target’s __doc__ attribute.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.category">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">category</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../_modules/phenotypic/schema/_error_category.html#ErrorCategory.category"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.schema.ErrorCategory.category" title="Link to this definition">#</a></dt>
+<dd><p>Return the category name for this measurement enumeration.</p>
+<p>Subclasses must implement this method to provide a category name that will be used
+to prefix all measurement labels. This ensures consistent naming conventions across
+the codebase.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><dl class="simple">
+<dt>The category name (e.g., ‘Shape’, ‘Color’, ‘Texture’). This string is</dt><dd><p>prepended to each measurement label with an underscore separator to form
+the full header name (e.g., ‘Shape_Area’).</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.14)"><strong>NotImplementedError</strong></a> – If not implemented by a subclass.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.from_label">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_label</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">label</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#phenotypic.schema.ErrorCategory" title="phenotypic.schema._error_category.ErrorCategory"><span class="pre">ErrorCategory</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/phenotypic/schema/_error_category.html#ErrorCategory.from_label"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.schema.ErrorCategory.from_label" title="Link to this definition">#</a></dt>
+<dd><p>Resolve a bare category token to its member, or <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>label</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – A bare category token (e.g. <code class="docutils literal notranslate"><span class="pre">&quot;merged&quot;</span></code>).</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The matching member, or <code class="docutils literal notranslate"><span class="pre">None</span></code> if <code class="docutils literal notranslate"><span class="pre">label</span></code> is not a core
+category (e.g. a custom category or a typo).</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#phenotypic.schema.ErrorCategory" title="phenotypic.schema._error_category.ErrorCategory"><em>ErrorCategory</em></a> | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.get_headers">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_headers</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#phenotypic.schema.ErrorCategory.get_headers" title="Link to this definition">#</a></dt>
+<dd><p>Get all measurement headers with category prefix.</p>
+<p>Returns a list of the full enumeration values (with category prefix) for all
+measurements defined in this enumeration. These strings are suitable for use as
+DataFrame column names, dictionary keys, or in any context where the full
+categorized name is needed.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><dl class="simple">
+<dt>List of prefixed measurement names in enumeration order</dt><dd><p>(e.g., [‘Shape_Area’, ‘Shape_Perimeter’]). Each header includes the
+category prefix separated by an underscore.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)">list</a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.get_labels">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_labels</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#phenotypic.schema.ErrorCategory.get_labels" title="Link to this definition">#</a></dt>
+<dd><p>Get all measurement labels without category prefix.</p>
+<p>Returns a list of the short labels (without category prefix) for all measurements
+defined in this enumeration. These are the first element of each enum value tuple.
+Useful for creating human-readable lists or column names when the category context
+is already established.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><dl class="simple">
+<dt>List of measurement labels in enumeration order (e.g.,</dt><dd><p>[‘Area’, ‘Perimeter’]). Does not include the category prefix; to get
+prefixed names, use get_headers().</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)">list</a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.labels">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">labels</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/phenotypic/schema/_error_category.html#ErrorCategory.labels"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.schema.ErrorCategory.labels" title="Link to this definition">#</a></dt>
+<dd><p>Return the bare category tokens in declaration order.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The <code class="docutils literal notranslate"><span class="pre">.label</span></code> of every member, e.g.
+<code class="docutils literal notranslate"><span class="pre">[&quot;oversegmented&quot;,</span> <span class="pre">...,</span> <span class="pre">&quot;other&quot;]</span></code>.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)">list</a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.rst_table">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">rst_table</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">header</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">('Name',</span> <span class="pre">'Description')</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.schema.ErrorCategory.rst_table" title="Link to this definition">#</a></dt>
+<dd><p>Generate an RST (reStructuredText) table documenting the measurements.</p>
+<p>Creates a formatted list-table in reStructuredText format that documents all
+measurements in this enumeration, including their labels and descriptions. This
+is useful for generating API documentation, parameter guides, or measurement
+reference tables that will be rendered in Sphinx documentation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>title</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – The title for the RST table. Defaults to the class name
+(e.g., ‘SHAPE’). The title is formatted as “Category: <strong>{title}</strong>” in the
+output.</p></li>
+<li><p><strong>header</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>]</em><em>, </em><em>optional</em>) – A tuple of (left_column, right_column)
+header names. Defaults to (“Name”, “Description”). The left column typically
+contains measurement labels and the right column contains their descriptions.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl>
+<dt>A formatted reStructuredText list-table string. The output includes:</dt><dd><ul class="simple">
+<li><p>RST list-table directive with the title</p></li>
+<li><p>Column headers (Name and Description by default)</p></li>
+<li><p>One row per measurement with label and description</p></li>
+</ul>
+<p>The returned string is ready to be embedded in Sphinx documentation files
+or appended to docstrings.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.maketrans">
+<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">maketrans</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.ErrorCategory.maketrans" title="Link to this definition">#</a></dt>
+<dd><p>Return a translation table usable for str.translate().</p>
+<p>If there is only one argument, it must be a dictionary mapping Unicode
+ordinals (integers) or characters to Unicode ordinals, strings or None.
+Character keys will be then converted to ordinals.
+If there are two arguments, they must be strings of equal length, and
+in the resulting dictionary, each character in x will be mapped to the
+character at the same position in y. If there is a third argument, it
+must be a string, whose characters will be mapped to None in the result.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.__dir__">
+<span class="sig-name descname"><span class="pre">__dir__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.ErrorCategory.__dir__" title="Link to this definition">#</a></dt>
+<dd><p>Returns public methods and other interesting attributes.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.__new_member__">
+<span class="sig-name descname"><span class="pre">__new_member__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">label</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">desc</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.ErrorCategory.__new_member__" title="Link to this definition">#</a></dt>
+<dd><p>Create a new measurement enumeration member with prefixed name.</p>
+<p>Converts the input label and description into an enumeration member whose string
+value is automatically prefixed with the category name. The label and description
+are stored as instance attributes for convenient access.</p>
+<p>This method is called automatically by Python’s Enum machinery when defining enum
+members. The enum member’s value becomes the full prefixed name (e.g.,
+‘Shape_Area’), while the label and description are stored separately as instance
+attributes.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>label</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – The short label for the measurement without category prefix
+(e.g., ‘Area’). This will be combined with the category name to create
+the full enumeration value.</p></li>
+<li><p><strong>desc</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – The description of what the measurement represents. If
+not provided, defaults to an empty string. This should briefly explain
+what the measurement measures.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>An enumeration member that behaves as a string with the value</dt><dd><p>’{category}_{label}’ (e.g., ‘Shape_Area’). The instance also has label,
+desc, and pair attributes set.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#phenotypic.schema.MeasurementInfo" title="phenotypic.schema.MeasurementInfo">MeasurementInfo</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.__str__">
+<span class="sig-name descname"><span class="pre">__str__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.schema.ErrorCategory.__str__" title="Link to this definition">#</a></dt>
+<dd><p>Return the string representation of this measurement as the prefixed name.</p>
+<p>Returns the full enumeration value, which is the category-prefixed label
+(e.g., ‘Shape_Area’). This is used when the measurement is converted to a string
+or used in string formatting.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The full prefixed name of the measurement (e.g., ‘{category}_{label}’).</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.capitalize">
+<span class="sig-name descname"><span class="pre">capitalize</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.ErrorCategory.capitalize" title="Link to this definition">#</a></dt>
+<dd><p>Return a capitalized version of the string.</p>
+<p>More specifically, make the first character have upper case and the rest lower
+case.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.casefold">
+<span class="sig-name descname"><span class="pre">casefold</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.ErrorCategory.casefold" title="Link to this definition">#</a></dt>
+<dd><p>Return a version of the string suitable for caseless comparisons.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.center">
+<span class="sig-name descname"><span class="pre">center</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">width</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fillchar</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'</span> <span class="pre">'</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.ErrorCategory.center" title="Link to this definition">#</a></dt>
+<dd><p>Return a centered string of length width.</p>
+<p>Padding is done using the specified fill character (default is a space).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.count">
+<span class="sig-name descname"><span class="pre">count</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sub</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">start</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em><span class="optional">]</span><span class="optional">]</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="headerlink" href="#phenotypic.schema.ErrorCategory.count" title="Link to this definition">#</a></dt>
+<dd><p>Return the number of non-overlapping occurrences of substring sub in
+string S[start:end].  Optional arguments start and end are
+interpreted as in slice notation.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.encode">
+<span class="sig-name descname"><span class="pre">encode</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">encoding</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'utf-8'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">errors</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'strict'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.ErrorCategory.encode" title="Link to this definition">#</a></dt>
+<dd><p>Encode the string using the codec registered for encoding.</p>
+<dl class="simple">
+<dt>encoding</dt><dd><p>The encoding in which to encode the string.</p>
+</dd>
+<dt>errors</dt><dd><p>The error handling scheme to use for encoding errors.
+The default is ‘strict’ meaning that encoding errors raise a
+UnicodeEncodeError.  Other possible values are ‘ignore’, ‘replace’ and
+‘xmlcharrefreplace’ as well as any other name registered with
+codecs.register_error that can handle UnicodeEncodeErrors.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.endswith">
+<span class="sig-name descname"><span class="pre">endswith</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">suffix</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">start</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em><span class="optional">]</span><span class="optional">]</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="headerlink" href="#phenotypic.schema.ErrorCategory.endswith" title="Link to this definition">#</a></dt>
+<dd><p>Return True if S ends with the specified suffix, False otherwise.
+With optional start, test S beginning at that position.
+With optional end, stop comparing S at that position.
+suffix can also be a tuple of strings to try.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.expandtabs">
+<span class="sig-name descname"><span class="pre">expandtabs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tabsize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">8</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.ErrorCategory.expandtabs" title="Link to this definition">#</a></dt>
+<dd><p>Return a copy where all tab characters are expanded using spaces.</p>
+<p>If tabsize is not given, a tab size of 8 characters is assumed.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.find">
+<span class="sig-name descname"><span class="pre">find</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sub</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">start</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em><span class="optional">]</span><span class="optional">]</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="headerlink" href="#phenotypic.schema.ErrorCategory.find" title="Link to this definition">#</a></dt>
+<dd><p>Return the lowest index in S where substring sub is found,
+such that sub is contained within S[start:end].  Optional
+arguments start and end are interpreted as in slice notation.</p>
+<p>Return -1 on failure.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.format">
+<span class="sig-name descname"><span class="pre">format</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.schema.ErrorCategory.format" title="Link to this definition">#</a></dt>
+<dd><p>Return a formatted version of S, using substitutions from args and kwargs.
+The substitutions are identified by braces (‘{’ and ‘}’).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.format_map">
+<span class="sig-name descname"><span class="pre">format_map</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mapping</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.schema.ErrorCategory.format_map" title="Link to this definition">#</a></dt>
+<dd><p>Return a formatted version of S, using substitutions from mapping.
+The substitutions are identified by braces (‘{’ and ‘}’).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.index">
+<span class="sig-name descname"><span class="pre">index</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sub</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">start</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em><span class="optional">]</span><span class="optional">]</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="headerlink" href="#phenotypic.schema.ErrorCategory.index" title="Link to this definition">#</a></dt>
+<dd><p>Return the lowest index in S where substring sub is found,
+such that sub is contained within S[start:end].  Optional
+arguments start and end are interpreted as in slice notation.</p>
+<p>Raises ValueError when the substring is not found.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.isalnum">
+<span class="sig-name descname"><span class="pre">isalnum</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.ErrorCategory.isalnum" title="Link to this definition">#</a></dt>
+<dd><p>Return True if the string is an alpha-numeric string, False otherwise.</p>
+<p>A string is alpha-numeric if all characters in the string are alpha-numeric and
+there is at least one character in the string.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.isalpha">
+<span class="sig-name descname"><span class="pre">isalpha</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.ErrorCategory.isalpha" title="Link to this definition">#</a></dt>
+<dd><p>Return True if the string is an alphabetic string, False otherwise.</p>
+<p>A string is alphabetic if all characters in the string are alphabetic and there
+is at least one character in the string.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.isascii">
+<span class="sig-name descname"><span class="pre">isascii</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.ErrorCategory.isascii" title="Link to this definition">#</a></dt>
+<dd><p>Return True if all characters in the string are ASCII, False otherwise.</p>
+<p>ASCII characters have code points in the range U+0000-U+007F.
+Empty string is ASCII too.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.isdecimal">
+<span class="sig-name descname"><span class="pre">isdecimal</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.ErrorCategory.isdecimal" title="Link to this definition">#</a></dt>
+<dd><p>Return True if the string is a decimal string, False otherwise.</p>
+<p>A string is a decimal string if all characters in the string are decimal and
+there is at least one character in the string.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.isdigit">
+<span class="sig-name descname"><span class="pre">isdigit</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.ErrorCategory.isdigit" title="Link to this definition">#</a></dt>
+<dd><p>Return True if the string is a digit string, False otherwise.</p>
+<p>A string is a digit string if all characters in the string are digits and there
+is at least one character in the string.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.isidentifier">
+<span class="sig-name descname"><span class="pre">isidentifier</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.ErrorCategory.isidentifier" title="Link to this definition">#</a></dt>
+<dd><p>Return True if the string is a valid Python identifier, False otherwise.</p>
+<p>Call keyword.iskeyword(s) to test whether string s is a reserved identifier,
+such as “def” or “class”.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.islower">
+<span class="sig-name descname"><span class="pre">islower</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.ErrorCategory.islower" title="Link to this definition">#</a></dt>
+<dd><p>Return True if the string is a lowercase string, False otherwise.</p>
+<p>A string is lowercase if all cased characters in the string are lowercase and
+there is at least one cased character in the string.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.isnumeric">
+<span class="sig-name descname"><span class="pre">isnumeric</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.ErrorCategory.isnumeric" title="Link to this definition">#</a></dt>
+<dd><p>Return True if the string is a numeric string, False otherwise.</p>
+<p>A string is numeric if all characters in the string are numeric and there is at
+least one character in the string.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.isprintable">
+<span class="sig-name descname"><span class="pre">isprintable</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.ErrorCategory.isprintable" title="Link to this definition">#</a></dt>
+<dd><p>Return True if all characters in the string are printable, False otherwise.</p>
+<p>A character is printable if repr() may use it in its output.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.isspace">
+<span class="sig-name descname"><span class="pre">isspace</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.ErrorCategory.isspace" title="Link to this definition">#</a></dt>
+<dd><p>Return True if the string is a whitespace string, False otherwise.</p>
+<p>A string is whitespace if all characters in the string are whitespace and there
+is at least one character in the string.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.istitle">
+<span class="sig-name descname"><span class="pre">istitle</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.ErrorCategory.istitle" title="Link to this definition">#</a></dt>
+<dd><p>Return True if the string is a title-cased string, False otherwise.</p>
+<p>In a title-cased string, upper- and title-case characters may only
+follow uncased characters and lowercase characters only cased ones.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.isupper">
+<span class="sig-name descname"><span class="pre">isupper</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.ErrorCategory.isupper" title="Link to this definition">#</a></dt>
+<dd><p>Return True if the string is an uppercase string, False otherwise.</p>
+<p>A string is uppercase if all cased characters in the string are uppercase and
+there is at least one cased character in the string.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.join">
+<span class="sig-name descname"><span class="pre">join</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">iterable</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.ErrorCategory.join" title="Link to this definition">#</a></dt>
+<dd><p>Concatenate any number of strings.</p>
+<p>The string whose method is called is inserted in between each given string.
+The result is returned as a new string.</p>
+<p>Example: ‘.’.join([‘ab’, ‘pq’, ‘rs’]) -&gt; ‘ab.pq.rs’</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.ljust">
+<span class="sig-name descname"><span class="pre">ljust</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">width</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fillchar</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'</span> <span class="pre">'</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.ErrorCategory.ljust" title="Link to this definition">#</a></dt>
+<dd><p>Return a left-justified string of length width.</p>
+<p>Padding is done using the specified fill character (default is a space).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.lower">
+<span class="sig-name descname"><span class="pre">lower</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.ErrorCategory.lower" title="Link to this definition">#</a></dt>
+<dd><p>Return a copy of the string converted to lowercase.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.lstrip">
+<span class="sig-name descname"><span class="pre">lstrip</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">chars</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.ErrorCategory.lstrip" title="Link to this definition">#</a></dt>
+<dd><p>Return a copy of the string with leading whitespace removed.</p>
+<p>If chars is given and not None, remove characters in chars instead.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.partition">
+<span class="sig-name descname"><span class="pre">partition</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sep</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.ErrorCategory.partition" title="Link to this definition">#</a></dt>
+<dd><p>Partition the string into three parts using the given separator.</p>
+<p>This will search for the separator in the string.  If the separator is found,
+returns a 3-tuple containing the part before the separator, the separator
+itself, and the part after it.</p>
+<p>If the separator is not found, returns a 3-tuple containing the original string
+and two empty strings.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.removeprefix">
+<span class="sig-name descname"><span class="pre">removeprefix</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prefix</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.ErrorCategory.removeprefix" title="Link to this definition">#</a></dt>
+<dd><p>Return a str with the given prefix string removed if present.</p>
+<p>If the string starts with the prefix string, return string[len(prefix):].
+Otherwise, return a copy of the original string.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.removesuffix">
+<span class="sig-name descname"><span class="pre">removesuffix</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">suffix</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.ErrorCategory.removesuffix" title="Link to this definition">#</a></dt>
+<dd><p>Return a str with the given suffix string removed if present.</p>
+<p>If the string ends with the suffix string and that suffix is not empty,
+return string[:-len(suffix)]. Otherwise, return a copy of the original
+string.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.replace">
+<span class="sig-name descname"><span class="pre">replace</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">old</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">new</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.ErrorCategory.replace" title="Link to this definition">#</a></dt>
+<dd><p>Return a copy with all occurrences of substring old replaced by new.</p>
+<blockquote>
+<div><dl class="simple">
+<dt>count</dt><dd><p>Maximum number of occurrences to replace.
+-1 (the default value) means replace all occurrences.</p>
+</dd>
+</dl>
+</div></blockquote>
+<p>If the optional argument count is given, only the first count occurrences are
+replaced.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.rfind">
+<span class="sig-name descname"><span class="pre">rfind</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sub</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">start</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em><span class="optional">]</span><span class="optional">]</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="headerlink" href="#phenotypic.schema.ErrorCategory.rfind" title="Link to this definition">#</a></dt>
+<dd><p>Return the highest index in S where substring sub is found,
+such that sub is contained within S[start:end].  Optional
+arguments start and end are interpreted as in slice notation.</p>
+<p>Return -1 on failure.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.rindex">
+<span class="sig-name descname"><span class="pre">rindex</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sub</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">start</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em><span class="optional">]</span><span class="optional">]</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="headerlink" href="#phenotypic.schema.ErrorCategory.rindex" title="Link to this definition">#</a></dt>
+<dd><p>Return the highest index in S where substring sub is found,
+such that sub is contained within S[start:end].  Optional
+arguments start and end are interpreted as in slice notation.</p>
+<p>Raises ValueError when the substring is not found.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.rjust">
+<span class="sig-name descname"><span class="pre">rjust</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">width</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fillchar</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'</span> <span class="pre">'</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.ErrorCategory.rjust" title="Link to this definition">#</a></dt>
+<dd><p>Return a right-justified string of length width.</p>
+<p>Padding is done using the specified fill character (default is a space).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.rpartition">
+<span class="sig-name descname"><span class="pre">rpartition</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sep</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.ErrorCategory.rpartition" title="Link to this definition">#</a></dt>
+<dd><p>Partition the string into three parts using the given separator.</p>
+<p>This will search for the separator in the string, starting at the end. If
+the separator is found, returns a 3-tuple containing the part before the
+separator, the separator itself, and the part after it.</p>
+<p>If the separator is not found, returns a 3-tuple containing two empty strings
+and the original string.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.rsplit">
+<span class="sig-name descname"><span class="pre">rsplit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sep</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">maxsplit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.ErrorCategory.rsplit" title="Link to this definition">#</a></dt>
+<dd><p>Return a list of the substrings in the string, using sep as the separator string.</p>
+<blockquote>
+<div><dl>
+<dt>sep</dt><dd><p>The separator used to split the string.</p>
+<p>When set to None (the default value), will split on any whitespace
+character (including n r t f and spaces) and will discard
+empty strings from the result.</p>
+</dd>
+<dt>maxsplit</dt><dd><p>Maximum number of splits.
+-1 (the default value) means no limit.</p>
+</dd>
+</dl>
+</div></blockquote>
+<p>Splitting starts at the end of the string and works to the front.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.rstrip">
+<span class="sig-name descname"><span class="pre">rstrip</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">chars</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.ErrorCategory.rstrip" title="Link to this definition">#</a></dt>
+<dd><p>Return a copy of the string with trailing whitespace removed.</p>
+<p>If chars is given and not None, remove characters in chars instead.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.split">
+<span class="sig-name descname"><span class="pre">split</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sep</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">maxsplit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.ErrorCategory.split" title="Link to this definition">#</a></dt>
+<dd><p>Return a list of the substrings in the string, using sep as the separator string.</p>
+<blockquote>
+<div><dl>
+<dt>sep</dt><dd><p>The separator used to split the string.</p>
+<p>When set to None (the default value), will split on any whitespace
+character (including n r t f and spaces) and will discard
+empty strings from the result.</p>
+</dd>
+<dt>maxsplit</dt><dd><p>Maximum number of splits.
+-1 (the default value) means no limit.</p>
+</dd>
+</dl>
+</div></blockquote>
+<p>Splitting starts at the front of the string and works to the end.</p>
+<p>Note, str.split() is mainly useful for data that has been intentionally
+delimited.  With natural text that includes punctuation, consider using
+the regular expression module.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.splitlines">
+<span class="sig-name descname"><span class="pre">splitlines</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">keepends</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.ErrorCategory.splitlines" title="Link to this definition">#</a></dt>
+<dd><p>Return a list of the lines in the string, breaking at line boundaries.</p>
+<p>Line breaks are not included in the resulting list unless keepends is given and
+true.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.startswith">
+<span class="sig-name descname"><span class="pre">startswith</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prefix</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">start</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em><span class="optional">]</span><span class="optional">]</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="headerlink" href="#phenotypic.schema.ErrorCategory.startswith" title="Link to this definition">#</a></dt>
+<dd><p>Return True if S starts with the specified prefix, False otherwise.
+With optional start, test S beginning at that position.
+With optional end, stop comparing S at that position.
+prefix can also be a tuple of strings to try.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.strip">
+<span class="sig-name descname"><span class="pre">strip</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">chars</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.ErrorCategory.strip" title="Link to this definition">#</a></dt>
+<dd><p>Return a copy of the string with leading and trailing whitespace removed.</p>
+<p>If chars is given and not None, remove characters in chars instead.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.swapcase">
+<span class="sig-name descname"><span class="pre">swapcase</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.ErrorCategory.swapcase" title="Link to this definition">#</a></dt>
+<dd><p>Convert uppercase characters to lowercase and lowercase characters to uppercase.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.title">
+<span class="sig-name descname"><span class="pre">title</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.ErrorCategory.title" title="Link to this definition">#</a></dt>
+<dd><p>Return a version of the string where each word is titlecased.</p>
+<p>More specifically, words start with uppercased characters and all remaining
+cased characters have lower case.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.translate">
+<span class="sig-name descname"><span class="pre">translate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">table</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.ErrorCategory.translate" title="Link to this definition">#</a></dt>
+<dd><p>Replace each character in the string using the given translation table.</p>
+<blockquote>
+<div><dl class="simple">
+<dt>table</dt><dd><p>Translation table, which must be a mapping of Unicode ordinals to
+Unicode ordinals, strings, or None.</p>
+</dd>
+</dl>
+</div></blockquote>
+<p>The table must implement lookup/indexing via __getitem__, for instance a
+dictionary or list.  If this operation raises LookupError, the character is
+left untouched.  Characters mapped to None are deleted.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.upper">
+<span class="sig-name descname"><span class="pre">upper</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.ErrorCategory.upper" title="Link to this definition">#</a></dt>
+<dd><p>Return a copy of the string converted to uppercase.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.zfill">
+<span class="sig-name descname"><span class="pre">zfill</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">width</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.ErrorCategory.zfill" title="Link to this definition">#</a></dt>
+<dd><p>Pad a numeric string with zeros on the left, to fill a field of the given width.</p>
+<p>The string is never truncated.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.BACKGROUND_NOISE">
+<span class="sig-name descname"><span class="pre">BACKGROUND_NOISE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ErrorCategory_background_noise'</span></em><a class="headerlink" href="#phenotypic.schema.ErrorCategory.BACKGROUND_NOISE" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.CATEGORY">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">CATEGORY</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#phenotypic.schema.ErrorCategory.CATEGORY" title="Link to this definition">#</a></dt>
+<dd><p>Get the category name for this measurement instance.</p>
+<p>Provides instance-level access to the category name defined by the category()
+classmethod. This is useful when you have a measurement instance and need to know
+which category it belongs to without explicitly referencing the class.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The category name from the enum class’s category() method.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.DEBRIS">
+<span class="sig-name descname"><span class="pre">DEBRIS</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ErrorCategory_debris'</span></em><a class="headerlink" href="#phenotypic.schema.ErrorCategory.DEBRIS" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.MERGED">
+<span class="sig-name descname"><span class="pre">MERGED</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ErrorCategory_merged'</span></em><a class="headerlink" href="#phenotypic.schema.ErrorCategory.MERGED" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.OTHER">
+<span class="sig-name descname"><span class="pre">OTHER</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ErrorCategory_other'</span></em><a class="headerlink" href="#phenotypic.schema.ErrorCategory.OTHER" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.OVERSEGMENTED">
+<span class="sig-name descname"><span class="pre">OVERSEGMENTED</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ErrorCategory_oversegmented'</span></em><a class="headerlink" href="#phenotypic.schema.ErrorCategory.OVERSEGMENTED" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.UNDERSEGMENTED">
+<span class="sig-name descname"><span class="pre">UNDERSEGMENTED</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ErrorCategory_undersegmented'</span></em><a class="headerlink" href="#phenotypic.schema.ErrorCategory.UNDERSEGMENTED" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.desc">
+<span class="sig-name descname"><span class="pre">desc</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#phenotypic.schema.ErrorCategory.desc" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.label">
+<span class="sig-name descname"><span class="pre">label</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#phenotypic.schema.ErrorCategory.label" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.schema.ErrorCategory.pair">
+<span class="sig-name descname"><span class="pre">pair</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#phenotypic.schema.ErrorCategory.pair" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 </dd></dl>
@@ -27659,6 +29056,69 @@ which category it belongs to without explicitly referencing the class.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CONDITION_METADATA.pair"><code class="docutils literal notranslate"><span class="pre">CONDITION_METADATA.pair</span></code></a></li>
 </ul>
 </li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION"><code class="docutils literal notranslate"><span class="pre">CURATION</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.append_rst_to_doc"><code class="docutils literal notranslate"><span class="pre">CURATION.append_rst_to_doc()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.category"><code class="docutils literal notranslate"><span class="pre">CURATION.category()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.get_headers"><code class="docutils literal notranslate"><span class="pre">CURATION.get_headers()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.get_labels"><code class="docutils literal notranslate"><span class="pre">CURATION.get_labels()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.rst_table"><code class="docutils literal notranslate"><span class="pre">CURATION.rst_table()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.maketrans"><code class="docutils literal notranslate"><span class="pre">CURATION.maketrans()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.__dir__"><code class="docutils literal notranslate"><span class="pre">CURATION.__dir__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.__new_member__"><code class="docutils literal notranslate"><span class="pre">CURATION.__new_member__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.__str__"><code class="docutils literal notranslate"><span class="pre">CURATION.__str__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.capitalize"><code class="docutils literal notranslate"><span class="pre">CURATION.capitalize()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.casefold"><code class="docutils literal notranslate"><span class="pre">CURATION.casefold()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.center"><code class="docutils literal notranslate"><span class="pre">CURATION.center()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.count"><code class="docutils literal notranslate"><span class="pre">CURATION.count()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.encode"><code class="docutils literal notranslate"><span class="pre">CURATION.encode()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.endswith"><code class="docutils literal notranslate"><span class="pre">CURATION.endswith()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.expandtabs"><code class="docutils literal notranslate"><span class="pre">CURATION.expandtabs()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.find"><code class="docutils literal notranslate"><span class="pre">CURATION.find()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.format"><code class="docutils literal notranslate"><span class="pre">CURATION.format()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.format_map"><code class="docutils literal notranslate"><span class="pre">CURATION.format_map()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.index"><code class="docutils literal notranslate"><span class="pre">CURATION.index()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.isalnum"><code class="docutils literal notranslate"><span class="pre">CURATION.isalnum()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.isalpha"><code class="docutils literal notranslate"><span class="pre">CURATION.isalpha()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.isascii"><code class="docutils literal notranslate"><span class="pre">CURATION.isascii()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.isdecimal"><code class="docutils literal notranslate"><span class="pre">CURATION.isdecimal()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.isdigit"><code class="docutils literal notranslate"><span class="pre">CURATION.isdigit()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.isidentifier"><code class="docutils literal notranslate"><span class="pre">CURATION.isidentifier()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.islower"><code class="docutils literal notranslate"><span class="pre">CURATION.islower()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.isnumeric"><code class="docutils literal notranslate"><span class="pre">CURATION.isnumeric()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.isprintable"><code class="docutils literal notranslate"><span class="pre">CURATION.isprintable()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.isspace"><code class="docutils literal notranslate"><span class="pre">CURATION.isspace()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.istitle"><code class="docutils literal notranslate"><span class="pre">CURATION.istitle()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.isupper"><code class="docutils literal notranslate"><span class="pre">CURATION.isupper()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.join"><code class="docutils literal notranslate"><span class="pre">CURATION.join()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.ljust"><code class="docutils literal notranslate"><span class="pre">CURATION.ljust()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.lower"><code class="docutils literal notranslate"><span class="pre">CURATION.lower()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.lstrip"><code class="docutils literal notranslate"><span class="pre">CURATION.lstrip()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.partition"><code class="docutils literal notranslate"><span class="pre">CURATION.partition()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.removeprefix"><code class="docutils literal notranslate"><span class="pre">CURATION.removeprefix()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.removesuffix"><code class="docutils literal notranslate"><span class="pre">CURATION.removesuffix()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.replace"><code class="docutils literal notranslate"><span class="pre">CURATION.replace()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.rfind"><code class="docutils literal notranslate"><span class="pre">CURATION.rfind()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.rindex"><code class="docutils literal notranslate"><span class="pre">CURATION.rindex()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.rjust"><code class="docutils literal notranslate"><span class="pre">CURATION.rjust()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.rpartition"><code class="docutils literal notranslate"><span class="pre">CURATION.rpartition()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.rsplit"><code class="docutils literal notranslate"><span class="pre">CURATION.rsplit()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.rstrip"><code class="docutils literal notranslate"><span class="pre">CURATION.rstrip()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.split"><code class="docutils literal notranslate"><span class="pre">CURATION.split()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.splitlines"><code class="docutils literal notranslate"><span class="pre">CURATION.splitlines()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.startswith"><code class="docutils literal notranslate"><span class="pre">CURATION.startswith()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.strip"><code class="docutils literal notranslate"><span class="pre">CURATION.strip()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.swapcase"><code class="docutils literal notranslate"><span class="pre">CURATION.swapcase()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.title"><code class="docutils literal notranslate"><span class="pre">CURATION.title()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.translate"><code class="docutils literal notranslate"><span class="pre">CURATION.translate()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.upper"><code class="docutils literal notranslate"><span class="pre">CURATION.upper()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.zfill"><code class="docutils literal notranslate"><span class="pre">CURATION.zfill()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.CATEGORY"><code class="docutils literal notranslate"><span class="pre">CURATION.CATEGORY</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.ERROR_CATEGORY"><code class="docutils literal notranslate"><span class="pre">CURATION.ERROR_CATEGORY</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.desc"><code class="docutils literal notranslate"><span class="pre">CURATION.desc</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.label"><code class="docutils literal notranslate"><span class="pre">CURATION.label</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.CURATION.pair"><code class="docutils literal notranslate"><span class="pre">CURATION.pair</span></code></a></li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorComposition"><code class="docutils literal notranslate"><span class="pre">ColorComposition</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorComposition.all_headers"><code class="docutils literal notranslate"><span class="pre">ColorComposition.all_headers()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ColorComposition.append_rst_to_doc"><code class="docutils literal notranslate"><span class="pre">ColorComposition.append_rst_to_doc()</span></code></a></li>
@@ -28242,6 +29702,76 @@ which category it belongs to without explicitly referencing the class.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.EXPERIMENT_METADATA.desc"><code class="docutils literal notranslate"><span class="pre">EXPERIMENT_METADATA.desc</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.EXPERIMENT_METADATA.label"><code class="docutils literal notranslate"><span class="pre">EXPERIMENT_METADATA.label</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.EXPERIMENT_METADATA.pair"><code class="docutils literal notranslate"><span class="pre">EXPERIMENT_METADATA.pair</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory"><code class="docutils literal notranslate"><span class="pre">ErrorCategory</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.append_rst_to_doc"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.append_rst_to_doc()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.category"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.category()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.from_label"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.from_label()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.get_headers"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.get_headers()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.get_labels"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.get_labels()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.labels"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.labels()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.rst_table"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.rst_table()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.maketrans"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.maketrans()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.__dir__"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.__dir__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.__new_member__"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.__new_member__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.__str__"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.__str__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.capitalize"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.capitalize()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.casefold"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.casefold()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.center"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.center()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.count"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.count()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.encode"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.encode()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.endswith"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.endswith()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.expandtabs"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.expandtabs()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.find"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.find()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.format"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.format()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.format_map"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.format_map()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.index"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.index()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.isalnum"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.isalnum()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.isalpha"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.isalpha()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.isascii"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.isascii()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.isdecimal"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.isdecimal()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.isdigit"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.isdigit()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.isidentifier"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.isidentifier()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.islower"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.islower()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.isnumeric"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.isnumeric()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.isprintable"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.isprintable()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.isspace"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.isspace()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.istitle"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.istitle()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.isupper"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.isupper()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.join"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.join()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.ljust"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.ljust()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.lower"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.lower()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.lstrip"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.lstrip()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.partition"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.partition()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.removeprefix"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.removeprefix()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.removesuffix"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.removesuffix()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.replace"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.replace()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.rfind"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.rfind()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.rindex"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.rindex()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.rjust"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.rjust()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.rpartition"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.rpartition()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.rsplit"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.rsplit()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.rstrip"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.rstrip()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.split"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.split()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.splitlines"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.splitlines()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.startswith"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.startswith()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.strip"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.strip()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.swapcase"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.swapcase()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.title"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.title()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.translate"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.translate()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.upper"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.upper()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.zfill"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.zfill()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.BACKGROUND_NOISE"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.BACKGROUND_NOISE</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.CATEGORY"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.CATEGORY</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.DEBRIS"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.DEBRIS</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.MERGED"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.MERGED</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.OTHER"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.OTHER</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.OVERSEGMENTED"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.OVERSEGMENTED</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.UNDERSEGMENTED"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.UNDERSEGMENTED</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.desc"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.desc</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.label"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.label</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.ErrorCategory.pair"><code class="docutils literal notranslate"><span class="pre">ErrorCategory.pair</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.GENETIC_METADATA"><code class="docutils literal notranslate"><span class="pre">GENETIC_METADATA</span></code></a><ul class="visible nav section-nav flex-column">

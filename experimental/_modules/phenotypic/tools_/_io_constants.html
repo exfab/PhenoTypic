@@ -1035,6 +1035,39 @@
 <span class="c1">#: roots at :func:`deliverables_dir`.</span>
 <span class="n">DIR_DELIVERABLES</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;deliverables&quot;</span>
 
+<span class="c1">#: Per-category error-object parquet subdirectory under deliverables:</span>
+<span class="c1">#: ``&lt;output&gt;/deliverables/errors/&lt;category&gt;.parquet``. Holds the master rows</span>
+<span class="c1">#: for each triaged error category. **Dual-owned:** the GUI writes them live as</span>
+<span class="c1">#: the user curates (via ``CurationLabels._save_locked``) and CLI finalize</span>
+<span class="c1">#: re-emits them (all categories) from the durable ``qc/curation_labels.parquet``</span>
+<span class="c1">#: via ``reemit_error_deliverables`` — so headless == live.</span>
+<span class="n">DIR_ERRORS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;errors&quot;</span>
+
+<span class="c1">#: Durable curation-labels store: ``&lt;output&gt;/qc/curation_labels.parquet``.</span>
+<span class="c1">#: The source of truth for categorized removals; the CLI re-keys but never</span>
+<span class="c1">#: wipes it (contrast :data:`QC_REVIEW_STATE_JSON`).</span>
+<span class="n">CURATION_LABELS_PARQUET</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;curation_labels.parquet&quot;</span>
+
+<span class="c1">#: Ordered custom-category registry sidecar: ``&lt;output&gt;/qc/custom_categories.json``.</span>
+<span class="n">CUSTOM_CATEGORIES_JSON</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;custom_categories.json&quot;</span>
+
+<span class="c1">#: Ranked error-cutoff analysis deliverables (``ErrorCutoffFinder`` output;</span>
+<span class="c1">#: columns ``[category, *RESULT_COLUMNS]``). **Dual-owned, but with differing</span>
+<span class="c1">#: scope:** the GUI&#39;s Error tab writes the parquet/csv live for the *focused*</span>
+<span class="c1">#: category (transient, last-viewed-in-session) on each recompute, while CLI</span>
+<span class="c1">#: finalize (``reemit_error_deliverables``) authoritatively rewrites them across</span>
+<span class="c1">#: *all* labeled categories from the durable labels store. The HTML is written</span>
+<span class="c1">#: only on an explicit GUI ``Save analysis report`` or by CLI finalize — never on</span>
+<span class="c1">#: a live recompute.</span>
+<span class="n">ERROR_ANALYSIS_PARQUET</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;error_analysis.parquet&quot;</span>
+<span class="n">ERROR_ANALYSIS_CSV</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;error_analysis.csv&quot;</span>
+<span class="n">ERROR_ANALYSIS_HTML</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;error_analysis.html&quot;</span>
+
+<span class="c1">#: Filename of the GUI-written verified-good baseline archive (spec §9). It is</span>
+<span class="c1">#: derived from ``qc/review_state.json`` (which CLI finalize RESETS), so it is</span>
+<span class="c1">#: GUI-owned and never CLI-emitted; finalize leaves any existing file untouched.</span>
+<span class="n">VERIFIED_PARQUET</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;verified.parquet&quot;</span>
+
 <span class="c1">#: ``splits/`` — the robust-eval held-out **split assignment** sidecar folder</span>
 <span class="c1">#: (holds :data:`SPLIT_ASSIGNMENT_JSON`). Lives inside the hidden tune cache</span>
 <span class="c1">#: (:data:`DIR_PHT_TUNE_CACHE`), **not** under :data:`DIR_DELIVERABLES`: the</span>
@@ -2077,6 +2110,76 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">qc_review_state_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/qc/review_state.json`` (GUI-owned review progress).&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">qc_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">QC_REVIEW_STATE_JSON</span></div>
+
+
+
+<div class="viewcode-block" id="errors_dir">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.errors_dir">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">errors_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/errors/`` (per-category error parquets).&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">DIR_ERRORS</span></div>
+
+
+
+<div class="viewcode-block" id="error_category_parquet_path">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.error_category_parquet_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">error_category_parquet_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">category</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/errors/&lt;category&gt;.parquet``.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        output_dir: Run output directory.</span>
+<span class="sd">        category: A bare, already-sanitized category token (e.g.</span>
+<span class="sd">            ``&quot;background_noise&quot;``). The caller is responsible for sanitization.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">errors_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">category</span><span class="si">}</span><span class="s2">.parquet&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="error_analysis_parquet_path">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.error_analysis_parquet_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">error_analysis_parquet_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/error_analysis.parquet``.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">ERROR_ANALYSIS_PARQUET</span></div>
+
+
+
+<div class="viewcode-block" id="error_analysis_csv_path">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.error_analysis_csv_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">error_analysis_csv_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/error_analysis.csv``.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">ERROR_ANALYSIS_CSV</span></div>
+
+
+
+<div class="viewcode-block" id="error_analysis_html_path">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.error_analysis_html_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">error_analysis_html_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/error_analysis.html``.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">ERROR_ANALYSIS_HTML</span></div>
+
+
+
+<div class="viewcode-block" id="verified_parquet_path">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.verified_parquet_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">verified_parquet_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/verified.parquet`` (GUI-written, §9).&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">VERIFIED_PARQUET</span></div>
+
+
+
+<div class="viewcode-block" id="curation_labels_parquet_path">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.curation_labels_parquet_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">curation_labels_parquet_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/qc/curation_labels.parquet`` (durable labels store).&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">qc_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">CURATION_LABELS_PARQUET</span></div>
+
+
+
+<div class="viewcode-block" id="custom_categories_json_path">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.custom_categories_json_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">custom_categories_json_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/qc/custom_categories.json`` (custom-category registry).&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">qc_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">CUSTOM_CATEGORIES_JSON</span></div>
 
 
 

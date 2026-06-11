@@ -40,8 +40,15 @@
       dataset_measurements_dir
       dataset_overlays_dir
       dataset_results_dir
+      curation_labels_parquet_path
+      custom_categories_json_path
       default_output_dir_name
       deliverables_dir
+      error_analysis_csv_path
+      error_analysis_html_path
+      error_analysis_parquet_path
+      error_category_parquet_path
+      errors_dir
       event_log_path
       ensure_typed_json_suffix
       failures_jsonl_path
@@ -104,6 +111,7 @@
       tune_cache_splits_dir
       tune_cache_study_db_path
       tuning_spec_path
+      verified_parquet_path
    
    
 

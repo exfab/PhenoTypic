@@ -1,0 +1,6 @@
+phenotypic.tools\_.errors\_dir
+==============================
+
+.. currentmodule:: phenotypic.tools_
+
+.. autofunction:: errors_dir

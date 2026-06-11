@@ -16,8 +16,10 @@ descriptions.
    ColorLab <colorlab>
    Colorxy <colorxy>
    ColorXYZ <colorxyz>
+   Curation <curation>
    DoubleSoftplus <double_softplus_model>
    EdgeCorrection <edge_correction>
+   ErrorCategory <errorcategory>
    Grid <grid>
    GridLinReg <grid_linreg_stats>
    GridSpatial <grid_spatial>

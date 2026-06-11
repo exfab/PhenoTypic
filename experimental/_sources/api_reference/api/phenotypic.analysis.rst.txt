@@ -10,6 +10,17 @@
 
    
    
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+      :nosignatures:
+   
+      filter_spec_json
+      filter_spec_query
+      render_error_analysis_html
+      render_error_analysis_report
+   
    
 
    
@@ -23,6 +34,7 @@
    
       DoubleSoftplus
       EdgeCorrector
+      ErrorCutoffFinder
       ExpectedVsDetectedCount
       ICC
       LinearSoftplus
