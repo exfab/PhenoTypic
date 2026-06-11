@@ -62,7 +62,7 @@ from phenotypic.gui.results_viewer._qc_tab import build_qc_tab_body
 from phenotypic.gui.results_viewer.colony_view import _layout as _colony_layout  # noqa: F401
 
 if TYPE_CHECKING:
-    from phenotypic.gui.results_viewer._filtered_state import FilteredMeasurements
+    from phenotypic.gui.results_viewer._curation_labels import CurationLabels
 
 logger = logging.getLogger(__name__)
 
@@ -261,7 +261,7 @@ def _build_startup_banner(output_root: OutputRoot) -> Component:
     )
 
 
-def _build_stores(filtered_state: "FilteredMeasurements") -> Component:
+def _build_stores(filtered_state: "CurationLabels") -> Component:
     """Mount every shared ``dcc.Store`` the viewer reads.
 
     In addition to the four session-storage stores backing the filter spec,
@@ -408,7 +408,7 @@ def _resolve_qc_recipe(output_root: OutputRoot) -> QcRecipe:
 
 def build_app_layout(
     output_root: OutputRoot,
-    filtered_state: "FilteredMeasurements",
+    filtered_state: "CurationLabels",
     *,
     url_prefix: str = MOUNT_HOME,
 ) -> Component:

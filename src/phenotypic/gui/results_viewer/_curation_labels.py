@@ -154,6 +154,16 @@ class CurationLabels:
         rekey_report: Result of the most recent load's re-keying pass.
         _master_df: Master frame captured at load (all objects + measurements).
         _lock: Re-entrant mutation/save mutex.
+        _seed_mtime_ns: Nanosecond mtime of ``measurements.parquet`` as last
+            observed by this instance.  ``None`` means the mirror has never
+            existed from this instance's perspective.  Used to detect external
+            rewrites (CLI ``--measure`` / ``--recompile`` against a directory
+            whose viewer session is still open) so we don't clobber a freshly
+            seeded master with stale curation derived from an older
+            ``_master_df``.  Watches ``measurements.parquet`` only (C7).
+        _stale: Set to ``True`` once a write refusal has fired.  Exposed as
+            the read-only :attr:`stale` property; external callers may not
+            clear it.
     """
 
     root: Path
@@ -163,6 +173,13 @@ class CurationLabels:
     rekey_report: RekeyReport
     _master_df: pl.DataFrame = field(repr=False)
     _lock: threading.RLock = field(default_factory=threading.RLock, repr=False)
+    _seed_mtime_ns: int | None = field(default=None, repr=False)
+    _stale: bool = field(default=False, repr=False)
+
+    @property
+    def stale(self) -> bool:
+        """Whether an external mtime change blocked a write in this session."""
+        return self._stale
 
     # -- paths ---------------------------------------------------------------
     @property
@@ -247,6 +264,11 @@ class CurationLabels:
                 logger.info("Imported %d legacy removal(s) from measurements.parquet as 'other'.", n)
             report = RekeyReport(migrated=n)
 
+        # Capture the mtime of the curated mirror so _save_locked can detect
+        # an external re-seed (e.g. CLI --measure) while the session is open.
+        mirror = measurements_parquet_path(root)
+        seed_mtime: int | None = mirror.stat().st_mtime_ns if mirror.exists() else None
+
         return cls(
             root=root,
             labels=labels,
@@ -254,6 +276,7 @@ class CurationLabels:
             custom_categories=custom,
             rekey_report=report,
             _master_df=master_df,
+            _seed_mtime_ns=seed_mtime,
         )
 
     # -- registry IO ---------------------------------------------------------
@@ -537,10 +560,36 @@ class CurationLabels:
         The labels parquet is written LAST so that a crash mid-save leaves the
         durable store consistent with the previously written derived outputs,
         not ahead of them.
+
+        Refuses to write (logging at WARNING and setting :attr:`stale`) when the
+        on-disk ``measurements.parquet`` mtime no longer matches
+        :attr:`_seed_mtime_ns` — that means something else (typically a CLI
+        ``--measure`` / ``--recompile`` re-run) has rewritten the mirror since
+        this instance was loaded, and our cached ``_master_df`` may no longer
+        match disk.  The guard watches ``measurements.parquet`` only (C7).
         """
+        mirror = self.measurements_parquet
+        if mirror.exists() and self._seed_mtime_ns is not None:
+            current_mtime = mirror.stat().st_mtime_ns
+            if current_mtime != self._seed_mtime_ns:
+                logger.warning(
+                    "Refusing to overwrite curation mirror at %s — the "
+                    "file's mtime changed since this viewer session loaded it "
+                    "(likely a CLI --measure / --recompile re-run). Reload the "
+                    "viewer to pick up the fresh master before curating again.",
+                    mirror,
+                )
+                self._stale = True
+                return
+
         self._write_curated_mirror()
         self._write_category_parquets()
         self._write_labels_parquet()
+
+        # Refresh the seed mtime after a successful write so subsequent saves
+        # compare against the file we just wrote, not the original.
+        if mirror.exists():
+            self._seed_mtime_ns = mirror.stat().st_mtime_ns
 
     def _write_labels_parquet(self) -> None:
         path = self.labels_path

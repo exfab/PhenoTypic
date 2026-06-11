@@ -61,7 +61,7 @@ from phenotypic.gui.results_viewer import (
     _layout,
     _viewer_card,
 )
-from phenotypic.gui.results_viewer._filtered_state import FilteredMeasurements
+from phenotypic.gui.results_viewer._curation_labels import CurationLabels
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 from phenotypic.gui.results_viewer._heatmap_tab import register_heatmap_callbacks
 from phenotypic.gui.results_viewer._qc_tab import register_qc_callbacks
@@ -79,7 +79,7 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
     deterministic order, then attaches the two clientside callbacks
     that bridge Dash state to the OpenSeadragon JS layer. The colony
     view's curation callbacks receive the shared
-    :class:`FilteredMeasurements` instance pulled off
+    :class:`CurationLabels` instance pulled off
     ``app.server.config["filtered_state"]`` (seeded by
     :func:`._app.create_app`).
 
@@ -89,7 +89,7 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
             by closure to every per-module callback that needs to slice
             ``master_df`` or resolve overlay paths.
     """
-    filtered_state: FilteredMeasurements = app.server.config[CFG_FILTERED_STATE]
+    filtered_state: CurationLabels = app.server.config[CFG_FILTERED_STATE]
     _layout.register_callbacks(app, output_root)
     _filter_panel.register_callbacks(app, output_root, filtered_state)
     _filter_offcanvas.register_filter_offcanvas_callbacks(app)

@@ -4,7 +4,7 @@ Builds a configured :class:`dash.Dash` instance with its tile-serving
 and colony-crop Flask blueprints mounted, the validated
 :class:`~phenotypic.gui.results_viewer._output_root.OutputRoot` plus the
 curation-state
-:class:`~phenotypic.gui.results_viewer._filtered_state.FilteredMeasurements`
+:class:`~phenotypic.gui.results_viewer._curation_labels.CurationLabels`
 stashed on ``app.server.config``, the layout assembled by
 :func:`~phenotypic.gui.results_viewer._layout.build_app_layout`, and
 all callbacks registered via
@@ -56,7 +56,7 @@ from phenotypic.gui._shared import register_shared_static
 from phenotypic.gui._shared.tiles import register_crop_route
 from phenotypic.gui.results_viewer import _ids as ids, _tile_routes
 from phenotypic.gui.results_viewer._callbacks import register_callbacks
-from phenotypic.gui.results_viewer._filtered_state import FilteredMeasurements
+from phenotypic.gui.results_viewer._curation_labels import CurationLabels
 from phenotypic.gui.results_viewer._layout import (
     build_app_layout,
     build_empty_state_layout,
@@ -178,7 +178,7 @@ def create_app(
 
     _tile_routes.register(app, output_root)
 
-    filtered_state = FilteredMeasurements.load(output_root.root, output_root.master_df)
+    filtered_state = CurationLabels.load(output_root.root, output_root.master_df)
     app.server.config[CFG_FILTERED_STATE] = filtered_state
     colony_crop_routes.register(app, output_root)
     # QC Review tab serves the same centered crops under its own segment

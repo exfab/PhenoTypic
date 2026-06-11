@@ -380,3 +380,38 @@ def test_mark_across_multiple_images(tmp_path: Path):
     merged_df = pl.read_parquet(tools_.error_category_parquet_path(tmp_path, "merged"))
     assert merged_df.get_column("Object_Label").to_list() == [2]
     assert merged_df.get_column("Metadata_ImageFile").to_list() == ["pB"]
+
+
+# ---------------------------------------------------------------------------
+# Task 1: mtime guard — external reseed must block subsequent writes
+# ---------------------------------------------------------------------------
+
+
+def test_save_refuses_after_external_reseed(tmp_path: Path):
+    """A CLI re-seed (mtime bump) must cause the guard to refuse further writes.
+
+    Sequence:
+    1. ``mark`` seeds ``measurements.parquet`` + records its mtime.
+    2. An external actor bumps the mtime (simulating a CLI ``--measure`` re-run).
+    3. A second ``mark`` must refuse to clobber the mirror.
+    4. ``store.stale is True``.
+    5. Object 2 is NOT in the mirror (the second mark never wrote it).
+    """
+    import os
+    import time
+
+    store = CurationLabels.load(tmp_path, _master())
+    store.mark("plateA", 1, "debris")  # seeds measurements.parquet + records mtime
+
+    # Simulate a CLI re-seed: bump the mtime of measurements.parquet.
+    mpath = tools_.measurements_parquet_path(tmp_path)
+    future = time.time() + 5
+    os.utime(mpath, (future, future))
+
+    store.mark("plateA", 2, "merged")  # must refuse to clobber
+
+    on_disk = pl.read_parquet(mpath)
+    # Object 2 must NOT have been removed from the mirror (the write was refused).
+    assert 2 in on_disk.get_column("Object_Label").to_list()
+    # The staleness flag must be set.
+    assert store.stale is True

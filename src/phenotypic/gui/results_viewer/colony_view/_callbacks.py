@@ -41,8 +41,8 @@ from phenotypic.gui._config import (
 from phenotypic.gui.results_viewer import _ids as ids
 from phenotypic.gui.results_viewer._qc_tab.review import _ids as qc_review_ids
 from phenotypic.gui.results_viewer._filter_state import FilterSpec
+from phenotypic.gui.results_viewer._curation_labels import CurationLabels
 from phenotypic.gui.results_viewer._filtered_state import (
-    FilteredMeasurements,
     decode_removed_keys_payload,
 )
 from phenotypic.gui.results_viewer._output_root import OutputRoot
@@ -95,7 +95,7 @@ def _selection_payload(
 def register_callbacks(
     app: dash.Dash,
     output_root: OutputRoot,
-    filtered_state: FilteredMeasurements,
+    filtered_state: CurationLabels,
 ) -> None:
     """Register every callback owned by the colony-view tab.
 
@@ -441,7 +441,7 @@ def register_callbacks(
         # Mutate + emit under the same lock so a concurrent click can't
         # slip a divergent payload between the bulk save and the next
         # render.
-        def _apply(state: FilteredMeasurements) -> None:
+        def _apply(state: CurationLabels) -> None:
             if action == "remove":
                 state.remove_many(selected)
             else:
