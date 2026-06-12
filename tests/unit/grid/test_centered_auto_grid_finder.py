@@ -59,7 +59,8 @@ def test_estimate_pitch_flags_degenerate_on_random_points():
     f = CenteredAutoGridFinder(nrows=8, ncols=12)
     rng = np.random.default_rng(0)
     H, W = 3152, 5066
-    x = rng.uniform(0, W, 40); y = rng.uniform(0, H, 40)
+    x = rng.uniform(0, W, 40)
+    y = rng.uniform(0, H, 40)
     p_min, p_max = f._compute_bounds(x, y, H, W)
     _, ok = f._estimate_pitch(x, y, p_min, p_max)
     assert ok is False  # no real periodicity -> caller will fall back
@@ -107,7 +108,8 @@ def test_multistart_rejects_one_cell_shift():
 def test_icp_singular_returns_none_all_one_cell():
     f = CenteredAutoGridFinder(nrows=8, ncols=12)
     # all points in a tiny cluster -> every assignment rounds to one cell -> det ~ 0
-    x = np.array([2500.0, 2503.0, 2498.0]); y = np.array([1570.0, 1572.0, 1569.0])
+    x = np.array([2500.0, 2503.0, 2498.0])
+    y = np.array([1570.0, 1572.0, 1569.0])
     out = f._icp_refine(x, y, 2533.0, 1576.0, 404.0)
     assert out is None
 
@@ -154,7 +156,8 @@ def test_degenerate_response_falls_back_without_exception():
     f = CenteredAutoGridFinder(nrows=8, ncols=12, warn=True)
     rng = np.random.default_rng(1)
     H, W = 3152, 5066
-    x = rng.uniform(0, W, 30); y = rng.uniform(0, H, 30)
+    x = rng.uniform(0, W, 30)
+    y = rng.uniform(0, H, 30)
     with pytest.warns(CenteredAutoGridFinderFallbackWarning):
         re, ce = f._fit_grid_from_centers(x, y, H, W)
     assert _edges_ok(re, ce, 8, 12, H, W)
@@ -164,3 +167,27 @@ def test_grid_image_default_finder_is_centered():
     from phenotypic import GridImage
     img = GridImage(arr=np.zeros((400, 600, 3), dtype=np.uint8), nrows=8, ncols=12)
     assert isinstance(img.grid_finder, CenteredAutoGridFinder)
+
+
+def test_integration_decimated_synth_plate():
+    from phenotypic.data import load_synth_yeast_plate
+    from phenotypic.detect import OtsuDetector
+    image = OtsuDetector().apply(load_synth_yeast_plate())
+    f = CenteredAutoGridFinder(nrows=8, ncols=12)
+    df = f.measure(image)
+    assert str(GRID.ROW_NUM) in df.columns and str(GRID.COL_NUM) in df.columns
+    # rows/cols within range, no NaN section for detected objects
+    assert df[str(GRID.ROW_NUM)].dropna().between(0, 7).all()
+    assert df[str(GRID.COL_NUM)].dropna().between(0, 11).all()
+
+
+def test_dense_plate_pitch_above_naive_ceiling_is_found():
+    """Regression for the bound-inversion: true pitch exceeds min(H/R,W/C)."""
+    f = CenteredAutoGridFinder(nrows=8, ncols=12)
+    H, W = 3152, 5066
+    p_true, cx, cy = 404.0, W / 2, H / 2          # 404 > min(H/8,W/12)=394
+    occ = [(i, j) for i in range(8) for j in range(12)]   # fully dense
+    x, y = _lattice_points(p_true, cx, cy, 8, 12, occ)
+    re, ce = f._fit_grid_from_centers(x, y, H, W)
+    # recovered column pitch ~ 404 (not capped at 394)
+    assert np.mean(np.diff(ce[1:-1])) == pytest.approx(p_true, abs=2.0)

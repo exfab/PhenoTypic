@@ -183,6 +183,9 @@ class CenteredAutoGridFinder(GridFinder):
                 if abs(np.linalg.det(A2)) >= self.DET_EPS:
                     cx, cy, p = np.linalg.solve(A2, np.array([xi.sum(), yi.sum(),
                                                               (ai * xi + bi * yi).sum()]))
+        if a is None or b is None:
+            # max_iter <= 0: the loop never ran, so nothing was fitted.
+            return None
         res = np.hypot(x - (cx + a * p), y - (cy + b * p))
         return float(cx), float(cy), float(p), float(res.mean())
 

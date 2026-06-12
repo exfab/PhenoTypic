@@ -33,10 +33,19 @@ ANNOTATED_MODULES = (_detect, _enhance, _refine, _grid, _correction)
 
 
 def iter_annotated_classes() -> Iterator[type]:
-    """Yield every operation class in the in-scope families' ``__all__``."""
+    """Yield every operation class in the in-scope families' ``__all__``.
+
+    A family's ``__all__`` may legitimately export non-operation symbols — e.g.
+    ``phenotypic.grid`` exports ``CenteredAutoGridFinderFallbackWarning`` (a plain
+    ``UserWarning`` subclass) so the GUI/``from_json`` can discover the warning
+    category. Only pydantic operation models carry ``model_fields``, so restrict
+    the denominator to those and skip the rest.
+    """
     for module in ANNOTATED_MODULES:
         for name in module.__all__:
-            yield getattr(module, name)
+            obj = getattr(module, name)
+            if isinstance(obj, type) and hasattr(obj, "model_fields"):
+                yield obj
 
 
 def walk_metadata(annotation: Any) -> list[Any]:
