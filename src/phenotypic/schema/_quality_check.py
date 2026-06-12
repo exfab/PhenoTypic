@@ -2,7 +2,7 @@
 
 from textwrap import dedent
 
-from ._measurement_info import MeasurementInfo
+from ._measurement_info import Entry, MeasurementInfo
 
 
 class QUALITY_CHECK(MeasurementInfo):
@@ -17,17 +17,17 @@ class QUALITY_CHECK(MeasurementInfo):
     docstring documents its real emitted columns.
     """
 
-    FLAG = (
+    FLAG = Entry(
         "Flag",
         "True when the metric crosses fail_threshold in the bad direction; "
         "eligible for curation.",
     )
-    METRIC = (
+    METRIC = Entry(
         "Metric",
         "Headline metric in the check's own units; the bad direction is set "
         "by the check's _HIGHER_IS_BAD flag. Drives Status.",
     )
-    STATUS = ("Status", "Categorical: pass | warn | fail.")
+    STATUS = Entry("Status", "Categorical: pass | warn | fail.")
 
     @classmethod
     def category(cls) -> str:

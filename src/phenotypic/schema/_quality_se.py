@@ -1,6 +1,6 @@
 """Measurement info container for replicate-agreement standard-error QC."""
 
-from ._measurement_info import MeasurementInfo
+from ._measurement_info import Entry, MeasurementInfo
 
 
 class QUALITY_SE(MeasurementInfo):
@@ -17,7 +17,7 @@ class QUALITY_SE(MeasurementInfo):
     def category(cls) -> str:
         return "QC_SE"
 
-    VALUE = ("Value", "Raw SE = stddev / sqrt(n) across replicates.")
-    MEAN = ("Mean", "Mean across replicates at this (group, time).")
-    CV = ("CV", "Coefficient of variation, stddev / |mean|.")
-    NUM_REPLICATES = ("NumReplicates", "Replicate count contributing to the SE.")
+    VALUE = Entry("Value", "Raw SE = stddev / sqrt(n) across replicates.")
+    MEAN = Entry("Mean", "Mean across replicates at this (group, time).")
+    CV = Entry("CV", "Coefficient of variation, stddev / |mean|.")
+    NUM_REPLICATES = Entry("NumReplicates", "Replicate count contributing to the SE.")
