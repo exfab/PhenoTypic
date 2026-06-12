@@ -7,7 +7,6 @@ conventions, descriptive metadata, and automatic documentation generation.
 from dataclasses import KW_ONLY, dataclass
 from enum import Enum
 from textwrap import dedent
-from typing import Final
 
 
 @dataclass(frozen=True, slots=True)
