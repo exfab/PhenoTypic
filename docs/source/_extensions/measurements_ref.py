@@ -2,9 +2,10 @@
 
 At ``builder-inited`` time, this extension writes ``docs/source/measurements_ref``
 as a deterministic build artifact. The generated section has a compact landing
-page, separate Measurements and Metadata indexes, and one child page per public
-``phenotypic.schema.MeasurementInfo`` subclass so every schema enum participates
-in Sphinx navigation.
+page with one card per captioned group, a per-group index, and one child page
+per public ``phenotypic.schema.MeasurementInfo`` subclass so every schema enum
+participates in Sphinx navigation. It also copies packaged measurement images
+into the docs static tree so ``/_static/measurements/...`` references resolve.
 
 The pages are regenerated on every build, so renames or new measurements added
 to ``phenotypic.schema`` surface immediately. Do not edit generated
@@ -27,38 +28,6 @@ from sphinx.util import logging as sphinx_logging
 logger = sphinx_logging.getLogger(__name__)
 
 
-# (MeasureFeature qualified path, [MeasurementInfo qualified paths])
-# Per-object measurements only. Order here drives the operator-oriented
-# section order on the rendered Measurements page.
-_REGISTRY: list[tuple[str, list[str]]] = [
-    ("phenotypic.measure._measure_size.MeasureSize",
-        ["phenotypic.schema.SIZE"]),
-    ("phenotypic.measure._measure_shape.MeasureShape",
-        ["phenotypic.schema.SHAPE"]),
-    ("phenotypic.measure._measure_intensity.MeasureIntensity",
-        ["phenotypic.schema.INTENSITY"]),
-    ("phenotypic.measure._measure_bounds.MeasureBounds",
-        ["phenotypic.schema.BBOX"]),
-    ("phenotypic.measure._measure_texture.MeasureTexture",
-        ["phenotypic.schema.TEXTURE"]),
-    ("phenotypic.measure._measure_color.MeasureColor",
-        [
-            "phenotypic.schema.ColorLab",
-            "phenotypic.schema.ColorHSV",
-        ]),
-    # MeasureColorComposition is commented out of ``phenotypic.measure.__all__``
-    # pending completion (see the TODO in ``measure/__init__.py``). Its enum is
-    # still documented on the generated schema page.
-    ("phenotypic.measure._measure_grid_spatial.MeasureGridSpatial",
-        ["phenotypic.schema.GRID_SPATIAL"]),
-    ("phenotypic.measure._measure_grid_linreg_stats.MeasureGridLinRegStats",
-        ["phenotypic.schema.GRID_LINREG_STATS"]),
-    ("phenotypic.measure._measure_grid_spread.MeasureGridSpread",
-        ["phenotypic.schema.GRID_SPREAD"]),
-    ("phenotypic.measure._measure_symmetric_zones.MeasureSymmetricZones",
-        ["phenotypic.schema.SYMMETRIC_ZONES"]),
-]
-
 _METADATA_INFO_NAMES: set[str] = {
     "METADATA",
     "ACQUISITION_METADATA",
@@ -70,15 +39,30 @@ _METADATA_INFO_NAMES: set[str] = {
     "SAMPLE_METADATA",
 }
 
-_EXPERIMENTAL_TAG_NAMES: tuple[str, ...] = (
-    "ACQUISITION_METADATA",
-    "CONDITION_METADATA",
-    "EXPERIMENT_METADATA",
-    "GENETIC_METADATA",
-    "INCUBATION_METADATA",
-    "PLATE_METADATA",
-    "SAMPLE_METADATA",
-)
+#: Toctree groups (caption -> ordered enum names). Single source of truth; a test
+#: asserts every public schema enum lands in exactly one group.
+_GROUPS: dict[str, tuple[str, ...]] = {
+    "Measurements": (
+        "SIZE", "SHAPE", "BBOX", "INTENSITY", "TEXTURE", "ColorLab", "ColorHSV",
+        "Colorxy", "ColorXYZ", "ColorComposition", "OBJECT", "GRID",
+        "GRID_SPATIAL", "GRID_LINREG_STATS", "GRID_SPREAD", "SYMMETRIC_ZONES",
+        "RADIAL_EXPANSION",
+    ),
+    "Models & Analysis": (
+        "LOG_GROWTH_MODEL", "LINEAR_SOFTPLUS_MODEL", "DOUBLE_SOFTPLUS_MODEL",
+        "EDGE_CORRECTION", "MODEL_METRICS",
+    ),
+    "Quality Control": (
+        "QUALITY_CHECK", "QUALITY_COUNT", "QUALITY_ICC", "QUALITY_MAD",
+        "QUALITY_SE", "QUALITY_TUKEY", "QUALITY_ZMAX",
+    ),
+    "Curation & Errors": ("CURATION", "ErrorCategory"),
+    "Metadata": (
+        "METADATA", "ACQUISITION_METADATA", "CONDITION_METADATA",
+        "EXPERIMENT_METADATA", "GENETIC_METADATA", "INCUBATION_METADATA",
+        "PLATE_METADATA", "SAMPLE_METADATA",
+    ),
+}
 
 _METADATA_OVERVIEWS: dict[str, tuple[str, str]] = {
     "METADATA": (
@@ -126,129 +110,6 @@ _METADATA_OVERVIEWS: dict[str, tuple[str, str]] = {
         "Use when organizing outputs across projects, protocols, or datasets.",
     ),
 }
-
-_ROOT_INTRO = """\
-Measurements
-============
-
-PhenoTypic uses ``MeasurementInfo`` enums to define stable column names for
-measurement outputs and metadata joins. Use this section to look up the columns
-that appear in exported DataFrames and to reuse the same names in downstream
-analysis code.
-
-.. toctree::
-   :maxdepth: 2
-   :hidden:
-
-   measurements/index
-   metadata/index
-
-.. grid:: 1 2 2 2
-   :gutter: 3
-
-   .. grid-item-card:: Measurements
-
-      Per-object measurements, analysis outputs, model metrics, quality-control
-      labels, and other non-metadata columns.
-
-      +++
-
-      .. button-ref:: measurements/index
-         :ref-type: doc
-         :click-parent:
-         :color: secondary
-         :expand:
-
-         Browse measurements
-
-   .. grid-item-card:: Metadata
-
-      Framework metadata and recommended experimental ``Metadata_*`` tags for
-      sample, plate, condition, incubation, acquisition, genetic, and experiment
-      annotations.
-
-      +++
-
-      .. button-ref:: metadata/index
-         :ref-type: doc
-         :click-parent:
-         :color: secondary
-         :expand:
-
-         Browse metadata
-
-"""
-
-_MEASUREMENTS_INTRO = """\
-Measurements
-============
-
-Every non-metadata ``MeasurementInfo`` enum exported by ``phenotypic.schema``.
-The generated pages below document each enum's full DataFrame column labels and
-descriptions.
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Measurement Categories
-   :hidden:
-
-{toctree_entries}
-
-Operator-Oriented Overview
---------------------------
-
-The sections below retain the original operator grouping for per-object
-measurement operators. Each operator description is followed by the schema
-tables it emits.
-
-"""
-
-_METADATA_INTRO = """\
-Metadata
-========
-
-Use the ``Metadata_*`` column labels documented here when preparing external
-metadata tables for PhenoTypic. These labels streamline downstream processing
-because the package offers processing helpers based on these assumptions. If
-your input tables use different column names, provide a mapping before feeding
-them into PhenoTypic workflows.
-
-.. toctree::
-   :maxdepth: 1
-   :caption: MetadataInfo
-   :hidden:
-
-{toctree_entries}
-
-Metadata Tag Overview
----------------------
-
-.. list-table::
-   :header-rows: 1
-
-   * - Tag class
-     - Includes
-     - Use for
-{metadata_overview_rows}
-
-Framework Metadata
-------------------
-
-``METADATA`` covers framework-populated image bookkeeping columns.
-
-Experimental Tags
------------------
-
-The experimental-tag enums live under ``phenotypic.schema._experimental_tags``
-and provide a recommended vocabulary for biological and experimental
-annotations. They are recommended labels, not validators: arbitrary metadata
-columns are still accepted, but using the labels below keeps downstream
-processing simpler.
-
-{experimental_tag_list}
-
-"""
-
 
 def _import(path: str) -> Any:
     """Import ``module.attr`` and return the attribute."""
@@ -306,31 +167,6 @@ def _heading(title: str, underline: str) -> list[str]:
     return [title, underline * len(title), ""]
 
 
-def _toctree_entries(
-        info_names: list[str],
-        public_infos: dict[str, type[Any]] | None = None,
-        *,
-        label_by_category: bool = False,
-) -> str:
-    """Format hidden toctree entries for generated enum pages."""
-    entries: list[str] = []
-    for name in info_names:
-        if label_by_category and public_infos is not None:
-            label = public_infos[name].category()
-            entries.append(f"   {label} <{_doc_stem(name)}>")
-        else:
-            entries.append(f"   {_doc_stem(name)}")
-    return "\n".join(entries)
-
-
-def _experimental_tag_list() -> str:
-    """Return a bullet list of experimental-tag enum doc links."""
-    return "\n".join(
-        f"- :doc:`{name} <{_doc_stem(name)}>`"
-        for name in _EXPERIMENTAL_TAG_NAMES
-    )
-
-
 def _metadata_overview_rows(info_names: list[str]) -> str:
     """Return overview table rows for the metadata index."""
     rows: list[str] = []
@@ -378,169 +214,138 @@ def _enum_page(info_cls: type[Any]) -> str:
     return "\n".join(out)
 
 
-def _append_object_identifier_section(out: list[str]) -> None:
-    """Append the shared object-label explanation to the measurements page."""
-    try:
-        object_info = _import("phenotypic.schema.OBJECT")
-    except (ImportError, AttributeError) as err:
-        logger.warning(
-            "measurements_ref: could not import phenotypic.schema.OBJECT: %s", err
-        )
-        return
-
-    out.extend(_heading("Object Identifier", "^"))
-    out.append(
-        "``Object_Label`` is the shared per-object key used by every "
-        "per-object measurement operator. Each detected colony is assigned a "
-        "unique integer label so its measurements line up across operators "
-        "when joined on this column."
-    )
-    out.append("")
-    out.append(object_info.rst_table())
-    out.append("")
-    out.append("")
-
-
-def _append_operator_sections(out: list[str]) -> None:
-    """Append the existing operator-oriented measurement overview."""
-    _append_object_identifier_section(out)
-
-    for measure_path, info_paths in _REGISTRY:
-        try:
-            measure_cls = _import(measure_path)
-        except (ImportError, AttributeError) as err:
-            logger.warning(
-                "measurements_ref: could not import %s: %s", measure_path, err
-            )
-            continue
-
-        info_classes = []
-        for info_path in info_paths:
-            try:
-                info_classes.append(_import(info_path))
-            except (ImportError, AttributeError) as err:
-                logger.warning(
-                    "measurements_ref: could not import %s: %s", info_path, err
-                )
-        if not info_classes:
-            continue
-
-        heading = measure_cls.__name__
-        out.extend(_heading(heading, "^"))
-
-        description = _lead_paragraphs(_strip_appended_table(measure_cls.__doc__ or ""))
-        if description:
-            out.append(description)
-            out.append("")
-
-        for info_cls in info_classes:
-            if len(info_classes) > 1:
-                sub = info_cls.category()
-                out.extend(_heading(sub, '"'))
-            out.append(info_cls.rst_table())
-            out.append("")
-        out.append("")
-
-
-def _append_metadata_sections(
-        out: list[str],
-        info_names: list[str],
-        public_infos: dict[str, type[Any]],
-) -> None:
-    """Append inline metadata class documentation to the metadata index."""
-    for name in info_names:
-        info_cls = public_infos[name]
-        out.extend(_heading(name, "-"))
-
-        description = _lead_paragraphs(_strip_appended_table(info_cls.__doc__ or ""))
-        if description:
-            out.append(_rst_cell_text(description))
-            out.append("")
-
-        out.append(info_cls.rst_table())
-        out.append("")
-        out.append("")
-
-
 def _write(path: Path, contents: str) -> None:
     """Write a generated page, creating parent directories as needed."""
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(contents, encoding="utf-8")
 
 
-def _build_measurements_index(
-        info_names: list[str],
-        public_infos: dict[str, type[Any]],
-) -> str:
-    """Build the non-metadata measurements index page."""
+def _group_slug(caption: str) -> str:
+    return caption.lower().replace(" & ", "-and-").replace(" ", "-")
+
+
+def _build_root_index(groups, public_infos) -> str:
+    toc, cards = [], []
+    for caption, names in groups.items():
+        if not any(n in public_infos for n in names):
+            continue
+        slug = _group_slug(caption)
+        toc.append(f"   {slug}/index")
+        cards += [
+            f"   .. grid-item-card:: {caption}",
+            "",
+            "      +++",
+            "",
+            f"      .. button-ref:: {slug}/index",
+            "         :ref-type: doc",
+            "         :click-parent:",
+            "         :color: secondary",
+            "         :expand:",
+            "",
+            f"         Browse {caption}",
+            "",
+        ]
     out = [
-        _MEASUREMENTS_INTRO.format(
-            toctree_entries=_toctree_entries(
-                info_names,
-                public_infos,
-                label_by_category=True,
-            )
-        )
+        "Measurements",
+        "============",
+        "",
+        "PhenoTypic uses ``MeasurementInfo`` enums to define stable column names",
+        "for measurement outputs and metadata joins. Browse by group:",
+        "",
+        ".. toctree::",
+        "   :maxdepth: 2",
+        "   :hidden:",
+        "",
+        *toc,
+        "",
+        ".. grid:: 1 2 2 2",
+        "   :gutter: 3",
+        "",
+        *cards,
     ]
-    _append_operator_sections(out)
     return "\n".join(out)
 
 
-def _build_metadata_index(
-        info_names: list[str],
-        public_infos: dict[str, type[Any]],
-) -> str:
-    """Build the metadata index page."""
+def _metadata_overview_block(names) -> str:
+    present = [n for n in names if n in _METADATA_OVERVIEWS]
+    if not present:
+        return ""
+    return "\n".join([
+        "Metadata Tag Overview",
+        "---------------------",
+        "",
+        ".. list-table::",
+        "   :header-rows: 1",
+        "",
+        "   * - Tag class",
+        "     - Includes",
+        "     - Use for",
+        _metadata_overview_rows(present),
+        "",
+    ])
+
+
+def _build_group_index(caption, names, public_infos) -> str:
     out = [
-        _METADATA_INTRO.format(
-            toctree_entries=_toctree_entries(info_names),
-            metadata_overview_rows=_metadata_overview_rows(info_names),
-            experimental_tag_list=_experimental_tag_list(),
-        )
+        caption,
+        "=" * len(caption),
+        "",
+        f"Schema enums in the **{caption}** group. Each page documents an enum's",
+        "DataFrame column labels and descriptions.",
+        "",
+        ".. toctree::",
+        "   :maxdepth: 1",
+        f"   :caption: {caption}",
+        "",
     ]
-    _append_metadata_sections(out, info_names, public_infos)
+    for name in names:
+        out.append(f"   {public_infos[name].category()} <{_doc_stem(name)}>")
+    out.append("")
+    block = _metadata_overview_block(names) if caption == "Metadata" else ""
+    if block:
+        out += ["", block]
     return "\n".join(out)
+
+
+def _copy_measurement_assets(srcdir: str) -> None:
+    """Copy packaged measurement images into the docs static tree so that
+    ``/_static/measurements/...`` references resolve in the built HTML."""
+    import phenotypic
+
+    src = Path(phenotypic.__file__).resolve().parent / "_assets" / "measurements"
+    if not src.is_dir():
+        return
+    dest = Path(srcdir) / "_static" / "measurements"
+    if dest.exists():
+        shutil.rmtree(dest)
+    shutil.copytree(src, dest)
 
 
 def _build_pages(srcdir: str) -> None:
-    """Generate the complete measurements reference page tree under ``srcdir``."""
     output_dir = Path(srcdir) / "measurements_ref"
     if output_dir.exists():
         shutil.rmtree(output_dir)
 
     public_infos = _public_measurement_info_classes()
-    metadata_names = [
-        name for name in public_infos
-        if name in _METADATA_INFO_NAMES
-    ]
-    measurement_names = [
-        name for name in public_infos
-        if name not in _METADATA_INFO_NAMES
-    ]
-
-    _write(output_dir / "index.rst", _ROOT_INTRO)
-    _write(
-        output_dir / "measurements" / "index.rst",
-        _build_measurements_index(measurement_names, public_infos),
-    )
-    _write(
-        output_dir / "metadata" / "index.rst",
-        _build_metadata_index(metadata_names, public_infos),
-    )
-
-    for name in measurement_names:
+    _write(output_dir / "index.rst", _build_root_index(_GROUPS, public_infos))
+    for caption, names in _GROUPS.items():
+        present = [n for n in names if n in public_infos]
+        if not present:
+            continue
+        slug = _group_slug(caption)
         _write(
-            output_dir / "measurements" / f"{_doc_stem(name)}.rst",
-            _enum_page(public_infos[name]),
+            output_dir / slug / "index.rst",
+            _build_group_index(caption, present, public_infos),
         )
-    for name in metadata_names:
-        _write(
-            output_dir / "metadata" / f"{_doc_stem(name)}.rst",
-            _enum_page(public_infos[name]),
-        )
+        for name in present:
+            _write(
+                output_dir / slug / f"{_doc_stem(name)}.rst",
+                _enum_page(public_infos[name]),
+            )
 
 
 def _generate(app):
+    _copy_measurement_assets(app.srcdir)
     _build_pages(app.srcdir)
     print(f"Generated {os.path.join(app.srcdir, 'measurements_ref')}")
 

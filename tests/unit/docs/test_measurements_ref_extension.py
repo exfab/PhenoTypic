@@ -71,6 +71,16 @@ def _build_reference_tree(tmp_path: Path, monkeypatch: MonkeyPatch) -> Path:
     return tmp_path / "measurements_ref"
 
 
+#: Group slugs (caption -> directory slug) for the 5-group reference tree.
+_GROUP_SLUGS = {
+    "Measurements": "measurements",
+    "Models & Analysis": "models-and-analysis",
+    "Quality Control": "quality-control",
+    "Curation & Errors": "curation-and-errors",
+    "Metadata": "metadata",
+}
+
+
 def test_build_pages_creates_grouped_reference_indexes(
         tmp_path: Path,
         monkeypatch: MonkeyPatch,
@@ -78,15 +88,36 @@ def test_build_pages_creates_grouped_reference_indexes(
     docs_root = _build_reference_tree(tmp_path, monkeypatch)
 
     assert (docs_root / "index.rst").is_file()
-    assert (docs_root / "measurements" / "index.rst").is_file()
-    assert (docs_root / "metadata" / "index.rst").is_file()
+    for slug in _GROUP_SLUGS.values():
+        assert (docs_root / slug / "index.rst").is_file()
+
+
+def test_root_index_links_every_group(
+        tmp_path: Path,
+        monkeypatch: MonkeyPatch,
+) -> None:
+    docs_root = _build_reference_tree(tmp_path, monkeypatch)
+    root_index = (docs_root / "index.rst").read_text()
+
+    for caption, slug in _GROUP_SLUGS.items():
+        assert f".. grid-item-card:: {caption}" in root_index
+        assert f"   {slug}/index" in root_index
 
 
 def test_every_public_measurement_info_has_one_generated_page(
         tmp_path: Path,
         monkeypatch: MonkeyPatch,
 ) -> None:
-    docs_root = _build_reference_tree(tmp_path, monkeypatch)
+    extension = _load_extension(monkeypatch)
+    extension._build_pages(str(tmp_path))
+    docs_root = tmp_path / "measurements_ref"
+
+    name_to_slug = {
+        name: extension._group_slug(caption)
+        for caption, names in extension._GROUPS.items()
+        for name in names
+    }
+
     page_paths = [
         path.relative_to(docs_root).as_posix()
         for path in docs_root.rglob("*.rst")
@@ -98,11 +129,7 @@ def test_every_public_measurement_info_has_one_generated_page(
     for name in public_infos:
         expected_stem = name.lower()
         matches = [path for path in page_paths if Path(path).stem == expected_stem]
-        assert matches == [
-            f"metadata/{expected_stem}.rst"
-            if name in _METADATA_ENUM_NAMES
-            else f"measurements/{expected_stem}.rst"
-        ]
+        assert matches == [f"{name_to_slug[name]}/{expected_stem}.rst"]
 
 
 def test_experimental_tags_are_listed_under_metadata_only(
@@ -118,19 +145,19 @@ def test_experimental_tags_are_listed_under_metadata_only(
         assert name not in measurements_index
 
 
-def test_metadata_index_encourages_standard_labels_and_mapping(
+def test_metadata_index_embeds_overview_table(
         tmp_path: Path,
         monkeypatch: MonkeyPatch,
 ) -> None:
     docs_root = _build_reference_tree(tmp_path, monkeypatch)
     metadata_index = (docs_root / "metadata" / "index.rst").read_text()
 
-    assert "``Metadata_*`` column labels" in metadata_index
-    assert "downstream processing" in metadata_index
-    assert "provide a mapping" in metadata_index
+    assert "Metadata Tag Overview" in metadata_index
+    assert "Framework-populated image bookkeeping" in metadata_index
+    assert "Use for sample-level biological identity" in metadata_index
 
 
-def test_measurement_toctree_uses_category_labels(
+def test_group_index_uses_category_labels(
         tmp_path: Path,
         monkeypatch: MonkeyPatch,
 ) -> None:
@@ -143,21 +170,6 @@ def test_measurement_toctree_uses_category_labels(
     assert "   SHAPE" not in measurements_index
 
 
-def test_metadata_index_embeds_overview_and_class_tables(
-        tmp_path: Path,
-        monkeypatch: MonkeyPatch,
-) -> None:
-    docs_root = _build_reference_tree(tmp_path, monkeypatch)
-    metadata_index = (docs_root / "metadata" / "index.rst").read_text()
-
-    assert "Metadata Tag Overview" in metadata_index
-    assert "Framework-populated image bookkeeping" in metadata_index
-    assert "Use for sample-level biological identity" in metadata_index
-    assert "METADATA\n--------" in metadata_index
-    assert "SAMPLE_METADATA\n---------------" in metadata_index
-    assert ".. list-table:: Category: **Metadata**" in metadata_index
-
-
 def test_generated_enum_pages_escape_rst_markup(
         tmp_path: Path,
         monkeypatch: MonkeyPatch,
@@ -165,11 +177,21 @@ def test_generated_enum_pages_escape_rst_markup(
     docs_root = _build_reference_tree(tmp_path, monkeypatch)
     metadata_page = (docs_root / "metadata" / "metadata.rst").read_text()
     quality_check_page = (
-        docs_root / "measurements" / "quality_check.rst"
+        docs_root / "quality-control" / "quality_check.rst"
     ).read_text()
-    quality_se_page = (docs_root / "measurements" / "quality_se.rst").read_text()
+    quality_se_page = (
+        docs_root / "quality-control" / "quality_se.rst"
+    ).read_text()
 
     assert ":mod:" not in metadata_page
     assert ":class:" not in metadata_page
     assert ":meth:" not in quality_check_page
     assert r"\|mean\|" in quality_se_page
+
+
+def test_every_public_enum_lands_in_exactly_one_group(monkeypatch):
+    ext = _load_extension(monkeypatch)
+    public = set(ext._public_measurement_info_classes())  # {name: class} -> keys
+    grouped = [name for names in ext._GROUPS.values() for name in names]
+    assert len(grouped) == len(set(grouped)), "an enum appears in >1 group"
+    assert set(grouped) == public, f"ungrouped or unknown: {public ^ set(grouped)}"
