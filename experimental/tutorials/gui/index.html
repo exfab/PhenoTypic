@@ -568,6 +568,7 @@
 </details></li>
 <li class="toctree-l1 current active has-children"><a class="current reference internal" href="#">GUI Walkthrough</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="01_setup.html">Setup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="18_browse.html">Browse source images</a></li>
 <li class="toctree-l2"><a class="reference internal" href="02_file_explorer.html">File Explorer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="03_build_pipeline.html">Build a Pipeline</a></li>
 <li class="toctree-l2"><a class="reference internal" href="04_run_local.html">Run Locally</a></li>
@@ -670,52 +671,55 @@ the images aligned with the implementation.</p>
 <tr class="row-even"><td><p><a class="reference internal" href="01_setup.html"><span class="std std-doc">Setup</span></a></p></td>
 <td><p>Generate the synthetic dataset and launch the hub.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="02_file_explorer.html"><span class="std std-doc">File Explorer</span></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="18_browse.html"><span class="std std-doc">Browse source images</span></a></p></td>
+<td><p>Deep-zoom the raw input images under a source root with cascading dropdowns and a metadata panel.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="02_file_explorer.html"><span class="std std-doc">File Explorer</span></a></p></td>
 <td><p>Navigate the sandbox sidebar and read capability badges.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="03_build_pipeline.html"><span class="std std-doc">Build a Pipeline</span></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="03_build_pipeline.html"><span class="std std-doc">Build a Pipeline</span></a></p></td>
 <td><p>Compose a pipeline.json with the fixed linear port map, side loader, and zoom controls.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="04_run_local.html"><span class="std std-doc">Run Locally</span></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="04_run_local.html"><span class="std std-doc">Run Locally</span></a></p></td>
 <td><p>Submit a local subprocess run and tail the dashboard.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="05_run_slurm.html"><span class="std std-doc">Run on SLURM</span></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="05_run_slurm.html"><span class="std std-doc">Run on SLURM</span></a></p></td>
 <td><p>Fill in SLURM resources and ship a submission to a cluster.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="06_view_results.html"><span class="std std-doc">View Results</span></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="06_view_results.html"><span class="std std-doc">View Results</span></a></p></td>
 <td><p>Open the results viewer against a finished CLI output.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="07_pick_points.html"><span class="std std-doc">Pick points</span></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="07_pick_points.html"><span class="std std-doc">Pick points</span></a></p></td>
 <td><p>Curate detected colonies manually with the in-builder point picker.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="08_analysis.html"><span class="std std-doc">Analysis</span></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="08_analysis.html"><span class="std std-doc">Analysis</span></a></p></td>
 <td><p>Compose <code class="docutils literal notranslate"><span class="pre">phenotypic.analysis</span></code> filters + endpoint model and emit <code class="docutils literal notranslate"><span class="pre">analysis.{csv,parquet}</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="09_aux_ports.html"><span class="std std-doc">Aux ports</span></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="09_aux_ports.html"><span class="std std-doc">Aux ports</span></a></p></td>
 <td><p>Fill operation-typed parameters (e.g. <code class="docutils literal notranslate"><span class="pre">FilamentousFungiDetector.inoculum_detector</span></code>) through side-loader port targets.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="10_qc_curation_loop.html"><span class="std std-doc">QC curation loop</span></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="10_qc_curation_loop.html"><span class="std std-doc">QC curation loop</span></a></p></td>
 <td><p>Configure <code class="docutils literal notranslate"><span class="pre">QualityCheck</span></code> analyzers and curate flagged colonies in a tight feedback loop.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="11_heatmap_exploration.html"><span class="std std-doc">Heatmap exploration</span></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="11_heatmap_exploration.html"><span class="std std-doc">Heatmap exploration</span></a></p></td>
 <td><p>Pick a measurement and walk through time on a plate to spot edge / contamination patterns.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="12_aux_wire_in_dag.html"><span class="std std-doc">Fill a scalar aux target</span></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="12_aux_wire_in_dag.html"><span class="std std-doc">Fill a scalar aux target</span></a></p></td>
 <td><p>Select a gold side port, watch it turn green, and fill it with a compatible palette operation.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="13_wire_pipeline_as_aux.html"><span class="std std-doc">Open an embedded Pipeline aux</span></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="13_wire_pipeline_as_aux.html"><span class="std std-doc">Open an embedded Pipeline aux</span></a></p></td>
 <td><p>Fill a side value with <code class="docutils literal notranslate"><span class="pre">+</span> <span class="pre">New</span> <span class="pre">Pipeline</span></code>, build the nested chain, and use breadcrumbs to return.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="14_fix_validation_issues.html"><span class="std std-doc">Fix validation issues</span></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="14_fix_validation_issues.html"><span class="std std-doc">Fix validation issues</span></a></p></td>
 <td><p>Triage the toolbar issue badge, fix missing side values, and understand unsupported development DAG states.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="15_qc_review.html"><span class="std std-doc">QC review walkthrough</span></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="15_qc_review.html"><span class="std std-doc">QC review walkthrough</span></a></p></td>
 <td><p>Switch the QC tab to Review; walk worst-first groups for a module, curate in the tile gallery, mark reviewed, and watch the metric recompute in place.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="16_tune_copilot.html"><span class="std std-doc">Tune co-pilot</span></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="16_tune_copilot.html"><span class="std std-doc">Tune co-pilot</span></a></p></td>
 <td><p>Open the <code class="docutils literal notranslate"><span class="pre">/tune/</span></code> read-only co-pilot over a tune output: monitor trials, curate A/B overlays, review the search space, and launch the next run.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="17_error_analysis.html"><span class="std std-doc">Error analysis</span></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="17_error_analysis.html"><span class="std std-doc">Error analysis</span></a></p></td>
 <td><p>Rank the measurements that separate an error category from the good baseline, read off a cutoff, and copy a filter spec.</p></td>
 </tr>
 </tbody>
