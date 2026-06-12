@@ -113,8 +113,22 @@ class MeasureBounds(MeasureFeatures):
             dt = ndi.distance_transform_edt(binary)
 
             labels = np.unique(objmap[nonzero])
-            positions = ndi.maximum_position(dt, labels=objmap, index=labels)
-            positions = np.asarray(positions, dtype=float)
+            # DT-weighted centroid (Sum(dt*pos)/Sum(dt)) — robust to filament hyphae
+            # (low DT weight) AND budding doublets (two lobes balance to the neck),
+            # replacing the former DT-argmax which snapped onto a single lobe.
+            positions = np.asarray(
+                ndi.center_of_mass(dt, labels=objmap, index=labels), dtype=float
+            )
+            # Degenerate guard: objects whose pixels were all zeroed as inter-object
+            # boundary have zero DT mass -> center_of_mass returns NaN. Fall back to
+            # the unweighted (geometric) mask centroid for those labels.
+            nan_rows = np.isnan(positions).any(axis=1)
+            if nan_rows.any():
+                geom = np.asarray(
+                    ndi.center_of_mass(nonzero.astype(float), labels=objmap, index=labels),
+                    dtype=float,
+                )
+                positions[nan_rows] = geom[nan_rows]
 
             dist_df = pd.DataFrame({
                 OBJECT.LABEL                      : labels,
