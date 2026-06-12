@@ -31,9 +31,10 @@ class MeasureBounds(MeasureFeatures):
             - IntensityWeightedCenterRR, IntensityWeightedCenterCC:
               intensity-weighted centroid coordinates (skimage
               ``centroid_weighted``).
-            - DistWeightedCenterRR, DistWeightedCenterCC: row/column of
-              the per-object distance-transform maximum (deepest interior
-              point — robust to thin filamentous extensions).
+            - DistWeightedCenterRR, DistWeightedCenterCC: per-object
+              DT-weighted centroid (Sum(dt*pos)/Sum(dt)) — robust to thin
+              filamentous extensions (low DT weight) and to budding doublets
+              (the two lobes balance to the neck).
             - MinRR, MinCC: top-left corner of bounding box.
             - MaxRR, MaxCC: bottom-right corner of bounding box.
 
@@ -86,11 +87,12 @@ class MeasureBounds(MeasureFeatures):
                 }
         )
 
-        # Per-object distance-transform maximum (deepest interior point).
-        # Robust to thin filamentous extensions that pull intensity-weighted
-        # centroids off-body.
+        # Per-object DT-weighted centroid (Sum(dt*pos)/Sum(dt)). Robust to thin
+        # filamentous extensions (low DT weight keeps the center on-body) and to
+        # budding doublets (the two lobes' DT mass balances to the neck), unlike a
+        # DT-argmax which would snap onto a single lobe.
         #
-        # Vectorized via global EDT + ndi.maximum_position. Inter-object
+        # Vectorized via global EDT + ndi.center_of_mass. Inter-object
         # boundaries are zeroed before the EDT so touching colonies don't
         # bleed into each other.
         #

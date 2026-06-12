@@ -52,7 +52,25 @@ def test_estimate_pitch_recovers_fundamental_with_empty_rows():
     p_min, p_max = f._compute_bounds(x, y, H, W)
     p0, ok = f._estimate_pitch(x, y, p_min, p_max)
     assert ok
-    assert p0 == pytest.approx(p_true, abs=3.0)   # not the p/2=202 octave
+    # Fundamental recovered despite empty rows. (The p/2 octave is OUTSIDE this
+    # window; genuine octave rejection is covered by the clustered test below.)
+    assert p0 == pytest.approx(p_true, abs=3.0)
+
+
+def test_estimate_pitch_picks_fundamental_not_octave_when_window_contains_it():
+    """Clustered occupancy whose pitch floor admits p/2 and p/3 inside the search
+    window: the 'largest-p above floor' rule must pick the fundamental (200) where
+    a plain argmax of the comb response could land on an octave."""
+    f = CenteredAutoGridFinder(nrows=8, ncols=12)
+    H, W = 3152, 5066
+    p_true, cx, cy = 200.0, W / 2, H / 2
+    occ = [(i, j) for i in (3, 4, 5) for j in (4, 5, 6, 7)]  # tight central 3x4 cluster
+    x, y = _lattice_points(p_true, cx, cy, 8, 12, occ)
+    p_min, p_max = f._compute_bounds(x, y, H, W)
+    assert p_min < p_true / 2          # window genuinely contains the p/2 octave
+    p0, ok = f._estimate_pitch(x, y, p_min, p_max)
+    assert ok
+    assert p0 == pytest.approx(p_true, abs=4.0)   # fundamental, not 100 or ~66.7
 
 
 def test_estimate_pitch_flags_degenerate_on_random_points():
@@ -97,11 +115,21 @@ def test_multistart_rejects_one_cell_shift():
     p_true, cx, cy = 404.0, 2545.0, 1575.0
     occ = [(1, 0), (1, 4), (2, 3), (3, 5), (5, 8), (6, 11), (3, 1), (5, 4), (2, 7), (6, 0)]
     x, y = _lattice_points(p_true, cx, cy, 8, 12, occ)
+    # A one-cell-shifted seed alone gets TRAPPED on a high-residual lattice: edge
+    # colonies (col 0, col 11) clip when their index shifts, so the fit can't match.
+    shifted = f._icp_refine(x, y, cx + p_true, cy, p_true)
+    assert shifted is not None
+    assert shifted[3] > 0.15 * p_true                      # the trap: large residual
+    # Multi-start over all candidates escapes the trap by selecting the lowest-
+    # residual placement (the true center, ~0 residual). Remove multi-start and this
+    # decisive gap (res << shifted) disappears.
     cx_c = f._center_candidates(x, p_true, f.ncols, W)
     cy_c = f._center_candidates(y, p_true, f.nrows, H)
     best = f._multi_start_refine(x, y, p_true, cx_c, cy_c)
     assert best is not None
     bcx, bcy, bp, res = best
+    assert res < 0.05 * p_true                             # decisively beats the trap
+    assert res < shifted[3] / 3
     assert bcx == pytest.approx(cx, abs=2.0) and bcy == pytest.approx(cy, abs=2.0)
 
 
