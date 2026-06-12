@@ -1,6 +1,6 @@
 """Sample identity and provenance metadata tags for the PhenoTypic module."""
 
-from .._measurement_info import MeasurementInfo
+from .._measurement_info import Entry, MeasurementInfo
 
 
 class SAMPLE_METADATA(MeasurementInfo):
@@ -17,18 +17,18 @@ class SAMPLE_METADATA(MeasurementInfo):
     def category(cls) -> str:
         return "Metadata"
 
-    SAMPLE_ID = "SampleID", "Unique identifier for the biological sample."
-    REPLICATE = "Replicate", "Biological replicate identifier."
-    TECHNICAL_REPLICATE = "TechnicalReplicate", "Technical replicate identifier."
-    CLONE = "Clone", "Clone or isolate identifier."
-    LIBRARY_ID = (
+    SAMPLE_ID = Entry("SampleID", "Unique identifier for the biological sample.")
+    REPLICATE = Entry("Replicate", "Biological replicate identifier.")
+    TECHNICAL_REPLICATE = Entry("TechnicalReplicate", "Technical replicate identifier.")
+    CLONE = Entry("Clone", "Clone or isolate identifier.")
+    LIBRARY_ID = Entry(
         "LibraryID",
         "Source library or collection identifier (e.g. a deletion collection).",
     )
-    SOURCE_PLATE = (
+    SOURCE_PLATE = Entry(
         "SourcePlate",
         "Identifier of the source plate the sample was pinned from.",
     )
-    SOURCE_WELL = "SourceWell", "Well position on the source plate (e.g. A1)."
-    BARCODE = "Barcode", "Molecular or sample barcode."
-    CONTROL = "Control", "Control designation (e.g. positive, negative, blank)."
+    SOURCE_WELL = Entry("SourceWell", "Well position on the source plate (e.g. A1).")
+    BARCODE = Entry("Barcode", "Molecular or sample barcode.")
+    CONTROL = Entry("Control", "Control designation (e.g. positive, negative, blank).")

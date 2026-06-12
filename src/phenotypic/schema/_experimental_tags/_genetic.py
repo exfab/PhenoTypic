@@ -1,6 +1,6 @@
 """Organism and genetics metadata tags for the PhenoTypic module."""
 
-from .._measurement_info import MeasurementInfo
+from .._measurement_info import Entry, MeasurementInfo
 
 
 class GENETIC_METADATA(MeasurementInfo):
@@ -18,15 +18,15 @@ class GENETIC_METADATA(MeasurementInfo):
     def category(cls) -> str:
         return "Metadata"
 
-    ORGANISM = "Organism", "Species or organism name (e.g. Saccharomyces cerevisiae)."
-    STRAIN = "Strain", "Strain name or identifier (e.g. BY4741)."
-    GENOTYPE = "Genotype", "Genotype description of the strain."
-    BACKGROUND = "Background", "Genetic background or parent strain."
-    ALLELE = "Allele", "Specific allele or mutation under study."
-    PLASMID = "Plasmid", "Plasmid carried by the sample."
-    SELECTION_MARKER = (
+    ORGANISM = Entry("Organism", "Species or organism name (e.g. Saccharomyces cerevisiae).")
+    STRAIN = Entry("Strain", "Strain name or identifier (e.g. BY4741).")
+    GENOTYPE = Entry("Genotype", "Genotype description of the strain.")
+    BACKGROUND = Entry("Background", "Genetic background or parent strain.")
+    ALLELE = Entry("Allele", "Specific allele or mutation under study.")
+    PLASMID = Entry("Plasmid", "Plasmid carried by the sample.")
+    SELECTION_MARKER = Entry(
         "SelectionMarker",
         "Selectable marker gene (e.g. URA3, KanMX).",
     )
-    MATING_TYPE = "MatingType", "Mating type for yeast (e.g. MATa, MATalpha)."
-    PLOIDY = "Ploidy", "Ploidy of the organism (e.g. haploid, diploid)."
+    MATING_TYPE = Entry("MatingType", "Mating type for yeast (e.g. MATa, MATalpha).")
+    PLOIDY = Entry("Ploidy", "Ploidy of the organism (e.g. haploid, diploid).")
