@@ -82,6 +82,7 @@ SHELL_TAB_VIEWER = "shell-tab-viewer"
 SHELL_TAB_RUN = "shell-tab-run"
 SHELL_TAB_ANALYSIS = "shell-tab-analysis"
 SHELL_TAB_TUNE = "shell-tab-tune"
+SHELL_TAB_BROWSE = "shell-tab-browse"
 
 #: Dropdown-group toggle ids. The flat tab strip is consolidated into two
 #: grouped dropdowns: **Pipeline** (Builder / Tune / Run) and **Results**
@@ -205,6 +206,7 @@ __all__ = [
     "SHELL_TAB_RUN",
     "SHELL_TAB_ANALYSIS",
     "SHELL_TAB_TUNE",
+    "SHELL_TAB_BROWSE",
     "SHELL_TAB_GROUP_PIPELINE",
     "SHELL_TAB_GROUP_RESULTS",
     "SHELL_SIDEBAR",

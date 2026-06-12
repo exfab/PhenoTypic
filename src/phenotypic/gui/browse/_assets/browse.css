@@ -1,0 +1,16 @@
+.browse-osd-canvas {
+    /* Deliberate dark image stage (the one permitted dark surface) so
+       tiling/letterbox artefacts blend in; --color-image-stage-dark is
+       injected globally by _design.inject_design_tokens, matching the
+       results viewer's .osd-canvas. */
+    background: var(--color-image-stage-dark);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+}
+.browse-meta-panel {
+    font-size: var(--font-size-caption);
+    color: var(--color-body);
+}
+.browse-meta-chip span:last-child {
+    font-family: var(--font-mono);
+}

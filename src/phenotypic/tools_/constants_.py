@@ -83,7 +83,13 @@ class GAMMA_ENCODINGS(ConstantLabels):
 
 
 class IO:
-    RAW_FILE_EXTENSIONS = (".cr3", ".CR3")
+    RAW_FILE_EXTENSIONS = (
+            ".cr2", ".CR2",
+            ".cr3", ".CR3",
+            ".nef", ".NEF",
+            ".arw", ".ARW",
+            ".dng", ".DNG",
+    )
     PNG_FILE_EXTENSIONS = (".png", ".PNG")
     JPEG_FILE_EXTENSIONS = (".jpeg", ".JPEG", ".jpg")
     TIFF_EXTENSIONS = (".tif", ".tiff")

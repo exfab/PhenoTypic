@@ -61,6 +61,24 @@ See ``GUI_SPEC_V1.md`` for the canonical design.
 | Welcome card               | Landing pane      | Shows project name + sandbox root + tutorial links      | ✅ shipping | e2e         | tests/e2e/gui/test_topbar_nav.py::test_home_loads_with_chrome           |
 | Sandbox capability summary | Capability counts | Shows ``n images / n outputs / n pipelines`` discovered | ✅ shipping | integration | tests/integration/gui/test_app.py::test_home_capability_summary_renders |
 
+## Browse tab (source image viewer)
+
+A new top-level `Browse` tab (mounted at `/browse/`) deep-zooms the raw input
+images under the selected source root. Two cascading dropdowns (dataset folder →
+image) feed a single OpenSeadragon viewport with a metadata panel; each source
+file is lazily normalized to an 8-bit RGB PNG and tiled into an ephemeral temp
+cache. Works offline over an SSH tunnel (vendored OSD, no CDN).
+
+| Feature                       | Element                                                | Expected behaviour                                                                                                                              | Status     | Test layer  | Test ref                                                                                |
+|-------------------------------|--------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------|------------|-------------|-----------------------------------------------------------------------------------------|
+| Browse nav tab                | `SHELL_TAB_BROWSE` leaf in `NAV_MODEL` (`shell/_layout.py`) | A leaf tab immediately after Home that navigates to the `/browse/` mount; the hub dispatcher serves the Browse Dash app under that prefix.       | ✅ shipping | integration | tests/gui/browse/test_hub_mount.py::test_browse_tab_in_nav_model                         |
+| Dataset dropdown + flat-hide  | `BROWSE_DATASET_PICKER` + `BROWSE_DATASET_ROW`         | Groups images by relative subfolder (`.` shown as `(root)`); the dataset row is hidden when the source root is flat (one `.` key) or empty.      | ✅ shipping | unit        | tests/gui/browse/test_callbacks_helpers.py::test_dataset_row_hidden_when_flat            |
+| Image dropdown + ‹/› stepper  | `BROWSE_IMAGE_PICKER` + `BROWSE_PREV_BTN`/`BROWSE_NEXT_BTN` | The image picker lists the selected dataset's files; ‹/› step previous/next within bounds and clamp (the buttons disable at the first/last image). | ✅ shipping | unit        | tests/gui/browse/test_shared_picker_navigation.py::test_bounds_disabled_states           |
+| OSD deep-zoom viewport        | `BROWSE_OSD_DIV` + token-keyed `/tiles/<token>.dzi` route | OpenSeadragon tiles a token-keyed DZI manifest; the Flask blueprint validates + decodes the base64url token, resolves it through the sandbox, and serves the manifest + tiles. | ✅ shipping | integration | tests/gui/browse/test_tile_routes.py::test_manifest_then_tile                            |
+| Metadata panel (dims/size/EXIF) | `BROWSE_META_DIMS`/`BROWSE_META_SIZE`/`BROWSE_META_CAPTURED`/`BROWSE_META_CAMERA` | Reads display metadata (pixel dimensions, on-disk byte size, and capture-time / camera make+model EXIF) for the current image, degrading gracefully when a field is absent. | ✅ shipping | unit        | tests/gui/browse/test_metadata.py::test_read_dims_and_size_no_exif                       |
+| Ephemeral temp tile cache     | `tempfile.gettempdir()/phenotypic/browse`             | Normalized PNGs + DZI tiles live under an ephemeral temp cache keyed by the image token; the cache is wiped on launch and an `atexit` cleanup is registered once.            | ✅ shipping | unit        | tests/gui/browse/test_source_render.py::test_init_cache_registers_atexit_once            |
+| Current-image store + clientside OSD mount | `BROWSE_CURRENT_IMAGE_STORE` + `BROWSE_OSD_SYNC` clientside callback | Selecting an image writes a `{token, label}` payload to the current-image store; a clientside callback mounts/replaces the single OSD viewer for that token. | ✅ shipping | integration | tests/gui/browse/test_app.py::test_create_app_serves_layout_and_tiles                    |
+
 ## Builder integration
 
 | Feature                 | Element                            | Expected behaviour                                          | Status     | Test layer  | Test ref                                                                 |

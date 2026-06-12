@@ -1,0 +1,7 @@
+# Vendored OpenSeadragon — store byte-for-byte. Disable autocrlf/eol
+# normalization so the minified JS and binary sprite PNGs are committed
+# identical to the upstream copy (autocrlf=true would otherwise strip the
+# CRLF line endings from openseadragon.min.js / LICENSE).
+* binary
+*.png binary
+openseadragon.min.js -text

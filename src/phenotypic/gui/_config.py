@@ -88,6 +88,7 @@ __all__ = [
     "MOUNT_RUN",
     "MOUNT_ANALYSIS",
     "MOUNT_TUNE",
+    "MOUNT_BROWSE",
     "SANDBOX_API_PREFIX",
     "RUNS_BLUEPRINT_PREFIX",
     # Flask app.server.config keys
@@ -112,6 +113,10 @@ __all__ = [
     "SANDBOX_BUILDER_TILES_SUBDIR",
     "RUN_LOG_DIRNAME",
     "VIEWER_CACHE_DIRNAME",
+    "BROWSE_CACHE_TMP_SUBPATH",
+    # Image file extensions
+    "IMAGE_EXTS",
+    "RAW_IMAGE_EXTS",
     # Output filenames (CLI ↔ GUI shared layout) — re-exported from phenotypic.tools_
     "MASTER_MEASUREMENTS_CSV",
     "MASTER_MEASUREMENTS_PARQUET",
@@ -141,6 +146,7 @@ __all__ = [
     "SANDBOX_API_VIEWER_OUTPUT_ROOT",
     "BUILDER_TILES_PREFIX",
     "VIEWER_TILES_PREFIX",
+    "BROWSE_TILES_PREFIX",
     "COLONY_CROPS_URL_SEGMENT",
     "QC_CROPS_URL_SEGMENT",
     # Closed value-set aliases
@@ -169,6 +175,7 @@ __all__ = [
     "TITLE_RUN",
     "TITLE_ANALYSIS",
     "TITLE_TUNE",
+    "TITLE_BROWSE",
     "SSH_TUNNEL_HINT",
     # Thread name prefix
     "THREAD_NAME_PREFIX",
@@ -197,6 +204,7 @@ MOUNT_VIEWER: str = "/results/"
 MOUNT_RUN: str = "/run/"
 MOUNT_ANALYSIS: str = "/analysis/"
 MOUNT_TUNE: str = "/tune/"
+MOUNT_BROWSE: str = "/browse/"
 
 #: Flask blueprint prefix for the sandbox JSON API (sidebar tree, capability
 #: probe, viewer hand-off, etc.). Mounted on the shell's Flask server in
@@ -327,6 +335,26 @@ RUN_LOG_DIRNAME: str = ".gui_log"
 #: holding cached DZI tiles.
 VIEWER_CACHE_DIRNAME: str = ".viewer_cache"
 
+#: Ephemeral Browse tile-cache subpath under ``tempfile.gettempdir()``. The
+#: Browse tab normalizes each source image to an 8-bit PNG + DZI tiles here,
+#: wiped on launch + at ``atexit`` (never persisted under the sandbox).
+BROWSE_CACHE_TMP_SUBPATH: tuple[str, str] = ("phenotypic", "browse")
+
+# ---------------------------------------------------------------------------
+# Image file extensions (shared by the directory browser, classifier, and the
+# Browse tab). Lifted here so neither browse nor the classifier imports the
+# builder package. ``builder/_directory_browser`` re-exports IMAGE_EXTS.
+# ---------------------------------------------------------------------------
+IMAGE_EXTS: frozenset[str] = frozenset(
+    {".png", ".tif", ".tiff", ".jpg", ".jpeg", ".cr2", ".cr3", ".nef", ".arw", ".dng"}
+)
+
+#: Camera-RAW subset of :data:`IMAGE_EXTS`. These require rawpy (absent on
+#: Windows) and decode through ``phenotypic.Image.imread`` — mirroring the
+#: core ``IO.RAW_FILE_EXTENSIONS`` decode set. Bare ``.raw`` is intentionally
+#: excluded (libraw can't reliably decode the ambiguous container).
+RAW_IMAGE_EXTS: frozenset[str] = frozenset({".cr2", ".cr3", ".nef", ".arw", ".dng"})
+
 # ---------------------------------------------------------------------------
 # Output filenames (CLI ↔ GUI shared layout) — re-exported from phenotypic.tools_
 # ---------------------------------------------------------------------------
@@ -404,6 +432,10 @@ BUILDER_TILES_PREFIX: str = "/tiles"
 #: ``BUILDER_TILES_PREFIX`` because the viewer's tile cache and route
 #: namespace are scoped to the results sub-app.
 VIEWER_TILES_PREFIX: str = "/tiles"
+
+#: URL prefix for the Browse tab's token-keyed DZI tile blueprint. Mounted on
+#: the Browse sub-app's Flask server; mirrors :data:`VIEWER_TILES_PREFIX`.
+BROWSE_TILES_PREFIX: str = "/tiles"
 
 #: URL path segment used for per-colony crop images.
 COLONY_CROPS_URL_SEGMENT: str = "crops"
@@ -592,6 +624,7 @@ TITLE_VIEWER: str = "PhenoTypic Results Viewer"
 TITLE_RUN: str = "PhenoTypic Run Console"
 TITLE_ANALYSIS: str = "PhenoTypic Analysis"
 TITLE_TUNE: str = "PhenoTypic Tune Co-Pilot"
+TITLE_BROWSE: str = "PhenoTypic Source Browser"
 
 #: One-line SSH-tunnel hint reused by every launcher banner, argparse
 #: epilogue, and help-modal body. Constructed from :data:`DEFAULT_PORT`
